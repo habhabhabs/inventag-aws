@@ -1,0 +1,248 @@
+name: "Professional BOM Report Template"
+description: "Professional template for Cloud Bill of Materials reports with comprehensive branding and structure"
+format_type: "word"
+template_version: "1.0"
+
+# Template variables with default values
+variables:
+  company_name:
+    value: "{{company_name}}"
+    description: "Company name for branding"
+    format_type: "string"
+    default_value: "Organization"
+  
+  document_title:
+    value: "{{document_title}}"
+    description: "Main document title"
+    format_type: "string"
+    default_value: "Cloud Bill of Materials Report"
+  
+  report_date:
+    value: "{{current_date}}"
+    description: "Report generation date"
+    format_type: "date"
+    default_value: "{{current_date|date:%Y-%m-%d}}"
+  
+  confidentiality_level:
+    value: "{{confidentiality_level}}"
+    description: "Document confidentiality level"
+    format_type: "string"
+    default_value: "CONFIDENTIAL"
+  
+  report_version:
+    value: "{{report_version}}"
+    description: "Report version number"
+    format_type: "string"
+    default_value: "1.0"
+
+# Document structure with sections
+sections:
+  - id: "cover_page"
+    title: "{{company_name}} - {{document_title}}"
+    level: 0
+    content_type: "title"
+    include_in_toc: false
+    page_break_after: true
+    variables:
+      subtitle: "Infrastructure Documentation and Compliance Report"
+      generated_date: "{{report_date|date:%B %d, %Y}}"
+      version: "{{report_version}}"
+      confidentiality: "{{confidentiality_level}}"
+
+  - id: "table_of_contents"
+    title: "Table of Contents"
+    level: 0
+    content_type: "toc"
+    include_in_toc: false
+    page_break_after: true
+
+  - id: "executive_summary"
+    title: "Executive Summary"
+    level: 1
+    content_type: "text"
+    include_in_toc: true
+    subsections:
+      - id: "overview"
+        title: "Overview"
+        level: 2
+        content_type: "text"
+        include_in_toc: true
+      
+      - id: "key_findings"
+        title: "Key Findings"
+        level: 2
+        content_type: "text"
+        include_in_toc: true
+      
+      - id: "recommendations"
+        title: "Recommendations"
+        level: 2
+        content_type: "text"
+        include_in_toc: true
+
+  - id: "compliance_overview"
+    title: "Compliance Overview"
+    level: 1
+    content_type: "table"
+    include_in_toc: true
+    subsections:
+      - id: "compliance_summary"
+        title: "Compliance Summary"
+        level: 2
+        content_type: "table"
+        include_in_toc: true
+      
+      - id: "policy_violations"
+        title: "Policy Violations"
+        level: 2
+        content_type: "table"
+        include_in_toc: true
+
+  - id: "service_inventory"
+    title: "Service Inventory"
+    level: 1
+    content_type: "table"
+    include_in_toc: true
+    page_break_before: true
+    subsections:
+      - id: "service_summary"
+        title: "Service Summary"
+        level: 2
+        content_type: "table"
+        include_in_toc: true
+      
+      - id: "detailed_resources"
+        title: "Detailed Resource Listings"
+        level: 2
+        content_type: "table"
+        include_in_toc: true
+
+  - id: "network_analysis"
+    title: "Network Analysis"
+    level: 1
+    content_type: "text"
+    include_in_toc: true
+    page_break_before: true
+    subsections:
+      - id: "vpc_analysis"
+        title: "VPC Analysis"
+        level: 2
+        content_type: "table"
+        include_in_toc: true
+      
+      - id: "subnet_utilization"
+        title: "Subnet Utilization"
+        level: 2
+        content_type: "table"
+        include_in_toc: true
+      
+      - id: "network_recommendations"
+        title: "Network Recommendations"
+        level: 2
+        content_type: "text"
+        include_in_toc: true
+
+  - id: "security_analysis"
+    title: "Security Analysis"
+    level: 1
+    content_type: "text"
+    include_in_toc: true
+    page_break_before: true
+    subsections:
+      - id: "security_groups"
+        title: "Security Group Analysis"
+        level: 2
+        content_type: "table"
+        include_in_toc: true
+      
+      - id: "high_risk_findings"
+        title: "High-Risk Findings"
+        level: 2
+        content_type: "table"
+        include_in_toc: true
+      
+      - id: "security_recommendations"
+        title: "Security Recommendations"
+        level: 2
+        content_type: "text"
+        include_in_toc: true
+
+  - id: "appendices"
+    title: "Appendices"
+    level: 1
+    content_type: "text"
+    include_in_toc: true
+    page_break_before: true
+    subsections:
+      - id: "methodology"
+        title: "Methodology"
+        level: 2
+        content_type: "text"
+        include_in_toc: true
+      
+      - id: "data_sources"
+        title: "Data Sources"
+        level: 2
+        content_type: "text"
+        include_in_toc: true
+      
+      - id: "glossary"
+        title: "Glossary"
+        level: 2
+        content_type: "text"
+        include_in_toc: true
+
+# Branding configuration
+branding:
+  company_name: "{{company_name}}"
+  logo_path: null  # Path to company logo image
+  header_text: "{{company_name}} Infrastructure Report"
+  footer_text: "{{confidentiality_level}} - Generated {{current_date}}"
+  color_scheme:
+    primary: "#366092"
+    secondary: "#4472C4"
+    accent: "#70AD47"
+    warning: "#FFC000"
+    danger: "#C5504B"
+    success: "#70AD47"
+  font_family: "Calibri"
+  font_size: 11
+  enable_watermark: true
+  watermark_text: "{{confidentiality_level}}"
+
+# Header and footer configuration
+header_footer:
+  header_text: "{{company_name}} - {{document_title}}"
+  footer_text: "Generated on {{current_date|date:%B %d, %Y}} | Page"
+  include_logo: true
+  logo_position: "left"
+  logo_size: [1.2, 0.6]  # width, height in inches
+  include_page_numbers: true
+  page_number_position: "right"
+  include_date: true
+  date_format: "%Y-%m-%d"
+  custom_fields:
+    classification: "{{confidentiality_level}}"
+    version: "v{{report_version}}"
+
+# Table of contents configuration
+table_of_contents:
+  enabled: true
+  title: "Table of Contents"
+  max_depth: 3
+  include_page_numbers: true
+  dot_leader: true
+  custom_styles:
+    title_font_size: 16
+    entry_font_size: 11
+    indent_per_level: 0.25
+
+# Page layout settings
+page_margins:
+  top: 1.0
+  bottom: 1.0
+  left: 1.25
+  right: 1.0
+
+page_orientation: "portrait"
+page_size: "letter"

@@ -1,0 +1,93 @@
+# Prometheus alerting rules for InvenTag BOM generation monitoring
+groups:
+  - name: inventag_compliance_alerts
+    rules:
+      # Alert when compliance percentage drops below threshold
+      - alert: CompliancePercentageLow
+        expr: inventag_compliance_percentage < 80
+        for: 0m
+        labels:
+          severity: warning
+          service: inventag
+        annotations:
+          summary: "InvenTag compliance percentage is below threshold"
+          description: "Compliance percentage is {{ $value }}% which is below the 80% threshold for account {{ $labels.account_id }}"
+
+      # Alert when critical violations are detected
+      - alert: CriticalViolationsDetected
+        expr: inventag_critical_violations > 0
+        for: 0m
+        labels:
+          severity: critical
+          service: inventag
+        annotations:
+          summary: "Critical compliance violations detected"
+          description: "{{ $value }} critical violations detected in account {{ $labels.account_id }}"
+
+      # Alert when security issues are found
+      - alert: SecurityIssuesDetected
+        expr: inventag_security_issues > 5
+        for: 0m
+        labels:
+          severity: warning
+          service: inventag
+        annotations:
+          summary: "Multiple security issues detected"
+          description: "{{ $value }} security issues detected in account {{ $labels.account_id }}"
+
+      # Alert when BOM generation fails
+      - alert: BOMGenerationFailed
+        expr: inventag_successful_accounts < inventag_total_accounts
+        for: 0m
+        labels:
+          severity: critical
+          service: inventag
+        annotations:
+          summary: "BOM generation failed for some accounts"
+          description: "Only {{ $labels.inventag_successful_accounts }} out of {{ $labels.inventag_total_accounts }} accounts processed successfully"
+
+      # Alert when processing time is too long
+      - alert: ProcessingTimeTooLong
+        expr: inventag_processing_time_seconds > 300
+        for: 0m
+        labels:
+          severity: warning
+          service: inventag
+        annotations:
+          summary: "BOM generation taking too long"
+          description: "BOM generation took {{ $value }} seconds, which exceeds the 5-minute threshold"
+
+      # Alert when no metrics received (BOM generation not running)
+      - alert: BOMGenerationNotRunning
+        expr: up{job="inventag-bom"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          service: inventag
+        annotations:
+          summary: "InvenTag BOM generation not running"
+          description: "No metrics received from InvenTag BOM generation for 5 minutes"
+
+  - name: inventag_resource_alerts
+    rules:
+      # Alert when resource count drops significantly
+      - alert: ResourceCountDropped
+        expr: (inventag_total_resources - inventag_total_resources offset 1d) / inventag_total_resources offset 1d < -0.2
+        for: 0m
+        labels:
+          severity: warning
+          service: inventag
+        annotations:
+          summary: "Significant drop in resource count"
+          description: "Resource count dropped by more than 20% compared to yesterday ({{ $value }} resources)"
+
+      # Alert when non-compliant resources increase significantly
+      - alert: NonCompliantResourcesIncreased
+        expr: (inventag_non_compliant_resources - inventag_non_compliant_resources offset 1d) / inventag_non_compliant_resources offset 1d > 0.3
+        for: 0m
+        labels:
+          severity: warning
+          service: inventag
+        annotations:
+          summary: "Non-compliant resources increased significantly"
+          description: "Non-compliant resources increased by more than 30% compared to yesterday ({{ $value }} resources)"

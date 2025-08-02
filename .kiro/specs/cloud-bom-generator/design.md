@@ -1281,7 +1281,7 @@ class ServiceRegistry:
 
 ### Read-Only Access Pattern
 
-The Cloud BOM Generator is designed to operate with minimal AWS permissions, ensuring compliance with GCC 2.0 requirements and production safety.
+The Cloud BOM Generator is designed to operate with minimal AWS permissions, ensuring compliance with production safety requirements.
 
 #### Required AWS Permissions
 The tool operates exclusively with read-only AWS actions and can function with the standard `ReadOnlyAccess` managed policy or a custom minimal permission set:
@@ -1331,7 +1331,7 @@ The tool operates exclusively with read-only AWS actions and can function with t
 4. **Local Processing**: All data enhancement and document generation occurs locally
 5. **Audit Trail**: All AWS API calls are logged and can be monitored via CloudTrail
 
-#### GCC 2.0 Compliance Features
+#### Production Safety Compliance Features
 
 ```python
 class ComplianceValidator:
@@ -1413,4 +1413,4 @@ class ComplianceReport:
 3. **Performance Metrics**: Execution time and resource usage tracking
 4. **Error Reporting**: Comprehensive error logging without sensitive data exposure
 
-This design provides a comprehensive foundation for implementing the Cloud BOM Generator feature while maintaining strict read-only compliance, GCC 2.0 requirements, and production safety standards alongside compatibility with the existing InvenTag architecture.
+This design provides a comprehensive foundation for implementing the Cloud BOM Generator feature while maintaining strict read-only compliance and production safety standards alongside compatibility with the existing InvenTag architecture.

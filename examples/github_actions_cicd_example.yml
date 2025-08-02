@@ -1,0 +1,241 @@
+name: InvenTag BOM Generation
+
+on:
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      accounts_config:
+        description: 'Accounts configuration file'
+        required: false
+        default: 'config/accounts.json'
+      output_formats:
+        description: 'Output formats (comma-separated: excel,word)'
+        required: false
+        default: 'excel,word'
+      s3_upload:
+        description: 'Upload to S3'
+        type: boolean
+        required: false
+        default: true
+
+env:
+  PYTHON_VERSION: '3.9'
+  AWS_DEFAULT_REGION: 'us-east-1'
+
+jobs:
+  validate-config:
+    runs-on: ubuntu-latest
+    outputs:
+      config-valid: ${{ steps.validate.outputs.valid }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+    
+    - name: Validate configuration
+      id: validate
+      run: |
+        if python inventag_cli.py --accounts-file ${{ github.event.inputs.accounts_config || 'config/accounts.json' }} --validate-config; then
+          echo "valid=true" >> $GITHUB_OUTPUT
+        else
+          echo "valid=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+  validate-credentials:
+    runs-on: ubuntu-latest
+    needs: validate-config
+    if: needs.validate-config.outputs.config-valid == 'true'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_DEFAULT_REGION }}
+    
+    - name: Validate credentials
+      run: |
+        python inventag_cli.py \
+          --accounts-file ${{ github.event.inputs.accounts_config || 'config/accounts.json' }} \
+          --validate-credentials \
+          --verbose
+
+  generate-bom:
+    runs-on: ubuntu-latest
+    needs: [validate-config, validate-credentials]
+    if: needs.validate-config.outputs.config-valid == 'true'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_DEFAULT_REGION }}
+    
+    - name: Determine output formats
+      id: formats
+      run: |
+        formats="${{ github.event.inputs.output_formats || 'excel,word' }}"
+        excel_flag=""
+        word_flag=""
+        
+        if [[ $formats == *"excel"* ]]; then
+          excel_flag="--create-excel"
+        fi
+        
+        if [[ $formats == *"word"* ]]; then
+          word_flag="--create-word"
+        fi
+        
+        echo "excel_flag=$excel_flag" >> $GITHUB_OUTPUT
+        echo "word_flag=$word_flag" >> $GITHUB_OUTPUT
+    
+    - name: Generate BOM Reports
+      run: |
+        s3_options=""
+        if [[ "${{ github.event.inputs.s3_upload || 'true' }}" == "true" ]]; then
+          s3_options="--s3-bucket ${{ secrets.BOM_REPORTS_BUCKET }} --s3-key-prefix bom-reports/${{ github.run_number }}/"
+        fi
+        
+        python inventag_cli.py \
+          --accounts-file ${{ github.event.inputs.accounts_config || 'config/accounts.json' }} \
+          --service-descriptions config/service_descriptions_example.yaml \
+          --tag-mappings config/tag_mappings_example.yaml \
+          ${{ steps.formats.outputs.excel_flag }} \
+          ${{ steps.formats.outputs.word_flag }} \
+          $s3_options \
+          --enable-state-management \
+          --enable-delta-detection \
+          --generate-changelog \
+          --max-concurrent-accounts 6 \
+          --verbose \
+          --log-file inventag-github-${{ github.run_number }}.log
+    
+    - name: Upload logs as artifact
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: inventag-logs-${{ github.run_number }}
+        path: inventag-github-${{ github.run_number }}.log
+        retention-days: 30
+    
+    - name: Upload BOM reports as artifact
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: bom-reports-${{ github.run_number }}
+        path: bom_output/
+        retention-days: 90
+    
+    - name: Generate summary
+      if: success()
+      run: |
+        echo "## BOM Generation Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Run Number:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Accounts Config:** ${{ github.event.inputs.accounts_config || 'config/accounts.json' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Output Formats:** ${{ github.event.inputs.output_formats || 'excel,word' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **S3 Upload:** ${{ github.event.inputs.s3_upload || 'true' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Generated Files:**" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -d "bom_output" ]; then
+          for file in bom_output/*; do
+            if [ -f "$file" ]; then
+              echo "  - $(basename "$file")" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+        fi
+    
+    - name: Check compliance threshold
+      if: success()
+      run: |
+        # Custom compliance check (implement based on your requirements)
+        echo "Checking compliance threshold..."
+        # python scripts/check_compliance_threshold.py --threshold 85
+
+  notify-success:
+    runs-on: ubuntu-latest
+    needs: generate-bom
+    if: success()
+    
+    steps:
+    - name: Notify Slack on success
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        channel: '#compliance-reports'
+        message: |
+          ✅ InvenTag BOM generation completed successfully!
+          
+          **Details:**
+          - Run: ${{ github.run_number }}
+          - Trigger: ${{ github.event_name }}
+          - Formats: ${{ github.event.inputs.output_formats || 'excel,word' }}
+          - S3 Upload: ${{ github.event.inputs.s3_upload || 'true' }}
+          
+          **Artifacts:**
+          - BOM Reports: Available in GitHub Actions artifacts
+          - Logs: Available in GitHub Actions artifacts
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  notify-failure:
+    runs-on: ubuntu-latest
+    needs: [validate-config, validate-credentials, generate-bom]
+    if: failure()
+    
+    steps:
+    - name: Notify Slack on failure
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        channel: '#compliance-alerts'
+        message: |
+          ❌ InvenTag BOM generation failed!
+          
+          **Details:**
+          - Run: ${{ github.run_number }}
+          - Trigger: ${{ github.event_name }}
+          - Failed Job: ${{ needs.validate-config.result == 'failure' && 'Config Validation' || needs.validate-credentials.result == 'failure' && 'Credential Validation' || 'BOM Generation' }}
+          
+          **Action Required:**
+          - Check the GitHub Actions logs for details
+          - Review configuration and credentials
+          - Contact the platform team if needed
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}

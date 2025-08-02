@@ -1,0 +1,40 @@
+{
+  "generation_summary": {
+    "total_formats": 3,
+    "successful_formats": 3,
+    "failed_formats": 0,
+    "total_generation_time": 0.099221,
+    "generated_at": "2025-08-01T01:57:27.497856+00:00"
+  },
+  "results": [
+    {
+      "format_type": "csv",
+      "filename": "demo_bom_report_20250801_095727.csv",
+      "success": true,
+      "file_size_bytes": 1496,
+      "generation_time_seconds": 0.012929,
+      "error_message": null,
+      "warnings": []
+    },
+    {
+      "format_type": "excel",
+      "filename": "demo_bom_report_20250801_095727.xlsx",
+      "success": true,
+      "file_size_bytes": 16370,
+      "generation_time_seconds": 0.072385,
+      "error_message": null,
+      "warnings": []
+    },
+    {
+      "format_type": "word",
+      "filename": "demo_bom_report_20250801_095727.docx",
+      "success": true,
+      "file_size_bytes": 39625,
+      "generation_time_seconds": 0.084011,
+      "error_message": null,
+      "warnings": []
+    }
+  ],
+  "errors": [],
+  "warnings": []
+}

@@ -1,0 +1,61 @@
+{
+  "version": "1.0",
+  "encrypted": false,
+  "accounts": [
+    {
+      "account_id": "123456789012",
+      "account_name": "Production Account",
+      "profile_name": "prod-account",
+      "regions": ["us-east-1", "us-west-2"],
+      "services": ["EC2", "S3", "RDS", "Lambda", "ECS"],
+      "tags": {
+        "Environment": "production",
+        "Owner": "platform-team",
+        "CostCenter": "engineering"
+      }
+    },
+    {
+      "account_id": "123456789013",
+      "account_name": "Staging Account",
+      "profile_name": "staging-account",
+      "regions": ["us-east-1"],
+      "services": ["EC2", "S3", "Lambda"],
+      "tags": {
+        "Environment": "staging",
+        "Owner": "platform-team"
+      }
+    },
+    {
+      "account_id": "123456789014",
+      "account_name": "Development Account",
+      "profile_name": "dev-account",
+      "regions": ["us-east-1"],
+      "services": ["EC2", "S3"],
+      "tags": {
+        "Environment": "development",
+        "Owner": "dev-team"
+      }
+    }
+  ],
+  "global_config": {
+    "default_regions": ["us-east-1"],
+    "default_services": ["EC2", "S3", "RDS", "Lambda"],
+    "max_concurrent_accounts": 2,
+    "continue_on_error": true,
+    "retry_attempts": 2
+  },
+  "metadata": {
+    "created_by": "DevOps Team",
+    "created_date": "2024-01-15",
+    "description": "Multi-account configuration using AWS CLI profiles",
+    "environment": "local-development",
+    "notes": [
+      "This configuration uses AWS CLI profiles for authentication.",
+      "Ensure the following profiles are configured in ~/.aws/credentials:",
+      "- prod-account",
+      "- staging-account", 
+      "- dev-account",
+      "Use 'aws configure --profile <profile-name>' to set up each profile"
+    ]
+  }
+}

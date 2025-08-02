@@ -1,0 +1,24 @@
+{
+  "enabled": true,
+  "name": "Documentation Sync",
+  "description": "Listens to Python source files and configuration changes to automatically update documentation in README.md and docs folder",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "inventag/**/*.py",
+      "scripts/**/*.py",
+      "examples/**/*.py",
+      "tests/**/*.py",
+      "requirements.txt",
+      "requirements-dev.txt",
+      "config/**/*.json",
+      "config/**/*.yaml",
+      "version.json"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Source code or configuration files have been modified. Please review the changes and update the documentation accordingly. Update the README.md file and any relevant files in the docs/ folder to reflect the current state of the codebase, including any new features, API changes, configuration options, or usage examples."
+  }
+}

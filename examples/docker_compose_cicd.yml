@@ -1,0 +1,93 @@
+# Docker Compose configuration for running InvenTag BOM generation in containerized CI/CD
+version: '3.8'
+
+services:
+  # InvenTag BOM Generator
+  inventag-bom:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      # AWS Configuration
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+      - AWS_DEFAULT_REGION=us-east-1
+      
+      # S3 Configuration
+      - INVENTAG_S3_BUCKET=${INVENTAG_S3_BUCKET}
+      - INVENTAG_S3_KEY_PREFIX=docker-bom-reports
+      
+      # Notification Configuration
+      - INVENTAG_SLACK_WEBHOOK=${SLACK_WEBHOOK_URL}
+      - INVENTAG_TEAMS_WEBHOOK=${TEAMS_WEBHOOK_URL}
+      
+      # Prometheus Configuration
+      - PROMETHEUS_PUSH_GATEWAY_URL=http://prometheus-pushgateway:9091
+      - PROMETHEUS_JOB_NAME=inventag-docker
+      - PROMETHEUS_INSTANCE_NAME=docker-compose
+    volumes:
+      - ./examples:/app/examples:ro
+      - ./output:/app/output
+      - ~/.aws:/root/.aws:ro  # Optional: for AWS CLI profiles
+    command: >
+      python scripts/cicd_bom_generation.py
+      --accounts-file examples/accounts_cicd_environment.json
+      --formats excel word json
+      --output-dir /app/output
+      --compliance-threshold 80
+      --fail-on-security-issues
+      --verbose
+    depends_on:
+      - prometheus-pushgateway
+    networks:
+      - inventag-network
+
+  # Prometheus Push Gateway for metrics collection
+  prometheus-pushgateway:
+    image: prom/pushgateway:latest
+    ports:
+      - "9091:9091"
+    networks:
+      - inventag-network
+
+  # Optional: Prometheus server for metrics visualization
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./examples/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    depends_on:
+      - prometheus-pushgateway
+    networks:
+      - inventag-network
+
+  # Optional: Grafana for metrics dashboards
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./examples/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./examples/grafana-datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    networks:
+      - inventag-network
+
+networks:
+  inventag-network:
+    driver: bridge
+
+volumes:
+  grafana-storage:

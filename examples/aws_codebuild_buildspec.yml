@@ -1,0 +1,227 @@
+version: 0.2
+
+# AWS CodeBuild BuildSpec for InvenTag BOM Generation
+# This buildspec supports both scheduled and on-demand BOM generation
+# with comprehensive error handling and artifact management
+
+env:
+  variables:
+    PYTHON_VERSION: "3.9"
+    DEFAULT_TIMEOUT: "3600"
+    DEFAULT_CONCURRENCY: "6"
+  parameter-store:
+    ACCOUNTS_CONFIG: "/inventag/accounts-config"
+    BOM_REPORTS_BUCKET: "/inventag/bom-reports-bucket"
+    SLACK_WEBHOOK_URL: "/inventag/slack-webhook"
+  secrets-manager:
+    INVENTAG_ACCOUNTS: "inventag/accounts:accounts"
+
+phases:
+  install:
+    runtime-versions:
+      python: $PYTHON_VERSION
+    commands:
+      - echo "Installing InvenTag dependencies..."
+      - pip install --upgrade pip
+      - pip install -r requirements.txt
+      - echo "Python version:" $(python --version)
+      - echo "Pip packages:" $(pip list | grep -E "(boto3|botocore|openpyxl|python-docx)")
+
+  pre_build:
+    commands:
+      - echo "Pre-build phase started on $(date)"
+      - echo "Build ID: $CODEBUILD_BUILD_ID"
+      - echo "Build Number: $CODEBUILD_BUILD_NUMBER"
+      
+      # Create accounts configuration from Secrets Manager
+      - echo "Retrieving accounts configuration from Secrets Manager..."
+      - echo "$INVENTAG_ACCOUNTS" > accounts.json
+      
+      # Validate configuration
+      - echo "Validating InvenTag configuration..."
+      - python inventag_cli.py --accounts-file accounts.json --validate-config --verbose
+      
+      # Validate credentials
+      - echo "Validating account credentials..."
+      - python inventag_cli.py --accounts-file accounts.json --validate-credentials --verbose
+      
+      # Set build parameters
+      - |
+        if [ -z "$PROCESSING_TIMEOUT" ]; then
+          export PROCESSING_TIMEOUT=$DEFAULT_TIMEOUT
+        fi
+      - |
+        if [ -z "$MAX_CONCURRENT_ACCOUNTS" ]; then
+          export MAX_CONCURRENT_ACCOUNTS=$DEFAULT_CONCURRENCY
+        fi
+      - |
+        if [ -z "$OUTPUT_FORMATS" ]; then
+          export OUTPUT_FORMATS="excel,word"
+        fi
+      
+      - echo "Build parameters:"
+      - echo "  Processing timeout: $PROCESSING_TIMEOUT seconds"
+      - echo "  Max concurrent accounts: $MAX_CONCURRENT_ACCOUNTS"
+      - echo "  Output formats: $OUTPUT_FORMATS"
+
+  build:
+    commands:
+      - echo "Build phase started on $(date)"
+      - echo "Starting InvenTag BOM generation..."
+      
+      # Determine output format flags
+      - |
+        FORMAT_FLAGS=""
+        if [[ "$OUTPUT_FORMATS" == *"excel"* ]]; then
+          FORMAT_FLAGS="$FORMAT_FLAGS --create-excel"
+        fi
+        if [[ "$OUTPUT_FORMATS" == *"word"* ]]; then
+          FORMAT_FLAGS="$FORMAT_FLAGS --create-word"
+        fi
+        if [[ "$OUTPUT_FORMATS" == *"google"* ]]; then
+          FORMAT_FLAGS="$FORMAT_FLAGS --create-google-docs"
+        fi
+        echo "Format flags: $FORMAT_FLAGS"
+      
+      # Set S3 upload configuration
+      - |
+        S3_OPTIONS=""
+        if [ ! -z "$BOM_REPORTS_BUCKET" ]; then
+          S3_KEY_PREFIX="automated-reports/$(date +%Y/%m/%d)/$CODEBUILD_BUILD_NUMBER/"
+          S3_OPTIONS="--s3-bucket $BOM_REPORTS_BUCKET --s3-key-prefix $S3_KEY_PREFIX"
+          echo "S3 upload configured: s3://$BOM_REPORTS_BUCKET/$S3_KEY_PREFIX"
+        fi
+      
+      # Generate BOM reports
+      - |
+        python inventag_cli.py \
+          --accounts-file accounts.json \
+          --service-descriptions config/service_descriptions_example.yaml \
+          --tag-mappings config/tag_mappings_example.yaml \
+          $FORMAT_FLAGS \
+          $S3_OPTIONS \
+          --enable-state-management \
+          --enable-delta-detection \
+          --generate-changelog \
+          --max-concurrent-accounts $MAX_CONCURRENT_ACCOUNTS \
+          --account-processing-timeout $PROCESSING_TIMEOUT \
+          --verbose \
+          --log-file inventag-codebuild-$CODEBUILD_BUILD_NUMBER.log
+      
+      - echo "BOM generation completed successfully"
+      
+      # Generate build summary
+      - |
+        echo "Generating build summary..."
+        cat > build_summary.json << EOF
+        {
+          "build_id": "$CODEBUILD_BUILD_ID",
+          "build_number": "$CODEBUILD_BUILD_NUMBER",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "processing_timeout": $PROCESSING_TIMEOUT,
+          "max_concurrent_accounts": $MAX_CONCURRENT_ACCOUNTS,
+          "output_formats": "$OUTPUT_FORMATS",
+          "s3_bucket": "$BOM_REPORTS_BUCKET",
+          "s3_key_prefix": "$S3_KEY_PREFIX",
+          "generated_files": [
+        EOF
+        
+        # Add generated files to summary
+        first_file=true
+        for file in bom_output/*; do
+          if [ -f "$file" ]; then
+            if [ "$first_file" = true ]; then
+              first_file=false
+            else
+              echo "," >> build_summary.json
+            fi
+            echo "    \"$(basename "$file")\"" >> build_summary.json
+          fi
+        done
+        
+        echo "  ]" >> build_summary.json
+        echo "}" >> build_summary.json
+        
+        echo "Build summary:"
+        cat build_summary.json
+
+  post_build:
+    commands:
+      - echo "Post-build phase started on $(date)"
+      
+      # Clean up sensitive files
+      - echo "Cleaning up sensitive files..."
+      - rm -f accounts.json
+      
+      # Upload logs to S3 if configured
+      - |
+        if [ ! -z "$BOM_REPORTS_BUCKET" ]; then
+          echo "Uploading logs to S3..."
+          aws s3 cp inventag-codebuild-$CODEBUILD_BUILD_NUMBER.log \
+            s3://$BOM_REPORTS_BUCKET/logs/codebuild-$CODEBUILD_BUILD_NUMBER.log
+          
+          aws s3 cp build_summary.json \
+            s3://$BOM_REPORTS_BUCKET/summaries/build-$CODEBUILD_BUILD_NUMBER-summary.json
+        fi
+      
+      # Send notification on success
+      - |
+        if [ ! -z "$SLACK_WEBHOOK_URL" ] && [ "$CODEBUILD_BUILD_SUCCEEDING" = "1" ]; then
+          echo "Sending success notification..."
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{
+              \"text\": \"✅ InvenTag BOM generation completed successfully!\",
+              \"attachments\": [{
+                \"color\": \"good\",
+                \"fields\": [
+                  {\"title\": \"Build ID\", \"value\": \"$CODEBUILD_BUILD_ID\", \"short\": true},
+                  {\"title\": \"Build Number\", \"value\": \"$CODEBUILD_BUILD_NUMBER\", \"short\": true},
+                  {\"title\": \"Output Formats\", \"value\": \"$OUTPUT_FORMATS\", \"short\": true},
+                  {\"title\": \"S3 Bucket\", \"value\": \"$BOM_REPORTS_BUCKET\", \"short\": true}
+                ]
+              }]
+            }" \
+            $SLACK_WEBHOOK_URL
+        fi
+      
+      - echo "Post-build phase completed on $(date)"
+
+    finally:
+      # Send notification on failure
+      - |
+        if [ ! -z "$SLACK_WEBHOOK_URL" ] && [ "$CODEBUILD_BUILD_SUCCEEDING" != "1" ]; then
+          echo "Sending failure notification..."
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{
+              \"text\": \"❌ InvenTag BOM generation failed!\",
+              \"attachments\": [{
+                \"color\": \"danger\",
+                \"fields\": [
+                  {\"title\": \"Build ID\", \"value\": \"$CODEBUILD_BUILD_ID\", \"short\": true},
+                  {\"title\": \"Build Number\", \"value\": \"$CODEBUILD_BUILD_NUMBER\", \"short\": true},
+                  {\"title\": \"Phase\", \"value\": \"$CODEBUILD_BUILD_PHASE\", \"short\": true},
+                  {\"title\": \"Action\", \"value\": \"Check CodeBuild logs for details\", \"short\": false}
+                ]
+              }]
+            }" \
+            $SLACK_WEBHOOK_URL || true
+        fi
+
+artifacts:
+  files:
+    - 'bom_output/**/*'
+    - 'inventag-codebuild-*.log'
+    - 'build_summary.json'
+  name: inventag-bom-$CODEBUILD_BUILD_NUMBER
+  base-directory: '.'
+
+cache:
+  paths:
+    - '/root/.cache/pip/**/*'
+    - 'state/**/*'  # Cache state files for delta detection
+
+reports:
+  inventag-bom-report:
+    files:
+      - 'build_summary.json'
+    file-format: 'JSON'

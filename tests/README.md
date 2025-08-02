@@ -44,6 +44,18 @@ Reference output files for regression testing:
 
 Comprehensive unit testing for all extracted `inventag` modules with mock AWS responses and error handling scenarios.
 
+#### `test_dynamic_service_handler.py`
+- **Purpose**: Unit tests for `DynamicServiceHandler` pattern-based discovery system
+- **Coverage**:
+  - Pattern generation for unknown AWS services
+  - Parameter pattern matching and validation
+  - Successful resource enrichment with mock responses
+  - Error handling for unknown services and API failures
+  - Response data extraction from various formats
+  - Caching functionality and performance optimization
+  - Read-only operation validation
+- **Requirements**: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6
+
 #### `test_discovery_module.py`
 - **Purpose**: Unit tests for `inventag.discovery` module
 - **Coverage**:
@@ -54,6 +66,36 @@ Comprehensive unit testing for all extracted `inventag` modules with mock AWS re
   - Utility method testing
 - **Requirements**: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6
 
+#### `test_compliance_manager.py`
+- **Purpose**: Unit tests for `ComplianceManager` unified compliance orchestration
+- **Coverage**:
+  - Comprehensive compliance management functionality
+  - Security validation and production monitoring integration
+  - Error handling and graceful degradation
+  - Compliance status assessment and reporting
+  - Dashboard data generation and audit log management
+- **Requirements**: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6
+
+#### `test_production_monitor.py`
+- **Purpose**: Unit tests for `ProductionSafetyMonitor` enterprise-grade monitoring
+- **Coverage**:
+  - Error handling with graceful degradation
+  - Circuit breaker pattern implementation
+  - Performance monitoring and metrics collection
+  - CloudTrail integration for audit trails
+  - Security validation reporting
+- **Requirements**: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6
+
+#### `test_security_validator.py`
+- **Purpose**: Unit tests for `ReadOnlyAccessValidator` security validation
+- **Coverage**:
+  - Read-only operation classification and validation
+  - AWS permissions validation
+  - Compliance reporting and audit logging
+  - Security findings generation
+  - Identity type determination and validation
+- **Requirements**: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6
+
 #### `test_compliance_module.py`
 - **Purpose**: Unit tests for `inventag.compliance` module
 - **Coverage**:
@@ -62,6 +104,26 @@ Comprehensive unit testing for all extracted `inventag` modules with mock AWS re
   - Error handling for malformed data and configs
   - Performance testing with large datasets
   - Security validation (no sensitive data in logs)
+- **Requirements**: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6
+
+#### `test_template_framework_comprehensive.py`
+- **Purpose**: Unit tests for comprehensive document template framework
+- **Coverage**:
+  - Template variable resolution and substitution
+  - Document structure building and validation
+  - Table of contents generation
+  - Template loading from JSON/YAML files
+  - Custom template creation and management
+- **Requirements**: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6
+
+#### `test_document_generator_comprehensive.py`
+- **Purpose**: Unit tests for multi-format document generation
+- **Coverage**:
+  - Excel, Word, and CSV document generation
+  - Professional branding and styling application
+  - Template framework integration
+  - Parallel document generation
+  - Error handling and recovery
 - **Requirements**: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6
 
 #### `test_reporting_module.py`
@@ -107,6 +169,15 @@ python -m pytest tests/unit/ -v
 
 # Integration tests
 python -m pytest tests/integration/ -v
+
+# Dynamic service handler tests
+python -m pytest tests/unit/test_dynamic_service_handler.py -v
+
+# Production safety and compliance tests
+python -m pytest tests/unit/test_compliance_manager.py tests/unit/test_production_monitor.py tests/unit/test_security_validator.py -v
+
+# Template framework and document generation tests
+python -m pytest tests/unit/test_template_framework_comprehensive.py tests/unit/test_document_generator_comprehensive.py -v
 ```
 
 ### Run Tests with Coverage
@@ -167,6 +238,7 @@ Tests use realistic AWS resource data covering:
 - CloudFormation (Stacks)
 - ECS (Clusters)
 - EKS (Clusters)
+- Unknown Services (TEXTRACT, COMPREHEND, etc.) for dynamic discovery testing
 
 ### Tag Policies
 Tests include various tag policy configurations:

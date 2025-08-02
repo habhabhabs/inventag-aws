@@ -1,0 +1,95 @@
+{
+  "s3_config": {
+    "bucket_name": "my-compliance-reports-bucket",
+    "key_prefix": "inventag-bom-reports",
+    "region": "us-east-1",
+    "encryption": "AES256",
+    "public_read": false,
+    "lifecycle_days": 90,
+    "storage_class": "STANDARD"
+  },
+  "s3_config_with_kms": {
+    "bucket_name": "secure-compliance-bucket",
+    "key_prefix": "encrypted-bom-reports",
+    "region": "us-west-2",
+    "encryption": "aws:kms",
+    "kms_key_id": "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012",
+    "public_read": false,
+    "lifecycle_days": 30,
+    "storage_class": "STANDARD_IA"
+  },
+  "compliance_gate_config": {
+    "minimum_compliance_percentage": 80.0,
+    "critical_violations_threshold": 0,
+    "required_tags": ["Environment", "Owner"],
+    "allowed_non_compliant_services": [],
+    "fail_on_security_issues": true,
+    "fail_on_network_issues": false
+  },
+  "compliance_gate_config_strict": {
+    "minimum_compliance_percentage": 95.0,
+    "critical_violations_threshold": 0,
+    "required_tags": ["Environment", "Owner", "CostCenter", "Project"],
+    "allowed_non_compliant_services": [],
+    "fail_on_security_issues": true,
+    "fail_on_network_issues": true
+  },
+  "compliance_gate_config_lenient": {
+    "minimum_compliance_percentage": 60.0,
+    "critical_violations_threshold": 5,
+    "required_tags": ["Environment"],
+    "allowed_non_compliant_services": ["CloudTrail", "Config"],
+    "fail_on_security_issues": false,
+    "fail_on_network_issues": false
+  },
+  "notification_config": {
+    "slack_webhook_url": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+    "teams_webhook_url": "https://outlook.office.com/webhook/YOUR/TEAMS/WEBHOOK",
+    "email_recipients": ["compliance@company.com", "devops@company.com"],
+    "include_summary": true,
+    "include_document_links": true,
+    "notify_on_success": true,
+    "notify_on_failure": true
+  },
+  "prometheus_config": {
+    "push_gateway_url": "http://prometheus-pushgateway:9091",
+    "job_name": "inventag-bom-generation",
+    "instance_name": "production",
+    "push_on_success": true,
+    "push_on_failure": true,
+    "include_resource_counts": true,
+    "include_compliance_metrics": true,
+    "include_timing_metrics": true
+  },
+  "environment_variables": {
+    "description": "Environment variables that can be used instead of configuration files",
+    "aws_credentials": {
+      "AWS_ACCESS_KEY_ID": "Your AWS Access Key ID",
+      "AWS_SECRET_ACCESS_KEY": "Your AWS Secret Access Key",
+      "AWS_SESSION_TOKEN": "Optional session token for temporary credentials",
+      "AWS_DEFAULT_REGION": "us-east-1"
+    },
+    "s3_configuration": {
+      "INVENTAG_S3_BUCKET": "my-compliance-bucket",
+      "INVENTAG_S3_KEY_PREFIX": "bom-reports"
+    },
+    "notification_configuration": {
+      "INVENTAG_SLACK_WEBHOOK": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+      "INVENTAG_TEAMS_WEBHOOK": "https://outlook.office.com/webhook/YOUR/TEAMS/WEBHOOK"
+    },
+    "prometheus_configuration": {
+      "PROMETHEUS_PUSH_GATEWAY_URL": "http://prometheus-pushgateway:9091",
+      "PROMETHEUS_JOB_NAME": "inventag-bom",
+      "PROMETHEUS_INSTANCE_NAME": "default"
+    }
+  },
+  "cli_examples": {
+    "basic_usage": "python scripts/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel word",
+    "with_s3_upload": "python scripts/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel word json --s3-bucket my-bucket --s3-key-prefix reports",
+    "with_compliance_gate": "python scripts/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel --compliance-threshold 85 --fail-on-security-issues",
+    "with_notifications": "python scripts/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel --slack-webhook https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+    "with_prometheus": "python scripts/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel --prometheus-gateway http://prometheus:9091",
+    "full_featured": "python scripts/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel word json --s3-bucket my-bucket --compliance-threshold 80 --fail-on-security-issues --slack-webhook https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK --prometheus-gateway http://prometheus:9091 --verbose",
+    "dry_run": "python scripts/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel --dry-run --verbose"
+  }
+}

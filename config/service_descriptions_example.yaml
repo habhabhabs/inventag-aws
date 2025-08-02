@@ -1,0 +1,134 @@
+# Service Descriptions Configuration
+# Defines custom descriptions for AWS services and resource types
+
+EC2:
+  default_description: "Amazon Elastic Compute Cloud - Virtual servers in the cloud providing scalable compute capacity"
+  display_name: "EC2 (Elastic Compute Cloud)"
+  category: "Compute"
+  documentation_url: "https://docs.aws.amazon.com/ec2/"
+  resource_types:
+    Instance: "Virtual machine instances providing scalable compute capacity with various instance types"
+    Volume: "Block storage volumes (EBS) attached to EC2 instances for persistent storage"
+    SecurityGroup: "Virtual firewall controlling inbound and outbound traffic to instances"
+    KeyPair: "Key pairs for secure SSH access to EC2 instances"
+    NetworkInterface: "Virtual network interface that can be attached to instances"
+    Snapshot: "Point-in-time backup of EBS volumes"
+  custom_fields:
+    compliance_notes: "EC2 instances must follow company security policies"
+    cost_optimization: "Consider using Reserved Instances for long-running workloads"
+
+S3:
+  default_description: "Amazon Simple Storage Service - Highly scalable object storage service"
+  display_name: "S3 (Simple Storage Service)"
+  category: "Storage"
+  documentation_url: "https://docs.aws.amazon.com/s3/"
+  resource_types:
+    Bucket: "Container for objects stored in Amazon S3 with global namespace"
+  custom_fields:
+    data_classification: "Ensure proper data classification and encryption"
+    lifecycle_policy: "Implement lifecycle policies for cost optimization"
+
+RDS:
+  default_description: "Amazon Relational Database Service - Managed relational database service"
+  display_name: "RDS (Relational Database Service)"
+  category: "Database"
+  documentation_url: "https://docs.aws.amazon.com/rds/"
+  resource_types:
+    DBInstance: "Managed database instance with automated backups and maintenance"
+    DBCluster: "Database cluster for high availability and read scaling (Aurora)"
+    DBSubnetGroup: "Subnet group defining which subnets databases can be placed in"
+    DBParameterGroup: "Configuration parameters for database engines"
+    DBSnapshot: "Point-in-time backup of database instances"
+  custom_fields:
+    backup_retention: "Minimum 7 days backup retention required"
+    encryption_required: "All production databases must be encrypted"
+
+LAMBDA:
+  default_description: "AWS Lambda - Serverless compute service for running code without managing servers"
+  display_name: "Lambda"
+  category: "Compute"
+  documentation_url: "https://docs.aws.amazon.com/lambda/"
+  resource_types:
+    Function: "Serverless function that runs code in response to events and automatically scales"
+  custom_fields:
+    runtime_support: "Use supported runtime versions only"
+    memory_optimization: "Right-size memory allocation for cost optimization"
+
+VPC:
+  default_description: "Amazon Virtual Private Cloud - Isolated cloud resources in a virtual network"
+  display_name: "VPC (Virtual Private Cloud)"
+  category: "Networking"
+  documentation_url: "https://docs.aws.amazon.com/vpc/"
+  resource_types:
+    VPC: "Virtual private cloud providing network isolation for AWS resources"
+    Subnet: "Subnet within a VPC for resource placement and network segmentation"
+    InternetGateway: "Gateway providing internet access to VPC resources"
+    RouteTable: "Route table controlling network traffic routing within VPC"
+    NetworkAcl: "Network Access Control List providing subnet-level security"
+    VPCEndpoint: "Private connection to AWS services without internet gateway"
+  custom_fields:
+    cidr_planning: "Follow company CIDR allocation standards"
+    security_groups: "Implement least privilege access principles"
+
+IAM:
+  default_description: "AWS Identity and Access Management - Secure access control for AWS resources"
+  display_name: "IAM (Identity and Access Management)"
+  category: "Security"
+  documentation_url: "https://docs.aws.amazon.com/iam/"
+  resource_types:
+    User: "IAM user with programmatic and/or console access"
+    Role: "IAM role for cross-service access and temporary credentials"
+    Policy: "IAM policy defining permissions for users, groups, or roles"
+    Group: "IAM group for organizing users with similar permissions"
+  custom_fields:
+    mfa_required: "Multi-factor authentication required for all users"
+    least_privilege: "Follow principle of least privilege for all permissions"
+
+CLOUDFORMATION:
+  default_description: "AWS CloudFormation - Infrastructure as Code service for resource provisioning"
+  display_name: "CloudFormation"
+  category: "Management"
+  documentation_url: "https://docs.aws.amazon.com/cloudformation/"
+  resource_types:
+    Stack: "CloudFormation stack containing related AWS resources"
+    StackSet: "CloudFormation StackSet for deploying across multiple accounts/regions"
+  custom_fields:
+    drift_detection: "Regular drift detection recommended"
+    version_control: "All templates must be version controlled"
+
+CLOUDWATCH:
+  default_description: "Amazon CloudWatch - Monitoring and observability service for AWS resources"
+  display_name: "CloudWatch"
+  category: "Monitoring"
+  documentation_url: "https://docs.aws.amazon.com/cloudwatch/"
+  resource_types:
+    Alarm: "CloudWatch alarm for monitoring metrics and triggering actions"
+    LogGroup: "Log group for collecting and storing log data"
+    Dashboard: "CloudWatch dashboard for visualizing metrics and logs"
+  custom_fields:
+    retention_policy: "Set appropriate log retention periods"
+    alerting_strategy: "Implement comprehensive alerting for critical resources"
+
+ELB:
+  default_description: "Elastic Load Balancing - Distribute incoming traffic across multiple targets"
+  display_name: "ELB (Elastic Load Balancing)"
+  category: "Networking"
+  documentation_url: "https://docs.aws.amazon.com/elasticloadbalancing/"
+  resource_types:
+    LoadBalancer: "Load balancer distributing traffic across multiple targets"
+    TargetGroup: "Target group defining health check and routing for load balancer"
+  custom_fields:
+    ssl_termination: "Use SSL/TLS termination for secure connections"
+    health_checks: "Configure appropriate health check parameters"
+
+ROUTE53:
+  default_description: "Amazon Route 53 - Scalable DNS and domain name registration service"
+  display_name: "Route 53"
+  category: "Networking"
+  documentation_url: "https://docs.aws.amazon.com/route53/"
+  resource_types:
+    HostedZone: "DNS hosted zone for domain name resolution"
+    RecordSet: "DNS record set defining domain name mappings"
+  custom_fields:
+    dns_security: "Implement DNS security best practices"
+    failover_routing: "Consider failover routing for high availability"

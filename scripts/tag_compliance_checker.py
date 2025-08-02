@@ -63,6 +63,12 @@ Examples:
 
   # Specify regions to scan
   python tag_compliance_checker.py --config tag_policy.yaml --regions us-east-1 us-west-2
+  
+  # Generate BOM documents after compliance check
+  python tag_compliance_checker.py --config tag_policy.yaml --generate-bom --bom-formats excel word
+  
+  # Generate BOM with custom configurations
+  python tag_compliance_checker.py --config tag_policy.yaml --generate-bom --service-descriptions services.yaml --tag-mappings tags.yaml
         """,
     )
 
@@ -97,6 +103,49 @@ Examples:
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose logging")
     parser.add_argument(
         "--no-color", action="store_true", help="Disable colored output"
+    )
+    
+    # BOM generation options
+    bom_group = parser.add_argument_group('BOM Generation Options')
+    bom_group.add_argument(
+        "--generate-bom", 
+        action="store_true", 
+        help="Generate BOM documents after compliance analysis"
+    )
+    bom_group.add_argument(
+        "--bom-formats", 
+        nargs="+", 
+        choices=["excel", "word", "csv"], 
+        default=["excel"],
+        help="BOM document formats to generate (default: excel)"
+    )
+    bom_group.add_argument(
+        "--bom-output-dir", 
+        default="bom_output",
+        help="Directory for BOM documents (default: bom_output)"
+    )
+    bom_group.add_argument(
+        "--service-descriptions", 
+        help="Path to service descriptions configuration file"
+    )
+    bom_group.add_argument(
+        "--tag-mappings", 
+        help="Path to tag mappings configuration file"
+    )
+    bom_group.add_argument(
+        "--disable-vpc-enrichment", 
+        action="store_true",
+        help="Disable VPC/subnet name enrichment in BOM"
+    )
+    bom_group.add_argument(
+        "--disable-security-analysis", 
+        action="store_true",
+        help="Disable security group analysis in BOM"
+    )
+    bom_group.add_argument(
+        "--disable-network-analysis", 
+        action="store_true",
+        help="Disable network capacity analysis in BOM"
     )
 
     args = parser.parse_args()
@@ -193,6 +242,46 @@ Examples:
             s3_key = args.s3_key or f"compliance-reports/{filename}"
             checker.upload_to_s3(args.s3_bucket, s3_key, args.format)
             print(f"Results uploaded to s3://{args.s3_bucket}/{s3_key}")
+
+        # Generate BOM documents if requested
+        if args.generate_bom:
+            print(f"\n{Fore.CYAN}=== BOM GENERATION ==={Style.RESET_ALL}")
+            print("Generating BOM documents from compliance results...")
+            
+            try:
+                bom_results = checker.generate_bom_documents(
+                    output_formats=args.bom_formats,
+                    output_directory=args.bom_output_dir,
+                    service_descriptions_file=args.service_descriptions,
+                    tag_mappings_file=args.tag_mappings,
+                    enable_vpc_enrichment=not args.disable_vpc_enrichment,
+                    enable_security_analysis=not args.disable_security_analysis,
+                    enable_network_analysis=not args.disable_network_analysis
+                )
+                
+                if bom_results["success"]:
+                    print(f"{Fore.GREEN}✓ BOM generation successful{Style.RESET_ALL}")
+                    print(f"Generated {len(bom_results['generated_files'])} document(s):")
+                    for file_path in bom_results["generated_files"]:
+                        print(f"  - {file_path}")
+                    
+                    # Show generation summary
+                    for format_type, result in bom_results["generation_results"].items():
+                        if result["success"]:
+                            print(f"  {Fore.GREEN}✓{Style.RESET_ALL} {format_type.upper()}: {result['file']}")
+                        else:
+                            print(f"  {Fore.RED}✗{Style.RESET_ALL} {format_type.upper()}: {result['error']}")
+                else:
+                    print(f"{Fore.RED}✗ BOM generation failed{Style.RESET_ALL}")
+                    for format_type, result in bom_results["generation_results"].items():
+                        if not result["success"]:
+                            print(f"  {format_type.upper()}: {result['error']}")
+                            
+            except Exception as e:
+                print(f"{Fore.RED}Error generating BOM documents: {e}{Style.RESET_ALL}")
+                if args.verbose:
+                    import traceback
+                    traceback.print_exc()
 
     except NoCredentialsError:
         print(

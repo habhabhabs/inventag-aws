@@ -70,3 +70,62 @@ venv.bak/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Demo and sample data
+demo_output/
+demo_state/
+demo_export.json
+*_demo_*.json
+*_demo_*.xlsx
+*_demo_*.csv
+*_demo_*.yaml
+
+# Generated AWS resource files (timestamped)
+aws_resources_*.json
+aws_resources_*.xlsx
+compliance_report_*.json
+compliance_report_*.csv
+
+# Test output files
+test-output.xlsx
+test_output.*
+*_test_output.*
+
+# State management files (generated during demos/testing)
+.inventag/
+*.state
+state_*.json
+metadata.json
+
+# Changelog output files (generated)
+changelog_*.html
+changelog_*.json
+changelog_*.markdown
+changelog_*.yaml
+changelog_section.md
+
+# BOM output files (generated)
+bom_*.xlsx
+bom_*.json
+bom_*.csv
+*_bom_document.*
+
+# Temporary export files
+*_export.json
+*_export.xlsx
+*_export.csv
+*_export.yaml
+export_*.json
+export_*.xlsx
+export_*.csv
+export_*.yaml
+
+# Log files
+*.log
+logs/
+log/
+
+# Backup files
+*.bak
+*.backup
+*~

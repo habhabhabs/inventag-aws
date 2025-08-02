@@ -54,6 +54,12 @@ Examples:
 
   # Process compliance checker output
   python bom_converter.py --input compliance_report.json --output bom_report.xlsx --format excel
+  
+  # Enable advanced analysis with network and security insights
+  python bom_converter.py --input inventory.json --output advanced_report.xlsx --enable-advanced-analysis
+  
+  # Use custom service descriptions and tag mappings
+  python bom_converter.py --input inventory.json --output custom_report.xlsx --service-descriptions services.yaml --tag-mappings tags.yaml
         """,
     )
 
@@ -79,6 +85,19 @@ Examples:
         action="store_true",
         help="Disable VPC/subnet name enrichment (faster but less detailed)",
     )
+    parser.add_argument(
+        "--enable-advanced-analysis",
+        action="store_true",
+        help="Enable advanced network and security analysis (requires unified inventag package)",
+    )
+    parser.add_argument(
+        "--service-descriptions",
+        help="Path to service descriptions configuration file for enhanced BOM",
+    )
+    parser.add_argument(
+        "--tag-mappings",
+        help="Path to tag mappings configuration file for custom attributes",
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
 
     args = parser.parse_args()
@@ -86,7 +105,10 @@ Examples:
     try:
         # Initialize BOM converter
         enrich_vpc = not args.no_vpc_enrichment
-        converter = BOMConverter(enrich_vpc_info=enrich_vpc)
+        converter = BOMConverter(
+            enrich_vpc_info=enrich_vpc,
+            enable_advanced_analysis=args.enable_advanced_analysis
+        )
 
         # Load data
         print(f"Loading data from {args.input}...")
@@ -115,6 +137,13 @@ Examples:
         print(f"BOM report generated: {args.output}")
         print(f"Total resources processed: {len(data)}")
 
+        # Show advanced analysis results
+        if args.enable_advanced_analysis:
+            if converter.network_analysis:
+                print(f"Network analysis: {len(converter.network_analysis)} VPCs analyzed")
+            if converter.security_analysis:
+                print(f"Security analysis: {len(converter.security_analysis)} security groups analyzed")
+
         # Show service breakdown
         if args.verbose:
             services = {}
@@ -125,6 +154,19 @@ Examples:
             print("\nService breakdown:")
             for service, count in sorted(services.items()):
                 print(f"  {service}: {count} resources")
+            
+            # Show advanced analysis details
+            if args.enable_advanced_analysis and converter.network_analysis:
+                print("\nNetwork analysis summary:")
+                for vpc_id, analysis in converter.network_analysis.items():
+                    print(f"  VPC {vpc_id}: {analysis.utilization_percentage:.1f}% utilized")
+            
+            if args.enable_advanced_analysis and converter.security_analysis:
+                print("\nSecurity analysis summary:")
+                high_risk_count = sum(1 for analysis in converter.security_analysis.values() 
+                                    if analysis.risk_level == "HIGH")
+                if high_risk_count > 0:
+                    print(f"  WARNING: {high_risk_count} high-risk security groups found")
 
     except FileNotFoundError:
         print(f"Error: Input file {args.input} not found")

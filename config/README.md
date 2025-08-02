@@ -29,6 +29,24 @@ python scripts/tag_compliance_checker.py --config my_tag_policy.yaml
 ### `tag_policy_example.json`
 **Same tag policy** in JSON format for organizations preferring JSON.
 
+### `service_descriptions_example.yaml`
+**Example service description configuration** showing how to customize resource descriptions and templates.
+
+**Usage:**
+```bash
+# Copy and customize for your organization
+cp config/service_descriptions_example.yaml my_service_descriptions.yaml
+# Edit my_service_descriptions.yaml with your custom descriptions
+python scripts/aws_resource_inventory.py --service-descriptions my_service_descriptions.yaml
+```
+
+**Features:**
+- **Custom service descriptions**: Override default descriptions for AWS services
+- **Template system**: Dynamic description generation using resource attributes
+- **Fallback mechanisms**: Intelligent fallbacks when templates fail
+- **Service hierarchies**: Service-level and resource-type-level descriptions
+- **Metadata tracking**: Track configuration sources and update timestamps
+
 ## Tag Policy Features
 
 Your tag policy can include:

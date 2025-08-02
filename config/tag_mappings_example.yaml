@@ -1,0 +1,262 @@
+# Tag Mappings Configuration
+# Defines custom tag attribute mappings for BOM documents
+
+# Core organizational tags
+inventag:owner:
+  display_name: "Resource Owner"
+  column_name: "Owner"
+  description: "Individual or team responsible for the resource"
+  default_value: ""
+  data_type: "string"
+  required: true
+  validation_pattern: "^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$|^[a-zA-Z0-9._-]+$"
+
+inventag:costcenter:
+  display_name: "Cost Center"
+  column_name: "Cost Center"
+  description: "Cost center or department responsible for resource costs"
+  default_value: "Unknown"
+  data_type: "string"
+  required: true
+  validation_pattern: "^[A-Z]{2,4}-[0-9]{3,6}$"
+
+inventag:environment:
+  display_name: "Environment"
+  column_name: "Environment"
+  description: "Environment classification (development, testing, production)"
+  default_value: "unknown"
+  data_type: "string"
+  required: true
+  allowed_values:
+    - "dev"
+    - "development"
+    - "test"
+    - "testing"
+    - "staging"
+    - "uat"
+    - "prod"
+    - "production"
+    - "unknown"
+
+inventag:project:
+  display_name: "Project Code"
+  column_name: "Project"
+  description: "Project or initiative code"
+  default_value: ""
+  data_type: "string"
+  required: false
+  validation_pattern: "^[A-Z]{2,5}-[0-9]{3,6}$"
+
+# Business and compliance tags
+inventag:criticality:
+  display_name: "Business Criticality"
+  column_name: "Criticality"
+  description: "Business criticality level of the resource"
+  default_value: "medium"
+  data_type: "string"
+  required: true
+  allowed_values:
+    - "low"
+    - "medium"
+    - "high"
+    - "critical"
+
+inventag:dataclassification:
+  display_name: "Data Classification"
+  column_name: "Data Classification"
+  description: "Data sensitivity classification"
+  default_value: "internal"
+  data_type: "string"
+  required: true
+  allowed_values:
+    - "public"
+    - "internal"
+    - "confidential"
+    - "restricted"
+
+inventag:compliance:
+  display_name: "Compliance Requirements"
+  column_name: "Compliance"
+  description: "Applicable compliance frameworks (SOX, HIPAA, PCI, etc.)"
+  default_value: ""
+  data_type: "string"
+  required: false
+
+# Operational tags
+inventag:backup:
+  display_name: "Backup Required"
+  column_name: "Backup Required"
+  description: "Whether resource requires backup"
+  default_value: "true"
+  data_type: "boolean"
+  required: true
+  allowed_values:
+    - "true"
+    - "false"
+    - "yes"
+    - "no"
+
+inventag:monitoring:
+  display_name: "Monitoring Level"
+  column_name: "Monitoring"
+  description: "Level of monitoring required"
+  default_value: "standard"
+  data_type: "string"
+  required: false
+  allowed_values:
+    - "none"
+    - "basic"
+    - "standard"
+    - "enhanced"
+    - "comprehensive"
+
+inventag:maintenance:
+  display_name: "Maintenance Window"
+  column_name: "Maintenance Window"
+  description: "Preferred maintenance window"
+  default_value: ""
+  data_type: "string"
+  required: false
+  validation_pattern: "^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\\s+[0-9]{2}:[0-9]{2}-[0-9]{2}:[0-9]{2}\\s+(UTC|EST|PST|GMT)$"
+
+# Financial tags
+inventag:budget:
+  display_name: "Budget Code"
+  column_name: "Budget"
+  description: "Budget allocation code"
+  default_value: ""
+  data_type: "string"
+  required: false
+  validation_pattern: "^[A-Z]{2,4}-[0-9]{4}-[0-9]{2}$"
+
+inventag:chargebackcode:
+  display_name: "Chargeback Code"
+  column_name: "Chargeback"
+  description: "Internal chargeback or billing code"
+  default_value: ""
+  data_type: "string"
+  required: false
+
+# Technical tags
+inventag:application:
+  display_name: "Application Name"
+  column_name: "Application"
+  description: "Application or service name"
+  default_value: ""
+  data_type: "string"
+  required: false
+
+inventag:version:
+  display_name: "Version"
+  column_name: "Version"
+  description: "Application or infrastructure version"
+  default_value: ""
+  data_type: "string"
+  required: false
+  validation_pattern: "^v?[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9]+)?$"
+
+inventag:tier:
+  display_name: "Architecture Tier"
+  column_name: "Tier"
+  description: "Architecture tier (web, app, data, etc.)"
+  default_value: ""
+  data_type: "string"
+  required: false
+  allowed_values:
+    - "web"
+    - "app"
+    - "application"
+    - "data"
+    - "database"
+    - "cache"
+    - "queue"
+    - "storage"
+    - "network"
+    - "security"
+
+# Custom organizational tags
+inventag:remarks:
+  display_name: "Remarks"
+  column_name: "Remarks"
+  description: "Additional remarks or notes about the resource"
+  default_value: ""
+  data_type: "string"
+  required: false
+
+inventag:contact:
+  display_name: "Technical Contact"
+  column_name: "Technical Contact"
+  description: "Technical contact for the resource"
+  default_value: ""
+  data_type: "string"
+  required: false
+  validation_pattern: "^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+
+inventag:documentation:
+  display_name: "Documentation URL"
+  column_name: "Documentation"
+  description: "Link to resource documentation"
+  default_value: ""
+  data_type: "string"
+  required: false
+  validation_pattern: "^https?://[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}(/.*)?$"
+
+# Lifecycle tags
+inventag:created:
+  display_name: "Created Date"
+  column_name: "Created"
+  description: "Resource creation date"
+  default_value: ""
+  data_type: "date"
+  required: false
+
+inventag:expires:
+  display_name: "Expiration Date"
+  column_name: "Expires"
+  description: "Resource expiration or review date"
+  default_value: ""
+  data_type: "date"
+  required: false
+
+inventag:lifecycle:
+  display_name: "Lifecycle Stage"
+  column_name: "Lifecycle"
+  description: "Current lifecycle stage of the resource"
+  default_value: "active"
+  data_type: "string"
+  required: false
+  allowed_values:
+    - "planning"
+    - "development"
+    - "testing"
+    - "active"
+    - "maintenance"
+    - "deprecated"
+    - "decommissioned"
+
+# Security tags
+inventag:encryption:
+  display_name: "Encryption Status"
+  column_name: "Encryption"
+  description: "Encryption status of the resource"
+  default_value: "unknown"
+  data_type: "string"
+  required: false
+  allowed_values:
+    - "encrypted"
+    - "not-encrypted"
+    - "unknown"
+    - "n/a"
+
+inventag:publicaccess:
+  display_name: "Public Access"
+  column_name: "Public Access"
+  description: "Whether resource has public internet access"
+  default_value: "false"
+  data_type: "boolean"
+  required: false
+  allowed_values:
+    - "true"
+    - "false"
+    - "yes"
+    - "no"

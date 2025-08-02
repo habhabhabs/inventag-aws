@@ -26,13 +26,19 @@ except ImportError:
 
 
 class BOMConverter:
-    def __init__(self, enrich_vpc_info: bool = True):
+    def __init__(self, enrich_vpc_info: bool = True, enable_advanced_analysis: bool = False):
         """Initialize the BOM converter."""
         self.data = []
         self.headers = set()
         self.enrich_vpc_info = enrich_vpc_info
+        self.enable_advanced_analysis = enable_advanced_analysis
         self.vpc_cache = {}  # Cache for VPC/subnet name lookups
         self.session = boto3.Session() if enrich_vpc_info else None
+        
+        # Advanced analysis components
+        self.network_analysis = {}
+        self.security_analysis = {}
+        self.service_attributes = {}
 
     def load_data(self, filename: str) -> List[Dict[str, Any]]:
         """Load data from JSON or YAML file."""
@@ -69,6 +75,12 @@ class BOMConverter:
             # Enrich VPC/subnet information if enabled
             if self.enrich_vpc_info:
                 self._enrich_vpc_subnet_info()
+            
+            # Perform advanced analysis if enabled
+            if self.enable_advanced_analysis:
+                self._perform_network_analysis()
+                self._perform_security_analysis()
+                self._enrich_service_attributes()
 
             # Collect all possible headers from the data
             for item in self.data:
@@ -384,6 +396,13 @@ class BOMConverter:
         # Create service-specific sheets
         for service, resources in services.items():
             self._create_service_sheet(wb, service, resources)
+        
+        # Create advanced analysis sheets if enabled
+        if self.enable_advanced_analysis:
+            if self.network_analysis:
+                self._create_network_analysis_sheet(wb)
+            if self.security_analysis:
+                self._create_security_analysis_sheet(wb)
 
         # Save workbook
         wb.save(filename)
@@ -483,6 +502,136 @@ class BOMConverter:
             adjusted_width = min(max_length + 2, 50)
             ws.column_dimensions[column_letter].width = adjusted_width
 
+    def _perform_network_analysis(self):
+        """Perform network analysis on VPC and subnet resources."""
+        print("Performing network analysis...")
+        
+        try:
+            from ..discovery import NetworkAnalyzer
+            analyzer = NetworkAnalyzer()
+            
+            # Extract VPC and subnet resources
+            vpc_resources = [r for r in self.data if r.get('service') == 'VPC' and r.get('type') in ['VPC', 'Subnet']]
+            
+            if vpc_resources:
+                self.network_analysis = analyzer.analyze_vpc_resources(vpc_resources)
+                
+                # Enrich resources with network analysis data
+                for resource in self.data:
+                    vpc_id = resource.get('vpc_id')
+                    subnet_id = resource.get('subnet_id')
+                    
+                    if vpc_id and vpc_id in self.network_analysis:
+                        vpc_analysis = self.network_analysis[vpc_id]
+                        resource['vpc_cidr_block'] = vpc_analysis.cidr_block
+                        resource['vpc_utilization'] = f"{vpc_analysis.utilization_percentage:.1f}%"
+                        resource['vpc_available_ips'] = vpc_analysis.available_ips
+                    
+                    if subnet_id:
+                        # Find subnet analysis in VPC data
+                        for vpc_analysis in self.network_analysis.values():
+                            for subnet in vpc_analysis.subnets:
+                                if subnet.subnet_id == subnet_id:
+                                    resource['subnet_cidr_block'] = subnet.cidr_block
+                                    resource['subnet_utilization'] = f"{subnet.utilization_percentage:.1f}%"
+                                    resource['subnet_available_ips'] = subnet.available_ips
+                                    resource['subnet_az'] = subnet.availability_zone
+                                    break
+                
+                print(f"Network analysis completed for {len(vpc_resources)} VPC resources")
+            
+        except ImportError:
+            print("Warning: NetworkAnalyzer not available, skipping network analysis")
+        except Exception as e:
+            print(f"Warning: Network analysis failed: {e}")
+    
+    def _perform_security_analysis(self):
+        """Perform security analysis on security groups and NACLs."""
+        print("Performing security analysis...")
+        
+        try:
+            from ..discovery import SecurityAnalyzer
+            analyzer = SecurityAnalyzer()
+            
+            # Extract security group resources
+            sg_resources = [r for r in self.data if r.get('service') == 'VPC' and r.get('type') == 'SecurityGroup']
+            
+            if sg_resources:
+                self.security_analysis = analyzer.analyze_security_groups(sg_resources)
+                
+                # Enrich resources with security analysis data
+                for resource in self.data:
+                    if resource.get('service') == 'VPC' and resource.get('type') == 'SecurityGroup':
+                        sg_id = resource.get('id')
+                        if sg_id and sg_id in self.security_analysis:
+                            sg_analysis = self.security_analysis[sg_id]
+                            resource['security_risk_level'] = sg_analysis.risk_level
+                            resource['inbound_rules_count'] = len(sg_analysis.inbound_rules)
+                            resource['outbound_rules_count'] = len(sg_analysis.outbound_rules)
+                            resource['associated_resources_count'] = len(sg_analysis.associated_resources)
+                            
+                            # Check for overly permissive rules
+                            permissive_rules = []
+                            for rule in sg_analysis.inbound_rules:
+                                if '0.0.0.0/0' in rule.source_destination:
+                                    permissive_rules.append(f"{rule.protocol}:{rule.port_range}")
+                            
+                            if permissive_rules:
+                                resource['permissive_rules'] = ", ".join(permissive_rules)
+                                resource['has_permissive_rules'] = "Yes"
+                            else:
+                                resource['has_permissive_rules'] = "No"
+                
+                print(f"Security analysis completed for {len(sg_resources)} security groups")
+            
+        except ImportError:
+            print("Warning: SecurityAnalyzer not available, skipping security analysis")
+        except Exception as e:
+            print(f"Warning: Security analysis failed: {e}")
+    
+    def _enrich_service_attributes(self):
+        """Enrich resources with service-specific attributes."""
+        print("Enriching service-specific attributes...")
+        
+        try:
+            from ..discovery import ServiceAttributeEnricher
+            enricher = ServiceAttributeEnricher()
+            
+            # Enrich resources with service-specific attributes
+            enriched_count = 0
+            for resource in self.data:
+                try:
+                    enriched_resources = enricher.enrich_resources_with_attributes([resource])
+                    if enriched_resources:
+                        enriched_resource = enriched_resources[0]
+                    if enriched_resource != resource:
+                        # Merge service attributes into the main resource
+                        service_attrs = enriched_resource.get('service_attributes', {})
+                        for key, value in service_attrs.items():
+                            if isinstance(value, (str, int, float, bool)):
+                                resource[f"service_{key}"] = value
+                            elif isinstance(value, list):
+                                resource[f"service_{key}"] = ", ".join(str(v) for v in value)
+                            elif isinstance(value, dict):
+                                # Flatten nested attributes
+                                for nested_key, nested_value in value.items():
+                                    if isinstance(nested_value, (str, int, float, bool)):
+                                        resource[f"service_{key}_{nested_key}"] = nested_value
+                        
+                        enriched_count += 1
+                        
+                except Exception as e:
+                    print(f"Warning: Failed to enrich resource {resource.get('id', 'unknown')}: {e}")
+                    continue
+            
+            if enriched_count > 0:
+                print(f"Service attribute enrichment completed for {enriched_count} resources")
+            
+        except ImportError:
+            print("Warning: ServiceAttributeEnricher not available, skipping service enrichment")
+        except Exception as e:
+            print(f"Warning: Service attribute enrichment failed: {e}")
+
     def _flatten_dict(self, d: Dict[str, Any], parent_key: str = "", sep: str = ".") -> Dict[str, Any]:
         """Flatten a nested dictionary."""
         items = []
@@ -496,3 +645,183 @@ class BOMConverter:
             else:
                 items.append((new_key, v))
         return dict(items)
+    
+    def _create_network_analysis_sheet(self, wb: Workbook):
+        """Create a sheet with network analysis results."""
+        ws = wb.create_sheet("Network Analysis")
+        
+        # Headers
+        headers = [
+            "VPC ID", "VPC Name", "CIDR Block", "Total IPs", "Available IPs", 
+            "Utilization %", "Subnet Count", "Associated Resources"
+        ]
+        
+        # Write headers
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        
+        # Write VPC analysis data
+        row = 2
+        for vpc_id, analysis in self.network_analysis.items():
+            ws.cell(row=row, column=1, value=vpc_id)
+            ws.cell(row=row, column=2, value=analysis.vpc_name)
+            ws.cell(row=row, column=3, value=analysis.cidr_block)
+            ws.cell(row=row, column=4, value=analysis.total_ips)
+            ws.cell(row=row, column=5, value=analysis.available_ips)
+            ws.cell(row=row, column=6, value=f"{analysis.utilization_percentage:.1f}%")
+            ws.cell(row=row, column=7, value=len(analysis.subnets))
+            ws.cell(row=row, column=8, value=len(analysis.associated_resources))
+            row += 1
+        
+        # Add subnet details section
+        if any(analysis.subnets for analysis in self.network_analysis.values()):
+            # Add separator row
+            row += 1
+            ws.cell(row=row, column=1, value="SUBNET DETAILS").font = Font(bold=True)
+            row += 1
+            
+            # Subnet headers
+            subnet_headers = [
+                "Subnet ID", "Subnet Name", "VPC ID", "CIDR Block", "AZ", 
+                "Total IPs", "Available IPs", "Utilization %", "Associated Resources"
+            ]
+            
+            for col, header in enumerate(subnet_headers, 1):
+                cell = ws.cell(row=row, column=col, value=header)
+                cell.font = Font(bold=True)
+                cell.fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+            row += 1
+            
+            # Write subnet data
+            for vpc_analysis in self.network_analysis.values():
+                for subnet in vpc_analysis.subnets:
+                    ws.cell(row=row, column=1, value=subnet.subnet_id)
+                    ws.cell(row=row, column=2, value=subnet.subnet_name)
+                    ws.cell(row=row, column=3, value=vpc_analysis.vpc_id)
+                    ws.cell(row=row, column=4, value=subnet.cidr_block)
+                    ws.cell(row=row, column=5, value=subnet.availability_zone)
+                    ws.cell(row=row, column=6, value=subnet.total_ips)
+                    ws.cell(row=row, column=7, value=subnet.available_ips)
+                    ws.cell(row=row, column=8, value=f"{subnet.utilization_percentage:.1f}%")
+                    ws.cell(row=row, column=9, value=len(subnet.associated_resources))
+                    row += 1
+        
+        # Auto-adjust column widths
+        for column in ws.columns:
+            max_length = 0
+            column_letter = get_column_letter(column[0].column)
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+    
+    def _create_security_analysis_sheet(self, wb: Workbook):
+        """Create a sheet with security analysis results."""
+        ws = wb.create_sheet("Security Analysis")
+        
+        # Headers
+        headers = [
+            "Security Group ID", "Group Name", "VPC ID", "Risk Level", 
+            "Inbound Rules", "Outbound Rules", "Associated Resources", 
+            "Has Permissive Rules", "Permissive Rule Details"
+        ]
+        
+        # Write headers
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        
+        # Write security group analysis data
+        row = 2
+        for sg_id, analysis in self.security_analysis.items():
+            ws.cell(row=row, column=1, value=sg_id)
+            ws.cell(row=row, column=2, value=analysis.group_name)
+            ws.cell(row=row, column=3, value=analysis.vpc_id)
+            ws.cell(row=row, column=4, value=analysis.risk_level)
+            ws.cell(row=row, column=5, value=len(analysis.inbound_rules))
+            ws.cell(row=row, column=6, value=len(analysis.outbound_rules))
+            ws.cell(row=row, column=7, value=len(analysis.associated_resources))
+            
+            # Check for permissive rules
+            permissive_rules = []
+            for rule in analysis.inbound_rules:
+                if '0.0.0.0/0' in rule.source_destination:
+                    permissive_rules.append(f"{rule.protocol}:{rule.port_range}")
+            
+            has_permissive = "Yes" if permissive_rules else "No"
+            ws.cell(row=row, column=8, value=has_permissive)
+            ws.cell(row=row, column=9, value=", ".join(permissive_rules))
+            
+            # Color code risk levels
+            risk_cell = ws.cell(row=row, column=4)
+            if analysis.risk_level == "HIGH":
+                risk_cell.fill = PatternFill(start_color="FF6B6B", end_color="FF6B6B", fill_type="solid")
+            elif analysis.risk_level == "MEDIUM":
+                risk_cell.fill = PatternFill(start_color="FFE66D", end_color="FFE66D", fill_type="solid")
+            elif analysis.risk_level == "LOW":
+                risk_cell.fill = PatternFill(start_color="4ECDC4", end_color="4ECDC4", fill_type="solid")
+            
+            row += 1
+        
+        # Add detailed rules section
+        if self.security_analysis:
+            # Add separator row
+            row += 1
+            ws.cell(row=row, column=1, value="DETAILED SECURITY RULES").font = Font(bold=True)
+            row += 1
+            
+            # Rule headers
+            rule_headers = [
+                "Security Group ID", "Rule Type", "Protocol", "Port Range", 
+                "Source/Destination", "Description", "Risk Assessment"
+            ]
+            
+            for col, header in enumerate(rule_headers, 1):
+                cell = ws.cell(row=row, column=col, value=header)
+                cell.font = Font(bold=True)
+                cell.fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+            row += 1
+            
+            # Write detailed rules
+            for sg_id, analysis in self.security_analysis.items():
+                # Inbound rules
+                for rule in analysis.inbound_rules:
+                    ws.cell(row=row, column=1, value=sg_id)
+                    ws.cell(row=row, column=2, value="Inbound")
+                    ws.cell(row=row, column=3, value=rule.protocol)
+                    ws.cell(row=row, column=4, value=rule.port_range)
+                    ws.cell(row=row, column=5, value=rule.source_destination)
+                    ws.cell(row=row, column=6, value=rule.description)
+                    ws.cell(row=row, column=7, value=rule.risk_assessment)
+                    row += 1
+                
+                # Outbound rules
+                for rule in analysis.outbound_rules:
+                    ws.cell(row=row, column=1, value=sg_id)
+                    ws.cell(row=row, column=2, value="Outbound")
+                    ws.cell(row=row, column=3, value=rule.protocol)
+                    ws.cell(row=row, column=4, value=rule.port_range)
+                    ws.cell(row=row, column=5, value=rule.source_destination)
+                    ws.cell(row=row, column=6, value=rule.description)
+                    ws.cell(row=row, column=7, value=rule.risk_assessment)
+                    row += 1
+        
+        # Auto-adjust column widths
+        for column in ws.columns:
+            max_length = 0
+            column_letter = get_column_letter(column[0].column)
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
