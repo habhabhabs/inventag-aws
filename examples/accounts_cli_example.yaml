@@ -1,0 +1,46 @@
+accounts:
+  - account_id: "123456789012"
+    account_name: "Production Account"
+    profile_name: "prod-profile"
+    regions:
+      - "us-east-1"
+      - "us-west-2"
+    services:
+      - "EC2"
+      - "S3"
+      - "RDS"
+      - "Lambda"
+    tags:
+      Environment: "production"
+      Team: "platform"
+
+  - account_id: "123456789013"
+    account_name: "Development Account"
+    access_key_id: "AKIAIOSFODNN7EXAMPLE"
+    secret_access_key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+    regions:
+      - "us-east-1"
+    services: []  # Empty means all services
+    tags:
+      Environment: "development"
+
+  - account_id: "123456789014"
+    account_name: "Cross-Account Role Example"
+    role_arn: "arn:aws:iam::123456789014:role/InvenTagCrossAccountRole"
+    external_id: "unique-external-id-123"
+    regions:
+      - "us-east-1"
+      - "eu-west-1"
+    services:
+      - "EC2"
+      - "S3"
+      - "VPC"
+    tags: {}
+
+settings:
+  max_concurrent_accounts: 3
+  account_processing_timeout: 1800
+  output_directory: "multi_account_bom_output"
+  enable_state_management: true
+  enable_delta_detection: true
+  generate_per_account_reports: false

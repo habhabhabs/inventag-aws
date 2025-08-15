@@ -1,0 +1,358 @@
+# AWS Prescriptive Guidance - Service Descriptions Template
+# Enhanced with Cost Allocation and Compliance Focus
+# Reference: https://docs.aws.amazon.com/prescriptive-guidance/latest/cost-allocation-tagging/
+# Updated: 2025-08-08
+
+service_descriptions:
+  version: "1.1"
+  compliance_framework: "AWS Prescriptive Guidance for Cost Allocation Tagging"
+  last_updated: "2025-08-08"
+  aws_documentation:
+    primary_guide: "https://docs.aws.amazon.com/prescriptive-guidance/latest/cost-allocation-tagging/"
+    tagging_best_practices: "https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html"
+    cost_allocation_tags: "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html"
+    service_control_policies: "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html"
+  
+  # AWS Prescriptive Guidance Alignment
+  methodology_compliance:
+    step_1: "Service definitions support tagging dictionary creation"
+    step_2: "Service descriptions enable organization-wide publication"
+    step_3: "Service-specific rules support automated governance"
+    step_4: "Service descriptions guide tag application strategies"
+    step_5: "Service metrics enable continuous measurement and evolution"
+  
+  # Core AWS Services with Cost Allocation Focus
+  services:
+    # Compute Services
+    ec2:
+      name: "Amazon Elastic Compute Cloud"
+      category: "Compute"
+      cost_allocation_priority: "high"
+      # AWS Prescriptive Guidance standard naming
+      required_tags: ["cost-center-id", "project-id", "environment-id", "business-unit-id", "application-id", "team-name"]
+      recommended_tags: ["layer-id", "rightsizing-id", "sourceinstance-type", "destination-instance-type"]
+      description: "Scalable virtual servers with comprehensive cost allocation and optimization tracking"
+      aws_documentation: "https://docs.aws.amazon.com/ec2/"
+      cost_factors:
+        - "Instance type and size"
+        - "Operating system"
+        - "Tenancy model" 
+        - "Reserved vs On-Demand pricing"
+        - "EBS storage attached"
+        - "Data transfer costs"
+      # AWS Prescriptive Guidance alignment
+      tagging_dimension: "technical"
+      aws_guidance: "Critical compute service requiring detailed cost allocation for optimization"
+      governance_notes: "High-impact service - enable detailed monitoring and right-sizing automation"
+      enforcement_methods: ["scp", "tag_policy", "config_rule"]
+      kpi_tracking:
+        - "Tag coverage rate per instance"
+        - "Cost allocation accuracy"
+        - "Right-sizing opportunities identified"
+      
+    s3:
+      name: "Amazon Simple Storage Service"
+      category: "Storage"
+      cost_allocation_priority: "high"
+      # AWS standard naming conventions
+      required_tags: ["cost-center-id", "project-id", "environment-id", "business-unit-id"]
+      recommended_tags: ["data-classification", "backup-required", "data-retention-period", "arn-id"]
+      description: "Object storage with comprehensive cost tracking and automated lifecycle management"
+      aws_documentation: "https://docs.aws.amazon.com/s3/"
+      cost_factors:
+        - "Storage class (Standard, IA, Glacier, Deep Archive)"
+        - "Data transfer costs (in/out/between regions)"
+        - "Request costs (GET, PUT, DELETE, LIST)"
+        - "Data retrieval costs (Glacier/Deep Archive)"
+        - "Intelligent Tiering monitoring"
+      tagging_dimension: "business"
+      aws_guidance: "High-volume storage requiring granular cost allocation and lifecycle automation"
+      governance_notes: "Essential for data governance - implement bucket-level cost allocation and retention policies"
+      enforcement_methods: ["scp", "tag_policy", "s3_bucket_policy"]
+      kpi_tracking:
+        - "Cost per project allocation"
+        - "Storage optimization savings"
+        - "Lifecycle policy effectiveness"
+      
+    rds:
+      name: "Amazon Relational Database Service"
+      category: "Database"
+      cost_allocation_priority: "high"
+      required_tags: ["cost-center-id", "project-id", "environment-id", "business-unit-id", "application-id", "team-name"]
+      recommended_tags: ["layer-id", "backup-required", "disaster-recovery", "data-classification"]
+      description: "Managed databases with comprehensive cost allocation, compliance tracking, and optimization"
+      aws_documentation: "https://docs.aws.amazon.com/rds/"
+      cost_factors:
+        - "Database engine and version"
+        - "Instance class and size"
+        - "Multi-AZ deployment costs"
+        - "Backup and snapshot storage"
+        - "Data transfer costs"
+        - "Reserved Instance discounts"
+      tagging_dimension: "technical"
+      aws_guidance: "Critical database service requiring detailed application-level cost attribution"
+      governance_notes: "High-cost service - essential for project-based database cost allocation and optimization"
+      enforcement_methods: ["scp", "tag_policy", "config_rule"]
+      kpi_tracking:
+        - "Database cost per application"
+        - "Reserved Instance utilization"
+        - "Multi-AZ cost justification"
+      
+    # Serverless and Container Services
+    lambda:
+      name: "AWS Lambda"
+      category: "Compute"
+      cost_allocation_priority: "medium"
+      required_tags: ["cost-center-id", "project-id", "environment-id", "business-unit-id", "application-id"]
+      recommended_tags: ["team-name", "layer-id", "arn-id"]
+      description: "Serverless compute with granular function-level cost allocation"
+      aws_documentation: "https://docs.aws.amazon.com/lambda/"
+      cost_factors:
+        - "Number of requests (invocations)"
+        - "Duration and memory allocation"
+        - "Architecture (x86 vs ARM Graviton)"
+        - "Provisioned concurrency costs"
+      tagging_dimension: "technical"
+      aws_guidance: "Serverless functions requiring function-level cost attribution for accurate project allocation"
+      governance_notes: "Tag at function level for precise serverless cost tracking and optimization"
+      enforcement_methods: ["tag_policy", "cloudformation"]
+      kpi_tracking:
+        - "Cost per function"
+        - "Invocation cost trends"
+        - "Memory optimization opportunities"
+      
+    ecs:
+      name: "Amazon Elastic Container Service"
+      category: "Containers"
+      cost_allocation_priority: "high"
+      required_tags: ["CostCenter", "Project", "Environment", "BusinessUnit", "Application"]
+      recommended_tags: ["TeamName", "AutoScaling", "ApplicationVersion"]
+      description: "Container orchestration with granular resource cost tracking"
+      cost_factors:
+        - "Fargate vs EC2 launch type"
+        - "CPU and memory allocation"
+        - "Task count and duration"
+      governance_notes: "Tag both services and tasks for comprehensive container cost visibility"
+      
+    # Networking Services
+    vpc:
+      name: "Amazon Virtual Private Cloud"
+      category: "Network"
+      cost_allocation_priority: "medium"
+      required_tags: ["CostCenter", "BusinessUnit", "Environment"]
+      recommended_tags: ["Application", "TeamName"]
+      description: "Network isolation with associated data transfer and NAT gateway costs"
+      cost_factors:
+        - "NAT Gateway usage"
+        - "VPC Endpoints"
+        - "Data transfer between AZs"
+        - "VPN connections"
+      governance_notes: "Shared infrastructure - allocate costs based on primary use case or shared model"
+      
+    cloudfront:
+      name: "Amazon CloudFront"
+      category: "Network"
+      cost_allocation_priority: "medium"
+      required_tags: ["CostCenter", "Project", "BusinessUnit", "Application"]
+      recommended_tags: ["Environment", "TeamName"]
+      description: "Content delivery network with geographic cost distribution"
+      cost_factors:
+        - "Data transfer out to internet"
+        - "Origin requests"
+        - "Geographic distribution"
+        - "Real-time logs"
+      governance_notes: "Tag distributions for application-specific CDN cost tracking"
+      
+    # Analytics and Big Data
+    redshift:
+      name: "Amazon Redshift"
+      category: "Analytics"
+      cost_allocation_priority: "high"
+      required_tags: ["CostCenter", "Project", "Environment", "BusinessUnit"]
+      recommended_tags: ["DataClassification", "BackupRequired", "MaintenanceWindow"]
+      description: "Data warehouse with predictable compute and storage costs"
+      cost_factors:
+        - "Node type and count"
+        - "Reserved vs On-Demand pricing"
+        - "Backup storage"
+        - "Spectrum queries"
+      governance_notes: "High-cost service requiring detailed project and cost center attribution"
+      
+    glue:
+      name: "AWS Glue"
+      category: "Analytics"
+      cost_allocation_priority: "medium"
+      required_tags: ["CostCenter", "Project", "Environment", "BusinessUnit"]
+      recommended_tags: ["Application", "TeamName"]
+      description: "Serverless ETL with job-based cost allocation"
+      cost_factors:
+        - "DPU hours consumed"
+        - "Job type (Spark, Python shell)"
+        - "Development endpoints"
+      governance_notes: "Tag jobs and crawlers for accurate ETL cost attribution"
+      
+    # Security and Identity
+    iam:
+      name: "AWS Identity and Access Management"
+      category: "Security"
+      cost_allocation_priority: "low"
+      required_tags: ["BusinessUnit", "Environment"]
+      recommended_tags: ["Application", "TeamName"]
+      description: "Identity management - minimal direct costs but critical for governance"
+      cost_factors:
+        - "Generally no direct costs"
+        - "Some advanced features may have costs"
+      governance_notes: "Tag roles and policies for security governance and compliance tracking"
+      
+    kms:
+      name: "AWS Key Management Service"
+      category: "Security"
+      cost_allocation_priority: "low"
+      required_tags: ["CostCenter", "Project", "BusinessUnit"]
+      recommended_tags: ["Application", "DataClassification"]
+      description: "Encryption key management with per-key and API call costs"
+      cost_factors:
+        - "Customer managed keys"
+        - "API requests"
+        - "Cross-region key usage"
+      governance_notes: "Low cost but important for security compliance and audit trails"
+      
+    # Monitoring and Management
+    cloudwatch:
+      name: "Amazon CloudWatch"
+      category: "Monitoring"
+      cost_allocation_priority: "medium"
+      required_tags: ["CostCenter", "BusinessUnit"]
+      recommended_tags: ["Project", "Application", "Environment"]
+      description: "Monitoring and observability with metrics, logs, and alarm costs"
+      cost_factors:
+        - "Custom metrics"
+        - "Log ingestion and storage"
+        - "API requests"
+        - "Dashboard usage"
+      governance_notes: "Distributed costs - allocate based on primary application or shared services model"
+      
+  # AWS Prescriptive Guidance Cost Allocation Framework
+  cost_allocation_templates:
+    high_cost_services:
+      description: "Services with significant cost impact requiring comprehensive tagging (AWS Guidance)"
+      services: ["ec2", "s3", "rds", "redshift", "ecs"]
+      # AWS standard naming conventions
+      mandatory_tags: ["cost-center-id", "project-id", "environment-id", "business-unit-id", "application-id", "team-name"]
+      reporting_frequency: "daily"
+      aws_guidance: "High-impact services requiring detailed cost allocation for financial governance"
+      enforcement: ["scp", "tag_policy", "config_rule"]
+      kpi_targets:
+        tag_coverage: "95%"
+        cost_allocation_accuracy: "90%"
+      
+    medium_cost_services:
+      description: "Services with moderate cost impact (AWS Prescriptive Guidance)"
+      services: ["lambda", "cloudfront", "glue", "cloudwatch", "vpc"]
+      mandatory_tags: ["cost-center-id", "project-id", "business-unit-id"]
+      reporting_frequency: "weekly"
+      aws_guidance: "Moderate-impact services requiring standard cost allocation"
+      enforcement: ["tag_policy"]
+      kpi_targets:
+        tag_coverage: "85%"
+      
+    low_cost_services:
+      description: "Services with minimal cost but critical for governance (AWS Prescriptive Guidance)"
+      services: ["iam", "kms"]
+      mandatory_tags: ["business-unit-id"]
+      reporting_frequency: "monthly"
+      aws_guidance: "Low-cost services requiring basic governance tracking"
+      enforcement: ["tag_policy"]
+      kpi_targets:
+        tag_coverage: "70%"
+      
+  # Compliance Mapping
+  compliance_frameworks:
+    aws_prescriptive_guidance:
+      description: "AWS Prescriptive Guidance for Cost Allocation Tagging"
+      requirements:
+        - "Comprehensive tagging strategy"
+        - "Cost center attribution"
+        - "Project-based allocation"
+        - "Environment segregation"
+        - "Regular compliance monitoring"
+      applicable_services: "all"
+      
+    aws_well_architected:
+      description: "AWS Well-Architected Framework Cost Optimization Pillar"
+      requirements:
+        - "Cost-aware resource tagging"
+        - "Spend visibility and tracking"
+        - "Regular cost review processes"
+      applicable_services: ["ec2", "s3", "rds", "redshift"]
+      
+  # Industry-Specific Configurations
+  industry_templates:
+    financial_services:
+      additional_tags: ["ComplianceFramework", "DataClassification", "RegulatoryConcern"]
+      enhanced_governance: true
+      retention_requirements: "7 years"
+      
+    healthcare:
+      additional_tags: ["PHI_Status", "HIPAA_Applicable", "PatientData"]
+      enhanced_security: true
+      encryption_required: true
+      
+    government:
+      additional_tags: ["SecurityLevel", "AuthorityToOperate", "FISMA_Level"]
+      enhanced_compliance: true
+      audit_trail_required: true
+      
+  # Automation and Tooling Recommendations
+  automation:
+    tagging_automation:
+      tools:
+        - "AWS CloudFormation"
+        - "AWS CDK"
+        - "Terraform"
+        - "AWS Service Catalog"
+      best_practices:
+        - "Infrastructure as Code with embedded tags"
+        - "Automated tag inheritance"
+        - "Tag validation in CI/CD pipelines"
+        
+    cost_monitoring:
+      tools:
+        - "AWS Cost Explorer"
+        - "AWS Budgets"
+        - "AWS Cost Anomaly Detection"
+        - "Third-party cost management tools"
+      key_metrics:
+        - "Cost per project"
+        - "Cost per environment"
+        - "Cost per business unit"
+        - "Untagged resource costs"
+        
+  # Reporting Templates
+  cost_allocation_reports:
+    executive_summary:
+      frequency: "monthly"
+      granularity: "business_unit"
+      key_metrics:
+        - "Total spend by business unit"
+        - "Top 10 projects by cost"
+        - "Environment cost distribution"
+        - "Tag compliance percentage"
+        
+    project_detailed:
+      frequency: "weekly"
+      granularity: "project"
+      key_metrics:
+        - "Project spend trending"
+        - "Service breakdown by project"
+        - "Budget vs actual"
+        - "Cost optimization opportunities"
+        
+    operational:
+      frequency: "daily"
+      granularity: "resource"
+      key_metrics:
+        - "Untagged resources"
+        - "High-cost resources"
+        - "Cost anomalies"
+        - "Tag compliance violations"

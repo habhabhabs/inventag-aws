@@ -1,0 +1,1265 @@
+name: Documentation Deployment
+
+"on":
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'website/**'
+      - 'version.json'
+      - 'create_version.sh'
+      - '.github/workflows/docs-deploy.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'website/**'
+      - 'version.json'
+      - 'create_version.sh'
+      - '.github/workflows/docs-deploy.yml'
+  workflow_dispatch: # Allow manual triggering
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  issues: write
+  pull-requests: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Build job
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full history for better git info
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'website/package-lock.json'
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v4
+
+      - name: Verify version.json dependency
+        run: |
+          echo "Verifying version.json is available from main branch..."
+          
+          # Check if version.json exists and is valid
+          if [ ! -f "version.json" ]; then
+            echo "❌ Error: version.json not found in main branch"
+            echo "The documentation site requires version.json to be updated in main branch first"
+            echo "Please ensure the release workflow has completed before building docs"
+            exit 1
+          fi
+          
+          # Validate version.json format
+          if ! python3 -m json.tool version.json > /dev/null 2>&1; then
+            echo "❌ Error: version.json is not valid JSON"
+            exit 1
+          fi
+          
+          # Extract version for validation
+          VERSION=$(python3 -c "import json; print(json.load(open('version.json'))['version'])" 2>/dev/null || echo "")
+          
+          if [ -z "$VERSION" ]; then
+            echo "❌ Error: Could not extract version from version.json"
+            exit 1
+          fi
+          
+          echo "✅ Found valid version.json with version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_ENV
+
+      - name: Install Python for SBOM generation
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install SBOM generation tools
+        shell: bash
+        run: |
+          echo "📦 Installing SBOM generation tools..."
+          pip install cyclonedx-bom cyclonedx-python-lib
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          echo "✅ SBOM tools installed"
+
+      - name: Generate repository SBOM files  
+        shell: bash
+        run: |
+          echo "📄 Generating Software Bill of Materials..."
+          mkdir -p docs/security/{current,sbom,monitoring}
+          
+          syft . -o json=docs/security/sbom/current-sbom.json
+          syft . -o cyclonedx-json=docs/security/sbom/current-sbom-cyclonedx.json
+          syft . -o spdx-json=docs/security/sbom/current-sbom-spdx.json
+
+      - name: Generate Python SBOM with versions
+        shell: bash
+        run: |
+          echo "📋 Generating Python SBOM with accurate version information..."
+          
+          # Install requirements to ensure accurate versions
+          if [ -f "requirements.txt" ]; then
+            pip install -r requirements.txt > /dev/null 2>&1 || true
+            
+            # Generate SBOM from requirements.txt (shows minimum versions)
+            cyclonedx-py requirements --output-format json --output-file docs/security/sbom/python-requirements-sbom.json requirements.txt
+            cyclonedx-py requirements --output-format xml --output-file docs/security/sbom/python-requirements-sbom.xml requirements.txt
+            
+            # Generate SBOM from installed environment (shows actual versions)
+            cyclonedx-py environment --output-format json --output-file docs/security/sbom/python-sbom.json
+            
+            # Create freeze requirements for exact versions
+            pip freeze > docs/security/sbom/requirements-freeze.txt
+            cyclonedx-py requirements --output-format json --output-file docs/security/sbom/python-freeze-sbom.json docs/security/sbom/requirements-freeze.txt
+            
+            echo "✅ Python SBOM generation completed with accurate versions"
+          else
+            # Generate from environment only
+            cyclonedx-py environment --output-format json --output-file docs/security/sbom/python-sbom.json
+            echo "⚠️ No requirements.txt found, generated from environment only"
+          fi
+
+      - name: Generate Node.js SBOM
+        shell: bash
+        run: |
+          echo "🟨 Generating Node.js SBOM for website..."
+          cd website
+          npm install -g @cyclonedx/cyclonedx-npm
+          if [ -f "package.json" ]; then
+            npm ci --prefer-offline --no-audit
+            cyclonedx-npm --output-file ../docs/security/sbom/nodejs-website-sbom.json || true
+            echo "✅ Node.js SBOM generated"
+          fi
+          cd ..
+
+      - name: Create SBOM summary documentation
+        shell: bash  
+        run: |
+          echo "📄 Creating enhanced SBOM summary with tables..."
+          # Create enhanced SBOM summary with tables
+          echo "---" > docs/security/current/sbom-summary.md
+          echo "title: Software Bill of Materials (SBOM)" >> docs/security/current/sbom-summary.md
+          echo "description: Current software dependencies, vulnerabilities, and security analysis" >> docs/security/current/sbom-summary.md
+          echo "sidebar_position: 1" >> docs/security/current/sbom-summary.md
+          echo "---" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          echo "# Software Bill of Materials (SBOM)" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          echo ":::info Build Information" >> docs/security/current/sbom-summary.md
+          echo "- **Generated**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> docs/security/current/sbom-summary.md
+          echo "- **Repository**: ${{ github.repository }}" >> docs/security/current/sbom-summary.md
+          echo "- **Branch**: ${{ github.ref_name }}" >> docs/security/current/sbom-summary.md
+          echo "- **Commit**: [\`${{ github.sha }}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})" >> docs/security/current/sbom-summary.md
+          echo ":::" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+
+      - name: Copy SBOM files to static directory
+        shell: bash
+        run: |
+          echo "🔗 Copying SBOM files to static directory for web access..."
+          mkdir -p website/static/sbom
+          
+          # Copy main SBOM files
+          if [ -f "docs/security/sbom/current-sbom.json" ]; then
+            cp docs/security/sbom/current-sbom.json website/static/sbom/
+            jq '.' docs/security/sbom/current-sbom.json > website/static/sbom/current-sbom-formatted.json
+            echo "✅ Copied current-sbom.json"
+          else
+            echo "❌ current-sbom.json not found"
+          fi
+          
+          # Copy CycloneDX and SPDX files
+          if [ -f "docs/security/sbom/current-sbom-cyclonedx.json" ]; then
+            cp docs/security/sbom/current-sbom-cyclonedx.json website/static/sbom/
+            echo "✅ Copied current-sbom-cyclonedx.json"
+          else
+            echo "❌ current-sbom-cyclonedx.json not found"
+          fi
+          
+          if [ -f "docs/security/sbom/current-sbom-spdx.json" ]; then
+            cp docs/security/sbom/current-sbom-spdx.json website/static/sbom/
+            echo "✅ Copied current-sbom-spdx.json"
+          else
+            echo "❌ current-sbom-spdx.json not found"
+          fi
+          
+          # Copy Python SBOM
+          if [ -f "docs/security/sbom/python-sbom.json" ]; then
+            cp docs/security/sbom/python-sbom.json website/static/sbom/
+            jq '.' docs/security/sbom/python-sbom.json > website/static/sbom/python-sbom-formatted.json
+            echo "✅ Copied python-sbom.json"
+          else
+            echo "❌ python-sbom.json not found"
+          fi
+          
+          # Copy Python freeze SBOM (with exact versions)
+          if [ -f "docs/security/sbom/python-freeze-sbom.json" ]; then
+            cp docs/security/sbom/python-freeze-sbom.json website/static/sbom/
+            jq '.' docs/security/sbom/python-freeze-sbom.json > website/static/sbom/python-freeze-sbom-formatted.json
+            echo "✅ Copied python-freeze-sbom.json (exact versions)"
+          fi
+          
+          # Copy requirements freeze file
+          if [ -f "docs/security/sbom/requirements-freeze.txt" ]; then
+            cp docs/security/sbom/requirements-freeze.txt website/static/sbom/
+            echo "✅ Copied requirements-freeze.txt"
+          fi
+          
+          # Copy Node.js SBOM
+          if [ -f "docs/security/sbom/nodejs-website-sbom.json" ]; then
+            cp docs/security/sbom/nodejs-website-sbom.json website/static/sbom/
+            jq '.' docs/security/sbom/nodejs-website-sbom.json > website/static/sbom/nodejs-website-sbom-formatted.json
+            echo "✅ Copied nodejs-website-sbom.json"
+          else
+            echo "❌ nodejs-website-sbom.json not found"
+          fi
+          
+          # List what was actually copied
+          echo "Files in website/static/sbom/:"
+          ls -la website/static/sbom/ || echo "No files found in sbom directory"
+
+      - name: Generate component tables
+        shell: bash
+        run: |
+          echo "📊 Generating component overview tables..."
+          echo "## 📋 Components Overview" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          
+          # Create repository-wide components table
+          echo "### Repository Components" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          if [ -f "docs/security/sbom/current-sbom.json" ]; then
+            COMPONENTS=$(jq '.artifacts | length' docs/security/sbom/current-sbom.json 2>/dev/null || echo "0")
+            echo "**Total Components**: $COMPONENTS" >> docs/security/current/sbom-summary.md
+            echo "" >> docs/security/current/sbom-summary.md
+            echo "| Component | Version | Type | License |" >> docs/security/current/sbom-summary.md
+            echo "|-----------|---------|------|---------|" >> docs/security/current/sbom-summary.md
+            jq -r '.artifacts[] | "| \(.name // "Unknown") | \(.version // "N/A") | \(.type // "Unknown") | \(.licenses[0].value // "Unknown") |"' docs/security/sbom/current-sbom.json 2>/dev/null | head -20 >> docs/security/current/sbom-summary.md || echo "| No components found | - | - | - |" >> docs/security/current/sbom-summary.md
+            echo "" >> docs/security/current/sbom-summary.md
+            if [ "$COMPONENTS" -gt 20 ]; then
+              echo ":::note" >> docs/security/current/sbom-summary.md
+              echo "Showing first 20 components. Download the full SBOM JSON file below for complete details." >> docs/security/current/sbom-summary.md
+              echo ":::" >> docs/security/current/sbom-summary.md
+              echo "" >> docs/security/current/sbom-summary.md
+            fi
+          else
+            echo "| Component | Version | Type | License |" >> docs/security/current/sbom-summary.md
+            echo "|-----------|---------|------|---------|" >> docs/security/current/sbom-summary.md
+            echo "| No components found | - | - | - |" >> docs/security/current/sbom-summary.md
+            echo "" >> docs/security/current/sbom-summary.md
+          fi
+          
+          # Create Python dependencies table
+          echo "### Python Dependencies" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          if [ -f "docs/security/sbom/python-sbom.json" ]; then
+            PYTHON_COMPONENTS=$(jq '.components | length' docs/security/sbom/python-sbom.json 2>/dev/null || echo "0")
+            echo "**Python Packages**: $PYTHON_COMPONENTS" >> docs/security/current/sbom-summary.md
+            echo "" >> docs/security/current/sbom-summary.md
+            echo "| Package | Version | License | Scope |" >> docs/security/current/sbom-summary.md
+            echo "|---------|---------|---------|-------|" >> docs/security/current/sbom-summary.md
+            # Extract Python package information with better version handling
+            jq -r '.components[]? | 
+              "| " + (.name // "Unknown") + 
+              " | " + (.version // "N/A") + 
+              " | " + (
+                if (.licenses | type) == "array" and ((.licenses | length) > 0) then
+                  (.licenses[0] | 
+                    if type == "object" then 
+                      (.license.name // .license.id // .name // "Unknown")
+                    else 
+                      (. // "Unknown")
+                    end
+                  )
+                else 
+                  "Unknown"
+                end
+              ) +
+              " | " + (.scope // "required") + " |"' docs/security/sbom/python-sbom.json 2>/dev/null | head -15 >> docs/security/current/sbom-summary.md || echo "| No Python packages found | - | - | - |" >> docs/security/current/sbom-summary.md
+            echo "" >> docs/security/current/sbom-summary.md
+          else
+            echo "| Package | Version | License | Scope |" >> docs/security/current/sbom-summary.md
+            echo "|---------|---------|---------|-------|" >> docs/security/current/sbom-summary.md
+            echo "| No requirements.txt found | - | - | - |" >> docs/security/current/sbom-summary.md
+            echo "" >> docs/security/current/sbom-summary.md
+          fi
+          
+          # Create Node.js dependencies table  
+          echo "### Node.js Dependencies (Website)" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          if [ -f "docs/security/sbom/nodejs-website-sbom.json" ]; then
+            NODEJS_COMPONENTS=$(jq '.components | length' docs/security/sbom/nodejs-website-sbom.json 2>/dev/null || echo "0")
+            echo "**Node.js Packages**: $NODEJS_COMPONENTS" >> docs/security/current/sbom-summary.md
+            echo "" >> docs/security/current/sbom-summary.md
+            echo "| Package | Version | License | Type |" >> docs/security/current/sbom-summary.md
+            echo "|---------|---------|---------|------|" >> docs/security/current/sbom-summary.md
+            # Extract Node.js package information with better version handling
+            jq -r '.components[]? | 
+              "| " + (.name // "Unknown") + 
+              " | " + (.version // "N/A") + 
+              " | " + (
+                if (.licenses | type) == "array" and ((.licenses | length) > 0) then
+                  (.licenses[0] | 
+                    if type == "object" then 
+                      (.license.name // .license.id // .name // "Unknown")
+                    else 
+                      (. // "Unknown")
+                    end
+                  )
+                else 
+                  "Unknown"
+                end
+              ) +
+              " | " + (.scope // "required") + " |"' docs/security/sbom/nodejs-website-sbom.json 2>/dev/null | head -15 >> docs/security/current/sbom-summary.md || echo "| No Node.js packages found | - | - | - |" >> docs/security/current/sbom-summary.md
+            echo "" >> docs/security/current/sbom-summary.md
+          else
+            echo "| Package | Version | License | Type |" >> docs/security/current/sbom-summary.md
+            echo "|---------|---------|---------|------|" >> docs/security/current/sbom-summary.md
+            echo "| No Node.js dependencies detected | - | - | - |" >> docs/security/current/sbom-summary.md
+            echo "" >> docs/security/current/sbom-summary.md
+          fi
+
+      - name: Run vulnerability analysis
+        shell: bash
+        run: |
+          echo "🔍 Running security vulnerability analysis..."
+          echo "## 🔍 Security Analysis" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          
+          echo "### Known Vulnerabilities" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          
+          # Scan for vulnerabilities using Grype
+          if [ -f "docs/security/sbom/current-sbom.json" ]; then
+            echo "Running vulnerability scan..." 
+            grype sbom:docs/security/sbom/current-sbom.json -o json > docs/security/sbom/vulnerabilities.json 2>/dev/null || true
+            
+            if [ -f "docs/security/sbom/vulnerabilities.json" ] && [ -s "docs/security/sbom/vulnerabilities.json" ]; then
+              # Copy vulnerability report to static directory
+              cp docs/security/sbom/vulnerabilities.json website/static/sbom/
+              jq '.' docs/security/sbom/vulnerabilities.json > website/static/sbom/vulnerabilities-formatted.json
+              
+              # Count vulnerabilities by severity
+              CRITICAL=$(jq '[.matches[] | select(.vulnerability.severity=="Critical")] | length' docs/security/sbom/vulnerabilities.json 2>/dev/null || echo "0")
+              HIGH=$(jq '[.matches[] | select(.vulnerability.severity=="High")] | length' docs/security/sbom/vulnerabilities.json 2>/dev/null || echo "0")
+              MEDIUM=$(jq '[.matches[] | select(.vulnerability.severity=="Medium")] | length' docs/security/sbom/vulnerabilities.json 2>/dev/null || echo "0")
+              LOW=$(jq '[.matches[] | select(.vulnerability.severity=="Low")] | length' docs/security/sbom/vulnerabilities.json 2>/dev/null || echo "0")
+              
+              echo "| Severity | Count |" >> docs/security/current/sbom-summary.md
+              echo "|----------|-------|" >> docs/security/current/sbom-summary.md
+              echo "| 🔴 Critical | $CRITICAL |" >> docs/security/current/sbom-summary.md
+              echo "| 🟠 High | $HIGH |" >> docs/security/current/sbom-summary.md
+              echo "| 🟡 Medium | $MEDIUM |" >> docs/security/current/sbom-summary.md
+              echo "| 🟢 Low | $LOW |" >> docs/security/current/sbom-summary.md
+              echo "" >> docs/security/current/sbom-summary.md
+              
+              # Show top vulnerabilities if any exist
+              TOTAL_VULNS=$(jq '.matches | length' docs/security/sbom/vulnerabilities.json 2>/dev/null || echo "0")
+              if [ "$TOTAL_VULNS" -gt 0 ]; then
+                echo "#### Top Vulnerabilities" >> docs/security/current/sbom-summary.md
+                echo "" >> docs/security/current/sbom-summary.md
+                echo "| CVE ID | Severity | Package | Version | Description |" >> docs/security/current/sbom-summary.md
+                echo "|--------|----------|---------|---------|-------------|" >> docs/security/current/sbom-summary.md
+                # Create enhanced vulnerability table with proper CVE extraction and full descriptions
+                jq -r '.matches[] | 
+                  select(.vulnerability.severity=="Critical" or .vulnerability.severity=="High" or .vulnerability.severity=="Medium") | 
+                  (
+                    if (.vulnerability.relatedVulnerabilities and (.vulnerability.relatedVulnerabilities | type) == "array") then 
+                      (.vulnerability.relatedVulnerabilities[] | select(test("^CVE-")) | split(",")[0]) // .vulnerability.id 
+                    else 
+                      .vulnerability.id 
+                    end
+                  ) as $cve_id | 
+                  (
+                    .vulnerability.description // "No description available" |
+                    if length > 150 then 
+                      .[0:150] + "..."
+                    else 
+                      .
+                    end
+                  ) as $description |
+                  "| " + $cve_id + " | " + (.vulnerability.severity // "Unknown") + " | " + (.artifact.name // "Unknown") + " | " + (.artifact.version // "N/A") + " | " + $description + " |"' docs/security/sbom/vulnerabilities.json 2>/dev/null | head -10 >> docs/security/current/sbom-summary.md || echo "| No critical/high/medium vulnerabilities found | - | - | - | - |" >> docs/security/current/sbom-summary.md
+                echo "" >> docs/security/current/sbom-summary.md
+                
+                if [ "$TOTAL_VULNS" -gt 10 ]; then
+                  echo ":::note" >> docs/security/current/sbom-summary.md
+                  echo "Showing top 10 critical/high/medium vulnerabilities. Download the full vulnerability report below for complete details." >> docs/security/current/sbom-summary.md
+                  echo ":::" >> docs/security/current/sbom-summary.md
+                  echo "" >> docs/security/current/sbom-summary.md
+                fi
+              else
+                echo "| CVE ID | Severity | Package | Version | Description |" >> docs/security/current/sbom-summary.md
+                echo "|--------|----------|---------|---------|-------------|" >> docs/security/current/sbom-summary.md
+                echo "| ✅ No vulnerabilities detected | - | - | - | All dependencies are secure |" >> docs/security/current/sbom-summary.md
+                echo "" >> docs/security/current/sbom-summary.md
+              fi
+            else
+              echo "| Severity | Count | Status |" >> docs/security/current/sbom-summary.md
+              echo "|----------|-------|---------|" >> docs/security/current/sbom-summary.md
+              echo "| - | - | Vulnerability scanning unavailable |" >> docs/security/current/sbom-summary.md
+              echo "" >> docs/security/current/sbom-summary.md
+            fi
+          else
+            echo "| Severity | Count | Status |" >> docs/security/current/sbom-summary.md
+            echo "|----------|-------|---------|" >> docs/security/current/sbom-summary.md
+            echo "| - | - | No SBOM available for scanning |" >> docs/security/current/sbom-summary.md
+            echo "" >> docs/security/current/sbom-summary.md
+          fi
+
+      - name: Generate download tables and documentation
+        shell: bash
+        run: |
+          echo "📥 Generating download tables and usage documentation..."
+          echo "## 📥 Download SBOM Files" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          echo "### Raw SBOM Files" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          echo "| Format | File | Description |" >> docs/security/current/sbom-summary.md
+          echo "|--------|------|-------------|" >> docs/security/current/sbom-summary.md
+          echo "| JSON (Syft) | [current-sbom.json](./sbom/current-sbom.json) | Complete repository component analysis |" >> docs/security/current/sbom-summary.md
+          echo "| CycloneDX | [current-sbom-cyclonedx.json](./sbom/current-sbom-cyclonedx.json) | Industry-standard SBOM format |" >> docs/security/current/sbom-summary.md
+          echo "| SPDX | [current-sbom-spdx.json](./sbom/current-sbom-spdx.json) | Software Package Data Exchange format |" >> docs/security/current/sbom-summary.md
+          if [ -f "docs/security/sbom/python-sbom.json" ]; then
+            echo "| Python (Environment) | [python-sbom.json](./sbom/python-sbom.json) | Python dependencies from environment |" >> docs/security/current/sbom-summary.md
+          fi
+          if [ -f "docs/security/sbom/python-freeze-sbom.json" ]; then
+            echo "| Python (Exact Versions) | [python-freeze-sbom.json](./sbom/python-freeze-sbom.json) | Python dependencies with exact versions |" >> docs/security/current/sbom-summary.md
+          fi
+          if [ -f "docs/security/sbom/nodejs-website-sbom.json" ]; then
+            echo "| Node.js (CycloneDX) | [nodejs-website-sbom.json](./sbom/nodejs-website-sbom.json) | Website dependencies |" >> docs/security/current/sbom-summary.md
+          fi
+          echo "" >> docs/security/current/sbom-summary.md
+          
+          echo "### Formatted Files (Human-Readable)" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          echo "| Format | File | Description |" >> docs/security/current/sbom-summary.md
+          echo "|--------|------|-------------|" >> docs/security/current/sbom-summary.md
+          echo "| JSON (Formatted) | [current-sbom-formatted.json](./sbom/current-sbom-formatted.json) | Pretty-printed JSON for manual review |" >> docs/security/current/sbom-summary.md
+          if [ -f "docs/security/sbom/python-sbom.json" ]; then
+            echo "| Python (Formatted) | [python-sbom-formatted.json](./sbom/python-sbom-formatted.json) | Formatted Python dependencies |" >> docs/security/current/sbom-summary.md
+          fi
+          if [ -f "docs/security/sbom/python-freeze-sbom.json" ]; then
+            echo "| Python Freeze (Formatted) | [python-freeze-sbom-formatted.json](./sbom/python-freeze-sbom-formatted.json) | Formatted exact version dependencies |" >> docs/security/current/sbom-summary.md
+          fi
+          if [ -f "docs/security/sbom/nodejs-website-sbom.json" ]; then
+            echo "| Node.js (Formatted) | [nodejs-website-sbom-formatted.json](./sbom/nodejs-website-sbom-formatted.json) | Formatted website dependencies |" >> docs/security/current/sbom-summary.md
+          fi
+          if [ -f "docs/security/sbom/vulnerabilities.json" ]; then
+            echo "| Vulnerabilities | [vulnerabilities-formatted.json](./sbom/vulnerabilities-formatted.json) | Security vulnerability report |" >> docs/security/current/sbom-summary.md
+          fi
+          echo "" >> docs/security/current/sbom-summary.md
+          
+          echo "## 🔧 Usage & Integration" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          echo ":::tip Integration Benefits" >> docs/security/current/sbom-summary.md
+          echo "This SBOM is automatically generated and integrated into the documentation build process, providing:" >> docs/security/current/sbom-summary.md
+          echo "- **Real-time dependency tracking** - Updated with every build" >> docs/security/current/sbom-summary.md
+          echo "- **Vulnerability monitoring** - Automatic security scanning with Grype" >> docs/security/current/sbom-summary.md
+          echo "- **Compliance documentation** - Standard SBOM formats (CycloneDX, SPDX)" >> docs/security/current/sbom-summary.md
+          echo "- **Version-specific tracking** - Historical dependency changes" >> docs/security/current/sbom-summary.md
+          echo "- **Supply chain transparency** - Complete visibility into dependencies" >> docs/security/current/sbom-summary.md
+          echo ":::" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          
+          echo "### Use Cases" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          echo "Download and analyze the SBOM files to:" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          echo "- **Security Teams**: Identify vulnerabilities and plan remediation" >> docs/security/current/sbom-summary.md
+          echo "- **Compliance Teams**: Generate compliance reports and audits" >> docs/security/current/sbom-summary.md
+          echo "- **Development Teams**: Track dependency changes and licenses" >> docs/security/current/sbom-summary.md
+          echo "- **DevOps Teams**: Integrate into CI/CD pipelines for automated scanning" >> docs/security/current/sbom-summary.md
+          echo "- **Legal Teams**: Analyze licensing compliance and obligations" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          echo "---" >> docs/security/current/sbom-summary.md
+          echo "" >> docs/security/current/sbom-summary.md
+          echo "*This SBOM summary is automatically updated with every documentation build.*" >> docs/security/current/sbom-summary.md
+          
+          # Create security index page (if it doesn't exist)
+          if [ ! -f "docs/security/index.md" ]; then
+            echo "Creating security index page..."
+            mkdir -p docs/security
+            
+            echo "---" > docs/security/index.md
+            echo "title: Security Documentation" >> docs/security/index.md
+            echo "description: Security information, SBOM, and vulnerability tracking for InvenTag" >> docs/security/index.md
+            echo "sidebar_position: 1" >> docs/security/index.md
+            echo "---" >> docs/security/index.md
+            echo "" >> docs/security/index.md
+            echo "# Security Documentation" >> docs/security/index.md
+            echo "" >> docs/security/index.md
+            echo "This section contains comprehensive security information for InvenTag, including Software Bill of Materials (SBOM), vulnerability tracking, and security monitoring." >> docs/security/index.md
+            echo "" >> docs/security/index.md
+            echo "## 📋 Current Security Status" >> docs/security/index.md
+            echo "" >> docs/security/index.md
+            echo "- **Last Updated**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> docs/security/index.md
+            echo "- **Build**: ${{ github.sha }}" >> docs/security/index.md
+            echo "- **Security Scanning**: Automated via GitHub Actions" >> docs/security/index.md
+            echo "- **SBOM Generation**: Integrated with documentation build" >> docs/security/index.md
+            echo "" >> docs/security/index.md
+            echo "*Security documentation is automatically maintained and updated with each build.*" >> docs/security/index.md
+          else
+            echo "ℹ️ Security index page already exists, skipping creation"
+          fi
+          
+          echo "✅ SBOM generated and integrated into documentation structure"
+          echo "📊 Documentation now includes current security and dependency information"
+
+      - name: Install dependencies
+        working-directory: ./website
+        run: |
+          echo "📦 Installing website dependencies (after SBOM generation)..."
+          npm ci --prefer-offline --no-audit
+
+      - name: Validate documentation structure
+        run: |
+          echo "Validating documentation structure..."
+          
+          # Check that docs directory exists
+          if [ ! -d "docs" ]; then
+            echo "Error: docs/ directory not found"
+            exit 1
+          fi
+          
+          # Check for required documentation files
+          if [ ! -f "docs/index.md" ]; then
+            echo "Warning: docs/index.md not found - this should be the main documentation entry point"
+          fi
+          
+          # Count markdown files in current docs
+          md_count=$(find docs -name "*.md" -type f | wc -l)
+          echo "Found $md_count markdown files in current docs/"
+          
+          # Check versioned documentation
+          if [ -d "website/versioned_docs" ]; then
+            versioned_count=$(find website/versioned_docs -name "*.md" -type f | wc -l)
+            echo "Found $versioned_count markdown files in versioned docs/"
+          else
+            versioned_count=0
+            echo "No versioned documentation found"
+          fi
+          
+          # Check versions.json
+          if [ -f "website/versions.json" ]; then
+            version_count=$(jq length website/versions.json)
+            echo "Found $version_count documented versions"
+            echo "Versions: $(jq -r '.[]' website/versions.json | tr '\n' ' ')"
+          else
+            echo "No versions.json found - this is normal for new versioning setups"
+          fi
+          
+          total_docs=$((md_count + versioned_count))
+          if [ $total_docs -eq 0 ]; then
+            echo "Error: No markdown files found in docs/ or versioned docs"
+            exit 1
+          fi
+          
+          echo "Documentation structure validation passed (Current: $md_count, Versioned: $versioned_count)"
+
+      - name: Run GitHub → Docusaurus transformation pipeline
+        id: transform
+        run: |
+          echo "Running GitHub → Docusaurus documentation transformation pipeline..."
+          echo "This will convert GitHub-compatible relative links to Docusaurus absolute paths"
+          
+          # Set environment variables for transformation
+          export VERBOSE=true
+          export DRY_RUN=false
+          
+          # Run the transformation pipeline with enhanced logging
+          echo "Converting GitHub-style relative links to Docusaurus absolute paths..."
+          node scripts/transform-docs.js
+          
+          echo "Transformation completed successfully!"
+          echo "GitHub links have been converted to Docusaurus-compatible format"
+          
+          # Check if any files were transformed
+          if [ -f "transform.log" ]; then
+            echo "Transformation log created"
+            if grep -q "files transformed:" transform.log; then
+              transformed_count=$(grep "files transformed:" transform.log | grep -o '[0-9]\+' | head -1)
+              echo "transformation_count=$transformed_count" >> $GITHUB_OUTPUT
+              echo "transformation_completed=true" >> $GITHUB_OUTPUT
+            else
+              echo "transformation_count=0" >> $GITHUB_OUTPUT
+              echo "transformation_completed=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "transformation_count=0" >> $GITHUB_OUTPUT
+            echo "transformation_completed=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Display transformation summary
+          if [ -f "transform.log" ]; then
+            echo "=== Transformation Summary ==="
+            tail -20 transform.log
+          fi
+
+      - name: Install testing dependencies
+        run: |
+          echo "Installing additional testing dependencies..."
+          npm install -g markdownlint-cli
+          npm install -g markdown-link-check
+
+      - name: Run markdown linting
+        run: |
+          echo "Running markdown linting checks..."
+          
+          # Create markdownlint configuration
+          cat > .markdownlint.json << 'EOF'
+          {
+            "MD013": {
+              "line_length": 120,
+              "code_blocks": false,
+              "tables": false
+            },
+            "MD033": false,
+            "MD041": false,
+            "MD001": false
+          }
+          EOF
+          
+          # Run markdownlint on docs directory
+          echo "Linting markdown files..."
+          markdownlint docs/ --config .markdownlint.json || echo "⚠️ Markdown linting completed with warnings"
+          
+          echo "✅ Markdown linting completed"
+
+      - name: Validate frontmatter
+        run: |
+          echo "Validating frontmatter in documentation files..."
+          
+          # Check frontmatter structure
+          find docs -name "*.md" -type f | while read file; do
+            echo "Checking frontmatter in: $file"
+            
+            # Check if file has frontmatter
+            if head -1 "$file" | grep -q "^---$"; then
+              # Extract and validate frontmatter
+              frontmatter=$(sed -n '1,/^---$/p' "$file" | sed '1d;$d')
+              
+              # Check for required fields (title is most important)
+              if echo "$frontmatter" | grep -q "^title:"; then
+                echo "  ✅ Has title"
+              else
+                echo "  ⚠️ Missing title in $file"
+              fi
+              
+              # Check for description (recommended)
+              if echo "$frontmatter" | grep -q "^description:"; then
+                echo "  ✅ Has description"
+              else
+                echo "  ℹ️ No description in $file"
+              fi
+            else
+              echo "  ⚠️ No frontmatter in $file"
+            fi
+          done
+          
+          echo "✅ Frontmatter validation completed"
+
+      - name: Run link validation
+        run: |
+          echo "Running comprehensive link validation..."
+          
+          # Create link check configuration
+          cat > .markdown-link-check.json << 'EOF'
+          {
+            "ignorePatterns": [
+              {
+                "pattern": "^http://localhost"
+              },
+              {
+                "pattern": "^https://localhost"
+              },
+              {
+                "pattern": "^#"
+              }
+            ],
+            "replacementPatterns": [
+              {
+                "pattern": "^../",
+                "replacement": "{{BASEURL}}/"
+              }
+            ],
+            "httpHeaders": [
+              {
+                "urls": ["https://github.com"],
+                "headers": {
+                  "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+                }
+              }
+            ],
+            "timeout": "10s",
+            "retryOn429": true,
+            "retryCount": 3,
+            "fallbackRetryDelay": "30s"
+          }
+          EOF
+          
+          # Run link checking on current documentation files
+          echo "Checking internal and external links in current docs..."
+          find docs -name "*.md" -type f | head -10 | while read file; do
+            echo "Checking links in: $file"
+            markdown-link-check "$file" --config .markdown-link-check.json --quiet || echo "⚠️ Some links failed in $file"
+          done
+          
+          # Check versioned documentation links (sample)
+          if [ -d "website/versioned_docs" ]; then
+            echo "Checking links in versioned documentation (sampling)..."
+            find website/versioned_docs -name "*.md" -type f | head -5 | while read file; do
+              echo "Checking versioned links in: $file"
+              markdown-link-check "$file" --config .markdown-link-check.json --quiet || echo "⚠️ Some versioned links failed in $file"
+            done
+          fi
+          
+          echo "✅ Link validation completed"
+
+      - name: Test dual-platform compatibility
+        run: |
+          echo "Testing dual-platform compatibility (GitHub + Docusaurus)..."
+          
+          # Test GitHub markdown rendering compatibility
+          echo "Checking GitHub markdown compatibility..."
+          
+          # Check for GitHub-specific syntax that might not work in Docusaurus
+          find docs -name "*.md" -type f | while read file; do
+            echo "Checking GitHub compatibility in: $file"
+            
+            # Check for unsupported HTML
+            if grep -q "<details>" "$file"; then
+              echo "  ℹ️ Uses <details> tags (GitHub-specific)"
+            fi
+            
+            # Check for relative links (should work in both)
+            if grep -q "\]\(\.\./\|\./" "$file"; then
+              echo "  ✅ Uses relative links (dual-platform compatible)"
+            fi
+            
+            # Check for absolute GitHub links
+            if grep -q "https://github.com.*\.md" "$file"; then
+              echo "  ⚠️ Contains absolute GitHub links in $file"
+            fi
+          done
+          
+          echo "✅ Dual-platform compatibility check completed"
+
+      - name: Validate transformed documentation
+        run: |
+          echo "Validating documentation structure and content..."
+          
+          # Run migration-friendly validation (tolerant of expected migration issues)
+          export VERBOSE=true
+          node scripts/validate-docs-migration.js
+          
+          # Check validation results
+          validation_exit_code=$?
+          
+          if [ $validation_exit_code -eq 0 ]; then
+            echo "✅ Documentation validation passed"
+            echo "validation_passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Documentation validation failed with critical errors"
+            echo "validation_passed=false" >> $GITHUB_OUTPUT
+            
+            # In non-strict mode, continue with warnings for PR preview
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo "⚠️ Continuing with validation warnings for PR preview"
+            else
+              echo "🛑 Stopping deployment due to critical validation errors"
+              exit 1
+            fi
+          fi
+
+      - name: Build documentation site with fallback
+        working-directory: ./website
+        run: |
+          echo "Building Docusaurus documentation site with versioning support..."
+          
+          # Set environment variables for build
+          export NODE_ENV=production
+          export DOCUSAURUS_SSR_CONCURRENCY=2
+          
+          # Check for versioned documentation before building
+          if [ -d "versioned_docs" ]; then
+            echo "📚 Versioned documentation detected"
+            version_count=$(find versioned_docs -name "version-*" -type d | wc -l)
+            echo "Found $version_count documented versions"
+            
+            # List versions for debugging
+            if [ -f "versions.json" ]; then
+              echo "Available versions:"
+              jq -r '.[]' versions.json | while read version; do
+                echo "  - $version"
+              done
+            fi
+          else
+            echo "📖 No versioned documentation found - building current docs only"
+          fi
+          
+          # Attempt to build the site
+          build_success=false
+          
+          echo "Attempting primary build with versioning..."
+          if npm run build; then
+            echo "✅ Primary build successful"
+            build_success=true
+          else
+            echo "❌ Primary build failed, attempting fallback..."
+            
+            # Fallback strategy: restore from backups if they exist
+            if [ -d "../.docs-backup" ]; then
+              echo "Restoring documentation from backup..."
+              
+              # Restore files from backup
+              find ../.docs-backup -name "*.md" -type f | while read backup_file; do
+                relative_path=${backup_file#../.docs-backup/}
+                original_path="../docs/$relative_path"
+                
+                if [ -f "$backup_file" ]; then
+                  mkdir -p "$(dirname "$original_path")"
+                  cp "$backup_file" "$original_path"
+                  echo "Restored: $original_path"
+                fi
+              done
+              
+              echo "Attempting build with restored files..."
+              if npm run build; then
+                echo "✅ Fallback build successful"
+                build_success=true
+              else
+                echo "❌ Fallback build also failed"
+              fi
+            else
+              echo "No backup available for fallback"
+            fi
+          fi
+          
+          # Check if build was successful
+          if [ "$build_success" = false ]; then
+            echo "🛑 All build attempts failed"
+            exit 1
+          fi
+          
+          echo "Build completed successfully"
+          
+          # Verify build output
+          if [ ! -d "build" ]; then
+            echo "Error: Build directory not found"
+            exit 1
+          fi
+          
+          # Check build size
+          build_size=$(du -sh build | cut -f1)
+          echo "Build size: $build_size"
+          
+          # Check for version-specific build outputs
+          if [ -d "versioned_docs" ]; then
+            echo "Checking version-specific build outputs..."
+            # Look for version-specific paths in the build
+            if find build -type d -name "*version*" | head -5; then
+              echo "✅ Version-specific build paths found"
+            else
+              echo "ℹ️ No version-specific paths detected in build output"
+            fi
+          fi
+          
+          # List key files
+          echo "Build contents:"
+          ls -la build/
+
+      - name: Validate build output
+        working-directory: ./website
+        run: |
+          echo "Validating build output..."
+          
+          # Check for essential files
+          essential_files=("build/index.html" "build/404.html")
+          
+          for file in "${essential_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "Error: Essential file missing: $file"
+              exit 1
+            else
+              echo "Found: $file"
+            fi
+          done
+          
+          # Check for assets
+          if [ ! -d "build/assets" ]; then
+            echo "Warning: No assets directory found"
+          else
+            asset_count=$(find build/assets -type f | wc -l)
+            echo "Found $asset_count asset files"
+          fi
+          
+          # Validate HTML structure of index page
+          if command -v grep > /dev/null; then
+            if grep -q "<title>" build/index.html; then
+              echo "HTML structure looks valid"
+            else
+              echo "Warning: HTML structure may be incomplete"
+            fi
+          fi
+          
+          echo "Build validation completed"
+
+      - name: Test mobile responsiveness and performance
+        working-directory: ./website
+        run: |
+          echo "Testing mobile responsiveness and performance..."
+          
+          # Install additional testing tools
+          npm install --no-save lighthouse
+          
+          # Start a local server for testing
+          echo "Starting local server for testing..."
+          npm run serve -- --port 3001 > /dev/null 2>&1 &
+          SERVER_PID=$!
+          
+          # Wait for server to start
+          sleep 10
+          
+          # Check if server is running
+          if curl -f http://localhost:3001/inventag-aws/ > /dev/null 2>&1; then
+            echo "✅ Local server started successfully"
+            
+            # Run basic performance checks
+            echo "Running performance checks..."
+            
+            # Check homepage response time
+            start_time=$(date +%s%N)
+            if curl -f http://localhost:3001/inventag-aws/ > /dev/null 2>&1; then
+              end_time=$(date +%s%N)
+              response_time=$(( ($end_time - $start_time) / 1000000 ))
+              echo "Homepage response time: ${response_time}ms"
+              
+              if [ $response_time -lt 2000 ]; then
+                echo "✅ Good response time"
+              else
+                echo "⚠️ Slow response time (>${response_time}ms)"
+              fi
+            fi
+            
+            # Test search functionality
+            echo "Testing search functionality..."
+            if curl -f http://localhost:3001/inventag-aws/search-index.json > /dev/null 2>&1; then
+              search_size=$(curl -s http://localhost:3001/inventag-aws/search-index.json | wc -c)
+              echo "Search index size: $search_size bytes"
+              
+              if [ $search_size -gt 1000 ]; then
+                echo "✅ Search index populated"
+              else
+                echo "⚠️ Search index may be empty or incomplete"
+              fi
+            else
+              echo "ℹ️ Search index not accessible (may be generated only in production build)"
+            fi
+            
+            # Test version dropdown (if versioned)
+            if [ -f "../website/versions.json" ]; then
+              echo "Testing version dropdown functionality..."
+              homepage_content=$(curl -s http://localhost:3001/inventag-aws/)
+              if echo "$homepage_content" | grep -q 'version.*dropdown\|docsVersionDropdown'; then
+                echo "✅ Version dropdown functionality detected"
+              else
+                echo "ℹ️ Version dropdown not detected in homepage HTML"
+              fi
+            fi
+            
+            # Basic mobile viewport test
+            echo "Testing mobile viewport..."
+            homepage_content=$(curl -s http://localhost:3001/inventag-aws/)
+            if echo "$homepage_content" | grep -q 'viewport.*width=device-width'; then
+              echo "✅ Mobile viewport meta tag found"
+            else
+              echo "⚠️ Mobile viewport meta tag missing"
+            fi
+            
+            # Check for responsive CSS (CSS files are separate in production)
+            echo "Testing responsive design..."
+            if curl -s http://localhost:3001/inventag-aws/ | grep -q 'styles.*css'; then
+              echo "✅ CSS stylesheets loaded (responsive design included)"
+            else
+              echo "ℹ️ CSS information not accessible in development mode"
+            fi
+            
+            # Stop the server
+            kill $SERVER_PID 2>/dev/null || true
+            echo "✅ Performance testing completed"
+          else
+            echo "❌ Failed to start local server for testing"
+            kill $SERVER_PID 2>/dev/null || true
+          fi
+
+      - name: Generate accessibility and performance report
+        working-directory: ./website
+        run: |
+          echo "Generating accessibility and performance report..."
+          
+          # Create performance summary
+          cat > performance-report.md << 'EOF'
+          # Documentation Performance Report
+          
+          ## Test Results
+          - Build size: $(du -sh build | cut -f1)
+          - HTML files: $(find build -name "*.html" | wc -l)
+          - CSS files: $(find build -name "*.css" | wc -l)
+          - JS files: $(find build -name "*.js" | wc -l)
+          - Image assets: $(find build -name "*.png" -o -name "*.jpg" -o -name "*.svg" | wc -l)
+          
+          ## Recommendations
+          - Optimize images for web delivery
+          - Implement lazy loading for images
+          - Consider code splitting for large bundles
+          - Test on real mobile devices when possible
+          
+          Generated: $(date)
+          EOF
+          
+          echo "Performance report generated"
+          
+          # Display summary
+          if [ -f "performance-report.md" ]; then
+            echo "=== Performance Report Summary ==="
+            cat performance-report.md
+          fi
+
+      - name: Run documentation health monitoring
+        run: |
+          echo "Running comprehensive documentation health monitoring..."
+          
+          # Set environment variables
+          export VERBOSE=true
+          
+          # Run health monitoring
+          node scripts/monitor-docs.js
+          
+          # Upload monitoring results as artifacts
+          if [ -d ".docs-logs" ]; then
+            echo "Monitoring logs created"
+            ls -la .docs-logs/
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./website/build
+
+      - name: Upload monitoring logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-logs
+          path: |
+            transform.log
+            .docs-logs/
+          retention-days: 30
+
+      - name: Report build status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = context.sha;
+            const runId = context.runId;
+            const buildStatus = '${{ job.status }}';
+            
+            const statusEmoji = buildStatus === 'success' ? '✅' : 
+                               buildStatus === 'failure' ? '❌' : 
+                               buildStatus === 'cancelled' ? '⚠️' : '🔄';
+            
+            console.log(`Build Status: ${statusEmoji} ${buildStatus}`);
+            console.log(`Run ID: ${runId}`);
+            console.log(`Commit SHA: ${sha}`);
+            
+            // Create status summary
+            const summary = `
+            ## Documentation Build Report ${statusEmoji}
+            
+            **Status:** ${buildStatus.toUpperCase()}
+            **Commit:** \`${sha.substring(0, 8)}\`
+            **Run ID:** [${runId}](https://github.com/${owner}/${repo}/actions/runs/${runId})
+            **Timestamp:** ${new Date().toISOString()}
+            
+            ${buildStatus === 'failure' ? '### ⚠️ Build Failed\nPlease check the logs for details and resolve any issues.' : ''}
+            ${buildStatus === 'success' ? '### ✅ Build Successful\nDocumentation is ready for deployment.' : ''}
+            `;
+            
+            console.log('Build Summary:', summary);
+            
+            // Set output for downstream jobs
+            core.setOutput('build_status', buildStatus);
+            core.setOutput('build_summary', summary);
+
+  # Deployment job (only runs on main branch)
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Monitor deployment status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deploymentStatus = '${{ steps.deployment.outcome }}';
+            const deploymentUrl = '${{ steps.deployment.outputs.page_url }}';
+            const { owner, repo } = context.repo;
+            
+            console.log(`Deployment Status: ${deploymentStatus}`);
+            console.log(`Deployment URL: ${deploymentUrl}`);
+            
+            if (deploymentStatus === 'success') {
+              console.log('✅ Deployment successful!');
+              
+              // Test deployment by making a simple request
+              try {
+                const response = await fetch(deploymentUrl);
+                const statusCode = response.status;
+                
+                console.log(`Site response status: ${statusCode}`);
+                
+                if (statusCode === 200) {
+                  console.log('✅ Site is accessible');
+                } else {
+                  console.log(`⚠️ Site returned status ${statusCode}`);
+                }
+              } catch (error) {
+                console.log(`❌ Failed to test site accessibility: ${error.message}`);
+              }
+            } else {
+              console.log(`❌ Deployment failed with status: ${deploymentStatus}`);
+            }
+
+      - name: Performance monitoring post-deployment
+        if: success() && steps.deployment.outputs.page_url
+        run: |
+          echo "Running post-deployment performance checks..."
+          
+          SITE_URL="${{ steps.deployment.outputs.page_url }}"
+          echo "Testing site: $SITE_URL"
+          
+          # Test site accessibility
+          if curl -f "$SITE_URL" -o /dev/null -s; then
+            echo "✅ Site is accessible"
+            
+            # Measure response time
+            response_time=$(curl -o /dev/null -s -w '%{time_total}' "$SITE_URL")
+            echo "Response time: ${response_time}s"
+            
+            # Check if response time is acceptable (< 3 seconds)
+            if (( $(echo "$response_time < 3.0" | bc -l) )); then
+              echo "✅ Response time acceptable"
+            else
+              echo "⚠️ Response time may be slow (${response_time}s)"
+            fi
+            
+            # Test search endpoint
+            if curl -f "${SITE_URL}search-index.json" -o /dev/null -s; then
+              search_size=$(curl -s "${SITE_URL}search-index.json" | wc -c)
+              echo "Search index size: $search_size bytes"
+              echo "✅ Search functionality available"
+            else
+              echo "⚠️ Search index not accessible"
+            fi
+            
+          else
+            echo "❌ Site is not accessible"
+          fi
+
+  # Preview job for pull requests
+  preview:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Comment PR with preview info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const { owner, repo, number } = context.issue;
+              
+              const comment = `## Documentation Preview
+              
+              The documentation build completed successfully! 
+              
+              **Build Summary:**
+              - Documentation files validated
+              - Docusaurus build successful
+              - Output validation passed
+              
+              **Note:** This is a pull request preview. The documentation will be deployed to GitHub Pages when merged to main.
+              
+              **Preview locally:**
+              \`\`\`bash
+              cd website
+              npm install
+              npm start
+              \`\`\`
+              
+              **Version Information:**
+              - Current development version in use
+              - Available versions: $([ -f website/versions.json ] && jq -r '.[]' website/versions.json | tr '\n' ',' | sed 's/,$//' || echo 'None')
+              - Version dropdown: $([ -f website/versions.json ] && echo 'Available' || echo 'Not configured')
+              
+              ---
+              *This comment was automatically generated by the documentation deployment workflow.*`;
+              
+              // Check if we already commented
+              const comments = await github.rest.issues.listComments({
+                owner,
+                repo,
+                issue_number: number,
+              });
+              
+              const existingComment = comments.data.find(comment => 
+                comment.body.includes('Documentation Preview')
+              );
+              
+              if (existingComment) {
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: existingComment.id,
+                  body: comment
+                });
+                console.log('✅ Updated existing PR comment');
+              } else {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: number,
+                  body: comment
+                });
+                console.log('✅ Created new PR comment');
+              }
+            } catch (error) {
+              console.log('⚠️ Failed to comment on PR (likely permissions issue):', error.message);
+              console.log('📋 PR preview ready: Documentation build completed successfully');
+              // Don't fail the workflow if commenting fails
+            }

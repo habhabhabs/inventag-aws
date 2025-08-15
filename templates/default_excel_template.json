@@ -1,0 +1,248 @@
+{
+  "name": "Professional Excel BOM Template",
+  "description": "Professional template for Excel-based Cloud Bill of Materials reports with multiple worksheets",
+  "format_type": "excel",
+  "template_version": "1.0",
+  
+  "variables": {
+    "company_name": {
+      "value": "{{company_name}}",
+      "description": "Company name for branding",
+      "format_type": "string",
+      "default_value": "Organization"
+    },
+    "document_title": {
+      "value": "{{document_title}}",
+      "description": "Main document title",
+      "format_type": "string", 
+      "default_value": "Cloud Bill of Materials Report"
+    },
+    "report_date": {
+      "value": "{{current_date}}",
+      "description": "Report generation date",
+      "format_type": "date",
+      "default_value": "{{current_date|date:%Y-%m-%d}}"
+    },
+    "workbook_title": {
+      "value": "{{workbook_title}}",
+      "description": "Excel workbook title",
+      "format_type": "string",
+      "default_value": "{{company_name}} - Cloud BOM Report"
+    }
+  },
+  
+  "sections": [
+    {
+      "id": "summary_dashboard",
+      "title": "Executive Summary",
+      "level": 1,
+      "content_type": "dashboard",
+      "include_in_toc": true,
+      "variables": {
+        "sheet_name": "Summary",
+        "include_charts": true,
+        "chart_types": ["pie", "bar", "line"]
+      }
+    },
+    {
+      "id": "compliance_overview",
+      "title": "Compliance Overview",
+      "level": 1,
+      "content_type": "table",
+      "include_in_toc": true,
+      "variables": {
+        "sheet_name": "Compliance",
+        "include_conditional_formatting": true,
+        "freeze_panes": "A2"
+      }
+    },
+    {
+      "id": "service_inventory",
+      "title": "Service Inventory",
+      "level": 1,
+      "content_type": "table",
+      "include_in_toc": true,
+      "variables": {
+        "sheet_name": "Services",
+        "group_by_service": true,
+        "include_filters": true
+      },
+      "subsections": [
+        {
+          "id": "ec2_resources",
+          "title": "EC2 Resources",
+          "level": 2,
+          "content_type": "table",
+          "include_in_toc": false,
+          "variables": {
+            "sheet_name": "EC2",
+            "service_filter": "EC2"
+          }
+        },
+        {
+          "id": "s3_resources",
+          "title": "S3 Resources", 
+          "level": 2,
+          "content_type": "table",
+          "include_in_toc": false,
+          "variables": {
+            "sheet_name": "S3",
+            "service_filter": "S3"
+          }
+        },
+        {
+          "id": "rds_resources",
+          "title": "RDS Resources",
+          "level": 2,
+          "content_type": "table",
+          "include_in_toc": false,
+          "variables": {
+            "sheet_name": "RDS",
+            "service_filter": "RDS"
+          }
+        }
+      ]
+    },
+    {
+      "id": "network_analysis",
+      "title": "Network Analysis",
+      "level": 1,
+      "content_type": "table",
+      "include_in_toc": true,
+      "variables": {
+        "sheet_name": "Network",
+        "include_vpc_charts": true,
+        "include_utilization_charts": true
+      },
+      "subsections": [
+        {
+          "id": "vpc_analysis",
+          "title": "VPC Analysis",
+          "level": 2,
+          "content_type": "table",
+          "include_in_toc": false,
+          "variables": {
+            "section_title": "VPC Utilization Analysis"
+          }
+        },
+        {
+          "id": "subnet_analysis",
+          "title": "Subnet Analysis",
+          "level": 2,
+          "content_type": "table",
+          "include_in_toc": false,
+          "variables": {
+            "section_title": "Subnet Utilization Analysis"
+          }
+        }
+      ]
+    },
+    {
+      "id": "security_analysis",
+      "title": "Security Analysis",
+      "level": 1,
+      "content_type": "table",
+      "include_in_toc": true,
+      "variables": {
+        "sheet_name": "Security",
+        "highlight_high_risk": true,
+        "include_risk_charts": true
+      },
+      "subsections": [
+        {
+          "id": "security_groups",
+          "title": "Security Groups",
+          "level": 2,
+          "content_type": "table",
+          "include_in_toc": false,
+          "variables": {
+            "section_title": "Security Group Analysis"
+          }
+        },
+        {
+          "id": "high_risk_rules",
+          "title": "High-Risk Rules",
+          "level": 2,
+          "content_type": "table",
+          "include_in_toc": false,
+          "variables": {
+            "section_title": "High-Risk Security Rules",
+            "conditional_formatting": "risk_level"
+          }
+        }
+      ]
+    },
+    {
+      "id": "raw_data",
+      "title": "Raw Data",
+      "level": 1,
+      "content_type": "table",
+      "include_in_toc": true,
+      "variables": {
+        "sheet_name": "Raw Data",
+        "include_all_fields": true,
+        "enable_filtering": true,
+        "freeze_panes": "A2"
+      }
+    }
+  ],
+  
+  "branding": {
+    "company_name": "{{company_name}}",
+    "logo_path": null,
+    "header_text": "{{company_name}} Infrastructure Report",
+    "footer_text": "Generated {{current_date}}",
+    "color_scheme": {
+      "primary": "#366092",
+      "secondary": "#4472C4",
+      "accent": "#70AD47",
+      "warning": "#FFC000",
+      "danger": "#C5504B",
+      "success": "#70AD47",
+      "header_bg": "#366092",
+      "header_text": "#FFFFFF",
+      "alt_row": "#F2F2F2"
+    },
+    "font_family": "Calibri",
+    "font_size": 11,
+    "enable_watermark": false,
+    "watermark_text": "CONFIDENTIAL"
+  },
+  
+  "header_footer": {
+    "header_text": "{{company_name}} - {{document_title}}",
+    "footer_text": "Generated on {{current_date|date:%B %d, %Y}}",
+    "include_logo": false,
+    "logo_position": "left",
+    "logo_size": [1.0, 0.5],
+    "include_page_numbers": true,
+    "page_number_position": "right",
+    "include_date": true,
+    "date_format": "%Y-%m-%d",
+    "custom_fields": {
+      "workbook_title": "{{workbook_title}}"
+    }
+  },
+  
+  "table_of_contents": {
+    "enabled": true,
+    "title": "Worksheet Index",
+    "max_depth": 2,
+    "include_page_numbers": false,
+    "dot_leader": false,
+    "custom_styles": {
+      "create_index_sheet": true,
+      "index_sheet_name": "Index"
+    }
+  },
+  
+  "page_margins": {
+    "top": 0.75,
+    "bottom": 0.75,
+    "left": 0.7,
+    "right": 0.7
+  },
+  
+  "page_orientation": "portrait",
+  "page_size": "letter"
+}

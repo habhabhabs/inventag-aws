@@ -1,0 +1,107 @@
+# Service Descriptions Configuration
+# Defines custom descriptions for AWS services and resource types
+
+service_descriptions:
+  EC2:
+    default:
+      description: "Amazon Elastic Compute Cloud - Virtual servers in the cloud providing scalable compute capacity"
+    Instance:
+      description: "Virtual machine instances providing scalable compute capacity with various instance types"
+    Volume:
+      description: "Block storage volumes (EBS) attached to EC2 instances for persistent storage"
+    SecurityGroup:
+      description: "Virtual firewall controlling inbound and outbound traffic to instances"
+    KeyPair:
+      description: "Key pairs for secure SSH access to EC2 instances"
+    NetworkInterface:
+      description: "Virtual network interface that can be attached to instances"
+    Snapshot:
+      description: "Point-in-time backup of EBS volumes"
+
+  S3:
+    default:
+      description: "Amazon Simple Storage Service - Highly scalable object storage service"
+    Bucket:
+      description: "Container for objects stored in Amazon S3 with global namespace"
+
+  RDS:
+    default:
+      description: "Amazon Relational Database Service - Managed relational database service"
+    DBInstance:
+      description: "Managed database instance with automated backups and maintenance"
+    DBCluster:
+      description: "Database cluster for high availability and read scaling (Aurora)"
+    DBSubnetGroup:
+      description: "Subnet group defining which subnets databases can be placed in"
+    DBParameterGroup:
+      description: "Configuration parameters for database engines"
+    DBSnapshot:
+      description: "Point-in-time backup of database instances"
+
+  LAMBDA:
+    default:
+      description: "AWS Lambda - Serverless compute service for running code without managing servers"
+    Function:
+      description: "Serverless function that runs code in response to events and automatically scales"
+
+  VPC:
+    default:
+      description: "Amazon Virtual Private Cloud - Isolated cloud resources in a virtual network"
+    VPC:
+      description: "Virtual private cloud providing network isolation for AWS resources"
+    Subnet:
+      description: "Subnet within a VPC for resource placement and network segmentation"
+    InternetGateway:
+      description: "Gateway providing internet access to VPC resources"
+    RouteTable:
+      description: "Route table controlling network traffic routing within VPC"
+    NetworkAcl:
+      description: "Network Access Control List providing subnet-level security"
+    VPCEndpoint:
+      description: "Private connection to AWS services without internet gateway"
+
+  IAM:
+    default:
+      description: "AWS Identity and Access Management - Secure access control for AWS resources"
+    User:
+      description: "IAM user with programmatic and/or console access"
+    Role:
+      description: "IAM role for cross-service access and temporary credentials"
+    Policy:
+      description: "IAM policy defining permissions for users, groups, or roles"
+    Group:
+      description: "IAM group for organizing users with similar permissions"
+
+  CLOUDFORMATION:
+    default:
+      description: "AWS CloudFormation - Infrastructure as Code service for resource provisioning"
+    Stack:
+      description: "CloudFormation stack containing related AWS resources"
+    StackSet:
+      description: "CloudFormation StackSet for deploying across multiple accounts/regions"
+
+  CLOUDWATCH:
+    default:
+      description: "Amazon CloudWatch - Monitoring and observability service for AWS resources"
+    Alarm:
+      description: "CloudWatch alarm for monitoring metrics and triggering actions"
+    LogGroup:
+      description: "Log group for collecting and storing log data"
+    Dashboard:
+      description: "CloudWatch dashboard for visualizing metrics and logs"
+
+  ELB:
+    default:
+      description: "Elastic Load Balancing - Distribute incoming traffic across multiple targets"
+    LoadBalancer:
+      description: "Load balancer distributing traffic across multiple targets"
+    TargetGroup:
+      description: "Target group defining health check and routing for load balancer"
+
+  ROUTE53:
+    default:
+      description: "Amazon Route 53 - Scalable DNS and domain name registration service"
+    HostedZone:
+      description: "DNS hosted zone for domain name resolution"
+    RecordSet:
+      description: "DNS record set defining domain name mappings"

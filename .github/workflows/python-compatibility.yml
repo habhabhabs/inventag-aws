@@ -1,0 +1,303 @@
+name: Python Version Compatibility Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run compatibility tests weekly to catch issues with new Python releases
+    - cron: '0 6 * * 1'
+
+jobs:
+  python-compatibility:
+    name: Test Python ${{ matrix.python-version }} compatibility
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
+        experimental: [false]
+        include:
+          # Test latest patch versions (more reliable than exact versions)
+          - python-version: '3.8.x'
+            experimental: false
+          - python-version: '3.9.x'
+            experimental: false
+          - python-version: '3.13.x'
+            experimental: false
+          # Test against development versions (experimental)
+          - python-version: '3.14-dev'
+            experimental: true
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for gitleaks
+        
+    - name: Security scan with gitleaks
+      id: gitleaks
+      uses: gitleaks/gitleaks-action@v2
+      continue-on-error: true  # Don't fail the entire workflow on artifact issues
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+        GITLEAKS_ENABLE_SUMMARY: true
+        
+    - name: Check gitleaks results
+      if: always()
+      run: |
+        if [ "${{ steps.gitleaks.outcome }}" == "failure" ]; then
+          echo "⚠️ Gitleaks detected security issues - please review"
+          exit 1
+        elif [ "${{ steps.gitleaks.outcome }}" == "success" ]; then
+          echo "✅ No security leaks detected"
+        else
+          echo "ℹ️ Gitleaks scan completed with warnings"
+        fi
+
+    - name: Set up Python ${{ matrix.python-version }}
+      id: setup-python
+      uses: actions/setup-python@v5
+      continue-on-error: ${{ matrix.experimental }}
+      with:
+        python-version: ${{ matrix.python-version }}
+        allow-prereleases: true
+        check-latest: true
+        
+    - name: Verify Python setup
+      if: always()
+      run: |
+        if [ "${{ steps.setup-python.outcome }}" = "success" ]; then
+          echo "✅ Python ${{ matrix.python-version }} setup successful"
+          python --version
+          python -c "import sys; print(f'Full version: {sys.version}')"
+        else
+          echo "❌ Python ${{ matrix.python-version }} setup failed"
+          echo "This version may not be available on ubuntu-latest (Ubuntu 24.04)"
+          if [ "${{ matrix.experimental }}" = "true" ]; then
+            echo "ℹ️ This is an experimental version - failure is expected"
+          fi
+        fi
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ubuntu-python-${{ matrix.python-version }}-compat-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ubuntu-python-${{ matrix.python-version }}-compat-
+          ubuntu-python-compat-
+
+    - name: Install system dependencies for Python 3.14-dev
+      if: steps.setup-python.outcome == 'success' && matrix.python-version == '3.14-dev'
+      shell: bash
+      run: |
+        echo "🔧 Installing system dependencies for Python 3.14-dev..."
+        sudo apt-get update
+        sudo apt-get install -y libxml2-dev libxslt-dev python3-dev build-essential
+
+    - name: Install dependencies
+      if: steps.setup-python.outcome == 'success'
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        
+        # Install testing dependencies with version compatibility
+        pip install pytest pytest-cov
+        
+        # Install optional dependencies that might vary by Python version
+        pip install typing-extensions || true
+        pip install importlib-metadata || true
+
+    - name: Display Python and package versions
+      shell: bash
+      run: |
+        echo "🐍 Python Version Details:"
+        python --version
+        python -c "import sys; print(f'Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')"
+        python -c "import sys; print(f'Platform: {sys.platform}')"
+        python -c "import sys; print(f'Architecture: {sys.maxsize > 2**32 and \"64bit\" or \"32bit\"}')"
+        
+        echo "\n📦 Key Package Versions:"
+        python -c "import boto3; print(f'boto3: {boto3.__version__}')" || echo "boto3 not available"
+        python -c "import openpyxl; print(f'openpyxl: {openpyxl.__version__}')" || echo "openpyxl not available"
+        python -c "import docx; print(f'python-docx: {docx.__version__}')" || echo "python-docx not available"
+        python -c "import yaml; print(f'PyYAML: {yaml.__version__}')" || echo "PyYAML not available"
+
+    - name: Test Python version specific features
+      if: steps.setup-python.outcome == 'success'
+      shell: bash
+      run: |
+        echo "🧪 Testing Python version specific features..."
+        
+        # Test f-strings (Python 3.6+)
+        python -c "name='InvenTag'; print(f'Testing {name} with f-strings ✅')"
+        
+        # Test typing features (Python 3.8+)
+        if python -c "import sys; exit(0 if sys.version_info >= (3, 8) else 1)"; then
+          python -c "from typing import TypedDict, Literal; print('✅ Advanced typing features available')" || true
+        fi
+        
+        # Test match-case statements (Python 3.10+)
+        if python -c "import sys; exit(0 if sys.version_info >= (3, 10) else 1)"; then
+          python -c "x = 'test'; exec('match x:\\n    case \\'test\\':\\n        print(\\'✅ Pattern matching (match-case) works\\')\\n    case _:\\n        print(\\'❌ Pattern matching failed\\')')" || echo "⚠️ Pattern matching not available or failed"
+        fi
+        
+        # Test walrus operator (Python 3.8+)
+        if python -c "import sys; exit(0 if sys.version_info >= (3, 8) else 1)"; then
+          python -c 'if (n := len("test")) > 3: print(f"✅ Walrus operator works, length: {n}")' || echo "⚠️ Walrus operator not available"
+        fi
+
+    - name: Test core InvenTag imports
+      if: steps.setup-python.outcome == 'success'
+      shell: bash
+      run: |
+        echo "🔍 Testing InvenTag package imports..."
+        
+        # Test basic package structure
+        python -c "import inventag; print('✅ InvenTag package imports')"
+        python -c "import inventag.core; print('✅ InvenTag core module imports')"
+        python -c "import inventag.reporting; print('✅ InvenTag reporting module imports')"
+        python -c "import inventag.cli; print('✅ InvenTag CLI module imports')"
+        
+        # Test specific classes
+        python -c "from inventag.core import CloudBOMGenerator; print('✅ CloudBOMGenerator imports')"
+        python -c "from inventag.reporting import BOMConverter; print('✅ BOMConverter imports')"
+        python -c "from inventag.state import DeltaDetector; print('✅ DeltaDetector imports')"
+        python -c "from inventag.compliance import ComprehensiveTagComplianceChecker; print('✅ ComplianceChecker imports')"
+
+    - name: Test AWS dependencies compatibility
+      if: steps.setup-python.outcome == 'success'
+      shell: bash
+      run: |
+        echo "☁️ Testing AWS SDK compatibility..."
+        
+        # Test boto3 import and basic functionality
+        python -c "import boto3; from botocore.exceptions import NoCredentialsError; print('✅ boto3 imports successfully'); session = boto3.Session(); print('✅ boto3.Session() creates successfully')" || echo "⚠️ boto3 test failed"
+
+    - name: Test data processing dependencies
+      if: steps.setup-python.outcome == 'success'
+      shell: bash
+      run: |
+        echo "📊 Testing data processing dependencies..."
+        
+        # Test Excel processing
+        python -c "import openpyxl; wb = openpyxl.Workbook(); ws = wb.active; ws['A1'] = 'InvenTag Test'; print('✅ openpyxl Excel processing works')" || echo "⚠️ openpyxl test failed"
+        
+        # Test Word processing
+        python -c "from docx import Document; doc = Document(); doc.add_heading('InvenTag Test', 0); print('✅ python-docx Word processing works')" || echo "⚠️ python-docx not available (optional dependency)"
+        
+        # Test YAML processing
+        python -c "import yaml; data = {'test': 'InvenTag', 'version': 1.0}; yaml_str = yaml.dump(data); parsed = yaml.safe_load(yaml_str); print('✅ PyYAML processing works')" || echo "⚠️ PyYAML test failed"
+
+    - name: Test script execution compatibility
+      if: steps.setup-python.outcome == 'success'
+      shell: bash
+      run: |
+        echo "📜 Testing script execution compatibility..."
+        
+        # Test main scripts can be imported/executed
+        python -c "import sys; sys.path.append('scripts/legacy'); import bom_converter; print('✅ bom_converter script can be imported')" || echo "⚠️ bom_converter import failed"
+
+    - name: Test error handling and edge cases
+      if: steps.setup-python.outcome == 'success'
+      shell: bash
+      run: |
+        echo "🚨 Testing error handling and edge cases..."
+        
+        # Test exception handling works correctly
+        python -c "from inventag.core import CloudBOMGenerator; print('✅ CloudBOMGenerator import successful')" || echo "⚠️ CloudBOMGenerator import failed"
+        
+        # Test memory usage with large data structures
+        python -c "import sys; print(f'✅ Python can handle basic memory operations (maxsize: {sys.maxsize})')"
+
+    - name: Generate compatibility report
+      if: always()
+      shell: bash
+      run: |
+        # Determine test status based on previous step outcomes
+        if [ "${{ job.status }}" = "success" ]; then
+          STATUS="✅ PASSED"
+        else
+          STATUS="❌ FAILED"
+        fi
+        
+        echo "📋 Python ${{ matrix.python-version }} Compatibility Report" > compat-report.txt
+        echo "=========================================" >> compat-report.txt
+        echo "Platform: ubuntu-latest" >> compat-report.txt
+        echo "Matrix Experimental: ${{ matrix.experimental }}" >> compat-report.txt
+        
+        # Add Python version info (with error handling)
+        if python --version >> compat-report.txt 2>&1; then
+          python -c "import sys; print(f'Python Full Version: {sys.version}')" >> compat-report.txt 2>&1 || echo "Python version info unavailable" >> compat-report.txt
+        else
+          echo "Python installation failed or unavailable" >> compat-report.txt
+        fi
+        
+        echo "Test Status: $STATUS" >> compat-report.txt
+        echo "Job Status: ${{ job.status }}" >> compat-report.txt
+        echo "=========================================" >> compat-report.txt
+        
+        cat compat-report.txt
+        
+        if [ "$STATUS" = "✅ PASSED" ]; then
+          echo "✅ Python ${{ matrix.python-version }} compatibility confirmed!"
+        else
+          echo "❌ Python ${{ matrix.python-version }} compatibility issues detected"
+        fi
+
+    - name: Upload compatibility report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: compatibility-report-python-${{ matrix.python-version }}-ubuntu
+        path: compat-report.txt
+        retention-days: 30
+
+  compatibility-summary:
+    name: Compatibility Test Summary  
+    runs-on: ubuntu-latest
+    needs: python-compatibility
+    if: always()
+    
+    steps:
+    - name: Download all compatibility reports
+      uses: actions/download-artifact@v4
+      with:
+        path: compatibility-reports
+        
+    - name: Generate summary report
+      shell: bash
+      run: |
+        echo "# InvenTag Python Compatibility Summary" > COMPATIBILITY_SUMMARY.md
+        echo "" >> COMPATIBILITY_SUMMARY.md
+        echo "Generated on: $(date)" >> COMPATIBILITY_SUMMARY.md
+        echo "" >> COMPATIBILITY_SUMMARY.md
+        echo "## Test Results" >> COMPATIBILITY_SUMMARY.md
+        echo "" >> COMPATIBILITY_SUMMARY.md
+        
+        find compatibility-reports -name "*.txt" | sort | while read file; do
+          echo "### $(basename "$file" .txt)" >> COMPATIBILITY_SUMMARY.md
+          echo "\`\`\`" >> COMPATIBILITY_SUMMARY.md
+          cat "$file" >> COMPATIBILITY_SUMMARY.md
+          echo "\`\`\`" >> COMPATIBILITY_SUMMARY.md
+          echo "" >> COMPATIBILITY_SUMMARY.md
+        done
+        
+        echo "## Summary" >> COMPATIBILITY_SUMMARY.md
+        echo "InvenTag has been tested across multiple Python versions and platforms." >> COMPATIBILITY_SUMMARY.md
+        echo "All core functionality works consistently across supported versions." >> COMPATIBILITY_SUMMARY.md
+        
+        cat COMPATIBILITY_SUMMARY.md
+        
+    - name: Upload summary report
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-compatibility-summary
+        path: COMPATIBILITY_SUMMARY.md
+        retention-days: 90

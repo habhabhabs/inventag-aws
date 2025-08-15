@@ -1,0 +1,802 @@
+# AWS Prescriptive Guidance - Cost Allocation Tagging Dictionary
+# Reference: https://docs.aws.amazon.com/prescriptive-guidance/latest/cost-allocation-tagging/
+# 
+# This template follows AWS best practices for cost allocation and resource governance
+# Updated: 2025-08-08
+
+tagging_dictionary:
+  version: "1.1"
+  last_updated: "2025-08-08"
+  alignment: "AWS Prescriptive Guidance - Complete Implementation"
+  compliance_frameworks:
+    - "AWS Prescriptive Guidance for Cost Allocation Tagging"
+    - "AWS Organizations Service Control Policies"
+    - "AWS Tag Policies"
+    - "AWS Well-Architected Framework"
+    - "FinOps Foundation Standards"
+  
+  # Three-Dimensional Tagging Framework (per AWS Guidance)
+  tagging_dimensions:
+    technical: "Infrastructure and application components"
+    business: "Organizational structure and financial allocation"
+    security: "Access control and compliance requirements"
+
+  # REQUIRED TAGS - Following AWS Prescriptive Guidance 5-Step Methodology
+  # Step 1: Define tagging dictionary with standardized, consistent tags
+  required_tags:
+    # Financial Management Tags
+    # Business Dimension Tags (AWS Prescriptive Guidance)
+    - key: "cost-center-id"
+      description: "Cost center responsible for resource charges (AWS standard naming)"
+      format: "CC-XXXX"
+      example: "CC-1001"
+      validation_pattern: "^CC-[0-9]{4}$"
+      category: "business"
+      enforcement: "mandatory"
+      aws_guidance: "Essential for cost allocation and financial governance"
+      enforcement_method: ["scp", "tag_policy", "config_rule"]
+      
+    - key: "project-id"
+      description: "Project identifier for cost allocation (AWS standard naming)"
+      format: "PROJ-XXXX"
+      example: "PROJ-2024-WEBAPP"
+      validation_pattern: "^PROJ-[0-9]{4}-[A-Z0-9]+$"
+      category: "business"
+      enforcement: "mandatory"
+      aws_guidance: "Critical for project-based cost tracking"
+      enforcement_method: ["scp", "tag_policy"]
+      
+    - key: "environment-id"
+      description: "Deployment environment (AWS standard naming)"
+      allowed_values: ["prod", "staging", "test", "dev", "sandbox"]
+      example: "prod"
+      category: "technical"
+      enforcement: "mandatory"
+      aws_guidance: "Essential for environment-based cost segregation"
+      enforcement_method: ["scp", "tag_policy", "cloudformation"]
+      
+    - key: "business-unit-id"
+      description: "Business unit or department (AWS standard naming)"
+      format: "Free text, max 50 characters"
+      example: "Engineering"
+      category: "business"
+      enforcement: "mandatory"
+      aws_guidance: "Required for multi-dimensional organization"
+      enforcement_method: ["scp", "tag_policy"]
+      
+    - key: "application-id"
+      description: "Application name or service identifier (AWS standard naming)"
+      format: "kebab-case, max 63 characters"
+      example: "user-authentication-service"
+      validation_pattern: "^[a-z0-9-]+$"
+      category: "technical"
+      enforcement: "mandatory"
+      aws_guidance: "Critical for application-specific cost allocation"
+      enforcement_method: ["scp", "tag_policy", "cloudformation"]
+      
+    # Additional Required Technical Tags
+    - key: "layer-id"
+      description: "Sub-component layer identification (AWS guidance)"
+      allowed_values: ["db", "web", "app", "middleware", "cache", "queue", "storage"]
+      example: "web"
+      category: "technical"
+      enforcement: "mandatory"
+      aws_guidance: "Identify sub-components for granular cost allocation"
+      enforcement_method: ["tag_policy", "cloudformation"]
+      
+    - key: "team-name"
+      description: "Team responsible for the resource (AWS standard)"
+      format: "kebab-case, max 50 characters"
+      example: "platform-engineering"
+      validation_pattern: "^[a-z0-9-]+$"
+      category: "business"
+      enforcement: "mandatory"
+      aws_guidance: "Essential for ownership identification and accountability"
+      enforcement_method: ["tag_policy"]
+
+  # RECOMMENDED TAGS - AWS Prescriptive Guidance Best Practices
+  recommended_tags:
+    # AWS-Generated Tags (Automatic)
+    - key: "aws:createdBy"
+      description: "AWS-generated tag identifying the entity that created the resource"
+      format: "AWS-managed"
+      example: "IAMUser:john.doe"
+      category: "aws_managed"
+      enforcement: "automatic"
+      aws_guidance: "Automatically applied by AWS for audit trails"
+      
+    # Automation Tags (AWS Prescriptive Guidance)
+    - key: "rightsizing-id"
+      description: "Right-sizing optimization identifier"
+      allowed_values: ["candidate", "optimized", "excluded", "under-review"]
+      example: "candidate"
+      category: "automation"
+      aws_guidance: "Essential for cost optimization automation"
+      
+    - key: "sourceinstance-type"
+      description: "Original instance type before optimization"
+      format: "AWS instance type format"
+      example: "m5.large"
+      category: "automation"
+      aws_guidance: "Track optimization history"
+      
+    - key: "destination-instance-type"
+      description: "Target instance type for optimization"
+      format: "AWS instance type format"
+      example: "m5.medium"
+      category: "automation"
+      aws_guidance: "Track optimization targets"
+      
+    - key: "arn-id"
+      description: "Resource ARN for cross-service tracking"
+      format: "AWS ARN format"
+      example: "arn:aws:ec2:us-east-1:123456789012:instance/i-1234567890abcdef0"
+      category: "automation"
+      aws_guidance: "Enable cross-service cost allocation"
+      
+    # Security Dimension Tags (AWS Prescriptive Guidance)
+    - key: "data-classification"
+      description: "Data sensitivity classification (AWS standard naming)"
+      allowed_values: ["public", "internal", "confidential", "restricted"]
+      example: "confidential"
+      category: "security"
+      aws_guidance: "Critical for security dimension organization"
+      
+    - key: "backup-required"
+      description: "Indicates if resource requires backup (AWS standard naming)"
+      allowed_values: ["true", "false"]
+      example: "true"
+      category: "operational"
+      aws_guidance: "Operational excellence tag for backup automation"
+      
+    - key: "disaster-recovery"
+      description: "Disaster recovery requirements (AWS standard naming)"
+      allowed_values: ["critical", "important", "normal", "low"]
+      example: "critical"
+      category: "operational"
+      aws_guidance: "Operational resilience classification"
+      
+    # Enhanced Financial Management (FinOps Integration)
+    - key: "chargeback-code"
+      description: "Internal chargeback or billing code (AWS standard naming)"
+      format: "CHG-XXXX-XXXX"
+      example: "CHG-2024-0001"
+      validation_pattern: "^CHG-[0-9]{4}-[0-9]{4}$"
+      category: "business"
+      aws_guidance: "Enable accurate chargeback and showback capabilities"
+      
+    - key: "budget-category"
+      description: "Budget category for cost tracking (AWS standard naming)"
+      allowed_values: ["infrastructure", "development", "operations", "security"]
+      example: "infrastructure"
+      category: "business"
+      aws_guidance: "Essential for budget allocation and tracking"
+      
+    # 2025 Enhancement Tags (Advanced Capabilities)
+    - key: "carbon-footprint-category"
+      description: "Sustainability and carbon footprint classification (2025 capability)"
+      allowed_values: ["low-impact", "medium-impact", "high-impact", "carbon-neutral"]
+      example: "low-impact"
+      category: "sustainability"
+      aws_guidance: "2025 sustainability tracking for carbon accounting"
+      
+    - key: "ml-workload-type"
+      description: "Machine learning workload classification (2025 capability)"
+      allowed_values: ["training", "inference", "data-preprocessing", "model-serving"]
+      example: "inference"
+      category: "technical"
+      aws_guidance: "ML workload cost attribution and optimization"
+      
+    - key: "contact-email"
+      description: "Primary contact for the resource (AWS standard naming)"
+      format: "Valid email address"
+      example: "platform-team@company.com"
+      validation_pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+      category: "business"
+      aws_guidance: "Essential for resource ownership and incident response"
+
+  # CONDITIONAL TAGS - Required under specific circumstances (AWS Prescriptive Guidance)
+  conditional_tags:
+    # For production resources (Critical for Step 5 - Measure and Evolve)
+    production_required:
+      condition: "environment-id == 'prod'"
+      aws_guidance: "Production resources require enhanced governance and monitoring"
+      enforcement_method: ["scp", "tag_policy", "config_rule"]
+      tags:
+        - key: "maintenance-window"
+          description: "Scheduled maintenance window (AWS standard naming)"
+          format: "Day-HHMM-HHMM (UTC)"
+          example: "Sunday-0200-0400"
+          category: "operational"
+          aws_guidance: "Critical for production change management"
+          
+        - key: "sla-level"
+          description: "Service Level Agreement classification (AWS standard naming)"
+          allowed_values: ["gold", "silver", "bronze"]
+          example: "gold"
+          category: "operational"
+          aws_guidance: "Production SLA tracking for service quality management"
+          
+        - key: "compliance-framework"
+          description: "Applicable compliance framework (AWS standard naming)"
+          allowed_values: ["soc2", "pci", "hipaa", "gdpr", "iso27001", "sox", "none"]
+          example: "soc2"
+          category: "security"
+          aws_guidance: "Critical for regulatory compliance and audit trails"
+
+    # For data storage resources (Critical for data governance)
+    data_resources:
+      condition: "ResourceType in ['s3', 'rds', 'dynamodb', 'efs', 'fsx']"
+      aws_guidance: "Data services require enhanced security and governance tagging"
+      enforcement_method: ["scp", "tag_policy"]
+      tags:
+        - key: "data-retention-period"
+          description: "Data retention period in days (AWS standard naming)"
+          format: "Number of days"
+          example: "2555"  # 7 years
+          validation_pattern: "^[0-9]+$"
+          category: "governance"
+          aws_guidance: "Critical for regulatory compliance and cost optimization"
+          
+        - key: "encryption-required"
+          description: "Encryption requirement (AWS standard naming)"
+          allowed_values: ["true", "false"]
+          example: "true"
+          category: "security"
+          aws_guidance: "Essential for data protection and compliance"
+
+    # For compute resources (Cost optimization focus)
+    compute_resources:
+      condition: "ResourceType in ['ec2', 'lambda', 'ecs', 'eks']"
+      aws_guidance: "Compute resources critical for cost optimization and right-sizing"
+      enforcement_method: ["tag_policy"]
+      tags:
+        - key: "auto-scaling"
+          description: "Auto-scaling configuration (AWS standard naming)"
+          allowed_values: ["enabled", "disabled", "scheduled"]
+          example: "enabled"
+          category: "operational"
+          aws_guidance: "Critical for cost optimization automation"
+          
+        - key: "scheduled-shutdown"
+          description: "Automatic shutdown schedule (AWS standard naming)"
+          format: "Cron expression or 'none'"
+          example: "0 18 * * 1-5"  # Weekdays at 6 PM
+          category: "operational"
+          aws_guidance: "Essential for non-production cost optimization"
+
+# TAG VALIDATION RULES
+validation_rules:
+  # Format validation
+  format_validation:
+    enabled: true
+    strict_mode: false  # Warning vs error for violations
+    
+  # Required tag validation
+  required_tag_validation:
+    enabled: true
+    enforcement_level: "error"  # error, warning, or info
+    
+  # Value validation
+  value_validation:
+    enabled: true
+    case_sensitive: false
+    
+  # Length validation
+  length_validation:
+    max_key_length: 128
+    max_value_length: 256
+    
+# COST ALLOCATION MAPPING
+cost_allocation:
+  primary_dimensions:
+    - "CostCenter"
+    - "Project" 
+    - "BusinessUnit"
+    - "Environment"
+    
+  secondary_dimensions:
+    - "Application"
+    - "TeamName"
+    - "BudgetCategory"
+    
+  reporting_hierarchy:
+    level_1: "BusinessUnit"
+    level_2: "CostCenter" 
+    level_3: "Project"
+    level_4: "Application"
+    
+# AWS PRESCRIPTIVE GUIDANCE 5-STEP METHODOLOGY
+aws_methodology:
+  step_1:
+    name: "Define tagging dictionary"
+    description: "Create standardized tags for technical, business, and security dimensions"
+    status: "completed"
+    deliverable: "This comprehensive tagging dictionary"
+    
+  step_2:
+    name: "Publish tagging dictionary"
+    description: "Distribute dictionary across organization via wikis, all-hands meetings"
+    status: "in_progress"
+    deliverable: "Organizational awareness and adoption"
+    
+  step_3:
+    name: "Define rules for applying tags"
+    description: "Establish enforcement via SCPs, tag policies, and Config rules"
+    status: "planned"
+    deliverable: "Automated governance policies"
+    
+  step_4:
+    name: "Apply tags"
+    description: "Use Tag Editor, CloudFormation, and cost allocation tags"
+    status: "planned"
+    deliverable: "Comprehensive resource tagging"
+    
+  step_5:
+    name: "Measure, enforce, and evolve"
+    description: "Continuous monitoring, compliance checking, and strategy evolution"
+    status: "planned"
+    deliverable: "Ongoing optimization and governance"
+
+# GOVERNANCE FRAMEWORK (AWS Prescriptive Guidance Aligned)
+governance:
+  # Multi-layered enforcement approach
+  enforcement_strategy:
+    proactive:
+      description: "Prevent non-compliant resource creation"
+      tools: ["Service Control Policies", "Tag Policies", "CloudFormation", "Service Catalog"]
+      
+    reactive:
+      description: "Identify and remediate non-compliant resources"
+      tools: ["AWS Config Rules", "Resource Groups Tagging API", "Cloud Custodian"]
+  
+  # Tag policies and enforcement
+  enforcement:
+    # Service Control Policies (AWS Prescriptive Guidance)
+    scp_enforcement:
+      enabled: true
+      deny_untagged_resources: false  # Warning mode initially
+      required_tags: ["cost-center-id", "project-id", "environment-id", "business-unit-id", "application-id", "team-name"]
+      aws_guidance: "Proactive enforcement mechanism - prevent resource creation without tags"
+      
+    # AWS Tag Policies (AWS Prescriptive Guidance)
+    tag_policies:
+      enabled: true
+      case_enforcement: "lowercase"
+      allowed_values_enforcement: true
+      standardization: "hyphen-separated (AWS standard)"
+      aws_guidance: "Enforce tagging standards across organizational units"
+      
+  # Monitoring and compliance (AWS Prescriptive Guidance KPIs)
+  monitoring:
+    # Key Performance Indicators
+    tagging_kpis:
+      - name: "Tag Coverage Rate (per tag key)"
+        description: "Percentage of resources with specific tags"
+        target: "95%"
+        frequency: "daily"
+        
+      - name: "Tag Coverage Rate (aggregate)"
+        description: "Overall tagging compliance percentage"
+        target: "90%"
+        frequency: "daily"
+        
+      - name: "Percent of Total Spend Tagged"
+        description: "Financial visibility coverage"
+        target: "85%"
+        frequency: "weekly"
+        
+      - name: "Percent of Non-allocable Spend"
+        description: "Untagged cost identification"
+        target: "<15%"
+        frequency: "weekly"
+        
+    # Outcome-based KPIs
+    outcome_kpis:
+      - name: "Number of Resources Terminated"
+        description: "Cleanup efficiency through tagging"
+        frequency: "monthly"
+        
+      - name: "Money Saved"
+        description: "Cost optimization impact"
+        frequency: "monthly"
+        
+      - name: "Time Saved Through Automation"
+        description: "Operational efficiency gained"
+        frequency: "quarterly"
+        
+    # AWS Native Tools Integration
+    aws_tools:
+      cost_explorer:
+        enabled: true
+        tag_based_analysis: true
+        custom_dashboards: true
+        
+      quicksight:
+        enabled: true
+        business_intelligence: true
+        executive_dashboards: true
+        
+      athena:
+        enabled: true
+        advanced_querying: true
+        cost_usage_analysis: true
+        
+    dashboards:
+      - name: "Tag Compliance Dashboard"
+        metrics: ["tag_coverage_rate", "compliance_score", "non_compliant_resources"]
+        aws_guidance: "Monitor Step 5 - Measure and evolve"
+        
+      - name: "Cost Allocation Dashboard" 
+        metrics: ["cost_by_project", "cost_by_environment", "cost_by_team", "spend_tagged_percentage"]
+        aws_guidance: "Financial governance visibility"
+        
+      - name: "FinOps Dashboard"
+        metrics: ["showback_accuracy", "chargeback_readiness", "optimization_opportunities"]
+        aws_guidance: "FinOps Foundation alignment"
+
+# IMPLEMENTATION GUIDELINES (AWS Prescriptive Guidance Methodology)
+implementation:
+  # Aligned with AWS 5-Step Process
+  rollout_phases:
+    phase_1:
+      name: "Dictionary Development (Step 1)"
+      description: "Define and finalize tagging dictionary"
+      duration: "2 weeks"
+      scope: "Stakeholder engagement and requirements gathering"
+      success_criteria: "Complete dictionary with stakeholder approval"
+      aws_step: "Step 1 - Define tagging dictionary"
+      deliverables:
+        - "Comprehensive tag dictionary"
+        - "Stakeholder alignment"
+        - "Naming convention standards"
+      
+    phase_2:
+      name: "Publication and Approval (Step 2)"
+      description: "Publish dictionary across organization"
+      duration: "1 week"
+      scope: "Organization-wide communication"
+      success_criteria: "100% stakeholder awareness and formal approval"
+      aws_step: "Step 2 - Publish tagging dictionary"
+      deliverables:
+        - "Internal wiki/documentation"
+        - "All-hands presentations"
+        - "Training materials"
+      
+    phase_3:
+      name: "Rule Definition (Step 3)"
+      description: "Define rules for applying tags"
+      duration: "1 week"
+      scope: "Policy and governance setup"
+      success_criteria: "Automated enforcement policies active"
+      aws_step: "Step 3 - Define rules for applying tags"
+      deliverables:
+        - "Service Control Policies"
+        - "Tag Policies"
+        - "AWS Config Rules"
+        
+    phase_4:
+      name: "Tag Application (Step 4)"
+      description: "Apply tags to existing and new resources"
+      duration: "4-6 weeks"
+      scope: "All AWS resources"
+      success_criteria: "90% compliance on required tags"
+      aws_step: "Step 4 - Apply tags"
+      deliverables:
+        - "Bulk tagged existing resources"
+        - "Automated tagging for new resources"
+        - "CloudFormation/Terraform templates updated"
+        
+    phase_5:
+      name: "Measure and Evolve (Step 5)"
+      description: "Continuous monitoring and optimization"
+      duration: "Ongoing"
+      scope: "Organization-wide continuous improvement"
+      success_criteria: "95% overall compliance maintained"
+      aws_step: "Step 5 - Measure, enforce, and evolve"
+      deliverables:
+        - "KPI monitoring dashboards"
+        - "Quarterly strategy reviews"
+        - "Continuous optimization"
+      
+  # AWS Prescriptive Guidance Tool Recommendations
+  tools_and_automation:
+    # Step 4 - Apply Tags Tools
+    tag_application_tools:
+      aws_native:
+        - name: "Tag Editor"
+          use_case: "Bulk tagging existing resources"
+          aws_guidance: "Primary tool for existing resource remediation"
+          
+        - name: "AWS CloudFormation"
+          use_case: "Infrastructure as Code tagging"
+          aws_guidance: "Embed tags in templates for new resources"
+          
+        - name: "Cost Allocation Tags"
+          use_case: "Financial reporting integration"
+          aws_guidance: "Enable cost allocation in Billing console"
+          
+      third_party:
+        - "Terraform with provider-level tagging"
+        - "AWS CDK with embedded tags"
+        - "Custom automation scripts"
+        - "Cloud Custodian for policy enforcement"
+      
+    # Step 5 - Measure and Enforce Tools
+    validation_and_monitoring_tools:
+      aws_native:
+        - name: "AWS Config Rules"
+          use_case: "Compliance monitoring and remediation"
+          aws_guidance: "Use 'required-tags' managed rule"
+          
+        - name: "AWS Organizations Tag Policies"
+          use_case: "Centralized tag governance"
+          aws_guidance: "Enforce standards across OUs"
+          
+        - name: "Resource Groups Tagging API"
+          use_case: "Identify untagged resources"
+          aws_guidance: "Reactive enforcement and remediation"
+          
+      advanced_tools:
+        - "Cloud Custodian for automated remediation"
+        - "GorillaStack for automated tagging"
+        - "InvenTag AWS for comprehensive reporting"
+        - "Custom compliance dashboards"
+      
+# EXCEPTION HANDLING
+exceptions:
+  # Resources that may be exempt from certain tag requirements
+  exempt_resource_types:
+    - resource_type: "aws::ec2::networkacl"
+      exempt_tags: ["Application"]  # Network ACLs may not map to specific applications
+      justification: "Network infrastructure component"
+      
+    - resource_type: "aws::iam::role"  
+      exempt_tags: ["Project"]  # IAM roles may be shared across projects
+      justification: "Shared security component"
+      
+  # Emergency tagging bypass
+  emergency_bypass:
+    enabled: true
+    approval_required: true
+    max_duration: "7 days"
+    notification_required: true
+    
+# STAKEHOLDER ENGAGEMENT (AWS Prescriptive Guidance)
+# Multi-team collaboration requirement
+stakeholder_engagement:
+  required_stakeholders:
+    finance:
+      role: "Cost allocation and chargeback requirements"
+      involvement: "Dictionary definition and KPI establishment"
+      
+    it_engineering:
+      role: "Technical implementation and automation"
+      involvement: "Tool selection and policy implementation"
+      
+    security:
+      role: "Security dimension tags and compliance"
+      involvement: "Security tag definition and governance"
+      
+    operations:
+      role: "Operational tags and lifecycle management"
+      involvement: "Operational excellence tags and monitoring"
+      
+    product_teams:
+      role: "Business context and project alignment"
+      involvement: "Business dimension tag validation"
+
+# TRAINING AND DOCUMENTATION
+training:
+  aws_guidance_alignment: "Multi-stakeholder training approach"
+  required_roles:
+    - "Finance Teams (Cost allocation focus)"
+    - "Cloud Engineers (Technical implementation)"
+    - "DevOps Engineers (Automation and CI/CD)" 
+    - "Solution Architects (Strategy and governance)"
+    - "Project Managers (Business alignment)"
+    - "Security Teams (Compliance and governance)"
+    
+  training_materials:
+    - "AWS Prescriptive Guidance for Cost Allocation Tagging"
+    - "5-Step Methodology Implementation"
+    - "Three-Dimensional Tagging Framework"
+    - "FinOps Foundation Integration"
+    - "Tool Usage Guides (Tag Editor, CloudFormation, Config)"
+    - "KPI Monitoring and Optimization"
+    
+  certification_requirements:
+    - "AWS Cloud Practitioner (recommended)"
+    - "Internal Tagging Certification (required)"
+
+# CONTINUOUS IMPROVEMENT (Step 5 - Measure, Enforce, Evolve)
+review_process:
+  aws_guidance: "Step 5 - Continuous measurement and evolution"
+  review_frequency: "quarterly"
+  review_participants:
+    - "Cloud Center of Excellence (Strategy)"
+    - "Finance Team (Cost allocation effectiveness)"
+    - "Engineering Leadership (Technical implementation)"
+    - "Security Team (Compliance and governance)"
+    - "Operations Team (Operational excellence)"
+    
+  evolution_criteria:
+    - "KPI performance against targets"
+    - "New business requirements and organizational changes"
+    - "Regulatory changes and compliance updates"
+    - "AWS service updates and new capabilities"
+    - "Cost optimization opportunities identified"
+    - "FinOps maturity progression"
+    - "Multi-cloud strategy alignment"
+
+# 2025 FINOPS INTEGRATION (Advanced Capabilities)
+finops_integration:
+  foundation_alignment:
+    description: "FinOps Foundation best practices integration"
+    documentation: "https://www.finops.org/"
+    
+  capabilities:
+    showback:
+      description: "Transparent cost visibility for business units"
+      implementation: "Tag-based cost allocation dashboards"
+      aws_tools: ["Cost Explorer", "QuickSight", "Athena"]
+      
+    chargeback:
+      description: "Accurate cost allocation for internal billing"
+      implementation: "Project and cost-center based allocation"
+      aws_tools: ["Cost Allocation Tags", "Billing API", "Cost Categories"]
+      
+    optimization:
+      description: "Continuous cost optimization through tagging"
+      implementation: "Right-sizing and scheduling automation"
+      aws_tools: ["Compute Optimizer", "Trusted Advisor", "Cost Anomaly Detection"]
+      
+  # 2025 Advanced Capabilities
+  emerging_capabilities:
+    real_time_attribution:
+      description: "Near real-time cost allocation"
+      enablers: ["Advanced tagging automation", "Streaming cost data", "ML-driven attribution"]
+      
+    predictive_optimization:
+      description: "ML-driven cost prediction and optimization"
+      enablers: ["Historical tag data", "Usage pattern analysis", "Predictive scaling"]
+      
+    sustainability_tracking:
+      description: "Carbon footprint tracking via tags"
+      enablers: ["Sustainability tags", "Carbon accounting", "Green computing metrics"]
+
+# MULTI-CLOUD READINESS (2025 Strategy)
+multi_cloud_strategy:
+  description: "Consistent tagging across cloud providers"
+  
+  aws_native:
+    tools: ["AWS Organizations", "Tag Policies", "Cost Explorer"]
+    advantages: ["Native integration", "Comprehensive governance", "Advanced analytics"]
+    
+  cross_cloud_consistency:
+    tag_standardization:
+      format: "cloud-provider:aws, azure, gcp"
+      naming: "Consistent hyphen-separated naming across providers"
+      
+    governance_tools:
+      terraform: "Provider-level default tags for consistency"
+      cloud_custodian: "Multi-cloud policy enforcement"
+      custom_automation: "Cross-cloud compliance monitoring"
+
+# CONTAINER AND KUBERNETES INTEGRATION (2025)
+container_native_tagging:
+  description: "Container-aware tagging for modern workloads"
+  
+  kubernetes_integration:
+    pod_labels: "Map Kubernetes labels to AWS tags"
+    namespace_tagging: "Namespace-based cost allocation"
+    workload_attribution: "Deployment and service-level cost tracking"
+    
+  aws_container_services:
+    ecs:
+      service_tagging: "ECS service and task-level tags"
+      fargate_attribution: "Fargate task cost allocation"
+      
+    eks:
+      cluster_tagging: "EKS cluster cost allocation"
+      node_group_attribution: "Worker node cost tracking"
+      pod_level_visibility: "Kubernetes native cost allocation"
+
+# SECURITY AND COMPLIANCE ENHANCEMENT (2025)
+security_governance:
+  description: "Tag-based security and compliance automation"
+  
+  zero_trust_tagging:
+    resource_classification: "Security posture tagging"
+    access_control: "Tag-based IAM policies"
+    compliance_automation: "Automated security compliance checking"
+    
+  regulatory_frameworks:
+    sox:
+      description: "Sarbanes-Oxley compliance tagging"
+      required_tags: ["financial-impact", "sox-scope", "control-owner"]
+      
+    gdpr:
+      description: "GDPR data protection tagging"
+      required_tags: ["data-category", "retention-period", "processing-purpose"]
+      
+    iso27001:
+      description: "Information security management tagging"
+      required_tags: ["security-classification", "asset-owner", "risk-level"]
+
+# AUTOMATION AND AI/ML INTEGRATION (2025)
+automation_enhancement:
+  description: "AI/ML-driven tagging automation and optimization"
+  
+  intelligent_tagging:
+    auto_discovery: "ML-based resource classification and tagging"
+    pattern_recognition: "Automated tag suggestion based on usage patterns"
+    anomaly_detection: "Cost and usage anomaly detection via tag analysis"
+    
+  predictive_capabilities:
+    cost_forecasting: "Tag-based cost prediction and budgeting"
+    optimization_recommendations: "ML-driven right-sizing and scheduling"
+    capacity_planning: "Predictive capacity planning using tag data"
+    
+  integration_apis:
+    aws_native:
+      - "Resource Groups Tagging API"
+      - "Cost Explorer API"
+      - "AWS Config API"
+      - "Organizations API"
+      
+    third_party:
+      - "Terraform Cloud API"
+      - "Kubernetes API"
+      - "Custom FinOps platforms"
+      - "ITSM integration APIs"
+
+# AWS DOCUMENTATION REFERENCES
+aws_documentation:
+  primary_guides:
+    prescriptive_guidance: "https://docs.aws.amazon.com/prescriptive-guidance/latest/cost-allocation-tagging/"
+    tagging_best_practices: "https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html"
+    well_architected_cost: "https://docs.aws.amazon.com/wellarchitected/latest/cost-optimization-pillar/"
+    
+  implementation_guides:
+    organizations_setup: "https://docs.aws.amazon.com/organizations/latest/userguide/"
+    tag_policies: "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_tag-policies.html"
+    service_control_policies: "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html"
+    config_rules: "https://docs.aws.amazon.com/config/latest/developerguide/required-tags.html"
+    
+  cost_management:
+    cost_explorer: "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/ce-what-is.html"
+    cost_allocation_tags: "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html"
+    budgets: "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/budgets-managing-costs.html"
+    
+  automation_tools:
+    cloudformation: "https://docs.aws.amazon.com/cloudformation/"
+    resource_groups: "https://docs.aws.amazon.com/resourcegroupstaggingapi/latest/userguide/"
+    systems_manager: "https://docs.aws.amazon.com/systems-manager/"
+    
+# EXTERNAL REFERENCES
+external_resources:
+  finops_foundation: "https://www.finops.org/"
+  terraform_tagging: "https://www.terraform.io/docs/configuration/resources.html#default_tags"
+  kubernetes_labels: "https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/"
+  cloud_custodian: "https://cloudcustodian.io/"
+  
+# SUCCESS METRICS AND TARGETS (2025 KPIs)
+success_metrics:
+  baseline_targets:
+    tag_coverage_rate: "95%"
+    cost_allocation_accuracy: "90%"
+    compliance_score: "95%"
+    automation_percentage: "80%"
+    
+  advanced_targets:
+    real_time_attribution: "< 1 hour latency"
+    optimization_savings: "15-30% cost reduction"
+    governance_automation: "90% automated compliance"
+    multi_cloud_consistency: "95% cross-cloud standardization"
+    
+  finops_maturity_indicators:
+    showback_adoption: "100% business unit visibility"
+    chargeback_accuracy: "95% allocation precision"
+    optimization_velocity: "Monthly optimization cycles"
+    stakeholder_engagement: "Quarterly business reviews"

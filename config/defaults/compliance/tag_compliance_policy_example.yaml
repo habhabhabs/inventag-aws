@@ -1,0 +1,79 @@
+# AWS Tag Policy Configuration Example
+# This file defines the tagging requirements for AWS resources
+
+required_tags:
+  # Simple required tags (key must exist, any value allowed)
+  - "Owner"
+  - "Project"
+  
+  # Required tags with specific allowed values
+  - key: "Environment"
+    allowed_values:
+      - "production"
+      - "staging"
+      - "development"
+      - "testing"
+  
+  - key: "CostCenter"
+    required_values:
+      - "engineering"
+      - "marketing"
+      - "finance"
+      - "operations"
+  
+  # Required tag with both allowed and required values
+  - key: "Backup"
+    allowed_values:
+      - "daily"
+      - "weekly"
+      - "monthly"
+      - "none"
+  
+  - key: "Compliance"
+    allowed_values:
+      - "pci"
+      - "hipaa"
+      - "sox"
+      - "gdpr"
+      - "none"
+
+# Optional: Configure specific service requirements
+service_specific:
+  # Example: EC2 instances must have additional tags
+  EC2:
+    Instance:
+      additional_required_tags:
+        - "InstanceType"
+        - "Patch-Group"
+  
+  # Example: S3 buckets must have data classification
+  S3:
+    Bucket:
+      additional_required_tags:
+        - key: "DataClassification"
+          allowed_values:
+            - "public"
+            - "internal"
+            - "confidential"
+            - "restricted"
+
+# Optional: Exemptions (resources that don't need to follow the policy)
+exemptions:
+  # Exempt specific resource types
+  - service: "IAM"
+    type: "Role"
+    reason: "Service roles don't require standard tags"
+  
+  # Exempt resources with specific naming patterns
+  - service: "EC2"
+    type: "Security Group"
+    name_pattern: "default*"
+    reason: "Default security groups are managed by AWS"
+  
+  # Exempt specific resources by ID
+  - service: "S3"
+    type: "Bucket"
+    resource_ids:
+      - "aws-cloudtrail-logs-*"
+      - "aws-config-bucket-*"
+    reason: "AWS service buckets"

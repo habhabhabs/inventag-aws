@@ -1,0 +1,130 @@
+# Tag Mappings Configuration
+# Maps AWS resource tags to custom column names in BOM reports
+# Format: List of tag mapping objects with tag and name fields
+
+tag_mappings:
+  # Core organizational tags
+  - tag: "Owner"
+    name: "Resource Owner"
+    description: "Resource owner or responsible team"
+    
+  - tag: "CostCenter"
+    name: "Cost Center"
+    description: "Cost center for billing purposes"
+    
+  - tag: "Environment"
+    name: "Environment"
+    description: "Environment type (dev, test, prod)"
+    
+  - tag: "Project"
+    name: "Project Name"
+    description: "Project identifier"
+    
+  # Business tags
+  - tag: "BusinessUnit"
+    name: "Business Unit"
+    description: "Business unit or department"
+    
+  - tag: "DataClassification"
+    name: "Data Classification"
+    description: "Data sensitivity classification"
+    
+  - tag: "Compliance"
+    name: "Compliance Requirements"
+    description: "Compliance requirements or standards"
+    
+  # Application tags
+  - tag: "Application"
+    name: "Application"
+    description: "Application name or identifier"
+    
+  - tag: "Version"
+    name: "Version"
+    description: "Application or resource version"
+    
+  # Operational tags
+  - tag: "Backup"
+    name: "Backup Required"
+    description: "Backup requirements"
+    
+  - tag: "Monitoring"
+    name: "Monitoring Level"
+    description: "Monitoring requirements"
+    
+  - tag: "MaintenanceWindow"
+    name: "Maintenance Window"
+    description: "Scheduled maintenance window"
+    
+  # Financial tags
+  - tag: "Budget"
+    name: "Budget Code"
+    description: "Budget allocation code"
+    
+  - tag: "ChargebackCode"
+    name: "Chargeback Code"
+    description: "Chargeback code for billing"
+    
+  # Technical tags
+  - tag: "Tier"
+    name: "Architecture Tier"
+    description: "Application tier (web, app, db)"
+    
+  - tag: "Contact"
+    name: "Technical Contact"
+    description: "Technical contact person"
+    
+  - tag: "Documentation"
+    name: "Documentation URL"
+    description: "Link to documentation"
+    
+  # Lifecycle tags
+  - tag: "Created"
+    name: "Created Date"
+    description: "Resource creation date"
+    
+  - tag: "Expires"
+    name: "Expiration Date"
+    description: "Resource expiration date"
+    
+  - tag: "Lifecycle"
+    name: "Lifecycle Stage"
+    description: "Resource lifecycle stage"
+    
+  # Security tags
+  - tag: "Encryption"
+    name: "Encryption Status"
+    description: "Encryption status"
+    
+  - tag: "PublicAccess"
+    name: "Public Access"
+    description: "Public access configuration"
+    
+  # Custom enterprise tags (examples)
+  - tag: "company:cost-center"
+    name: "Enterprise Cost Center"
+    description: "Company-specific cost center"
+    
+  - tag: "company:business-unit"
+    name: "Enterprise Business Unit"
+    description: "Company-specific business unit"
+    
+  - tag: "company:data-classification"
+    name: "Enterprise Data Classification"
+    description: "Company data classification"
+    
+  - tag: "company:backup-required"
+    name: "Enterprise Backup Policy"
+    description: "Company backup policy"
+    
+  # Infrastructure tags
+  - tag: "InstanceType"
+    name: "Instance Type"
+    description: "EC2 instance type"
+    
+  - tag: "PatchGroup"
+    name: "Patch Group"
+    description: "Patch management group"
+    
+  - tag: "AutoScaling"
+    name: "Auto Scaling Enabled"
+    description: "Auto scaling configuration"

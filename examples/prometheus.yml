@@ -1,0 +1,32 @@
+# Prometheus configuration for InvenTag metrics collection
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Scrape Prometheus Push Gateway for InvenTag metrics
+  - job_name: 'pushgateway'
+    static_configs:
+      - targets: ['prometheus-pushgateway:9091']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Scrape Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+# Alerting rules for InvenTag compliance monitoring
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Example alerting rules (uncomment and customize as needed)
+# rule_files:
+#   - "inventag_alerts.yml"

@@ -1,0 +1,150 @@
+name: 🚀 Feature Request
+description: Suggest a new feature or enhancement for InvenTag
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please provide as much detail as possible.
+        
+  - type: dropdown
+    id: feature_type
+    attributes:
+      label: Feature Type
+      description: What type of feature is this?
+      options:
+        - New AWS service support
+        - Report generation enhancement
+        - Performance improvement
+        - CLI/UX improvement
+        - Discovery enhancement
+        - Security/compliance feature
+        - Integration (CI/CD, etc.)
+        - Documentation improvement
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Use Case
+      description: |
+        What problem does this feature solve? Or what use case does it enable?
+        Please be specific about the business value or user benefit.
+      placeholder: |
+        As a [type of user], I need [functionality] so that [benefit/value].
+        
+        For example: As a DevOps engineer, I need InvenTag to support AWS AppFlow 
+        so that I can track our data integration pipelines in our BOM reports.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: |
+        Describe your preferred solution. How should this feature work?
+      placeholder: |
+        The feature should work by...
+        
+        Example commands:
+        ./inventag.sh --include-service appflow
+        
+        Expected behavior:
+        - Discovery of AppFlow flows
+        - Include in Excel reports under "Data Integration" sheet
+        - Show flow status, source/destination connections
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: |
+        Have you considered any alternative solutions or workarounds?
+      placeholder: |
+        I've considered:
+        1. Using a different tool - but it doesn't integrate well
+        2. Manual tracking - but it's error-prone and time-consuming
+        3. Custom scripts - but they lack the comprehensive reporting features
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Low - Nice to have
+        - Medium - Would be helpful
+        - High - Important for my workflow
+        - Critical - Blocking my usage
+    validations:
+      required: true
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Implementation Complexity (Your Estimate)
+      description: How complex do you think this feature would be to implement?
+      options:
+        - Low - Simple addition
+        - Medium - Moderate changes required
+        - High - Significant development effort
+        - Very High - Major architectural changes
+        - Not sure
+    validations:
+      required: false
+
+  - type: textarea
+    id: aws_services
+    attributes:
+      label: AWS Services Involved
+      description: |
+        If this relates to AWS services, which ones are involved?
+      placeholder: |
+        - AWS AppFlow
+        - Amazon S3 (for source/destination)
+        - AWS Lambda (for data transformation)
+
+  - type: textarea
+    id: mockup
+    attributes:
+      label: Mockup or Example Output
+      description: |
+        If applicable, provide a mockup, screenshot, or example of what the output should look like.
+        You can attach files by dragging and dropping them here.
+      placeholder: |
+        Example Excel sheet structure:
+        | Service | Resource Type | Resource ID | Status | Source | Destination |
+        |---------|---------------|-------------|--------|--------|-------------|
+        | AppFlow | Flow | MyFlow | Active | S3-bucket | Salesforce |
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Would you be interested in contributing to this feature?
+      options:
+        - label: I'd be willing to contribute code for this feature
+          required: false
+        - label: I'd be willing to test this feature
+          required: false
+        - label: I'd be willing to help with documentation
+          required: false
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: |
+        Any other context, screenshots, or examples that would help us understand this feature request.
+      placeholder: |
+        - Links to AWS documentation
+        - Similar features in other tools
+        - Business context or constraints

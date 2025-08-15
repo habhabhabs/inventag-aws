@@ -1,0 +1,52 @@
+{
+  "accounts": [
+    {
+      "account_id": "123456789012",
+      "account_name": "Global Production Account",
+      "profile_name": "prod-profile",
+      "regions": ["us-east-1", "us-west-2", "ap-southeast-1", "eu-west-1"],
+      "services": ["EC2", "S3", "RDS", "Lambda", "VPC"],
+      "tags": {
+        "Environment": "production",
+        "Team": "platform"
+      }
+    },
+    {
+      "account_id": "123456789013",
+      "account_name": "APAC Development Account",
+      "profile_name": "dev-profile",
+      "regions": ["ap-southeast-1", "ap-north-1", "ap-south-1"],
+      "services": [],
+      "tags": {
+        "Environment": "development",
+        "Region": "apac"
+      }
+    },
+    {
+      "account_id": "123456789014",
+      "account_name": "US Staging Account",
+      "profile_name": "staging-profile",
+      "regions": ["us-east-1", "us-west-2"],
+      "services": ["EC2", "S3", "RDS"],
+      "tags": {
+        "Environment": "staging"
+      }
+    },
+    {
+      "account_id": "123456789015",
+      "account_name": "All Regions Account",
+      "profile_name": "global-profile",
+      "regions": [],
+      "services": [],
+      "tags": {
+        "Environment": "global",
+        "Note": "Empty regions array means scan all available regions"
+      }
+    }
+  ],
+  "settings": {
+    "max_concurrent_accounts": 4,
+    "account_processing_timeout": 1800,
+    "output_directory": "bom_output"
+  }
+}

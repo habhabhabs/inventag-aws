@@ -1,0 +1,1132 @@
+/**
+ * InvenTag Documentation Custom Styling  
+ * Professional AWS Cloud Governance Platform
+ */
+
+/* InvenTag Brand Colors and Variables */
+:root {
+  /* Primary InvenTag Blue - Professional and trustworthy */
+  --ifm-color-primary: #2563eb;
+  --ifm-color-primary-dark: #1d4ed8;
+  --ifm-color-primary-darker: #1e40af;
+  --ifm-color-primary-darkest: #1e3a8a;
+  --ifm-color-primary-light: #3b82f6;
+  --ifm-color-primary-lighter: #60a5fa;
+  --ifm-color-primary-lightest: #93c5fd;
+
+  /* Secondary colors for accents */
+  --inventag-blue: #2563eb;
+  --inventag-blue-light: #3b82f6;
+  --inventag-blue-dark: #1d4ed8;
+  --inventag-gray: #6b7280;
+  --inventag-gray-light: #9ca3af;
+  --inventag-gray-dark: #374151;
+  --inventag-success: #10b981;
+  --inventag-warning: #f59e0b;
+  --inventag-danger: #ef4444;
+
+  /* Typography improvements */
+  --ifm-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+  --ifm-code-font-size: 0.9em;
+  --ifm-font-size-base: 16px;
+  --ifm-line-height-base: 1.6;
+
+  /* Enhanced spacing and layout */
+  --ifm-spacing-horizontal: 1.5rem;
+  --ifm-navbar-height: 4rem;
+  --ifm-footer-padding-vertical: 2rem;
+
+  /* Code highlighting */
+  --docusaurus-highlighted-code-line-bg: rgba(37, 99, 235, 0.1);
+  --ifm-code-background: #f8fafc;
+  --ifm-code-border-radius: 0.375rem;
+  --ifm-code-padding-horizontal: 0.5rem;
+  --ifm-code-padding-vertical: 0.125rem;
+
+  /* Professional shadows and borders */
+  --ifm-global-shadow-lw: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --ifm-global-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --ifm-global-border-width: 1px;
+  --ifm-global-radius: 0.5rem;
+}
+
+/* Dark mode optimizations */
+[data-theme='dark'] {
+  --ifm-color-primary: #60a5fa;
+  --ifm-color-primary-dark: #3b82f6;
+  --ifm-color-primary-darker: #2563eb;
+  --ifm-color-primary-darkest: #1d4ed8;
+  --ifm-color-primary-light: #93c5fd;
+  --ifm-color-primary-lighter: #bfdbfe;
+  --ifm-color-primary-lightest: #dbeafe;
+
+  --docusaurus-highlighted-code-line-bg: rgba(96, 165, 250, 0.2);
+  --ifm-code-background: #1e293b;
+  
+  /* Dark mode specific colors */
+  --inventag-blue: #60a5fa;
+  --inventag-blue-light: #93c5fd;
+  --inventag-blue-dark: #3b82f6;
+  --inventag-gray: #9ca3af;
+  --inventag-gray-light: #d1d5db;
+  --inventag-gray-dark: #6b7280;
+}
+
+/* ===== NAVBAR STYLING ===== */
+.navbar {
+  background: linear-gradient(135deg, var(--inventag-blue) 0%, var(--inventag-blue-dark) 100%);
+  box-shadow: var(--ifm-global-shadow-md);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.navbar__brand {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: white !important;
+}
+
+.navbar__title {
+  color: white !important;
+  font-weight: 700;
+}
+
+.navbar__logo {
+  height: 2rem;
+  margin-right: 0.75rem;
+}
+
+.navbar__item {
+  font-weight: 500;
+}
+
+.navbar__link {
+  color: rgba(255, 255, 255, 0.9) !important;
+  transition: color 0.2s ease;
+}
+
+.navbar__link:hover {
+  color: white !important;
+}
+
+.navbar__link--active {
+  color: white !important;
+  font-weight: 600;
+}
+
+/* GitHub icon styling */
+.header-github-link:before {
+  content: '';
+  width: 24px;
+  height: 24px;
+  display: flex;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='white' d='M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12'/%3E%3C/svg%3E") no-repeat;
+}
+
+[data-theme='dark'] .header-github-link:before {
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='white' d='M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12'/%3E%3C/svg%3E") no-repeat;
+}
+
+/* ===== HERO SECTION STYLING ===== */
+.hero {
+  background: linear-gradient(135deg, var(--inventag-blue) 0%, var(--inventag-blue-dark) 50%, #1e3a8a 100%);
+  color: white;
+  padding: 4rem 0;
+}
+
+.hero__title {
+  font-size: 3rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  color: #ffffff !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.hero__subtitle {
+  font-size: 1.25rem;
+  font-weight: 400;
+  color: #ffffff !important;
+  opacity: 1;
+  margin-bottom: 2rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== CONTENT STYLING ===== */
+.main-wrapper {
+  min-height: calc(100vh - var(--ifm-navbar-height) - var(--ifm-footer-height));
+}
+
+/* Enhanced typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+h1 {
+  color: var(--inventag-blue);
+  border-bottom: 3px solid var(--inventag-blue);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+h2 {
+  color: var(--inventag-blue-dark);
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+h3 {
+  color: var(--inventag-gray-dark);
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+[data-theme='dark'] h1 {
+  color: var(--inventag-blue-light);
+  border-bottom-color: var(--inventag-blue-light);
+}
+
+[data-theme='dark'] h2 {
+  color: var(--inventag-blue);
+}
+
+[data-theme='dark'] h3 {
+  color: var(--inventag-gray-light);
+}
+
+/* ===== CODE STYLING ===== */
+code {
+  background-color: var(--ifm-code-background);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-code-border-radius);
+  font-family: var(--ifm-font-family-monospace);
+  font-size: var(--ifm-code-font-size);
+  padding: var(--ifm-code-padding-vertical) var(--ifm-code-padding-horizontal);
+}
+
+/* Enhanced code blocks */
+.prism-code {
+  border-radius: var(--ifm-global-radius);
+  box-shadow: var(--ifm-global-shadow-lw);
+  border: 1px solid var(--ifm-color-emphasis-200);
+}
+
+/* Language labels for code blocks - Fix plaintext display */
+.prism-code[class*="language-"]::before {
+  content: attr(class);
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--inventag-blue);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  border-bottom-left-radius: var(--ifm-global-radius);
+}
+
+/* Hide ugly prism class names for text blocks */
+.prism-code[class*="language-text"]::before,
+.prism-code[class*="codeblock"]::before,
+.prism-code[class*="thin-scrollbar"]::before {
+  display: none !important;
+}
+
+/* Clean plaintext code blocks */
+.prism-code[class*="language-text"] {
+  position: relative;
+}
+
+.prism-code[class*="language-text"]::after {
+  content: "TEXT";
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--inventag-gray);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  border-bottom-left-radius: var(--ifm-global-radius);
+}
+
+/* Bash/Shell specific styling */
+.prism-code[class*="language-bash"]::before {
+  content: "BASH";
+  background: var(--inventag-gray-dark);
+}
+
+.prism-code[class*="language-json"]::before {
+  content: "JSON";
+  background: var(--inventag-warning);
+}
+
+.prism-code[class*="language-yaml"]::before {
+  content: "YAML";
+  background: var(--inventag-success);
+}
+
+.prism-code[class*="language-python"]::before {
+  content: "PYTHON";
+  background: #3776ab;
+}
+
+.prism-code[class*="language-javascript"]::before {
+  content: "JS";
+  background: #f7df1e;
+  color: black;
+}
+
+/* ===== ADMONITIONS STYLING ===== */
+.admonition {
+  border-radius: var(--ifm-global-radius);
+  box-shadow: var(--ifm-global-shadow-lw);
+  border-left-width: 4px;
+}
+
+.admonition-heading {
+  font-weight: 700;
+}
+
+/* Custom admonition for AWS/Cloud specific content */
+.admonition-aws {
+  border-left-color: #ff9900;
+  background-color: rgba(255, 153, 0, 0.05);
+}
+
+.admonition-aws .admonition-heading {
+  color: #ff9900;
+}
+
+/* ===== SIDEBAR STYLING ===== */
+.theme-doc-sidebar-container {
+  border-right: 1px solid var(--ifm-color-emphasis-200);
+}
+
+/* Fix light theme sidebar text visibility */
+.menu__link {
+  border-radius: var(--ifm-global-radius);
+  transition: all 0.2s ease;
+  color: var(--ifm-color-content) !important; /* Ensure text is always visible */
+}
+
+.menu__link:hover {
+  background-color: rgba(37, 99, 235, 0.1);
+  color: var(--inventag-blue) !important;
+}
+
+.menu__link--active {
+  background-color: var(--inventag-blue);
+  color: white !important;
+  font-weight: 600;
+}
+
+.menu__link--active:hover {
+  background-color: var(--inventag-blue-dark);
+}
+
+/* Light theme specific sidebar fixes */
+[data-theme='light'] .menu__link {
+  color: var(--ifm-color-content-secondary) !important;
+}
+
+[data-theme='light'] .menu__link:hover {
+  color: var(--inventag-blue-dark) !important;
+}
+
+[data-theme='light'] .menu__list-item-collapsible .menu__link {
+  color: var(--ifm-color-emphasis-800) !important;
+}
+
+/* Critical fix: Light theme active menu item visibility */
+[data-theme='light'] .menu__link--active {
+  background-color: var(--inventag-blue) !important;
+  color: white !important;
+  font-weight: 700 !important;
+  border: 1px solid var(--inventag-blue-dark) !important;
+}
+
+[data-theme='light'] .menu__link--active:hover {
+  background-color: var(--inventag-blue-dark) !important;
+  color: white !important;
+}
+
+/* Ensure high contrast for selected items in light mode */
+[data-theme='light'] .menu__list-item--collapsed .menu__link--active,
+[data-theme='light'] .menu__list-item .menu__link--active {
+  background: linear-gradient(135deg, var(--inventag-blue) 0%, var(--inventag-blue-dark) 100%) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 6px !important;
+}
+
+/* Fix for parent category text when child is selected - keep parent text dark */
+[data-theme='light'] .menu__link--sublist.menu__link--active,
+[data-theme='light'] .menu__link--sublist-caret.menu__link--active,
+[data-theme='light'] .menu__list-item-collapsible .menu__link--active {
+  background: transparent !important;
+  color: var(--ifm-color-emphasis-800) !important;
+  font-weight: 600 !important;
+  border: none !important;
+  text-shadow: none !important;
+}
+
+/* Ensure parent categories remain readable when expanded with active children */
+[data-theme='light'] .menu__link--sublist:hover,
+[data-theme='light'] .menu__link--sublist-caret:hover {
+  background: rgba(37, 99, 235, 0.05) !important;
+  color: var(--inventag-blue-dark) !important;
+}
+
+/* Only actual leaf menu items (non-sublist items) should have white text on blue background */
+[data-theme='light'] .menu__link--active:not(.menu__link--sublist):not(.menu__link--sublist-caret) {
+  background: linear-gradient(135deg, var(--inventag-blue) 0%, var(--inventag-blue-dark) 100%) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 6px !important;
+  font-weight: 700 !important;
+  border: 1px solid var(--inventag-blue-dark) !important;
+}
+
+/* Dark theme sidebar improvements */
+[data-theme='dark'] .menu__link {
+  color: var(--ifm-color-content) !important;
+}
+
+[data-theme='dark'] .menu__link:hover {
+  color: var(--inventag-blue-light) !important;
+}
+
+/* ===== FOOTER STYLING ===== */
+.footer {
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  color: #d1d5db;
+}
+
+.footer__title {
+  color: white;
+  font-weight: 700;
+}
+
+.footer__link-item {
+  color: #d1d5db;
+  transition: color 0.2s ease;
+}
+
+.footer__link-item:hover {
+  color: var(--inventag-blue-light);
+}
+
+.footer__copyright {
+  color: #9ca3af;
+  border-top: 1px solid #374151;
+  padding-top: 1rem;
+  margin-top: 2rem;
+}
+
+.footer__copyright a {
+  color: var(--inventag-blue-light);
+  text-decoration: none;
+}
+
+.footer__copyright a:hover {
+  text-decoration: underline;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+  .hero__title {
+    font-size: 2rem;
+  }
+  
+  .hero__subtitle {
+    font-size: 1rem;
+  }
+  
+  .navbar__title {
+    font-size: 1rem;
+  }
+  
+  h1 {
+    font-size: 1.75rem;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+  }
+}
+
+/* ===== UTILITY CLASSES ===== */
+.inventag-badge {
+  background: var(--inventag-blue);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.inventag-highlight {
+  background: linear-gradient(120deg, rgba(37, 99, 235, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  border-left: 3px solid var(--inventag-blue);
+}
+
+/* Professional button styling */
+.button--primary {
+  background: linear-gradient(135deg, var(--inventag-blue) 0%, var(--inventag-blue-dark) 100%);
+  border: none;
+  box-shadow: var(--ifm-global-shadow-md);
+  transition: all 0.2s ease;
+}
+
+.button--primary:hover {
+  background: linear-gradient(135deg, var(--inventag-blue-dark) 0%, #1e3a8a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 25px -8px rgba(37, 99, 235, 0.5);
+}
+
+/* Enhanced hero section button styling */
+.hero .button--secondary {
+  background: #ffffff !important;
+  color: var(--inventag-blue) !important;
+  border: 2px solid #ffffff !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.hero .button--secondary:hover {
+  background: #f8fafc !important;
+  color: var(--inventag-blue-dark) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2) !important;
+}
+
+.hero .button--outline {
+  background: transparent !important;
+  color: #ffffff !important;
+  border: 2px solid rgba(255, 255, 255, 0.8) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.hero .button--outline:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Fix illegible outline primary buttons in features section */
+.button--outline.button--primary {
+  color: var(--inventag-blue) !important;
+  border-color: var(--inventag-blue) !important;
+  background: transparent !important;
+  font-weight: 600 !important;
+}
+
+.button--outline.button--primary:hover {
+  background: var(--inventag-blue) !important;
+  color: #ffffff !important;
+  border-color: var(--inventag-blue) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+}
+
+/* ===== TABLE STYLING ===== */
+table {
+  border-collapse: collapse;
+  border-radius: var(--ifm-global-radius);
+  overflow: hidden;
+  box-shadow: var(--ifm-global-shadow-lw);
+}
+
+th {
+  background: var(--inventag-blue);
+  color: white;
+  font-weight: 700;
+  text-align: left;
+}
+
+tr:nth-child(even) {
+  background-color: rgba(37, 99, 235, 0.02);
+}
+
+tr:hover {
+  background-color: rgba(37, 99, 235, 0.05);
+}
+
+[data-theme='dark'] th {
+  background: var(--inventag-blue-dark);
+}
+
+[data-theme='dark'] tr:nth-child(even) {
+  background-color: rgba(96, 165, 250, 0.05);
+}
+
+[data-theme='dark'] tr:hover {
+  background-color: rgba(96, 165, 250, 0.1);
+}
+
+/* ===== SEARCH STYLING ===== */
+.DocSearch-Button {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  transition: all 0.2s ease !important;
+}
+
+.DocSearch-Button:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: white !important;
+}
+
+/* ===== ACCESSIBILITY IMPROVEMENTS ===== */
+/* Focus indicators */
+*:focus {
+  outline: 2px solid var(--inventag-blue);
+  outline-offset: 2px;
+}
+
+/* Skip to content link */
+.skip-to-content {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--inventag-blue);
+  color: white;
+  padding: 8px;
+  text-decoration: none;
+  border-radius: 0 0 4px 4px;
+  z-index: 1000;
+  transition: top 0.3s;
+}
+
+.skip-to-content:focus {
+  top: 0;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --ifm-color-primary: #0000ff;
+    --inventag-blue: #0000ff;
+  }
+  
+  [data-theme='dark'] {
+    --ifm-color-primary: #00ffff;
+    --inventag-blue: #00ffff;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}/* 
+===== ENHANCED SYNTAX HIGHLIGHTING ===== */
+/* AWS CLI command highlighting */
+.code-block-aws-command {
+  background-color: rgba(255, 153, 0, 0.1);
+  border-left: 4px solid #ff9900;
+  padding-left: 0.5rem;
+  margin-left: -0.5rem;
+}
+
+/* InvenTag command highlighting */
+.code-block-inventag-command {
+  background-color: rgba(37, 99, 235, 0.1);
+  border-left: 4px solid var(--inventag-blue);
+  padding-left: 0.5rem;
+  margin-left: -0.5rem;
+}
+
+/* Enhanced code block styling for different languages */
+.prism-code[class*="language-bash"] {
+  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+}
+
+.prism-code[class*="language-json"] {
+  background: linear-gradient(135deg, #2d5016 0%, #1a2e05 100%);
+}
+
+.prism-code[class*="language-yaml"] {
+  background: linear-gradient(135deg, #744210 0%, #553308 100%);
+}
+
+.prism-code[class*="language-python"] {
+  background: linear-gradient(135deg, #1e3a5f 0%, #0f1419 100%);
+}
+
+/* Command prompt styling */
+.token.command {
+  color: #ff9900;
+  font-weight: 600;
+}
+
+.token.aws-service {
+  color: #ff9900;
+  font-weight: 500;
+}
+
+.token.inventag-flag {
+  color: var(--inventag-blue-light);
+  font-weight: 500;
+}
+
+/* ===== PROFESSIONAL BADGES AND CALLOUTS ===== */
+.inventag-pro-badge {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.inventag-enterprise-badge {
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.inventag-security-badge {
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* AWS-specific styling */
+.aws-callout {
+  background: linear-gradient(135deg, rgba(255, 153, 0, 0.1) 0%, rgba(255, 153, 0, 0.05) 100%);
+  border: 1px solid rgba(255, 153, 0, 0.2);
+  border-left: 4px solid #ff9900;
+  border-radius: var(--ifm-global-radius);
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.aws-callout-title {
+  color: #ff9900;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aws-callout-title::before {
+  content: "☁️";
+  font-size: 1.2rem;
+}
+
+/* ===== ENHANCED MOBILE RESPONSIVENESS ===== */
+/* Mobile viewport fixes for iPhone 16 Plus and other large phones */
+@media (max-width: 996px) {
+  /* Fix mobile menu bar viewport issues */
+  .navbar {
+    padding: 0 1rem;
+    min-height: 60px;
+  }
+  
+  .navbar__inner {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  
+  .navbar__items {
+    gap: 0.5rem;
+  }
+  
+  .navbar__brand {
+    margin-right: 1rem;
+    flex-shrink: 0;
+  }
+  
+  .navbar__toggle {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    background: transparent !important;
+    border: none !important;
+    padding: 4px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+  }
+  
+  /* Fix mobile menu toggle button */
+  .navbar__toggle svg {
+    width: 20px;
+    height: 20px;
+    color: white !important;
+    fill: currentColor !important;
+  }
+  
+  /* Ensure mobile menu toggle is always visible and functional */
+  .navbar__toggle:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  /* Mobile menu dropdown improvements */
+  .navbar-sidebar {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    z-index: 9999 !important;
+    background: white !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+  }
+  
+  [data-theme='dark'] .navbar-sidebar {
+    background: var(--ifm-background-color) !important;
+  }
+  
+  .navbar-sidebar__backdrop {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    z-index: 9998 !important;
+  }
+  
+  /* Fix mobile menu content */
+  .navbar-sidebar__brand {
+    padding: 1rem !important;
+    border-bottom: 1px solid var(--ifm-color-emphasis-200) !important;
+  }
+  
+  .navbar-sidebar__items {
+    padding: 1rem !important;
+  }
+  
+  .navbar-sidebar__item {
+    margin: 0.5rem 0 !important;
+  }
+  
+  .navbar-sidebar__close {
+    position: absolute !important;
+    top: 1rem !important;
+    right: 1rem !important;
+    width: 30px !important;
+    height: 30px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important;
+    border: none !important;
+    cursor: pointer !important;
+  }
+  
+  .navbar-sidebar__close svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  
+  .hero {
+    padding: 2rem 0;
+  }
+  
+  .hero__title {
+    font-size: 2.5rem;
+    line-height: 1.2;
+  }
+  
+  .hero__subtitle {
+    font-size: 1.1rem;
+    line-height: 1.4;
+  }
+  
+  /* Ensure consistent navigation across all pages */
+  .theme-doc-sidebar-container {
+    display: block !important;
+  }
+  
+  /* Fix sidebar consistency issues on mobile */
+  .navbar__items--right {
+    flex: 0 0 auto !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .hero__title {
+    font-size: 2rem;
+  }
+  
+  .hero__subtitle {
+    font-size: 1rem;
+  }
+  
+  .navbar__logo {
+    height: 1.5rem;
+  }
+  
+  .navbar__title {
+    font-size: 1.1rem;
+  }
+  
+  /* Stack badges vertically on small screens */
+  .inventag-pro-badge,
+  .inventag-enterprise-badge,
+  .inventag-security-badge {
+    display: block;
+    margin: 0.25rem 0;
+    text-align: center;
+  }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  .navbar,
+  .footer,
+  .theme-doc-sidebar-container,
+  .theme-doc-toc-desktop {
+    display: none !important;
+  }
+  
+  .main-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .container {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    color: black !important;
+    page-break-after: avoid;
+  }
+  
+  .prism-code {
+    background: #f8f9fa !important;
+    border: 1px solid #dee2e6 !important;
+    color: black !important;
+  }
+  
+  a {
+    color: black !important;
+    text-decoration: underline !important;
+  }
+  
+  a[href^="http"]:after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+}
+
+/* ===== PERFORMANCE OPTIMIZATIONS ===== */
+/* Optimize font loading */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+}
+
+/* Optimize animations for better performance */
+.navbar,
+.menu__link,
+.button,
+.footer__link-item {
+  will-change: transform;
+}
+
+/* Reduce layout shifts */
+.navbar__logo {
+  width: 2rem;
+  height: 2rem;
+}
+
+/* ===== NAVIGATION CONSISTENCY FIXES ===== */
+/* Force consistent navigation across ALL documentation pages */
+.navbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 999 !important;
+}
+
+/* Fix navigation consistency issues across different page types */
+.main-wrapper {
+  display: flex !important;
+  flex: 1 0 auto !important;
+  flex-direction: column !important;
+}
+
+/* Ensure consistent sidebar behavior across ALL pages */
+.theme-doc-sidebar-container {
+  display: block !important;
+  border-right: 1px solid var(--ifm-color-emphasis-200) !important;
+}
+
+/* Force all pages to use the same sidebar structure */
+div[class*="docSidebarContainer"] {
+  width: 300px !important;
+  min-width: 300px !important;
+}
+
+/* Ensure sidebar content is consistent */
+.theme-doc-sidebar-menu {
+  padding: 1rem !important;
+  height: 100% !important;
+  overflow-y: auto !important;
+}
+
+.menu__list .menu__list {
+  padding-left: 1rem !important;
+}
+
+/* Ensure consistent styling for all sidebar types including Quick Reference */
+.menu__list-item {
+  margin: 0.25rem 0 !important;
+}
+
+.menu__list-item-collapsible {
+  border-radius: var(--ifm-global-radius) !important;
+}
+
+.menu__list-item-collapsible:hover {
+  background-color: rgba(37, 99, 235, 0.05) !important;
+}
+
+.menu__caret {
+  transition: transform 0.2s ease !important;
+}
+
+.menu__list-item-collapsible--active .menu__caret {
+  transform: rotate(90deg) !important;
+}
+
+/* Ensure consistent header across all pages */
+.navbar__inner {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+}
+
+.navbar__items {
+  display: flex !important;
+  align-items: center !important;
+}
+
+.navbar__items--left {
+  flex: 1 1 auto !important;
+}
+
+.navbar__items--right {
+  flex: 0 0 auto !important;
+}
+
+/* Fix mobile navigation toggle visibility */
+@media (max-width: 996px) {
+  .navbar__toggle {
+    display: flex !important;
+  }
+  
+  .navbar__items--right .navbar__item {
+    display: none !important;
+  }
+  
+  .navbar__items--right .navbar__item:last-child {
+    display: flex !important; /* Keep search visible */
+  }
+  
+  /* Ensure mobile menu works properly */
+  .navbar-sidebar {
+    display: block !important;
+  }
+}
+
+/* ===== DARK MODE SPECIFIC ENHANCEMENTS ===== */
+[data-theme='dark'] .aws-callout {
+  background: linear-gradient(135deg, rgba(255, 153, 0, 0.15) 0%, rgba(255, 153, 0, 0.08) 100%);
+  border-color: rgba(255, 153, 0, 0.3);
+}
+
+[data-theme='dark'] .inventag-highlight {
+  background: linear-gradient(120deg, rgba(96, 165, 250, 0.15) 0%, rgba(96, 165, 250, 0.08) 100%);
+  border-left-color: var(--inventag-blue-light);
+}
+
+[data-theme='dark'] .prism-code[class*="language-bash"] {
+  background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+}
+
+[data-theme='dark'] .prism-code[class*="language-json"] {
+  background: linear-gradient(135deg, #14532d 0%, #052e16 100%);
+}
+
+[data-theme='dark'] .prism-code[class*="language-yaml"] {
+  background: linear-gradient(135deg, #92400e 0%, #451a03 100%);
+}
+
+[data-theme='dark'] .prism-code[class*="language-python"] {
+  background: linear-gradient(135deg, #1e3a8a 0%, #0c1e3e 100%);
+}
+
+/* ===== HASH LINK STYLING ===== */
+/* Change hash symbol (#) to chain emoji (🔗) for header links */
+a.hash-link::before {
+  content: "🔗";
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+a.hash-link:hover::before {
+  opacity: 1;
+}
+
+/* Hide the default hash-link content since we're replacing it with the emoji */
+a.hash-link {
+  font-size: 0;
+  line-height: 0;
+  text-decoration: none;
+}
+
+a.hash-link::before {
+  font-size: 1rem;
+  line-height: normal;
+  vertical-align: middle;
+  margin-left: 0.25rem;
+}

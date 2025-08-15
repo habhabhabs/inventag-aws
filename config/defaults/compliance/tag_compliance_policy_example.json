@@ -1,0 +1,90 @@
+{
+  "required_tags": [
+    "Owner",
+    "Project",
+    {
+      "key": "Environment",
+      "allowed_values": [
+        "production",
+        "staging",
+        "development",
+        "testing"
+      ]
+    },
+    {
+      "key": "CostCenter", 
+      "required_values": [
+        "engineering",
+        "marketing", 
+        "finance",
+        "operations"
+      ]
+    },
+    {
+      "key": "Backup",
+      "allowed_values": [
+        "daily",
+        "weekly", 
+        "monthly",
+        "none"
+      ]
+    },
+    {
+      "key": "Compliance",
+      "allowed_values": [
+        "pci",
+        "hipaa",
+        "sox", 
+        "gdpr",
+        "none"
+      ]
+    }
+  ],
+  "service_specific": {
+    "EC2": {
+      "Instance": {
+        "additional_required_tags": [
+          "InstanceType",
+          "Patch-Group"
+        ]
+      }
+    },
+    "S3": {
+      "Bucket": {
+        "additional_required_tags": [
+          {
+            "key": "DataClassification",
+            "allowed_values": [
+              "public",
+              "internal", 
+              "confidential",
+              "restricted"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "exemptions": [
+    {
+      "service": "IAM",
+      "type": "Role",
+      "reason": "Service roles don't require standard tags"
+    },
+    {
+      "service": "EC2", 
+      "type": "Security Group",
+      "name_pattern": "default*",
+      "reason": "Default security groups are managed by AWS"
+    },
+    {
+      "service": "S3",
+      "type": "Bucket", 
+      "resource_ids": [
+        "aws-cloudtrail-logs-*",
+        "aws-config-bucket-*"
+      ],
+      "reason": "AWS service buckets"
+    }
+  ]
+}

@@ -1,0 +1,119 @@
+name: ❓ Question or Help
+description: Ask a question or get help with InvenTag
+title: "[Question]: "
+labels: ["question", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Need help with InvenTag? Please check our [documentation](https://habhabhabs.github.io/inventag-aws/) first!
+        
+  - type: dropdown
+    id: question_type
+    attributes:
+      label: Question Type
+      description: What type of help do you need?
+      options:
+        - Installation and setup
+        - AWS permissions and IAM
+        - Command usage and CLI
+        - Discovery issues
+        - Report generation
+        - Performance optimization
+        - CI/CD integration
+        - Multi-account setup
+        - Troubleshooting errors
+        - Best practices
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: |
+        Please describe your question or the help you need as clearly as possible.
+      placeholder: |
+        I'm trying to...
+        But I'm getting...
+        What I expected was...
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and Environment
+      description: |
+        Please provide context about your setup and what you're trying to achieve.
+      placeholder: |
+        - AWS account type: (Personal, Organization, Enterprise)
+        - Regions: us-east-1, eu-west-1
+        - Services in use: EC2, S3, RDS, Lambda
+        - Use case: Compliance reporting for SOC2 audit
+        - Team size: 5 developers
+    validations:
+      required: false
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: What Have You Tried?
+      description: |
+        What steps have you already taken to solve this problem?
+      placeholder: |
+        I've tried:
+        1. Reading the documentation at...
+        2. Running the command with --help
+        3. Searching for similar issues
+        4. Checking AWS CloudTrail logs
+
+  - type: textarea
+    id: command_config
+    attributes:
+      label: Command or Configuration
+      description: |
+        If relevant, show the command you're trying to use or configuration you're working with.
+      render: shell
+      placeholder: |
+        ./inventag.sh --create-excel --regions us-east-1,us-west-2 --enable-production-safety
+
+  - type: textarea
+    id: output_logs
+    attributes:
+      label: Output or Error Messages
+      description: |
+        If you're getting any output, warnings, or errors, please include them here.
+        **Important**: Remove any sensitive information like account IDs or credentials.
+      render: shell
+      placeholder: |
+        2025-08-07 21:14:34,956 - inventag - WARNING - No account specification method provided
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm you have done the following
+      options:
+        - label: I have searched existing issues and discussions
+          required: true
+        - label: I have read the [documentation](https://habhabhabs.github.io/inventag-aws/)
+          required: true
+        - label: I have removed any sensitive information from my question
+          required: true
+
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: Additional Information
+      description: |
+        Any additional information that might be helpful.
+      placeholder: |
+        - Screenshots
+        - Links to documentation sections you've read
+        - Specific AWS services you're working with
+        - Timeline or urgency
+        - Any constraints or requirements

@@ -1,0 +1,100 @@
+{
+  "version": "1.0",
+  "encrypted": false,
+  "accounts": [
+    {
+      "account_id": "123456789012",
+      "account_name": "Production Account",
+      "regions": [
+        "us-east-1",
+        "us-west-2",
+        "eu-west-1"
+      ],
+      "services": [
+        "EC2",
+        "S3",
+        "RDS",
+        "Lambda",
+        "ECS",
+        "EKS",
+        "VPC",
+        "IAM"
+      ],
+      "tags": {
+        "Environment": "production",
+        "Owner": "platform-team",
+        "CostCenter": "engineering",
+        "Project": "infrastructure"
+      }
+    },
+    {
+      "account_id": "123456789013",
+      "account_name": "Staging Account",
+      "regions": [
+        "us-east-1"
+      ],
+      "services": [
+        "EC2",
+        "S3",
+        "Lambda",
+        "RDS"
+      ],
+      "tags": {
+        "Environment": "staging",
+        "Owner": "platform-team"
+      }
+    },
+    {
+      "account_id": "123456789014",
+      "account_name": "Development Account",
+      "regions": [
+        "us-east-1"
+      ],
+      "services": [
+        "EC2",
+        "S3",
+        "Lambda"
+      ],
+      "tags": {
+        "Environment": "development",
+        "Owner": "dev-team"
+      }
+    }
+  ],
+  "global_config": {
+    "default_regions": [
+      "us-east-1",
+      "us-west-2"
+    ],
+    "default_services": [
+      "EC2",
+      "S3",
+      "RDS",
+      "Lambda",
+      "ECS",
+      "VPC",
+      "IAM"
+    ],
+    "default_tags": [
+      "Environment",
+      "Owner"
+    ],
+    "max_concurrent_accounts": 3,
+    "max_concurrent_regions": 2,
+    "continue_on_error": true,
+    "retry_attempts": 3,
+    "retry_delay_seconds": 5
+  },
+  "metadata": {
+    "created_by": "CI/CD Pipeline",
+    "created_date": "2024-01-15",
+    "description": "Multi-account configuration for CI/CD environments using environment variables for credentials",
+    "environment": "cicd",
+    "version": "1.0",
+    "notes": [
+      "This configuration assumes AWS credentials are provided via environment variables:",
+      "AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN (optional)",
+      "Suitable for GitHub Actions, AWS CodeBuild, Jenkins, and other CI/CD systems"
+    ]
+  }
+}

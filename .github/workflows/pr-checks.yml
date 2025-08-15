@@ -1,0 +1,324 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  pr-validation:
+    name: PR Validation
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Validate PR Title
+      shell: bash
+      run: |
+        PR_TITLE="${{ github.event.pull_request.title }}"
+        echo "PR Title: $PR_TITLE"
+        
+        # Allow more flexible title formats for this project
+        if [[ ${#PR_TITLE} -lt 10 ]]; then
+          echo "⚠️ PR title seems too short. Please provide a descriptive title."
+        else
+          echo "✅ PR title is adequately descriptive"
+        fi
+
+    - name: Check PR Description
+      env:
+        PR_BODY: ${{ github.event.pull_request.body }}
+      run: |
+        if [ -z "$PR_BODY" ] || [ ${#PR_BODY} -lt 20 ]; then
+          echo "❌ PR description is too short or empty"
+          echo "Please provide a meaningful description of your changes"
+          exit 1
+        fi
+        echo "✅ PR description looks good"
+
+    - name: Check Release Labels
+      run: |
+        # Get PR labels
+        PR_LABELS=$(gh pr view ${{ github.event.number }} --json labels --jq '.labels[].name' || echo "")
+        echo "PR Labels: $PR_LABELS"
+        
+        # Check for version bump labels
+        RELEASE_LABELS=$(echo "$PR_LABELS" | grep "^release:" || echo "")
+        
+        if [ -n "$RELEASE_LABELS" ]; then
+          echo "🏷️ Release labels found: $RELEASE_LABELS"
+          
+          # Validate only one release label
+          RELEASE_COUNT=$(echo "$RELEASE_LABELS" | wc -l)
+          if [ $RELEASE_COUNT -gt 1 ]; then
+            echo "❌ Multiple release labels found. Please use only one:"
+            echo "$RELEASE_LABELS"
+            echo "Valid labels: release:patch, release:minor, release:major"
+            exit 1
+          fi
+          
+          # Validate the release label is valid
+          if echo "$RELEASE_LABELS" | grep -E "^release:(patch|minor|major)$" > /dev/null; then
+            echo "✅ Valid release label: $RELEASE_LABELS"
+            
+            # For major releases, require additional confirmation
+            if echo "$RELEASE_LABELS" | grep "release:major" > /dev/null; then
+              echo "⚠️ MAJOR RELEASE DETECTED"
+              echo "This will increment the major version (e.g., 1.0.0 → 2.0.0)"
+              echo "Please ensure this PR contains breaking changes that warrant a major release"
+            fi
+          else
+            echo "❌ Invalid release label: $RELEASE_LABELS"
+            echo "Valid labels: release:patch, release:minor, release:major"
+            exit 1
+          fi
+        else
+          echo "ℹ️ No release labels found - will default to patch release when merged to main"
+          echo "To specify version bump, add one of these labels:"
+          echo "  - release:patch (for bug fixes, minor updates)"
+          echo "  - release:minor (for new features, backwards compatible)"
+          echo "  - release:major (for breaking changes)"
+        fi
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Check for Breaking Changes
+      env:
+        PR_TITLE: ${{ github.event.pull_request.title }}
+        PR_BODY: ${{ github.event.pull_request.body }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Check if this is marked as a breaking change
+        if [[ "$PR_TITLE" == *"!"* ]] || 
+           [[ "$PR_BODY" == *"BREAKING CHANGE"* ]]; then
+          echo "⚠️ This PR contains breaking changes"
+          echo "Please ensure you've updated documentation and version numbers"
+          
+          # Get PR labels to check if major release label is present
+          PR_LABELS=$(gh pr view ${{ github.event.number }} --json labels --jq '.labels[].name' || echo "")
+          
+          if ! echo "$PR_LABELS" | grep -q "release:major"; then
+            echo "❌ Breaking changes detected but no 'release:major' label found"
+            echo "PRs with breaking changes should be labeled with 'release:major'"
+            echo "Add the 'release:major' label to this PR"
+            exit 1
+          else
+            echo "✅ Breaking changes properly labeled with 'release:major'"
+          fi
+        fi
+
+    - name: Check File Changes
+      run: |
+        # Get list of changed files
+        git diff --name-only origin/main...HEAD > changed_files.txt
+        cat changed_files.txt
+        
+        # Check if critical files are modified
+        if grep -q "scripts/legacy/bom_converter.py" changed_files.txt; then
+          echo "🔧 Core BOM converter modified - ensure thorough testing"
+        fi
+        
+        if grep -q "scripts/legacy/tag_compliance_checker.py" changed_files.txt; then
+          echo "🏷️ Tag compliance checker modified - validate policy logic"
+        fi
+        
+        if grep -q "scripts/development/cicd_bom_generation.py" changed_files.txt; then
+          echo "🚀 CI/CD integration modified - test multi-account workflows"
+        fi
+        
+        if grep -q "scripts/production/" changed_files.txt; then
+          echo "🛡️ Production scripts modified - validate security and monitoring features"
+        fi
+        
+        if grep -q "inventag/" changed_files.txt; then
+          echo "📦 Core package modified - run comprehensive tests"
+        fi
+        
+        if grep -q "requirements.txt\|setup.py\|pyproject.toml" changed_files.txt; then
+          echo "📦 Dependencies modified - check for security vulnerabilities"
+        fi
+        
+        if grep -q "\.github/workflows/" changed_files.txt; then
+          echo "⚙️ CI/CD workflows modified - validate GitHub Actions syntax"
+        fi
+
+  size-check:
+    name: PR Size Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Check PR Size
+      run: |
+        # Count lines added/removed
+        ADDITIONS=$(git diff --numstat origin/main...HEAD | awk '{sum+=$1} END {print sum}')
+        DELETIONS=$(git diff --numstat origin/main...HEAD | awk '{sum+=$2} END {print sum}')
+        TOTAL_CHANGES=$((ADDITIONS + DELETIONS))
+        
+        echo "Lines added: $ADDITIONS"
+        echo "Lines deleted: $DELETIONS"
+        echo "Total changes: $TOTAL_CHANGES"
+        
+        # Warn if PR is very large
+        if [ $TOTAL_CHANGES -gt 1000 ]; then
+          echo "⚠️ This is a large PR with $TOTAL_CHANGES line changes"
+          echo "Consider breaking it into smaller, focused PRs"
+        elif [ $TOTAL_CHANGES -gt 500 ]; then
+          echo "📏 This is a medium-sized PR with $TOTAL_CHANGES line changes"
+        else
+          echo "✅ PR size looks reasonable ($TOTAL_CHANGES line changes)"
+        fi
+
+  conflict-check:
+    name: Merge Conflict Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Check for merge conflicts
+      run: |
+        git fetch origin main
+        if ! git merge-tree $(git merge-base HEAD origin/main) HEAD origin/main | grep -q "<<<<<<< "; then
+          echo "✅ No merge conflicts detected"
+        else
+          echo "❌ Merge conflicts detected"
+          echo "Please resolve conflicts before merging"
+          exit 1
+        fi
+
+  dependency-check:
+    name: Dependency Check
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.changed_files.*.filename, 'requirements.txt') || contains(github.event.pull_request.changed_files.*.filename, 'setup.py')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Check for new dependencies
+      run: |
+        if [ -f requirements.txt ]; then
+          echo "🔍 Checking for potentially risky dependencies..."
+          
+          # List of potentially risky packages to watch for
+          RISKY_PACKAGES="exec eval subprocess os system"
+          
+          while read -r package; do
+            for risky in $RISKY_PACKAGES; do
+              if echo "$package" | grep -qi "$risky"; then
+                echo "⚠️ Potentially risky package detected: $package"
+              fi
+            done
+          done < requirements.txt
+          
+          echo "✅ Dependency check completed"
+        fi
+
+  quick-python-test:
+    name: Quick Python Compatibility Check
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.11', '3.13']  # Test minimum, stable, and latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        allow-prereleases: true
+        
+    - name: Install dependencies
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        
+    - name: Test basic imports
+      shell: bash
+      run: |
+        echo "🐍 Testing with Python ${{ matrix.python-version }}"
+        python --version
+        
+        # Test core imports
+        python -c "import inventag; print('✅ InvenTag package imports')"
+        python -c "from inventag.core import CloudBOMGenerator; print('✅ CloudBOMGenerator imports')"
+        python -c "from inventag.reporting import BOMConverter; print('✅ BOMConverter imports')"
+        
+        # Test dependencies
+        python -c "import boto3; print('✅ boto3 imports')"
+        python -c "import yaml; print('✅ PyYAML imports')"
+        python -c "import openpyxl; print('✅ openpyxl imports')"
+        
+        echo "✅ Python ${{ matrix.python-version }} compatibility confirmed"
+
+  python-style-check:
+    name: Python Code Style Check  
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        
+    - name: Install style tools
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install black flake8 mypy
+        
+    - name: Run Black formatting check
+      shell: bash
+      run: |
+        echo "🎨 Checking code formatting with Black..."
+        black --check --diff inventag/ scripts/ || exit_code=$?
+        if [ ${exit_code:-0} -eq 0 ]; then
+          echo "✅ Code formatting is compliant with Black"
+        else
+          echo "❌ Code formatting issues found. Run 'black inventag/ scripts/' to fix."
+          exit 1
+        fi
+        
+    - name: Run flake8 linting
+      shell: bash
+      run: |
+        echo "🔍 Running flake8 linting..."
+        # Critical errors only for PR checks
+        flake8 inventag/ scripts/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        echo "✅ No critical linting errors found"
+        
+    - name: Run type checking
+      shell: bash
+      continue-on-error: true
+      run: |
+        echo "🔍 Running mypy type checking..."
+        mypy inventag/ --ignore-missing-imports --no-error-summary || echo "⚠️ Type checking warnings found"

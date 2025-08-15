@@ -1,0 +1,237 @@
+name: Fork PR Security Checks
+
+on:
+  pull_request_target:
+    branches: [ main ]
+    types: [opened, synchronize, reopened]
+
+# CRITICAL: Use pull_request_target for forks but with restricted permissions
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  # DO NOT grant secrets access to fork PRs
+
+jobs:
+  # Initial security screening for fork PRs
+  security-screening:
+    name: Fork PR Security Screening
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    
+    steps:
+      - name: Log fork PR details
+        run: |
+          echo "🔍 Fork PR Security Screening"
+          echo "Fork Repository: ${{ github.event.pull_request.head.repo.full_name }}"
+          echo "Author: ${{ github.event.pull_request.user.login }}"
+          echo "PR Title: ${{ github.event.pull_request.title }}"
+          echo "Branch: ${{ github.event.pull_request.head.ref }}"
+          
+      # DO NOT checkout the fork code in this job for security
+      - name: Check author reputation
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+          echo "Checking author reputation for: $AUTHOR"
+          
+          # Get author info (this is safe as it doesn't execute fork code)
+          AUTHOR_INFO=$(gh api users/$AUTHOR --jq '{login: .login, type: .type, created_at: .created_at, public_repos: .public_repos, followers: .followers}')
+          echo "Author info: $AUTHOR_INFO"
+          
+          # Basic reputation checks
+          CREATED_DATE=$(echo "$AUTHOR_INFO" | jq -r '.created_at')
+          ACCOUNT_AGE_DAYS=$(( ($(date +%s) - $(date -d "$CREATED_DATE" +%s)) / 86400 ))
+          
+          echo "Account age: $ACCOUNT_AGE_DAYS days"
+          
+          if [ $ACCOUNT_AGE_DAYS -lt 7 ]; then
+            echo "⚠️ Very new GitHub account (< 7 days old)"
+            echo "Manual review recommended"
+          elif [ $ACCOUNT_AGE_DAYS -lt 30 ]; then
+            echo "⚠️ Relatively new GitHub account (< 30 days old)"
+            echo "Enhanced security checks recommended"
+          else
+            echo "✅ Established GitHub account"
+          fi
+
+      - name: Analyze file changes (metadata only)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔍 Analyzing changed files (metadata only, no code execution)"
+          
+          # Get list of changed files without checking out code
+          CHANGED_FILES=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }}/files --jq '.[].filename')
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          
+          # Security-sensitive file patterns
+          SENSITIVE_PATTERNS=(
+            "\.github/workflows/"
+            "\.github/actions/"
+            "scripts/"
+            "requirements\.txt"
+            "setup\.py"
+            "pyproject\.toml"
+            "inventag/core/"
+            "inventag/cli/"
+            "Dockerfile"
+            "docker-compose"
+          )
+          
+          SECURITY_RISK_SCORE=0
+          
+          for file in $CHANGED_FILES; do
+            for pattern in "${SENSITIVE_PATTERNS[@]}"; do
+              if [[ $file =~ $pattern ]]; then
+                echo "🔍 Security-sensitive file: $file"
+                SECURITY_RISK_SCORE=$((SECURITY_RISK_SCORE + 1))
+              fi
+            done
+          done
+          
+          echo "Security risk score: $SECURITY_RISK_SCORE"
+          
+          if [ $SECURITY_RISK_SCORE -gt 5 ]; then
+            echo "🚨 HIGH SECURITY RISK: Many sensitive files modified"
+            echo "REQUIRES_MANUAL_REVIEW=high" >> $GITHUB_ENV
+          elif [ $SECURITY_RISK_SCORE -gt 2 ]; then
+            echo "⚠️ MEDIUM SECURITY RISK: Some sensitive files modified"  
+            echo "REQUIRES_MANUAL_REVIEW=medium" >> $GITHUB_ENV
+          else
+            echo "✅ LOW SECURITY RISK: No sensitive files modified"
+            echo "REQUIRES_MANUAL_REVIEW=low" >> $GITHUB_ENV
+          fi
+
+      - name: Comment on PR with security assessment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REVIEW_LEVEL="${{ env.REQUIRES_MANUAL_REVIEW }}"
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+          
+          case $REVIEW_LEVEL in
+            "high")
+              COMMENT="## 🔒 Fork PR Security Review Required
+              
+              Thank you for your contribution @$AUTHOR! 
+              
+              **Security Assessment:** HIGH RISK
+              - This PR modifies security-sensitive files
+              - **Manual review required before testing**
+              - Will not run automated tests until approved
+              
+              **Next Steps:**
+              1. ✋ **DO NOT MERGE** until manual security review is complete
+              2. 🔍 Maintainer will review all changes manually
+              3. ✅ Once approved, we'll add the \`safe-to-test\` label
+              4. 🤖 Automated tests will then run
+              
+              **For Contributors:**
+              - Keep your PR focused and avoid unnecessary file changes
+              - Provide detailed explanation of why sensitive files were modified
+              - Be patient while we complete our security review
+              
+              ---
+              *This is an automated security check for fork contributions.*"
+              ;;
+            "medium")
+              COMMENT="## 🔍 Fork PR Security Review
+              
+              Thank you for your contribution @$AUTHOR!
+              
+              **Security Assessment:** MEDIUM RISK
+              - Some sensitive files are modified
+              - Manual review recommended
+              
+              **Next Steps:**
+              1. 🔍 Maintainer will review changes
+              2. ✅ Add \`safe-to-test\` label when approved
+              3. 🤖 Automated tests will run
+              
+              ---
+              *This is an automated security check for fork contributions.*"
+              ;;
+            *)
+              COMMENT="## ✅ Fork PR Security Check
+              
+              Thank you for your contribution @$AUTHOR!
+              
+              **Security Assessment:** LOW RISK
+              - No security-sensitive files modified
+              - Standard review process applies
+              
+              **Next Steps:**
+              1. ✅ Automated tests will run
+              2. 🔍 Maintainer will review your changes
+              3. 🚀 Ready for merge once approved
+              
+              ---
+              *This is an automated security check for fork contributions.*"
+              ;;
+          esac
+          
+          gh pr comment ${{ github.event.number }} --body "$COMMENT"
+
+  # Only run safe tests for fork PRs (no secrets access)
+  safe-fork-tests:
+    name: Safe Fork Tests
+    runs-on: ubuntu-latest
+    if: |
+      github.event.pull_request.head.repo.full_name != github.repository &&
+      (contains(github.event.pull_request.labels.*.name, 'safe-to-test') ||
+       !contains(github.event.pull_request.body, 'security-sensitive'))
+    
+    steps:
+      - name: Checkout PR code (safe)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          # Limit depth for performance
+          fetch-depth: 1
+          # DO NOT persist credentials
+          persist-credentials: false
+          
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies (restricted)
+        run: |
+          python -m pip install --upgrade pip
+          # Only install from requirements.txt, no arbitrary packages
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+          
+      - name: Run safe static tests
+        run: |
+          echo "🔍 Running safe static analysis tests..."
+          
+          # Test imports without execution
+          python -c "import ast; [ast.parse(open(f).read()) for f in ['inventag/__init__.py']]"
+          echo "✅ Python syntax valid"
+          
+          # Test basic imports (no AWS calls)
+          python -c "import inventag; print('✅ Package imports')" || echo "❌ Import failed"
+          
+      - name: Security scan (static only)
+        run: |
+          echo "🔒 Running static security scan..."
+          
+          # Check for obvious security issues without execution
+          if grep -r "eval\|exec\|os\.system\|subprocess\.call" inventag/ scripts/ 2>/dev/null; then
+            echo "⚠️ Potentially dangerous code patterns found"
+          else
+            echo "✅ No obvious dangerous patterns detected"
+          fi
+          
+          # Check for hardcoded credentials
+          if grep -r "aws_access_key\|aws_secret\|password\|token" inventag/ scripts/ 2>/dev/null; then
+            echo "⚠️ Potential credential leak detected - please review"
+          else
+            echo "✅ No obvious credential leaks detected"
+          fi

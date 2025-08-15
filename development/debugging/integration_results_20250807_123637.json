@@ -1,0 +1,103 @@
+{
+  "timestamp": "2025-08-07T12:36:16.585847",
+  "tests": {
+    "passed": 3,
+    "total": 4,
+    "success_rate": 0.75,
+    "details": {
+      "aws_managed_filtering": true,
+      "region_detection": false,
+      "ai_predictions": true,
+      "state_consistency": true,
+      "service_coverage": {
+        "s3": 0,
+        "ec2": 0,
+        "iam": 0,
+        "lambda": 0,
+        "cloudfront": 0,
+        "route53": 0,
+        "rds": 0,
+        "cloudwatch": 0,
+        "logs": 0
+      }
+    }
+  },
+  "performance": {
+    "services_tested": 4,
+    "total_time": 0.31543612480163574,
+    "total_resources": 0.0,
+    "throughput": 0.0,
+    "details": {
+      "s3": {
+        "service": "s3",
+        "avg_time": 0.01772284507751465,
+        "avg_resources": 0.0,
+        "throughput": 0.0,
+        "times": [
+          0.01772284507751465
+        ],
+        "resource_counts": [
+          0
+        ]
+      },
+      "ec2": {
+        "service": "ec2",
+        "avg_time": 0.2556154727935791,
+        "avg_resources": 0.0,
+        "throughput": 0.0,
+        "times": [
+          0.2556154727935791
+        ],
+        "resource_counts": [
+          0
+        ]
+      },
+      "iam": {
+        "service": "iam",
+        "avg_time": 0.010925054550170898,
+        "avg_resources": 0.0,
+        "throughput": 0.0,
+        "times": [
+          0.010925054550170898
+        ],
+        "resource_counts": [
+          0
+        ]
+      },
+      "lambda": {
+        "service": "lambda",
+        "avg_time": 0.031172752380371094,
+        "avg_resources": 0.0,
+        "throughput": 0.0,
+        "times": [
+          0.031172752380371094
+        ],
+        "resource_counts": [
+          0
+        ]
+      }
+    }
+  },
+  "filtering": {
+    "error": "'OptimizedFieldMapper' object has no attribute 'aws_managed_patterns'"
+  },
+  "monitoring": {
+    "configured": true,
+    "services_monitored": 4,
+    "monitoring_interval": 300,
+    "status": {
+      "status": "no_data",
+      "message": "No monitoring data available"
+    }
+  },
+  "ai_predictions": {
+    "source_resources": 0,
+    "predicted_resources": 0,
+    "prediction_rate": 0
+  },
+  "validation": {
+    "components_tested": 4,
+    "components_passed": 4,
+    "issues": []
+  }
+}

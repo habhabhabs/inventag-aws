@@ -1,0 +1,48 @@
+{
+  "all_discovered_resources": [
+    {
+      "service": "S3",
+      "type": "Bucket",
+      "region": "us-east-1",
+      "id": "example-bucket",
+      "name": "example-bucket",
+      "arn": "arn:aws:s3:::example-bucket",
+      "account_id": "123456789012",
+      "tags": {
+        "Environment": "production",
+        "Owner": "data-team"
+      },
+      "discovered_via": "ResourceGroupsTaggingAPI"
+    },
+    {
+      "service": "EC2",
+      "type": "Instance",
+      "region": "us-east-1",
+      "id": "i-1234567890abcdef0",
+      "name": "web-server-01",
+      "arn": "arn:aws:ec2:us-east-1:123456789012:instance/i-1234567890abcdef0",
+      "account_id": "123456789012",
+      "tags": {
+        "Name": "web-server-01",
+        "Environment": "production",
+        "Role": "webserver"
+      },
+      "discovered_via": "EC2API"
+    },
+    {
+      "service": "RDS",
+      "type": "DBInstance",
+      "region": "us-west-2",
+      "id": "prod-database",
+      "name": "prod-database",
+      "arn": "arn:aws:rds:us-west-2:123456789012:db:prod-database",
+      "account_id": "123456789012",
+      "tags": {
+        "Environment": "production",
+        "Role": "database",
+        "Owner": "backend-team"
+      },
+      "discovered_via": "RDSAPI"
+    }
+  ]
+}

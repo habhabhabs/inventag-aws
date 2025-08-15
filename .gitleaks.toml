@@ -1,0 +1,23 @@
+# GitLeaks configuration for InvenTag AWS Discovery
+title = "InvenTag AWS Discovery - GitLeaks Configuration"
+
+# Global allowlist for documentation files containing example credentials
+[allowlist]
+description = "Documentation and example files with safe example credentials"
+regexes = [
+    # AWS Official Example Credentials - these are safe and widely used in AWS documentation
+    "AKIAIOSFODNN7EXAMPLE",
+    "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+    # Common example/placeholder patterns
+    ".*EXAMPLE.*",
+    ".*example.*", 
+    ".*placeholder.*",
+    ".*your-.*",
+    ".*YOUR_.*",
+]
+paths = [
+    ".*\\.md$",
+    ".*README.*",
+    "docs/.*",
+    "website/.*",
+]

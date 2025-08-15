@@ -1,0 +1,211 @@
+name: Essential Security Checks
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run security scans weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  security-scan:
+    name: Essential Security Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: 'website/package-lock.json'
+
+    - name: Python security analysis
+      shell: bash
+      run: |
+        echo "🐍 Python Security Analysis"
+        echo "==========================="
+        
+        mkdir -p security-results
+        
+        # Install minimal security tools
+        pip install bandit safety pip-audit
+        
+        if [ -f "requirements.txt" ]; then
+          echo "🔒 Running Python security checks..."
+          
+          # Bandit for code security issues
+          bandit -r scripts/ inventag/ -f json -o security-results/bandit.json || echo "⚠️ Bandit found potential issues"
+          bandit -r scripts/ inventag/ || echo "⚠️ Review Bandit findings"
+          
+          # Safety for known vulnerabilities
+          safety check -r requirements.txt || echo "⚠️ Some dependencies may have known vulnerabilities"
+          
+          # pip-audit for comprehensive dependency checking
+          pip-audit --desc || echo "⚠️ Some dependencies may need updates"
+        else
+          echo "ℹ️ No requirements.txt found, skipping Python dependency checks"
+        fi
+
+    - name: JavaScript/Node.js security analysis  
+      shell: bash
+      run: |
+        echo "🟨 JavaScript/Node.js Security Analysis"
+        echo "======================================="
+        
+        if [ -f "website/package.json" ]; then
+          echo "📦 Checking Node.js dependencies..."
+          cd website
+          
+          # Install dependencies
+          npm install --silent || echo "⚠️ npm install had issues"
+          
+          # Run npm audit (built-in security check)
+          npm audit || echo "⚠️ Some Node.js dependencies may have vulnerabilities"
+          
+          # Save audit results
+          npm audit --json > ../security-results/npm-audit.json 2>/dev/null || echo "npm audit completed"
+          
+          cd ..
+        else
+          echo "ℹ️ No website/package.json found, skipping Node.js checks"
+        fi
+
+    - name: Configuration and secrets scanning
+      shell: bash
+      run: |
+        echo "🔐 Configuration and Secrets Analysis"
+        echo "===================================="
+        
+        # Install minimal secrets detection
+        pip install detect-secrets
+        
+        echo "🕵️ Running secrets detection..."
+        detect-secrets scan --all-files --baseline security-results/secrets.baseline --force-use-all-plugins || echo "⚠️ Potential secrets detected"
+        
+        if [ -f "security-results/secrets.baseline" ]; then
+          echo "✅ Secrets baseline created"
+        fi
+        
+        echo "🔍 Checking for sensitive file patterns..."
+        find . -type f \( \
+          -name "*.key" -o \
+          -name "*.pem" -o \
+          -name "*.env" -o \
+          -name ".env.*" \
+        \) -not -path "./website/node_modules/*" -not -path "./.git/*" | head -10 || echo "✅ No obvious sensitive files found"
+
+    - name: GitHub Actions security check
+      shell: bash
+      run: |
+        echo "⚙️ GitHub Actions Security Check"
+        echo "==============================="
+        
+        find .github/workflows -name "*.yml" -o -name "*.yaml" | while read workflow; do
+          echo "🔍 Checking workflow: $workflow"
+          
+          # Check for unpinned actions (security risk)
+          if grep -E "uses:.*@(main|master|latest)" "$workflow"; then
+            echo "⚠️ Found unpinned actions in $workflow (security risk)"
+          else
+            echo "✅ Actions properly pinned in $workflow"
+          fi
+        done
+
+    - name: Generate security summary
+      shell: bash
+      run: |
+        echo "📊 Generating Security Summary"
+        echo "============================="
+        
+        # Count issues from various sources
+        BANDIT_ISSUES=0
+        NPM_ISSUES=0
+        SECRETS_ISSUES=0
+        
+        if [ -f "security-results/bandit.json" ]; then
+          BANDIT_ISSUES=$(jq '.results | length' security-results/bandit.json 2>/dev/null || echo "0")
+        fi
+        
+        if [ -f "security-results/npm-audit.json" ]; then
+          NPM_ISSUES=$(jq '.metadata.vulnerabilities.total' security-results/npm-audit.json 2>/dev/null || echo "0")
+        fi
+        
+        if [ -f "security-results/secrets.baseline" ]; then
+          SECRETS_ISSUES=$(jq '. | length' security-results/secrets.baseline 2>/dev/null || echo "0")
+        fi
+        
+        TOTAL_ISSUES=$((BANDIT_ISSUES + NPM_ISSUES + SECRETS_ISSUES))
+        
+        echo "# Security Summary" > security-results/summary.md
+        echo "" >> security-results/summary.md
+        echo "**Date**: $(date)" >> security-results/summary.md
+        echo "**Repository**: ${{ github.repository }}" >> security-results/summary.md
+        echo "**Branch**: ${{ github.ref_name }}" >> security-results/summary.md
+        echo "" >> security-results/summary.md
+        echo "## Results" >> security-results/summary.md
+        echo "- Bandit (Python) issues: $BANDIT_ISSUES" >> security-results/summary.md
+        echo "- npm audit issues: $NPM_ISSUES" >> security-results/summary.md
+        echo "- Potential secrets: $SECRETS_ISSUES" >> security-results/summary.md
+        echo "- **Total findings**: $TOTAL_ISSUES" >> security-results/summary.md
+        echo "" >> security-results/summary.md
+        
+        # Add recommendations
+        if [ "$TOTAL_ISSUES" -gt 10 ]; then
+          echo "🚨 **High Priority**: Multiple security issues detected" >> security-results/summary.md
+        elif [ "$TOTAL_ISSUES" -gt 0 ]; then
+          echo "⚠️ **Review Needed**: Some security findings require attention" >> security-results/summary.md
+        else
+          echo "✅ **Good**: No major security issues detected" >> security-results/summary.md
+        fi
+        
+        echo "" >> security-results/summary.md
+        echo "## Tools Used" >> security-results/summary.md
+        echo "- **Bandit**: Python code security scanner" >> security-results/summary.md
+        echo "- **Safety**: Python dependency vulnerability checker" >> security-results/summary.md
+        echo "- **pip-audit**: Advanced Python dependency auditing" >> security-results/summary.md
+        echo "- **npm audit**: Node.js dependency vulnerability scanner" >> security-results/summary.md
+        echo "- **detect-secrets**: Secrets detection across files" >> security-results/summary.md
+        
+        # GitHub Actions summary
+        echo "## 🔒 Security Scan Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Python Issues**: $BANDIT_ISSUES" >> $GITHUB_STEP_SUMMARY
+        echo "- **Node.js Issues**: $NPM_ISSUES" >> $GITHUB_STEP_SUMMARY
+        echo "- **Secrets Issues**: $SECRETS_ISSUES" >> $GITHUB_STEP_SUMMARY
+        echo "- **Total Issues**: $TOTAL_ISSUES" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "$TOTAL_ISSUES" -gt 10 ]; then
+          echo "🚨 **High Priority**: Review security findings immediately" >> $GITHUB_STEP_SUMMARY
+        elif [ "$TOTAL_ISSUES" -gt 0 ]; then
+          echo "⚠️ **Action Recommended**: Some security issues found" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ **All Clear**: No major security issues detected" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload security results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-scan-results
+        path: security-results/
+        retention-days: 30

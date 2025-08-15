@@ -1,0 +1,147 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior in InvenTag
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out this form as completely as possible.
+        
+  - type: input
+    id: version
+    attributes:
+      label: InvenTag Version
+      description: Which version of InvenTag are you using?
+      placeholder: e.g., v1.0.0, latest commit hash, or "latest from main"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe the unexpected behavior...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Step-by-step instructions to reproduce the bug
+      placeholder: |
+        1. Run command `./inventag.sh --create-excel`
+        2. Wait for discovery to complete
+        3. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen
+      placeholder: The system should have...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened instead
+      placeholder: Instead, it...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs or Output
+      description: |
+        Please include any relevant error messages or logs. 
+        **Tip**: You can attach files by clicking this area to highlight it and then dragging files in.
+      render: shell
+      placeholder: |
+        Paste error logs here...
+        Please remove any sensitive information like account IDs, ARNs, or credentials.
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: Where are you running InvenTag?
+      options:
+        - Local machine (macOS)
+        - Local machine (Linux)
+        - Local machine (Windows)
+        - CI/CD (GitHub Actions)
+        - CI/CD (GitLab)
+        - CI/CD (Other)
+        - AWS CloudShell
+        - Docker container
+        - Other (specify in additional context)
+    validations:
+      required: true
+
+  - type: input
+    id: python_version
+    attributes:
+      label: Python Version
+      description: What version of Python are you using?
+      placeholder: e.g., 3.9.7, 3.11.2
+    validations:
+      required: true
+
+  - type: dropdown
+    id: aws_permissions
+    attributes:
+      label: AWS Permissions
+      description: Which AWS permissions are you using?
+      options:
+        - ReadOnlyAccess (AWS managed policy)
+        - Minimal IAM policy (from documentation)
+        - Custom IAM policy
+        - Administrator/Root access
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: discovery_mode
+    attributes:
+      label: Discovery Mode
+      description: Which discovery mode were you using?
+      options:
+        - Comprehensive discovery (default)
+        - Intelligent discovery
+        - Optimized discovery  
+        - Legacy/ResourceGroupsTagging only
+        - Not sure
+    validations:
+      required: false
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command or Configuration Used
+      description: The exact command line or configuration you used
+      render: shell
+      placeholder: |
+        ./inventag.sh --create-excel --create-word --regions us-east-1,us-west-2
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: |
+        Add any other context about the problem here:
+        - Screenshots
+        - Related issues
+        - Workarounds you've tried
+        - AWS account specifics (region, services used)
+      placeholder: Any additional information that might help us understand the issue...

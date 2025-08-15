@@ -1,0 +1,15 @@
+{
+  "all_discovered_resources": [
+    {
+      "service": "S3",
+      "type": "Bucket",
+      "region": "us-east-1",
+      "id": "test-bucket",
+      "name": "test-bucket",
+      "arn": "arn:aws:s3:::test-bucket",
+      "account_id": "123456789012",
+      "tags": {"Environment": "test"},
+      "discovered_via": "ResourceGroupsTaggingAPI"
+    }
+  ]
+}

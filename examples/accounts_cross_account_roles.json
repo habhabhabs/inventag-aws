@@ -1,0 +1,90 @@
+{
+  "version": "1.0",
+  "encrypted": false,
+  "accounts": [
+    {
+      "account_id": "123456789012",
+      "account_name": "Production Account",
+      "role_arn": "arn:aws:iam::123456789012:role/InvenTagCrossAccountRole",
+      "external_id": "prod-external-id-12345",
+      "regions": ["us-east-1", "us-west-2", "eu-west-1"],
+      "services": ["EC2", "S3", "RDS", "Lambda", "ECS", "EKS", "VPC", "IAM", "CloudTrail"],
+      "tags": {
+        "Environment": "production",
+        "Owner": "platform-team",
+        "CostCenter": "engineering",
+        "Project": "infrastructure",
+        "Compliance": "required"
+      }
+    },
+    {
+      "account_id": "123456789013",
+      "account_name": "Staging Account",
+      "role_arn": "arn:aws:iam::123456789013:role/InvenTagCrossAccountRole",
+      "external_id": "staging-external-id-67890",
+      "regions": ["us-east-1", "us-west-2"],
+      "services": ["EC2", "S3", "RDS", "Lambda", "ECS"],
+      "tags": {
+        "Environment": "staging",
+        "Owner": "platform-team",
+        "CostCenter": "engineering"
+      }
+    },
+    {
+      "account_id": "123456789014",
+      "account_name": "Development Account",
+      "role_arn": "arn:aws:iam::123456789014:role/InvenTagCrossAccountRole",
+      "external_id": "dev-external-id-abcde",
+      "regions": ["us-east-1"],
+      "services": ["EC2", "S3", "Lambda"],
+      "tags": {
+        "Environment": "development",
+        "Owner": "dev-team"
+      }
+    },
+    {
+      "account_id": "123456789015",
+      "account_name": "Security Account",
+      "role_arn": "arn:aws:iam::123456789015:role/InvenTagSecurityRole",
+      "external_id": "security-external-id-fghij",
+      "regions": ["us-east-1", "us-west-2"],
+      "services": ["IAM", "CloudTrail", "Config", "GuardDuty", "SecurityHub"],
+      "tags": {
+        "Environment": "security",
+        "Owner": "security-team",
+        "Purpose": "compliance-monitoring"
+      }
+    }
+  ],
+  "global_config": {
+    "default_regions": ["us-east-1", "us-west-2"],
+    "default_services": ["EC2", "S3", "RDS", "Lambda", "ECS", "VPC", "IAM"],
+    "default_tags": ["Environment", "Owner"],
+    "max_concurrent_accounts": 4,
+    "max_concurrent_regions": 3,
+    "continue_on_error": true,
+    "retry_attempts": 3,
+    "retry_delay_seconds": 5,
+    "assume_role_duration_seconds": 3600
+  },
+  "metadata": {
+    "created_by": "Security Team",
+    "created_date": "2024-01-15",
+    "description": "Enterprise multi-account configuration with cross-account role assumption",
+    "environment": "enterprise",
+    "version": "1.0",
+    "security_notes": [
+      "All accounts use cross-account role assumption for enhanced security",
+      "External IDs are used for additional security validation",
+      "Roles should have minimal required permissions for resource discovery",
+      "Consider rotating external IDs periodically for enhanced security"
+    ],
+    "setup_instructions": [
+      "1. Create InvenTagCrossAccountRole in each target account",
+      "2. Configure trust relationship to allow assumption from management account",
+      "3. Attach appropriate policies for resource discovery (ReadOnlyAccess recommended)",
+      "4. Set unique external IDs for each account",
+      "5. Test role assumption before running BOM generation"
+    ]
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "name": "inventag-aws",
+  "version": "1.0.0",
+  "description": "Professional AWS Cloud Governance Platform",
+  "scripts": {
+    "docs:start": "cd website && npm start",
+    "docs:build": "cd website && npm run build",
+    "docs:serve": "cd website && npm run serve",
+    "docs:clear": "cd website && npm run clear",
+    "docs:install": "cd website && npm install",
+    "docs:transform": "node scripts/transform-docs.js",
+    "docs:transform:dry": "node scripts/transform-docs.js --dry-run",
+    "docs:validate": "node scripts/validate-docs.js",
+    "docs:validate:strict": "node scripts/validate-docs.js --strict",
+    "docs:validate:migration": "node scripts/validate-docs-migration.js",
+    "docs:monitor": "node scripts/monitor-docs.js",
+    "docs:monitor:site": "node scripts/monitor-site-performance.js",
+    "docs:monitor:site:verbose": "node scripts/monitor-site-performance.js --verbose",
+    "docs:test": "node scripts/test-docs.js",
+    "docs:test:quick": "node scripts/test-docs.js --quick",
+    "docs:test:verbose": "node scripts/test-docs.js --verbose",
+    "docs:pipeline": "npm run docs:transform && npm run docs:validate && npm run docs:build",
+    "docs:pipeline:safe": "npm run docs:transform:dry && npm run docs:validate:migration && echo 'Pipeline validation complete - run docs:pipeline to apply changes'",
+    "docs:pipeline:test": "npm run docs:pipeline:safe && npm run docs:test:quick && npm run docs:build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/habhabhabs/inventag-aws.git"
+  },
+  "keywords": [
+    "aws",
+    "cloud-governance",
+    "inventory",
+    "tagging",
+    "compliance"
+  ],
+  "author": "InvenTag Team",
+  "license": "MIT",
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

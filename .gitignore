@@ -1,0 +1,145 @@
+
+# Build outputs and generated files
+build/
+*.xlsx
+*.docx
+*.csv
+temp_*.py
+
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Demo and sample data
+demo_output/
+demo_state/
+demo_export.json
+*_demo_*.json
+*_demo_*.xlsx
+*_demo_*.csv
+*_demo_*.yaml
+
+# Generated AWS resource files (timestamped)
+aws_resources_*.json
+aws_resources_*.xlsx
+compliance_report_*.json
+compliance_report_*.csv
+
+# Test output files
+test-output.xlsx
+test_output.*
+*_test_output.*
+
+# State management files (generated during demos/testing)
+.inventag/
+*.state
+state_*.json
+metadata.json
+
+# Changelog output files (generated)
+changelog_*.html
+changelog_*.json
+changelog_*.markdown
+changelog_*.yaml
+changelog_section.md
+
+# BOM output files (generated)
+bom_output/
+bom_*.xlsx
+bom_*.json
+bom_*.csv
+*_bom_document.*
+
+# Compliance report output directory
+compliance_reports/
+
+# Temporary export files
+*_export.json
+*_export.xlsx
+*_export.csv
+*_export.yaml
+export_*.json
+export_*.xlsx
+export_*.csv
+export_*.yaml
+
+# Log files
+*.log
+logs/
+log/
+
+# Documentation transformation pipeline files (temporary)
+.docs-backup/
+.docs-logs/
+transform.log
+
+# Backup files
+*.bak
+*.backup
+*~

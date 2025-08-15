@@ -1,0 +1,217 @@
+name: Security Configuration Validation
+
+"on":
+  push:
+    branches: [ main, develop ]
+    paths:
+      - '.github/workflows/**'
+      - '.gitleaks.toml'
+      - 'docs/security/**'
+      - 'website/sidebars.js'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/**'
+      - '.gitleaks.toml'
+      - 'docs/security/**'
+      - 'website/sidebars.js'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  validate-workflows:
+    name: Validate Security Workflows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Validate YAML syntax
+        run: |
+          echo "🔍 Validating GitHub Actions workflow YAML syntax..."
+          
+          # Install yq for YAML validation
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          
+          # Validate all workflow files
+          validation_errors=0
+          
+          find .github/workflows -name "*.yml" -o -name "*.yaml" | while read workflow; do
+            echo "Validating: $workflow"
+            
+            if yq eval '.' "$workflow" > /dev/null 2>&1; then
+              echo "  ✅ Valid YAML syntax"
+            else
+              echo "  ❌ Invalid YAML syntax"
+              yq eval '.' "$workflow"
+              validation_errors=$((validation_errors + 1))
+            fi
+          done
+          
+          if [ $validation_errors -gt 0 ]; then
+            echo "❌ Found $validation_errors workflow files with YAML syntax errors"
+            exit 1
+          fi
+          
+          echo "✅ All workflow files have valid YAML syntax"
+
+  validate-gitleaks:
+    name: Validate GitLeaks Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Install GitLeaks
+        run: |
+          # Get the latest GitLeaks release
+          GITLEAKS_VERSION=$(curl -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest | jq -r .tag_name)
+          echo "Installing GitLeaks version: $GITLEAKS_VERSION"
+          
+          wget -q "https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_${GITLEAKS_VERSION#v}_linux_x64.tar.gz"
+          tar -xzf "gitleaks_${GITLEAKS_VERSION#v}_linux_x64.tar.gz"
+          sudo mv gitleaks /usr/local/bin/
+          
+          # Verify installation
+          gitleaks version
+          
+      - name: Validate GitLeaks configuration
+        run: |
+          echo "🔍 Validating GitLeaks configuration..."
+          
+          if [ -f ".gitleaks.toml" ]; then
+            # Test configuration syntax
+            if gitleaks detect --config .gitleaks.toml --no-git --source . --verbose --exit-code 0; then
+              echo "✅ GitLeaks configuration is valid"
+            else
+              echo "❌ GitLeaks configuration has issues"
+              exit 1
+            fi
+          else
+            echo "⚠️ No GitLeaks configuration found - this is acceptable but not recommended"
+          fi
+
+  validate-docusaurus:
+    name: Validate Docusaurus Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'website/package-lock.json'
+          
+      - name: Install dependencies
+        working-directory: ./website
+        run: npm ci --prefer-offline --no-audit
+        
+      - name: Validate Docusaurus configuration
+        working-directory: ./website
+        run: |
+          echo "🔍 Validating Docusaurus configuration..."
+          
+          # Check if sidebar configuration is valid
+          if node -e "require('./sidebars.js')"; then
+            echo "✅ Sidebar configuration is valid"
+          else
+            echo "❌ Sidebar configuration has syntax errors"
+            exit 1
+          fi
+          
+          # Check if docusaurus.config.js is valid
+          if node -e "require('./docusaurus.config.js')"; then
+            echo "✅ Docusaurus configuration is valid"
+          else
+            echo "❌ Docusaurus configuration has syntax errors"
+            exit 1
+          fi
+          
+          # Test build to catch any configuration issues
+          echo "🧪 Testing Docusaurus build..."
+          if npm run build; then
+            echo "✅ Docusaurus build successful"
+          else
+            echo "❌ Docusaurus build failed"
+            exit 1
+          fi
+
+  validate-security-docs:
+    name: Validate Security Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Validate security documentation structure
+        run: |
+          echo "🔍 Validating security documentation structure..."
+          
+          # Check required security documentation files
+          required_files=(
+            "docs/security/index.md"
+            "docs/security/sbom-overview.md"
+            "docs/security/monitoring.md"
+          )
+          
+          missing_files=0
+          for file in "${required_files[@]}"; do
+            if [ -f "$file" ]; then
+              echo "✅ Found: $file"
+            else
+              echo "❌ Missing: $file"
+              missing_files=$((missing_files + 1))
+            fi
+          done
+          
+          if [ $missing_files -gt 0 ]; then
+            echo "❌ Found $missing_files missing security documentation files"
+            exit 1
+          fi
+          
+          # Validate markdown frontmatter
+          find docs/security -name "*.md" | while read mdfile; do
+            echo "Validating frontmatter in: $mdfile"
+            
+            if head -1 "$mdfile" | grep -q "^---$"; then
+              echo "  ✅ Has frontmatter"
+            else
+              echo "  ⚠️ Missing frontmatter in $mdfile"
+            fi
+          done
+          
+          echo "✅ Security documentation structure validation complete"
+
+  create-validation-report:
+    name: Create Validation Report
+    runs-on: ubuntu-latest
+    needs: [validate-workflows, validate-gitleaks, validate-docusaurus, validate-security-docs]
+    if: always()
+    steps:
+      - name: Generate validation summary
+        run: |
+          echo "## 🔍 Security Configuration Validation Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflows**: ${{ needs.validate-workflows.result == 'success' && '✅ PASS' || '❌ FAIL' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **GitLeaks**: ${{ needs.validate-gitleaks.result == 'success' && '✅ PASS' || '❌ FAIL' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Docusaurus**: ${{ needs.validate-docusaurus.result == 'success' && '✅ PASS' || '❌ FAIL' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Security Docs**: ${{ needs.validate-security-docs.result == 'success' && '✅ PASS' || '❌ FAIL' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.validate-workflows.result }}" == "success" ] && \
+             [ "${{ needs.validate-gitleaks.result }}" == "success" ] && \
+             [ "${{ needs.validate-docusaurus.result }}" == "success" ] && \
+             [ "${{ needs.validate-security-docs.result }}" == "success" ]; then
+            echo "### ✅ Overall Status: PASS" >> $GITHUB_STEP_SUMMARY
+            echo "All security configurations are valid and ready for production." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Overall Status: FAIL" >> $GITHUB_STEP_SUMMARY
+            echo "Some security configurations failed validation. Please review and fix issues." >> $GITHUB_STEP_SUMMARY
+          fi

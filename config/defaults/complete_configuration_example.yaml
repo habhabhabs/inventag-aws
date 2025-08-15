@@ -1,0 +1,286 @@
+# Complete BOM Generation Configuration
+# This file demonstrates all configuration options for the InvenTag BOM generation system
+
+name: "Enterprise BOM Configuration"
+description: "Complete configuration for enterprise Cloud Bill of Materials generation"
+version: "1.0"
+default_template: "professional_word"
+default_branding: "corporate_blue"
+output_directory: "./output"
+enable_validation: true
+
+# Service Descriptions Configuration
+service_descriptions:
+  EC2:
+    default_description: "Amazon Elastic Compute Cloud - Virtual servers providing scalable compute capacity"
+    display_name: "EC2 (Elastic Compute Cloud)"
+    category: "Compute"
+    documentation_url: "https://docs.aws.amazon.com/ec2/"
+    resource_types:
+      Instance: "Virtual machine instances with various instance types and configurations"
+      Volume: "Elastic Block Store (EBS) volumes for persistent storage"
+      SecurityGroup: "Virtual firewall controlling network access to instances"
+      KeyPair: "Key pairs for secure SSH access to instances"
+    custom_fields:
+      compliance_notes: "All instances must follow company security baseline"
+      cost_optimization: "Consider Reserved Instances for predictable workloads"
+
+  S3:
+    default_description: "Amazon Simple Storage Service - Highly scalable object storage"
+    display_name: "S3 (Simple Storage Service)"
+    category: "Storage"
+    documentation_url: "https://docs.aws.amazon.com/s3/"
+    resource_types:
+      Bucket: "Storage container with global namespace and configurable access controls"
+    custom_fields:
+      data_classification: "Implement proper data classification and encryption"
+      lifecycle_management: "Use lifecycle policies for cost optimization"
+
+  RDS:
+    default_description: "Amazon Relational Database Service - Managed database service"
+    display_name: "RDS (Relational Database Service)"
+    category: "Database"
+    documentation_url: "https://docs.aws.amazon.com/rds/"
+    resource_types:
+      DBInstance: "Managed database instance with automated maintenance"
+      DBCluster: "High-availability database cluster (Aurora)"
+      DBSubnetGroup: "Subnet group for database network placement"
+    custom_fields:
+      backup_policy: "Minimum 7-day backup retention required"
+      encryption_requirement: "All production databases must be encrypted"
+
+# Tag Mappings Configuration
+tag_mappings:
+  inventag:owner:
+    display_name: "Resource Owner"
+    column_name: "Owner"
+    description: "Individual or team responsible for the resource"
+    default_value: ""
+    data_type: "string"
+    required: true
+
+  inventag:costcenter:
+    display_name: "Cost Center"
+    column_name: "Cost Center"
+    description: "Cost center responsible for resource expenses"
+    default_value: "Unknown"
+    data_type: "string"
+    required: true
+    validation_pattern: "^[A-Z]{2,4}-[0-9]{3,6}$"
+
+  inventag:environment:
+    display_name: "Environment"
+    column_name: "Environment"
+    description: "Environment classification"
+    default_value: "unknown"
+    data_type: "string"
+    required: true
+    allowed_values: ["dev", "test", "staging", "prod", "unknown"]
+
+  inventag:criticality:
+    display_name: "Business Criticality"
+    column_name: "Criticality"
+    description: "Business impact level"
+    default_value: "medium"
+    data_type: "string"
+    required: true
+    allowed_values: ["low", "medium", "high", "critical"]
+
+  inventag:project:
+    display_name: "Project Code"
+    column_name: "Project"
+    description: "Project or initiative identifier"
+    default_value: ""
+    data_type: "string"
+    required: false
+
+  inventag:backup:
+    display_name: "Backup Required"
+    column_name: "Backup Required"
+    description: "Whether resource requires backup"
+    default_value: "true"
+    data_type: "boolean"
+    required: true
+    allowed_values: ["true", "false", "yes", "no"]
+
+  inventag:remarks:
+    display_name: "Remarks"
+    column_name: "Remarks"
+    description: "Additional notes about the resource"
+    default_value: ""
+    data_type: "string"
+    required: false
+
+# Document Templates Configuration
+document_templates:
+  professional_word:
+    template_name: "professional_word"
+    template_path: "templates/professional_word_template.yaml"
+    format_type: "word"
+    enabled: true
+    description: "Professional Word document template with comprehensive branding"
+    variables:
+      company_name: "Acme Corporation"
+      document_title: "Cloud Infrastructure Bill of Materials"
+      confidentiality_level: "CONFIDENTIAL"
+    custom_sections:
+      - "executive_summary"
+      - "compliance_overview"
+      - "service_inventory"
+      - "network_analysis"
+      - "security_analysis"
+
+  executive_excel:
+    template_name: "executive_excel"
+    template_path: "templates/executive_excel_template.json"
+    format_type: "excel"
+    enabled: true
+    description: "Executive-focused Excel workbook with dashboards and charts"
+    variables:
+      workbook_title: "Cloud Infrastructure Dashboard"
+      include_charts: true
+    custom_sections:
+      - "summary_dashboard"
+      - "compliance_metrics"
+      - "cost_analysis"
+
+  detailed_csv:
+    template_name: "detailed_csv"
+    template_path: "templates/detailed_csv_template.yaml"
+    format_type: "csv"
+    enabled: true
+    description: "Detailed CSV export for data analysis"
+    variables:
+      include_all_fields: true
+      delimiter: ","
+
+# Branding Configurations
+branding_configurations:
+  corporate_blue:
+    name: "corporate_blue"
+    description: "Corporate blue theme with professional styling"
+    logo_configurations:
+      primary_logo: "assets/logos/company_logo.png"
+      watermark_logo: "assets/logos/company_watermark.png"
+    color_themes:
+      primary:
+        primary: "#1E3A8A"
+        secondary: "#3B82F6"
+        accent: "#10B981"
+        success: "#059669"
+        warning: "#F59E0B"
+        danger: "#DC2626"
+        background: "#FFFFFF"
+        text: "#1F2937"
+        header_bg: "#1E3A8A"
+        header_text: "#FFFFFF"
+        alt_row: "#F8FAFC"
+    font_configurations:
+      primary:
+        primary_font: "Calibri"
+        secondary_font: "Arial"
+        title_size: 20
+        heading1_size: 16
+        heading2_size: 14
+        body_size: 11
+        table_size: 10
+
+  modern_green:
+    name: "modern_green"
+    description: "Modern green theme for sustainability reports"
+    logo_configurations:
+      primary_logo: "assets/logos/company_logo_green.png"
+    color_themes:
+      primary:
+        primary: "#065F46"
+        secondary: "#059669"
+        accent: "#34D399"
+        success: "#10B981"
+        warning: "#F59E0B"
+        danger: "#DC2626"
+        background: "#FFFFFF"
+        text: "#1F2937"
+        header_bg: "#065F46"
+        header_text: "#FFFFFF"
+        alt_row: "#F0FDF4"
+    font_configurations:
+      primary:
+        primary_font: "Segoe UI"
+        secondary_font: "Arial"
+        title_size: 18
+        heading1_size: 16
+        heading2_size: 14
+        body_size: 11
+        table_size: 10
+
+  high_contrast:
+    name: "high_contrast"
+    description: "High contrast theme for accessibility compliance"
+    color_themes:
+      primary:
+        primary: "#000000"
+        secondary: "#333333"
+        accent: "#0066CC"
+        success: "#008000"
+        warning: "#FF8C00"
+        danger: "#CC0000"
+        background: "#FFFFFF"
+        text: "#000000"
+        header_bg: "#000000"
+        header_text: "#FFFFFF"
+        alt_row: "#F5F5F5"
+    font_configurations:
+      primary:
+        primary_font: "Arial"
+        secondary_font: "Arial"
+        title_size: 20
+        heading1_size: 18
+        heading2_size: 16
+        body_size: 12
+        table_size: 11
+
+# Custom Settings
+custom_settings:
+  # Output preferences
+  default_formats: ["word", "excel"]
+  parallel_generation: true
+  max_worker_threads: 4
+  generation_timeout: 600
+
+  # Validation settings
+  strict_validation: true
+  validate_tag_patterns: true
+  require_all_mandatory_tags: true
+
+  # Performance settings
+  enable_caching: true
+  cache_duration_hours: 24
+  max_cache_size_mb: 500
+
+  # Security settings
+  sanitize_output: true
+  redact_sensitive_data: false
+  audit_trail: true
+
+  # Integration settings
+  enable_s3_upload: false
+  s3_bucket: "company-bom-reports"
+  s3_key_prefix: "reports/"
+  
+  enable_notifications: false
+  notification_webhook: "https://hooks.slack.com/services/..."
+  
+  # Compliance settings
+  include_compliance_metadata: true
+  compliance_frameworks: ["SOX", "ISO27001", "NIST"]
+  
+  # Reporting preferences
+  include_cost_analysis: true
+  include_security_analysis: true
+  include_network_analysis: true
+  include_change_tracking: true
+  
+  # Data retention
+  report_retention_days: 90
+  archive_old_reports: true
+  archive_location: "archive/"

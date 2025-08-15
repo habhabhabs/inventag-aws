@@ -1,0 +1,415 @@
+# AWS Prescriptive Guidance - Tag to Column Mappings Template
+# Optimized for Cost Allocation and Financial Governance
+# Reference: https://docs.aws.amazon.com/prescriptive-guidance/latest/cost-allocation-tagging/
+# Updated: 2025-08-08
+
+tag_mappings:
+  version: "1.0"
+  compliance_framework: "AWS Prescriptive Guidance"
+  last_updated: "2025-08-08"
+  description: "Cost allocation focused tag mappings following AWS best practices"
+
+  # FINANCIAL GOVERNANCE COLUMNS (Highest Priority)
+  financial_governance:
+    cost_center:
+      tag_key: "CostCenter"
+      column_name: "Cost Center"
+      column_order: 1
+      required: true
+      validation_pattern: "^CC-[0-9]{4}$"
+      description: "Primary cost allocation identifier"
+      report_grouping: "primary"
+      width: 12
+      
+    project_code:
+      tag_key: "Project"
+      column_name: "Project Code"
+      column_order: 2
+      required: true
+      validation_pattern: "^PROJ-[0-9]{4}-[A-Z0-9]+$"
+      description: "Project identifier for detailed cost tracking"
+      report_grouping: "primary"
+      width: 20
+      
+    budget_category:
+      tag_key: "BudgetCategory"
+      column_name: "Budget Category"
+      column_order: 3
+      required: false
+      allowed_values: ["infrastructure", "development", "operations", "security"]
+      description: "Budget allocation category"
+      report_grouping: "secondary"
+      width: 15
+      
+    chargeback_code:
+      tag_key: "ChargebackCode"
+      column_name: "Chargeback Code"
+      column_order: 4
+      required: false
+      validation_pattern: "^CHG-[0-9]{4}-[0-9]{4}$"
+      description: "Internal billing and chargeback identifier"
+      report_grouping: "financial"
+      width: 18
+
+  # ORGANIZATIONAL STRUCTURE
+  organizational:
+    business_unit:
+      tag_key: "BusinessUnit"
+      column_name: "Business Unit"
+      column_order: 5
+      required: true
+      description: "Top-level organizational division"
+      report_grouping: "primary"
+      width: 16
+      
+    team_name:
+      tag_key: "TeamName"
+      column_name: "Responsible Team"
+      column_order: 6
+      required: false
+      description: "Team responsible for resource management"
+      report_grouping: "secondary"
+      width: 18
+      
+    contact_email:
+      tag_key: "ContactEmail"
+      column_name: "Primary Contact"
+      column_order: 7
+      required: false
+      validation_pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+      description: "Primary contact for resource inquiries"
+      report_grouping: "contact"
+      width: 25
+
+  # TECHNICAL CLASSIFICATION
+  technical:
+    application:
+      tag_key: "Application"
+      column_name: "Application Name"
+      column_order: 8
+      required: true
+      validation_pattern: "^[a-z0-9-]+$"
+      description: "Application or service identifier"
+      report_grouping: "technical"
+      width: 20
+      
+    environment:
+      tag_key: "Environment"
+      column_name: "Environment"
+      column_order: 9
+      required: true
+      allowed_values: ["prod", "staging", "test", "dev", "sandbox"]
+      description: "Deployment environment"
+      report_grouping: "primary"
+      width: 12
+      
+    application_version:
+      tag_key: "ApplicationVersion"
+      column_name: "App Version"
+      column_order: 10
+      required: false
+      validation_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+      description: "Application version (semantic versioning)"
+      report_grouping: "technical"
+      width: 12
+
+  # OPERATIONAL MANAGEMENT
+  operational:
+    sla_level:
+      tag_key: "SLALevel"
+      column_name: "SLA Level"
+      column_order: 11
+      required: false
+      allowed_values: ["gold", "silver", "bronze"]
+      description: "Service level agreement classification"
+      report_grouping: "operational"
+      width: 10
+      
+    maintenance_window:
+      tag_key: "MaintenanceWindow"
+      column_name: "Maintenance Window"
+      column_order: 12
+      required: false
+      description: "Scheduled maintenance window"
+      report_grouping: "operational"
+      width: 18
+      
+    backup_required:
+      tag_key: "BackupRequired"
+      column_name: "Backup Required"
+      column_order: 13
+      required: false
+      allowed_values: ["true", "false"]
+      description: "Backup requirement indicator"
+      report_grouping: "operational"
+      width: 12
+      
+    disaster_recovery:
+      tag_key: "DisasterRecovery"
+      column_name: "DR Priority"
+      column_order: 14
+      required: false
+      allowed_values: ["critical", "important", "normal", "low"]
+      description: "Disaster recovery priority"
+      report_grouping: "operational"
+      width: 12
+
+  # SECURITY AND COMPLIANCE
+  security:
+    data_classification:
+      tag_key: "DataClassification"
+      column_name: "Data Classification"
+      column_order: 15
+      required: false
+      allowed_values: ["public", "internal", "confidential", "restricted"]
+      description: "Data sensitivity classification"
+      report_grouping: "security"
+      width: 15
+      
+    compliance_framework:
+      tag_key: "ComplianceFramework"
+      column_name: "Compliance Framework"
+      column_order: 16
+      required: false
+      allowed_values: ["soc2", "pci", "hipaa", "gdpr", "none"]
+      description: "Applicable compliance requirements"
+      report_grouping: "compliance"
+      width: 18
+      
+    encryption_required:
+      tag_key: "EncryptionRequired"
+      column_name: "Encryption Required"
+      column_order: 17
+      required: false
+      allowed_values: ["true", "false"]
+      description: "Encryption requirement indicator"
+      report_grouping: "security"
+      width: 15
+
+  # COST OPTIMIZATION
+  cost_optimization:
+    auto_scaling:
+      tag_key: "AutoScaling"
+      column_name: "Auto Scaling"
+      column_order: 18
+      required: false
+      allowed_values: ["enabled", "disabled", "scheduled"]
+      description: "Auto-scaling configuration"
+      report_grouping: "cost_optimization"
+      width: 12
+      
+    scheduled_shutdown:
+      tag_key: "ScheduledShutdown"
+      column_name: "Scheduled Shutdown"
+      column_order: 19
+      required: false
+      description: "Automatic shutdown schedule (cron format)"
+      report_grouping: "cost_optimization"
+      width: 18
+      
+    right_sizing_candidate:
+      tag_key: "RightSizingCandidate"
+      column_name: "Right-Sizing Candidate"
+      column_order: 20
+      required: false
+      allowed_values: ["yes", "no", "under_review"]
+      description: "Resource right-sizing opportunity"
+      report_grouping: "cost_optimization"
+      width: 18
+
+  # GOVERNANCE AND AUDIT
+  governance:
+    data_retention_period:
+      tag_key: "DataRetentionPeriod"
+      column_name: "Data Retention (Days)"
+      column_order: 21
+      required: false
+      validation_pattern: "^[0-9]+$"
+      description: "Data retention period in days"
+      report_grouping: "governance"
+      width: 15
+      
+    created_by:
+      tag_key: "CreatedBy"
+      column_name: "Created By"
+      column_order: 22
+      required: false
+      description: "Resource creator identifier"
+      report_grouping: "audit"
+      width: 15
+      
+    creation_date:
+      tag_key: "CreationDate"
+      column_name: "Creation Date"
+      column_order: 23
+      required: false
+      validation_pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+      description: "Resource creation date (YYYY-MM-DD)"
+      report_grouping: "audit"
+      width: 12
+
+# REPORT CONFIGURATIONS
+report_configurations:
+  # Executive Cost Summary Report
+  executive_summary:
+    name: "Executive Cost Allocation Summary"
+    description: "High-level cost allocation for executive reporting"
+    columns:
+      - "business_unit"
+      - "cost_center"
+      - "project_code"
+      - "environment"
+      - "budget_category"
+    grouping: ["business_unit", "cost_center"]
+    aggregation: "sum"
+    chart_types: ["pie", "bar", "trend"]
+    
+  # Detailed Project Report  
+  project_detailed:
+    name: "Detailed Project Cost Analysis"
+    description: "Comprehensive project-level cost breakdown"
+    columns:
+      - "project_code"
+      - "application"
+      - "environment"
+      - "team_name"
+      - "cost_center"
+      - "sla_level"
+      - "auto_scaling"
+    grouping: ["project_code", "environment"]
+    aggregation: "detailed"
+    chart_types: ["bar", "line", "table"]
+    
+  # Operational Dashboard
+  operational_dashboard:
+    name: "Operational Cost Management Dashboard"
+    description: "Day-to-day operational cost monitoring"
+    columns:
+      - "application"
+      - "environment"
+      - "team_name"
+      - "maintenance_window"
+      - "backup_required"
+      - "scheduled_shutdown"
+      - "right_sizing_candidate"
+    grouping: ["application", "environment"]
+    aggregation: "operational"
+    chart_types: ["table", "gauge", "status"]
+    
+  # Compliance Report
+  compliance_audit:
+    name: "Compliance and Governance Audit"
+    description: "Tag compliance and governance tracking"
+    columns:
+      - "business_unit"
+      - "application"
+      - "compliance_framework"
+      - "data_classification"
+      - "data_retention_period"
+      - "created_by"
+      - "creation_date"
+    grouping: ["compliance_framework", "business_unit"]
+    aggregation: "compliance"
+    chart_types: ["compliance_matrix", "heatmap"]
+
+# COLUMN FORMATTING
+formatting:
+  financial_columns:
+    cost_center:
+      format: "uppercase"
+      prefix: ""
+      suffix: ""
+      alignment: "center"
+      
+    project_code:
+      format: "uppercase"
+      prefix: ""
+      suffix: ""
+      alignment: "left"
+      
+    chargeback_code:
+      format: "uppercase"
+      prefix: ""
+      suffix: ""
+      alignment: "center"
+      
+  percentage_columns:
+    compliance_percentage:
+      format: "percentage"
+      decimal_places: 1
+      suffix: "%"
+      
+  currency_columns:
+    estimated_cost:
+      format: "currency"
+      currency_symbol: "$"
+      decimal_places: 2
+      
+  date_columns:
+    creation_date:
+      format: "date"
+      date_format: "YYYY-MM-DD"
+      
+# VALIDATION RULES
+validation:
+  required_tag_validation:
+    level: "error"
+    message: "Required tags missing: {missing_tags}"
+    
+  format_validation:
+    level: "warning"
+    message: "Tag format validation failed: {tag_key} = {tag_value}"
+    
+  value_validation:
+    level: "warning"
+    message: "Invalid tag value: {tag_key} = {tag_value}. Allowed values: {allowed_values}"
+
+# COST ALLOCATION HIERARCHY
+cost_allocation_hierarchy:
+  level_1:
+    column: "business_unit"
+    description: "Top-level business organization"
+    aggregation: "sum"
+    
+  level_2:
+    column: "cost_center" 
+    description: "Financial responsibility center"
+    aggregation: "sum"
+    parent: "business_unit"
+    
+  level_3:
+    column: "project_code"
+    description: "Specific project or initiative"
+    aggregation: "sum" 
+    parent: "cost_center"
+    
+  level_4:
+    column: "application"
+    description: "Application or service level"
+    aggregation: "detailed"
+    parent: "project_code"
+
+# DASHBOARD CONFIGURATION
+dashboards:
+  cost_allocation_dashboard:
+    refresh_rate: "hourly"
+    widgets:
+      - type: "cost_by_business_unit"
+        size: "large"
+        position: [0, 0]
+        
+      - type: "top_projects_by_cost" 
+        size: "medium"
+        position: [1, 0]
+        
+      - type: "environment_cost_distribution"
+        size: "medium"
+        position: [0, 1]
+        
+      - type: "tag_compliance_score"
+        size: "small"
+        position: [1, 1]
+        
+      - type: "cost_optimization_opportunities"
+        size: "large"
+        position: [0, 2]

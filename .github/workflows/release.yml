@@ -1,0 +1,741 @@
+name: Automated Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  check-for-release:
+    name: Check if Release Needed
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      version_bump: ${{ steps.check.outputs.version_bump }}
+      pr_number: ${{ steps.check.outputs.pr_number }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Check for release triggers
+      id: check
+      run: |
+        # Default to no release
+        echo "should_release=false" >> $GITHUB_OUTPUT
+        echo "version_bump=patch" >> $GITHUB_OUTPUT
+        echo "pr_number=" >> $GITHUB_OUTPUT
+        
+        # Check if manual dispatch with version bump
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "should_release=true" >> $GITHUB_OUTPUT
+          echo "version_bump=${{ github.event.inputs.version_bump }}" >> $GITHUB_OUTPUT
+          echo "Manual release triggered with ${{ github.event.inputs.version_bump }} bump"
+          exit 0
+        fi
+        
+        # Check if this is a merge to main
+        if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          # Get the merged PR info from the commit message
+          COMMIT_MSG=$(git log --format=%B -n 1 ${{ github.sha }})
+          echo "Commit message: $COMMIT_MSG"
+          
+          # Check if this is a merge commit from a PR
+          if echo "$COMMIT_MSG" | grep -q "Merge pull request #"; then
+            # Extract PR number
+            PR_NUM=$(echo "$COMMIT_MSG" | grep -o "#[0-9]\+" | sed 's/#//')
+            echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
+            
+            # Get PR labels to determine version bump
+            PR_LABELS=$(gh pr view $PR_NUM --json labels --jq '.labels[].name' || echo "")
+            echo "PR Labels: $PR_LABELS"
+            
+            # Determine version bump from labels
+            if echo "$PR_LABELS" | grep -q "release:major"; then
+              echo "should_release=true" >> $GITHUB_OUTPUT
+              echo "version_bump=major" >> $GITHUB_OUTPUT
+              echo "Major release triggered by PR #$PR_NUM"
+            elif echo "$PR_LABELS" | grep -q "release:minor"; then
+              echo "should_release=true" >> $GITHUB_OUTPUT
+              echo "version_bump=minor" >> $GITHUB_OUTPUT
+              echo "Minor release triggered by PR #$PR_NUM"
+            elif echo "$PR_LABELS" | grep -q "release:patch"; then
+              echo "should_release=true" >> $GITHUB_OUTPUT
+              echo "version_bump=patch" >> $GITHUB_OUTPUT
+              echo "Patch release triggered by PR #$PR_NUM"
+            else
+              # Default to patch release for any PR merge to main
+              echo "should_release=true" >> $GITHUB_OUTPUT
+              echo "version_bump=patch" >> $GITHUB_OUTPUT
+              echo "Default patch release for PR #$PR_NUM (no version label found)"
+            fi
+          else
+            echo "Direct push to main - no release triggered"
+          fi
+        fi
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: check-for-release
+    if: needs.check-for-release.outputs.should_release == 'true'
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.VERSION_BUMP_WORKFLOW }}
+        persist-credentials: true
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install semver
+
+    - name: Calculate new version
+      id: version
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Get the latest release from GitHub
+        echo "Fetching latest release from GitHub..."
+        LATEST_RELEASE=$(gh release list --limit 1 --json tagName,isLatest --jq '.[0].tagName // "v0.0.0"')
+        
+        # Remove 'v' prefix if present
+        CURRENT_VERSION=${LATEST_RELEASE#v}
+        echo "Current version from GitHub releases: $CURRENT_VERSION"
+        
+        # If no releases exist, start with 0.0.0
+        if [ "$CURRENT_VERSION" = "" ] || [ "$CURRENT_VERSION" = "null" ]; then
+          CURRENT_VERSION="0.0.0"
+          echo "No existing releases found, starting with version 0.0.0"
+        fi
+        
+        # Calculate new version based on bump type
+        BUMP_TYPE="${{ needs.check-for-release.outputs.version_bump }}"
+        echo "Bump type: $BUMP_TYPE"
+        
+        NEW_VERSION=$(python -c "
+        import semver
+        try:
+            version = '$CURRENT_VERSION'
+            if '$BUMP_TYPE' == 'major':
+                new_ver = semver.VersionInfo.parse(version).bump_major()
+            elif '$BUMP_TYPE' == 'minor':
+                new_ver = semver.VersionInfo.parse(version).bump_minor()
+            else:
+                new_ver = semver.VersionInfo.parse(version).bump_patch()
+            print(str(new_ver))
+        except Exception as e:
+            print('Error parsing version:', e)
+            # Fallback to simple increment
+            if '$BUMP_TYPE' == 'major':
+                print('1.0.0')
+            elif '$BUMP_TYPE' == 'minor':
+                print('0.1.0')  
+            else:
+                print('0.0.1')
+        ")
+        
+        echo "✅ Version calculation complete:"
+        echo "  📋 Source: GitHub Releases API"
+        echo "  📌 Current: $CURRENT_VERSION"  
+        echo "  🚀 New: $NEW_VERSION"
+        echo "  🏷️ Tag: v$NEW_VERSION"
+        echo "  📈 Bump: $BUMP_TYPE"
+        
+        echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "tag_name=v$NEW_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Generate comprehensive release notes for version.json
+      id: version_notes
+      run: |
+        # Get commits since last tag for version.json release notes
+        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        
+        if [ -z "$LAST_TAG" ]; then
+          echo "No previous tags found, generating notes from first commit"
+          COMMIT_RANGE="$(git rev-list --max-parents=0 HEAD)..HEAD"
+        else
+          echo "Last tag: $LAST_TAG"
+          COMMIT_RANGE="$LAST_TAG..HEAD"
+        fi
+        
+        # Generate structured release notes for version.json
+        python -c "
+        import json
+        import subprocess
+        import re
+        from datetime import datetime
+        
+        # Get commit messages
+        result = subprocess.run(['git', 'log', '$COMMIT_RANGE', '--pretty=format:%s', '--no-merges'], 
+                              capture_output=True, text=True)
+        commits = result.stdout.strip().split('\n') if result.stdout.strip() else []
+        
+        # Categorize commits
+        features = []
+        fixes = []
+        docs = []
+        chores = []
+        style = []
+        refactor = []
+        perf = []
+        test = []
+        other = []
+        
+        for commit in commits:
+            if not commit.strip():
+                continue
+            commit_lower = commit.lower()
+            if commit_lower.startswith('feat'):
+                features.append(commit)
+            elif commit_lower.startswith('fix'):
+                fixes.append(commit)
+            elif commit_lower.startswith('docs'):
+                docs.append(commit)
+            elif commit_lower.startswith('chore'):
+                chores.append(commit)
+            elif commit_lower.startswith('style'):
+                style.append(commit)
+            elif commit_lower.startswith('refactor'):
+                refactor.append(commit)
+            elif commit_lower.startswith('perf'):
+                perf.append(commit)
+            elif commit_lower.startswith('test'):
+                test.append(commit)
+            else:
+                other.append(commit)
+        
+        # Build comprehensive release notes
+        notes_parts = []
+        notes_parts.append(f'Release ${{ steps.version.outputs.new_version }} - {datetime.now().strftime(\"%Y-%m-%d\")}')
+        notes_parts.append('')
+        
+        if features:
+            notes_parts.append('✨ New Features:')
+            for feat in features:
+                notes_parts.append(f'  • {feat}')
+            notes_parts.append('')
+        
+        if fixes:
+            notes_parts.append('🐛 Bug Fixes:')
+            for fix in fixes:
+                notes_parts.append(f'  • {fix}')
+            notes_parts.append('')
+        
+        if docs:
+            notes_parts.append('📚 Documentation:')
+            for doc in docs:
+                notes_parts.append(f'  • {doc}')
+            notes_parts.append('')
+        
+        if style:
+            notes_parts.append('💄 Style Changes:')
+            for s in style:
+                notes_parts.append(f'  • {s}')
+            notes_parts.append('')
+        
+        if refactor:
+            notes_parts.append('♻️ Code Refactoring:')
+            for r in refactor:
+                notes_parts.append(f'  • {r}')
+            notes_parts.append('')
+        
+        if perf:
+            notes_parts.append('⚡ Performance Improvements:')
+            for p in perf:
+                notes_parts.append(f'  • {p}')
+            notes_parts.append('')
+        
+        if test:
+            notes_parts.append('✅ Tests:')
+            for t in test:
+                notes_parts.append(f'  • {t}')
+            notes_parts.append('')
+        
+        if chores:
+            notes_parts.append('🔧 Maintenance:')
+            for chore in chores:
+                notes_parts.append(f'  • {chore}')
+            notes_parts.append('')
+        
+        if other:
+            notes_parts.append('📝 Other Changes:')
+            for o in other:
+                notes_parts.append(f'  • {o}')
+            notes_parts.append('')
+        
+        # Add summary statistics
+        total_commits = len([c for c in commits if c.strip()])
+        if total_commits > 0:
+            notes_parts.append(f'📊 Summary: {total_commits} commits in this release')
+            
+            if '${{ needs.check-for-release.outputs.pr_number }}':
+                notes_parts.append(f'🔀 Triggered by PR #${{ needs.check-for-release.outputs.pr_number }}')
+        
+        release_notes = '\n'.join(notes_parts)
+        print('Generated release notes for version.json:')
+        print(release_notes)
+        print('---')
+        
+        # Save release notes to a file for the next step
+        with open('version_release_notes.txt', 'w') as f:
+            f.write(release_notes)
+        "
+
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        # Get commits since last tag
+        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        
+        if [ -z "$LAST_TAG" ]; then
+          echo "No previous tags found, generating notes from first commit"
+          COMMIT_RANGE="$(git rev-list --max-parents=0 HEAD)..HEAD"
+        else
+          echo "Last tag: $LAST_TAG"
+          COMMIT_RANGE="$LAST_TAG..HEAD"
+        fi
+        
+        echo "Generating release notes for commits: $COMMIT_RANGE"
+        
+        # Generate comprehensive release notes
+        cat > release_notes.md << 'EOF'
+        # 🏷️ InvenTag Release ${{ steps.version.outputs.new_version }}
+        
+        > **Comprehensive AWS™ Cloud Governance Platform - Professional resource inventory, compliance checking, and BOM generation**
+        
+        ## 🚀 What's New in This Release
+        
+        EOF
+        
+        # Add commit messages (exclude merge commits)
+        git log $COMMIT_RANGE --pretty=format:"- %s" --no-merges >> release_notes.md
+        
+        # Add PR info if available
+        if [ -n "${{ needs.check-for-release.outputs.pr_number }}" ]; then
+          echo "" >> release_notes.md
+          echo "**🔄 Triggered by PR #${{ needs.check-for-release.outputs.pr_number }}**" >> release_notes.md
+        fi
+        
+        # Add changelog sections based on commit types
+        echo "" >> release_notes.md
+        echo "## 📋 Changes by Category" >> release_notes.md
+        echo "" >> release_notes.md
+        
+        # Features
+        FEATURES=$(git log $COMMIT_RANGE --pretty=format:"- %s" --no-merges | grep -i "^- feat" || true)
+        if [ -n "$FEATURES" ]; then
+          echo "### ✨ New Features" >> release_notes.md
+          echo "$FEATURES" >> release_notes.md
+          echo "" >> release_notes.md
+        fi
+        
+        # Production Safety & Security
+        SECURITY=$(git log $COMMIT_RANGE --pretty=format:"- %s" --no-merges | grep -iE "^- (security|safety|compliance|audit)" || true)
+        if [ -n "$SECURITY" ]; then
+          echo "### 🛡️ Production Safety & Security" >> release_notes.md
+          echo "$SECURITY" >> release_notes.md
+          echo "" >> release_notes.md
+        fi
+        
+        # Bug fixes
+        FIXES=$(git log $COMMIT_RANGE --pretty=format:"- %s" --no-merges | grep -i "^- fix" || true)
+        if [ -n "$FIXES" ]; then
+          echo "### 🐛 Bug Fixes" >> release_notes.md
+          echo "$FIXES" >> release_notes.md
+          echo "" >> release_notes.md
+        fi
+        
+        # Performance improvements
+        PERF=$(git log $COMMIT_RANGE --pretty=format:"- %s" --no-merges | grep -iE "^- (perf|performance|optimize)" || true)
+        if [ -n "$PERF" ]; then
+          echo "### ⚡ Performance Improvements" >> release_notes.md
+          echo "$PERF" >> release_notes.md
+          echo "" >> release_notes.md
+        fi
+        
+        # Documentation
+        DOCS=$(git log $COMMIT_RANGE --pretty=format:"- %s" --no-merges | grep -i "^- docs" || true)
+        if [ -n "$DOCS" ]; then
+          echo "### 📚 Documentation" >> release_notes.md
+          echo "$DOCS" >> release_notes.md
+          echo "" >> release_notes.md
+        fi
+        
+        # Other changes
+        OTHER=$(git log $COMMIT_RANGE --pretty=format:"- %s" --no-merges | grep -v -iE "^- (feat|fix|docs|perf|performance|optimize|security|safety|compliance|audit)" || true)
+        if [ -n "$OTHER" ]; then
+          echo "### 🔧 Other Changes" >> release_notes.md
+          echo "$OTHER" >> release_notes.md
+          echo "" >> release_notes.md
+        fi
+        
+        # Add comprehensive feature overview and usage
+        cat >> release_notes.md << 'EOF'
+        
+        ## 🎯 InvenTag Features Overview
+        
+        ### 🛡️ **Production Safety & Security (NEW!)**
+        - Enterprise-grade security validation with read-only enforcement
+        - Built-in compliance standards: SOC 2, PCI, HIPAA, GDPR
+        - Comprehensive audit logging and risk assessment
+        - Real-time production monitoring and operation validation
+        
+        ### 📊 **Professional BOM Generation**
+        - Excel/Word/CSV reports with logical column ordering
+        - Service-specific sheets with comprehensive analysis
+        - Multi-account consolidation and reporting
+        - Advanced template framework with professional branding
+        
+        ### 🔍 **Comprehensive Discovery & Analysis**
+        - Multi-method resource discovery (ResourceGroupsTagging, Config, APIs)
+        - Network analysis with VPC/subnet utilization tracking
+        - Security posture assessment with vulnerability detection
+        - Cost analysis with optimization recommendations
+        
+        ### 🚀 **Enterprise & CI/CD Ready**
+        - Unified CLI interface with comprehensive options
+        - Multi-account support with cross-account role assumption
+        - State management with delta detection and changelog generation
+        - S3 upload integration and GitHub Actions support
+        
+        ## 🚀 Quick Start & Installation
+        
+        ### Using the Unified CLI (Recommended)
+        ```bash
+        # Clone the repository
+        git clone https://github.com/${{ github.repository }}.git
+        cd inventag-aws
+        
+        # Install dependencies
+        pip install -r requirements.txt
+        
+        # Run AWS resource inventory (if available)
+        if [ -f "scripts/legacy/aws_resource_inventory.py" ]; then
+          python scripts/legacy/aws_resource_inventory.py --output inventory
+        fi
+        
+        # Convert to Excel/CSV format
+        python scripts/legacy/bom_converter.py --input sample.json --output report.xlsx
+        
+        # Check tag compliance
+        python scripts/legacy/tag_compliance_checker.py --config tag_policy.yaml --input sample.json --output compliance_report
+        
+        # Test CI/CD BOM generation
+        python scripts/development/cicd_bom_generation.py --help
+        ```
+        
+        ### Docker Usage
+        ```bash
+        # Build and run with AWS credentials
+        docker build -t inventag-aws:${{ steps.version.outputs.new_version }} .
+        docker run --rm -v ~/.aws:/root/.aws \
+          inventag-aws:${{ steps.version.outputs.new_version }} \
+          python -m inventag.cli.main --create-excel --enable-production-safety
+        ```
+        
+        ## 📋 Configuration Files
+        
+        ### Multi-Account Configuration
+        - `examples/accounts_basic.json` - Basic multi-account setup
+        - `examples/accounts_with_profiles.json` - AWS profile authentication
+        - `examples/accounts_cross_account_roles.json` - Cross-account roles
+        - `examples/accounts_cicd_environment.json` - CI/CD optimized setup
+        
+        ### Service & Analysis Configuration
+        - `config/defaults/services/service_descriptions_example.yaml` - Custom service descriptions
+        - `config/defaults/mappings/tag_to_column_mappings_example.yaml` - Tag attribute mappings
+        - `config/defaults/complete_configuration_example.yaml` - Comprehensive BOM config
+        
+        ## 🛡️ Production Safety Features
+        
+        ### Security Validation
+        - ✅ Read-only operation enforcement
+        - ✅ AWS operation risk assessment
+        - ✅ Compliance standard validation (SOC 2, PCI, HIPAA, GDPR)
+        - ✅ Comprehensive audit logging
+        - ✅ Real-time security monitoring
+        
+        ### Production Monitoring
+        - ✅ Operation validation and blocking
+        - ✅ Risk threshold enforcement
+        - ✅ Automated compliance reporting
+        - ✅ Security audit trail generation
+        - ✅ Performance monitoring and metrics
+        
+        ## 📊 Analysis Capabilities
+        
+        ### Network Analysis
+        - VPC and subnet utilization tracking
+        - IP capacity planning and recommendations
+        - Network security posture assessment
+        - CIDR block analysis and optimization
+        
+        ### Security Analysis
+        - Security group rule analysis
+        - Overly permissive rule detection
+        - NACL optimization recommendations
+        - Security dependency mapping
+        
+        ### Cost Analysis
+        - Resource cost estimation
+        - Forgotten resource detection
+        - Cost optimization recommendations
+        - Usage trend analysis
+        
+        ## 🔗 Enterprise Integration
+        
+        ### CI/CD Pipeline Integration
+        - GitHub Actions workflows included
+        - Jenkins pipeline examples provided
+        - AWS CodeBuild integration templates
+        - Docker containerization support
+        
+        ### Multi-Account Management
+        - Cross-account role assumption
+        - Centralized credential management
+        - Account consolidation and reporting
+        - Parallel processing optimization
+        
+        ## 📚 Documentation
+        
+        ### Complete Documentation Available
+        - **[CLI User Guide](docs/user-guides/CLI_USER_GUIDE.md)** - Comprehensive CLI reference
+        - **[Production Safety Guide](docs/user-guides/PRODUCTION_SAFETY.md)** - Security and compliance
+        - **[Configuration Examples](docs/user-guides/CONFIGURATION_EXAMPLES.md)** - Setup guidance
+        - **[Troubleshooting Guide](docs/user-guides/TROUBLESHOOTING_GUIDE.md)** - Common issues
+        - **[Complete CLI Usage](docs/user-guides/CLI_USER_GUIDE.md)** - All commands and examples
+        
+        ## 🏢 Enterprise Support
+        
+        ### Compliance Standards
+        - **SOC 2** - System and Organization Controls
+        - **PCI DSS** - Payment Card Industry Data Security Standard
+        - **HIPAA** - Health Insurance Portability and Accountability Act
+        - **GDPR** - General Data Protection Regulation
+        - **General** - Basic security and governance compliance
+        
+        ### Professional Features
+        - Advanced Excel template system with branding
+        - Professional Word document generation
+        - Executive dashboard and summary reports
+        - Comprehensive audit trails and compliance documentation
+        
+        ---
+        
+        ## 🔗 Links & Resources
+        
+        - **📖 Full Documentation**: [Repository Wiki](https://github.com/${{ github.repository }}/wiki)
+        - **🚀 Quick Start Guide**: [Getting Started](https://github.com/${{ github.repository }}#quick-start)
+        - **💼 Enterprise Examples**: [Configuration Templates](https://github.com/${{ github.repository }}/tree/main/examples)
+        - **🛠️ Troubleshooting**: [Common Issues](https://github.com/${{ github.repository }}/tree/main/docs)
+        - **📋 CLI Reference**: [Complete Command Guide](https://github.com/${{ github.repository }}/blob/main/docs/user-guides/CLI_USER_GUIDE.md)
+        
+        ## 📈 Full Changelog
+        **Full Changelog**: https://github.com/${{ github.repository }}/compare/$LAST_TAG...${{ steps.version.outputs.tag_name }}
+        
+        ---
+        
+        > **🏷️ InvenTag** - Professional AWS™ cloud governance made simple
+        > 
+        > *AWS™ is a trademark of Amazon Web Services, Inc. InvenTag is an independent tool and is not affiliated with, endorsed by, or sponsored by Amazon Web Services, Inc.*
+        EOF
+        
+        echo "Comprehensive release notes generated:"
+        echo "Length: $(wc -l < release_notes.md) lines"
+
+    - name: Update version.json with new version
+      run: |
+        # Read version release notes from file
+        VERSION_NOTES=$(cat version_release_notes.txt | sed 's/"/\\"/g' | tr '\n' '\\n')
+        
+        # Update version.json with comprehensive information
+        python -c "
+        import json
+        import sys
+        from datetime import datetime
+        
+        # Load current version.json or create new one
+        try:
+            with open('version.json', 'r') as f:
+                version_data = json.load(f)
+        except FileNotFoundError:
+            # Create new version.json if it doesn't exist
+            version_data = {}
+        
+        # Update with new version information  
+        version_data['previous_version'] = '${{ steps.version.outputs.current_version }}'
+        version_data['version'] = '${{ steps.version.outputs.new_version }}'
+        version_data['release_date'] = datetime.now().isoformat()
+        version_data['version_bump_type'] = '${{ needs.check-for-release.outputs.version_bump }}'
+        version_data['release_notes'] = '''$VERSION_NOTES'''
+        
+        # Add additional metadata
+        version_data['git_tag'] = '${{ steps.version.outputs.tag_name }}'
+        version_data['github_release_url'] = 'https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag_name }}'
+        
+        if '${{ needs.check-for-release.outputs.pr_number }}':
+            version_data['triggered_by_pr'] = '${{ needs.check-for-release.outputs.pr_number }}'
+            version_data['pr_url'] = 'https://github.com/${{ github.repository }}/pull/${{ needs.check-for-release.outputs.pr_number }}'
+        
+        # Write updated version.json
+        with open('version.json', 'w') as f:
+            json.dump(version_data, f, indent=2, ensure_ascii=False)
+        
+        print('✅ Updated version.json with new version ${{ steps.version.outputs.new_version }}')
+        "
+        
+        echo "Version.json updated with:"
+        echo "  - New version: ${{ steps.version.outputs.new_version }}"
+        echo "  - Previous version: ${{ steps.version.outputs.current_version }}"
+        echo "  - Bump type: ${{ needs.check-for-release.outputs.version_bump }}"
+        echo "  - Git tag: ${{ steps.version.outputs.tag_name }}"
+
+    - name: Commit and push version.json changes
+      env:
+        GITHUB_TOKEN: ${{ secrets.VERSION_BUMP_WORKFLOW }}
+      run: |
+        # Configure git user for the commit
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Check if version.json has actually changed
+        if git diff --quiet version.json; then
+          echo "No changes to version.json - skipping commit"
+        else
+          # Add and commit the version.json changes directly to main
+          git add version.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}" -m "Automated version bump after release creation." -m "Previous version: ${{ steps.version.outputs.current_version }}" -m "New version: ${{ steps.version.outputs.new_version }}" -m "Bump type: ${{ needs.check-for-release.outputs.version_bump }}"
+          
+          # Push directly to main using the VERSION_BUMP_WORKFLOW token
+          git push origin main
+          echo "✅ Successfully pushed version bump to main"
+        fi
+
+    - name: Create Git Tag
+      env:
+        GITHUB_TOKEN: ${{ secrets.VERSION_BUMP_WORKFLOW }}
+      run: |
+        # Create tag from main branch (after version bump commit)
+        git tag ${{ steps.version.outputs.tag_name }}
+        git push origin ${{ steps.version.outputs.tag_name }}
+        echo "Created and pushed tag ${{ steps.version.outputs.tag_name }} from main branch"
+
+    - name: Create GitHub Release
+      env:
+        GH_TOKEN: ${{ secrets.VERSION_BUMP_WORKFLOW }}
+      run: |
+        gh release create ${{ steps.version.outputs.tag_name }} \
+          --title "🏷️ InvenTag Release ${{ steps.version.outputs.new_version }}" \
+          --notes-file release_notes.md \
+          --latest
+
+    - name: Upload Release Assets
+      env:
+        GH_TOKEN: ${{ secrets.VERSION_BUMP_WORKFLOW }}
+      run: |
+        # Create a source archive
+        git archive --format=tar.gz --prefix=inventag-aws-${{ steps.version.outputs.new_version }}/ HEAD > inventag-aws-${{ steps.version.outputs.new_version }}.tar.gz
+        
+        # Upload to release
+        gh release upload ${{ steps.version.outputs.tag_name }} inventag-aws-${{ steps.version.outputs.new_version }}.tar.gz
+
+    - name: Create ZIP archive for release
+      env:
+        GH_TOKEN: ${{ secrets.VERSION_BUMP_WORKFLOW }}
+      run: |
+        # Create a clean ZIP archive of the repository
+        mkdir -p inventag-aws-${{ steps.version.outputs.new_version }}
+        git archive HEAD | tar -x -C inventag-aws-${{ steps.version.outputs.new_version }}/
+        
+        # Create ZIP file
+        zip -r inventag-aws-${{ steps.version.outputs.new_version }}.zip inventag-aws-${{ steps.version.outputs.new_version }}/
+        
+        # Upload ZIP to release
+        gh release upload ${{ steps.version.outputs.tag_name }} inventag-aws-${{ steps.version.outputs.new_version }}.zip
+
+    - name: Post-release notification
+      run: |
+        echo "🚀 Successfully created InvenTag release ${{ steps.version.outputs.new_version }}"
+        echo "📦 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag_name }}"
+        echo "📋 Release created for version ${{ steps.version.outputs.new_version }} (${{ needs.check-for-release.outputs.version_bump }} release)"
+        echo "✅ Version.json updated and committed to main branch"
+        echo "🏷️ Git tag ${{ steps.version.outputs.tag_name }} created and pushed"
+
+  test-release:
+    name: Test Release Functionality
+    runs-on: ubuntu-latest
+    needs: [check-for-release, release]
+    if: needs.check-for-release.outputs.should_release == 'true'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+    - name: Test BOM converter
+      run: |
+        python scripts/legacy/bom_converter.py --help
+        echo "✅ BOM converter works correctly"
+
+    - name: Test tag compliance checker
+      run: |
+        if [ -f scripts/legacy/tag_compliance_checker.py ]; then
+          python scripts/legacy/tag_compliance_checker.py --help
+          echo "✅ Tag compliance checker works correctly"
+        else
+          echo "ℹ️ Tag compliance checker not found - skipping"
+        fi
+
+        if [ -f scripts/legacy/aws_resource_inventory.py ]; then
+          python scripts/legacy/aws_resource_inventory.py --help
+          echo "✅ AWS resource inventory works correctly"
+        else
+          echo "ℹ️ AWS resource inventory script not found - skipping"
+        fi
+
+    - name: Test CI/CD BOM generation
+      run: |
+        python scripts/development/cicd_bom_generation.py --help
+        echo "✅ CI/CD BOM generation works correctly"

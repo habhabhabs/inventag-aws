@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "encrypted": false,
+  "accounts": [
+    {
+      "account_id": "123456789012",
+      "account_name": "Production Account",
+      "role_arn": "arn:aws:iam::123456789012:role/InvenTagCrossAccountRole",
+      "external_id": "unique-external-id-for-security",
+      "regions": ["us-east-1", "us-west-2"],
+      "services": ["EC2", "S3", "RDS", "Lambda"],
+      "tags": {
+        "Environment": "production",
+        "Owner": "devops-team"
+      }
+    },
+    {
+      "account_id": "123456789013",
+      "account_name": "Staging Account",
+      "profile_name": "inventag-staging",
+      "regions": ["us-east-1"],
+      "services": ["EC2", "S3", "Lambda"],
+      "tags": {
+        "Environment": "staging",
+        "Owner": "devops-team"
+      }
+    }
+  ],
+  "global_config": {
+    "default_regions": ["us-east-1"],
+    "default_services": ["EC2", "S3", "RDS", "Lambda"],
+    "max_concurrent_accounts": 3,
+    "continue_on_error": true,
+    "retry_attempts": 3
+  },
+  "metadata": {
+    "created_by": "DevOps Team",
+    "created_date": "2024-01-15",
+    "description": "Basic multi-account configuration",
+    "environment": "production"
+  }
+}

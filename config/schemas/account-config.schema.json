@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InvenTag Multi-Account Configuration Schema",
+  "description": "Schema for validating InvenTag multi-account configuration files",
+  "type": "object",
+  "properties": {
+    "accounts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "pattern": "^[0-9]{12}$",
+            "description": "12-digit AWS account ID"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable account name"
+          },
+          "authentication": {
+            "type": "object",
+            "oneOf": [
+              {
+                "properties": {
+                  "type": {
+                    "const": "profile"
+                  },
+                  "profile_name": {
+                    "type": "string",
+                    "description": "AWS CLI profile name"
+                  }
+                },
+                "required": ["type", "profile_name"],
+                "additionalProperties": false
+              },
+              {
+                "properties": {
+                  "type": {
+                    "const": "role"
+                  },
+                  "role_arn": {
+                    "type": "string",
+                    "pattern": "^arn:aws:iam::[0-9]{12}:role/.+",
+                    "description": "ARN of cross-account role to assume"
+                  },
+                  "external_id": {
+                    "type": "string",
+                    "description": "External ID for role assumption"
+                  }
+                },
+                "required": ["type", "role_arn"],
+                "additionalProperties": false
+              },
+              {
+                "properties": {
+                  "type": {
+                    "const": "keys"
+                  },
+                  "access_key_id": {
+                    "type": "string",
+                    "description": "AWS access key ID"
+                  },
+                  "secret_access_key": {
+                    "type": "string",
+                    "description": "AWS secret access key"
+                  },
+                  "session_token": {
+                    "type": "string",
+                    "description": "Optional session token for temporary credentials"
+                  }
+                },
+                "required": ["type", "access_key_id", "secret_access_key"],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "regions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$"
+            },
+            "description": "List of AWS regions to scan"
+          },
+          "tags": {
+            "type": "object",
+            "description": "Additional tags to apply to resources from this account"
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to include this account in scans"
+          }
+        },
+        "required": ["account_id", "name", "authentication"],
+        "additionalProperties": false
+      }
+    },
+    "global_settings": {
+      "type": "object",
+      "properties": {
+        "default_regions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Default regions to use if not specified per account"
+        },
+        "max_concurrent_accounts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 10,
+          "description": "Maximum number of accounts to process concurrently"
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 3600,
+          "default": 300,
+          "description": "Timeout for individual account processing"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["accounts"],
+  "additionalProperties": false
+}

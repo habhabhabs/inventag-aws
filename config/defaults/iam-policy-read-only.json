@@ -1,0 +1,87 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AWSResourceInventoryReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeRegions",
+        "ec2:DescribeInstances",
+        "ec2:DescribeVolumes",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeSubnets",
+        "s3:ListAllMyBuckets",
+        "s3:GetBucketLocation",
+        "s3:GetBucketTagging",
+        "rds:DescribeDBInstances",
+        "rds:ListTagsForResource",
+        "lambda:ListFunctions",
+        "lambda:ListTags",
+        "iam:ListRoles",
+        "iam:ListRoleTags",
+        "iam:ListUsers",
+        "iam:ListUserTags",
+        "cloudformation:ListStacks",
+        "cloudformation:DescribeStacks",
+        "ecs:ListClusters",
+        "ecs:DescribeClusters",
+        "ecs:ListTagsForResource",
+        "eks:ListClusters",
+        "eks:DescribeCluster",
+        "cloudwatch:DescribeAlarms"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ComprehensiveResourceDiscovery",
+      "Effect": "Allow",
+      "Action": [
+        "tag:GetResources",
+        "config:DescribeConfigurationRecorderStatus",
+        "config:ListDiscoveredResources",
+        "config:ListAggregateDiscoveredResources",
+        "config:GetResourceConfigHistory",
+        "cloudtrail:LookupEvents",
+        "logs:DescribeLogGroups",
+        "logs:ListTagsLogGroup",
+        "route53:ListHostedZones",
+        "route53:ListTagsForResource",
+        "apigateway:GET",
+        "dynamodb:ListTables",
+        "dynamodb:DescribeTable",
+        "dynamodb:ListTagsOfResource",
+        "sns:ListTopics",
+        "sns:ListTagsForResource",
+        "sqs:ListQueues",
+        "sqs:GetQueueAttributes",
+        "sqs:ListQueueTags",
+        "kms:ListKeys",
+        "kms:DescribeKey",
+        "kms:ListResourceTags",
+        "elasticache:DescribeCacheClusters",
+        "es:ListTagsForResource",
+        "es:DescribeDomain",
+        "es:ListDomainNames",
+        "es:DescribeElasticsearchDomain",
+        "es:ListTags"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "OptionalS3ReportUpload",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::YOUR-REPORTS-BUCKET-NAME/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "s3:x-amz-server-side-encryption": "AES256"
+        }
+      }
+    }
+  ]
+}
