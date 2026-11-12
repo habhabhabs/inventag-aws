@@ -1,0 +1,25 @@
+# FinOps cost-allocation tag policy: a starting point, not a standard.
+# Change the keys and allowed values to match your own tagging conventions
+# before you enforce it.
+#
+# Tip: tag keys only show up in AWS cost reports after you activate them as
+# cost allocation tags in the Billing and Cost Management console.
+format_version: 1
+kind: tag-policy
+name: finops-cost-allocation
+description: Requires CostCenter, Owner, Project and Environment so spend can be allocated.
+spec:
+  required_tags:
+    - key: CostCenter
+      description: Budget that pays for the resource.
+      pattern: "CC-[0-9]{4}"          # example format: CC-1234
+    - key: Owner
+      description: Team or person accountable for the resource.
+    - key: Project
+      description: Product or project the resource belongs to.
+    - key: Environment
+      description: Lifecycle stage, used to split production from non-production spend.
+      allowed_values: [prod, staging, dev, test, sandbox]
+  scope:
+    # KMS aliases cannot carry tags; check the key instead.
+    exclude_resource_types: [Alias]

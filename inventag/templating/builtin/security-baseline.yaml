@@ -1,0 +1,20 @@
+# Security baseline tag policy: tags that help you answer "who owns this,
+# how sensitive is the data, and is it production?" during a review or an
+# incident. It is a starting point; it does not make anything compliant
+# with any framework.
+format_version: 1
+kind: tag-policy
+name: security-baseline
+description: Requires Owner, Environment and DataClassification for security reviews.
+spec:
+  required_tags:
+    - key: Owner
+      description: Who to contact about this resource.
+    - key: Environment
+      description: Lifecycle stage.
+      allowed_values: [prod, staging, dev, test, sandbox]
+    - key: DataClassification
+      description: Sensitivity of the data the resource stores or processes.
+      allowed_values: [public, internal, confidential, restricted]
+  scope:
+    exclude_resource_types: [Alias]

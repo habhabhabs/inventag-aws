@@ -1,0 +1,15 @@
+# Single account: scan the account of your current AWS credentials (an AWS
+# CLI profile, environment variables or an IAM role) and write Excel and
+# Word reports with the standard layout.
+#
+# Set the regions you use. Leave 'regions' out to scan every region enabled
+# in the account (slower).
+format_version: 1
+kind: config
+name: single-account
+description: Scan the account of your current credentials and write Excel and Word reports.
+spec:
+  regions: [us-east-1]      # replace with the regions you use
+  outputs: [excel, word]
+  output_directory: bom_output
+  report_template: standard-bom

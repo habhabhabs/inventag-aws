@@ -1,0 +1,18 @@
+# CI/CD pipeline: scan with the pipeline's credentials, write an Excel
+# report and a tag-compliance JSON file, and fail the job (exit code 3) when
+# a resource breaks the tag policy. Upload bom_output/ as a build artifact.
+#
+# Use short-lived credentials (for example GitHub Actions OIDC with
+# aws-actions/configure-aws-credentials) and a read-only role.
+format_version: 1
+kind: config
+name: ci-pipeline
+description: Excel report plus tag-compliance JSON; exits with code 3 on tag policy violations.
+spec:
+  regions: [us-east-1]       # replace with the regions you use
+  outputs: [excel]
+  output_directory: bom_output
+  report_template: standard-bom
+  tag_policy: finops-cost-allocation
+  fail_on_tag_violations: true
+  parallel_processing: false
