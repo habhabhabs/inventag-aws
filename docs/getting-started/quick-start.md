@@ -1,180 +1,97 @@
 ---
-title: Quick start
-description: Install InvenTag and generate your first AWS bill of materials.
-sidebar_position: 1
+title: Generate your first report
+description: Scan one AWS account and region with InvenTag and open the Excel and Word bill-of-materials reports it writes, in about ten minutes.
+sidebar_position: 3
 ---
 
-# Quick start
+# Generate your first report
 
-About ten minutes, most of it waiting for discovery.
+**Who this is for:** you have [installed InvenTag](./installation.md) and have
+read-only AWS credentials.
 
-## 1. Prerequisites
+**What you can do after reading:** scan one account, open the Excel and Word
+reports, and choose a nicer layout with a template.
 
-- Python 3.8 or newer (`python3 --version`)
-- AWS credentials that boto3 can find: `aws configure`, `aws sso login`,
-  a named profile or `AWS_*` environment variables. The AWS CLI itself is
-  optional; it's just the easiest way to set credentials up.
-- A **read-only** IAM policy: see
-  [Permissions](../user-guides/production-safety.md#iam-permissions).
-
-## 2. Install
+## 1. Check which account you are in
 
 ```bash
-git clone https://github.com/habhabhabs/inventag-aws.git
-cd inventag-aws
-python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-./inventag.sh --help               # Windows: inventag.bat --help
+aws sts get-caller-identity
 ```
 
-Check that your credentials work before scanning anything:
+InvenTag scans the account these credentials belong to.
+
+## 2. Scan one region
+
+Start small: one region is quick and cheap.
 
 ```bash
-./inventag.sh --validate-credentials
+./inventag.sh --create-excel --create-word --account-regions us-east-1
 ```
 
-## 3. Your first report
+- `--create-excel` and `--create-word` choose the files to write. Without
+  either, you get Excel only.
+- `--account-regions` limits the scan to the regions you list, separated by
+  commas. Without it, InvenTag scans every region enabled in the account,
+  which takes longer.
 
-```bash
-./inventag.sh --create-excel --verbose
+While it runs you see progress messages. At the end you see where the files
+went. Sample output from an offline run against mocked AWS (sample data):
+
+```text
+WARNING -   - No account specification method provided. Using default AWS credentials.
+Word document saved: bom_output/multi_account_bom_20261112_125543.docx
+Data exported to bom_output/multi_account_bom_20261112_125543.xlsx
 ```
 
-This scans every enabled region of the account your default credentials point
-to. To keep the first run short, limit the regions:
+The warning only says that you did not name an account, so InvenTag used your
+current credentials. Add `--verbose` to see each step.
 
-```bash
-./inventag.sh --create-excel --account-regions us-east-1,ap-southeast-1
-```
+## 3. Open the reports
 
-You get:
-
-| File | What it is |
+| File | What is in it |
 |---|---|
-| `bom_output/multi_account_bom_<YYYYMMDD_HHMMSS>.xlsx` | The workbook: summary sheet plus one sheet per service |
-| `bom_output/state/state_<timestamp>.json` | Snapshot used to report changes on the next run |
+| `bom_output/multi_account_bom_<timestamp>.xlsx` | A Summary sheet with resource counts per service, then one sheet per service with every field InvenTag found |
+| `bom_output/multi_account_bom_<timestamp>.docx` | A summary, a table of services, and up to 50 resources per service |
+| `bom_output/state/` | A snapshot of this run, used to compare runs later |
 
-Add `--create-word` for a `.docx` version, and `--output-directory reports/`
-to write somewhere else.
+## 4. Choose a layout with a template
 
-:::note Cost Explorer
-Discovery calls Cost Explorer `GetCostAndUsage`, which AWS bills per request.
-See [Current status](./status.md#costs).
-:::
-
-## 4. Several accounts
-
-Create `accounts.json`:
-
-```json
-{
-  "accounts": [
-    {
-      "account_id": "123456789012",
-      "account_name": "Production",
-      "profile_name": "prod",
-      "regions": ["us-east-1", "eu-west-1"]
-    },
-    {
-      "account_id": "123456789013",
-      "account_name": "Development",
-      "profile_name": "dev",
-      "regions": ["ap-southeast-1", "ap-northeast-1"]
-    }
-  ]
-}
-```
-
-An empty or missing `regions` list means "all regions". Then:
+The default workbook includes every raw field, which makes wide sheets. A
+[report template](../templates/index.md) gives you readable columns, one
+column per tag, frozen headers and filters:
 
 ```bash
-./inventag.sh --accounts-file accounts.json --create-excel --create-word
+./inventag.sh --template standard-bom --create-excel --create-word --account-regions us-east-1
 ```
 
-Accounts run four at a time; change it with `--max-concurrent-accounts`.
-More options (access keys, role ARNs, per-account services):
-[Account setup](../examples/accounts-setup.md).
-
-## 5. Your own tag columns and descriptions
-
-Tag mappings turn tags into named report columns. The file needs a top-level
-`tag_mappings` list:
-
-```yaml
-# tag-mappings.yaml
-tag_mappings:
-  - tag: "Owner"
-    name: "Resource Owner"
-  - tag: "CostCenter"
-    name: "Cost Center"
-  - tag: "Environment"
-    name: "Environment"
+```text
+Wrote bom_output/multi_account_bom_20261112_130917.docx
+Wrote bom_output/multi_account_bom_20261112_130917.xlsx
 ```
 
-Service descriptions need a top-level `service_descriptions` key:
-
-```yaml
-# service-descriptions.yaml
-service_descriptions:
-  EC2:
-    default:
-      description: "Virtual servers"
-    Instance:
-      description: "Virtual machine instances"
-  S3:
-    default:
-      description: "Object storage"
-```
+Want to know whether your resources carry the right tags? Add a tag policy:
 
 ```bash
-./inventag.sh --create-excel \
-  --tag-mappings tag-mappings.yaml \
-  --service-descriptions service-descriptions.yaml
+./inventag.sh --template standard-bom --template finops-cost-allocation \
+  --create-excel --account-regions us-east-1
 ```
 
-Complete examples ship with the repo:
-`config/defaults/mappings/tag_to_column_mappings_example.yaml` and
-`config/defaults/services/service_descriptions_example.yaml`.
-
-:::caution Validation is looser than loading
-`--validate-config` currently accepts some layouts (for example a mapping
-without the `tag_mappings` key) that the report generator then ignores with an
-error in the log. Stick to the layouts above.
-:::
-
-## 6. Optional analysis sheets
-
-```bash
-./inventag.sh --create-excel \
-  --enable-network-analysis \
-  --enable-security-analysis
+```text
+Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-compliant, 14 out of scope.
 ```
 
-## 7. Tag-policy check
+The workbook now has a Tag Compliance sheet listing what is missing on each
+resource.
 
-The tag-policy checker is a separate script today:
+## What it cost
 
-```bash
-python3 scripts/legacy/tag_compliance_checker.py \
-  --config config/defaults/compliance/tag_compliance_policy_example.yaml \
-  --format excel --output compliance_report
-```
-
-## Useful commands
-
-```bash
-./inventag.sh --help                                   # every flag
-./inventag.sh --accounts-file accounts.json --validate-config
-./inventag.sh --cross-account-role arn:aws:iam::123456789012:role/InvenTagReadOnly --create-excel
-./inventag.sh --create-excel --log-file inventag.log --verbose
-```
-
-`--debug` is available too, but it logs request headers including session
-tokens: [details](./status.md#security-notes).
+Each run makes read-only API calls, which are free, plus Cost Explorer
+`GetCostAndUsage` requests, which AWS charges per request. Check the current
+[Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 
 ## Next steps
 
-- [Current status and known limitations](./status.md)
-- [CLI user guide](../user-guides/cli-user-guide.md)
-- [Configuration examples](../user-guides/configuration-examples.md)
-- [Troubleshooting](../user-guides/troubleshooting-guide.md)
+- [Feature status and known limitations](./status.md): read this before you
+  rely on a flag.
+- [Choose what to scan and what to produce](../guides/run-a-scan.md)
+- [Examples](../examples/index.md): copy-paste recipes.

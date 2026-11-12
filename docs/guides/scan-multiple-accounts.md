@@ -1,0 +1,95 @@
+---
+title: Scan several accounts
+description: Scan many AWS accounts in one InvenTag run with an accounts file or a config template, using a read-only role in each account.
+sidebar_position: 3
+---
+
+# Scan several accounts
+
+**Who this is for:** you look after more than one AWS account and want one
+consolidated report.
+
+**What you can do after reading:** list your accounts once and scan them all
+in one run.
+
+## How it works
+
+InvenTag reads a list of accounts. For each one it gets credentials, either
+from a named AWS CLI profile or by assuming an IAM role from the identity you
+run it with. It scans each account, up to four at a time by default, and
+writes one report with an Account column.
+
+InvenTag does not list the accounts in your AWS Organization for you. You
+write the list.
+
+## 1. Create a read-only role in every account
+
+Follow [Set up read-only access](./read-only-access.md#with-an-iam-role-in-each-account).
+Use the same role name everywhere, for example `InvenTagReadOnly`.
+
+## 2. Get your account list
+
+From the management account, or a delegated administrator account:
+
+```bash
+aws organizations list-accounts \
+  --query "Accounts[?Status=='ACTIVE'].[Id,Name]" --output text
+```
+
+## 3. Write the list as a config template
+
+```bash
+./inventag.sh templates init org-multi-account --output .inventag/templates/our-org.yaml
+```
+
+Edit the `accounts` section. Each account needs its 12-digit ID **in quotes**
+and either a `role_arn` or a `profile_name`:
+
+```yaml
+spec:
+  accounts:
+    - account_id: "123456789012"
+      account_name: Production
+      role_arn: arn:aws:iam::123456789012:role/InvenTagReadOnly
+    - account_id: "210987654321"
+      account_name: Development
+      profile_name: dev-readonly
+  regions: [us-east-1, eu-west-1]
+```
+
+Check it, then run it:
+
+```bash
+./inventag.sh templates validate our-org
+./inventag.sh --template our-org
+```
+
+`validate` catches the common mistakes: unquoted account IDs, a role ARN that
+points at a different account than `account_id`, and access keys in the file
+(not allowed in templates).
+
+## Or use an accounts file
+
+The older `--accounts-file` option still works and also accepts access keys
+(avoid them if you can). The format is in
+[Configuration files](../reference/configuration-files.md#accounts-file).
+
+```bash
+./inventag.sh --accounts-file accounts.yaml --create-excel
+```
+
+## Tune the run
+
+| Setting | Config template field | Flag |
+|---|---|---|
+| Accounts scanned at once (default 4) | `max_concurrent_accounts` | `--max-concurrent-accounts` |
+| Seconds allowed per account (default 1800) | `account_processing_timeout` | `--account-processing-timeout` |
+| One account at a time | `parallel_processing: false` | `--disable-parallel-processing` |
+
+If one account fails, for example because its role cannot be assumed,
+InvenTag logs the error and reports the accounts that worked.
+
+## Next steps
+
+- [Example: inventory every account in an organization](../examples/accounts-setup.md)
+- [Check tags against a policy](./check-tag-compliance.md)

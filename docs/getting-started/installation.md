@@ -1,141 +1,106 @@
 ---
-title: Installation
-description: Install InvenTag, set up AWS credentials and a read-only IAM policy.
+title: Install InvenTag
+description: Install InvenTag from GitHub into a Python virtual environment, connect your AWS credentials and check that everything works.
 sidebar_position: 2
 ---
 
-# Installation
+# Install InvenTag
 
-## Requirements
+**Who this is for:** anyone setting up InvenTag on a laptop, a server or a CI
+runner.
 
-- **Python 3.8+.** CI runs a version matrix; day-to-day development happens on
-  current Python 3 releases.
-- **Git**, to clone the repository.
-- **AWS credentials** that boto3 can find. The AWS CLI is optional but the
-  easiest way to set them up.
+**What you can do after reading:** run `./inventag.sh --help` and confirm that
+InvenTag can see your AWS account.
 
-InvenTag is not published to PyPI; install it from the repository.
+## What you need
 
-## Install from GitHub
+- **Python 3.11 or later.** Python 3.10 reached end of life in October 2026,
+  so use a supported version. Check yours with `python3 --version`.
+- **Git**, to download the code.
+- **AWS credentials** for a read-only identity. The
+  [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+  is optional, but it is the easiest way to set them up.
+
+InvenTag is not on PyPI. You install it from the GitHub repository.
+
+## Download and install
 
 ```bash
 git clone https://github.com/habhabhabs/inventag-aws.git
 cd inventag-aws
-
 python3 -m venv .venv
-source .venv/bin/activate        # Windows (PowerShell): .venv\Scripts\Activate.ps1
-
+source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
 pip install -r requirements.txt
-./inventag.sh --help             # Windows: inventag.bat --help
+./inventag.sh --help               # Windows: inventag.bat --help
 ```
 
-`inventag.sh` / `inventag.bat` look for a Python 3.8+ interpreter and run
-`inventag_cli.py`. You can also call it directly: `python3 inventag_cli.py --help`.
+`inventag.sh` and `inventag.bat` find a Python interpreter and run
+`inventag_cli.py`. You can also run `python inventag_cli.py --help` directly.
 
-To pin a release instead of `main`, check out a tag, e.g. `git checkout v4.2.26`
-([releases](https://github.com/habhabhabs/inventag-aws/releases)).
+To use a fixed release instead of the latest code, check out a tag, for
+example `git checkout v4.2.27`. All releases are listed on the
+[releases page](https://github.com/habhabhabs/inventag-aws/releases).
 
-## AWS credentials
+## Connect your AWS credentials
 
-InvenTag uses the standard boto3 credential chain, so any of these work:
+InvenTag uses the standard AWS credential chain, so any of these work:
 
 ```bash
-aws configure                    # long-lived keys in ~/.aws/credentials
-aws sso login --profile my-sso   # IAM Identity Center; then export AWS_PROFILE=my-sso
-export AWS_PROFILE=readonly      # any named profile
+aws sso login --profile my-readonly     # IAM Identity Center (recommended)
+export AWS_PROFILE=my-readonly
+
+aws configure                           # long-lived access keys (avoid if you can)
 ```
 
-Prefer short-lived credentials (SSO or an assumed role) over access keys.
-Then check them:
+Prefer short-lived credentials, such as IAM Identity Center or an assumed
+role, over access keys stored on disk.
+
+## Check that it works
 
 ```bash
-./inventag.sh --validate-credentials
+aws sts get-caller-identity
 ```
 
-## IAM permissions
+This prints the account ID and the identity ARN that InvenTag will use. If it
+fails, fix your credentials before you run InvenTag.
 
-Give InvenTag a **read-only** identity. Nothing in the CLI enforces read-only
-behaviour at runtime, so the IAM policy is your real safety net
-([details](../user-guides/production-safety.md)).
+InvenTag also checks your credentials at the start of every run and explains
+the most likely cause when they fail, such as an expired SSO session.
 
-The simplest setup is the AWS managed `ReadOnlyAccess` policy **plus** this
-small policy for the two things it may not cover (the Tagging API and Cost
-Explorer):
+:::note
+`./inventag.sh --validate-credentials` currently reports every account as
+invalid because of a bug, even when the credentials work. Use
+`aws sts get-caller-identity` until it is fixed. See
+[Feature status](./status.md).
+:::
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "InvenTagExtras",
-      "Effect": "Allow",
-      "Action": [
-        "tag:GetResources",
-        "ce:GetCostAndUsage",
-        "ec2:DescribeRegions",
-        "pricing:GetProducts"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-```
+## Give InvenTag read-only permissions
 
-- `tag:GetResources`: the Resource Groups Tagging API (IAM prefix `tag`).
-- `ce:GetCostAndUsage`: finds services with spend. **Billed per request by AWS.**
-- `ec2:DescribeRegions`: region auto-discovery.
-- `pricing:GetProducts`: only used by `--enable-cost-analysis`.
+Before your first real scan, give the identity a read-only policy:
+[Set up read-only access](../guides/read-only-access.md).
 
-Without `ReadOnlyAccess`, discovery still runs but service-specific details
-(e.g. S3 encryption, Lambda VPC config) come back empty where a `Describe*`
-call is denied. The repo also ships a narrower example policy at
-`config/defaults/iam-policy-read-only.json`; note that it does **not** include
-`ce:GetCostAndUsage` or `pricing:GetProducts`.
-
-### IAM Identity Center (SSO)
-
-Create a permission set with the `ReadOnlyAccess` managed policy and add the
-JSON above as an inline policy, then assign it to the accounts you want to
-scan. Console: *IAM Identity Center → Permission sets → Create*. CLI:
-
-```bash
-aws sso-admin create-permission-set \
-  --instance-arn arn:aws:sso:::instance/ssoins-EXAMPLE \
-  --name InvenTagReadOnly \
-  --description "Read-only access for InvenTag"
-
-aws sso-admin attach-managed-policy-to-permission-set \
-  --instance-arn arn:aws:sso:::instance/ssoins-EXAMPLE \
-  --permission-set-arn arn:aws:sso:::permissionSet/ssoins-EXAMPLE/ps-EXAMPLE \
-  --managed-policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess
-
-aws sso-admin put-inline-policy-to-permission-set \
-  --instance-arn arn:aws:sso:::instance/ssoins-EXAMPLE \
-  --permission-set-arn arn:aws:sso:::permissionSet/ssoins-EXAMPLE/ps-EXAMPLE \
-  --inline-policy file://inventag-extras.json
-```
-
-## Development install
+## Install for development
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python3 -m pytest tests
+python -m pytest tests/unit/templating tests/integration/templating
 ```
 
-See [Current status](./status.md#tests) for the state of the test suite.
+The [Contributing guide](../development/CONTRIBUTING.md) explains the full test
+suite and its current state.
 
-## Troubleshooting
+## Fix install problems
 
-| Symptom | Try |
+| What you see | What to do |
 |---|---|
-| `No suitable Python interpreter found` | Install Python 3.8+ and make sure `python3 --version` works |
-| `Permission denied: ./inventag.sh` | `chmod +x inventag.sh` |
-| `Unable to locate credentials` | `aws sts get-caller-identity`; set `AWS_PROFILE` or log in with `aws sso login` |
-| `AccessDenied` for `ce:GetCostAndUsage` | Add the extras policy above, or ignore: discovery continues without billing data |
-| `ModuleNotFoundError` | Activate the virtualenv and re-run `pip install -r requirements.txt` |
+| `No suitable Python interpreter found` | Install Python 3.11 or later and check that `python3 --version` works. |
+| `Permission denied: ./inventag.sh` | Run `chmod +x inventag.sh`. |
+| `ModuleNotFoundError` | Activate the virtual environment and run `pip install -r requirements.txt` again. |
+| `Unable to locate credentials` | Run `aws sts get-caller-identity`. Set `AWS_PROFILE` or run `aws sso login`. |
 
-More: [Troubleshooting guide](../user-guides/troubleshooting-guide.md).
+More help: [Fix common problems](../guides/troubleshooting.md).
 
-## Next
+## Next step
 
-[Quick start](./quick-start.md)
+[Generate your first report](./quick-start.md)

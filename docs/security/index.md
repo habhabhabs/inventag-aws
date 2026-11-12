@@ -1,125 +1,84 @@
 ---
-title: Security Documentation
-description: Security information, SBOM, and vulnerability tracking for InvenTag
+title: Security
+description: How to report a vulnerability in InvenTag, which Python versions to use, how dependencies are checked, and what to do after a supply-chain incident.
 sidebar_position: 1
 ---
 
-# Security Documentation
+# Security
 
-This section contains comprehensive security information for InvenTag, including Software Bill of Materials (SBOM), vulnerability tracking, and security monitoring.
+**Who this is for:** security reviewers, and anyone running InvenTag against
+production accounts.
 
-## 📋 Current Security Status
+**What you will know after reading:** how to report a problem, how InvenTag's
+dependencies are checked, and how to limit the damage if something goes
+wrong.
 
-- **Security Scanning**: Automated via GitHub Actions
-- **SBOM Generation**: Integrated with documentation build
-- **Vulnerability Tracking**: Comprehensive CVE analysis
-- **Documentation Updates**: Automated security information inclusion
+## Report a vulnerability
 
-## 📦 Software Bill of Materials (SBOM)
+Please don't put exploit details in a public issue.
 
-Our SBOM provides complete transparency into all components and dependencies. The SBOM is automatically generated during the documentation build process to ensure up-to-date dependency tracking.
+This repository does not have a `SECURITY.md` file or GitHub private
+vulnerability reporting set up yet (checked November 2026). Until it does,
+open an [issue](https://github.com/habhabhabs/inventag-aws/issues) titled
+"Security contact request", with no technical details, and ask the
+maintainer for a private channel.
 
-### SBOM Integration
+## Use a supported Python version
 
-- **Current Build SBOM**: Generated fresh with each documentation build
-- **Version-Specific SBOM**: Generated when creating documentation versions
-- **Multiple Formats**: JSON, CycloneDX, SPDX, and XML formats available
-- **Automated Updates**: SBOM regenerated with every documentation deployment
+Use Python 3.11 or later. Python 3.10 and older no longer receive security
+fixes: 3.10 reached end of life in October 2026
+([Python release status](https://devguide.python.org/versions/)).
 
-## 🔒 Security Monitoring
+## How dependencies are checked
 
-InvenTag implements comprehensive security monitoring:
+| What | How, on the current `main` branch |
+|---|---|
+| Python dependencies | Listed in `requirements.txt` with minimum versions (`>=`), not exact pins. A fresh install gets the newest matching releases. |
+| Development tools | Listed in `requirements-dev.txt`, also with minimum versions. |
+| Website | Locked in `website/package-lock.json`. |
+| Scanning | A GitHub Actions workflow runs on pushes to `main`, on pull requests and weekly (Sundays, 02:00 UTC). It runs Bandit, Safety, pip-audit, `npm audit` and detect-secrets. Today, findings are reported but do not fail the workflow. |
+| Software bill of materials | The documentation build generates SBOM files for the Python and website dependencies. |
 
-- **Automated Scanning**: Multi-language vulnerability detection
-- **Dependency Tracking**: Continuous monitoring of dependencies
-- **SBOM Integration**: Real-time component tracking
-- **Security Alerts**: Automated issue creation for high-severity findings
+To check your own installation:
 
-## 📊 Security Workflows
+```bash
+pip install pip-audit
+pip-audit -r requirements.txt
+```
 
-Our security infrastructure includes:
+The template feature adds no new dependencies. It uses PyYAML, openpyxl and
+python-docx, which InvenTag already needs.
 
-1. **SBOM Generation**: Automated during documentation builds
-2. **CVE Tracking**: Comprehensive vulnerability analysis between versions
-3. **Security Scanning**: Python, JavaScript, and infrastructure analysis
-4. **Documentation Integration**: Security information included in docs
+## Reduce the impact if something goes wrong
 
-## 🛡️ Compliance
+InvenTag reads your AWS accounts, so the credentials you give it matter more
+than the tool itself.
 
-The SBOM and security documentation support:
-- Supply chain security requirements
-- Vulnerability disclosure policies
-- Dependency license compliance
-- Security audit requirements
+- **Read-only, least privilege.** Give InvenTag only read permissions:
+  [Set up read-only access](../guides/read-only-access.md).
+- **Short-lived credentials.** Use IAM Identity Center or an assumed role,
+  not access keys on disk or in CI secrets. In GitHub Actions, use OIDC.
+- **No debug logs in CI.** `--debug` writes temporary session tokens to the
+  log.
+- **Pin what you run.** Check out a release tag of InvenTag, and pin GitHub
+  Actions to commit SHAs.
 
-## 📁 Security Documentation Structure
+## After a supply-chain incident
 
-When the documentation builds, additional security content will be available:
+If a dependency, a CI action or the machine that runs InvenTag may have been
+compromised:
 
-- **Current Security Status**: Real-time security and dependency information
-- **SBOM Files**: Machine-readable Software Bill of Materials
-- **Version History**: Security information for each documented version
-- **Security Monitoring**: Ongoing vulnerability and dependency tracking
+1. **Revoke and rotate** the credentials InvenTag used: delete access keys,
+   revoke active role sessions, and sign out of SSO sessions.
+2. **Check AWS CloudTrail** for calls from that identity that InvenTag would
+   not make, especially anything that is not `List`, `Describe` or `Get`.
+3. **Check the IAM policy is still read-only** and remove anything extra.
+4. **Rebuild the environment** from a clean virtual environment:
+   `pip install -r requirements.txt`, then run `pip-audit`.
+5. **Treat old reports as sensitive.** They list your resources and tags.
 
-## 🔒 Enterprise Security Integration
+## Templates are data, not code
 
-**Status**: PRODUCTION READY  
-**Classification**: MAJOR SECURITY ENHANCEMENT
-
-This system implements security automation and monitoring:
-
-### ✅ Permanent Security Solutions Implemented
-
-#### 1. **Robust SBOM Generation**
-- **Multi-format SBOM output**: Syft JSON, CycloneDX, SPDX, XML
-- **Version-specific tracking**: Historical SBOM for every release
-- **Automated integration**: Built into documentation pipeline
-- **Comprehensive coverage**: Python, Node.js, and system dependencies
-
-#### 2. **Advanced CVE Tracking**
-- **Multi-tool vulnerability scanning**: Grype, Trivy, Safety, npm audit
-- **Automated changelog generation**: Security changes between versions
-- **Risk-based alerting**: Automated issue creation for high-severity findings
-- **Historical analysis**: Vulnerability trend tracking
-
-#### 3. **Comprehensive Security Scanning**
-- **Multi-language analysis**: Python (Bandit), JavaScript (ESLint Security)
-- **Infrastructure security**: GitHub Actions, container configurations
-- **Secrets detection**: GitLeaks with intelligent filtering
-- **Static analysis**: Semgrep with OWASP and CWE rulesets
-
-#### 4. **Production-Ready GitLeaks Configuration**
-- **Smart filtering**: Distinguishes documentation examples from real secrets
-- **Comprehensive coverage**: All file types and repositories
-- **False positive reduction**: Intelligent pattern matching
-- **Continuous monitoring**: Integrated into CI/CD pipeline
-
-#### 5. **Robust Documentation Integration**
-- **Error-resilient builds**: Graceful handling of missing security files
-- **Version-aware navigation**: Proper Docusaurus sidebar management
-- **Automated content generation**: Security information embedded in docs
-- **Fallback mechanisms**: Documentation builds succeed even if SBOM generation fails
-
-### 🛡️ Security Architecture Features
-
-#### Automated Monitoring
-- **Weekly security scans**: Scheduled vulnerability assessments
-- **Real-time alerting**: GitHub Issues created for security findings
-- **Performance optimization**: Efficient multi-tool scanning
-- **Artifact retention**: Long-term security data storage (365 days)
-
-#### Compliance & Governance
-- **Supply chain transparency**: Complete SBOM visibility
-- **Vulnerability disclosure**: Automated security changelogs
-- **License compliance**: Dependency license tracking
-- **Audit trails**: Comprehensive security documentation
-
-#### CI/CD Integration
-- **Pre-commit scanning**: Security checks before code commits
-- **Pull request analysis**: Security impact assessment
-- **Release validation**: Security requirements for deployments
-- **Rollback safety**: Security data preserved across versions
-
----
-
-*Security documentation is automatically maintained and updated with each build. The SBOM and security information will be populated when the documentation deployment workflow runs.*
+Templates are read with a safe YAML loader, cannot run code or fetch URLs, can
+only reference files inside their own folder, and cannot hold access keys.
+Details: [Templates](../templates/index.md#safe-by-design).
