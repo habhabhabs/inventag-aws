@@ -62,8 +62,8 @@ The comprehensive discovery system uses a three-step approach:
 
 ### Enable Comprehensive Discovery
 ```bash
-# Enable comprehensive discovery (default)
-./inventag.sh --create-excel --comprehensive-discovery
+# Comprehensive discovery is on by default; there is no CLI flag for it
+./inventag.sh --create-excel
 
 # Or via Python API
 from inventag.discovery.inventory import AWSResourceInventory
@@ -92,7 +92,7 @@ inventory = AWSResourceInventory(
 ### Typical Performance
 - **Speed**: 5-8 resources/second
 - **Coverage**: 15-25x more infrastructure resources than ResourceGroupsTagging alone
-- **Efficiency**: 93-97% parallel worker utilization
+- **Efficiency**: parallel workers per service
 - **Reliability**: Graceful degradation with permission failures
 
 ### Resource Discovery Improvements
@@ -153,10 +153,7 @@ All discovered resources are normalized to a consistent format:
 The comprehensive discovery system maintains full backward compatibility:
 
 ```bash
-# Disable comprehensive discovery (fallback to ResourceGroupsTagging)
-./inventag.sh --create-excel --no-comprehensive-discovery
-
-# Or via API
+# There is no CLI flag to turn it off. From Python:
 inventory = AWSResourceInventory(use_comprehensive=False)
 ```
 
@@ -197,7 +194,7 @@ print(f'Found {len(resources)} resources')
 
 ## Related Documentation
 
-- [IAM Permissions](./iam-permissions)
-- [Performance Optimization](./performance-optimization)
-- [Service Coverage](./service-coverage)
-- [Resource Normalization](./resource-normalization)
+- [IAM permissions](../getting-started/installation.md#iam-permissions)
+- [Optimized discovery system](./optimized-discovery-system.md)
+- [Service descriptions](./service-descriptions.md)
+- [Fallback mechanism](../advanced/fallback-mechanism.md)

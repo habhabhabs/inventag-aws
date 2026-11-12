@@ -8,7 +8,7 @@ sidebar_position: 2
 
 ## Overview
 
-The Optimized Discovery System is an enhanced AWS resource discovery engine that addresses performance and coverage issues found in traditional discovery approaches. It provides 3-4x performance improvements while maintaining high accuracy through service-specific patterns and intelligent field mapping.
+The Optimized Discovery System is an enhanced AWS resource discovery engine that addresses performance and coverage issues found in traditional discovery approaches. It is faster than the original discovery path while maintaining high accuracy through service-specific patterns and intelligent field mapping.
 
 ## Key Improvements
 
@@ -614,9 +614,8 @@ resources = specific_discovery.discover_all_services()
 
 ### Performance Improvements
 
-- **3-4x Faster**: Parallel processing reduces discovery time significantly
+- **Faster**: Parallel processing reduces discovery time significantly
 - **Better Coverage**: Finds previously missing services (CloudFront, IAM, Route53)
-- **Higher Quality**: 98% of resources have high confidence scores (≥0.7)
 - **More Reliable**: Robust error handling and fallback mechanisms
 
 ## Troubleshooting
@@ -725,6 +724,6 @@ discovery.field_mapper.optimized_service_patterns['custom_service'] = {
 ```
 
 For more information, see:
-- [Core Module Integration](/architecture/core-module-integration)
-- [Service Enrichment Framework](/architecture/service-enrichment)
+- [Core Module Integration](./core-module-integration.md)
+- [Service Enrichment Framework](./service-enrichment.md)
 - [CLI User Guide](../user-guides/cli-user-guide)

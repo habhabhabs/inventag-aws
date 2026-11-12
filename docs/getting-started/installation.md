@@ -1,239 +1,141 @@
 ---
 title: Installation
-description: How to install and set up InvenTag
+description: Install InvenTag, set up AWS credentials and a read-only IAM policy.
 sidebar_position: 2
 ---
 
-# Installation Guide
+# Installation
 
-## Prerequisites
+## Requirements
 
-- **Python 3.8+** - InvenTag requires Python 3.8 or higher
-- **AWS CLI** - Configured with appropriate permissions
-- **Git** - For cloning the repository
+- **Python 3.8+.** CI runs a version matrix; day-to-day development happens on
+  current Python 3 releases.
+- **Git**, to clone the repository.
+- **AWS credentials** that boto3 can find. The AWS CLI is optional but the
+  easiest way to set them up.
 
-## Installation Methods
+InvenTag is not published to PyPI; install it from the repository.
 
-### Method 1: Clone from GitHub (Recommended)
+## Install from GitHub
 
 ```bash
-# Clone the repository
 git clone https://github.com/habhabhabs/inventag-aws.git
 cd inventag-aws
 
-# Install Python dependencies
+python3 -m venv .venv
+source .venv/bin/activate        # Windows (PowerShell): .venv\Scripts\Activate.ps1
+
 pip install -r requirements.txt
-
-# Verify installation
-python inventag_cli.py --help
+./inventag.sh --help             # Windows: inventag.bat --help
 ```
 
-### Method 2: Direct Download
+`inventag.sh` / `inventag.bat` look for a Python 3.8+ interpreter and run
+`inventag_cli.py`. You can also call it directly: `python3 inventag_cli.py --help`.
 
-1. Download the latest release from [GitHub Releases](https://github.com/habhabhabs/inventag-aws/releases)
-2. Extract the archive
-3. Navigate to the extracted directory
-4. Install dependencies: `pip install -r requirements.txt`
+To pin a release instead of `main`, check out a tag, e.g. `git checkout v4.2.26`
+([releases](https://github.com/habhabhabs/inventag-aws/releases)).
 
-## AWS Configuration
+## AWS credentials
 
-### Configure AWS CLI
-
-InvenTag uses AWS CLI credentials. Configure them using:
+InvenTag uses the standard boto3 credential chain, so any of these work:
 
 ```bash
-aws configure
+aws configure                    # long-lived keys in ~/.aws/credentials
+aws sso login --profile my-sso   # IAM Identity Center; then export AWS_PROFILE=my-sso
+export AWS_PROFILE=readonly      # any named profile
 ```
 
-Or set environment variables:
+Prefer short-lived credentials (SSO or an assumed role) over access keys.
+Then check them:
 
 ```bash
-export AWS_ACCESS_KEY_ID=your_access_key
-export AWS_SECRET_ACCESS_KEY=your_secret_key
-export AWS_DEFAULT_REGION=us-east-1
+./inventag.sh --validate-credentials
 ```
 
-### Required AWS Permissions
+## IAM permissions
 
-InvenTag supports two permission levels depending on your security requirements:
+Give InvenTag a **read-only** identity. Nothing in the CLI enforces read-only
+behaviour at runtime, so the IAM policy is your real safety net
+([details](../user-guides/production-safety.md)).
 
-#### Option 1: Minimal IAM Policy (Basic Discovery)
-
-For basic resource discovery with minimal permissions:
+The simplest setup is the AWS managed `ReadOnlyAccess` policy **plus** this
+small policy for the two things it may not cover (the Tagging API and Cost
+Explorer):
 
 ```json
 {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "resourcegroupstaggingapi:GetResources",
-                "ce:GetCostAndUsage",
-                "ce:GetUsageReport",
-                "pricing:GetProducts",
-                "ec2:DescribeInstances",
-                "ec2:DescribeVpcs",
-                "s3:ListAllMyBuckets",
-                "s3:GetBucketLocation",
-                "rds:DescribeDBInstances",
-                "lambda:ListFunctions"
-            ],
-            "Resource": "*"
-        }
-    ]
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "InvenTagExtras",
+      "Effect": "Allow",
+      "Action": [
+        "tag:GetResources",
+        "ce:GetCostAndUsage",
+        "ec2:DescribeRegions",
+        "pricing:GetProducts"
+      ],
+      "Resource": "*"
+    }
+  ]
 }
 ```
 
-#### Option 2: Enhanced Discovery with ReadOnlyAccess Policy
+- `tag:GetResources`: the Resource Groups Tagging API (IAM prefix `tag`).
+- `ce:GetCostAndUsage`: finds services with spend. **Billed per request by AWS.**
+- `ec2:DescribeRegions`: region auto-discovery.
+- `pricing:GetProducts`: only used by `--enable-cost-analysis`.
 
-For comprehensive resource discovery with detailed service-specific attributes, **add** the AWS ReadOnlyAccess policy **in addition to** the minimal policy above:
+Without `ReadOnlyAccess`, discovery still runs but service-specific details
+(e.g. S3 encryption, Lambda VPC config) come back empty where a `Describe*`
+call is denied. The repo also ships a narrower example policy at
+`config/defaults/iam-policy-read-only.json`; note that it does **not** include
+`ce:GetCostAndUsage` or `pricing:GetProducts`.
 
-**For IAM Identity Center/SSO Users:**
-- Keep the minimal policy above
-- **Add** the AWS managed policy: `ReadOnlyAccess`
+### IAM Identity Center (SSO)
 
-**For IAM Users:**
-```bash
-# First ensure the minimal policy is attached, then add ReadOnlyAccess
-aws iam attach-user-policy \
-    --user-name your-username \
-    --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess
-```
-
-**For IAM Roles:**
-```bash
-# First ensure the minimal policy is attached, then add ReadOnlyAccess
-aws iam attach-role-policy \
-    --role-name your-role-name \
-    --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess
-```
-
-> **Note**: ReadOnlyAccess **extends** the minimal policy's capabilities. Both policies work together to provide comprehensive discovery while maintaining the core billing and pricing access from the minimal policy.
-
-#### Permission Level Comparison
-
-| Feature | Minimal Policy Only | Minimal + ReadOnlyAccess |
-|---------|---------------------|-------------------------|
-| Basic resource discovery | ✅ | ✅ |
-| Billing-based service identification | ✅ | ✅ |
-| Cost Explorer access | ✅ | ✅ |
-| Service-specific attributes | Limited | ✅ Full |
-| KMS key details & rotation | ❌ | ✅ |
-| S3 encryption/retention config | ❌ | ✅ |
-| RDS parameter groups | ❌ | ✅ |
-| Lambda VPC configurations | ❌ | ✅ |
-| CloudWatch detailed metrics | ❌ | ✅ |
-| ELB health check details | ❌ | ✅ |
-| Global service support | ✅ | ✅ Enhanced |
-
-#### Setting Up IAM Identity Center/SSO
-
-If using AWS IAM Identity Center:
-
-1. **Create Permission Set:**
-   ```bash
-   # Option 1: Use ReadOnlyAccess managed policy
-   aws sso-admin create-permission-set \
-       --instance-arn arn:aws:sso:::instance/ssoins-xxxxxxxxx \
-       --name InvenTagReadOnly \
-       --description "ReadOnly access for InvenTag"
-   
-   # Attach ReadOnlyAccess policy
-   aws sso-admin attach-managed-policy-to-permission-set \
-       --instance-arn arn:aws:sso:::instance/ssoins-xxxxxxxxx \
-       --permission-set-arn arn:aws:sso:::permissionSet/ssoins-xxxxxxxxx/ps-xxxxxxxxx \
-       --managed-policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess
-   ```
-
-2. **Create Custom Permission Set (Minimal):**
-   ```bash
-   # Option 2: Use minimal custom policy
-   aws sso-admin create-permission-set \
-       --instance-arn arn:aws:sso:::instance/ssoins-xxxxxxxxx \
-       --name InvenTagMinimal \
-       --description "Minimal access for InvenTag"
-   
-   # Create and attach inline policy (use JSON from Option 1 above)
-   ```
-
-3. **Assign Permission Set:**
-   ```bash
-   aws sso-admin create-account-assignment \
-       --instance-arn arn:aws:sso:::instance/ssoins-xxxxxxxxx \
-       --target-id 123456789012 \
-       --target-type AWS_ACCOUNT \
-       --permission-set-arn arn:aws:sso:::permissionSet/ssoins-xxxxxxxxx/ps-xxxxxxxxx \
-       --principal-type USER \
-       --principal-id user-id-from-sso
-   ```
-
-## Verification
-
-Test your installation:
+Create a permission set with the `ReadOnlyAccess` managed policy and add the
+JSON above as an inline policy, then assign it to the accounts you want to
+scan. Console: *IAM Identity Center → Permission sets → Create*. CLI:
 
 ```bash
-# Test basic functionality
-./inventag.sh --help
+aws sso-admin create-permission-set \
+  --instance-arn arn:aws:sso:::instance/ssoins-EXAMPLE \
+  --name InvenTagReadOnly \
+  --description "Read-only access for InvenTag"
 
-# Test AWS connectivity
-./inventag.sh --validate-credentials
+aws sso-admin attach-managed-policy-to-permission-set \
+  --instance-arn arn:aws:sso:::instance/ssoins-EXAMPLE \
+  --permission-set-arn arn:aws:sso:::permissionSet/ssoins-EXAMPLE/ps-EXAMPLE \
+  --managed-policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess
 
-# Generate a test report
-./inventag.sh --create-excel --verbose
+aws sso-admin put-inline-policy-to-permission-set \
+  --instance-arn arn:aws:sso:::instance/ssoins-EXAMPLE \
+  --permission-set-arn arn:aws:sso:::permissionSet/ssoins-EXAMPLE/ps-EXAMPLE \
+  --inline-policy file://inventag-extras.json
 ```
 
-## Optional Dependencies
-
-### Google Docs Integration
-
-For Google Docs output, install additional dependencies:
+## Development install
 
 ```bash
-pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib
+pip install -r requirements.txt -r requirements-dev.txt
+python3 -m pytest tests
 ```
 
-### Development Dependencies
-
-For development and testing:
-
-```bash
-pip install -r requirements-dev.txt
-```
+See [Current status](./status.md#tests) for the state of the test suite.
 
 ## Troubleshooting
 
-### Common Issues
+| Symptom | Try |
+|---|---|
+| `No suitable Python interpreter found` | Install Python 3.8+ and make sure `python3 --version` works |
+| `Permission denied: ./inventag.sh` | `chmod +x inventag.sh` |
+| `Unable to locate credentials` | `aws sts get-caller-identity`; set `AWS_PROFILE` or log in with `aws sso login` |
+| `AccessDenied` for `ce:GetCostAndUsage` | Add the extras policy above, or ignore: discovery continues without billing data |
+| `ModuleNotFoundError` | Activate the virtualenv and re-run `pip install -r requirements.txt` |
 
-**Python Version Error**
-```bash
-# Check Python version
-python --version
-# Should be 3.8 or higher
-```
+More: [Troubleshooting guide](../user-guides/troubleshooting-guide.md).
 
-**AWS Credentials Error**
-```bash
-# Test AWS CLI
-aws sts get-caller-identity
-```
+## Next
 
-**Permission Denied**
-```bash
-# Make scripts executable (Unix/Linux/macOS)
-chmod +x inventag.sh
-```
-
-**Module Import Errors**
-```bash
-# Ensure you're in the correct directory
-cd inventag-aws
-# Reinstall dependencies
-pip install -r requirements.txt --force-reinstall
-```
-
-## Next Steps
-
-- Follow the [Quick Start Guide](/getting-started/quick-start) to generate your first BOM
-- Read the [CLI User Guide](../user-guides/cli-user-guide) for comprehensive usage
-- Check [Configuration Examples](../user-guides/configuration-examples) for advanced setups
+[Quick start](./quick-start.md)

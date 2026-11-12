@@ -66,13 +66,13 @@ Override regions for all accounts:
 # Scan specific regions across all accounts
 ./inventag.sh \
   --accounts-file examples/accounts-example.json \
-  --account-regions us-east-1,us-west-2,ap-southeast-1,ap-north-1 \
+  --account-regions us-east-1,us-west-2,ap-southeast-1,ap-northeast-1 \
   --create-excel
 
 # Asia-Pacific focus with cost analysis
 ./inventag.sh \
   --accounts-file examples/accounts-example.json \
-  --account-regions ap-southeast-1,ap-southeast-2,ap-north-1,ap-south-1 \
+  --account-regions ap-southeast-1,ap-southeast-2,ap-northeast-1,ap-south-1 \
   --enable-cost-analysis --create-excel
 
 # Global scan (all regions - default behavior)
@@ -125,6 +125,6 @@ Always validate your configuration files before use:
 
 ## More Information
 
-- [Quick Start Guide](../getting-started/quick-start)
-- [Complete CLI User Guide](../user-guides/cli-user-guide)
-- [Configuration Guide](../user-guides/configuration-examples)
+- [Quick Start Guide](../getting-started/quick-start.md)
+- [Complete CLI User Guide](../user-guides/cli-user-guide.md)
+- [Configuration Guide](../user-guides/configuration-examples.md)

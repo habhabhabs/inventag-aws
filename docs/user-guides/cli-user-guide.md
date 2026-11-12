@@ -1,6 +1,6 @@
 ---
 title: CLI User Guide
-description: Comprehensive CLI reference and usage examples for InvenTag
+description: Every InvenTag CLI flag, what it does today, and usage examples
 sidebar_position: 1
 ---
 
@@ -8,21 +8,27 @@ sidebar_position: 1
 
 ## Overview
 
-The InvenTag CLI provides a comprehensive command-line interface for AWS cloud governance, BOM (Bill of Materials) generation, compliance checking, and advanced reporting across single or multiple AWS accounts. The unified CLI interface (`inventag.cli.main`) replaces the legacy script-based approach with a modern, feature-rich command-line tool.
+The `inventag` CLI (`./inventag.sh`, `inventag.bat` or `python3 inventag_cli.py`)
+discovers resources in one or more AWS accounts and writes a bill of materials
+(BOM) as Excel and/or Word. `./inventag.sh --help` is the authoritative list of
+flags; this page explains them.
 
-### Key Features
+:::warning Flags that are accepted but do nothing yet
+`--s3-bucket` (and the other `--s3-*` flags), `--create-google-docs`, and the
+whole *Production Safety and Security* group are parsed but not implemented.
+`--cross-account-role` needs a full role ARN, not a role name.
+Details: [Current status and known limitations](../getting-started/status.md).
+:::
 
-- **🏢 Multi-Account Support**: Process multiple AWS accounts concurrently with flexible credential management
-- **📊 Multiple Output Formats**: Generate Excel, Word, and Google Docs reports with professional branding
-- **🚀 CI/CD Integration**: Built-in S3 upload, configuration validation, and credential management
-- **⚡ Parallel Processing**: Configurable concurrent account processing with timeout management
-- **🔧 Advanced Configuration**: Support for service descriptions, tag mappings, and BOM processing configs
-- **📝 Comprehensive Logging**: Account-specific logging with debug capabilities and file output
-- **✅ Validation Framework**: Built-in validation for credentials, configurations, and CLI arguments
-- **🔄 State Management**: Integrated state tracking, delta detection, and change analysis with professional changelog generation
-- **🛡️ Production Safety**: Enterprise-grade security validation and compliance standards
-- **🌐 Advanced Analysis**: Network security analysis, cost optimization, and security posture assessment
-- **🔐 Security Features**: Read-only enforcement, audit logging, and risk assessment capabilities
+### What it does
+
+- **Several accounts** in parallel (`--accounts-file`, `--accounts-prompt`, `--cross-account-role`)
+- **Excel and Word** reports (`--create-excel`, `--create-word`)
+- **Your own columns and descriptions** (`--tag-mappings`, `--service-descriptions`)
+- **Change tracking** between runs (on by default)
+- **Optional network and security sheets** (`--enable-network-analysis`, `--enable-security-analysis`)
+- **Validation** of credentials and config files (`--validate-credentials`, `--validate-config`)
+- **Logging** per account, to the console or a file (`--verbose`, `--log-file`)
 
 ### CLI Architecture
 
@@ -85,11 +91,11 @@ Generate a BOM for your default AWS account:
 ```bash
 # Scan specific regions across all accounts
 ./inventag.sh --create-excel \
-  --account-regions us-east-1,us-west-2,ap-southeast-1,ap-north-1
+  --account-regions us-east-1,us-west-2,ap-southeast-1,ap-northeast-1
 
 # Asia-Pacific regions only
 ./inventag.sh --create-excel \
-  --account-regions ap-southeast-1,ap-southeast-2,ap-north-1,ap-south-1
+  --account-regions ap-southeast-1,ap-southeast-2,ap-northeast-1,ap-south-1
 
 # US regions with comprehensive analysis
 ./inventag.sh --create-excel \
@@ -125,7 +131,7 @@ Generate a BOM for your default AWS account:
       "account_id": "123456789013", 
       "account_name": "APAC Development",
       "profile_name": "dev-profile",
-      "regions": ["ap-southeast-1", "ap-north-1", "ap-south-1"]
+      "regions": ["ap-southeast-1", "ap-northeast-1", "ap-south-1"]
     },
     {
       "account_id": "123456789014",
@@ -148,7 +154,6 @@ Generate a BOM for your default AWS account:
 **Asia Pacific:**
 - `ap-southeast-1` (Singapore)
 - `ap-southeast-2` (Sydney)
-- `ap-north-1` (Mumbai)
 - `ap-south-1` (Mumbai)
 - `ap-northeast-1` (Tokyo)
 - `ap-northeast-2` (Seoul)
@@ -229,15 +234,15 @@ Create an accounts configuration file (JSON or YAML):
 |--------|-------------|---------|
 | `--accounts-file` | Path to accounts configuration file (JSON/YAML) | `--accounts-file accounts.json` |
 | `--accounts-prompt` | Interactively prompt for account credentials | `--accounts-prompt` |
-| `--cross-account-role` | Cross-account role name for multi-account scanning | `--cross-account-role InvenTagRole` |
+| `--cross-account-role` | Role to assume. Despite the help text, pass the **full role ARN**; a bare name fails validation | `--cross-account-role arn:aws:iam::123456789012:role/InvenTagRole` |
 
 ### Output Format Options
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--create-word` | Generate professional Word document BOM | `--create-word` |
-| `--create-excel` | Generate professional Excel workbook BOM | `--create-excel` |
-| `--create-google-docs` | Generate Google Docs/Sheets BOM | `--create-google-docs` |
+| `--create-word` | Word document BOM (`multi_account_bom_<timestamp>.docx`) | `--create-word` |
+| `--create-excel` | Excel workbook BOM (`multi_account_bom_<timestamp>.xlsx`); the default if no format is given | `--create-excel` |
+| `--create-google-docs` | **Not implemented**: accepted, produces nothing | n/a |
 
 ### Analysis Options
 
@@ -245,7 +250,7 @@ Create an accounts configuration file (JSON or YAML):
 |--------|-------------|---------|
 | `--enable-network-analysis` | Enable network analysis for VPC, subnets, and network security | `--enable-network-analysis` |
 | `--enable-security-analysis` | Enable security analysis for security groups, NACLs, and security posture | `--enable-security-analysis` |
-| `--enable-cost-analysis` | Enable cost analysis and optimization recommendations | `--enable-cost-analysis` |
+| `--enable-cost-analysis` | Enable the cost analyser (uses the AWS Pricing API) | `--enable-cost-analysis` |
 | `--fallback-display` | Control fallback resource display: `auto` (recommended), `always`, `never` | `--fallback-display=auto` |
 | `--hide-fallback-resources` | Legacy option: equivalent to `--fallback-display=never` (deprecated) | `--hide-fallback-resources` |
 
@@ -253,18 +258,19 @@ Create an accounts configuration file (JSON or YAML):
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--enable-state-tracking` | Enable state management and change tracking | `--enable-state-tracking` |
-| `--state-dir` | Directory for storing state snapshots | `--state-dir inventory_states` |
-| `--generate-changelog` | Generate changelog from state changes | `--generate-changelog` |
-| `--changelog-format` | Changelog format (markdown, html, json) | `--changelog-format markdown` |
-| `--state-retention-days` | Days to retain state snapshots | `--state-retention-days 90` |
-| `--max-state-snapshots` | Maximum number of state snapshots to keep | `--max-state-snapshots 50` |
+| `--enable-state-management` / `--disable-state-management` | Snapshots are on by default and stored in `<output-directory>/state/` (kept 30 days) | `--disable-state-management` |
+| `--enable-delta-detection` / `--disable-delta-detection` | Compare with the previous snapshot (on by default) | `--disable-delta-detection` |
+| `--generate-changelog` | Changelog of detected changes. Always on; the flag cannot switch it off | n/a |
+
+Earlier versions of this page listed `--enable-state-tracking`, `--state-dir`,
+`--changelog-format`, `--state-retention-days` and `--max-state-snapshots`.
+Those flags do not exist.
 
 ### S3 Upload Options (CI/CD Integration)
 
 | Option | Description | Default | Example |
 |--------|-------------|---------|---------|
-| `--s3-bucket` | S3 bucket name for uploading documents | None | `--s3-bucket my-reports-bucket` |
+| `--s3-bucket` | **Not implemented** in the CLI: nothing is uploaded (a warning is logged). Use `aws s3 cp` on `bom_output/` | None | `--s3-bucket my-reports-bucket` |
 | `--s3-key-prefix` | S3 key prefix for organizing documents | `bom-reports/` | `--s3-key-prefix reports/2024/` |
 | `--s3-encryption` | S3 server-side encryption method | `AES256` | `--s3-encryption aws:kms` |
 | `--s3-kms-key-id` | KMS key ID for S3 encryption | None | `--s3-kms-key-id alias/my-key` |
@@ -273,8 +279,8 @@ Create an accounts configuration file (JSON or YAML):
 
 | Option | Description | Default | Example |
 |--------|-------------|---------|---------|
-| `--account-regions` | Comma-separated list of AWS regions to scan (overrides account-specific settings) | All available regions | `--account-regions us-east-1,us-west-2,ap-southeast-1,ap-north-1` |
-| `--account-services` | Comma-separated list of AWS services to include (empty means all services) | All services | `--account-services EC2,S3,RDS,Lambda` |
+| `--account-regions` | Comma-separated list of AWS regions to scan (overrides account-specific settings) | All enabled regions | `--account-regions us-east-1,us-west-2,ap-southeast-1,ap-northeast-1` |
+| `--account-services` | Comma-separated list of services to include. Only applied in part of the discovery, so other services can still appear | All services | `--account-services EC2,S3,RDS,Lambda` |
 | `--account-tags` | JSON string of tag filters to apply across all accounts | None | `--account-tags '{"Environment":"prod","Team":"platform"}'` |
 
 ### Parallel Processing Options
@@ -311,7 +317,7 @@ Create an accounts configuration file (JSON or YAML):
 | Option | Description | Example |
 |--------|-------------|---------|
 | `--verbose`, `-v` | Enable verbose logging (INFO level) | `--verbose` |
-| `--debug`, `-d` | Enable debug logging (DEBUG level) | `--debug` |
+| `--debug`, `-d` | DEBUG logging including botocore. **Logs request headers, including session tokens**: don't keep or share these logs | `--debug` |
 | `--log-file` | Path to log file | `--log-file inventag.log` |
 | `--disable-account-logging` | Disable account-specific logging | `--disable-account-logging` |
 
@@ -323,6 +329,12 @@ Create an accounts configuration file (JSON or YAML):
 | `--credential-timeout` | Credential validation timeout (seconds) | 30 | `--credential-timeout 60` |
 
 ### Production Safety and Security Options
+
+:::caution Not implemented
+Every flag in this table is parsed and then ignored by the current CLI. They
+are listed so you recognise them in older scripts. Use a read-only IAM policy
+instead: [Permissions and production safety](./production-safety.md).
+:::
 
 | Option | Description | Default | Example |
 |--------|-------------|---------|---------|
@@ -619,15 +631,14 @@ Log files contain structured information:
 2. **Region Filtering**: Limit to necessary regions
 3. **Service Filtering**: Specify only required services
 4. **Timeout Configuration**: Set appropriate timeouts
-5. **Optimized Discovery**: The CLI automatically uses the enhanced discovery system for 3-4x performance improvement
+5. **Optimized Discovery**: The CLI automatically uses the enhanced discovery system to speed up discovery
 
 #### Optimized Discovery System
 
 InvenTag includes an optimized discovery system that provides significant performance improvements:
 
-- **3-4x Faster Discovery**: Parallel processing and service-specific patterns
+- **Faster discovery**: Parallel processing and service-specific patterns
 - **Enhanced Service Coverage**: Better detection of CloudFront, IAM, Route53, S3, and Lambda resources
-- **Higher Quality Results**: 98% of resources achieve high confidence scores (≥0.7)
 - **Intelligent Field Mapping**: Service-specific extraction patterns for better accuracy
 
 The optimized discovery is enabled by default and requires no additional configuration. For maximum performance:
@@ -636,8 +647,8 @@ The optimized discovery is enabled by default and requires no additional configu
 # Use parallel processing with optimized discovery
 ./inventag.sh --create-excel --max-concurrent-accounts 6
 
-# Focus on specific services for faster processing
-./inventag.sh --create-excel --service-filters ec2,s3,rds,lambda
+# Focus on specific services (partially applied, see the table above)
+./inventag.sh --create-excel --account-services EC2,S3,RDS,Lambda
 
 # Single region for fastest discovery
 ./inventag.sh --create-excel --account-regions us-east-1
@@ -743,7 +754,7 @@ The unified CLI interface replaces the legacy script-based approach. Here's how 
 4. **Better Error Handling**: Enhanced error reporting and debugging
 5. **CI/CD Integration**: Native S3 upload and pipeline integration
 6. **State Management**: Built-in change tracking and delta detection
-7. **Production Safety**: Enterprise-grade monitoring and compliance features
+7. **Production Safety**: monitoring and compliance features
 
 ### Backward Compatibility
 

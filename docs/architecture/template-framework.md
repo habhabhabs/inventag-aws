@@ -8,7 +8,7 @@ sidebar_position: 3
 
 ## Overview
 
-The InvenTag Template Framework provides a comprehensive document template system with company logo integration, customizable document structure, and automatic table of contents generation. This enterprise-grade system enables professional document customization for Cloud Bill of Materials (BOM) reports.
+The InvenTag Template Framework provides a comprehensive document template system with company logo integration, customizable document structure, and automatic table of contents generation. This system enables professional document customization for Cloud Bill of Materials (BOM) reports.
 
 ## 🎯 Key Features
 
@@ -663,4 +663,4 @@ For template framework issues:
 4. Test with minimal template
 5. Check integration with branding system
 
-The template framework is designed to be flexible and extensible while maintaining enterprise-grade reliability and performance.
+The template framework is designed to be flexible and extensible while maintaining reliability and performance.
