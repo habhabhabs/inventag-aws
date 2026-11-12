@@ -315,3 +315,13 @@ def test_every_schema_field_has_a_description():
 
     for fields in SPECS.values():
         walk(fields)
+
+
+def test_docs_field_reference_is_up_to_date():
+    from inventag.templating import reference
+
+    text = reference.DOC.read_text()
+    assert reference.update(text) == text, (
+        "docs/templates/reference.md is out of date; run "
+        "'python -m inventag.templating.reference --write'"
+    )

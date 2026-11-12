@@ -109,9 +109,10 @@ class TemplateRun:
             f"{c.out_of_scope} out of scope."
         )
         if c.non_compliant and self.fail_on_violations:
-            logger.error(
+            print(
                 "Tag policy violations found and fail_on_tag_violations is true "
-                f"(exit code {EXIT_TAG_VIOLATIONS})"
+                f"(exit code {EXIT_TAG_VIOLATIONS}).",
+                file=sys.stderr,
             )
             return EXIT_TAG_VIOLATIONS
         return 0
