@@ -32,8 +32,9 @@ const sidebars = {
       collapsed: false,
       items: [
         'getting-started/introduction',
-        'getting-started/quick-start',
         'getting-started/installation',
+        'getting-started/quick-start',
+        'getting-started/status',
       ],
     },
 
@@ -45,8 +46,10 @@ const sidebars = {
       items: [
         'user-guides/cli-user-guide',
         'user-guides/configuration-examples',
-        'user-guides/troubleshooting-guide',
         'user-guides/production-safety',
+        'user-guides/troubleshooting-guide',
+        'aws-prescriptive-guidance',
+        'advanced/fallback-mechanism',
       ],
     },
 
@@ -66,7 +69,7 @@ const sidebars = {
     // Professional Templates section
     {
       type: 'category',
-      label: '💼 Professional Templates',
+      label: '💼 Tagging Templates',
       collapsed: true,
       items: [
         {
@@ -83,6 +86,9 @@ const sidebars = {
       collapsed: true,
       items: [
         'architecture/core-module-integration',
+        'architecture/comprehensive-discovery',
+        'architecture/optimized-discovery-system',
+        'architecture/service-descriptions',
         'architecture/state-management',
         'architecture/template-framework',
         'architecture/service-enrichment',
@@ -156,6 +162,9 @@ const sidebars = {
       label: 'System Architecture',
       items: [
         'architecture/core-module-integration',
+        'architecture/comprehensive-discovery',
+        'architecture/optimized-discovery-system',
+        'architecture/service-descriptions',
         'architecture/state-management',
         'architecture/template-framework',
         'architecture/service-enrichment',
