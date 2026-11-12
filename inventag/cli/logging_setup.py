@@ -8,6 +8,12 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 from datetime import datetime
 
+from ..security.redaction import RedactingFormatter, install_log_record_redaction
+from ..security.safe_output import ensure_private_dir, open_private
+
+# Third-party loggers that can emit request/response details at DEBUG level.
+AWS_SDK_LOGGERS = ("boto3", "botocore", "s3transfer", "urllib3")
+
 
 class AccountSpecificFormatter(logging.Formatter):
     """Custom formatter that includes account context in log messages."""
@@ -85,34 +91,48 @@ def setup_logging(
         console_formatter = logging.Formatter(console_format)
         file_formatter = logging.Formatter(file_format)
 
+    # Redact credentials, tokens and signed URLs from everything we log.
+    install_log_record_redaction()
+
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(log_level)
-    console_handler.setFormatter(console_formatter)
+    console_handler.setFormatter(RedactingFormatter(console_formatter))
     logger.addHandler(console_handler)
 
-    # File handler (if specified)
+    # File handler (if specified). The log file is created owner-only (0600)
+    # because debug logs describe the scanned accounts in detail.
     if log_file:
         log_path = Path(log_file)
-        log_path.parent.mkdir(parents=True, exist_ok=True)
+        ensure_private_dir(log_path.parent)
+        with open_private(log_path, "a"):
+            pass
 
         file_handler = logging.FileHandler(log_file)
         file_handler.setLevel(logging.DEBUG)  # Always debug level for file
-        file_handler.setFormatter(file_formatter)
+        file_handler.setFormatter(RedactingFormatter(file_formatter))
         logger.addHandler(file_handler)
 
-    # Set up AWS SDK logging
-    boto_logger = logging.getLogger("boto3")
-    boto_logger.setLevel(logging.WARNING if not debug else logging.DEBUG)
-
-    botocore_logger = logging.getLogger("botocore")
-    botocore_logger.setLevel(logging.WARNING if not debug else logging.DEBUG)
+    # AWS SDK logging. At --debug, botocore logs request headers and raw
+    # response bodies (including sts:AssumeRole credentials). Route those
+    # records only through our redacting handlers instead of letting them
+    # propagate to a root handler that does not redact.
+    for sdk_logger_name in AWS_SDK_LOGGERS:
+        sdk_logger = logging.getLogger(sdk_logger_name)
+        sdk_logger.setLevel(logging.DEBUG if debug else logging.WARNING)
+        sdk_logger.handlers.clear()
+        for handler in logger.handlers:
+            sdk_logger.addHandler(handler)
+        sdk_logger.propagate = False
 
     # Store formatters for account context updates
     logger._account_formatters = []
     for handler in logger.handlers:
-        if isinstance(handler.formatter, AccountSpecificFormatter):
-            logger._account_formatters.append(handler.formatter)
+        formatter = handler.formatter
+        if isinstance(formatter, RedactingFormatter):
+            formatter = formatter.inner
+        if isinstance(formatter, AccountSpecificFormatter):
+            logger._account_formatters.append(formatter)
 
     return logger
 

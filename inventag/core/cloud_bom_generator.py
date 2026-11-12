@@ -26,13 +26,34 @@ from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 from pathlib import Path
-from botocore.exceptions import ClientError, NoCredentialsError, ProfileNotFound
+from botocore.exceptions import (
+    BotoCoreError,
+    ClientError,
+    NoCredentialsError,
+    ProfileNotFound,
+)
 
 # Import InvenTag components
 from ..discovery import AWSResourceInventory
 from ..compliance import ComprehensiveTagComplianceChecker
 from ..reporting import BOMConverter, BOMDataProcessor, BOMProcessingConfig
 from ..state import StateManager, DeltaDetector, ChangelogGenerator
+from ..security.arn import (
+    InvalidRoleError,
+    build_role_arn,
+    is_valid_account_id,
+    partition_from_arn,
+    validate_role_arn,
+)
+from ..security.redaction import register_secrets
+from ..security.safe_output import (
+    ensure_private_dir,
+    open_private,
+)
+
+
+class AccountSessionError(Exception):
+    """Raised when explicitly configured credentials for an account do not work."""
 
 
 @dataclass
@@ -42,8 +63,9 @@ class AccountCredentials:
     account_id: str
     account_name: str = ""
     access_key_id: Optional[str] = None
-    secret_access_key: Optional[str] = None
-    session_token: Optional[str] = None
+    # Secrets are excluded from repr() so they never end up in logs or errors.
+    secret_access_key: Optional[str] = field(default=None, repr=False)
+    session_token: Optional[str] = field(default=None, repr=False)
     profile_name: Optional[str] = None
     role_arn: Optional[str] = None
     external_id: Optional[str] = None
@@ -126,9 +148,9 @@ class CloudBOMGenerator:
             "processing_end_time": None,
         }
 
-        # Initialize output directory
-        self.output_dir = Path(self.config.output_directory)
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        # Initialize output directory (created owner-only if it does not exist)
+        self.output_dir = ensure_private_dir(self.config.output_directory)
+        self._default_identity: Optional[Dict[str, Any]] = None
 
         self.logger.info(
             f"Initialized CloudBOMGenerator with {len(self.config.accounts)} accounts"
@@ -265,21 +287,64 @@ class CloudBOMGenerator:
 
         Args:
             output_formats: List of output formats (word, excel, csv, json)
-            s3_upload_config: S3 upload configuration (currently not implemented)
+            s3_upload_config: optional S3UploadConfig; when given, generated
+                files are uploaded with server-side encryption and any upload
+                failure makes the result unsuccessful
             compliance_policies: Tag compliance policies to apply
 
         Returns:
             Dictionary containing generation results and metadata
         """
-        # Note: s3_upload_config is ignored for now - S3 upload should be handled separately
-        if s3_upload_config:
-            self.logger.warning(
-                "S3 upload configuration passed but not implemented in this method"
-            )
-
-        return self.generate_multi_account_bom(
+        results = self.generate_multi_account_bom(
             output_formats=output_formats, compliance_policies=compliance_policies
         )
+
+        if s3_upload_config and results.get("success"):
+            bom_results = results.setdefault("bom_generation", {})
+            upload = self.upload_reports_to_s3(
+                bom_results.get("generated_files", []), s3_upload_config
+            )
+            bom_results["s3_uploads"] = [item["key"] for item in upload["uploaded"]]
+            bom_results["s3_upload_errors"] = upload["errors"]
+            if upload["errors"]:
+                results["success"] = False
+                results["error"] = (
+                    f"S3 upload failed for {len(upload['errors'])} file(s)"
+                )
+
+        return results
+
+    def upload_reports_to_s3(
+        self, files: List[str], s3_upload_config: Any
+    ) -> Dict[str, Any]:
+        """Upload generated report files to S3 with server-side encryption.
+
+        Uses the default credential chain (the identity running InvenTag), not
+        a scanned account's assumed role: the reports bucket normally lives in
+        the account that runs the scan.
+        """
+        from .s3_upload import upload_files
+
+        if not files:
+            return {"uploaded": [], "errors": [{"file": "", "error": "no files"}]}
+        session = boto3.Session()
+        s3_client = session.client(
+            "s3", region_name=getattr(s3_upload_config, "region", None) or None
+        )
+        try:
+            return upload_files(
+                s3_client,
+                files,
+                bucket=s3_upload_config.bucket_name,
+                key_prefix=s3_upload_config.key_prefix,
+                encryption=s3_upload_config.encryption,
+                kms_key_id=getattr(s3_upload_config, "kms_key_id", None),
+                storage_class=getattr(s3_upload_config, "storage_class", "STANDARD"),
+                public_read=getattr(s3_upload_config, "public_read", False),
+            )
+        except Exception as e:
+            self.logger.error(f"S3 upload failed: {e}")
+            return {"uploaded": [], "errors": [{"file": "", "error": str(e)}]}
 
     def _establish_account_contexts(self) -> Dict[str, AccountContext]:
         """Validate credentials and establish account contexts."""
@@ -297,8 +362,20 @@ class CloudBOMGenerator:
                 # Get caller identity to validate credentials
                 caller_identity = self._get_caller_identity(session)
 
-                # Validate account ID matches
+                # Validate account ID matches. Scanning a different account
+                # than the one configured would mislabel every resource in the
+                # report, so a mismatch on a real account ID is fatal.
                 actual_account_id = caller_identity.get("Account", "")
+                if (
+                    is_valid_account_id(credentials.account_id)
+                    and credentials.account_id != actual_account_id
+                ):
+                    raise AccountSessionError(
+                        f"Credentials for account {credentials.account_id} "
+                        f"resolved to account {actual_account_id}; refusing to "
+                        "scan the wrong account. Check the profile, role ARN or "
+                        "cross-account role for this account."
+                    )
                 if credentials.account_id != actual_account_id:
                     self.logger.warning(
                         f"Account ID mismatch for {credentials.account_id}. "
@@ -400,97 +477,115 @@ class CloudBOMGenerator:
         return account_contexts
 
     def _create_account_session(self, credentials: AccountCredentials) -> boto3.Session:
-        """Create a boto3 session for the given account credentials."""
+        """Create a boto3 session for the given account credentials.
 
-        # Try profile-based authentication first
+        Order: profile, explicit role ARN, access keys, configured cross-account
+        role name, default credentials. If a profile or role ARN is configured
+        and fails, this raises instead of silently falling back to the default
+        credentials (which would scan a different account).
+        """
+        register_secrets([credentials.secret_access_key, credentials.session_token])
+
         if credentials.profile_name:
             try:
                 session = boto3.Session(profile_name=credentials.profile_name)
-                # Test the session
-                sts = session.client("sts")
-                sts.get_caller_identity()
+                session.client("sts").get_caller_identity()
                 return session
-            except (ProfileNotFound, NoCredentialsError, ClientError) as e:
-                self.logger.warning(f"Profile {credentials.profile_name} failed: {e}")
+            except (
+                ProfileNotFound,
+                NoCredentialsError,
+                ClientError,
+                BotoCoreError,
+            ) as e:
+                raise AccountSessionError(
+                    f"Profile {credentials.profile_name!r} for account "
+                    f"{credentials.account_id} failed: {e}"
+                ) from e
 
-        # Try role assumption if role_arn is provided
         if credentials.role_arn:
             try:
-                # Use default session to assume role
-                default_session = boto3.Session()
-                sts = default_session.client("sts")
-
-                assume_role_kwargs = {
-                    "RoleArn": credentials.role_arn,
-                    "RoleSessionName": f"InvenTag-{credentials.account_id}-{int(datetime.now().timestamp())}",
-                }
-
-                if credentials.external_id:
-                    assume_role_kwargs["ExternalId"] = credentials.external_id
-
-                response = sts.assume_role(**assume_role_kwargs)
-
-                temp_credentials = response["Credentials"]
-                session = boto3.Session(
-                    aws_access_key_id=temp_credentials["AccessKeyId"],
-                    aws_secret_access_key=temp_credentials["SecretAccessKey"],
-                    aws_session_token=temp_credentials["SessionToken"],
+                role_arn = validate_role_arn(credentials.role_arn)
+                return self._assume_role_session(
+                    role_arn, credentials.account_id, credentials.external_id
                 )
+            except (InvalidRoleError, ClientError, BotoCoreError) as e:
+                raise AccountSessionError(
+                    f"Role assumption failed for account {credentials.account_id}: {e}"
+                ) from e
 
-                return session
-
-            except ClientError as e:
-                self.logger.warning(
-                    f"Role assumption failed for {credentials.role_arn}: {e}"
-                )
-
-        # Try direct credentials
         if credentials.access_key_id and credentials.secret_access_key:
-            session = boto3.Session(
+            return boto3.Session(
                 aws_access_key_id=credentials.access_key_id,
                 aws_secret_access_key=credentials.secret_access_key,
                 aws_session_token=credentials.session_token,
             )
-            return session
 
-        # Try cross-account role assumption with configured role name
-        if self.config.cross_account_role_name:
+        if self.config.cross_account_role_name and is_valid_account_id(
+            credentials.account_id
+        ):
+            role_arn = None
             try:
-                default_session = boto3.Session()
-                sts = default_session.client("sts")
-
-                role_arn = f"arn:aws:iam::{credentials.account_id}:role/{self.config.cross_account_role_name}"
-
-                response = sts.assume_role(
-                    RoleArn=role_arn,
-                    RoleSessionName=f"InvenTag-CrossAccount-{int(datetime.now().timestamp())}",
+                role_arn = build_role_arn(
+                    credentials.account_id,
+                    self.config.cross_account_role_name,
+                    partition=self._default_partition(),
+                )
+                return self._assume_role_session(
+                    role_arn, credentials.account_id, credentials.external_id
+                )
+            except (InvalidRoleError, ClientError, BotoCoreError) as e:
+                self.logger.info(
+                    f"Cross-account role {role_arn or self.config.cross_account_role_name} "
+                    f"not usable for account {credentials.account_id} ({e}); "
+                    "trying default credentials"
                 )
 
-                temp_credentials = response["Credentials"]
-                session = boto3.Session(
-                    aws_access_key_id=temp_credentials["AccessKeyId"],
-                    aws_secret_access_key=temp_credentials["SecretAccessKey"],
-                    aws_session_token=temp_credentials["SessionToken"],
-                )
-
-                return session
-
-            except ClientError as e:
-                self.logger.warning(
-                    f"Cross-account role assumption failed for {role_arn}: {e}"
-                )
-
-        # Fallback to default session
+        # Fallback to default session. _establish_account_contexts verifies
+        # that it really belongs to the configured account.
         try:
             session = boto3.Session()
-            # Test the session
-            sts = session.client("sts")
-            sts.get_caller_identity()
+            session.client("sts").get_caller_identity()
             return session
         except Exception as e:
-            raise Exception(
+            raise AccountSessionError(
                 f"Failed to create valid session for account {credentials.account_id}: {e}"
-            )
+            ) from e
+
+    def _assume_role_session(
+        self, role_arn: str, account_id: str, external_id: Optional[str] = None
+    ) -> boto3.Session:
+        """Assume ``role_arn`` with the default credentials and return a session."""
+        sts = boto3.Session().client("sts")
+        session_label = "".join(
+            ch if ch.isalnum() or ch in "+=,.@-" else "-" for ch in str(account_id)
+        )
+        kwargs = {
+            "RoleArn": role_arn,
+            "RoleSessionName": f"InvenTag-{session_label}-{int(datetime.now().timestamp())}"[
+                :64
+            ],
+        }
+        if external_id:
+            kwargs["ExternalId"] = external_id
+        response = sts.assume_role(**kwargs)
+        temp = response["Credentials"]
+        register_secrets([temp["SecretAccessKey"], temp["SessionToken"]])
+        return boto3.Session(
+            aws_access_key_id=temp["AccessKeyId"],
+            aws_secret_access_key=temp["SecretAccessKey"],
+            aws_session_token=temp["SessionToken"],
+        )
+
+    def _default_partition(self) -> str:
+        """Partition (aws, aws-cn, aws-us-gov...) of the default credentials."""
+        if self._default_identity is None:
+            try:
+                self._default_identity = (
+                    boto3.Session().client("sts").get_caller_identity()
+                )
+            except Exception:
+                self._default_identity = {}
+        return partition_from_arn(self._default_identity.get("Arn"))
 
     def _get_caller_identity(self, session: boto3.Session) -> Dict[str, Any]:
         """Get caller identity for account context detection."""
@@ -884,7 +979,7 @@ class CloudBOMGenerator:
                             self.output_dir
                             / f"multi_account_bom_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
                         )
-                        with open(output_file, "w") as f:
+                        with open_private(output_file, "w") as f:
                             json.dump(
                                 {
                                     "resources": bom_data.resources,
@@ -999,7 +1094,7 @@ class CloudBOMGenerator:
                             )
 
                             # Write changelog to file
-                            with open(changelog_file, "w") as f:
+                            with open_private(changelog_file, "w") as f:
                                 f.write(changelog.to_markdown())
 
                             results["changelog_generated"] = True

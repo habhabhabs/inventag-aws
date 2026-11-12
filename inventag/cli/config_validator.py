@@ -94,6 +94,16 @@ class ConfigValidator:
             for i, account in enumerate(accounts):
                 account_errors = self._validate_account_config(account, i)
                 result.errors.extend(account_errors)
+                if isinstance(account, dict) and not any(
+                    key in account
+                    for key in ("access_key_id", "profile_name", "role_arn")
+                ):
+                    result.warnings.append(
+                        f"Account {i + 1}: no credentials given; InvenTag will assume "
+                        "the --cross-account-role role (default "
+                        "InvenTagCrossAccountRole) in this account, or use the default "
+                        "credentials only if they belong to this account"
+                    )
 
             # Validate global settings
             if "settings" in config:
@@ -157,11 +167,6 @@ class ConfigValidator:
         has_profile = "profile_name" in account
         has_role = "role_arn" in account
 
-        if not (has_keys or has_profile or has_role):
-            errors.append(
-                f"{prefix}: must specify either access keys, profile_name, or role_arn"
-            )
-
         if has_keys:
             if (
                 not isinstance(account["access_key_id"], str)
@@ -190,6 +195,13 @@ class ConfigValidator:
                 or not account["role_arn"].strip()
             ):
                 errors.append(f"{prefix}: 'role_arn' must be a non-empty string")
+            else:
+                from ..security.arn import InvalidRoleError, validate_role_arn
+
+                try:
+                    validate_role_arn(account["role_arn"].strip())
+                except InvalidRoleError as e:
+                    errors.append(f"{prefix}: {e}")
             if "external_id" in account and not isinstance(account["external_id"], str):
                 errors.append(f"{prefix}: 'external_id' must be a string")
 
@@ -418,10 +430,10 @@ class ConfigValidator:
         result = ValidationResult(is_valid=True)
 
         # Check format options
-        format_options = [args.create_word, args.create_excel, args.create_google_docs]
+        format_options = [args.create_word, args.create_excel]
         if not any(format_options):
             result.warnings.append(
-                "No output format specified. Use --create-word, --create-excel, or --create-google-docs"
+                "No output format specified. Use --create-word or --create-excel"
             )
 
         # Check account specification
@@ -440,6 +452,14 @@ class ConfigValidator:
             result.warnings.append(
                 "S3 bucket specified without key prefix. Using default prefix."
             )
+
+        if args.s3_bucket:
+            from ..core.s3_upload import S3UploadError, validate_bucket_name
+
+            try:
+                validate_bucket_name(args.s3_bucket)
+            except S3UploadError as e:
+                result.errors.append(str(e))
 
         if args.s3_key_prefix and not args.s3_bucket:
             result.errors.append(

@@ -1163,11 +1163,13 @@ class ComprehensiveAWSDiscovery:
                 for resource in lambda_functions:
                     function_name = resource.get("resource_id")
                     try:
-                        # Get detailed function configuration
-                        response = lambda_client.get_function(
+                        # Get detailed function configuration. GetFunction would
+                        # also return a presigned URL to download the code,
+                        # which an inventory never needs.
+                        config = lambda_client.get_function_configuration(
                             FunctionName=function_name
                         )
-                        config = response.get("Configuration", {})
+                        config.pop("ResponseMetadata", None)
 
                         # Update with accurate region and metadata
                         resource["region"] = region

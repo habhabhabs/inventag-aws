@@ -18,7 +18,7 @@ import getpass
 import boto3
 from typing import Dict, List, Any, Optional, Tuple, Union
 from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from botocore.exceptions import ClientError, NoCredentialsError, ProfileNotFound
 import keyring
@@ -28,7 +28,25 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import os
 
+from botocore.config import Config
+
 from .cloud_bom_generator import AccountCredentials, AccountContext
+from ..security.arn import (
+    build_role_arn,
+    is_valid_account_id,
+    partition_from_arn,
+    validate_role_arn,
+    validate_role_name,
+)
+from ..security.iam_policy import build_read_only_policy
+from ..security.redaction import register_secrets
+from ..security.safe_output import open_private
+
+# PBKDF2-HMAC-SHA256 work factor for new credential files (OWASP Password
+# Storage Cheat Sheet recommendation). Files written by older versions record
+# no iteration count and are read with LEGACY_PBKDF2_ITERATIONS.
+PBKDF2_ITERATIONS = 600_000
+LEGACY_PBKDF2_ITERATIONS = 100_000
 
 
 @dataclass
@@ -138,7 +156,7 @@ class CredentialManager:
             # Encrypt and save
             encrypted_data = self._encrypt_credential_data(credential_data, password)
 
-            with open(output_path, "w") as f:
+            with open_private(output_path, "w") as f:
                 if output_path.suffix.lower() in [".yaml", ".yml"]:
                     yaml.safe_dump(encrypted_data, f, default_flow_style=False)
                 else:
@@ -147,7 +165,7 @@ class CredentialManager:
             # Save unencrypted
             data = asdict(credential_data)
 
-            with open(output_path, "w") as f:
+            with open_private(output_path, "w") as f:
                 if output_path.suffix.lower() in [".yaml", ".yml"]:
                     yaml.safe_dump(data, f, default_flow_style=False)
                 else:
@@ -361,6 +379,7 @@ class CredentialManager:
         credentials: AccountCredentials,
         test_regions: bool = True,
         test_services: bool = True,
+        timeout: Optional[int] = None,
     ) -> CredentialValidationResult:
         """
         Validate credentials and test account accessibility.
@@ -369,22 +388,45 @@ class CredentialManager:
             credentials: Account credentials to validate
             test_regions: Whether to test region accessibility
             test_services: Whether to test service availability
+            timeout: Connect/read timeout in seconds for each AWS call
 
         Returns:
             Validation result with detailed information
         """
         self.logger.info(f"Validating credentials for account {credentials.account_id}")
+        client_config = (
+            Config(
+                connect_timeout=timeout,
+                read_timeout=timeout,
+                retries={"max_attempts": 2},
+            )
+            if timeout
+            else None
+        )
 
         # Check cache first
-        cache_key = f"{credentials.account_id}:{hash(str(credentials))}"
+        cache_key = (
+            credentials.account_id,
+            hash(
+                (
+                    credentials.access_key_id,
+                    credentials.secret_access_key,
+                    credentials.session_token,
+                    credentials.profile_name,
+                    credentials.role_arn,
+                    credentials.external_id,
+                )
+            ),
+        )
         if cache_key in self._validation_cache:
             cached_result = self._validation_cache[cache_key]
             # Return cached result if less than 5 minutes old
-            if datetime.fromisoformat(
+            validated_at = datetime.fromisoformat(
                 cached_result.validation_timestamp.replace("Z", "+00:00")
-            ) > datetime.now(timezone.utc).replace(tzinfo=None) - datetime.timedelta(
-                minutes=5
-            ):
+            )
+            if validated_at.tzinfo is None:
+                validated_at = validated_at.replace(tzinfo=timezone.utc)
+            if validated_at > datetime.now(timezone.utc) - timedelta(minutes=5):
                 return cached_result
 
         result = CredentialValidationResult(
@@ -396,7 +438,7 @@ class CredentialManager:
             session = self._create_session_from_credentials(credentials)
 
             # Test basic connectivity with STS
-            sts = session.client("sts")
+            sts = session.client("sts", config=client_config)
             identity = sts.get_caller_identity()
 
             result.account_id = identity.get("Account", "")
@@ -409,7 +451,7 @@ class CredentialManager:
 
             # Get account alias if available
             try:
-                iam = session.client("iam")
+                iam = session.client("iam", config=client_config)
                 aliases = iam.list_account_aliases()
                 if aliases.get("AccountAliases"):
                     result.account_alias = aliases["AccountAliases"][0]
@@ -419,7 +461,7 @@ class CredentialManager:
             # Test region accessibility
             if test_regions:
                 result.accessible_regions = self._test_region_accessibility(
-                    session, credentials.regions
+                    session, credentials.regions, client_config
                 )
 
             # Test service availability
@@ -428,10 +470,13 @@ class CredentialManager:
                     session,
                     credentials.services
                     or ["ec2", "s3", "iam"],  # Test common services
+                    client_config,
                 )
 
             # Generate permissions summary
-            result.permissions_summary = self._generate_permissions_summary(session)
+            result.permissions_summary = self._generate_permissions_summary(
+                session, client_config
+            )
 
             result.is_valid = True
             self.logger.info(
@@ -469,7 +514,9 @@ class CredentialManager:
             Dictionary with setup results for each account
         """
         self.logger.info(f"Setting up cross-account roles: {role_name}")
+        validate_role_name(role_name)
 
+        partition = "aws"
         if not trusted_account_id:
             # Try to get current account ID
             try:
@@ -477,37 +524,18 @@ class CredentialManager:
                 sts = session.client("sts")
                 identity = sts.get_caller_identity()
                 trusted_account_id = identity["Account"]
+                partition = partition_from_arn(identity.get("Arn"))
             except Exception as e:
                 raise ValueError(f"Could not determine trusted account ID: {e}")
+        if not is_valid_account_id(trusted_account_id):
+            raise ValueError(
+                f"Trusted account ID must be 12 digits, got {trusted_account_id!r}"
+            )
 
         results = {}
 
-        # IAM policy for InvenTag read-only access
-        inventag_policy = {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Action": [
-                        "ec2:Describe*",
-                        "s3:GetBucket*",
-                        "s3:ListBucket*",
-                        "iam:Get*",
-                        "iam:List*",
-                        "lambda:Get*",
-                        "lambda:List*",
-                        "rds:Describe*",
-                        "cloudformation:Describe*",
-                        "cloudformation:List*",
-                        "resource-groups:*",
-                        "config:*",
-                        "tag:Get*",
-                        "pricing:GetProducts",
-                    ],
-                    "Resource": "*",
-                }
-            ],
-        }
+        # Least-privilege read-only policy (explicit actions, no wildcards).
+        inventag_policy = build_read_only_policy(partition)
 
         # Trust policy
         trust_policy = {
@@ -515,7 +543,9 @@ class CredentialManager:
             "Statement": [
                 {
                     "Effect": "Allow",
-                    "Principal": {"AWS": f"arn:aws:iam::{trusted_account_id}:root"},
+                    "Principal": {
+                        "AWS": f"arn:{partition}:iam::{trusted_account_id}:root"
+                    },
                     "Action": "sts:AssumeRole",
                 }
             ],
@@ -565,7 +595,7 @@ class CredentialManager:
                 except ClientError as e:
                     if e.response["Error"]["Code"] == "EntityAlreadyExists":
                         # Get existing policy ARN
-                        policy_arn = f"arn:aws:iam::{credentials.account_id}:policy/{policy_name}"
+                        policy_arn = f"arn:{partition}:iam::{credentials.account_id}:policy/{policy_name}"
                     else:
                         raise
 
@@ -574,7 +604,9 @@ class CredentialManager:
 
                 results[credentials.account_id] = {
                     "success": True,
-                    "role_arn": f"arn:aws:iam::{credentials.account_id}:role/{role_name}",
+                    "role_arn": build_role_arn(
+                        credentials.account_id, role_name, partition
+                    ),
                     "policy_arn": policy_arn,
                     "account_name": credentials.account_name,
                 }
@@ -645,7 +677,7 @@ class CredentialManager:
             algorithm=hashes.SHA256(),
             length=32,
             salt=salt,
-            iterations=100000,
+            iterations=PBKDF2_ITERATIONS,
         )
         key = base64.urlsafe_b64encode(kdf.derive(password_bytes))
 
@@ -657,6 +689,8 @@ class CredentialManager:
         return {
             "version": "1.0",
             "encrypted": True,
+            "kdf": "pbkdf2-sha256",
+            "kdf_iterations": PBKDF2_ITERATIONS,
             "salt": base64.b64encode(salt).decode(),
             "data": base64.b64encode(encrypted_data).decode(),
         }
@@ -668,11 +702,14 @@ class CredentialManager:
         # Derive key from password and salt
         password_bytes = password.encode()
         salt = base64.b64decode(encrypted_data["salt"])
+        iterations = int(encrypted_data.get("kdf_iterations", LEGACY_PBKDF2_ITERATIONS))
+        if iterations < LEGACY_PBKDF2_ITERATIONS:
+            raise ValueError("Credential file uses too few PBKDF2 iterations")
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
             salt=salt,
-            iterations=100000,
+            iterations=iterations,
         )
         key = base64.urlsafe_b64encode(kdf.derive(password_bytes))
 
@@ -689,6 +726,7 @@ class CredentialManager:
         self, credentials: AccountCredentials
     ) -> boto3.Session:
         """Create boto3 session from credentials."""
+        register_secrets([credentials.secret_access_key, credentials.session_token])
         # Try profile first
         if credentials.profile_name:
             return boto3.Session(profile_name=credentials.profile_name)
@@ -707,7 +745,7 @@ class CredentialManager:
             sts = default_session.client("sts")
 
             assume_role_kwargs = {
-                "RoleArn": credentials.role_arn,
+                "RoleArn": validate_role_arn(credentials.role_arn),
                 "RoleSessionName": f"InvenTag-{credentials.account_id}-{int(datetime.now().timestamp())}",
             }
 
@@ -716,6 +754,9 @@ class CredentialManager:
 
             response = sts.assume_role(**assume_role_kwargs)
             temp_credentials = response["Credentials"]
+            register_secrets(
+                [temp_credentials["SecretAccessKey"], temp_credentials["SessionToken"]]
+            )
 
             return boto3.Session(
                 aws_access_key_id=temp_credentials["AccessKeyId"],
@@ -727,14 +768,14 @@ class CredentialManager:
         return boto3.Session()
 
     def _test_region_accessibility(
-        self, session: boto3.Session, regions: List[str]
+        self, session: boto3.Session, regions: List[str], client_config=None
     ) -> List[str]:
         """Test which regions are accessible."""
         accessible_regions = []
 
         for region in regions:
             try:
-                ec2 = session.client("ec2", region_name=region)
+                ec2 = session.client("ec2", region_name=region, config=client_config)
                 ec2.describe_regions(RegionNames=[region])
                 accessible_regions.append(region)
             except ClientError as e:
@@ -749,14 +790,14 @@ class CredentialManager:
         return accessible_regions
 
     def _test_service_availability(
-        self, session: boto3.Session, services: List[str]
+        self, session: boto3.Session, services: List[str], client_config=None
     ) -> List[str]:
         """Test which services are available."""
         available_services = []
 
         for service in services:
             try:
-                client = session.client(service.lower())
+                client = session.client(service.lower(), config=client_config)
                 # Try a simple describe operation
                 if service.lower() == "ec2":
                     client.describe_regions()
@@ -784,7 +825,9 @@ class CredentialManager:
 
         return available_services
 
-    def _generate_permissions_summary(self, session: boto3.Session) -> Dict[str, Any]:
+    def _generate_permissions_summary(
+        self, session: boto3.Session, client_config=None
+    ) -> Dict[str, Any]:
         """Generate a summary of available permissions."""
         summary = {
             "iam_access": False,
@@ -797,7 +840,7 @@ class CredentialManager:
 
         # Test IAM access
         try:
-            iam = session.client("iam")
+            iam = session.client("iam", config=client_config)
             iam.get_user()
             summary["iam_access"] = True
         except ClientError:
@@ -805,7 +848,7 @@ class CredentialManager:
 
         # Test EC2 access
         try:
-            ec2 = session.client("ec2")
+            ec2 = session.client("ec2", config=client_config)
             ec2.describe_regions()
             summary["ec2_access"] = True
         except ClientError:
@@ -813,7 +856,7 @@ class CredentialManager:
 
         # Test S3 access
         try:
-            s3 = session.client("s3")
+            s3 = session.client("s3", config=client_config)
             s3.list_buckets()
             summary["s3_access"] = True
         except ClientError:
@@ -821,7 +864,7 @@ class CredentialManager:
 
         # Test Config access
         try:
-            config = session.client("config")
+            config = session.client("config", config=client_config)
             config.describe_configuration_recorders()
             summary["config_access"] = True
         except ClientError:
@@ -829,7 +872,7 @@ class CredentialManager:
 
         # Test Resource Groups access
         try:
-            rg = session.client("resource-groups")
+            rg = session.client("resource-groups", config=client_config)
             rg.list_groups()
             summary["resource_groups_access"] = True
         except ClientError:

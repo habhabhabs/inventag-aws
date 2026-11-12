@@ -7,6 +7,7 @@ compliance checking, and advanced reporting capabilities.
 """
 
 import argparse
+import getpass
 import sys
 import json
 import yaml
@@ -27,6 +28,14 @@ from ..core import (
 from ..reporting import BOMProcessingConfig
 from .config_validator import ConfigValidator
 from .logging_setup import setup_logging, LoggingContext
+from . import safety
+from ..security.arn import (
+    InvalidRoleError,
+    account_id_from_role_arn,
+    is_role_arn,
+    validate_role_arn,
+    validate_role_name,
+)
 
 
 def _validate_specific_configs(args, logger):
@@ -124,8 +133,11 @@ Examples:
   # Interactive multi-account setup
   inventag --accounts-prompt --create-word --create-excel --verbose
 
-  # Cross-account role assumption (auto-discovers all regions)
-  inventag --cross-account-role InvenTagRole
+  # Assume one role ARN (auto-discovers all regions)
+  inventag --cross-account-role arn:aws:iam::123456789012:role/InvenTagReadOnly
+
+  # Same role name in every account listed in accounts.json
+  inventag --accounts-file accounts.json --cross-account-role InvenTagReadOnly
 
   # CI/CD integration with S3 upload
   inventag --accounts-file accounts.json --create-excel --s3-bucket reports-bucket --s3-key-prefix bom-reports/
@@ -153,7 +165,11 @@ Examples:
     account_group.add_argument(
         "--cross-account-role",
         type=str,
-        help="Cross-account role name to assume for multi-account scanning (requires appropriate permissions)",
+        help=(
+            "Role to assume. A full role ARN is assumed directly. A role name "
+            "(optionally with path) is combined with each account ID from "
+            "--accounts-file into arn:<partition>:iam::<account>:role/<name>"
+        ),
     )
 
     # Format-specific options
@@ -171,7 +187,7 @@ Examples:
     format_group.add_argument(
         "--create-google-docs",
         action="store_true",
-        help="Generate Google Docs/Sheets BOM report (requires Google API credentials)",
+        help="Not implemented yet: exits with an error if given",
     )
 
     # Analysis options
@@ -215,7 +231,11 @@ Examples:
     s3_group.add_argument(
         "--s3-bucket",
         type=str,
-        help="S3 bucket name for uploading generated BOM documents",
+        help=(
+            "Upload generated reports to this S3 bucket (server-side encrypted, "
+            "using the default AWS credentials; needs s3:PutObject). The run "
+            "fails if any upload fails"
+        ),
     )
     s3_group.add_argument(
         "--s3-key-prefix",
@@ -339,7 +359,7 @@ Examples:
     output_group.add_argument(
         "--per-account-reports",
         action="store_true",
-        help="Generate separate BOM reports for each account (in addition to consolidated report)",
+        help="Not implemented yet: exits with an error if given",
     )
 
     # Logging and debug options
@@ -390,47 +410,57 @@ Examples:
         "--enable-production-safety",
         action="store_true",
         default=True,
-        help="Enable production safety monitoring and validation (default: enabled)",
+        help="Accepted for compatibility; the read-only guard is always on",
     )
     safety_group.add_argument(
         "--disable-production-safety",
         action="store_true",
-        help="Disable production safety monitoring (not recommended for production use)",
+        help="Not supported: exits with an error (the read-only guard cannot be disabled)",
     )
     safety_group.add_argument(
         "--enforce-read-only",
         action="store_true",
         default=True,
-        help="Enforce read-only operations only for security (default: enabled)",
+        help=(
+            "Block every AWS API call that is not read-only (always on): only "
+            "List/Describe/Get/Head/Lookup/Search/BatchGet operations, minus "
+            "calls that return secrets or data, are allowed"
+        ),
     )
     safety_group.add_argument(
         "--security-validation",
         action="store_true",
         default=True,
-        help="Enable security validation for all AWS operations (default: enabled)",
+        help="Accepted for compatibility; same as --enforce-read-only (always on)",
     )
     safety_group.add_argument(
         "--compliance-standard",
         choices=["general", "soc2", "pci", "hipaa", "gdpr"],
-        default="general",
-        help="Compliance standard to enforce (default: general)",
+        default=None,
+        help="Not implemented yet: exits with an error if given",
     )
     safety_group.add_argument(
         "--risk-threshold",
         choices=["LOW", "MEDIUM", "HIGH", "CRITICAL"],
-        default="MEDIUM",
-        help="Risk threshold for operation blocking (default: MEDIUM)",
+        default=None,
+        help="Not implemented yet: exits with an error if given",
     )
     safety_group.add_argument(
         "--audit-output",
         type=str,
-        help="Path to security audit report output file",
+        help=(
+            "Write a JSON audit of every AWS API operation the run called "
+            "(allowed and blocked) to this file"
+        ),
     )
     safety_group.add_argument(
         "--validate-operations",
         type=str,
         nargs="+",
-        help="Validate specific AWS operations (format: service:operation)",
+        help=(
+            "Check service:Operation names (e.g. ec2:DescribeInstances) against "
+            "the read-only guard and exit (0 if all allowed, 1 otherwise)"
+        ),
     )
 
     return parser
@@ -509,8 +539,8 @@ def create_accounts_from_prompt() -> List[AccountCredentials]:
                 account.profile_name = profile_name
         elif cred_choice == "2":
             access_key = input("Access Key ID: ").strip()
-            secret_key = input("Secret Access Key: ").strip()
-            session_token = input("Session Token (optional): ").strip()
+            secret_key = getpass.getpass("Secret Access Key: ").strip()
+            session_token = getpass.getpass("Session Token (optional): ").strip()
 
             if access_key and secret_key:
                 account.access_key_id = access_key
@@ -595,12 +625,20 @@ def create_multi_account_config(args) -> MultiAccountConfig:
         output_dir = args.output_directory
 
     elif args.cross_account_role:
-        logger.info(f"Using cross-account role: {args.cross_account_role}")
-        # Create a single account entry for cross-account role
+        role_arn = args.cross_account_role
+        if not is_role_arn(role_arn):
+            logger.error(
+                "--cross-account-role was given a role name without --accounts-file. "
+                "Pass a full role ARN (arn:aws:iam::<account-id>:role/<name>), or "
+                "list the target account IDs in --accounts-file."
+            )
+            sys.exit(2)
+        account_id = account_id_from_role_arn(role_arn)
+        logger.info(f"Using cross-account role: {role_arn}")
         account = AccountCredentials(
-            account_id="cross-account",
-            account_name="Cross-Account Role",
-            role_arn=args.cross_account_role,
+            account_id=account_id,
+            account_name=f"AWS Account {account_id}",
+            role_arn=role_arn,
         )
         accounts = [account]
         max_concurrent = args.max_concurrent_accounts
@@ -697,7 +735,7 @@ def create_multi_account_config(args) -> MultiAccountConfig:
     # Create multi-account config
     config = MultiAccountConfig(
         accounts=accounts,
-        cross_account_role_name=args.cross_account_role or "InvenTagCrossAccountRole",
+        cross_account_role_name=_cross_account_role_name(args),
         parallel_account_processing=not args.disable_parallel_processing,
         max_concurrent_accounts=max_concurrent,
         account_processing_timeout=timeout,
@@ -717,6 +755,27 @@ def create_multi_account_config(args) -> MultiAccountConfig:
     )
 
     return config
+
+
+def _cross_account_role_name(args) -> str:
+    """Role name applied per account (a full ARN is handled as a single account)."""
+    if args.cross_account_role and not is_role_arn(args.cross_account_role):
+        return args.cross_account_role
+    return "InvenTagCrossAccountRole"
+
+
+def _validate_cross_account_role(args) -> Optional[str]:
+    """Return an error message if --cross-account-role is malformed."""
+    if not args.cross_account_role:
+        return None
+    try:
+        if is_role_arn(args.cross_account_role):
+            validate_role_arn(args.cross_account_role)
+        else:
+            validate_role_name(args.cross_account_role)
+    except InvalidRoleError as e:
+        return f"--cross-account-role: {e}"
+    return None
 
 
 def validate_aws_credentials_early() -> bool:
@@ -854,6 +913,25 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
 
+    # Fail loudly on flags that would otherwise be silently ignored.
+    usage_errors = safety.unimplemented_flag_errors(args)
+    role_error = _validate_cross_account_role(args)
+    if role_error:
+        usage_errors.append(role_error)
+    if usage_errors:
+        for message in usage_errors:
+            print(f"inventag: error: {message}", file=sys.stderr)
+        sys.exit(safety.EXIT_NOT_IMPLEMENTED)
+
+    # Owner-only files, redacted logs, and the read-only guard before any AWS call.
+    safety.harden_process()
+
+    if args.validate_operations:
+        all_allowed, lines = safety.validate_operations(args.validate_operations)
+        for line in lines:
+            print(line)
+        sys.exit(0 if all_allowed else 1)
+
     # Set up logging
     logger = setup_logging(
         verbose=args.verbose,
@@ -862,6 +940,18 @@ def main():
         account_specific=not args.disable_account_logging,
     )
 
+    guard = safety.enable_read_only_guard()
+
+    try:
+        _run(args, logger)
+    finally:
+        if args.audit_output:
+            path = safety.write_audit_output(guard, args.audit_output)
+            logger.info(f"Wrote AWS API audit to {path}")
+
+
+def _run(args, logger):
+    """Validate arguments and run the requested CLI action."""
     logger.info("InvenTag CLI started")
     logger.debug(f"CLI arguments: {vars(args)}")
 
@@ -922,8 +1012,6 @@ def main():
             output_formats.append("word")
         if args.create_excel:
             output_formats.append("excel")
-        if args.create_google_docs:
-            output_formats.append("google_docs")
 
         if not output_formats:
             logger.warning("No output formats specified. Defaulting to Excel format.")
@@ -994,6 +1082,13 @@ def main():
             error_message = results.get("error")
             if error_message:
                 logger.error(f"Error: {error_message}")
+            for upload_error in results.get("bom_generation", {}).get(
+                "s3_upload_errors", []
+            ):
+                logger.error(
+                    f"  - S3 upload of {upload_error.get('file') or 'reports'} failed: "
+                    f"{upload_error.get('error')}"
+                )
 
             account_contexts = results.get("account_contexts", {})
             if any(ctx.get("error_count", 0) > 0 for ctx in account_contexts.values()):

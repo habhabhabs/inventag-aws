@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from collections import defaultdict
 
 from .document_generator import DocumentBuilder, DocumentGenerationResult, BOMData
+from ..security.safe_output import precreate_private
 
 try:
     from docx import Document
@@ -173,7 +174,8 @@ class WordDocumentBuilder(DocumentBuilder):
             # Apply branding
             self._apply_document_branding(doc)
 
-            # Save document
+            # Save document (owner-only file)
+            precreate_private(output_path)
             doc.save(output_path)
 
             end_time = datetime.now(timezone.utc)

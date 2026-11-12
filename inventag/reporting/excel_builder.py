@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from collections import defaultdict
 
 from .document_generator import DocumentBuilder, DocumentGenerationResult, BOMData
+from ..security.safe_output import neutralize_workbook_formulas, precreate_private
 
 try:
     from openpyxl import Workbook
@@ -191,7 +192,9 @@ class ExcelWorkbookBuilder(DocumentBuilder):
             # Apply branding
             self._apply_workbook_branding(wb)
 
-            # Save workbook
+            # Save workbook (no data value may become a live formula; owner-only file)
+            neutralize_workbook_formulas(wb)
+            precreate_private(output_path)
             wb.save(output_path)
 
             end_time = datetime.now(timezone.utc)

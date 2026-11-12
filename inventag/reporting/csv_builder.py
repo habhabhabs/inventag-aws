@@ -13,6 +13,7 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime, timezone
 
 from .document_generator import DocumentBuilder, DocumentGenerationResult, BOMData
+from ..security.safe_output import open_private, write_safe_csv
 
 
 class CSVBuilder(DocumentBuilder):
@@ -51,11 +52,10 @@ class CSVBuilder(DocumentBuilder):
             sorted_headers = sorted(all_headers)
 
             # Write CSV
-            with open(output_path, "w", newline="", encoding="utf-8") as csvfile:
-                writer = csv.DictWriter(csvfile, fieldnames=sorted_headers)
-                writer.writeheader()
-                for item in flattened_data:
-                    writer.writerow(item)
+            with open_private(
+                output_path, "w", newline="", encoding="utf-8"
+            ) as csvfile:
+                write_safe_csv(csvfile, sorted_headers, flattened_data)
 
             end_time = datetime.now(timezone.utc)
 

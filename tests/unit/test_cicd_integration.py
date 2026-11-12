@@ -36,7 +36,8 @@ class TestS3UploadConfig:
         assert config.encryption == "AES256"
         assert config.kms_key_id is None
         assert config.public_read is False
-        assert config.lifecycle_days == 90
+        # Lifecycle management is opt-in (it used to replace the bucket's rules).
+        assert config.lifecycle_days == 0
         assert config.storage_class == "STANDARD"
 
     def test_s3_upload_config_custom(self):
@@ -285,7 +286,9 @@ class TestCICDIntegration:
         """Mock BOM generator."""
         mock = Mock()
         mock.generate_bom.return_value = {
-            "resources": [{"service": "EC2", "resource_id": "i-123", "region": "us-east-1"}],
+            "resources": [
+                {"service": "EC2", "resource_id": "i-123", "region": "us-east-1"}
+            ],
             "metadata": {"total_resources": 1},
         }
         return mock
@@ -325,7 +328,9 @@ class TestCICDIntegration:
         """Test CICDIntegration initialization with custom configs."""
         s3_config = S3UploadConfig(bucket_name="test-bucket")
         compliance_config = ComplianceGateConfig(minimum_compliance_percentage=90.0)
-        notification_config = NotificationConfig(slack_webhook_url="https://hooks.slack.com/test")
+        notification_config = NotificationConfig(
+            slack_webhook_url="https://hooks.slack.com/test"
+        )
         prometheus_config = PrometheusConfig(push_gateway_url="http://prometheus:9091")
 
         cicd = CICDIntegration(
@@ -434,7 +439,9 @@ class TestCICDIntegration:
         """Test successful Slack notification."""
         # Setup
         mock_post.return_value.status_code = 200
-        cicd_integration.notification_config.slack_webhook_url = "https://hooks.slack.com/test"
+        cicd_integration.notification_config.slack_webhook_url = (
+            "https://hooks.slack.com/test"
+        )
 
         result = CICDResult(
             success=True,
@@ -457,7 +464,9 @@ class TestCICDIntegration:
         """Test Slack notification failure."""
         # Setup
         mock_post.side_effect = Exception("Network error")
-        cicd_integration.notification_config.slack_webhook_url = "https://hooks.slack.com/test"
+        cicd_integration.notification_config.slack_webhook_url = (
+            "https://hooks.slack.com/test"
+        )
 
         result = CICDResult(success=False, message="BOM generation failed")
 
@@ -556,7 +565,9 @@ class TestCICDIntegration:
         mock_bom_generator.generate_compliance_report.assert_called_once()
         mock_document_generator.generate_excel_report.assert_called_once()
 
-    def test_run_pipeline_bom_generation_failure(self, cicd_integration, mock_bom_generator):
+    def test_run_pipeline_bom_generation_failure(
+        self, cicd_integration, mock_bom_generator
+    ):
         """Test pipeline failure during BOM generation."""
         # Setup
         mock_bom_generator.generate_bom.side_effect = Exception("AWS API error")
@@ -623,7 +634,9 @@ class TestCICDIntegration:
         """Test pipeline with notifications enabled."""
         # Setup
         mock_post.return_value.status_code = 200
-        cicd_integration.notification_config.slack_webhook_url = "https://hooks.slack.com/test"
+        cicd_integration.notification_config.slack_webhook_url = (
+            "https://hooks.slack.com/test"
+        )
         cicd_integration.prometheus_config.gateway_url = "http://prometheus:9091"
 
         mock_bom_generator.generate_compliance_report.return_value = {

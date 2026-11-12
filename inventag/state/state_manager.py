@@ -16,6 +16,8 @@ from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass, asdict
 import logging
 
+from ..security.safe_output import ensure_private_dir, open_private, write_safe_csv
+
 logger = logging.getLogger(__name__)
 
 
@@ -73,7 +75,7 @@ class StateManager:
         self.compression = compression
 
         # Create state directory if it doesn't exist
-        self.state_dir.mkdir(parents=True, exist_ok=True)
+        ensure_private_dir(self.state_dir)
 
         # Initialize metadata tracking
         self.metadata_file = self.state_dir / "metadata.json"
@@ -94,7 +96,7 @@ class StateManager:
     def _save_metadata_index(self):
         """Save the metadata index"""
         try:
-            with open(self.metadata_file, "w") as f:
+            with open_private(self.metadata_file, "w") as f:
                 json.dump(self.metadata_index, f, indent=2)
         except Exception as e:
             logger.error(f"Could not save metadata index: {e}")
@@ -191,7 +193,7 @@ class StateManager:
         # Save state file
         state_file = self.state_dir / f"state_{timestamp}.json"
         try:
-            with open(state_file, "w") as f:
+            with open_private(state_file, "w") as f:
                 json.dump(asdict(snapshot), f, indent=2, default=str)
 
             # Update metadata index
@@ -345,36 +347,23 @@ class StateManager:
                 export_data = (
                     asdict(snapshot) if include_metadata else snapshot.resources
                 )
-                with open(output_file, "w") as f:
+                with open_private(output_file, "w") as f:
                     json.dump(export_data, f, indent=2, default=str)
 
             elif export_format == "yaml":
                 export_data = (
                     asdict(snapshot) if include_metadata else snapshot.resources
                 )
-                with open(output_file, "w") as f:
+                with open_private(output_file, "w") as f:
                     yaml.dump(export_data, f, default_flow_style=False)
 
             elif export_format == "csv":
-                try:
-                    import pandas as pd
-
-                    df = pd.DataFrame(snapshot.resources)
-                    df.to_csv(output_file, index=False)
-                except ImportError:
-                    # Fallback to basic CSV writing without pandas
-                    import csv
-
-                    if snapshot.resources:
-                        fieldnames = set()
-                        for resource in snapshot.resources:
-                            fieldnames.update(resource.keys())
-                        fieldnames = sorted(list(fieldnames))
-
-                        with open(output_file, "w", newline="", encoding="utf-8") as f:
-                            writer = csv.DictWriter(f, fieldnames=fieldnames)
-                            writer.writeheader()
-                            writer.writerows(snapshot.resources)
+                # Values come from scanned accounts: neutralise spreadsheet formulas.
+                fieldnames = sorted(
+                    {key for resource in snapshot.resources for key in resource}
+                )
+                with open_private(output_file, "w", newline="", encoding="utf-8") as f:
+                    write_safe_csv(f, fieldnames, snapshot.resources)
 
             else:
                 raise ValueError(f"Unsupported export format: {export_format}")

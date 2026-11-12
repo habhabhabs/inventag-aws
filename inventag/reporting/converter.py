@@ -8,11 +8,16 @@ Extracted from scripts/bom_converter.py and enhanced for the unified inventag pa
 
 import json
 import yaml
-import csv
 import boto3
 from typing import Dict, List, Any, Union, Optional
 from datetime import datetime
 from botocore.exceptions import ClientError
+from ..security.safe_output import (
+    neutralize_workbook_formulas,
+    open_private,
+    precreate_private,
+    write_safe_csv,
+)
 
 try:
     from openpyxl import Workbook
@@ -377,11 +382,8 @@ class BOMConverter:
         sorted_headers = self._get_logical_column_order(all_headers)
 
         # Write CSV
-        with open(filename, "w", newline="", encoding="utf-8") as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=sorted_headers)
-            writer.writeheader()
-            for item in flattened_data:
-                writer.writerow(item)
+        with open_private(filename, "w", newline="", encoding="utf-8") as csvfile:
+            write_safe_csv(csvfile, sorted_headers, flattened_data)
 
         print(f"Data exported to {filename}")
 
@@ -426,7 +428,9 @@ class BOMConverter:
             if self.security_analysis:
                 self._create_security_analysis_sheet(wb)
 
-        # Save workbook
+        # Save workbook (no data value may become a live formula; owner-only file)
+        neutralize_workbook_formulas(wb)
+        precreate_private(filename)
         wb.save(filename)
         print(f"Data exported to {filename}")
 
@@ -1324,6 +1328,7 @@ class BOMConverter:
             "For more information, visit: https://github.com/habhabhabs/inventag-aws"
         )
 
-        # Save the document
+        # Save the document (owner-only file)
+        precreate_private(filename)
         doc.save(filename)
         print(f"Word document saved: {filename}")

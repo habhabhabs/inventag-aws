@@ -19,13 +19,15 @@ from typing import Dict, List, Any, Optional, Union, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urljoin
+from urllib.parse import quote, urlparse
 import tempfile
 import os
 from botocore.exceptions import ClientError
 
 from .cloud_bom_generator import CloudBOMGenerator, MultiAccountConfig
 from ..reporting.bom_processor import BOMData
+from ..security.safe_output import ensure_private_dir, open_private
+from .s3_upload import ensure_lifecycle_rule, upload_files
 
 
 @dataclass
@@ -37,8 +39,11 @@ class S3UploadConfig:
     region: str = "us-east-1"
     encryption: str = "AES256"  # AES256 or aws:kms
     kms_key_id: Optional[str] = None
+    # Public ACLs are refused (reports describe your infrastructure).
     public_read: bool = False
-    lifecycle_days: int = 90
+    # Opt-in: when > 0, InvenTag adds/updates its own expiry rule on the bucket,
+    # merged with the bucket's existing lifecycle rules (never replacing them).
+    lifecycle_days: int = 0
     storage_class: str = "STANDARD"  # STANDARD, STANDARD_IA, GLACIER, etc.
 
 
@@ -133,8 +138,16 @@ class CICDIntegration:
         compliance_gate_config: Optional[ComplianceGateConfig] = None,
         notification_config: Optional[NotificationConfig] = None,
         prometheus_config: Optional[PrometheusConfig] = None,
+        artifacts_dir: Optional[str] = None,
     ):
-        """Initialize the CI/CD integration system."""
+        """Initialize the CI/CD integration system.
+
+        Args:
+            artifacts_dir: where pipeline artifacts (pipeline_summary.json,
+                inventag_metrics.prom ...) are written. Defaults to
+                $INVENTAG_ARTIFACTS_DIR, else the system temp directory (kept
+                for compatibility). Files are always written owner-only.
+        """
         self.logger = logging.getLogger(f"{__name__}.CICDIntegration")
 
         self.s3_config = s3_config
@@ -145,6 +158,11 @@ class CICDIntegration:
         # Initialize AWS clients lazily
         self.s3_client = None
         self.s3_config = s3_config
+        self.artifacts_dir = Path(
+            artifacts_dir
+            or os.environ.get("INVENTAG_ARTIFACTS_DIR")
+            or tempfile.gettempdir()
+        )
 
         self.logger.info("Initialized CICDIntegration")
 
@@ -354,7 +372,7 @@ class CICDIntegration:
 
     def _upload_documents_to_s3(self, document_files: List[str]) -> Dict[str, str]:
         """
-        Upload generated documents to S3.
+        Upload generated documents to S3 (server-side encrypted, never public).
 
         Args:
             document_files: List of local document file paths
@@ -367,83 +385,42 @@ class CICDIntegration:
             self.logger.warning("S3 upload requested but not configured")
             return {}
 
+        result = upload_files(
+            s3_client,
+            document_files,
+            bucket=self.s3_config.bucket_name,
+            key_prefix=self.s3_config.key_prefix,
+            encryption=self.s3_config.encryption,
+            kms_key_id=self.s3_config.kms_key_id,
+            storage_class=self.s3_config.storage_class,
+            public_read=self.s3_config.public_read,
+        )
+
         s3_uploads = {}
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        for item in result["uploaded"]:
+            format_type = Path(item["file"]).suffix.lower().lstrip(".")
+            s3_uploads[format_type] = item["url"]
 
-        for file_path in document_files:
-            try:
-                file_path_obj = Path(file_path)
-                if not file_path_obj.exists():
-                    self.logger.warning(f"Document file not found: {file_path}")
-                    continue
-
-                # Determine format from file extension
-                format_type = file_path_obj.suffix.lower().lstrip(".")
-
-                # Generate S3 key
-                s3_key = f"{self.s3_config.key_prefix}/{timestamp}/{file_path_obj.name}"
-
-                # Prepare upload parameters
-                upload_params = {
-                    "Bucket": self.s3_config.bucket_name,
-                    "Key": s3_key,
-                    "ServerSideEncryption": self.s3_config.encryption,
-                }
-
-                if self.s3_config.encryption == "aws:kms" and self.s3_config.kms_key_id:
-                    upload_params["SSEKMSKeyId"] = self.s3_config.kms_key_id
-
-                if self.s3_config.public_read:
-                    upload_params["ACL"] = "public-read"
-
-                if self.s3_config.storage_class != "STANDARD":
-                    upload_params["StorageClass"] = self.s3_config.storage_class
-
-                # Upload file
-                with open(file_path, "rb") as f:
-                    s3_client.upload_fileobj(f, **upload_params)
-
-                # Generate S3 URL
-                s3_url = f"https://{self.s3_config.bucket_name}.s3.{self.s3_config.region}.amazonaws.com/{s3_key}"
-                s3_uploads[format_type] = s3_url
-
-                self.logger.info(f"Uploaded {format_type} document to S3: {s3_url}")
-
-                # Set lifecycle policy if configured
-                if self.s3_config.lifecycle_days > 0:
-                    self._set_s3_lifecycle_policy(s3_key)
-
-            except Exception as e:
-                self.logger.error(f"Failed to upload {file_path} to S3: {e}")
+        # Lifecycle rule is opt-in and set once per run, merged with existing rules.
+        if s3_uploads and self.s3_config.lifecycle_days > 0:
+            self._set_s3_lifecycle_policy()
 
         return s3_uploads
 
-    def _set_s3_lifecycle_policy(self, s3_key: str):
-        """Set lifecycle policy for uploaded S3 object."""
+    def _set_s3_lifecycle_policy(self, s3_key: Optional[str] = None):
+        """Add/update InvenTag's expiry rule, keeping the bucket's other rules."""
         try:
             s3_client = self._get_s3_client()
             if not s3_client:
                 return
-
-            lifecycle_config = {
-                "Rules": [
-                    {
-                        "ID": "InvenTagBOMLifecycle",
-                        "Status": "Enabled",
-                        "Filter": {"Prefix": self.s3_config.key_prefix},
-                        "Expiration": {"Days": self.s3_config.lifecycle_days},
-                    }
-                ]
-            }
-
-            s3_client.put_bucket_lifecycle_configuration(
-                Bucket=self.s3_config.bucket_name,
-                LifecycleConfiguration=lifecycle_config,
+            ensure_lifecycle_rule(
+                s3_client,
+                self.s3_config.bucket_name,
+                self.s3_config.key_prefix,
+                self.s3_config.lifecycle_days,
             )
-
         except ClientError as e:
-            # Lifecycle policy might already exist or we might not have permissions
-            self.logger.debug(f"Could not set lifecycle policy: {e}")
+            self.logger.warning(f"Could not set lifecycle policy: {e}")
 
     def _generate_cicd_artifacts(
         self, bom_results: Dict[str, Any], cicd_result: CICDResult
@@ -535,10 +512,11 @@ class CICDIntegration:
 
             artifacts["account_summary.json"] = account_summary
 
-            # Write artifacts to files
+            # Write artifacts to files (owner-only; symlinks are not followed)
+            ensure_private_dir(self.artifacts_dir)
             for artifact_name, artifact_data in artifacts.items():
-                artifact_path = Path(tempfile.gettempdir()) / artifact_name
-                with open(artifact_path, "w") as f:
+                artifact_path = self.artifacts_dir / artifact_name
+                with open_private(artifact_path, "w") as f:
                     json.dump(artifact_data, f, indent=2, default=str)
 
                 self.logger.info(f"Generated CI/CD artifact: {artifact_path}")
@@ -648,6 +626,9 @@ class CICDIntegration:
 
     def _send_slack_notification(self, content: Dict[str, Any]):
         """Send Slack notification."""
+        webhook_url = _require_https_url(
+            self.notification_config.slack_webhook_url, "Slack webhook"
+        )
         status_color = "good" if content["status"] == "SUCCESS" else "danger"
         gate_color = "good" if content["compliance_gate"] == "PASSED" else "warning"
 
@@ -713,12 +694,18 @@ class CICDIntegration:
             )
 
         response = requests.post(
-            self.notification_config.slack_webhook_url, json=slack_payload, timeout=30
+            webhook_url,
+            json=slack_payload,
+            timeout=30,
+            allow_redirects=False,
         )
         response.raise_for_status()
 
     def _send_teams_notification(self, content: Dict[str, Any]):
         """Send Microsoft Teams notification."""
+        webhook_url = _require_https_url(
+            self.notification_config.teams_webhook_url, "Teams webhook"
+        )
         status_color = "Good" if content["status"] == "SUCCESS" else "Attention"
 
         teams_payload = {
@@ -776,7 +763,10 @@ class CICDIntegration:
             teams_payload["potentialAction"] = actions
 
         response = requests.post(
-            self.notification_config.teams_webhook_url, json=teams_payload, timeout=30
+            webhook_url,
+            json=teams_payload,
+            timeout=30,
+            allow_redirects=False,
         )
         response.raise_for_status()
 
@@ -894,8 +884,9 @@ inventag_s3_upload_time_seconds {metrics.s3_upload_time}
 """
 
             # Export to file
-            metrics_file = Path(tempfile.gettempdir()) / "inventag_metrics.prom"
-            with open(metrics_file, "w") as f:
+            ensure_private_dir(self.artifacts_dir)
+            metrics_file = self.artifacts_dir / "inventag_metrics.prom"
+            with open_private(metrics_file, "w") as f:
                 f.write(metrics_content)
 
             self.logger.info(f"Exported Prometheus metrics to: {metrics_file}")
@@ -916,8 +907,16 @@ inventag_s3_upload_time_seconds {metrics.s3_upload_time}
             job_name = os.environ.get("PROMETHEUS_JOB_NAME", "inventag-bom")
             instance_name = os.environ.get("PROMETHEUS_INSTANCE_NAME", "default")
 
-            # Construct push gateway URL
-            push_url = f"{gateway_url.rstrip('/')}/metrics/job/{job_name}/instance/{instance_name}"
+            # Construct push gateway URL (labels are path segments: escape them)
+            parsed = urlparse(gateway_url)
+            if parsed.scheme not in ("http", "https") or not parsed.netloc:
+                raise ValueError(
+                    "Prometheus push gateway URL must be http(s)://host[:port]"
+                )
+            push_url = (
+                f"{gateway_url.rstrip('/')}/metrics/job/{quote(job_name, safe='')}"
+                f"/instance/{quote(instance_name, safe='')}"
+            )
 
             # Push metrics
             response = requests.post(
@@ -925,6 +924,7 @@ inventag_s3_upload_time_seconds {metrics.s3_upload_time}
                 data=metrics_content,
                 headers={"Content-Type": "text/plain"},
                 timeout=30,
+                allow_redirects=False,
             )
             response.raise_for_status()
 
@@ -1078,3 +1078,11 @@ jobs:
 """
 
         return workflow_config
+
+
+def _require_https_url(url: Optional[str], label: str) -> str:
+    """Webhook URLs carry their secret in the path: only send them over HTTPS."""
+    parsed = urlparse(url or "")
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise ValueError(f"{label} URL must be an https:// URL")
+    return url
