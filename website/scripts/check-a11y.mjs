@@ -1,45 +1,35 @@
 #!/usr/bin/env node
 /**
- * Accessibility checks for the built site: axe-core in Chromium (Playwright)
- * at four widths, in the light and the dark theme.
+ * Accessibility, layout and keyboard checks for the built site, plus screenshots.
  *
- *   cd website
- *   npm ci
- *   npx playwright install chromium      (once per machine)
- *   npm run build
- *   npm run check:a11y
+ *   cd website && npm run build
+ *   npm run serve:pages -- --port 4173 &   (serves build/ like GitHub Pages, under /inventag-aws/)
+ *   npm run check:a11y -- [--base http://localhost:4173/inventag-aws] [--shots ../screenshots] [--quick]
  *
- * The script serves build/ itself (on a free local port, under the site's
- * baseUrl). It does not need `npm run serve`.
+ * Needs Playwright with Chromium. Playwright is NOT a dependency of the site
+ * (it would add ~200 MB of browsers); point NODE_PATH at an existing install,
+ * e.g. `NODE_PATH=$(npm root -g) npm run check:a11y`, or `npm i -D playwright
+ * && npx playwright install chromium` locally. axe-core IS a devDependency.
  *
- * Options:
- *   --base <url>     test an already running server instead of build/
- *   --build <dir>    serve this directory instead of build/
- *   --report <file>  JSON report path (default: a11y-report/report.json)
- *   --shots <dir>    also save a screenshot of every scan
- *   --jobs <n>       browser contexts to run in parallel (default: 4)
- *
- * Exit code: 0 = clean, 1 = at least one failure, 2 = could not run.
- *
- * What fails the run
- *   - any axe violation tagged WCAG 2.0/2.1 level A or AA
- *   - text below 4.5:1 on a gradient background (axe reports those only as
- *     "needs review"; this script takes the worst gradient stop)
- *   - the page did not render in the theme under test
- *   - horizontal page scroll (WCAG 1.4.10 Reflow). Tables and code blocks may
- *     scroll inside their own container.
- *   - a Tab stop with no visible focus indicator, off screen, or a keyboard trap
- *   - below the desktop breakpoint: the navigation menu cannot be reached,
- *     opened, used and closed with the keyboard
- *   - the search box cannot be reached and used with the keyboard
- *   - the analytics consent banner traps focus, covers the navbar, covers the
- *     end of the page, or completely covers a focused element
- *   - an animation that loops forever under prefers-reduced-motion
- *
- * What is reported but does not fail the run
- *   - axe "best-practice" rules and WCAG 2.2 AA rules (advisory)
- *   - syntax-highlighting token colours below 4.5:1
- *   - touch targets smaller than 44px at the two touch widths
+ * Per page x theme (light, dark) x viewport (320, 390, 768, 1440):
+ *   - axe-core: WCAG 2.0/2.1/2.2 A and AA rules plus best practices -> failures
+ *   - text contrast >= 4.5:1 (>= 3:1 for large text) against the effective
+ *     background, including syntax-highlighting tokens -> failures
+ *   - no horizontal page scroll -> failure
+ *   - targets: >= 24px everywhere (WCAG 2.5.8) -> failure; >= 44px on touch
+ *     viewports (320, 390, 768) -> failure. Links inside sentences are exempt.
+ *   - controls that are invisible until hover (opacity 0) -> failure
+ *   - buttons and link pills without a >= 3:1 boundary (border or fill
+ *     against what is behind them, WCAG 1.4.11) -> failure
+ * Once per theme on desktop and phone:
+ *   - every Tab stop shows a visible focus indicator
+ *   - skip link appears on first Tab and moves focus to the content
+ *   - landing copy button and code-block copy buttons work from the keyboard
+ *   - theme toggle, version dropdown and the mobile menu work from the keyboard
+ *   - the analytics banner is reachable, and Google Analytics is not requested
+ *     before consent
+ * And: no infinite animations with prefers-reduced-motion.
+ * Exit code 1 if anything fails.
  */
 import {createRequire} from 'node:module';
 import fs from 'node:fs';
@@ -48,216 +38,44 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const require = createRequire(import.meta.url);
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SITE = path.resolve(HERE, '..');
-
-// ---------------------------------------------------------------------------
-// Configuration
-// ---------------------------------------------------------------------------
-
-/** Must match `baseUrl` in docusaurus.config.js. */
-const BASE_PATH = '/inventag-aws';
-
-/**
- * Infima (the Docusaurus CSS framework) switches layout at one breakpoint:
- * `@media (max-width: 996px)` is the mobile layout (hamburger menu, no docs
- * sidebar), 997px and wider is the desktop layout. The script checks at run
- * time that each width below renders the layout named here.
- */
-const DESKTOP_MIN_WIDTH = 997;
-
-const WIDTHS = [
-  // WCAG 1.4.10 Reflow: content must work at 320 CSS px without sideways scroll.
-  {width: 320, height: 640, touch: true},
-  // Tablet, portrait. The widest common width that still gets the mobile layout.
-  {width: 768, height: 1024, touch: true},
-  // Small laptop or landscape tablet. The narrowest common desktop layout:
-  // sidebar, content and table of contents compete for space.
-  {width: 1024, height: 768, touch: false},
-  // Common desktop width; content reaches its maximum line length.
-  {width: 1440, height: 900, touch: false},
-];
-
-const THEMES = ['light', 'dark'];
-
-/**
- * Pages under test. Paths are relative to the base URL. Every page except the
- * 404 must be in build/sitemap.xml, so a renamed page fails loudly here.
- */
-const PAGES = [
-  {id: 'home', path: '/', why: 'custom React homepage: hero, feature cards'},
-  {id: 'docs-index', path: '/docs', why: 'docs landing page: sidebar, breadcrumbs, version badge'},
-  {id: 'status', path: '/docs/getting-started/status', why: 'tables and code blocks'},
-  {id: 'cli-user-guide', path: '/docs/user-guides/cli-user-guide', why: 'long user guide: many code blocks, deep table of contents'},
-  {id: 'search', path: '/search?q=tag', why: 'search results page'},
-  {id: '404', path: '/this-page-does-not-exist', why: 'not-found page', status: 404},
-];
-
-/** Pages that also get the menu, search and consent-banner state checks. */
-const STATE_PAGES = ['home', 'status'];
-
-const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
-const ADVISORY_TAGS = ['best-practice', 'wcag22aa'];
-
-/**
- * Accepted violations. Keep this empty: fix the site instead.
- * If an entry is ever needed, every field is required and `reason` must say
- * why the violation cannot be fixed in this repository:
- *   {rule: 'axe-rule-id', selector: 'css selector of the node', reason: '...'}
- */
-const ALLOWLIST = [];
-
-const TAB_STOPS = 25;
-
-// ---------------------------------------------------------------------------
-// Setup
-// ---------------------------------------------------------------------------
+let chromium;
+try {
+  ({chromium} = require('playwright'));
+} catch {
+  console.error('Playwright not found. See the header of this file (NODE_PATH=$(npm root -g)).');
+  process.exit(2);
+}
+const AXE_PATH = require.resolve('axe-core/axe.min.js');
 
 const arg = (name, def) => {
   const i = process.argv.indexOf(name);
   return i > -1 ? process.argv[i + 1] : def;
 };
-const die = (msg) => {
-  console.error(msg);
-  process.exit(2);
-};
-
-for (const a of ALLOWLIST) {
-  if (!a.rule || !a.selector || !a.reason || a.reason.trim().length < 20) {
-    die(`ALLOWLIST entry ${JSON.stringify(a)} needs rule, selector and a written reason.`);
-  }
-}
-
-let chromium;
-try {
-  ({chromium} = require('playwright'));
-} catch {
-  die('Playwright not found. Run `npm ci` in website/, then `npx playwright install chromium`.');
-}
-let axeSource;
-try {
-  axeSource = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
-} catch {
-  die('axe-core not found. Run `npm ci` in website/.');
-}
-
-const BUILD = path.resolve(SITE, arg('--build', 'build'));
-const REPORT = path.resolve(SITE, arg('--report', 'a11y-report/report.json'));
+const BASE = arg('--base', 'http://localhost:4173/inventag-aws');
 const SHOTS = arg('--shots', null);
-const JOBS = Math.max(1, parseInt(arg('--jobs', '4'), 10) || 4);
-let BASE = arg('--base', null);
+const QUICK = process.argv.includes('--quick');
 
-const MIME = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
-  '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon',
-  '.xml': 'application/xml', '.txt': 'text/plain', '.woff2': 'font/woff2', '.webp': 'image/webp',
-  '.yaml': 'text/yaml', '.jpg': 'image/jpeg',
-};
+const PAGES = [
+  ['landing', '/'],
+  ['docs-overview', '/docs'],
+  ['intro', '/docs/getting-started/introduction'],
+  ['quick-start', '/docs/getting-started/quick-start'],
+  ['status', '/docs/getting-started/status'],
+  ['cli-guide', '/docs/user-guides/cli-user-guide'],
+  ['production-safety', '/docs/user-guides/production-safety'],
+  ['archived-intro', '/docs/v4.2.26/getting-started/introduction'],
+  ['not-found', '/this-page-does-not-exist'],
+];
+const VIEWPORTS = [
+  ['320', {width: 320, height: 640}, 2, true],
+  ['390', {width: 390, height: 844}, 3, true],
+  ['768', {width: 768, height: 1024}, 2, true],
+  ['1440', {width: 1440, height: 900}, 1, false],
+];
+const SHOT_PAGES = new Set(['landing', 'intro', 'quick-start', 'cli-guide']);
+const SHOT_VIEWPORTS = {'390': {width: 390, height: 844}, '1440': {width: 1440, height: 900}};
 
-/** Static server for build/, with GitHub Pages behaviour (x -> x.html, 404.html). */
-function serveBuild() {
-  const server = http.createServer((req, res) => {
-    let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-    const send = (status, file) => {
-      res.writeHead(status, {'content-type': MIME[path.extname(file)] || 'application/octet-stream'});
-      fs.createReadStream(file).pipe(res);
-    };
-    if (p === BASE_PATH || p.startsWith(BASE_PATH + '/')) {
-      const rel = p.slice(BASE_PATH.length).replace(/^\/+|\/+$/g, '');
-      for (const c of [rel, rel + '.html', path.join(rel, 'index.html')]) {
-        const file = path.join(BUILD, c);
-        if (file.startsWith(BUILD) && fs.existsSync(file) && fs.statSync(file).isFile()) return send(200, file);
-      }
-    }
-    return send(404, path.join(BUILD, '404.html'));
-  });
-  return new Promise((resolve) => {
-    server.listen(0, '127.0.0.1', () => resolve(server));
-  });
-}
-
-let server = null;
-if (!BASE) {
-  if (!fs.existsSync(path.join(BUILD, 'index.html'))) die(`${BUILD} not found. Run \`npm run build\` first.`);
-  const sitemap = fs.readFileSync(path.join(BUILD, 'sitemap.xml'), 'utf8');
-  const locs = new Set([...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname.replace(/\/$/, '')));
-  for (const pg of PAGES) {
-    if (pg.status === 404) continue;
-    const want = (BASE_PATH + pg.path.split('?')[0]).replace(/\/$/, '');
-    if (!locs.has(want)) die(`Page "${pg.id}" (${want}) is not in sitemap.xml. Update PAGES in ${path.basename(import.meta.url)}.`);
-  }
-  server = await serveBuild();
-  BASE = `http://127.0.0.1:${server.address().port}${BASE_PATH}`;
-}
-const ORIGIN = new URL(BASE).origin;
-
-// ---------------------------------------------------------------------------
-// In-page helpers (run inside the browser)
-// ---------------------------------------------------------------------------
-
-/** Theme actually rendered: the attribute Docusaurus sets, and the real page background. */
-function readTheme() {
-  const rgba = (c) => {
-    const p = c.match(/[\d.]+/g).map(Number);
-    return {r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1};
-  };
-  const f = (v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
-  const lum = ({r, g, b}) => 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
-  // Page background: <html>, else <body>, else the browser's white canvas.
-  let background = 'rgb(255, 255, 255)';
-  for (const el of [document.body, document.documentElement]) {
-    const c = getComputedStyle(el).backgroundColor;
-    if (rgba(c).a === 1) background = c;
-  }
-  const text = getComputedStyle(document.body).color;
-  return {
-    attr: document.documentElement.getAttribute('data-theme'),
-    stored: localStorage.getItem('theme'),
-    background,
-    text,
-    backgroundLuminance: lum(rgba(background)),
-    textLuminance: lum(rgba(text)),
-  };
-}
-
-/** Layout facts: page overflow, the elements that cause it, and which layout is active. */
-function readLayout() {
-  const vw = document.documentElement.clientWidth;
-  const scrolls = (el) => {
-    for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) {
-      const o = getComputedStyle(n).overflowX;
-      if (o === 'auto' || o === 'scroll' || o === 'hidden' || o === 'clip') return true;
-    }
-    return false;
-  };
-  const offenders = [];
-  if (document.documentElement.scrollWidth > vw) {
-    for (const el of document.body.querySelectorAll('*')) {
-      const cs = getComputedStyle(el);
-      if (cs.position === 'fixed' || cs.visibility === 'hidden' || cs.display === 'none') continue;
-      const r = el.getBoundingClientRect();
-      if (r.width > 0 && r.right > vw + 0.5 && !scrolls(el)) {
-        const cls = typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '';
-        offenders.push(`${el.tagName.toLowerCase()}${cls} (right edge ${Math.round(r.right)}px)`);
-        if (offenders.length >= 5) break;
-      }
-    }
-  }
-  const toggle = document.querySelector('.navbar__toggle');
-  return {
-    scrollWidth: document.documentElement.scrollWidth,
-    clientWidth: vw,
-    offenders,
-    mobileLayout: !!toggle && getComputedStyle(toggle).display !== 'none' && toggle.getBoundingClientRect().width > 0,
-  };
-}
-
-/**
- * Text contrast with gradient backgrounds resolved to their worst stop, and
- * touch-target sizes. axe-core cannot judge text on a gradient and files it
- * under "incomplete"; this covers that gap.
- */
-function auditContrastAndTargets() {
+function auditInPage(isTouch) {
   const parse = (c) => {
     const m = c.match(/rgba?\(([^)]+)\)/);
     if (!m) return null;
@@ -278,7 +96,7 @@ function auditContrastAndTargets() {
     b: top.b * top.a + bottom.b * (1 - top.a),
     a: 1,
   });
-  const layersOf = (el) => {
+  const backgrounds = (el) => {
     const layers = [];
     let gradient = false;
     for (let n = el; n; n = n.parentElement) {
@@ -298,7 +116,13 @@ function auditContrastAndTargets() {
         if (bg.a === 1) break;
       }
     }
-    return {layers, gradient};
+    let candidates = [{r: 255, g: 255, b: 255, a: 1}];
+    const rootBg = parse(getComputedStyle(document.documentElement).backgroundColor);
+    if (rootBg && rootBg.a === 1) candidates = [rootBg];
+    for (const layer of layers.reverse()) {
+      candidates = layer.stops.flatMap((s) => candidates.map((c) => over(s, c)));
+    }
+    return candidates;
   };
   const visible = (el) => {
     const r = el.getBoundingClientRect();
@@ -322,33 +146,66 @@ function auditContrastAndTargets() {
     const cs = getComputedStyle(el);
     const fg = parse(cs.color);
     if (!fg) continue;
-    const {layers, gradient} = layersOf(el);
-    if (!gradient) continue; // plain backgrounds are axe's job
-    let candidates = [rootBg && rootBg.a === 1 ? rootBg : {r: 255, g: 255, b: 255, a: 1}];
-    for (const layer of layers.reverse()) candidates = layer.stops.flatMap((s) => candidates.map((c) => over(s, c)));
-    let worst = Infinity;
-    for (const bg of candidates) worst = Math.min(worst, ratio(over(fg, bg), bg));
     const size = parseFloat(cs.fontSize);
-    const large = size >= 24 || (size >= 18.66 && parseInt(cs.fontWeight, 10) >= 700);
-    if (worst < (large ? 3 : 4.5)) {
+    const weight = parseInt(cs.fontWeight, 10) || 400;
+    const large = size >= 24 || (size >= 18.66 && weight >= 700);
+    const min = large ? 3 : 4.5;
+    let worst = Infinity;
+    for (const bg of backgrounds(el)) worst = Math.min(worst, ratio(over(fg, bg), bg));
+    if (worst < min) {
       fails.push({
         text: t.textContent.trim().slice(0, 50),
         ratio: Math.round(worst * 100) / 100,
         need: large ? 3 : 4.5,
         color: cs.color,
-        syntax: !!el.closest('.token, .prism-code, pre'),
-        where: el.className && typeof el.className === 'string' ? el.className.slice(0, 60) : el.tagName.toLowerCase(),
+        where: typeof el.className === 'string' ? el.className.slice(0, 60) : el.tagName,
       });
     }
   }
   const small = [];
-  for (const el of document.querySelectorAll('a[href], button, [role="button"], summary, input, select')) {
-    if (!visible(el) || el.closest('[aria-hidden="true"]')) continue;
+  const hidden = [];
+  for (const el of document.querySelectorAll('a[href], button, [role="button"], summary, input, select, [tabindex="0"]')) {
+    if (el.closest('[aria-hidden="true"], .navbar-sidebar:not(.navbar-sidebar--show *)')) continue;
     const cs = getComputedStyle(el);
-    if (cs.display === 'inline' && el.closest('p, li, td, th, blockquote, .admonition')) continue;
     const r = el.getBoundingClientRect();
-    if (r.height < 44 || r.width < 44) {
-      small.push(`${el.tagName.toLowerCase()} "${(el.innerText || el.getAttribute('aria-label') || '').trim().slice(0, 30)}" ${Math.round(r.width)}x${Math.round(r.height)}`);
+    if (r.width < 1 || r.height < 1 || cs.visibility === 'hidden' || cs.display === 'none') continue;
+    if (el.matches('.sr-only, [class*="skipToContent"]')) continue;
+    if (parseFloat(cs.opacity) === 0 && !el.closest('.hash-link')) {
+      hidden.push(`${el.tagName.toLowerCase()} "${(el.getAttribute('aria-label') || el.innerText || '').trim().slice(0, 30)}" is invisible until hover`);
+    }
+    if (el.matches('a.hash-link, pre[tabindex]')) continue;
+    const inline = cs.display === 'inline' && el.closest('p, li, td, th, blockquote, .admonition, .alert, .theme-doc-version-banner, figcaption, dd');
+    if (inline) continue;
+    const min = isTouch ? 44 : 24;
+    if (r.height < min - 0.5 || r.width < min - 0.5) {
+      small.push(`${el.tagName.toLowerCase()} "${(el.getAttribute('aria-label') || el.innerText || '').trim().slice(0, 30)}" ${Math.round(r.width)}x${Math.round(r.height)} (< ${min})`);
+    }
+  }
+  // Buttons and link pills must be identifiable by their own boundary
+  // (WCAG 1.4.11): a 1px+ border, or a fill, at >= 3:1 against what is behind.
+  const boundary = [];
+  const pills = document.querySelectorAll(
+    '.button, button, [class*="cellLink"], .pagination-nav__link, .navbar__search-input, ' +
+      '.navbar__item.dropdown > .navbar__link, .header-github-link, [class*="backToTopButton"]',
+  );
+  for (const el of pills) {
+    if (!visible(el) || el.closest('[aria-hidden="true"]')) continue;
+    // icon-only controls identified by their icon, and text-styled buttons
+    if (el.matches('.clean-btn.menu__caret, .navbar__toggle, .navbar-sidebar__close, [class*="collapseSidebarButton"], [class*="expandButton"], .footer__button, .menu__link, .hash-link')) continue;
+    const cs = getComputedStyle(el);
+    const behind = backgrounds(el.parentElement)[0];
+    const own = parse(cs.backgroundColor);
+    const fill = own && own.a > 0 ? over(own, behind) : behind;
+    let best = ratio(fill, behind);
+    for (const side of ['Top', 'Right', 'Bottom', 'Left']) {
+      const w = parseFloat(cs[`border${side}Width`]);
+      const c = parse(cs[`border${side}Color`]);
+      if (w >= 1 && c && c.a > 0 && cs[`border${side}Style`] !== 'none') {
+        best = Math.max(best, Math.min(ratio(over(c, behind), behind), 21));
+      }
+    }
+    if (best < 3) {
+      boundary.push(`${el.tagName.toLowerCase()} "${(el.getAttribute('aria-label') || el.innerText || '').trim().slice(0, 30)}" boundary ${Math.round(best * 100) / 100}:1`);
     }
   }
   return {contrast: fails, small};
@@ -373,146 +230,105 @@ function readFocus() {
   }
   const cls = typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/)[0] : '';
   return {
-    id: window.__a11yIds.get(el),
-    label: `${el.tagName.toLowerCase()}${cls} "${(el.innerText || el.getAttribute('aria-label') || el.getAttribute('placeholder') || '').trim().replace(/\s+/g, ' ').slice(0, 30)}"`,
-    ring: !!(outline || shadow),
-    sized: r.width > 0 && r.height > 0 && cs.visibility !== 'hidden',
-    inView: r.bottom > 0 && r.right > 0 && r.top < window.innerHeight && r.left < window.innerWidth,
-    coveredByBanner,
-    inBanner: !!(banner && banner.contains(el)),
-    inMenu: !!el.closest('.navbar-sidebar'),
-    isToggle: el.matches('.navbar__toggle'),
-    isMenuClose: el.matches('.navbar-sidebar__close'),
-    isSearch: el.matches('.navbar__search-input'),
+    boundary,
+    contrast: fails,
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+    small,
+    hidden,
   };
 }
 
-// ---------------------------------------------------------------------------
-// Checks
-// ---------------------------------------------------------------------------
-
-const results = []; // one entry per page x width x theme x state
-const startedAt = Date.now();
-
-function allowlisted(rule, node) {
-  return ALLOWLIST.some((a) => a.rule === rule && node.target.join(' ').includes(a.selector));
-}
+const hydrated = (page) => page.waitForSelector('html[data-has-hydrated="true"]', {timeout: 10000}).catch(() => {});
 
 async function runAxe(page) {
-  await page.evaluate(axeSource);
-  const raw = await page.evaluate(
-    (tags) => window.axe.run(document, {runOnly: {type: 'tag', values: tags}, resultTypes: ['violations', 'incomplete']}),
-    [...WCAG_TAGS, ...ADVISORY_TAGS],
+  await page.addScriptTag({path: AXE_PATH});
+  return page.evaluate(async () => {
+    const r = await window.axe.run(document, {
+      runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']},
+      resultTypes: ['violations'],
+    });
+    return r.violations.map((v) => ({
+      id: v.id,
+      impact: v.impact,
+      help: v.help,
+      nodes: v.nodes.slice(0, 3).map((n) => n.target.join(' ')),
+      count: v.nodes.length,
+    }));
+  });
+}
+
+const failures = [];
+const warnings = [];
+const fail = (s) => failures.push(s);
+
+async function newContext(browser, {viewport, dpr = 1, mobile = false, theme, consent = 'denied', reducedMotion}) {
+  const ctx = await browser.newContext({
+    viewport,
+    deviceScaleFactor: dpr,
+    isMobile: mobile,
+    hasTouch: mobile,
+    colorScheme: theme,
+    reducedMotion,
+  });
+  await ctx.addInitScript(
+    ([t, c]) => {
+      try {
+        if (t) localStorage.setItem('theme', t);
+        if (c) localStorage.setItem('inventag-analytics', c);
+      } catch (e) {}
+    },
+    [theme, consent],
   );
-  const slim = (v) => ({
-    id: v.id,
-    impact: v.impact,
-    help: v.help,
-    helpUrl: v.helpUrl,
-    tags: v.tags.filter((t) => /^wcag|best-practice/.test(t)),
-    nodes: v.nodes
-      .filter((n) => !allowlisted(v.id, n))
-      .map((n) => ({
-        target: n.target.join(' '),
-        html: n.html.replace(/\s+/g, ' ').slice(0, 220),
-        summary: (n.failureSummary || '').replace(/\s+/g, ' ').slice(0, 400),
-      })),
-  });
-  const violations = raw.violations.map(slim).filter((v) => v.nodes.length);
-  const isWcag = (v) => v.tags.some((t) => WCAG_TAGS.includes(t));
-  return {
-    wcag: violations.filter(isWcag),
-    advisory: violations.filter((v) => !isWcag(v)),
-    // "Needs review": axe could not decide. Kept in the report with axe's reason.
-    incomplete: raw.incomplete.map((v) => {
-      const reasons = {};
-      for (const n of v.nodes) {
-        const key = [...n.any, ...n.all, ...n.none].map((c) => c.data && c.data.messageKey).find(Boolean) || 'unspecified';
-        reasons[key] = (reasons[key] || 0) + 1;
+  return ctx;
+}
+
+const browser = await chromium.launch();
+const viewports = QUICK ? VIEWPORTS.filter(([n]) => n === '390' || n === '1440') : VIEWPORTS;
+
+// 1. page sweep
+for (const [vName, viewport, dpr, touch] of viewports) {
+  for (const theme of ['light', 'dark']) {
+    const ctx = await newContext(browser, {viewport, dpr, mobile: touch, theme});
+    const page = await ctx.newPage();
+    for (const [pName, p] of PAGES) {
+      const res = await page.goto(BASE + p, {waitUntil: 'networkidle'});
+      const expect404 = pName === 'not-found';
+      if (!res || (res.status() >= 400 && !expect404)) {
+        fail(`${pName}: HTTP ${res && res.status()}`);
+        continue;
       }
-      return {id: v.id, nodes: v.nodes.length, reasons};
-    }),
-  };
-}
-
-function newResult(pg, vp, theme, state) {
-  const r = {page: pg.id, url: pg.path, width: vp.width, theme, state, wcag: [], advisory: [], incomplete: [], failures: [], warnings: []};
-  results.push(r);
-  return r;
-}
-
-async function settle(page) {
-  await page.waitForLoadState('networkidle');
-  await page.waitForFunction(() => document.documentElement.hasAttribute('data-theme') && document.fonts.status === 'loaded');
-  await page.waitForTimeout(250);
-}
-
-async function open(page, pg, res) {
-  const response = await page.goto(BASE + pg.path, {waitUntil: 'load'});
-  const want = pg.status || 200;
-  if (!response || response.status() !== want) {
-    res.failures.push({check: 'http', detail: `expected HTTP ${want}, got ${response && response.status()}`});
-    return false;
+      await hydrated(page);
+      await page.waitForTimeout(150);
+      const tag = `${pName} [${vName}, ${theme}]`;
+      const r = await page.evaluate(auditInPage, touch);
+      for (const f of r.contrast) fail(`${tag} contrast ${f.ratio}:1 "${f.text}" (${f.color}; ${f.where})`);
+      if (r.scrollWidth > r.clientWidth) fail(`${tag} horizontal scroll: ${r.scrollWidth} > ${r.clientWidth}`);
+      r.small.forEach((s) => fail(`${tag} target size: ${s}`));
+      r.hidden.forEach((s) => fail(`${tag} ${s}`));
+      r.boundary.forEach((s) => fail(`${tag} control ${s} (< 3:1, WCAG 1.4.11)`));
+      for (const v of await runAxe(page)) {
+        fail(`${tag} axe ${v.id} (${v.impact}, ${v.count}x): ${v.help} -> ${v.nodes.join(' | ')}`);
+      }
+    }
+    await ctx.close();
   }
-  await settle(page);
-  return true;
 }
 
-async function verifyTheme(page, theme, res) {
-  const t = await page.evaluate(readTheme);
-  res.rendered = t;
-  // The attribute alone is not proof: the colours on screen must match it.
-  const dark = t.backgroundLuminance < 0.1 && t.textLuminance > 0.5;
-  const light = t.backgroundLuminance > 0.8 && t.textLuminance < 0.1;
-  const ok = t.attr === theme && (theme === 'dark' ? dark : light);
-  if (!ok) res.failures.push({check: 'theme', detail: `asked for ${theme}; got data-theme="${t.attr}", background ${t.background}, text ${t.text}`});
-  return ok;
-}
-
-async function shot(page, res) {
-  if (!SHOTS) return;
+// 2. screenshots (consent already decided, so the banner does not cover content)
+if (SHOTS) {
   fs.mkdirSync(SHOTS, {recursive: true});
-  const state = res.state === 'default' ? '' : `-${res.state}`;
-  await page.screenshot({path: path.join(SHOTS, `${res.page}-${res.width}-${res.theme}${state}.png`)});
-}
-
-async function scan(page, res) {
-  const a = await runAxe(page);
-  res.wcag = a.wcag;
-  res.advisory = a.advisory;
-  res.incomplete = a.incomplete;
-  const c = await page.evaluate(auditContrastAndTargets);
-  for (const f of c.contrast) {
-    const detail = `${f.ratio}:1 (needs ${f.need}:1) "${f.text}" ${f.color} on gradient; ${f.where}`;
-    if (f.syntax) res.warnings.push({check: 'syntax-contrast', detail});
-    else res.failures.push({check: 'gradient-contrast', detail});
-  }
-  return c;
-}
-
-/** Press Tab `count` times from the top of the page; check every stop. */
-async function tabWalk(page, res, count, {banner = false} = {}) {
-  await page.evaluate(() => {
-    window.scrollTo(0, 0);
-    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
-  });
-  let last = null;
-  let repeats = 0;
-  let stops = 0;
-  const seen = new Set();
-  for (let i = 0; i < count; i++) {
-    await page.keyboard.press('Tab');
-    const f = await page.evaluate(readFocus);
-    if (!f) continue;
-    // First focus on the search box starts loading the search index. Wait for
-    // it, so the load cannot finish at a random point later in the walk.
-    if (f.isSearch) await page.waitForSelector('.navbar__search-input[role="combobox"]', {timeout: 10000}).catch(() => {});
-    stops++;
-    repeats = last === f.id ? repeats + 1 : 0;
-    last = f.id;
-    if (repeats >= 2) {
-      res.failures.push({check: 'keyboard-trap', detail: `focus stuck on ${f.label}`});
-      break;
+  for (const [vName, viewport] of Object.entries(SHOT_VIEWPORTS)) {
+    for (const theme of ['light', 'dark']) {
+      const mobile = vName === '390';
+      const ctx = await newContext(browser, {viewport, dpr: mobile ? 3 : 2, mobile, theme});
+      const page = await ctx.newPage();
+      for (const [pName, p] of PAGES.filter(([n]) => SHOT_PAGES.has(n))) {
+        await page.goto(BASE + p, {waitUntil: 'networkidle'});
+        await page.evaluate(() => document.fonts.ready);
+        await page.screenshot({path: path.join(SHOTS, `${pName}-${theme}-${viewport.width}x${viewport.height}.png`)});
+      }
+      await ctx.close();
     }
     if (seen.has(f.id)) continue;
     seen.add(f.id);
@@ -826,6 +642,142 @@ async function runCombo(browser, vp, theme) {
     await checkSearch(sp, pg, vp, theme);
     await sp.close();
   }
+}
+
+// 3. keyboard and behaviour
+for (const theme of ['light', 'dark']) {
+  // desktop
+  {
+    const ctx = await newContext(browser, {viewport: {width: 1440, height: 900}, theme});
+    await ctx.grantPermissions(['clipboard-read', 'clipboard-write']);
+    const page = await ctx.newPage();
+    for (const p of ['/', '/docs/getting-started/quick-start']) {
+      await page.goto(BASE + p, {waitUntil: 'networkidle'});
+      for (let i = 0; i < 40; i++) {
+        await page.keyboard.press('Tab');
+        const f = await page.evaluate(() => {
+          const el = document.activeElement;
+          if (!el || el === document.body) return null;
+          const cs = getComputedStyle(el);
+          const ring = (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2) || (cs.boxShadow && cs.boxShadow !== 'none');
+          return {ring, label: `${el.tagName.toLowerCase()} "${(el.getAttribute('aria-label') || el.innerText || '').trim().slice(0, 30)}"`};
+        });
+        if (f && !f.ring) fail(`focus not visible [${theme}] ${p}: ${f.label}`);
+      }
+    }
+    // skip link
+    await page.goto(BASE + '/docs/getting-started/quick-start', {waitUntil: 'networkidle'});
+    await page.keyboard.press('Tab');
+    const skip = await page.evaluate(() => {
+      const el = document.activeElement;
+      const r = el.getBoundingClientRect();
+      return {text: el.textContent.trim(), visible: r.width > 1 && r.top >= 0 && r.top < 100};
+    });
+    if (!/skip/i.test(skip.text) || !skip.visible) fail(`skip link not first or not visible [${theme}]: "${skip.text}"`);
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Tab');
+    const afterSkip = await page.evaluate(() => !!document.activeElement.closest('main, [id="__docusaurus_skipToContent_fallback"]'));
+    if (!afterSkip) fail(`skip link does not move focus into the content [${theme}]`);
+    // landing copy button
+    await page.goto(BASE + '/', {waitUntil: 'networkidle'});
+    await hydrated(page);
+    const copyBtn = page.getByRole('button', {name: /copy all/i});
+    await copyBtn.focus();
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+    const status = await page.locator('[role="status"]').first().textContent();
+    const clip = await page.evaluate(() => navigator.clipboard.readText());
+    if (!/copied/i.test(status || '')) fail(`landing copy button: no "Copied" status [${theme}]`);
+    if (!clip.startsWith('git clone https://github.com/habhabhabs/inventag-aws.git') || clip.includes('$ ')) {
+      fail(`landing copy button copied the wrong text [${theme}]: ${JSON.stringify(clip.slice(0, 60))}`);
+    }
+    // code block copy button
+    await page.goto(BASE + '/docs/getting-started/quick-start', {waitUntil: 'networkidle'});
+    await hydrated(page);
+    const codeCopy = page.getByRole('button', {name: 'Copy code to clipboard'}).first();
+    await codeCopy.focus();
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+    const clip2 = await page.evaluate(() => navigator.clipboard.readText());
+    if (!clip2.includes('git clone')) fail(`code block copy button did not copy the block [${theme}]`);
+    // theme toggle: Docusaurus 3.10 cycles system -> light -> dark, so check
+    // that the button's state (its label) changes, not only data-theme
+    await hydrated(page);
+    const toggle = page.locator('[class*="colorModeToggle"] button');
+    const before = await toggle.getAttribute('aria-label');
+    await toggle.focus();
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(150);
+    const after = await toggle.getAttribute('aria-label');
+    if (before === after) fail(`theme toggle does not respond to Enter [${theme}]`);
+    // version dropdown
+    await page.reload({waitUntil: 'networkidle'});
+    await hydrated(page);
+    const dd = page.locator('.navbar__item.dropdown > .navbar__link').first();
+    await dd.focus();
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(150);
+    await page.keyboard.press('Tab');
+    const inMenu = await page.evaluate(() => !!document.activeElement.closest('.dropdown__menu'));
+    if (!inMenu) fail(`version dropdown: Tab after Enter does not reach the menu [${theme}]`);
+    await ctx.close();
+  }
+  // phone: mobile menu
+  {
+    const ctx = await newContext(browser, {viewport: {width: 390, height: 844}, dpr: 3, mobile: true, theme});
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/docs/getting-started/quick-start', {waitUntil: 'networkidle'});
+    await hydrated(page);
+    const toggle = page.getByRole('button', {name: /toggle navigation bar/i});
+    await toggle.focus();
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(400);
+    const open = await page.evaluate(() => document.querySelector('.navbar-sidebar--show') !== null);
+    if (!open) fail(`mobile menu does not open from the keyboard [${theme}]`);
+    const links = await page.locator('.navbar-sidebar .menu__link').count();
+    if (links < 5) fail(`mobile menu has only ${links} links [${theme}]`);
+    await page.keyboard.press('Escape');
+    await ctx.close();
+  }
+}
+
+// 4. analytics: banner shows on first visit, no Google request before consent
+{
+  const ctx = await newContext(browser, {viewport: {width: 1440, height: 900}, theme: 'light', consent: null});
+  const page = await ctx.newPage();
+  const ga = [];
+  page.on('request', (r) => /googletagmanager|google-analytics/.test(r.url()) && ga.push(r.url()));
+  await page.goto(BASE + '/', {waitUntil: 'networkidle'});
+  const banner = await page.locator('.consent-banner').count();
+  if (!banner) fail('analytics banner not shown on first visit');
+  for (const r of [await page.evaluate(auditInPage, false)]) r.boundary.forEach((b) => fail(`banner control ${b}`));
+  for (const v of await runAxe(page)) fail(`landing with banner: axe ${v.id}: ${v.help} -> ${v.nodes.join(' | ')}`);
+  await page.goto(BASE + '/docs/getting-started/quick-start', {waitUntil: 'networkidle'});
+  if (ga.length) fail(`Google Analytics requested before consent: ${ga[0]}`);
+  await page.getByRole('button', {name: 'Just the essentials'}).click();
+  await page.goto(BASE + '/docs', {waitUntil: 'networkidle'});
+  if (ga.length) fail('Google Analytics requested after "Just the essentials"');
+  await page.getByRole('button', {name: 'Cookie preferences'}).click();
+  await page.waitForTimeout(100);
+  const focused = await page.evaluate(() => !!document.activeElement.closest('.consent-banner'));
+  if (!focused) fail('"Cookie preferences" does not move focus to the banner');
+  const named = await page.evaluate(() => /google|analytics 4/i.test(document.querySelector('.consent-banner')?.textContent || ''));
+  if (named) fail('cookie banner names the analytics vendor (keep that on /privacy)');
+  // allow, then withdraw: GA loads once, then cookies are cleared
+  await page.getByRole('button', {name: 'Allow analytics'}).click();
+  await page.waitForTimeout(800);
+  if (!ga.length) fail('Google Analytics not loaded after "Allow analytics"');
+  await page.context().addCookies([{name: '_ga', value: 'GA1.1.test', url: page.url()}]);
+  await page.getByRole('button', {name: 'Cookie preferences'}).click();
+  await page.getByRole('button', {name: 'Just the essentials'}).click();
+  const left = (await page.context().cookies()).filter((c) => c.name === '_ga' || c.name.startsWith('_ga_'));
+  if (left.length) fail(`_ga cookies left after withdrawing consent: ${left.map((c) => c.name).join(', ')}`);
+  // the close button counts as essentials only
+  await page.evaluate(() => localStorage.removeItem('inventag-analytics'));
+  await page.reload({waitUntil: 'networkidle'});
+  await page.getByRole('button', {name: /close and keep just the essential/i}).click();
+  const stored = await page.evaluate(() => localStorage.getItem('inventag-analytics'));
+  if (stored !== 'denied') fail(`closing the banner stored "${stored}", expected "denied"`);
   await ctx.close();
   // 2. First visit: no stored consent choice, so the banner is open.
   const first = await browser.newContext(contextOptions);
@@ -847,144 +799,27 @@ async function runCombo(browser, vp, theme) {
   await first.close();
 }
 
-async function checkReducedMotion(browser) {
-  const ctx = await browser.newContext({reducedMotion: 'reduce', viewport: {width: 1440, height: 900}});
-  await ctx.route((url) => url.origin !== ORIGIN, (route) => route.abort());
+// 5. reduced motion
+{
+  const ctx = await newContext(browser, {viewport: {width: 1440, height: 900}, theme: 'light', reducedMotion: 'reduce'});
   const page = await ctx.newPage();
   for (const pg of PAGES) {
     const res = newResult(pg, {width: 1440}, 'light', 'reduced-motion');
     if (!(await open(page, pg, res))) continue;
     const running = await page.evaluate(() =>
       document.getAnimations().filter((a) => a.playState === 'running' && a.effect && a.effect.getTiming().iterations === Infinity).length);
-    if (running) res.failures.push({check: 'reduced-motion', detail: `${running} looping animation(s) run with prefers-reduced-motion: reduce`});
+    if (running) fail(`${pName}: ${running} infinite animation(s) running with prefers-reduced-motion`);
   }
   await ctx.close();
 }
 
-// ---------------------------------------------------------------------------
-// Run
-// ---------------------------------------------------------------------------
-
-const browser = await chromium.launch();
-const combos = WIDTHS.flatMap((vp) => THEMES.map((theme) => ({vp, theme})));
-let crashed = null;
-try {
-  const queue = [...combos];
-  await Promise.all(
-    Array.from({length: Math.min(JOBS, queue.length)}, async () => {
-      for (let c = queue.shift(); c; c = queue.shift()) await runCombo(browser, c.vp, c.theme);
-    }),
-  );
-  await checkReducedMotion(browser);
-} catch (e) {
-  crashed = e;
-} finally {
-  await browser.close();
-  if (server) server.close();
+const uniq = (a) => [...new Set(a)];
+if (warnings.length) {
+  console.log(`Warnings (${uniq(warnings).length}):`);
+  uniq(warnings).slice(0, 60).forEach((w) => console.log('  ' + w));
 }
-
-// ---------------------------------------------------------------------------
-// Report
-// ---------------------------------------------------------------------------
-
-const order = (r) => PAGES.findIndex((p) => p.id === r.page) * 1e6 + r.width * 10 + (r.theme === 'dark' ? 1 : 0);
-results.sort((a, b) => order(a) - order(b) || a.state.localeCompare(b.state));
-const nodes = (list) => list.reduce((n, v) => n + v.nodes.length, 0);
-const where = (r) => `${r.page} @ ${r.width}px ${r.theme}${r.state === 'default' ? '' : ` [${r.state}]`}`;
-
-const totals = {
-  scans: results.filter((r) => r.state !== 'reduced-motion').length,
-  pageScans: results.filter((r) => r.state === 'default').length,
-  wcagViolations: results.reduce((n, r) => n + r.wcag.length, 0),
-  wcagNodes: results.reduce((n, r) => n + nodes(r.wcag), 0),
-  checkFailures: results.reduce((n, r) => n + r.failures.length, 0),
-  advisoryViolations: results.reduce((n, r) => n + r.advisory.length, 0),
-  advisoryNodes: results.reduce((n, r) => n + nodes(r.advisory), 0),
-  warnings: results.reduce((n, r) => n + r.warnings.length, 0),
-  needsReview: results.reduce((n, r) => n + r.incomplete.reduce((k, i) => k + i.nodes, 0), 0),
-};
-const seconds = Math.round((Date.now() - startedAt) / 100) / 10;
-const failed = !!crashed || totals.wcagViolations > 0 || totals.checkFailures > 0;
-
-fs.mkdirSync(path.dirname(REPORT), {recursive: true});
-fs.writeFileSync(REPORT, JSON.stringify({
-  generated: new Date().toISOString(),
-  base: BASE,
-  seconds,
-  passed: !failed,
-  crashed: crashed ? String(crashed.stack || crashed) : null,
-  config: {widths: WIDTHS, themes: THEMES, pages: PAGES, statePages: STATE_PAGES, wcagTags: WCAG_TAGS, advisoryTags: ADVISORY_TAGS, allowlist: ALLOWLIST, desktopMinWidth: DESKTOP_MIN_WIDTH},
-  totals,
-  results,
-}, null, 2));
-
-const line = '-'.repeat(78);
-console.log(`Accessibility check: ${PAGES.length} pages x ${WIDTHS.length} widths x ${THEMES.length} themes = ${totals.pageScans} page scans,`);
-console.log(`plus ${totals.scans - totals.pageScans} state scans (menu open, search open, consent banner). ${seconds}s.`);
-console.log(`Rules: ${WCAG_TAGS.join(', ')} (fail); ${ADVISORY_TAGS.join(', ')} (advisory).\n`);
-
-// Matrix: WCAG violations + failed checks per page x width x theme (all states added up)
-const cols = WIDTHS.flatMap((vp) => THEMES.map((t) => ({width: vp.width, theme: t})));
-console.log('Failures per page x width x theme (WCAG A/AA nodes + failed checks; "." = none)');
-console.log('page'.padEnd(16) + cols.map((c) => `${c.width}${c.theme[0].toUpperCase()}`.padStart(7)).join(''));
-for (const pg of PAGES) {
-  const cells = cols.map((c) => {
-    const rs = results.filter((r) => r.page === pg.id && r.width === c.width && r.theme === c.theme && r.state !== 'reduced-motion');
-    const n = rs.reduce((s, r) => s + nodes(r.wcag) + r.failures.length, 0);
-    return (n ? String(n) : '.').padStart(7);
-  });
-  console.log(pg.id.padEnd(16) + cells.join(''));
-}
-console.log('(L = light, D = dark)\n');
-
-const bad = results.filter((r) => r.wcag.length || r.failures.length);
-if (bad.length) {
-  console.log(line + '\nFAILURES\n' + line);
-  for (const r of bad) {
-    console.log(`\n${where(r)}`);
-    for (const v of r.wcag) {
-      console.log(`  [${v.impact}] ${v.id}: ${v.help} (${v.nodes.length} node${v.nodes.length > 1 ? 's' : ''}; ${v.tags.filter((t) => WCAG_TAGS.includes(t)).join(', ')})`);
-      for (const n of v.nodes.slice(0, 4)) {
-        console.log(`      ${n.target}`);
-        console.log(`        ${n.summary.replace(/^Fix (any|all) of the following: /, '')}`);
-      }
-      if (v.nodes.length > 4) console.log(`      ... ${v.nodes.length - 4} more in the JSON report`);
-    }
-    for (const f of r.failures) console.log(`  [check] ${f.check}: ${f.detail}`);
-  }
-  console.log('');
-}
-
-// Advisory rules and warnings: one line per rule, with how many scans hit it
-const group = (pick) => {
-  const m = new Map();
-  for (const r of results) for (const item of pick(r)) {
-    const g = m.get(item.key) || {...item, scans: new Set(), count: 0, examples: new Set()};
-    g.scans.add(where(r));
-    g.count += item.n;
-    if (g.examples.size < 3) g.examples.add(item.example);
-    m.set(item.key, g);
-  }
-  return [...m.values()].sort((a, b) => b.count - a.count);
-};
-const advisory = group((r) => r.advisory.map((v) => ({key: v.id, label: `${v.id}: ${v.help} [${v.tags.filter((t) => ADVISORY_TAGS.includes(t)).join(', ')}]`, n: v.nodes.length, example: v.nodes[0].target})));
-console.log(line + `\nADVISORY (does not fail the run): ${advisory.length} rule(s), ${totals.advisoryNodes} node(s)\n` + line);
-for (const g of advisory) {
-  console.log(`  ${g.label}`);
-  console.log(`      ${g.count} node(s) in ${g.scans.size} scan(s); e.g. ${[...g.examples].join(' | ')}`);
-}
-const warnings = group((r) => r.warnings.map((w) => ({key: w.check + '|' + w.detail, label: `${w.check}: ${w.detail}`, n: 1, example: ''})));
-console.log(`\nWARNINGS (does not fail the run): ${warnings.length} distinct`);
-for (const g of warnings.slice(0, 15)) console.log(`  ${g.label}  (${g.scans.size} scan(s))`);
-if (warnings.length > 15) console.log(`  ... ${warnings.length - 15} more in the JSON report`);
-
-console.log('\n' + line);
-console.log(`WCAG 2.1 A/AA violations: ${totals.wcagViolations} (${totals.wcagNodes} nodes)   failed checks: ${totals.checkFailures}`);
-console.log(`axe "needs review" items (not failures; listed per scan in the report): ${totals.needsReview}`);
-console.log(`Report: ${path.relative(process.cwd(), REPORT)}`);
-if (crashed) {
-  console.error('\nThe run stopped early:\n' + (crashed.stack || crashed));
-  process.exit(2);
-}
-console.log(failed ? 'RESULT: FAIL' : 'RESULT: PASS');
-process.exit(failed ? 1 : 0);
+console.log(`Pages: ${PAGES.length}, viewports: ${viewports.map((v) => v[0]).join('/')}, themes: light/dark`);
+console.log(`\nFailures (${uniq(failures).length}):`);
+uniq(failures).forEach((f) => console.log('  ' + f));
+if (!failures.length) console.log('  none');
+process.exit(failures.length ? 1 : 0);
