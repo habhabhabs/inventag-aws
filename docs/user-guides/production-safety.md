@@ -1,35 +1,78 @@
 ---
-title: Production Safety Guide
-description: Security, compliance, and safety features for production environments
+title: Permissions and production safety
+description: How to run InvenTag safely against production AWS accounts, and the Python safety helpers in inventag.compliance.
 sidebar_position: 3
 ---
 
-# InvenTag Production Safety & Security Validation
+# Permissions and production safety
 
-This document provides comprehensive information about InvenTag's enterprise-grade production safety and security validation features.
+## What actually keeps a run safe
 
-## 🛡️ Overview
+1. **A read-only IAM identity.** This is the only control that is enforced.
+   The CLI's discovery path calls `List*`/`Describe*`/`Get*` operations, the
+   Resource Groups Tagging API and Cost Explorer `GetCostAndUsage`; it does not
+   create, change or delete resources. But nothing in the CLI *checks* that at
+   runtime, so a broader policy would not be caught.
+2. **Short-lived credentials** (IAM Identity Center or an assumed role) rather
+   than long-lived access keys.
+3. **Care with `--debug`**, which logs request headers including session
+   tokens ([details](../getting-started/status.md#security-notes)).
 
-InvenTag includes three core components for production safety and security:
+:::warning The safety flags are not wired up yet
+`--enable-production-safety`, `--enforce-read-only`, `--security-validation`,
+`--compliance-standard`, `--risk-threshold`, `--audit-output` and
+`--validate-operations` are accepted by the CLI but currently not used.
+The classes described further down this page exist in the `inventag.compliance`
+package and work when you call them from Python; the CLI does not call them.
+See [Current status](../getting-started/status.md).
+:::
 
-1. **ReadOnlyAccessValidator** - Comprehensive security validation and audit logging
-2. **ProductionSafetyMonitor** - Enterprise-grade error handling and monitoring
-3. **ComplianceManager** - Unified compliance orchestration and reporting
+## IAM permissions
 
-These components work together to ensure secure, monitored, and compliant AWS operations with comprehensive audit trails.
+Use the AWS managed `ReadOnlyAccess` policy plus a small extras policy for the
+Tagging API and Cost Explorer. The exact JSON is in
+[Installation → IAM permissions](../getting-started/installation.md#iam-permissions).
 
-## 🔐 ReadOnlyAccessValidator
+Things that **do** write to AWS, and are therefore *not* covered by a read-only
+policy (good: they will fail rather than surprise you):
 
-The `ReadOnlyAccessValidator` ensures all AWS operations are read-only and provides detailed audit logging for compliance requirements.
+| Code | Writes | Used by the CLI? |
+|---|---|---|
+| `CredentialManager.setup_cross_account_roles()` | Creates an IAM role and a policy in each target account | No |
+| `CICDIntegration` S3 upload | `PutObject`, and replaces the bucket lifecycle configuration when `lifecycle_days > 0` (default 90) | No (`--s3-bucket` is not implemented) |
+| `scripts/legacy/*.py --s3-bucket` | `PutObject` of the report | Only if you pass `--s3-bucket` to those scripts |
 
-### Key Features
+## Compliance frameworks
 
-- **Operation Classification**: Automatic detection of read-only vs. mutating operations
-- **Security Enforcement**: Blocks all non-read-only operations to ensure system integrity
-- **Compliance Standards**: Built-in support for SOC2, ISO27001 compliance frameworks
-- **Audit Trail Generation**: Detailed logging of all operations for compliance documentation
-- **Risk Assessment**: Automatic risk level assessment for all AWS operations
-- **Identity Validation**: AWS identity type detection and validation
+InvenTag does not certify or assess compliance with SOC 2, ISO 27001, PCI DSS,
+HIPAA or GDPR. The `ComplianceStandard` values in the code only change labels
+and notes in the reports these helpers produce. An inventory with tag coverage
+can be useful *evidence* for an audit; treat it as that.
+
+## Python API: `inventag.compliance`
+
+The rest of this page documents three helper classes for people who build on
+InvenTag as a library. They are not used by the `inventag` CLI today.
+
+1. **ReadOnlyAccessValidator**: classifies AWS operations as read-only or
+   mutating and keeps an audit log of the operations you pass to it.
+2. **ProductionSafetyMonitor**: error handling, retry/circuit-breaker logic and
+   performance monitoring helpers.
+3. **ComplianceManager**: wraps the two above and produces summary reports.
+
+## ReadOnlyAccessValidator
+
+`ReadOnlyAccessValidator.validate_operation(service, operation)` classifies an
+operation and returns whether it is allowed. It only sees operations you pass
+to it; it does not intercept boto3 calls by itself.
+
+### Key features
+
+- **Operation classification**: read-only vs. mutating, from a built-in list
+  and name prefixes
+- **Audit log**: a record of every operation you validated
+- **Risk level** per operation
+- **Identity type detection** (user, role, assumed role)
 
 ### Usage Examples
 
@@ -86,12 +129,12 @@ for finding in compliance_report.security_findings:
 validator.save_compliance_report(compliance_report, "compliance_report.json")
 ```
 
-### Supported Compliance Standards
+### `ComplianceStandard` values
 
-- **General**: General production safety compliance
-- **SOC2**: Service Organization Control 2
-- **ISO27001**: International security management standard
-- **CUSTOM**: Custom compliance requirements
+`general`, `soc2`, `iso27001`, `custom`. They change the labels and notes in
+the generated report only; no framework-specific controls are checked.
+(The CLI's `--compliance-standard` offers `soc2`, `pci`, `hipaa` and `gdpr`;
+three of those don't exist in this enum, and the flag is unused anyway.)
 
 ### Operation Classification
 
@@ -104,7 +147,7 @@ The validator uses multiple methods to classify operations:
 
 ## 🚨 ProductionSafetyMonitor
 
-The `ProductionSafetyMonitor` provides enterprise-grade error handling, monitoring, and graceful degradation capabilities.
+The `ProductionSafetyMonitor` provides error handling, monitoring, and graceful degradation capabilities.
 
 ### Key Features
 

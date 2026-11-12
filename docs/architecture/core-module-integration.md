@@ -8,7 +8,7 @@ sidebar_position: 1
 
 ## Overview
 
-The InvenTag core module (`inventag.core`) provides unified access to all major components including multi-account BOM generation, credential management, CI/CD integration, and state management. This integration simplifies imports and provides a cohesive API for enterprise-grade cloud governance.
+The InvenTag core module (`inventag.core`) provides unified access to all major components including multi-account BOM generation, credential management, CI/CD integration, and state management. This integration simplifies imports and provides a cohesive API for cloud governance.
 
 ## Core Components
 
@@ -21,7 +21,7 @@ The core module exposes the following components:
 - **`AccountCredentials`**: Secure credential management for accounts
 
 ### Optimized Discovery System
-- **`OptimizedAWSDiscovery`**: Enhanced discovery engine with 3-4x performance improvement
+- **`OptimizedAWSDiscovery`**: Enhanced discovery engine with parallel, service-specific discovery
 - **`OptimizedFieldMapper`**: Service-specific field mapping with intelligent patterns
 - **`StandardResource`**: Standardized resource representation with confidence scoring
 
@@ -555,7 +555,7 @@ python scripts/bom_converter.py
 
 **After:**
 ```bash
-python -m inventag.cli.main --create-excel --create-word --enable-state-tracking
+python -m inventag.cli.main --create-excel --create-word   # state tracking is on by default
 ```
 
 ## Troubleshooting
@@ -590,6 +590,6 @@ result = generator.generate_comprehensive_bom(
 ```
 
 For more detailed information, see:
-- [State Management Documentation](/architecture/state-management)
+- [State Management Documentation](./state-management.md)
 - [CI/CD Integration Guide](../development/cicd-integration)
 - [CLI User Guide](../user-guides/cli-user-guide)

@@ -1,168 +1,120 @@
-# 🏷️ InvenTag
+<p align="center">
+  <img src="website/static/img/logo-wordmark.svg#gh-light-mode-only" alt="InvenTag" width="366" height="96">
+  <img src="website/static/img/logo-wordmark-dark.svg#gh-dark-mode-only" alt="InvenTag" width="366" height="96">
+</p>
 
-> **Professional AWS™ Cloud Governance Platform - Comprehensive resource inventory, compliance checking, and BOM generation**
+<p align="center">
+  <strong>Find out what is running in your AWS accounts, check it is tagged properly, and hand over an Excel or Word bill of materials.</strong>
+</p>
 
 [![Automated Release](https://github.com/habhabhabs/inventag-aws/workflows/Automated%20Release/badge.svg)](https://github.com/habhabhabs/inventag-aws/actions)
 [![Documentation](https://github.com/habhabhabs/inventag-aws/workflows/Documentation%20Deployment/badge.svg)](https://habhabhabs.github.io/inventag-aws/)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
----
+**Docs:** <https://habhabhabs.github.io/inventag-aws/>
 
-## 📚 **[→ Visit Complete Documentation Site ←](https://habhabhabs.github.io/inventag-aws/)**
-
-**Modern Documentation Platform** with advanced search, mobile-responsive design, and comprehensive guides.
-
-[![Documentation Preview](https://img.shields.io/badge/📖_Documentation-Live_Site-blue?style=for-the-badge)](https://habhabhabs.github.io/inventag-aws/)
-
----
-
-## 🚀 Quick Start
+## Quick start
 
 ```bash
-# Clone and setup
 git clone https://github.com/habhabhabs/inventag-aws.git
 cd inventag-aws
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# Generate professional BOM reports with production safety
-# The script automatically detects python3/python
-./inventag.sh --create-excel --create-word \
-  --enable-production-safety --security-validation
+./inventag.sh --validate-credentials       # uses your current AWS credentials
+./inventag.sh --create-excel --verbose     # -> bom_output/multi_account_bom_<timestamp>.xlsx
 ```
 
-## ✨ Key Features
+Use a read-only IAM identity. Discovery calls Cost Explorer, which AWS bills per
+request. Details: [Installation](https://habhabhabs.github.io/inventag-aws/docs/getting-started/installation).
 
-- 🛡️ **Production Safety & Security** - Enterprise-grade security validation and compliance standards (SOC 2, PCI, HIPAA, GDPR)
-- 📊 **Professional BOM Generation** - Excel/Word/Google Docs reports with logical column ordering and service-specific sheets
-- 🔍 **Comprehensive Discovery System** - Advanced service-specific API discovery that finds **ALL resources regardless of tags**, including untagged VPCs, subnets, security groups, and critical infrastructure
-- 🧠 **Multi-Account Discovery** - Comprehensive resource scanning across multiple AWS accounts with parallel processing
-- ⚡ **Optimized Performance** - Enhanced intelligent discovery with 22+ AWS service patterns, AWS managed resource filtering, and **8.4 resources/sec performance** (68% above targets)
-- ⚡ **Production-Tested Reliability** - Comprehensive regression testing on real AWS accounts with 93-97% parallel efficiency and graceful error handling
-- 🌐 **Advanced Analysis Suite** - Network security analysis, cost optimization, and security posture assessment
-- 🏷️ **Tag Compliance Checking** - Automated validation against organizational tagging policies
-- 🔄 **State Management** - Change tracking with delta detection and professional changelog generation
-- 🚀 **CI/CD Ready** - Easy integration with automated workflows and S3 upload support
-- ⚡ **Flexible Deployment** - Cross-account roles, interactive setup, and comprehensive credential management
+## What it does
 
-## 📖 **Complete Documentation Portal**
+- **Discovery** across accounts and regions through the Resource Groups Tagging
+  API, per-service `List*`/`Describe*`/`Get*` calls and Cost Explorer billing data.
+- **Bill of materials** as an Excel workbook (`--create-excel`) and/or Word
+  document (`--create-word`), with your own tag columns (`--tag-mappings`) and
+  service descriptions (`--service-descriptions`).
+- **Several accounts** from a file (`--accounts-file`), interactively
+  (`--accounts-prompt`) or through an assumed role (`--cross-account-role`),
+  processed in parallel.
+- **Change tracking**: each run saves a snapshot in `bom_output/state/`; the
+  next run reports what was added, removed or changed.
+- **Optional sheets** for networks (`--enable-network-analysis`) and security
+  groups (`--enable-security-analysis`).
+- **Tag-policy checks** (required tags, allowed values) with
+  `scripts/legacy/tag_compliance_checker.py --config policy.yaml`.
 
-### **🌟 [Interactive Documentation Site](https://habhabhabs.github.io/inventag-aws/)** 
-**Powered by Docusaurus** - Professional documentation platform with:
+### Not there yet
 
-- 🔍 **Advanced Search** - Instant results across all content
-- 📱 **Mobile Responsive** - Perfect on any device  
-- 🌙 **Dark/Light Themes** - Customizable viewing experience
-- 📊 **Interactive Navigation** - Collapsible sidebar with breadcrumbs
-- 🚀 **Fast Loading** - Optimized performance and caching
-- 📝 **GitHub Integration** - Direct editing links for contributors
+Some flags are accepted but have no effect today: `--s3-bucket` (and the other
+`--s3-*` flags), `--create-google-docs`, and the production-safety flags
+(`--enforce-read-only`, `--compliance-standard`, `--audit-output`, …).
+`--compliance-standard soc2` does not make anything SOC 2 compliant. The full
+list is in [Current status and known limitations](https://habhabhabs.github.io/inventag-aws/docs/getting-started/status).
 
-### **📋 Quick Access Links**
-
-| Section | Description | Link |
-|---------|-------------|------|
-| 🚀 **Getting Started** | Installation and quick start guide | **[Start Here →](https://habhabhabs.github.io/inventag-aws/docs/getting-started/quick-start)** |
-| 📖 **User Guides** | Comprehensive CLI reference | **[CLI Guide →](https://habhabhabs.github.io/inventag-aws/docs/user-guides/cli-user-guide)** |
-| 📋 **Configuration** | Working configuration examples | **[Examples →](https://habhabhabs.github.io/inventag-aws/docs/user-guides/configuration-examples)** |
-| 🛡️ **Production Safety** | Security and compliance features | **[Security →](https://habhabhabs.github.io/inventag-aws/docs/user-guides/production-safety)** |
-| 🏗️ **Architecture** | System architecture and design | **[Architecture →](https://habhabhabs.github.io/inventag-aws/docs/architecture/core-module-integration)** |
-| 🔧 **Development** | Contributing and development guide | **[Contribute →](https://habhabhabs.github.io/inventag-aws/docs/development/CONTRIBUTING)** |
-
-### Legacy Documentation
-
-For offline reference, documentation is also available in the `docs/` directory:
-
-- **[CLI User Guide](docs/user-guides/cli-user-guide.md)** - Local CLI reference
-- **[Quick Start Guide](docs/getting-started/quick-start.md)** - Local installation guide
-- **[All Local Documentation](docs/)** - Complete documentation directory
-
-## 💼 Enterprise Examples
+## More examples
 
 ```bash
-# Multi-account BOM with comprehensive analysis
+# Several accounts, Excel + Word, your own tag columns
 ./inventag.sh --accounts-file accounts.json \
   --create-excel --create-word \
   --tag-mappings config/defaults/mappings/tag_to_column_mappings_example.yaml \
-  --service-descriptions config/defaults/services/service_descriptions_example.yaml \
-  --enable-network-analysis --enable-security-analysis \
-  --compliance-standard soc2 --s3-bucket enterprise-reports
+  --service-descriptions config/defaults/services/service_descriptions_example.yaml
 
-# Interactive multi-account setup with advanced features
-./inventag.sh --accounts-prompt \
-  --create-excel --create-google-docs \
-  --tag-mappings config/defaults/mappings/tag_to_column_mappings_example.yaml \
-  --enable-cost-analysis --generate-changelog
+# Assume a read-only role (pass the full role ARN; a bare role name fails today)
+./inventag.sh --cross-account-role arn:aws:iam::123456789012:role/InvenTagReadOnly \
+  --create-excel --enable-network-analysis --enable-security-analysis
 
-# Cross-account role with production safety
-./inventag.sh --cross-account-role InvenTagRole \
-  --create-excel --enable-production-safety \
-  --security-validation --audit-output security-audit.json
-
-# CI/CD integration with comprehensive reporting
-./inventag.sh --accounts-file accounts.json \
-  --create-excel --create-word \
-  --s3-bucket reports-bucket --s3-key-prefix daily-reports/ \
-  --max-concurrent-accounts 8 --per-account-reports
+# Faster runs: fewer regions, more accounts in parallel
+./inventag.sh --accounts-file accounts.json --create-excel \
+  --account-regions us-east-1,ap-southeast-1 --max-concurrent-accounts 8
 ```
 
-## 🏗️ Project Structure
+Every flag: [CLI user guide](https://habhabhabs.github.io/inventag-aws/docs/user-guides/cli-user-guide).
+
+## Documentation
+
+| Section | Link |
+|---|---|
+| Quick start | [docs/getting-started/quick-start.md](docs/getting-started/quick-start.md) |
+| Current status and known limitations | [docs/getting-started/status.md](docs/getting-started/status.md) |
+| CLI user guide | [docs/user-guides/cli-user-guide.md](docs/user-guides/cli-user-guide.md) |
+| Configuration examples | [docs/user-guides/configuration-examples.md](docs/user-guides/configuration-examples.md) |
+| Permissions and production safety | [docs/user-guides/production-safety.md](docs/user-guides/production-safety.md) |
+| Architecture | [docs/architecture/core-module-integration.md](docs/architecture/core-module-integration.md) |
+| Contributing | [docs/development/CONTRIBUTING.md](docs/development/CONTRIBUTING.md) |
+
+The same Markdown files are published as the documentation site (Docusaurus,
+in `website/`). Brand assets (logo, favicon, social card) and the script that
+regenerates them live in [`website/brand/`](website/brand/README.md).
+
+## Project layout
 
 ```text
 inventag-aws/
-├── README.md                    # This overview
-├── inventag/                    # Core Python package
-│   ├── cli/                     # Unified CLI interface
-│   ├── core/                    # Core orchestration
-│   ├── discovery/               # Resource discovery
-│   ├── compliance/              # Security & compliance
-│   ├── reporting/               # BOM generation
-│   └── state/                   # Change management
-├── docs/                        # Complete documentation
-├── examples/                    # Configuration examples
-├── config/                      # Default configurations
-├── scripts/                     # Standalone tools
-└── tests/                       # Comprehensive test suite
+├── inventag_cli.py              # CLI entry point (inventag.sh / inventag.bat wrap it)
+├── inventag/                    # Python package: cli, core, discovery, compliance, reporting, state
+├── scripts/legacy/              # standalone scripts (inventory, tag compliance, BOM converter)
+├── config/                      # example configs, IAM policy, JSON schemas
+├── examples/                    # account files and CI examples
+├── docs/                        # documentation (Markdown)
+├── website/                     # Docusaurus site, brand assets
+└── tests/
 ```
 
-## 🛡️ Security & Compliance
+## Support
 
-InvenTag includes enterprise-grade security features:
+- [Issues](https://github.com/habhabhabs/inventag-aws/issues): bugs and feature requests
+- [Discussions](https://github.com/habhabhabs/inventag-aws/discussions): questions
 
-- **Read-Only Enforcement** - All operations are strictly read-only by default
-- **Compliance Standards** - Built-in support for SOC 2, PCI, HIPAA, GDPR
-- **Audit Logging** - Comprehensive audit trails for all operations
-- **Risk Assessment** - Automated security risk evaluation
-- **Production Safety** - Real-time monitoring and validation
+## License
 
-See [Production Safety Guide](https://habhabhabs.github.io/inventag-aws/docs/user-guides/production-safety) for complete details.
-
-## 🔗 Support & Community
-
-- **[📖 Complete Documentation](https://habhabhabs.github.io/inventag-aws/)** - Comprehensive guides and references
-- **[🐛 Issues](https://github.com/habhabhabs/inventag-aws/issues)** - Bug reports and feature requests
-- **[💬 Discussions](https://github.com/habhabhabs/inventag-aws/discussions)** - Community Q&A
-- **[📋 Additional Resources](https://habhabhabs.github.io/inventag-aws/docs/examples/)** - Configuration examples and tutorials
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT. See [LICENSE](LICENSE).
 
 ---
 
-## 🌐 **Documentation Platform**
-
-This project uses **[Docusaurus](https://docusaurus.io/)** for its documentation site, providing:
-
-- **Professional Documentation Experience** - Modern, fast, and user-friendly
-- **Automated Deployment** - Documentation automatically deployed from `docs/` directory  
-- **Developer-Friendly** - Easy to contribute with Markdown and GitHub integration
-- **Mobile-First Design** - Responsive layout for all devices
-- **Search-Optimized** - Full-text search across all documentation
-
-**📖 Experience it yourself:** **[habhabhabs.github.io/inventag-aws](https://habhabhabs.github.io/inventag-aws/)**
-
----
-
-> **InvenTag** - Professional AWS™ cloud governance made simple
->
-> *AWS™ is a trademark of Amazon Web Services, Inc. InvenTag is an independent tool and is not affiliated with, endorsed by, or sponsored by Amazon Web Services, Inc.*
+*AWS is a trademark of Amazon.com, Inc. or its affiliates. InvenTag is an
+independent tool and is not affiliated with, endorsed by, or sponsored by
+Amazon Web Services, Inc.*

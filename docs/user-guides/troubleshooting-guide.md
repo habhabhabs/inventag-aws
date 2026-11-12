@@ -607,7 +607,7 @@ Debug logs contain:
 
 ### Optimized Discovery System
 
-InvenTag includes an enhanced discovery system that provides 3-4x performance improvements. If you're experiencing slow discovery or missing resources, the optimized system should resolve these issues automatically.
+InvenTag includes an enhanced discovery system that is faster than the original discovery path. If you're experiencing slow discovery or missing resources, the optimized system should resolve these issues automatically.
 
 #### Verifying Optimized Discovery
 
@@ -647,8 +647,8 @@ python inventag_cli.py --create-excel --debug --log-file discovery.log
 
 2. **Focus on priority services:**
    ```bash
-   # Use service filters to focus on specific services
-   python inventag_cli.py --create-excel --service-filters ec2,s3,rds,lambda
+   # Limit the services (partially applied: see the CLI guide)
+   python inventag_cli.py --create-excel --account-services EC2,S3,RDS,Lambda
    ```
 
 3. **Single region for fastest discovery:**

@@ -344,7 +344,7 @@ vim config/cost-allocation-policy.yaml
 
 ```bash
 # Validate current resources against cost allocation policy
-python scripts/tag_compliance_checker.py \
+python scripts/legacy/tag_compliance_checker.py \
   --config config/cost-allocation-policy.yaml \
   --output cost_allocation_report.json \
   --format excel
@@ -543,7 +543,7 @@ dashboard:
 
 ```bash
 # Use cost allocation policy with InvenTag
-python scripts/tag_compliance_checker.py \
+python scripts/legacy/tag_compliance_checker.py \
   --config config/cost-allocation-policy.yaml \
   --generate-bom \
   --bom-formats excel \
@@ -551,10 +551,8 @@ python scripts/tag_compliance_checker.py \
   --tag-mappings config/cost-allocation-mappings.yaml \
   --output cost-allocation-report
 
-# Generate cost optimization recommendations
-python scripts/cost_optimizer.py \
-  --input cost-allocation-report.json \
-  --recommendations-output cost-optimization.xlsx
+# (There is no scripts/cost_optimizer.py; earlier versions of this page
+#  referenced one.)
 ```
 
 ### Tag Mapping for Cost Reports
@@ -632,7 +630,7 @@ governance:
 This comprehensive cost allocation tagging framework provides:
 
 ✅ **AWS Prescriptive Guidance Compliance** - Follows official AWS best practices  
-✅ **Enterprise-Grade Policies** - Comprehensive tagging schemas for cost control  
+✅ **Policies** - Comprehensive tagging schemas for cost control  
 ✅ **Multi-Department Support** - Specialized templates for different organizational units  
 ✅ **Automated Enforcement** - Policy validation and compliance monitoring  
 ✅ **Financial Integration** - ERP system compatibility and GL code mapping  

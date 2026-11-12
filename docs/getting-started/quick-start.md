@@ -1,265 +1,180 @@
 ---
-title: Quick Start Guide
-description: Get up and running with InvenTag in minutes
+title: Quick start
+description: Install InvenTag and generate your first AWS bill of materials.
 sidebar_position: 1
 ---
 
-# 🚀 InvenTag Quick Start Guide
+# Quick start
 
-Get up and running with InvenTag in minutes!
+About ten minutes, most of it waiting for discovery.
 
-## Prerequisites
+## 1. Prerequisites
 
-- Python 3.8+
-- AWS CLI configured with appropriate permissions
-- Required Python packages (install with `pip install -r requirements.txt`)
+- Python 3.8 or newer (`python3 --version`)
+- AWS credentials that boto3 can find: `aws configure`, `aws sso login`,
+  a named profile or `AWS_*` environment variables. The AWS CLI itself is
+  optional; it's just the easiest way to set credentials up.
+- A **read-only** IAM policy: see
+  [Permissions](../user-guides/production-safety.md#iam-permissions).
 
-## Basic Usage
-
-### 1. Simple BOM Generation
-
-Generate a basic Excel BOM for your default AWS account with optimized discovery:
-
-```bash
-# Unix/Linux/macOS (auto-detects python3/python)
-./inventag.sh --create-excel
-
-# Windows (auto-detects python3/python/py)
-inventag.bat --create-excel
-
-# Direct Python (use python3 if available)
-python3 -m inventag_cli --create-excel
-```
-
-**✨ Enhanced Performance**: InvenTag automatically uses the optimized discovery system for 3-4x faster resource discovery with better service coverage.
-
-### 2. Multi-Format Output
-
-Generate Excel, Word, and Google Docs reports:
+## 2. Install
 
 ```bash
-# Excel and Word documents (scripts auto-detect Python)
-./inventag.sh --create-excel --create-word --verbose
-
-# All formats including Google Docs (requires Google API credentials)
-./inventag.sh --create-excel --create-word --create-google-docs --verbose
+git clone https://github.com/habhabhabs/inventag-aws.git
+cd inventag-aws
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+./inventag.sh --help               # Windows: inventag.bat --help
 ```
 
-### 3. Multi-Account Setup
+Check that your credentials work before scanning anything:
 
-Create an accounts configuration file:
+```bash
+./inventag.sh --validate-credentials
+```
+
+## 3. Your first report
+
+```bash
+./inventag.sh --create-excel --verbose
+```
+
+This scans every enabled region of the account your default credentials point
+to. To keep the first run short, limit the regions:
+
+```bash
+./inventag.sh --create-excel --account-regions us-east-1,ap-southeast-1
+```
+
+You get:
+
+| File | What it is |
+|---|---|
+| `bom_output/multi_account_bom_<YYYYMMDD_HHMMSS>.xlsx` | The workbook: summary sheet plus one sheet per service |
+| `bom_output/state/state_<timestamp>.json` | Snapshot used to report changes on the next run |
+
+Add `--create-word` for a `.docx` version, and `--output-directory reports/`
+to write somewhere else.
+
+:::note Cost Explorer
+Discovery calls Cost Explorer `GetCostAndUsage`, which AWS bills per request.
+See [Current status](./status.md#costs).
+:::
+
+## 4. Several accounts
+
+Create `accounts.json`:
 
 ```json
 {
   "accounts": [
     {
       "account_id": "123456789012",
-      "account_name": "Global Production",
-      "profile_name": "prod-profile",
-      "regions": ["us-east-1", "us-west-2", "ap-southeast-1", "eu-west-1"]
+      "account_name": "Production",
+      "profile_name": "prod",
+      "regions": ["us-east-1", "eu-west-1"]
     },
     {
-      "account_id": "123456789013", 
-      "account_name": "APAC Development",
-      "profile_name": "dev-profile",
-      "regions": ["ap-southeast-1", "ap-north-1", "ap-south-1"]
-    },
-    {
-      "account_id": "123456789014",
-      "account_name": "All Regions Account",
-      "profile_name": "global-profile",
-      "regions": []
+      "account_id": "123456789013",
+      "account_name": "Development",
+      "profile_name": "dev",
+      "regions": ["ap-southeast-1", "ap-northeast-1"]
     }
   ]
 }
 ```
 
-**Note:** Empty `regions` array means scan all available AWS regions (default behavior).
-
-Then run:
+An empty or missing `regions` list means "all regions". Then:
 
 ```bash
-./inventag.sh --accounts-file accounts.json --create-excel
+./inventag.sh --accounts-file accounts.json --create-excel --create-word
 ```
 
-### 4. Multi-Region Selection
+Accounts run four at a time; change it with `--max-concurrent-accounts`.
+More options (access keys, role ARNs, per-account services):
+[Account setup](../examples/accounts-setup.md).
 
-Specify regions to scan across all accounts:
+## 5. Your own tag columns and descriptions
 
-```bash
-# Scan specific regions globally
-./inventag.sh --create-excel \
-  --account-regions us-east-1,us-west-2,ap-southeast-1,ap-north-1
-
-# Asia-Pacific regions only
-./inventag.sh --create-excel \
-  --account-regions ap-southeast-1,ap-southeast-2,ap-north-1,ap-south-1
-
-# European regions with GDPR compliance
-./inventag.sh --create-excel \
-  --account-regions eu-west-1,eu-west-2,eu-central-1 \
-  --compliance-standard gdpr
-
-# All regions (default behavior)
-./inventag.sh --create-excel --verbose
-```
-
-### 5. Advanced Analysis
-
-Enable comprehensive analysis features:
-
-```bash
-./inventag.sh \
-  --create-excel \
-  --enable-network-analysis \
-  --enable-security-analysis \
-  --enable-cost-analysis \
-  --verbose
-```
-
-### 6. Production Deployment
-
-For production use with S3 upload and security features:
-
-```bash
-./inventag.sh \
-  --accounts-file accounts.json \
-  --create-excel --create-word \
-  --enable-network-analysis --enable-security-analysis --enable-cost-analysis \
-  --s3-bucket my-reports-bucket \
-  --s3-key-prefix bom-reports/$(date +%Y-%m-%d)/ \
-  --compliance-standard soc2 \
-  --enable-production-safety --security-validation \
-  --audit-output security-audit.json \
-  --verbose
-```
-
-## Configuration Examples
-
-### Service Descriptions
-
-Customize service descriptions in your BOM:
-
-```yaml
-# service-descriptions.yaml
-EC2:
-  default_description: "Amazon Elastic Compute Cloud - Virtual servers"
-  resource_types:
-    Instance: "Virtual machine instances"
-    Volume: "Block storage volumes"
-
-S3:
-  default_description: "Amazon Simple Storage Service - Object storage"
-  resource_types:
-    Bucket: "Storage containers"
-```
-
-Use with:
-```bash
-# Using the provided example
-./inventag.sh --create-excel --service-descriptions config/defaults/services/service_descriptions_example.yaml
-
-# Or create your own
-./inventag.sh --create-excel --service-descriptions service-descriptions.yaml
-```
-
-### Tag Mappings
-
-Map AWS tags to custom BOM columns:
+Tag mappings turn tags into named report columns. The file needs a top-level
+`tag_mappings` list:
 
 ```yaml
 # tag-mappings.yaml
-"Environment":
-  column_name: "Environment"
-  default_value: "Unknown"
-
-"inventag:owner":
-  column_name: "Resource Owner"
-  default_value: "Unassigned"
+tag_mappings:
+  - tag: "Owner"
+    name: "Resource Owner"
+  - tag: "CostCenter"
+    name: "Cost Center"
+  - tag: "Environment"
+    name: "Environment"
 ```
 
-Use with:
-```bash
-# Using the provided example
-./inventag.sh --create-excel --tag-mappings config/defaults/mappings/tag_to_column_mappings_example.yaml
+Service descriptions need a top-level `service_descriptions` key:
 
-# Or create your own
-./inventag.sh --create-excel --tag-mappings tag-mappings.yaml
+```yaml
+# service-descriptions.yaml
+service_descriptions:
+  EC2:
+    default:
+      description: "Virtual servers"
+    Instance:
+      description: "Virtual machine instances"
+  S3:
+    default:
+      description: "Object storage"
 ```
 
-## Common Commands
+```bash
+./inventag.sh --create-excel \
+  --tag-mappings tag-mappings.yaml \
+  --service-descriptions service-descriptions.yaml
+```
+
+Complete examples ship with the repo:
+`config/defaults/mappings/tag_to_column_mappings_example.yaml` and
+`config/defaults/services/service_descriptions_example.yaml`.
+
+:::caution Validation is looser than loading
+`--validate-config` currently accepts some layouts (for example a mapping
+without the `tag_mappings` key) that the report generator then ignores with an
+error in the log. Stick to the layouts above.
+:::
+
+## 6. Optional analysis sheets
 
 ```bash
-# Validate configuration
+./inventag.sh --create-excel \
+  --enable-network-analysis \
+  --enable-security-analysis
+```
+
+## 7. Tag-policy check
+
+The tag-policy checker is a separate script today:
+
+```bash
+python3 scripts/legacy/tag_compliance_checker.py \
+  --config config/defaults/compliance/tag_compliance_policy_example.yaml \
+  --format excel --output compliance_report
+```
+
+## Useful commands
+
+```bash
+./inventag.sh --help                                   # every flag
 ./inventag.sh --accounts-file accounts.json --validate-config
-
-# Validate credentials
-./inventag.sh --accounts-file accounts.json --validate-credentials
-
-# Debug mode
-./inventag.sh --create-excel --debug --log-file debug.log
-
-# Interactive account setup with Google Docs
-./inventag.sh --accounts-prompt --create-excel --create-google-docs
-
-# Cross-account role assumption
-./inventag.sh --cross-account-role InvenTagRole --create-excel
-
-# CI/CD integration with security validation
-./inventag.sh \
-  --accounts-file $ACCOUNTS_CONFIG \
-  --create-excel \
-  --s3-bucket $REPORTS_BUCKET \
-  --max-concurrent-accounts 8 \
-  --security-validation --compliance-standard soc2
+./inventag.sh --cross-account-role arn:aws:iam::123456789012:role/InvenTagReadOnly --create-excel
+./inventag.sh --create-excel --log-file inventag.log --verbose
 ```
 
-## Output Files
+`--debug` is available too, but it logs request headers including session
+tokens: [details](./status.md#security-notes).
 
-InvenTag generates files in the `bom_output` directory (or your specified output directory):
+## Next steps
 
-- `AWS_BOM_YYYYMMDD_HHMMSS.xlsx` - Excel workbook with multiple sheets
-- `AWS_BOM_YYYYMMDD_HHMMSS.docx` - Professional Word document
-- `state_YYYYMMDD_HHMMSS.json` - State file for change tracking
-
-## Performance Features
-
-InvenTag includes an **Optimized Discovery System** that provides significant performance improvements:
-
-### Key Performance Benefits
-
-| Feature | Benefit |
-|---------|---------|
-| **3-4x Faster Discovery** | Parallel processing and service-specific patterns |
-| **Enhanced Service Coverage** | Better detection of CloudFront, IAM, Route53, S3, Lambda |
-| **Higher Quality Results** | 98% of resources achieve high confidence scores |
-| **Intelligent Field Mapping** | Service-specific extraction for better accuracy |
-
-### Performance Tips
-
-```bash
-# Maximum performance with parallel processing
-./inventag.sh --create-excel --max-concurrent-accounts 6
-
-# Focus on specific services for faster processing
-./inventag.sh --create-excel --service-filters ec2,s3,rds,lambda
-
-# Single region for fastest discovery
-./inventag.sh --create-excel --account-regions us-east-1
-```
-
-The optimized discovery system is enabled by default and requires no additional configuration.
-
-## Next Steps
-
-- Read the [Complete CLI User Guide](../user-guides/cli-user-guide)
-- Check out [Configuration Examples](../user-guides/configuration-examples)
-- Learn about [Production Safety](../user-guides/production-safety)
-- See [Troubleshooting Guide](../user-guides/troubleshooting-guide)
-- Explore [Optimized Discovery System](../architecture/optimized-discovery-system)
-
-## Need Help?
-
-- Use `./inventag.sh --help` for command-line help
-- Enable `--debug` for detailed logging
-- Check the [documentation](/) for comprehensive guides
+- [Current status and known limitations](./status.md)
+- [CLI user guide](../user-guides/cli-user-guide.md)
+- [Configuration examples](../user-guides/configuration-examples.md)
+- [Troubleshooting](../user-guides/troubleshooting-guide.md)

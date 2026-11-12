@@ -1,12 +1,16 @@
 ---
 title: AWS Prescriptive Guidance Templates
-description: Professional templates following AWS Prescriptive Guidance for Cost Allocation Tagging
+description: Reference tagging templates based on the AWS Prescriptive Guidance for cost allocation tagging
 sidebar_position: 2
 ---
 
 # 🏛️ AWS Prescriptive Guidance Templates
 
-Professional templates designed following [AWS Prescriptive Guidance for Cost Allocation Tagging](https://docs.aws.amazon.com/prescriptive-guidance/latest/cost-allocation-tagging/) to enable comprehensive financial governance, cost allocation, and compliance reporting.
+Reference templates written by the InvenTag project, based on the public
+[AWS Prescriptive Guidance for cost allocation tagging](https://docs.aws.amazon.com/prescriptive-guidance/latest/cost-allocation-tagging/).
+They are a starting point for your own tagging standard. They are not published
+or reviewed by AWS, and today they are reference material rather than CLI input
+(see [Quick start](#-quick-start) below).
 
 ## 📚 AWS Documentation References
 
@@ -152,35 +156,49 @@ curl -O https://habhabhabs.github.io/inventag-aws/files/service-descriptions.yam
 curl -O https://habhabhabs.github.io/inventag-aws/files/tag-mappings.yaml
 ```
 
-### 2. Generate Cost Allocation Reports
+### 2. Use them as a reference (not as CLI input, yet)
 
-```bash
-# Basic cost allocation reporting
-./inventag.sh --accounts-file accounts.json \
-  --create-excel --create-word \
-  --tag-mappings config/aws-prescriptive-guidance/tag-mappings.yaml \
-  --service-descriptions config/aws-prescriptive-guidance/service-descriptions.yaml \
-  --compliance-standard aws-prescriptive-guidance
+:::caution These files do not load in the CLI today
+`config/aws-prescriptive-guidance/tag-mappings.yaml` and
+`service-descriptions.yaml` use a richer layout than the CLI's loaders accept.
+Passed to `--tag-mappings` / `--service-descriptions`, they are rejected (an
+error in the log) and the report falls back to defaults. The
+`tagging-dictionary.yaml` file has no CLI flag at all. Earlier versions of this
+page showed flags such as `--enable-governance-reporting`,
+`--cost-allocation-focus` and `--compliance-standard aws-prescriptive-guidance`;
+those do not exist.
+:::
 
-# Advanced financial governance reporting
-./inventag.sh --accounts-file accounts.json \
-  --create-excel --create-word \
-  --tag-mappings config/aws-prescriptive-guidance/tag-mappings.yaml \
-  --service-descriptions config/aws-prescriptive-guidance/service-descriptions.yaml \
-  --enable-cost-analysis --enable-governance-reporting \
-  --cost-allocation-focus --financial-governance \
-  --budget-tracking --chargeback-reporting
+Use the dictionary as a checklist for your tagging standard, then express it in
+the formats InvenTag does load:
+
+```yaml
+# tag-mappings.yaml: report columns for your cost-allocation tags
+tag_mappings:
+  - tag: "CostCenter"
+    name: "Cost Center"
+  - tag: "BusinessUnit"
+    name: "Business Unit"
+  - tag: "Environment"
+    name: "Environment"
+  - tag: "Owner"
+    name: "Owner"
 ```
 
-### 3. Validate Tag Compliance
+```bash
+./inventag.sh --accounts-file accounts.json --create-excel \
+  --tag-mappings tag-mappings.yaml
+```
+
+### 3. Check tag compliance
+
+Write the required tags and allowed values as a tag policy (layout:
+`config/defaults/compliance/tag_compliance_policy_example.yaml`) and run the
+tag-policy checker:
 
 ```bash
-# Check tag compliance against AWS Prescriptive Guidance
-./inventag.sh --accounts-file accounts.json \
-  --validate-tags \
-  --tagging-dictionary config/aws-prescriptive-guidance/tagging-dictionary.yaml \
-  --compliance-report compliance-audit.json \
-  --governance-dashboard
+python3 scripts/legacy/tag_compliance_checker.py \
+  --config my-tag-policy.yaml --format excel --output compliance_report
 ```
 
 ## 📊 Cost Allocation Hierarchy
@@ -340,10 +358,10 @@ audit_trail_required: true
 - **[Resource Groups and Tags User Guide](https://docs.aws.amazon.com/resourcegroupstaggingapi/latest/userguide/)** - Programmatic tagging
 
 ### InvenTag Resources
-- [Getting Started Guide](/getting-started/quick-start)
-- [CLI User Guide](/user-guides/cli-user-guide)
-- [Configuration Examples](/examples/)
-- [Production Safety Guide](/user-guides/production-safety)
+- [Getting Started Guide](./getting-started/quick-start.md)
+- [CLI User Guide](./user-guides/cli-user-guide.md)
+- [Configuration Examples](./examples/index.md)
+- [Production Safety Guide](./user-guides/production-safety.md)
 
 ## 🤝 Support and Community
 
@@ -356,4 +374,4 @@ Need help implementing AWS Prescriptive Guidance templates?
 
 ---
 
-**Ready to transform your AWS cost allocation and governance?** Start with our [Quick Start Guide](/getting-started/quick-start) and download the professional templates above.
+**Ready to transform your AWS cost allocation and governance?** Start with our [Quick Start Guide](./getting-started/quick-start.md) and download the professional templates above.

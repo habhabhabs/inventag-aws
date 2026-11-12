@@ -66,7 +66,7 @@ When the documentation builds, additional security content will be available:
 **Status**: PRODUCTION READY  
 **Classification**: MAJOR SECURITY ENHANCEMENT
 
-This system implements enterprise-grade security automation and monitoring:
+This system implements security automation and monitoring:
 
 ### ✅ Permanent Security Solutions Implemented
 

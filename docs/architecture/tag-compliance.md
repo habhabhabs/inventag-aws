@@ -8,7 +8,7 @@ sidebar_position: 8
 
 ## Overview
 
-The `ComprehensiveTagComplianceChecker` is InvenTag's enterprise-grade AWS resource tag compliance validation tool. It provides comprehensive resource discovery, tag policy validation, and integrated BOM (Bill of Materials) document generation capabilities.
+The `ComprehensiveTagComplianceChecker` is InvenTag's AWS resource tag compliance validation tool. It provides comprehensive resource discovery, tag policy validation, and integrated BOM (Bill of Materials) document generation capabilities.
 
 ## Key Features
 
