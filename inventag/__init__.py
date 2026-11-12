@@ -14,7 +14,8 @@ from ._python_version import MIN_PYTHON, check_python_version
 
 check_python_version()
 
-__version__ = "1.0.0"
+from ._version import __version__
+
 __author__ = "InvenTag Team"
 
 # Core modules

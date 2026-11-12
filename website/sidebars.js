@@ -46,6 +46,7 @@ const sidebars = {
       items: [
         'user-guides/cli-user-guide',
         'user-guides/configuration-examples',
+        'user-guides/report-templates',
         'user-guides/production-safety',
         'user-guides/troubleshooting-guide',
         'aws-prescriptive-guidance',
@@ -139,6 +140,7 @@ const sidebars = {
       items: [
         'user-guides/cli-user-guide',
         'user-guides/configuration-examples',
+        'user-guides/report-templates',
         'user-guides/production-safety',
         'user-guides/troubleshooting-guide',
       ],

@@ -6,8 +6,7 @@ sidebar_position: 3
 
 # Current status and known limitations
 
-This page describes the code on the `main` branch after release v4.2.27
-(November 2026). Each row comes from a code review and from offline test runs.
+This page describes release 5.0.0 (November 2026). Each row comes from a code review and from offline test runs.
 The offline test runs use a simulated AWS backend (`moto`), not a real AWS
 account. If you change the behavior of a flag, update this page in the same
 pull request.
@@ -27,6 +26,7 @@ pull request.
 | Service filter | `--account-services EC2,S3`. See [Service and tag filters](#service-and-tag-filters). |
 | Tag filter | `--account-tags '{"env":"prod"}'`. See [Service and tag filters](#service-and-tag-filters). |
 | Upload of reports to Amazon S3 | `--s3-bucket`, `--s3-key-prefix`, `--s3-encryption`, `--s3-kms-key-id`. See [S3 upload](#s3-upload). |
+| Network analysis sheet and security analysis sheet | `--enable-network-analysis` adds the `Network Analysis` sheet to the Excel report. `--enable-security-analysis` adds the `Security Analysis` sheet. The CLI writes a sheet only if the account has VPC or security-group resources. |
 | Read-only guard | Always on. See [Read-only guard](#read-only-guard). |
 | Check of operation names against the guard | `--validate-operations ec2:DescribeInstances s3:PutObject`. Exit code `0` if the guard allows all names, `1` if not. This flag makes no AWS call. |
 | Audit of AWS API calls | `--audit-output audit.json` writes one JSON file with each operation, its call count, and each blocked call. |
@@ -54,7 +54,6 @@ CLI makes no AWS call before it stops.
 |---|---|
 | `--enable-production-safety`, `--enforce-read-only`, `--security-validation` | The CLI accepts these flags for compatibility. The read-only guard is always on, with or without these flags. |
 | `--generate-changelog` | The changelog is on by default. Only `--no-generate-changelog` changes the behavior. |
-| `--enable-network-analysis`, `--enable-security-analysis` | In an offline test run with VPC, subnet and security-group resources, these flags added no sheets, columns or sections to the Excel report. |
 
 ## Read-only guard
 
@@ -210,17 +209,12 @@ CLI does not call them.
 The read-only guard is part of the CLI. If you call the library from your own
 code, install the guard with `inventag.security.install_global_guard()`.
 
-## Known defects
-
-| Defect | Detail |
-|---|---|
-| EC2 instances can be absent from the report | In an offline test run, `ec2:DescribeInstances` returned one instance and the report did not list it. The report listed the EBS volume of the instance. |
-| Report path in the log for an empty result | If the filters remove all resources, the log shows a report path, but the CLI writes no file. |
-| Many `sts:GetCallerIdentity` calls | In an offline test run with 1335 resources, the CLI made 1338 `GetCallerIdentity` calls. |
-
 ## Tests
 
 Run the unit tests with `python -m pytest tests/unit -q`. The tests use a
 simulated AWS backend and need no AWS credentials.
 
-<!-- TEST-STATUS: filled in at merge -->
+On 2026-11-12, `python -m pytest tests` gave 1218 passed and 9 deselected on
+Python 3.13. The 9 deselected tests are the performance benchmarks. Run them
+with `python -m pytest tests -m performance`. The CI workflow fails if a test
+fails.

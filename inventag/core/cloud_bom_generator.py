@@ -974,9 +974,17 @@ class CloudBOMGenerator:
 
             # Initialize BOM converter
             bom_converter = BOMConverter(session=session)
+            processing_config = self.config.bom_processing_config
+            bom_converter.analyze_network = bool(
+                getattr(processing_config, "enable_network_analysis", False)
+            )
+            bom_converter.analyze_security = bool(
+                getattr(processing_config, "enable_security_analysis", False)
+            )
 
             # Generate documents in requested formats
             generated_files = []
+            format_errors = []
 
             for format_type in output_formats:
                 try:
@@ -1034,12 +1042,27 @@ class CloudBOMGenerator:
 
                 except Exception as e:
                     self.logger.error(f"Failed to generate {format_type} format: {e}")
+                    format_errors.append(f"{format_type}: {e}")
 
             # Exporters write nothing when there is no data; only report files
             # that exist (the S3 upload step reads this list).
-            generated_files = [
-                path for path in generated_files if os.path.isfile(path)
-            ]
+            generated_files = [path for path in generated_files if os.path.isfile(path)]
+
+            if not resources:
+                self.logger.warning(
+                    "No resources to report (none found, or the filters removed "
+                    "all of them). No report file was written."
+                )
+
+            if format_errors:
+                # A requested report that could not be written is a failed run.
+                return {
+                    "success": False,
+                    "error": "Could not write: " + "; ".join(format_errors),
+                    "generated_files": generated_files,
+                    "total_resources": len(resources),
+                    "generation_timestamp": datetime.now(timezone.utc).isoformat(),
+                }
 
             return {
                 "success": True,

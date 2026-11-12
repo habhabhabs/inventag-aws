@@ -190,7 +190,9 @@ class ComprehensiveTagComplianceChecker:
                                     "tags": tags,
                                     "account_id": account_id,
                                     "discovered_via": "ResourceGroupsTaggingAPI",
-                                    "discovered_at": datetime.now(timezone.utc).isoformat(),
+                                    "discovered_at": datetime.now(
+                                        timezone.utc
+                                    ).isoformat(),
                                 }
 
                                 # Add additional info if available

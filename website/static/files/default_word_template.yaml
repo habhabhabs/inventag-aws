@@ -1,248 +1,94 @@
-name: "Professional BOM Report Template"
-description: "Professional template for Cloud Bill of Materials reports with comprehensive branding and structure"
-format_type: "word"
-template_version: "1.0"
+# Default template for the Word BOM report.
+#
+# InvenTag uses this structure if you give no --word-template.
+# To make your own template:
+#   1. python inventag_cli.py --print-default-template word > my_word_template.yaml
+#   2. Edit my_word_template.yaml.
+#   3. python inventag_cli.py --word-template my_word_template.yaml --validate-templates
+#   4. python inventag_cli.py --create-word --word-template my_word_template.yaml
+#
+# Key reference: docs/user-guides/report-templates.md
+#
+# Variables for text values: {{ company_name }}, {{ document_title }},
+# {{ document_subtitle }}, {{ generated_at }}, {{ generated_date }},
+# {{ account_ids }}, {{ account_count }}, {{ total_resources }},
+# {{ service_count }}, {{ region_count }}, and the names under "variables".
 
-# Template variables with default values
-variables:
-  company_name:
-    value: "{{company_name}}"
-    description: "Company name for branding"
-    format_type: "string"
-    default_value: "Organization"
-  
-  document_title:
-    value: "{{document_title}}"
-    description: "Main document title"
-    format_type: "string"
-    default_value: "Cloud Bill of Materials Report"
-  
-  report_date:
-    value: "{{current_date}}"
-    description: "Report generation date"
-    format_type: "date"
-    default_value: "{{current_date|date:%Y-%m-%d}}"
-  
-  confidentiality_level:
-    value: "{{confidentiality_level}}"
-    description: "Document confidentiality level"
-    format_type: "string"
-    default_value: "CONFIDENTIAL"
-  
-  report_version:
-    value: "{{report_version}}"
-    description: "Report version number"
-    format_type: "string"
-    default_value: "1.0"
+template_version: "2.0"
+format_type: word
+name: Default Word BOM template
+description: The report structure that InvenTag writes if you give no --word-template.
 
-# Document structure with sections
-sections:
-  - id: "cover_page"
-    title: "{{company_name}} - {{document_title}}"
-    level: 0
-    content_type: "title"
-    include_in_toc: false
-    page_break_after: true
-    variables:
-      subtitle: "Infrastructure Documentation and Compliance Report"
-      generated_date: "{{report_date|date:%B %d, %Y}}"
-      version: "{{report_version}}"
-      confidentiality: "{{confidentiality_level}}"
+document:
+  title: AWS Resource Inventory - BOM Report
+  subtitle: ""
 
-  - id: "table_of_contents"
-    title: "Table of Contents"
-    level: 0
-    content_type: "toc"
-    include_in_toc: false
-    page_break_after: true
-
-  - id: "executive_summary"
-    title: "Executive Summary"
-    level: 1
-    content_type: "text"
-    include_in_toc: true
-    subsections:
-      - id: "overview"
-        title: "Overview"
-        level: 2
-        content_type: "text"
-        include_in_toc: true
-      
-      - id: "key_findings"
-        title: "Key Findings"
-        level: 2
-        content_type: "text"
-        include_in_toc: true
-      
-      - id: "recommendations"
-        title: "Recommendations"
-        level: 2
-        content_type: "text"
-        include_in_toc: true
-
-  - id: "compliance_overview"
-    title: "Compliance Overview"
-    level: 1
-    content_type: "table"
-    include_in_toc: true
-    subsections:
-      - id: "compliance_summary"
-        title: "Compliance Summary"
-        level: 2
-        content_type: "table"
-        include_in_toc: true
-      
-      - id: "policy_violations"
-        title: "Policy Violations"
-        level: 2
-        content_type: "table"
-        include_in_toc: true
-
-  - id: "service_inventory"
-    title: "Service Inventory"
-    level: 1
-    content_type: "table"
-    include_in_toc: true
-    page_break_before: true
-    subsections:
-      - id: "service_summary"
-        title: "Service Summary"
-        level: 2
-        content_type: "table"
-        include_in_toc: true
-      
-      - id: "detailed_resources"
-        title: "Detailed Resource Listings"
-        level: 2
-        content_type: "table"
-        include_in_toc: true
-
-  - id: "network_analysis"
-    title: "Network Analysis"
-    level: 1
-    content_type: "text"
-    include_in_toc: true
-    page_break_before: true
-    subsections:
-      - id: "vpc_analysis"
-        title: "VPC Analysis"
-        level: 2
-        content_type: "table"
-        include_in_toc: true
-      
-      - id: "subnet_utilization"
-        title: "Subnet Utilization"
-        level: 2
-        content_type: "table"
-        include_in_toc: true
-      
-      - id: "network_recommendations"
-        title: "Network Recommendations"
-        level: 2
-        content_type: "text"
-        include_in_toc: true
-
-  - id: "security_analysis"
-    title: "Security Analysis"
-    level: 1
-    content_type: "text"
-    include_in_toc: true
-    page_break_before: true
-    subsections:
-      - id: "security_groups"
-        title: "Security Group Analysis"
-        level: 2
-        content_type: "table"
-        include_in_toc: true
-      
-      - id: "high_risk_findings"
-        title: "High-Risk Findings"
-        level: 2
-        content_type: "table"
-        include_in_toc: true
-      
-      - id: "security_recommendations"
-        title: "Security Recommendations"
-        level: 2
-        content_type: "text"
-        include_in_toc: true
-
-  - id: "appendices"
-    title: "Appendices"
-    level: 1
-    content_type: "text"
-    include_in_toc: true
-    page_break_before: true
-    subsections:
-      - id: "methodology"
-        title: "Methodology"
-        level: 2
-        content_type: "text"
-        include_in_toc: true
-      
-      - id: "data_sources"
-        title: "Data Sources"
-        level: 2
-        content_type: "text"
-        include_in_toc: true
-      
-      - id: "glossary"
-        title: "Glossary"
-        level: 2
-        content_type: "text"
-        include_in_toc: true
-
-# Branding configuration
 branding:
-  company_name: "{{company_name}}"
-  logo_path: null  # Path to company logo image
-  header_text: "{{company_name}} Infrastructure Report"
-  footer_text: "{{confidentiality_level}} - Generated {{current_date}}"
-  color_scheme:
-    primary: "#366092"
-    secondary: "#4472C4"
-    accent: "#70AD47"
-    warning: "#FFC000"
-    danger: "#C5504B"
-    success: "#70AD47"
-  font_family: "Calibri"
-  font_size: 11
-  enable_watermark: true
-  watermark_text: "{{confidentiality_level}}"
+  company_name: ""
 
-# Header and footer configuration
 header_footer:
-  header_text: "{{company_name}} - {{document_title}}"
-  footer_text: "Generated on {{current_date|date:%B %d, %Y}} | Page"
-  include_logo: true
-  logo_position: "left"
-  logo_size: [1.2, 0.6]  # width, height in inches
-  include_page_numbers: true
-  page_number_position: "right"
-  include_date: true
-  date_format: "%Y-%m-%d"
-  custom_fields:
-    classification: "{{confidentiality_level}}"
-    version: "v{{report_version}}"
+  header_text: ""
+  footer_text: ""
+  include_page_numbers: false
 
-# Table of contents configuration
-table_of_contents:
-  enabled: true
-  title: "Table of Contents"
-  max_depth: 3
-  include_page_numbers: true
-  dot_leader: true
-  custom_styles:
-    title_font_size: 16
-    entry_font_size: 11
-    indent_per_level: 0.25
+# The sections appear in the report in this order.
+sections:
+  - id: title
+    content_type: title
 
-# Page layout settings
-page_margins:
-  top: 1.0
-  bottom: 1.0
-  left: 1.25
-  right: 1.0
+  - id: generated_on
+    content_type: text
+    paragraphs:
+      - "Generated on: {{ generated_at }} UTC"
 
-page_orientation: "portrait"
-page_size: "letter"
+  - id: executive_summary
+    content_type: text
+    title: Executive Summary
+    level: 1
+    paragraphs:
+      - "Total Resources: {{ total_resources }}"
+      - "Services Covered: {{ service_count }}"
+      - "AWS Regions: {{ region_count }}"
+
+  - id: service_summary
+    content_type: service_summary
+    title: Service Summary
+    level: 2
+    table_style: Light Grid Accent 1
+    columns:
+      - field: service
+        heading: Service
+      - field: resource_count
+        heading: Resource Count
+      - field: percentage
+        heading: Percentage
+
+  - id: resource_inventory
+    content_type: resources
+    title: Detailed Resource Inventory
+    level: 1
+    # {{ service }}, {{ service_resource_count }} and {{ shown_resource_count }}
+    # are valid only in service_title and truncation_note.
+    service_title: "{{ service }} Resources ({{ service_resource_count }})"
+    table_style: Light List Accent 1
+    # "auto" shows a maximum of max_columns fields for each service.
+    # To select the columns, write a list, for example:
+    #   columns:
+    #     - field: name
+    #       heading: Resource name
+    #       width: 2.0
+    #     - field: tags.Owner
+    #       heading: Owner
+    columns: auto
+    max_columns: 6
+    max_rows: 50
+    truncation_note: "Note: Showing first {{ shown_resource_count }} of {{ service_resource_count }} {{ service }} resources."
+    page_break_after_service: true
+
+  - id: report_information
+    content_type: text
+    title: Report Information
+    level: 1
+    paragraphs:
+      - This report was generated using InvenTag - AWS Resource Inventory Tool
+      - "For more information, visit: https://github.com/habhabhabs/inventag-aws"

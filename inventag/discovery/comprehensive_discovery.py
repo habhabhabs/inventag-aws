@@ -605,6 +605,19 @@ class ComprehensiveAWSDiscovery:
             if not isinstance(data, list):
                 data = [data] if data else []
 
+            # DescribeInstances returns reservations. The instances are one
+            # level down, and a reservation has no resource ID of its own.
+            if resource_type == "Instance":
+                data = [
+                    instance
+                    for item in data
+                    for instance in (
+                        item.get("Instances", [])
+                        if isinstance(item, dict) and "Instances" in item
+                        else [item]
+                    )
+                ]
+
             resources_added = 0
             for item in data:
                 if isinstance(item, dict):
@@ -612,28 +625,10 @@ class ComprehensiveAWSDiscovery:
                         item, service_name, region, resource_type, operation_name
                     )
                     if resource:
-                        # Handle EC2 reservations specially
-                        if resource_type == "Instance" and "Instances" in item:
-                            for instance in item["Instances"]:
-                                instance_resource = self._normalize_resource(
-                                    instance,
-                                    service_name,
-                                    region,
-                                    resource_type,
-                                    operation_name,
-                                )
-                                if instance_resource:
-                                    self.resources.append(instance_resource)
-                                    resources_added += 1
-                                    # Track service with primary resources for smart fallback logic
-                                    self.services_with_primary_resources.add(
-                                        service_name
-                                    )
-                        else:
-                            self.resources.append(resource)
-                            resources_added += 1
-                            # Track service with primary resources for smart fallback logic
-                            self.services_with_primary_resources.add(service_name)
+                        self.resources.append(resource)
+                        resources_added += 1
+                        # Track service with primary resources for smart fallback logic
+                        self.services_with_primary_resources.add(service_name)
                 elif isinstance(item, str):
                     # Handle string responses (like SQS queue URLs)
                     resource = self._create_string_resource(
@@ -842,17 +837,27 @@ class ComprehensiveAWSDiscovery:
                 return parts[4]
         return None
 
-    def _construct_arn(
-        self, service: str, region: str, resource_type: str, resource_id: str
-    ) -> str:
-        """Construct ARN for resources that don't provide one."""
-        try:
-            # Get account ID from STS if available
+    def _get_account_id(self) -> str:
+        """Account ID of the session. One STS call, then cached.
+
+        This was one GetCallerIdentity call for each resource without an ARN.
+        """
+        account_id = getattr(self, "_cached_account_id", None)
+        if account_id is None:
             try:
                 sts = self.session.client("sts")
                 account_id = sts.get_caller_identity()["Account"]
             except Exception:
                 account_id = "000000000000"  # Placeholder
+            self._cached_account_id = account_id
+        return account_id
+
+    def _construct_arn(
+        self, service: str, region: str, resource_type: str, resource_id: str
+    ) -> str:
+        """Construct ARN for resources that don't provide one."""
+        try:
+            account_id = self._get_account_id()
 
             # Handle service-specific ARN formats
             if service == "s3":
@@ -948,7 +953,9 @@ class ComprehensiveAWSDiscovery:
                                             "tags": tags,
                                             "raw_data": {"arn": arn},
                                             "discovered_via": "ResourceGroupsTaggingAPI:Fallback",
-                                            "discovered_at": datetime.now(timezone.utc).isoformat(),
+                                            "discovered_at": datetime.now(
+                                                timezone.utc
+                                            ).isoformat(),
                                             "tagged": True,
                                             "priority": "fallback",  # Mark as lower priority
                                         }

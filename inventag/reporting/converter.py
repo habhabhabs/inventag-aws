@@ -61,6 +61,9 @@ class BOMConverter:
         self.headers = set()
         self.enrich_vpc_info = enrich_vpc_info
         self.enable_advanced_analysis = enable_advanced_analysis
+        # Set by the CLI from --enable-network-analysis / --enable-security-analysis
+        self.analyze_network = False
+        self.analyze_security = False
         self.vpc_cache = {}  # Cache for VPC/subnet name lookups
         self.session = session or (boto3.Session() if enrich_vpc_info else None)
 
@@ -451,10 +454,14 @@ class BOMConverter:
                         template=template,
                     )
             elif content_type == "network_analysis":
-                if self.enable_advanced_analysis and self.network_analysis:
+                if (
+                    self.enable_advanced_analysis or self.analyze_network
+                ) and self.network_analysis:
                     self._create_network_analysis_sheet(wb)
             elif content_type == "security_analysis":
-                if self.enable_advanced_analysis and self.security_analysis:
+                if (
+                    self.enable_advanced_analysis or self.analyze_security
+                ) and self.security_analysis:
                     self._create_security_analysis_sheet(wb)
 
         if not wb.sheetnames:
@@ -1304,6 +1311,14 @@ class BOMConverter:
         for item in resources:
             if isinstance(item, dict):
                 self.headers.update(item.keys())
+
+        # The analysis sheets need the analysis results. load_data() computes
+        # them for the legacy script; this path did not, so the sheets were
+        # never written from the CLI.
+        if self.analyze_network and not self.network_analysis:
+            self._perform_network_analysis()
+        if self.analyze_security and not self.security_analysis:
+            self._perform_security_analysis()
 
         self.export_to_excel(filename, template=template)
         return filename

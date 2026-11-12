@@ -1191,7 +1191,9 @@ class AWSResourceInventory:
                                     "account_id": account_id,
                                     "tags": tags,
                                     "discovered_via": "ResourceGroupsTaggingAPI",
-                                    "discovered_at": datetime.now(timezone.utc).isoformat(),
+                                    "discovered_at": datetime.now(
+                                        timezone.utc
+                                    ).isoformat(),
                                 }
 
                                 # Apply service filters if specified

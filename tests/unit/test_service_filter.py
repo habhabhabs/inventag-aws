@@ -107,3 +107,32 @@ def test_cli_switches_default_on_and_can_be_turned_off():
     off = parser.parse_args(["--no-generate-changelog", "--no-billing-validation"])
     assert off.generate_changelog is False
     assert off.billing_validation is False
+
+
+def test_ec2_instances_inside_reservations_are_discovered():
+    """Regression: the reservation wrapper has no ID, so instances were dropped."""
+    from inventag.discovery.comprehensive_discovery import ComprehensiveAWSDiscovery
+
+    with patch("boto3.Session"):
+        discovery = ComprehensiveAWSDiscovery(regions=["us-east-1"])
+    response = {
+        "Reservations": [
+            {
+                "ReservationId": "r-1",
+                "Instances": [
+                    {"InstanceId": "i-0aaa", "Tags": [{"Key": "Name", "Value": "a"}]},
+                    {"InstanceId": "i-0bbb"},
+                ],
+            },
+            {"ReservationId": "r-2", "Instances": [{"InstanceId": "i-0ccc"}]},
+        ]
+    }
+    added = discovery._extract_resources_from_response(
+        response, "Reservations", "ec2", "us-east-1", "Instance", "describe_instances"
+    )
+    assert added == 3
+    assert sorted(r["resource_id"] for r in discovery.resources) == [
+        "i-0aaa",
+        "i-0bbb",
+        "i-0ccc",
+    ]

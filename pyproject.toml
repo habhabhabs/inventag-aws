@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inventag-aws"
+dynamic = ["version", "dependencies"]
+description = "AWS resource inventory, tag compliance checks, and Excel/Word BOM reports. Read-only."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "InvenTag Contributors" }]
+keywords = ["aws", "inventory", "bom", "tagging", "compliance"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: System :: Systems Administration",
+]
+
+[project.urls]
+Homepage = "https://habhabhabs.github.io/inventag-aws/"
+Documentation = "https://habhabhabs.github.io/inventag-aws/docs/"
+Source = "https://github.com/habhabhabs/inventag-aws"
+Issues = "https://github.com/habhabhabs/inventag-aws/issues"
+Changelog = "https://github.com/habhabhabs/inventag-aws/blob/main/CHANGELOG.md"
+
+[project.scripts]
+inventag = "inventag.cli.main:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "inventag._version.__version__" }
+dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.packages.find]
+include = ["inventag*"]
+
+[tool.setuptools.package-data]
+inventag = ["**/*.json", "**/*.yaml", "**/*.yml"]
+
+[tool.black]
+target-version = ["py311"]

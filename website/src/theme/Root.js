@@ -73,6 +73,9 @@ export default function Root({children}) {
   return (
     <>
       {children}
+      {/* The footer link "Cookie settings" points at this id. Keep a target in
+          the page while the banner is closed, so the link is never broken. */}
+      {!open && <span id={SETTINGS_HASH.slice(1)} />}
       {open && (
         <section
           ref={banner}

@@ -88,6 +88,12 @@ jobs:
               echo "version_bump=patch" >> $GITHUB_OUTPUT
               echo "Default patch release for PR #$PR_NUM (no version label found)"
             fi
+          elif BUMP=$(echo "$COMMIT_MSG" | grep -oiE "^Release-As: *(patch|minor|major) *$" | head -n 1 | sed -E 's/^[^:]*: *//' | tr 'A-Z' 'a-z' | tr -d ' ') && [ -n "$BUMP" ]; then
+            # A direct push releases only if the commit message has a
+            # "Release-As: patch|minor|major" line.
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "version_bump=$BUMP" >> $GITHUB_OUTPUT
+            echo "$BUMP release requested by the Release-As line of the pushed commit"
           else
             echo "Direct push to main - no release triggered"
           fi
@@ -623,12 +629,15 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
-        # Check if version.json has actually changed
-        if git diff --quiet version.json; then
+        # Keep the package version (read by pyproject.toml) equal to the release
+        printf '"""Single source of the InvenTag version.\n\nThe release workflow rewrites this file. pyproject.toml reads it at build time.\n"""\n\n__version__ = "%s"\n' "${{ steps.version.outputs.new_version }}" > inventag/_version.py
+
+        # Check if the version files have actually changed
+        if git diff --quiet version.json inventag/_version.py; then
           echo "No changes to version.json - skipping commit"
         else
-          # Add and commit the version.json changes directly to main
-          git add version.json
+          # Add and commit the version changes directly to main
+          git add version.json inventag/_version.py
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}" -m "Automated version bump after release creation." -m "Previous version: ${{ steps.version.outputs.current_version }}" -m "New version: ${{ steps.version.outputs.new_version }}" -m "Bump type: ${{ needs.check-for-release.outputs.version_bump }}"
           
           # Push directly to main using the VERSION_BUMP_WORKFLOW token
@@ -732,3 +741,44 @@ jobs:
       run: |
         python scripts/development/cicd_bom_generation.py --help
         echo "✅ CI/CD BOM generation works correctly"
+
+  publish-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: [check-for-release, release]
+    if: needs.check-for-release.outputs.should_release == 'true' && vars.PYPI_PUBLISH == 'true'
+    # PyPI Trusted Publishing (OIDC): no API token is stored in GitHub.
+    # One-time setup on pypi.org: add a trusted publisher for this repository,
+    # workflow "release.yml", environment "pypi". Then set the repository
+    # variable PYPI_PUBLISH to "true".
+    environment:
+      name: pypi
+      url: https://pypi.org/project/inventag-aws/
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Checkout the released commit
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: v${{ needs.release.outputs.new_version }}
+
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: '3.13'
+
+    - name: Build the sdist and the wheel
+      env:
+        NEW_VERSION: ${{ needs.release.outputs.new_version }}
+      run: |
+        python -m pip install --upgrade pip build twine
+        python -m build
+        twine check --strict dist/*
+        # The built version must be the released version
+        ls dist/inventag_aws-"$NEW_VERSION"-py3-none-any.whl
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+

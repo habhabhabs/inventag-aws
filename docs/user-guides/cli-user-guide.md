@@ -262,8 +262,8 @@ AWS call. For the template keys, see [Report templates](./report-templates.md).
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--enable-network-analysis` | Sets the network analysis option. In an offline test run, this flag added no sheets or columns to the report. | `--enable-network-analysis` |
-| `--enable-security-analysis` | Sets the security analysis option. In an offline test run, this flag added no sheets or columns to the report. | `--enable-security-analysis` |
+| `--enable-network-analysis` | Adds the `Network Analysis` sheet to the Excel report. The sheet shows each VPC, its CIDR block, its IP use and its subnets. | `--enable-network-analysis` |
+| `--enable-security-analysis` | Adds the `Security Analysis` sheet to the Excel report. The sheet shows each security group, its rules and its risk level. | `--enable-security-analysis` |
 | `--enable-cost-analysis` | Starts the cost analyzer. The cost analyzer makes its own Cost Explorer requests, also with `--no-billing-validation`. | `--enable-cost-analysis` |
 | `--fallback-display` | Control fallback resource display: `auto` (recommended), `always`, `never` | `--fallback-display=auto` |
 | `--hide-fallback-resources` | Legacy option: equivalent to `--fallback-display=never` (deprecated) | `--hide-fallback-resources` |
