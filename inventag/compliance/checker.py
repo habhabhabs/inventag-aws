@@ -11,9 +11,11 @@ import yaml
 import boto3
 import logging
 from datetime import datetime
-from typing import Dict, List, Any, Optional, Set
+from typing import Dict, List, Any, Optional, Set, Tuple
 from botocore.exceptions import ClientError, NoCredentialsError
 import time
+
+from ..security.safe_output import open_private
 
 
 class ComprehensiveTagComplianceChecker:
@@ -288,7 +290,10 @@ class ComprehensiveTagComplianceChecker:
         non_compliant = []
         untagged = []
 
-        required_tags = self.tag_policy.get("required_tags", [])
+        skipped = [r for r in resources if not isinstance(r, dict)]
+        if skipped:
+            self.logger.warning(f"Skipping {len(skipped)} malformed resource entries")
+            resources = [r for r in resources if isinstance(r, dict)]
 
         for resource in resources:
             tags = resource.get("tags", {}) or {}
@@ -297,18 +302,7 @@ class ComprehensiveTagComplianceChecker:
                 untagged.append(resource)
                 continue
 
-            # Check if all required tags are present
-            missing_tags = []
-            for required_tag in required_tags:
-                if isinstance(required_tag, str):
-                    tag_key = required_tag
-                elif isinstance(required_tag, dict):
-                    tag_key = required_tag.get("key", "")
-                else:
-                    continue
-
-                if tag_key not in tags:
-                    missing_tags.append(tag_key)
+            _, missing_tags = self._check_resource_compliance(resource)
 
             if missing_tags:
                 resource_copy = resource.copy()
@@ -350,13 +344,32 @@ class ComprehensiveTagComplianceChecker:
 
         return self.compliance_results
 
+    def _check_resource_compliance(
+        self, resource: Dict[str, Any]
+    ) -> Tuple[bool, List[str]]:
+        """Return (is_compliant, missing required tag keys) for one resource."""
+        tags = resource.get("tags", {}) or {}
+        missing_tags = []
+        for required_tag in self.tag_policy.get("required_tags", []):
+            if isinstance(required_tag, str):
+                tag_key = required_tag
+            elif isinstance(required_tag, dict):
+                tag_key = required_tag.get("key", "")
+            else:
+                continue
+            if tag_key not in tags:
+                missing_tags.append(tag_key)
+        return (bool(tags) and not missing_tags), missing_tags
+
     def save_results(self, filename: str, format_type: str = "json"):
-        """Save compliance results to file."""
+        """Save compliance results to file (owner-only permissions)."""
+        if format_type.lower() not in ("json", "yaml"):
+            raise ValueError("Format must be 'json' or 'yaml'")
         if format_type.lower() == "json":
-            with open(filename, "w") as f:
+            with open_private(filename, "w") as f:
                 json.dump(self.compliance_results, f, indent=2, default=str)
         elif format_type.lower() == "yaml":
-            with open(filename, "w") as f:
+            with open_private(filename, "w") as f:
                 yaml.dump(
                     self.compliance_results,
                     f,
@@ -675,7 +688,11 @@ class ComprehensiveTagComplianceChecker:
                 raise ValueError("Format must be 'json' or 'yaml'")
 
             s3.put_object(
-                Bucket=bucket_name, Key=key, Body=content, ContentType=content_type
+                Bucket=bucket_name,
+                Key=key,
+                Body=content,
+                ContentType=content_type,
+                ServerSideEncryption="AES256",
             )
 
             self.logger.info(f"Compliance results uploaded to s3://{bucket_name}/{key}")

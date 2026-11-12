@@ -158,6 +158,7 @@ class CICDIntegration:
         # Initialize AWS clients lazily
         self.s3_client = None
         self.s3_config = s3_config
+        self.last_upload_errors: List[Dict[str, str]] = []
         self.artifacts_dir = Path(
             artifacts_dir
             or os.environ.get("INVENTAG_ARTIFACTS_DIR")
@@ -233,6 +234,19 @@ class CICDIntegration:
                 self.logger.info("Uploading documents to S3")
                 s3_uploads = self._upload_documents_to_s3(result.generated_documents)
                 result.s3_uploads = s3_uploads
+                if self.last_upload_errors:
+                    raise RuntimeError(
+                        f"S3 upload failed for {len(self.last_upload_errors)} file(s): "
+                        + "; ".join(e["error"] for e in self.last_upload_errors)
+                    )
+
+            # BOM, gate check and uploads are done: the run succeeded. Set this
+            # before the reporting steps so artifacts and notifications report
+            # the real status (they used to always say FAILED/false).
+            result.success = True
+            result.execution_time_seconds = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds()
 
             # Step 4: Generate CI/CD artifacts
             self.logger.info("Generating CI/CD artifacts")
@@ -270,6 +284,7 @@ class CICDIntegration:
         except Exception as e:
             end_time = datetime.now(timezone.utc)
             result.execution_time_seconds = (end_time - start_time).total_seconds()
+            result.success = False
             result.error_message = str(e)
 
             self.logger.error(f"CI/CD pipeline integration failed: {e}")
@@ -396,6 +411,7 @@ class CICDIntegration:
             public_read=self.s3_config.public_read,
         )
 
+        self.last_upload_errors = result["errors"]
         s3_uploads = {}
         for item in result["uploaded"]:
             format_type = Path(item["file"]).suffix.lower().lstrip(".")
@@ -780,16 +796,18 @@ class CICDIntegration:
 
     def _send_failure_notification(self, cicd_result: CICDResult):
         """Send failure notification."""
-        failure_content = {
-            "title": "InvenTag CI/CD Pipeline Failed",
-            "status": "FAILED",
-            "compliance_gate": "N/A",
-            "summary": {
-                "execution_time": round(cicd_result.execution_time_seconds, 1),
+        # Reuse the regular content builder so every field the senders read
+        # exists (a partial summary used to raise KeyError, so failure
+        # notifications were never delivered).
+        failure_content = self._prepare_notification_content({}, cicd_result)
+        failure_content.update(
+            {
+                "title": "InvenTag CI/CD Pipeline Failed",
+                "status": "FAILED",
+                "compliance_gate": "N/A",
                 "error_message": cicd_result.error_message,
-            },
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
+            }
+        )
 
         if self.notification_config.slack_webhook_url:
             try:
@@ -834,7 +852,8 @@ class CICDIntegration:
     ):
         """Export Prometheus metrics to file and optionally push to gateway."""
         try:
-            metrics_content = """# HELP inventag_total_resources Total number of AWS resources discovered
+            # f-string: the values were previously written as literal "{metrics.x}"
+            metrics_content = f"""# HELP inventag_total_resources Total number of AWS resources discovered
 # TYPE inventag_total_resources gauge
 inventag_total_resources {metrics.total_resources}
 

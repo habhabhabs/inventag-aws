@@ -26,6 +26,7 @@ import threading
 from abc import ABC, abstractmethod
 
 from .bom_processor import BOMData
+from ..security.safe_output import ensure_private_dir, open_private
 
 
 @dataclass
@@ -367,8 +368,7 @@ class DocumentGenerator:
     def _prepare_output_directory(self):
         """Prepare output directory for document generation."""
         try:
-            output_dir = Path(self.config.output_directory)
-            output_dir.mkdir(parents=True, exist_ok=True)
+            output_dir = ensure_private_dir(self.config.output_directory)
             self.logger.debug(f"Output directory prepared: {output_dir}")
         except Exception as e:
             self.logger.error(f"Failed to prepare output directory: {e}")
@@ -609,7 +609,7 @@ class DocumentGenerator:
                 "warnings": summary.warnings,
             }
 
-            with open(output_path, "w", encoding="utf-8") as f:
+            with open_private(output_path, "w", encoding="utf-8") as f:
                 json.dump(report, f, indent=2, ensure_ascii=False)
 
             self.logger.info(f"Generation report saved: {output_path}")

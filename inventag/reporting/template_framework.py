@@ -482,8 +482,16 @@ class TemplateManager:
         return template
 
     def _find_template_file(self, template_name: str) -> Optional[str]:
-        """Find template file by name."""
+        """Find template file by name (a bare name; no paths)."""
         template_dir = Path(self.template_directory)
+
+        # A template name must not select files outside the template directory.
+        if (
+            not template_name
+            or template_name in (".", "..")
+            or any(sep in template_name for sep in ("/", "\\", "\x00"))
+        ):
+            raise ValueError(f"Invalid template name: {template_name!r}")
 
         # Try different extensions
         for ext in [".json", ".yaml", ".yml"]:
