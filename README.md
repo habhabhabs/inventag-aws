@@ -38,6 +38,9 @@ requests for each account, and AWS bills each request. Add
 - **Bill of materials** as an Excel workbook (`--create-excel`) and/or Word
   document (`--create-word`), with your own tag columns (`--tag-mappings`) and
   service descriptions (`--service-descriptions`).
+- **Report templates** (`--word-template`, `--excel-template`): a YAML or JSON
+  file selects the title, the sections or sheets, the columns, and the header
+  and footer text.
 - **Several accounts** from a file (`--accounts-file`), interactively
   (`--accounts-prompt`) or through an assumed role (`--cross-account-role`),
   processed in parallel.
@@ -92,6 +95,7 @@ Every flag: [CLI user guide](https://habhabhabs.github.io/inventag-aws/docs/user
 | Current status and known limitations | [docs/getting-started/status.md](docs/getting-started/status.md) |
 | CLI user guide | [docs/user-guides/cli-user-guide.md](docs/user-guides/cli-user-guide.md) |
 | Configuration examples | [docs/user-guides/configuration-examples.md](docs/user-guides/configuration-examples.md) |
+| Report templates | [docs/user-guides/report-templates.md](docs/user-guides/report-templates.md) |
 | Permissions and production safety | [docs/user-guides/production-safety.md](docs/user-guides/production-safety.md) |
 | Architecture | [docs/architecture/core-module-integration.md](docs/architecture/core-module-integration.md) |
 | Contributing | [docs/development/CONTRIBUTING.md](docs/development/CONTRIBUTING.md) |

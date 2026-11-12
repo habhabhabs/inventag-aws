@@ -19,6 +19,7 @@ pull request.
 | Resource discovery in one account or in many accounts | `./inventag.sh`, `--accounts-file`, `--accounts-prompt`, `--cross-account-role` |
 | Excel BOM | `--create-excel` writes `bom_output/multi_account_bom_<timestamp>.xlsx`. Excel is the default format. |
 | Word BOM | `--create-word` writes `bom_output/multi_account_bom_<timestamp>.docx`. Each service table shows a maximum of 50 resources. |
+| Report templates for the Word and Excel reports | `--word-template PATH`, `--excel-template PATH`. See [Report templates](#report-templates). |
 | Custom tag columns and service descriptions | `--tag-mappings`, `--service-descriptions`. For the file formats, see [Configuration examples](../user-guides/configuration-examples.md). |
 | Snapshots between runs | On by default. The CLI writes each snapshot to `bom_output/state/`. |
 | Change report between runs | On by default. The CLI writes `bom_output/changelog_<timestamp>.md` when a previous snapshot exists. Use `--no-generate-changelog` to stop this output. |
@@ -120,6 +121,38 @@ result is the same for all discovery paths.
 - The CLI refuses public ACLs.
 - If an upload fails, the run stops with exit code `1`.
 - The CLI does not change the lifecycle configuration of the bucket.
+
+## Report templates
+
+A template is a YAML or JSON file that controls the structure of a report.
+For the keys, see [Report templates](../user-guides/report-templates.md).
+
+- A template controls the title and subtitle, the company name, the sections
+  or sheets and their order, the columns, and the header and footer text.
+- A template can use variables, for example `{{ company_name }}` and
+  `{{ total_resources }}`. InvenTag accepts only a fixed list of variable
+  names. InvenTag does not evaluate expressions.
+- `--print-default-template word` and `--print-default-template excel` print
+  the default templates.
+- `--validate-templates` validates the template files and makes no AWS call.
+- The CLI validates each template before the first AWS call. If a template is
+  not valid, the CLI prints the file, the key path and the reason for each
+  problem. The CLI then stops with exit code `1`.
+- If you give no template, the report has the same structure as before.
+
+Limits:
+
+- A template cannot change fonts, heading colors, or the page size.
+- A template cannot add a table of contents or charts.
+- A logo is available only in the Word report.
+- A template cannot change the columns of the network analysis sheet and the
+  security analysis sheet.
+- The Python classes in `inventag/reporting/template_framework.py`,
+  `branding_system.py`, `word_builder.py`, `excel_builder.py` and
+  `document_generator.py` are library code. The CLI does not use them, and the
+  template flags do not change their output.
+- The `templates`, `branding` and `document_generation` keys in a
+  `--bom-config` file have no effect.
 
 ## Costs
 

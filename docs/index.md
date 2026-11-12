@@ -56,6 +56,7 @@ Full walkthrough: [Quick start](./getting-started/quick-start.md).
 | See every CLI flag | [CLI user guide](./user-guides/cli-user-guide.md) |
 | Scan several accounts | [Account setup](./examples/accounts-setup.md) |
 | Map tags to report columns | [Configuration examples](./user-guides/configuration-examples.md) |
+| Change the structure of the reports | [Report templates](./user-guides/report-templates.md) |
 | Set up IAM permissions safely | [Permissions and production safety](./user-guides/production-safety.md) |
 | Fix an error | [Troubleshooting](./user-guides/troubleshooting-guide.md) |
 | Understand the code | [Core module integration](./architecture/core-module-integration.md) |

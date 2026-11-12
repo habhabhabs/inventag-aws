@@ -114,6 +114,10 @@ class MultiAccountConfig:
     credential_validation_timeout: int = 30
     hide_fallback_resources: bool = False  # Legacy, deprecated
     fallback_display_mode: str = "auto"  # "auto", "always", "never"
+    # Validated report templates (inventag.reporting.report_template.ReportTemplate).
+    # None means the built-in default structure.
+    word_template: Optional[Any] = None
+    excel_template: Optional[Any] = None
 
 
 class CloudBOMGenerator:
@@ -958,7 +962,11 @@ class CloudBOMGenerator:
                             self.output_dir
                             / f"multi_account_bom_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
                         )
-                        bom_converter.generate_excel_bom(bom_data, str(output_file))
+                        bom_converter.generate_excel_bom(
+                            bom_data,
+                            str(output_file),
+                            template=self.config.excel_template,
+                        )
                         generated_files.append(str(output_file))
 
                     elif format_type.lower() == "word":
@@ -966,7 +974,11 @@ class CloudBOMGenerator:
                             self.output_dir
                             / f"multi_account_bom_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
                         )
-                        bom_converter.generate_word_bom(bom_data, str(output_file))
+                        bom_converter.generate_word_bom(
+                            bom_data,
+                            str(output_file),
+                            template=self.config.word_template,
+                        )
                         generated_files.append(str(output_file))
 
                     elif format_type.lower() == "csv":

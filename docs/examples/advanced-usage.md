@@ -352,14 +352,14 @@ aws s3 sync "$OUTPUT_DIR" s3://enterprise-reports-bucket/reports/$TIMESTAMP/
 
 ```bash
 #!/bin/bash
-# Report settings from a BOM processing config file (--bom-config).
-# There are no --excel-template / --word-template flags; templates/ holds the
-# defaults used by the document builders.
+# Report structure from template files.
+# Start from: ./inventag.sh --print-default-template word > branded-word.yaml
 
 ./inventag.sh \
   --accounts-file branded-accounts.json \
   --create-excel --create-word \
-  --bom-config bom-config.yaml \
+  --word-template branded-word.yaml \
+  --excel-template branded-excel.json \
   --enable-network-analysis --enable-security-analysis \
   --s3-bucket branded-reports \
   --s3-key-prefix custom-branded/$(date +%Y-%m-%d)/ \

@@ -6,6 +6,18 @@ sidebar_position: 3
 
 # InvenTag Template Framework
 
+:::caution The CLI does not use these classes
+This page describes the Python classes in
+`inventag/reporting/template_framework.py`. These classes are library code.
+The CLI does not use them, and no test builds a report with them from a CLI
+run.
+
+The templates that the CLI applies (`--word-template`, `--excel-template`)
+are in `inventag/reporting/report_template.py`. They have a different schema
+(`template_version: "2.0"`). See
+[Report templates](../user-guides/report-templates.md).
+:::
+
 ## Overview
 
 The InvenTag Template Framework provides a comprehensive document template system with company logo integration, customizable document structure, and automatic table of contents generation. This system enables professional document customization for Cloud Bill of Materials (BOM) reports.
@@ -592,10 +604,10 @@ The framework maintains backward compatibility:
 
 ### Available Template Examples
 
-- [`assets/files/default_word_template.yaml`](/files/default_word_template.yaml): Professional Word document template
-- [`assets/files/default_excel_template.json`](/files/default_excel_template.json): Excel workbook template with dashboards
-- `templates/minimal_template.yaml`: Simple template for basic reports
-- `templates/executive_template.yaml`: Executive summary focused template
+- [`assets/files/default_word_template.yaml`](/files/default_word_template.yaml): the default report template of the CLI for Word (schema version `2.0`)
+- [`assets/files/default_excel_template.json`](/files/default_excel_template.json): the default report template of the CLI for Excel (schema version `2.0`)
+
+The repository contains no other template files.
 
 ### Creating Custom Templates
 

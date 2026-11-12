@@ -25,6 +25,7 @@ code `2`. See [Current status and known limitations](../getting-started/status.m
 - **Several accounts** in parallel (`--accounts-file`, `--accounts-prompt`, `--cross-account-role`)
 - **Excel and Word** reports (`--create-excel`, `--create-word`)
 - **Your own columns and descriptions** (`--tag-mappings`, `--service-descriptions`)
+- **Your own report structure** (`--word-template`, `--excel-template`)
 - **Change tracking** between runs (on by default)
 - **Upload to Amazon S3** with server-side encryption (`--s3-bucket`)
 - **Read-only guard** on each AWS API call (always on), with an audit file (`--audit-output`)
@@ -245,6 +246,18 @@ code `2`.
 | `--create-excel` | Excel workbook BOM (`multi_account_bom_<timestamp>.xlsx`); the default if no format is given | `--create-excel` |
 | `--create-google-docs` | **Not implemented.** The CLI stops with exit code `2`. | n/a |
 
+### Report Templates
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--word-template` | Template file (YAML or JSON) for the Word report. This flag needs `--create-word`. | `--word-template my_word_template.yaml` |
+| `--excel-template` | Template file (YAML or JSON) for the Excel report | `--excel-template my_excel_template.json` |
+| `--print-default-template` | Print the default template for `word` or `excel`, then exit | `--print-default-template word` |
+| `--validate-templates` | Validate the template files, then exit. This flag makes no AWS call. | `--validate-templates --word-template my_word_template.yaml` |
+
+If a template is not valid, the CLI stops with exit code `1` before the first
+AWS call. For the template keys, see [Report templates](./report-templates.md).
+
 ### Analysis Options
 
 | Option | Description | Example |
@@ -306,7 +319,7 @@ run much faster.
 |--------|-------------|---------|
 | `--service-descriptions` | Path to service descriptions config | `--service-descriptions services.yaml` |
 | `--tag-mappings` | Path to tag mappings config | `--tag-mappings tags.yaml` |
-| `--bom-config` | Path to BOM processing config | `--bom-config bom.yaml` |
+| `--bom-config` | Path to BOM processing config. The CLI reads only the top-level keys that are options of the BOM processor. See [Configuration examples](./configuration-examples.md#bom-processing-configuration). | `--bom-config bom.yaml` |
 | `--validate-config` | Validate the configuration files and exit. This flag also examines the AWS credentials unless you add `--skip-credential-validation`. | `--validate-config` |
 | `--validate-config-only` | Validate only the files that you give on the command line, then exit | `--validate-config-only` |
 
@@ -680,8 +693,8 @@ The optimized discovery is enabled by default and requires no additional configu
 | Code | Description |
 |------|-------------|
 | 0 | Success. Also the result of `--validate-operations` if the guard allows all names. |
-| 1 | Error: configuration file not valid, credentials not valid, processing failure, or S3 upload failure. Also the result of `--validate-operations` if the guard blocks a name. |
-| 2 | Usage error: a flag that is not implemented, a `--cross-account-role` value that is not valid, or an unknown argument. |
+| 1 | Error: configuration file or template file not valid, credentials not valid, processing failure, or S3 upload failure. Also the result of `--validate-operations` if the guard blocks a name. |
+| 2 | Usage error: a flag that is not implemented, a `--cross-account-role` value that is not valid, a template flag without its report format, or an unknown argument. |
 
 ## Support
 

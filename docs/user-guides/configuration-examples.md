@@ -560,6 +560,20 @@ PatchGroup:
 
 ## BOM Processing Configuration
 
+:::caution Most keys in these examples have no effect
+The CLI reads a `--bom-config` file and applies only these top-level keys:
+`enable_network_analysis`, `enable_security_analysis`,
+`enable_service_enrichment`, `enable_service_descriptions`,
+`enable_tag_mapping`, `enable_cost_analysis`, `enable_parallel_processing`,
+`max_worker_threads`, `cache_results`, `service_descriptions_config`,
+`tag_mappings_config`, `cost_thresholds` and `processing_timeout`.
+
+The CLI ignores all other keys without a message. This includes the
+`document_generation`, `branding` and `templates` keys in the examples below.
+To change the structure of a report, use a template file. See
+[Report templates](./report-templates.md).
+:::
+
 ### Basic BOM Configuration
 
 ```yaml

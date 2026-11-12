@@ -89,8 +89,10 @@ All example configuration files are available in the centralized assets director
 - [Account Configuration Example](/files/accounts-example.json)
 - [Service Descriptions Example](/files/service-descriptions-example.yaml)
 - [Tag Mappings Example](/files/tag-mappings-example.yaml)
-- [Excel Template](/files/default_excel_template.json)
-- [Word Template](/files/default_word_template.yaml)
+- [Default Excel report template](/files/default_excel_template.json)
+- [Default Word report template](/files/default_word_template.yaml)
+
+For the template keys, see [Report templates](../user-guides/report-templates.md).
 
 Copy these example files and modify them for your environment:
 
