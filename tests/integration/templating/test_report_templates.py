@@ -199,6 +199,10 @@ def aws(monkeypatch):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     monkeypatch.setenv("AWS_EC2_METADATA_DISABLED", "true")
     monkeypatch.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
+    from inventag.security.read_only_guard import uninstall_global_guard
+
+    # The CLI installs a process-wide read-only guard; seeding needs writes.
+    uninstall_global_guard()
     with moto.mock_aws():
         import boto3
 
@@ -221,6 +225,7 @@ def aws(monkeypatch):
                 Tagging={"TagSet": [{"Key": k, "Value": v} for k, v in tags.items()]},
             )
         yield
+    uninstall_global_guard()
 
 
 def run_inventag(monkeypatch, tmp_path, *argv):
