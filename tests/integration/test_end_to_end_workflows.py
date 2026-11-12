@@ -28,12 +28,6 @@ class TestEndToEndWorkflows:
     """Test complete end-to-end workflows"""
 
     @pytest.fixture
-    def temp_workspace(self):
-        """Create temporary workspace for testing"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            yield Path(temp_dir)
-
-    @pytest.fixture
     def sample_aws_resources(self) -> List[Dict[str, Any]]:
         """Sample AWS resources for end-to-end testing"""
         return [
@@ -129,7 +123,7 @@ class TestEndToEndWorkflows:
         result = subprocess.run(
             [
                 sys.executable,
-                "scripts/tag_compliance_checker.py",
+                "scripts/legacy/tag_compliance_checker.py",
                 "--input",
                 str(inventory_file),
                 "--config",
@@ -194,7 +188,9 @@ class TestEndToEndWorkflows:
                     "violations": ["Missing required tag: Role"],
                 }
             ],
-            "untagged_resources": [{**sample_aws_resources[3], "compliance_status": "untagged"}],
+            "untagged_resources": [
+                {**sample_aws_resources[3], "compliance_status": "untagged"}
+            ],
         }
 
         compliance_file = temp_workspace / "compliance_report.json"
@@ -207,7 +203,7 @@ class TestEndToEndWorkflows:
         result = subprocess.run(
             [
                 sys.executable,
-                "scripts/bom_converter.py",
+                "scripts/legacy/bom_converter.py",
                 "--input",
                 str(compliance_file),
                 "--output",
@@ -255,7 +251,7 @@ class TestEndToEndWorkflows:
         compliance_result = subprocess.run(
             [
                 sys.executable,
-                "scripts/tag_compliance_checker.py",
+                "scripts/legacy/tag_compliance_checker.py",
                 "--input",
                 str(inventory_file),
                 "--config",
@@ -279,7 +275,7 @@ class TestEndToEndWorkflows:
                 bom_result = subprocess.run(
                     [
                         sys.executable,
-                        "scripts/bom_converter.py",
+                        "scripts/legacy/bom_converter.py",
                         "--input",
                         str(compliance_report_file),
                         "--output",
@@ -299,7 +295,9 @@ class TestEndToEndWorkflows:
                     assert bom_file.stat().st_size > 0
 
                     # Verify workflow completed successfully
-                    assert "BOM report generated" in bom_result.stdout or bom_file.exists()
+                    assert (
+                        "BOM report generated" in bom_result.stdout or bom_file.exists()
+                    )
 
 
 class TestMultiFormatOutputValidation:
@@ -344,7 +342,7 @@ class TestMultiFormatOutputValidation:
         result = subprocess.run(
             [
                 sys.executable,
-                "scripts/tag_compliance_checker.py",
+                "scripts/legacy/tag_compliance_checker.py",
                 "--input",
                 str(input_file),
                 "--output",
@@ -381,7 +379,7 @@ class TestMultiFormatOutputValidation:
         result = subprocess.run(
             [
                 sys.executable,
-                "scripts/tag_compliance_checker.py",
+                "scripts/legacy/tag_compliance_checker.py",
                 "--input",
                 str(input_file),
                 "--output",
@@ -417,7 +415,7 @@ class TestMultiFormatOutputValidation:
         result = subprocess.run(
             [
                 sys.executable,
-                "scripts/bom_converter.py",
+                "scripts/legacy/bom_converter.py",
                 "--input",
                 str(input_file),
                 "--output",
@@ -449,7 +447,7 @@ class TestMultiFormatOutputValidation:
         result = subprocess.run(
             [
                 sys.executable,
-                "scripts/bom_converter.py",
+                "scripts/legacy/bom_converter.py",
                 "--input",
                 str(input_file),
                 "--output",
@@ -463,28 +461,20 @@ class TestMultiFormatOutputValidation:
             cwd=os.path.join(os.path.dirname(__file__), "..", ".."),
         )
 
-        if result.returncode == 0:
-            # Verify CSV file was created
-            assert output_file.exists()
-            assert output_file.stat().st_size > 0
+        assert result.returncode == 0, result.stderr
+        # Verify CSV file was created
+        assert output_file.exists()
+        assert output_file.stat().st_size > 0
 
-            # Verify CSV content
-            with open(output_file, "r") as f:
-                content = f.read()
-                # Should have CSV headers
-                assert "Service" in content
-                assert "Type" in content
-                assert "Region" in content
+        # Verify CSV content: the legacy converter writes the raw field names
+        with open(output_file, "r") as f:
+            header = f.readline().strip().split(",")
+            assert header[:3] == ["service", "type", "id"]
+            assert "region" in header
 
 
 class TestConfigurationFileValidation:
     """Test configuration file loading and validation"""
-
-    @pytest.fixture
-    def temp_workspace(self):
-        """Create temporary workspace for testing"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            yield Path(temp_dir)
 
     def test_yaml_config_loading(self, temp_workspace):
         """Test YAML configuration file loading"""
@@ -503,7 +493,7 @@ class TestConfigurationFileValidation:
         result = subprocess.run(
             [
                 sys.executable,
-                "scripts/tag_compliance_checker.py",
+                "scripts/legacy/tag_compliance_checker.py",
                 "--config",
                 str(config_file),
                 "--help",
@@ -534,7 +524,7 @@ class TestConfigurationFileValidation:
         result = subprocess.run(
             [
                 sys.executable,
-                "scripts/tag_compliance_checker.py",
+                "scripts/legacy/tag_compliance_checker.py",
                 "--config",
                 str(config_file),
                 "--help",
@@ -558,7 +548,7 @@ class TestConfigurationFileValidation:
         result = subprocess.run(
             [
                 sys.executable,
-                "scripts/tag_compliance_checker.py",
+                "scripts/legacy/tag_compliance_checker.py",
                 "--config",
                 str(invalid_config),
                 "--help",
@@ -580,7 +570,7 @@ class TestConfigurationFileValidation:
         result = subprocess.run(
             [
                 sys.executable,
-                "scripts/tag_compliance_checker.py",
+                "scripts/legacy/tag_compliance_checker.py",
                 "--config",
                 str(missing_config),
                 "--help",
@@ -592,7 +582,9 @@ class TestConfigurationFileValidation:
 
         # Should handle missing config gracefully
         if result.returncode != 0:
-            assert "not found" in result.stderr.lower() or "file" in result.stderr.lower()
+            assert (
+                "not found" in result.stderr.lower() or "file" in result.stderr.lower()
+            )
 
 
 class TestMockAWSEnvironment:
@@ -704,7 +696,9 @@ class TestMockAWSEnvironment:
             },
         ]
 
-    def test_comprehensive_service_coverage(self, temp_workspace, comprehensive_aws_resources):
+    def test_comprehensive_service_coverage(
+        self, temp_workspace, comprehensive_aws_resources
+    ):
         """Test comprehensive service coverage"""
         # Create inventory with multiple services
         inventory_file = temp_workspace / "comprehensive_inventory.json"
@@ -719,7 +713,7 @@ class TestMockAWSEnvironment:
         result = subprocess.run(
             [
                 sys.executable,
-                "scripts/bom_converter.py",
+                "scripts/legacy/bom_converter.py",
                 "--input",
                 str(inventory_file),
                 "--output",
@@ -739,18 +733,27 @@ class TestMockAWSEnvironment:
             assert bom_file.stat().st_size > 0
 
             # Verify processing message
-            assert "BOM report generated" in result.stdout or "resources processed" in result.stdout
+            assert (
+                "BOM report generated" in result.stdout
+                or "resources processed" in result.stdout
+            )
 
-    def test_service_specific_processing(self, temp_workspace, comprehensive_aws_resources):
+    def test_service_specific_processing(
+        self, temp_workspace, comprehensive_aws_resources
+    ):
         """Test service-specific processing logic"""
         # Filter resources by service
         services = set(resource["service"] for resource in comprehensive_aws_resources)
 
         for service in services:
-            service_resources = [r for r in comprehensive_aws_resources if r["service"] == service]
+            service_resources = [
+                r for r in comprehensive_aws_resources if r["service"] == service
+            ]
 
             # Create service-specific inventory
-            service_inventory_file = temp_workspace / f"{service.lower()}_inventory.json"
+            service_inventory_file = (
+                temp_workspace / f"{service.lower()}_inventory.json"
+            )
             service_inventory_data = {"all_discovered_resources": service_resources}
 
             with open(service_inventory_file, "w") as f:
@@ -762,7 +765,7 @@ class TestMockAWSEnvironment:
             result = subprocess.run(
                 [
                     sys.executable,
-                    "scripts/bom_converter.py",
+                    "scripts/legacy/bom_converter.py",
                     "--input",
                     str(service_inventory_file),
                     "--output",
@@ -776,14 +779,14 @@ class TestMockAWSEnvironment:
                 cwd=os.path.join(os.path.dirname(__file__), "..", ".."),
             )
 
-            if result.returncode == 0:
-                # Verify service-specific BOM was created
-                assert service_bom_file.exists()
+            assert result.returncode == 0, result.stderr
+            # Verify service-specific BOM was created
+            assert service_bom_file.exists()
 
-                # Verify CSV content contains service data
-                with open(service_bom_file, "r") as f:
-                    content = f.read()
-                    assert service in content
+            # Service names are normalised to upper case in the output
+            with open(service_bom_file, "r") as f:
+                content = f.read()
+                assert service.upper() in content
 
 
 class TestCICDPipelineIntegration:
@@ -819,7 +822,7 @@ class TestCICDPipelineIntegration:
         result = subprocess.run(
             [
                 sys.executable,
-                "scripts/bom_converter.py",
+                "scripts/legacy/bom_converter.py",
                 "--input",
                 str(sample_file),
                 "--output",
@@ -875,7 +878,7 @@ with open("{temp_workspace}/automated_input.json", "w") as f:
 
 # Run BOM converter
 result = subprocess.run([
-    sys.executable, "scripts/bom_converter.py",
+    sys.executable, "scripts/legacy/bom_converter.py",
     "--input", "{temp_workspace}/automated_input.json",
     "--output", "{temp_workspace}/automated_output.xlsx",
     "--no-vpc-enrichment"
@@ -893,7 +896,9 @@ if result.stderr:
             f.write(script_content)
 
         # Execute automated workflow
-        result = subprocess.run([sys.executable, str(batch_script)], capture_output=True, text=True)
+        result = subprocess.run(
+            [sys.executable, str(batch_script)], capture_output=True, text=True
+        )
 
         # Verify automated execution
         assert result.returncode == 0
@@ -959,7 +964,7 @@ class TestPerformanceBenchmarks:
         result = subprocess.run(
             [
                 sys.executable,
-                "scripts/bom_converter.py",
+                "scripts/legacy/bom_converter.py",
                 "--input",
                 str(inventory_file),
                 "--output",
@@ -1012,7 +1017,7 @@ class TestPerformanceBenchmarks:
         result = subprocess.run(
             [
                 sys.executable,
-                "scripts/bom_converter.py",
+                "scripts/legacy/bom_converter.py",
                 "--input",
                 str(inventory_file),
                 "--output",

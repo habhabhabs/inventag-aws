@@ -71,7 +71,7 @@ class TestBOMConverterScript:
         import subprocess
 
         result = subprocess.run(
-            [sys.executable, "scripts/bom_converter.py", "--help"],
+            [sys.executable, "scripts/legacy/bom_converter.py", "--help"],
             capture_output=True,
             text=True,
         )
@@ -110,7 +110,7 @@ class TestBOMConverterScript:
             result = subprocess.run(
                 [
                     sys.executable,
-                    "scripts/bom_converter.py",
+                    "scripts/legacy/bom_converter.py",
                     "--input",
                     input_filename,
                     "--output",

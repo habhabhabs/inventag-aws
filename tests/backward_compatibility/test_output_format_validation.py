@@ -11,6 +11,7 @@ Requirements: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6
 import pytest
 import sys
 import os
+import copy
 import json
 import yaml
 import tempfile
@@ -24,87 +25,89 @@ from unittest.mock import Mock, patch
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
+@pytest.fixture
+def reference_inventory_output() -> Dict[str, Any]:
+    """Reference inventory output format that must be preserved"""
+    return {
+        "all_discovered_resources": [
+            {
+                "service": "S3",
+                "type": "Bucket",
+                "region": "us-east-1",
+                "id": "example-bucket",
+                "name": "example-bucket",
+                "arn": "arn:aws:s3:::example-bucket",
+                "account_id": "123456789012",
+                "tags": {"Environment": "production", "Owner": "data-team"},
+                "discovered_via": "ResourceGroupsTaggingAPI",
+            },
+            {
+                "service": "EC2",
+                "type": "Instance",
+                "region": "us-east-1",
+                "id": "i-1234567890abcdef0",
+                "name": "web-server-01",
+                "arn": "arn:aws:ec2:us-east-1:123456789012:instance/i-1234567890abcdef0",
+                "account_id": "123456789012",
+                "tags": {
+                    "Name": "web-server-01",
+                    "Environment": "production",
+                    "Role": "webserver",
+                },
+                "discovered_via": "EC2API",
+            },
+        ]
+    }
+
+
+@pytest.fixture
+def reference_compliance_output() -> Dict[str, Any]:
+    """Reference compliance output format that must be preserved"""
+    return {
+        "summary": {
+            "total_resources": 2,
+            "compliant_resources": 1,
+            "non_compliant_resources": 1,
+            "untagged_resources": 0,
+            "compliance_percentage": 50.0,
+        },
+        "compliant_resources": [
+            {
+                "service": "EC2",
+                "type": "Instance",
+                "region": "us-east-1",
+                "id": "i-1234567890abcdef0",
+                "name": "web-server-01",
+                "arn": "arn:aws:ec2:us-east-1:123456789012:instance/i-1234567890abcdef0",
+                "account_id": "123456789012",
+                "tags": {
+                    "Name": "web-server-01",
+                    "Environment": "production",
+                    "Role": "webserver",
+                },
+                "compliance_status": "compliant",
+            }
+        ],
+        "non_compliant_resources": [
+            {
+                "service": "S3",
+                "type": "Bucket",
+                "region": "us-east-1",
+                "id": "example-bucket",
+                "name": "example-bucket",
+                "arn": "arn:aws:s3:::example-bucket",
+                "account_id": "123456789012",
+                "tags": {"Environment": "production", "Owner": "data-team"},
+                "compliance_status": "non_compliant",
+                "violations": ["Missing required tag: Role"],
+            }
+        ],
+        "untagged_resources": [],
+    }
+
+
 class TestOutputFormatValidation:
     """Test output format preservation and validation"""
-
-    @pytest.fixture
-    def reference_inventory_output(self) -> Dict[str, Any]:
-        """Reference inventory output format that must be preserved"""
-        return {
-            "all_discovered_resources": [
-                {
-                    "service": "S3",
-                    "type": "Bucket",
-                    "region": "us-east-1",
-                    "id": "example-bucket",
-                    "name": "example-bucket",
-                    "arn": "arn:aws:s3:::example-bucket",
-                    "account_id": "123456789012",
-                    "tags": {"Environment": "production", "Owner": "data-team"},
-                    "discovered_via": "ResourceGroupsTaggingAPI",
-                },
-                {
-                    "service": "EC2",
-                    "type": "Instance",
-                    "region": "us-east-1",
-                    "id": "i-1234567890abcdef0",
-                    "name": "web-server-01",
-                    "arn": "arn:aws:ec2:us-east-1:123456789012:instance/i-1234567890abcdef0",
-                    "account_id": "123456789012",
-                    "tags": {
-                        "Name": "web-server-01",
-                        "Environment": "production",
-                        "Role": "webserver",
-                    },
-                    "discovered_via": "EC2API",
-                },
-            ]
-        }
-
-    @pytest.fixture
-    def reference_compliance_output(self) -> Dict[str, Any]:
-        """Reference compliance output format that must be preserved"""
-        return {
-            "summary": {
-                "total_resources": 2,
-                "compliant_resources": 1,
-                "non_compliant_resources": 1,
-                "untagged_resources": 0,
-                "compliance_percentage": 50.0,
-            },
-            "compliant_resources": [
-                {
-                    "service": "EC2",
-                    "type": "Instance",
-                    "region": "us-east-1",
-                    "id": "i-1234567890abcdef0",
-                    "name": "web-server-01",
-                    "arn": "arn:aws:ec2:us-east-1:123456789012:instance/i-1234567890abcdef0",
-                    "account_id": "123456789012",
-                    "tags": {
-                        "Name": "web-server-01",
-                        "Environment": "production",
-                        "Role": "webserver",
-                    },
-                    "compliance_status": "compliant",
-                }
-            ],
-            "non_compliant_resources": [
-                {
-                    "service": "S3",
-                    "type": "Bucket",
-                    "region": "us-east-1",
-                    "id": "example-bucket",
-                    "name": "example-bucket",
-                    "arn": "arn:aws:s3:::example-bucket",
-                    "account_id": "123456789012",
-                    "tags": {"Environment": "production", "Owner": "data-team"},
-                    "compliance_status": "non_compliant",
-                    "violations": ["Missing required tag: Role"],
-                }
-            ],
-            "untagged_resources": [],
-        }
 
     def test_inventory_json_format_structure(self, reference_inventory_output):
         """Test that inventory JSON output maintains required structure"""
@@ -201,9 +204,9 @@ class TestOutputFormatValidation:
                 yaml_content = f.read()
 
             # Should be readable YAML format
-            assert "all_discovered_resources:" in yaml_content
-            assert "- service:" in yaml_content
-            assert "tags:" in yaml_content
+            assert yaml_content.startswith("all_discovered_resources:\n- ")
+            assert "  service: " in yaml_content
+            assert "  tags:" in yaml_content
 
         finally:
             os.unlink(yaml_file)
@@ -278,7 +281,9 @@ class TestOutputComparison:
                         normalized[key] = sorted(value, key=lambda x: x.get("id", ""))
                     else:
                         normalized[key] = (
-                            sorted(value) if all(isinstance(x, str) for x in value) else value
+                            sorted(value)
+                            if all(isinstance(x, str) for x in value)
+                            else value
                         )
                 elif isinstance(value, dict):
                     normalized[key] = self.normalize_json_output(value)
@@ -287,7 +292,9 @@ class TestOutputComparison:
             return normalized
         return data
 
-    def compare_json_outputs(self, output1: Dict[str, Any], output2: Dict[str, Any]) -> bool:
+    def compare_json_outputs(
+        self, output1: Dict[str, Any], output2: Dict[str, Any]
+    ) -> bool:
         """Compare two JSON outputs for structural equivalence"""
         norm1 = self.normalize_json_output(output1)
         norm2 = self.normalize_json_output(output2)
@@ -295,15 +302,15 @@ class TestOutputComparison:
 
     def test_json_output_comparison_identical(self, reference_inventory_output):
         """Test comparison of identical JSON outputs"""
-        output1 = reference_inventory_output.copy()
-        output2 = reference_inventory_output.copy()
+        output1 = copy.deepcopy(reference_inventory_output)
+        output2 = copy.deepcopy(reference_inventory_output)
 
         assert self.compare_json_outputs(output1, output2)
 
     def test_json_output_comparison_different(self, reference_inventory_output):
         """Test comparison of different JSON outputs"""
-        output1 = reference_inventory_output.copy()
-        output2 = reference_inventory_output.copy()
+        output1 = copy.deepcopy(reference_inventory_output)
+        output2 = copy.deepcopy(reference_inventory_output)
 
         # Modify output2
         output2["all_discovered_resources"][0]["service"] = "MODIFIED"
@@ -312,18 +319,22 @@ class TestOutputComparison:
 
     def test_json_output_comparison_reordered(self, reference_inventory_output):
         """Test comparison handles reordered resources"""
-        output1 = reference_inventory_output.copy()
-        output2 = reference_inventory_output.copy()
+        output1 = copy.deepcopy(reference_inventory_output)
+        output2 = copy.deepcopy(reference_inventory_output)
 
         # Reverse the order of resources
-        output2["all_discovered_resources"] = list(reversed(output2["all_discovered_resources"]))
+        output2["all_discovered_resources"] = list(
+            reversed(output2["all_discovered_resources"])
+        )
 
         # Should still be considered equal after normalization
         assert self.compare_json_outputs(output1, output2)
 
     def calculate_output_hash(self, data: Any) -> str:
         """Calculate hash of output for change detection"""
-        normalized = self.normalize_json_output(data) if isinstance(data, dict) else data
+        normalized = (
+            self.normalize_json_output(data) if isinstance(data, dict) else data
+        )
         json_str = json.dumps(normalized, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(json_str.encode()).hexdigest()
 
@@ -339,7 +350,7 @@ class TestOutputComparison:
         original_hash = self.calculate_output_hash(reference_inventory_output)
 
         # Modify data
-        modified_data = reference_inventory_output.copy()
+        modified_data = copy.deepcopy(reference_inventory_output)
         modified_data["all_discovered_resources"][0]["service"] = "MODIFIED"
         modified_hash = self.calculate_output_hash(modified_data)
 
@@ -349,9 +360,8 @@ class TestOutputComparison:
 class TestRegressionValidation:
     """Test regression validation for output formats"""
 
-    def create_reference_fixtures(self):
-        """Create reference fixtures for regression testing"""
-        fixtures_dir = Path(__file__).parent / "fixtures"
+    def create_reference_fixtures(self, fixtures_dir: Path):
+        """Create reference fixtures in fixtures_dir (never the tracked fixtures)."""
         fixtures_dir.mkdir(exist_ok=True)
 
         # Create reference inventory fixture
@@ -393,9 +403,9 @@ class TestRegressionValidation:
 
         return fixtures_dir
 
-    def test_create_reference_fixtures(self):
+    def test_create_reference_fixtures(self, tmp_path):
         """Test creation of reference fixtures"""
-        fixtures_dir = self.create_reference_fixtures()
+        fixtures_dir = self.create_reference_fixtures(tmp_path / "fixtures")
 
         # Verify fixtures were created
         assert (fixtures_dir / "reference_inventory.json").exists()
@@ -414,7 +424,9 @@ class TestRegressionValidation:
         assert "summary" in compliance_data
         assert compliance_data["summary"]["compliance_percentage"] == 100.0
 
-    def validate_against_fixtures(self, output_data: Dict[str, Any], fixture_name: str) -> bool:
+    def validate_against_fixtures(
+        self, output_data: Dict[str, Any], fixture_name: str
+    ) -> bool:
         """Validate output against reference fixtures"""
         fixtures_dir = Path(__file__).parent / "fixtures"
         fixture_file = fixtures_dir / f"{fixture_name}.json"
@@ -427,7 +439,9 @@ class TestRegressionValidation:
 
         return self.compare_json_outputs(output_data, reference_data)
 
-    def compare_json_outputs(self, output1: Dict[str, Any], output2: Dict[str, Any]) -> bool:
+    def compare_json_outputs(
+        self, output1: Dict[str, Any], output2: Dict[str, Any]
+    ) -> bool:
         """Compare two JSON outputs (reused from TestOutputComparison)"""
 
         def normalize(data):

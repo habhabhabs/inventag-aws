@@ -1,548 +1,288 @@
 #!/usr/bin/env python3
 """
-Comprehensive unit tests for Template Framework
+Unit tests for the document template framework (real API).
 
-Tests document template system, variable resolution, structure building,
-and template management with caching and validation.
+Covers template loading (YAML/JSON) and caching, validation, listing,
+save/load round-trips, variable resolution and formatting, document structure
+building and table-of-contents generation.
 """
 
-import pytest
-import os
-import tempfile
 import json
+
+import pytest
 import yaml
-from unittest.mock import Mock, patch, mock_open
-from pathlib import Path
 
 from inventag.reporting.template_framework import (
-    TemplateManager,
-    DocumentTemplate,
-    TemplateVariableResolver,
+    DocumentSection,
     DocumentStructureBuilder,
+    DocumentTemplate,
+    TableOfContentsConfig,
+    TemplateLoader,
+    TemplateManager,
+    TemplateVariable,
+    TemplateVariableResolver,
+    create_template_manager,
 )
+
+TEMPLATE_DATA = {
+    "name": "Test Template",
+    "format_type": "word",
+    "description": "unit test template",
+    "variables": {
+        "company_name": "Test Corp",
+        "document_title": {"value": None, "default_value": "BOM Report"},
+    },
+    "sections": [
+        {"id": "summary", "title": "Summary", "level": 1},
+        {
+            "id": "resources",
+            "title": "Resources",
+            "level": 1,
+            "content_type": "table",
+            "subsections": [
+                {"id": "ec2", "title": "EC2", "level": 2},
+                {
+                    "id": "hidden",
+                    "title": "Hidden",
+                    "level": 2,
+                    "include_in_toc": False,
+                },
+            ],
+        },
+    ],
+    "table_of_contents": {"enabled": True, "max_depth": 2},
+    "page_orientation": "landscape",
+}
+
+
+@pytest.fixture
+def manager(tmp_path):
+    (tmp_path / "test_template.yaml").write_text(yaml.safe_dump(TEMPLATE_DATA))
+    excel = dict(TEMPLATE_DATA, name="Excel Template", format_type="excel")
+    (tmp_path / "excel_template.json").write_text(json.dumps(excel))
+    (tmp_path / "notes.txt").write_text("not a template")
+    return TemplateManager(template_directory=str(tmp_path))
 
 
 class TestTemplateManager:
-    """Test cases for TemplateManager class."""
+    def test_init(self, tmp_path):
+        manager = TemplateManager(template_directory=str(tmp_path))
+        assert manager.template_directory == str(tmp_path)
+        assert manager._template_cache == {}
+        assert isinstance(manager.loader, TemplateLoader)
+        assert isinstance(manager.variable_resolver, TemplateVariableResolver)
+        assert TemplateManager().template_directory == "templates"
 
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.manager = TemplateManager(template_directory=self.temp_dir)
-
-    def test_init(self):
-        """Test TemplateManager initialization."""
-        assert self.manager.template_directory == self.temp_dir
-        assert hasattr(self.manager, "_template_cache")
-        assert self.manager._template_cache == {}
-        assert hasattr(self.manager, "loader")
-        assert hasattr(self.manager, "variable_resolver")
-
-    def test_load_template_yaml_success(self):
-        """Test successful YAML template loading."""
-        template_data = {
-            "name": "Test Template",
-            "format_type": "word",
-            "sections": ["header", "body", "footer"],
-            "variables": {"company_name": "Test Corp", "document_title": "BOM Report"},
-        }
-
-        yaml_content = yaml.dump(template_data)
-
-        with patch("builtins.open", mock_open(read_data=yaml_content)):
-            with patch("os.path.exists", return_value=True):
-                template = self.manager.load_template("test_template.yaml")
-
+    def test_load_template_yaml_success(self, manager):
+        template = manager.load_template("test_template")
         assert template.name == "Test Template"
         assert template.format_type == "word"
-        assert len(template.sections) == 3
-        assert template.variables["company_name"] == "Test Corp"
+        assert [s.id for s in template.sections] == ["summary", "resources"]
+        assert template.variables["company_name"].value == "Test Corp"
+        assert template.page_orientation == "landscape"
+        assert template.template_path.endswith("test_template.yaml")
 
-    def test_load_template_json_success(self):
-        """Test successful JSON template loading."""
-        template_data = {
-            "name": "Excel Template",
-            "format_type": "excel",
-            "sections": ["summary", "resources"],
-            "formatting_options": {
-                "highlight_non_compliant": True,
-                "color_scheme": "corporate",
-            },
-        }
-
-        json_content = json.dumps(template_data)
-
-        with patch("builtins.open", mock_open(read_data=json_content)):
-            with patch("os.path.exists", return_value=True):
-                template = self.manager.load_template("excel_template.json")
-
+    def test_load_template_json_success(self, manager):
+        template = manager.load_template("excel_template")
         assert template.name == "Excel Template"
         assert template.format_type == "excel"
-        assert template.formatting_options["highlight_non_compliant"] is True
 
-    def test_load_template_file_not_found(self):
-        """Test template loading when file doesn't exist."""
-        with patch("os.path.exists", return_value=False):
-            with pytest.raises(FileNotFoundError):
-                self.manager.load_template("nonexistent.yaml")
+    def test_load_template_is_cached(self, manager, tmp_path):
+        first = manager.load_template("test_template")
+        (tmp_path / "test_template.yaml").unlink()
+        assert manager.load_template("test_template") is first
 
-    def test_load_template_invalid_yaml(self):
-        """Test template loading with invalid YAML."""
-        invalid_yaml = "invalid: yaml: content: ["
+    def test_load_missing_template(self, manager):
+        with pytest.raises(FileNotFoundError):
+            manager.load_template("does_not_exist")
 
-        with patch("builtins.open", mock_open(read_data=invalid_yaml)):
-            with patch("os.path.exists", return_value=True):
-                with pytest.raises(Exception):  # YAML parsing error
-                    self.manager.load_template("invalid.yaml")
+    @pytest.mark.parametrize("name", ["../secret", "a/b", "..", "", "x\\y", "a\x00b"])
+    def test_template_name_cannot_escape_directory(self, manager, tmp_path, name):
+        (tmp_path.parent / "secret.yaml").write_text(yaml.safe_dump(TEMPLATE_DATA))
+        with pytest.raises(ValueError):
+            manager.load_template(name)
 
-    def test_load_template_invalid_json(self):
-        """Test template loading with invalid JSON."""
-        invalid_json = '{"invalid": json content'
+    def test_list_available_templates(self, manager):
+        assert manager.list_available_templates() == ["excel_template", "test_template"]
 
-        with patch("builtins.open", mock_open(read_data=invalid_json)):
-            with patch("os.path.exists", return_value=True):
-                with pytest.raises(Exception):  # JSON parsing error
-                    self.manager.load_template("invalid.json")
+    def test_list_available_templates_missing_dir(self, tmp_path):
+        assert TemplateManager(str(tmp_path / "nope")).list_available_templates() == []
 
-    def test_validate_template_success(self):
-        """Test successful template validation."""
-        valid_template_data = {
-            "name": "Valid Template",
-            "format_type": "word",
-            "sections": ["header", "body"],
-            "variables": {"title": "Test"},
+    def test_validate_template_success(self, manager):
+        assert manager.validate_template(manager.load_template("test_template")) == []
+
+    def test_validate_template_reports_problems(self, manager):
+        template = DocumentTemplate(
+            name="",
+            format_type="",
+            sections=[
+                DocumentSection(id="a", title="A"),
+                DocumentSection(id="a", title=""),
+                DocumentSection(id="", title="B"),
+            ],
+            variables={"v": TemplateVariable(name="", value=1)},
+        )
+        issues = manager.validate_template(template)
+        assert "Template name is required" in issues
+        assert "Template format_type is required" in issues
+        assert "Duplicate section ID: a" in issues
+        assert "Section a must have a title" in issues
+        assert "All sections must have an ID" in issues
+        assert "Variable v must have a name" in issues
+
+    def test_validate_template_requires_sections(self, manager):
+        issues = manager.validate_template(DocumentTemplate(name="x"))
+        assert "Template must have at least one section" in issues
+
+    @pytest.mark.parametrize("suffix", [".json", ".yaml"])
+    def test_save_and_reload_round_trip(self, manager, tmp_path, suffix):
+        original = manager.create_default_template("excel")
+        path = tmp_path / f"saved{suffix}"
+        manager.save_template(original, str(path))
+        reloaded = TemplateLoader().load_from_file(str(path))
+        assert reloaded.name == original.name
+        assert reloaded.format_type == "excel"
+        assert [s.id for s in reloaded.sections] == [s.id for s in original.sections]
+        assert reloaded.table_of_contents.max_depth == 3
+        assert reloaded.header_footer.header_text == original.header_footer.header_text
+        assert reloaded.branding.company_name == original.branding.company_name
+
+    def test_save_unsupported_format(self, manager, tmp_path):
+        with pytest.raises(ValueError):
+            manager.save_template(DocumentTemplate(name="x"), str(tmp_path / "t.txt"))
+
+    def test_create_default_template(self, manager):
+        template = manager.create_default_template("word")
+        assert template.name == "Default Word Template"
+        assert manager.validate_template(template) == []
+        assert {"title_page", "executive_summary", "compliance_details"} <= {
+            s.id for s in template.sections
         }
 
-        # Should not raise exception
-        self.manager._validate_template(valid_template_data)
-
-    def test_validate_template_missing_required_fields(self):
-        """Test template validation with missing required fields."""
-        # Missing 'name' field
-        invalid_template = {"format_type": "word", "sections": ["header"]}
-
-        # This test depends on the actual validation implementation
-        # For now, just check that validation exists
-        assert hasattr(self.manager, "_validate_template") or hasattr(
-            self.manager, "validate_template"
+    def test_factory(self, tmp_path):
+        assert create_template_manager(str(tmp_path)).template_directory == str(
+            tmp_path
         )
 
-    def test_validate_template_invalid_format_type(self):
-        """Test template validation with invalid format type."""
-        invalid_template = {
-            "name": "Test Template",
-            "format_type": "invalid_format",
-            "sections": ["header"],
-        }
 
-        # This test depends on the actual validation implementation
-        # For now, just check that validation exists
-        assert hasattr(self.manager, "_validate_template") or hasattr(
-            self.manager, "validate_template"
-        )
+class TestTemplateLoader:
+    def test_unsupported_extension(self, tmp_path):
+        path = tmp_path / "t.txt"
+        path.write_text("name: x")
+        with pytest.raises(ValueError):
+            TemplateLoader().load_from_file(str(path))
 
-    def test_get_template_with_caching(self):
-        """Test template retrieval with caching."""
-        template_data = {
-            "name": "Cached Template",
-            "format_type": "excel",
-            "sections": ["summary"],
-        }
+    def test_yaml_is_loaded_safely(self, tmp_path):
+        path = tmp_path / "evil.yaml"
+        path.write_text("name: !!python/object/apply:os.system ['echo pwned']\n")
+        with pytest.raises(yaml.YAMLError):
+            TemplateLoader().load_from_file(str(path))
 
-        yaml_content = yaml.dump(template_data)
+    def test_load_from_dict_defaults(self):
+        template = TemplateLoader().load_from_dict({})
+        assert template.name == "Untitled Template"
+        assert template.format_type == "word"
+        assert template.sections == []
+        assert template.page_size == "letter"
 
-        with patch("builtins.open", mock_open(read_data=yaml_content)):
-            with patch("os.path.exists", return_value=True):
-                # First call should load from file
-                template1 = self.manager.get_template("cached.yaml")
-
-                # Second call should use cache
-                template2 = self.manager.get_template("cached.yaml")
-
-        assert template1.name == "Cached Template"
-        assert template2.name == "Cached Template"
-        assert template1 is template2  # Should be same object from cache
-
-    def test_list_available_templates(self):
-        """Test listing available templates."""
-        template_files = [
-            "template1.yaml",
-            "template2.json",
-            "template3.yml",
-            "not_template.txt",
-        ]
-
-        with patch("os.listdir", return_value=template_files):
-            templates = self.manager.list_available_templates()
-
-        # Should only include template files
-        assert len(templates) == 3
-        assert "template1.yaml" in templates
-        assert "template2.json" in templates
-        assert "template3.yml" in templates
-        assert "not_template.txt" not in templates
-
-    def test_clear_cache(self):
-        """Test template cache clearing."""
-        # Add something to cache
-        self.manager.template_cache["test"] = Mock()
-        assert len(self.manager.template_cache) == 1
-
-        self.manager.clear_cache()
-        assert len(self.manager.template_cache) == 0
-
-    def test_reload_template(self):
-        """Test template reloading."""
-        template_data = {
-            "name": "Original Template",
-            "format_type": "word",
-            "sections": ["header"],
-        }
-
-        updated_data = {
-            "name": "Updated Template",
-            "format_type": "word",
-            "sections": ["header", "footer"],
-        }
-
-        yaml_content1 = yaml.dump(template_data)
-        yaml_content2 = yaml.dump(updated_data)
-
-        with patch("builtins.open", mock_open(read_data=yaml_content1)):
-            with patch("os.path.exists", return_value=True):
-                template1 = self.manager.get_template("test.yaml")
-
-        assert template1.name == "Original Template"
-        assert len(template1.sections) == 1
-
-        # Reload with updated content
-        with patch("builtins.open", mock_open(read_data=yaml_content2)):
-            with patch("os.path.exists", return_value=True):
-                template2 = self.manager.reload_template("test.yaml")
-
-        assert template2.name == "Updated Template"
-        assert len(template2.sections) == 2
+    def test_variables_parsed(self):
+        template = TemplateLoader().load_from_dict(TEMPLATE_DATA)
+        var = template.variables["document_title"]
+        assert var.value is None and var.default_value == "BOM Report"
 
 
 class TestDocumentTemplate:
-    """Test cases for DocumentTemplate class."""
-
-    def test_document_template_creation(self):
-        """Test DocumentTemplate creation."""
-        template = DocumentTemplate(
-            name="Test Template",
-            format_type="excel",
-            sections=["summary", "resources"],
-            variables={"company": "Test Corp"},
-            formatting_options={"theme": "corporate"},
-        )
-
-        assert template.name == "Test Template"
-        assert template.format_type == "excel"
-        assert len(template.sections) == 2
-        assert template.variables["company"] == "Test Corp"
-        assert template.formatting_options["theme"] == "corporate"
-
-    def test_document_template_defaults(self):
-        """Test DocumentTemplate with default values."""
-        template = DocumentTemplate(name="Minimal Template", format_type="word")
-
-        assert template.name == "Minimal Template"
+    def test_defaults(self):
+        template = DocumentTemplate(name="T")
         assert template.format_type == "word"
-        assert template.sections == []
-        assert template.variables == {}
-        assert template.formatting_options == {}
-        assert template.template_path is None
+        assert template.sections == [] and template.variables == {}
+        assert template.page_margins == {
+            "top": 1.0,
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0,
+        }
+        assert template.page_orientation == "portrait"
 
-    def test_get_section_config(self):
-        """Test getting section configuration."""
-        template = DocumentTemplate(
-            name="Test Template",
-            format_type="word",
-            sections=["header", "body", "footer"],
-            section_configs={
-                "header": {"include_logo": True, "height": "2cm"},
-                "body": {"font_size": 12},
-            },
-        )
-
-        header_config = template.get_section_config("header")
-        assert header_config["include_logo"] is True
-        assert header_config["height"] == "2cm"
-
-        body_config = template.get_section_config("body")
-        assert body_config["font_size"] == 12
-
-        # Non-existent section should return empty dict
-        footer_config = template.get_section_config("footer")
-        assert footer_config == {}
-
-    def test_has_section(self):
-        """Test section existence checking."""
-        template = DocumentTemplate(
-            name="Test Template", format_type="word", sections=["header", "body"]
-        )
-
-        assert template.has_section("header") is True
-        assert template.has_section("body") is True
-        assert template.has_section("footer") is False
-
-    def test_get_variable(self):
-        """Test variable retrieval with defaults."""
-        template = DocumentTemplate(
-            name="Test Template",
-            format_type="word",
-            variables={"company": "Test Corp", "version": "1.0"},
-        )
-
-        assert template.get_variable("company") == "Test Corp"
-        assert template.get_variable("version") == "1.0"
-        assert template.get_variable("nonexistent") is None
-        assert template.get_variable("nonexistent", "default") == "default"
+    def test_mutable_defaults_not_shared(self):
+        a, b = DocumentTemplate(name="a"), DocumentTemplate(name="b")
+        a.sections.append(DocumentSection(id="x", title="X"))
+        a.page_margins["top"] = 2.0
+        assert b.sections == [] and b.page_margins["top"] == 1.0
 
 
 class TestTemplateVariableResolver:
-    """Test cases for TemplateVariableResolver class."""
+    def test_builtins_template_and_context_precedence(self):
+        resolver = TemplateVariableResolver()
+        template = TemplateLoader().load_from_dict(TEMPLATE_DATA)
+        resolved = resolver.resolve_variables(template, {"company_name": "Override"})
+        assert {"current_date", "current_year", "generation_timestamp"} <= set(resolved)
+        assert resolved["company_name"] == "Override"
+        assert resolved["document_title"] == "BOM Report"  # default_value used
 
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.resolver = TemplateVariableResolver()
-
-    def test_resolve_variables_simple(self):
-        """Test simple variable resolution."""
-        template_text = "Company: {{company_name}}, Date: {{generation_date}}"
-        variables = {"company_name": "Test Corp", "generation_date": "2023-01-01"}
-
-        result = self.resolver.resolve_variables(template_text, variables)
-        assert result == "Company: Test Corp, Date: 2023-01-01"
-
-    def test_resolve_variables_nested(self):
-        """Test nested variable resolution."""
-        template_text = "{{header.title}} - {{header.subtitle}}"
-        variables = {"header": {"title": "BOM Report", "subtitle": "Infrastructure Inventory"}}
-
-        result = self.resolver.resolve_variables(template_text, variables)
-        assert result == "BOM Report - Infrastructure Inventory"
-
-    def test_resolve_variables_with_filters(self):
-        """Test variable resolution with filters."""
-        template_text = "{{company_name|upper}} - {{generation_date|date_format}}"
+    @pytest.mark.parametrize(
+        "text, expected",
+        [
+            ("Hello {{name}}", "Hello acme"),
+            ("{{name|upper}}", "ACME"),
+            ("{{name|title}}", "Acme"),
+            ("{{shout|lower}}", "loud"),
+            ("{{count|number:.2f}}", "3.14"),
+            ("{{when|date:%d/%m/%Y}}", "01/02/2026"),
+            ("{{missing}} stays", "{{missing}} stays"),
+            ("{{empty}}", ""),
+            ("", ""),
+        ],
+    )
+    def test_substitute_text(self, text, expected):
         variables = {
-            "company_name": "test corp",
-            "generation_date": "2023-01-01T12:00:00Z",
+            "name": "acme",
+            "shout": "LOUD",
+            "count": 3.14159,
+            "when": "2026-02-01T00:00:00Z",
+            "empty": None,
         }
+        assert TemplateVariableResolver().substitute_text(text, variables) == expected
 
-        # Mock filter functions
-        with patch.object(self.resolver, "_apply_filter") as mock_filter:
-            mock_filter.side_effect = lambda value, filter_name: {
-                ("test corp", "upper"): "TEST CORP",
-                ("2023-01-01T12:00:00Z", "date_format"): "01/01/2023",
-            }.get((value, filter_name), value)
-
-            result = self.resolver.resolve_variables(template_text, variables)
-
-        assert result == "TEST CORP - 01/01/2023"
-
-    def test_resolve_variables_missing_variable(self):
-        """Test variable resolution with missing variables."""
-        template_text = "Company: {{company_name}}, Missing: {{missing_var}}"
-        variables = {"company_name": "Test Corp"}
-
-        # Should handle missing variables gracefully
-        result = self.resolver.resolve_variables(template_text, variables)
-        assert "Test Corp" in result
-        assert "{{missing_var}}" in result  # Should leave unresolved
-
-    def test_apply_filter_upper(self):
-        """Test upper case filter."""
-        result = self.resolver._apply_filter("test string", "upper")
-        assert result == "TEST STRING"
-
-    def test_apply_filter_lower(self):
-        """Test lower case filter."""
-        result = self.resolver._apply_filter("TEST STRING", "lower")
-        assert result == "test string"
-
-    def test_apply_filter_date_format(self):
-        """Test date formatting filter."""
-        result = self.resolver._apply_filter("2023-01-01T12:00:00Z", "date_format")
-        assert "2023" in result
-        assert "01" in result
-
-    def test_apply_filter_unknown(self):
-        """Test unknown filter handling."""
-        result = self.resolver._apply_filter("test", "unknown_filter")
-        assert result == "test"  # Should return original value
-
-    def test_get_nested_value(self):
-        """Test nested value retrieval."""
-        data = {"level1": {"level2": {"value": "nested_value"}}}
-
-        result = self.resolver._get_nested_value(data, "level1.level2.value")
-        assert result == "nested_value"
-
-        # Test non-existent path
-        result = self.resolver._get_nested_value(data, "level1.nonexistent.value")
-        assert result is None
-
-    def test_resolve_conditional_blocks(self):
-        """Test conditional block resolution."""
-        template_text = """
-        {{#if show_summary}}
-        Summary section content
-        {{/if}}
-        {{#unless hide_details}}
-        Details section content
-        {{/unless}}
-        """
-
-        variables = {"show_summary": True, "hide_details": False}
-
-        result = self.resolver.resolve_variables(template_text, variables)
-
-        assert "Summary section content" in result
-        assert "Details section content" in result
-
-    def test_resolve_loop_blocks(self):
-        """Test loop block resolution."""
-        template_text = """
-        {{#each resources}}
-        Resource: {{name}} ({{type}})
-        {{/each}}
-        """
-
-        variables = {
-            "resources": [
-                {"name": "instance-1", "type": "EC2"},
-                {"name": "bucket-1", "type": "S3"},
-            ]
-        }
-
-        result = self.resolver.resolve_variables(template_text, variables)
-
-        assert "Resource: instance-1 (EC2)" in result
-        assert "Resource: bucket-1 (S3)" in result
+    def test_bad_format_falls_back_to_plain_value(self):
+        assert (
+            TemplateVariableResolver().substitute_text("{{x|number:.2f}}", {"x": "abc"})
+            == "abc"
+        )
 
 
 class TestDocumentStructureBuilder:
-    """Test cases for DocumentStructureBuilder class."""
+    def test_build_structure_copies_sections(self):
+        template = TemplateLoader().load_from_dict(TEMPLATE_DATA)
+        structure = DocumentStructureBuilder().build_structure(template)
+        assert [s.id for s in structure] == ["summary", "resources"]
+        assert [s.id for s in structure[1].subsections] == ["ec2", "hidden"]
+        structure[0].variables["changed"] = True
+        assert "changed" not in template.sections[0].variables
 
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.builder = DocumentStructureBuilder()
-
-    def test_build_document_structure(self):
-        """Test document structure building."""
-        template = DocumentTemplate(
-            name="Test Template",
-            format_type="word",
-            sections=["header", "summary", "resources", "footer"],
+    def test_table_of_contents(self):
+        template = TemplateLoader().load_from_dict(TEMPLATE_DATA)
+        builder = DocumentStructureBuilder()
+        toc = builder.generate_table_of_contents(
+            template.sections, template.table_of_contents
         )
-
-        bom_data = Mock()
-        bom_data.resources = [{"id": "i-12345", "service": "EC2"}]
-        bom_data.summary = {"total_resources": 1}
-
-        structure = self.builder.build_document_structure(template, bom_data)
-
-        assert "sections" in structure
-        assert len(structure["sections"]) == 4
-        assert structure["sections"][0]["name"] == "header"
-        assert structure["sections"][1]["name"] == "summary"
-
-    def test_build_section_header(self):
-        """Test header section building."""
-        template = DocumentTemplate(
-            name="Test Template",
-            format_type="word",
-            variables={"company_name": "Test Corp", "document_title": "BOM Report"},
-        )
-
-        section = self.builder._build_section("header", template, Mock())
-
-        assert section["name"] == "header"
-        assert section["type"] == "header"
-        assert "content" in section
-
-    def test_build_section_summary(self):
-        """Test summary section building."""
-        template = DocumentTemplate(name="Test Template", format_type="word")
-
-        bom_data = Mock()
-        bom_data.summary = {
-            "total_resources": 100,
-            "compliant_resources": 80,
-            "non_compliant_resources": 20,
-        }
-
-        section = self.builder._build_section("summary", template, bom_data)
-
-        assert section["name"] == "summary"
-        assert section["type"] == "summary"
-        assert section["data"]["total_resources"] == 100
-
-    def test_build_section_resources(self):
-        """Test resources section building."""
-        template = DocumentTemplate(name="Test Template", format_type="word")
-
-        bom_data = Mock()
-        bom_data.resources = [
-            {"id": "i-12345", "service": "EC2", "type": "Instance"},
-            {"id": "bucket-1", "service": "S3", "type": "Bucket"},
+        assert [(e["id"], e["level"]) for e in toc] == [
+            ("summary", 1),
+            ("resources", 1),
+            ("ec2", 2),
         ]
 
-        section = self.builder._build_section("resources", template, bom_data)
-
-        assert section["name"] == "resources"
-        assert section["type"] == "resources"
-        assert len(section["data"]["resources"]) == 2
-
-    def test_build_section_custom(self):
-        """Test custom section building."""
-        template = DocumentTemplate(
-            name="Test Template",
-            format_type="word",
-            section_configs={
-                "custom_section": {"title": "Custom Analysis", "include_charts": True}
-            },
+    def test_table_of_contents_depth_and_disabled(self):
+        template = TemplateLoader().load_from_dict(TEMPLATE_DATA)
+        builder = DocumentStructureBuilder()
+        shallow = builder.generate_table_of_contents(
+            template.sections, TableOfContentsConfig(max_depth=1)
         )
-
-        section = self.builder._build_section("custom_section", template, Mock())
-
-        assert section["name"] == "custom_section"
-        assert section["type"] == "custom"
-        assert section["config"]["title"] == "Custom Analysis"
-
-    def test_generate_table_of_contents(self):
-        """Test table of contents generation."""
-        sections = [
-            {"name": "header", "title": "Header"},
-            {"name": "summary", "title": "Executive Summary"},
-            {"name": "resources", "title": "Resource Inventory"},
-            {"name": "footer", "title": "Footer"},
-        ]
-
-        toc = self.builder._generate_table_of_contents(sections)
-
-        assert len(toc) == 2  # Should exclude header and footer
-        assert toc[0]["title"] == "Executive Summary"
-        assert toc[1]["title"] == "Resource Inventory"
-
-    def test_apply_section_formatting(self):
-        """Test section formatting application."""
-        section = {"name": "summary", "content": "Test content", "data": {"total": 100}}
-
-        template = DocumentTemplate(
-            name="Test Template",
-            format_type="word",
-            formatting_options={"font_size": 12, "highlight_totals": True},
+        assert [e["id"] for e in shallow] == ["summary", "resources"]
+        assert (
+            builder.generate_table_of_contents(
+                template.sections, TableOfContentsConfig(enabled=False)
+            )
+            == []
         )
-
-        formatted_section = self.builder._apply_section_formatting(section, template)
-
-        assert formatted_section["formatting"]["font_size"] == 12
-        assert formatted_section["formatting"]["highlight_totals"] is True
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])
+        assert builder.generate_table_of_contents(template.sections, None) == []

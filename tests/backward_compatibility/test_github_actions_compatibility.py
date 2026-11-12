@@ -22,6 +22,11 @@ from typing import Dict, List, Any, Optional
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
+def _triggers(workflow_config):
+    """Workflow triggers. PyYAML (YAML 1.1) parses a bare `on:` key as True."""
+    return workflow_config.get("on", workflow_config.get(True))
+
+
 class TestGitHubActionsCompatibility:
     """Test GitHub Actions workflow compatibility"""
 
@@ -52,7 +57,7 @@ class TestGitHubActionsCompatibility:
 
         # Validate basic structure
         assert "name" in ci_config
-        assert "on" in ci_config
+        assert _triggers(ci_config)
         assert "jobs" in ci_config
 
         # Validate required jobs
@@ -80,8 +85,7 @@ class TestGitHubActionsCompatibility:
 
         # Validate basic structure
         assert "name" in pr_config
-        assert "on" in pr_config
-        assert "pull_request" in pr_config["on"]
+        assert "pull_request" in _triggers(pr_config)
         assert "jobs" in pr_config
 
         # Validate required jobs
@@ -98,7 +102,7 @@ class TestGitHubActionsCompatibility:
 
         # Validate basic structure
         assert "name" in release_config
-        assert "on" in release_config
+        assert _triggers(release_config)
         assert "jobs" in release_config
 
         # Validate required jobs
@@ -117,16 +121,25 @@ class TestGitHubActionsCompatibility:
                 if not match:
                     continue
                 ref, comment = match.group(2), match.group(3)
-                assert re.fullmatch(r"[0-9a-f]{40}", ref), f"{workflow.name}: {line.strip()}"
-                assert re.search(r"#\s*v\d+", comment), f"{workflow.name}: {line.strip()}"
+                assert re.fullmatch(
+                    r"[0-9a-f]{40}", ref
+                ), f"{workflow.name}: {line.strip()}"
+                assert re.search(
+                    r"#\s*v\d+", comment
+                ), f"{workflow.name}: {line.strip()}"
 
     def test_no_untrusted_checkout_in_pull_request_target(self, workflows_dir):
         """pull_request_target runs with the base repo's token: never run PR code there."""
         for workflow in sorted(workflows_dir.glob("*.yml")):
             content = workflow.read_text()
             if "pull_request_target" in content:
-                assert "github.event.pull_request.head.sha" not in content, workflow.name
-                assert "github.event.pull_request.head.ref }}" not in content.split("env:")[0]
+                assert (
+                    "github.event.pull_request.head.sha" not in content
+                ), workflow.name
+                assert (
+                    "github.event.pull_request.head.ref }}"
+                    not in content.split("env:")[0]
+                )
                 assert "actions/checkout" not in content, workflow.name
 
 
@@ -194,9 +207,9 @@ class TestCIJobCompatibility:
     def test_script_help_commands_work(self):
         """Test that all script help commands work (CI requirement)"""
         scripts = [
-            "scripts/aws_resource_inventory.py",
-            "scripts/tag_compliance_checker.py",
-            "scripts/bom_converter.py",
+            "scripts/legacy/aws_resource_inventory.py",
+            "scripts/legacy/tag_compliance_checker.py",
+            "scripts/legacy/bom_converter.py",
         ]
 
         for script in scripts:
@@ -240,7 +253,7 @@ class TestCIJobCompatibility:
             result = subprocess.run(
                 [
                     sys.executable,
-                    "scripts/bom_converter.py",
+                    "scripts/legacy/bom_converter.py",
                     "--input",
                     input_file,
                     "--output",
@@ -295,7 +308,10 @@ class TestSecurityScanCompatibility:
         # Safety should run without critical errors
         if result.returncode != 0:
             # Should show it's not installed or produce valid output
-            assert "No module named" in result.stderr or "vulnerabilities" in result.stdout.lower()
+            assert (
+                "No module named" in result.stderr
+                or "vulnerabilities" in result.stdout.lower()
+            )
 
 
 class TestDependencyCompatibility:
@@ -322,11 +338,15 @@ class TestDependencyCompatibility:
             # Basic validation - should not have spaces in package names (except for version specs)
             if "==" in line or ">=" in line or "<=" in line:
                 package_name = line.split("==")[0].split(">=")[0].split("<=")[0]
-                assert " " not in package_name.strip(), f"Invalid package name: {package_name}"
+                assert (
+                    " " not in package_name.strip()
+                ), f"Invalid package name: {package_name}"
 
     def test_dev_requirements_compatibility(self):
         """Test dev requirements compatibility"""
-        dev_requirements_file = Path(__file__).parent.parent.parent / "requirements-dev.txt"
+        dev_requirements_file = (
+            Path(__file__).parent.parent.parent / "requirements-dev.txt"
+        )
 
         if dev_requirements_file.exists():
             with open(dev_requirements_file, "r") as f:
@@ -355,7 +375,10 @@ class TestDependencyCompatibility:
         # Should not have dependency resolution errors
         if result.returncode != 0:
             # Allow for network issues but not dependency conflicts
-            assert "conflict" not in result.stderr.lower() or "network" in result.stderr.lower()
+            assert (
+                "conflict" not in result.stderr.lower()
+                or "network" in result.stderr.lower()
+            )
 
 
 class TestVersionCompatibility:

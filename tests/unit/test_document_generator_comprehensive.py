@@ -21,336 +21,191 @@ from inventag.reporting.document_generator import (
     DocumentTemplate,
     DocumentGenerationResult,
     DocumentGenerationSummary,
+    DocumentGenerationError,
+    DocumentValidationError,
 )
 from inventag.reporting.bom_processor import BOMData
 
 
-class TestDocumentGenerator:
-    """Test cases for DocumentGenerator class."""
+def _bom_data(resources=None):
+    return BOMData(
+        resources=(
+            resources
+            if resources is not None
+            else [
+                {
+                    "id": "i-12345",
+                    "service": "EC2",
+                    "type": "Instance",
+                    "region": "us-east-1",
+                    "tags": {"Name": "test-instance"},
+                }
+            ]
+        ),
+        network_analysis={},
+        security_analysis={},
+        compliance_summary={},
+        generation_metadata={"timestamp": "2026-01-01T12:00:00Z", "total_resources": 1},
+    )
 
-    def setup_method(self):
-        """Set up test fixtures."""
+
+class TestDocumentGenerator:
+    """Test cases for DocumentGenerator (real builders, real files)."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, tmp_path):
+        self.output_dir = tmp_path / "out"
         self.config = DocumentConfig(
-            output_formats=["excel", "word"], output_directory=tempfile.mkdtemp()
+            output_formats=["excel", "word"], output_directory=str(self.output_dir)
         )
         self.generator = DocumentGenerator(self.config)
 
-        # Create mock BOM data
-        self.mock_bom_data = Mock(spec=BOMData)
-        self.mock_bom_data.resources = [
-            {
-                "id": "i-12345",
-                "service": "EC2",
-                "type": "Instance",
-                "region": "us-east-1",
-                "tags": {"Name": "test-instance"},
-            }
-        ]
-        self.mock_bom_data.generation_metadata = {
-            "timestamp": datetime.now().isoformat(),
-            "total_resources": 1,
-        }
-
     def test_init(self):
-        """Test DocumentGenerator initialization."""
         assert self.generator.config == self.config
-        assert hasattr(self.generator, "builders")
-        assert isinstance(self.generator.builders, dict)
+        assert set(self.generator.builders) == {"csv", "excel", "word"}
         assert hasattr(self.generator, "_lock")
 
     def test_validate_document_structure_valid(self):
-        """Test document structure validation with valid data."""
-        valid_data = Mock(spec=BOMData)
-        valid_data.resources = [{"id": "test", "service": "EC2"}]
-        valid_data.generation_metadata = {"timestamp": "2023-01-01T12:00:00Z"}
+        # Does not raise for well-formed data
+        self.generator._validate_document_structure(_bom_data())
 
-        result = self.generator.validate_document_structure(valid_data)
-        assert result is True
+    @pytest.mark.parametrize(
+        "mutate, message",
+        [
+            (lambda d: setattr(d, "resources", []), "No resources"),
+            (lambda d: setattr(d, "resources", ["not-a-dict"]), "not a dictionary"),
+            (lambda d: setattr(d, "generation_metadata", "x"), "metadata must be"),
+            (lambda d: setattr(d, "network_analysis", ["x"]), "Network analysis"),
+            (lambda d: setattr(d, "security_analysis", ["x"]), "Security analysis"),
+        ],
+    )
+    def test_validate_document_structure_invalid(self, mutate, message):
+        data = _bom_data()
+        mutate(data)
+        with pytest.raises(DocumentValidationError, match=message):
+            self.generator._validate_document_structure(data)
 
-    def test_validate_document_structure_invalid(self):
-        """Test document structure validation with invalid data."""
-        # Test with None data
-        result = self.generator.validate_document_structure(None)
-        assert result is False
+    def test_get_file_extension(self):
+        ext = self.generator._get_file_extension
+        assert (ext("excel"), ext("word"), ext("csv"), ext("json")) == (
+            "xlsx",
+            "docx",
+            "csv",
+            "json",
+        )
+        assert ext("custom") == "custom"
 
-        # Test with missing resources
-        invalid_data = Mock(spec=BOMData)
-        invalid_data.resources = None
-        invalid_data.generation_metadata = {"timestamp": "2023-01-01T12:00:00Z"}
+    def test_apply_branding_delegates_to_builder(self):
+        builder = Mock()
+        builder.apply_branding.return_value = "branded"
+        self.generator.builders["excel"] = builder
+        assert self.generator.apply_branding("doc", "excel") == "branded"
+        builder.apply_branding.assert_called_once_with("doc")
+        assert self.generator.apply_branding("doc", "nope") == "doc"
+        builder.apply_branding.side_effect = RuntimeError("boom")
+        assert self.generator.apply_branding("doc", "excel") == "doc"
 
-        result = self.generator.validate_document_structure(invalid_data)
-        assert result is False
+    @pytest.mark.parametrize(
+        "fmt, ext", [("excel", "xlsx"), ("word", "docx"), ("csv", "csv")]
+    )
+    def test_generate_single_document_writes_private_file(self, fmt, ext):
+        self.output_dir.mkdir()
+        result = self.generator._generate_single_document(_bom_data(), fmt)
+        assert result.success, result.error_message
+        assert result.format_type == fmt
+        files = list(self.output_dir.glob(f"bom_report_*.{ext}"))
+        assert len(files) == 1
+        assert result.file_size_bytes == files[0].stat().st_size > 0
+        if os.name == "posix":
+            assert files[0].stat().st_mode & 0o777 == 0o600
 
-        # Test with empty resources
-        invalid_data.resources = []
-        result = self.generator.validate_document_structure(invalid_data)
-        assert result is False
-
-    def test_generate_filename(self):
-        """Test filename generation."""
-        timestamp = datetime.now()
-
-        # Test default template
-        filename = self.generator._generate_filename("excel", timestamp)
-        assert filename.startswith("bom_report_")
-        assert filename.endswith(".xlsx")
-
-        # Test custom template
-        custom_config = DocumentConfig(filename_template="custom_{timestamp}")
-        custom_generator = DocumentGenerator(custom_config)
-        filename = custom_generator._generate_filename("word", timestamp)
-        assert filename.startswith("custom_")
-        assert filename.endswith(".docx")
-
-    def test_get_format_extension(self):
-        """Test format extension mapping."""
-        assert self.generator._get_format_extension("excel") == ".xlsx"
-        assert self.generator._get_format_extension("word") == ".docx"
-        assert self.generator._get_format_extension("csv") == ".csv"
-        assert self.generator._get_format_extension("unknown") == ".txt"
-
-    def test_apply_branding(self):
-        """Test branding application."""
-        mock_document = Mock()
-
-        # Test Excel branding
-        with patch.object(self.generator.excel_branding_applicator, "apply_branding") as mock_apply:
-            self.generator.apply_branding(mock_document, "excel")
-            mock_apply.assert_called_once_with(mock_document, self.config.branding)
-
-        # Test Word branding
-        with patch.object(self.generator.word_branding_applicator, "apply_branding") as mock_apply:
-            self.generator.apply_branding(mock_document, "word")
-            mock_apply.assert_called_once_with(mock_document, self.config.branding)
-
-    def test_generate_single_format_excel_success(self):
-        """Test successful single format generation for Excel."""
-        mock_workbook = Mock()
-        mock_workbook.save = Mock()
-
-        with patch.object(
-            self.generator.excel_builder,
-            "create_bom_workbook",
-            return_value=mock_workbook,
-        ):
-            with patch.object(self.generator, "apply_branding"):
-                with patch("os.path.getsize", return_value=1024):
-                    result = self.generator._generate_single_format("excel", self.mock_bom_data)
-
-        assert result.success is True
-        assert result.format_type == "excel"
-        assert result.filename.endswith(".xlsx")
-        assert result.file_size_bytes == 1024
-        assert result.error_message is None
-
-    def test_generate_single_format_word_success(self):
-        """Test successful single format generation for Word."""
-        mock_document = Mock()
-        mock_document.save = Mock()
-
-        with patch.object(
-            self.generator.word_builder,
-            "create_bom_document",
-            return_value=mock_document,
-        ):
-            with patch.object(self.generator, "apply_branding"):
-                with patch("os.path.getsize", return_value=2048):
-                    result = self.generator._generate_single_format("word", self.mock_bom_data)
-
-        assert result.success is True
-        assert result.format_type == "word"
-        assert result.filename.endswith(".docx")
-        assert result.file_size_bytes == 2048
-
-    def test_generate_single_format_csv_success(self):
-        """Test successful single format generation for CSV."""
-        with patch.object(self.generator.csv_builder, "create_bom_csv", return_value="test.csv"):
-            with patch("os.path.getsize", return_value=512):
-                result = self.generator._generate_single_format("csv", self.mock_bom_data)
-
-        assert result.success is True
-        assert result.format_type == "csv"
-        assert result.filename.endswith(".csv")
-        assert result.file_size_bytes == 512
-
-    def test_generate_single_format_failure(self):
-        """Test single format generation failure."""
-        with patch.object(
-            self.generator.excel_builder,
-            "create_bom_workbook",
-            side_effect=Exception("Test error"),
-        ):
-            result = self.generator._generate_single_format("excel", self.mock_bom_data)
-
+    def test_generate_single_document_builder_failure(self):
+        builder = Mock()
+        builder.generate_document.side_effect = RuntimeError("disk full")
+        self.generator.builders["excel"] = builder
+        result = self.generator._generate_single_document(_bom_data(), "excel")
         assert result.success is False
-        assert result.format_type == "excel"
-        assert "Test error" in result.error_message
+        assert "disk full" in result.error_message
 
-    def test_generate_single_format_unsupported(self):
-        """Test single format generation with unsupported format."""
-        result = self.generator._generate_single_format("unsupported", self.mock_bom_data)
-
+    def test_generate_single_document_unsupported(self):
+        result = self.generator._generate_single_document(_bom_data(), "pdf")
         assert result.success is False
-        assert result.format_type == "unsupported"
-        assert "Unsupported format" in result.error_message
+        assert "No builder available for format: pdf" in result.error_message
 
     def test_generate_bom_documents_sequential(self):
-        """Test BOM document generation in sequential mode."""
-        config = DocumentConfig(output_formats=["excel", "word"], enable_parallel_generation=False)
-        generator = DocumentGenerator(config)
-
-        with patch.object(generator, "_generate_single_format") as mock_generate:
-            mock_generate.side_effect = [
-                DocumentGenerationResult("excel", "test.xlsx", True),
-                DocumentGenerationResult("word", "test.docx", True),
-            ]
-
-            summary = generator.generate_bom_documents(self.mock_bom_data)
-
-        assert summary.total_formats == 2
-        assert summary.successful_formats == 2
-        assert summary.failed_formats == 0
-        assert len(summary.results) == 2
-        assert mock_generate.call_count == 2
+        self.config.enable_parallel_generation = False
+        summary = self.generator.generate_bom_documents(_bom_data(), ["csv", "excel"])
+        assert (summary.total_formats, summary.successful_formats) == (2, 2)
+        assert summary.failed_formats == 0 and summary.errors == []
+        if os.name == "posix":
+            assert self.output_dir.stat().st_mode & 0o777 == 0o700
 
     def test_generate_bom_documents_parallel(self):
-        """Test BOM document generation in parallel mode."""
-        config = DocumentConfig(
-            output_formats=["excel", "word", "csv"], enable_parallel_generation=True
+        summary = self.generator.generate_bom_documents(
+            _bom_data(), ["csv", "excel", "word"]
         )
-        generator = DocumentGenerator(config)
-
-        with patch.object(generator, "_generate_single_format") as mock_generate:
-            mock_generate.side_effect = [
-                DocumentGenerationResult("excel", "test.xlsx", True),
-                DocumentGenerationResult("word", "test.docx", True),
-                DocumentGenerationResult("csv", "test.csv", True),
-            ]
-
-            summary = generator.generate_bom_documents(self.mock_bom_data)
-
-        assert summary.total_formats == 3
         assert summary.successful_formats == 3
-        assert summary.failed_formats == 0
-        assert mock_generate.call_count == 3
-
-    def test_generate_bom_documents_with_failures(self):
-        """Test BOM document generation with some failures."""
-        with patch.object(self.generator, "_generate_single_format") as mock_generate:
-            mock_generate.side_effect = [
-                DocumentGenerationResult("excel", "test.xlsx", True),
-                DocumentGenerationResult("word", "", False, error_message="Word generation failed"),
-            ]
-
-            summary = self.generator.generate_bom_documents(self.mock_bom_data)
-
-        assert summary.total_formats == 2
-        assert summary.successful_formats == 1
-        assert summary.failed_formats == 1
-        assert len(summary.errors) == 1
-        assert "Word generation failed" in summary.errors[0]
-
-    def test_generate_bom_documents_validation_failure(self):
-        """Test BOM document generation with validation failure."""
-        invalid_data = Mock(spec=BOMData)
-        invalid_data.resources = None
-
-        with patch.object(self.generator, "validate_document_structure", return_value=False):
-            summary = self.generator.generate_bom_documents(invalid_data)
-
-        assert summary.total_formats == 0
-        assert summary.successful_formats == 0
-        assert summary.failed_formats == 0
-        assert len(summary.errors) == 1
-        assert "validation failed" in summary.errors[0].lower()
-
-    def test_generate_bom_documents_timeout(self):
-        """Test BOM document generation with timeout."""
-        config = DocumentConfig(
-            output_formats=["excel"], generation_timeout=1  # Very short timeout
-        )
-        generator = DocumentGenerator(config)
-
-        def slow_generation(format_type, bom_data):
-            import time
-
-            time.sleep(2)  # Longer than timeout
-            return DocumentGenerationResult(format_type, "test.xlsx", True)
-
-        with patch.object(generator, "_generate_single_format", side_effect=slow_generation):
-            summary = generator.generate_bom_documents(self.mock_bom_data)
-
-        # Should handle timeout gracefully
-        assert summary.total_formats == 1
-        assert summary.failed_formats >= 0  # May or may not complete depending on timing
-
-    def test_create_generation_summary(self):
-        """Test generation summary creation."""
-        results = [
-            DocumentGenerationResult(
-                "excel",
-                "test.xlsx",
-                True,
-                file_size_bytes=1024,
-                generation_time_seconds=1.5,
-            ),
-            DocumentGenerationResult(
-                "word",
-                "test.docx",
-                True,
-                file_size_bytes=2048,
-                generation_time_seconds=2.0,
-            ),
-            DocumentGenerationResult(
-                "csv",
-                "",
-                False,
-                error_message="CSV failed",
-                generation_time_seconds=0.5,
-            ),
+        assert sorted(r.format_type for r in summary.results) == [
+            "csv",
+            "excel",
+            "word",
         ]
 
-        summary = self.generator._create_generation_summary(results)
+    def test_generate_bom_documents_with_failures(self):
+        summary = self.generator.generate_bom_documents(_bom_data(), ["csv", "pdf"])
+        assert (summary.successful_formats, summary.failed_formats) == (1, 1)
+        assert any(e.startswith("pdf:") for e in summary.errors)
 
-        assert summary.total_formats == 3
-        assert summary.successful_formats == 2
-        assert summary.failed_formats == 1
-        assert summary.total_generation_time == 4.0
-        assert len(summary.results) == 3
-        assert len(summary.errors) == 1
-        assert "CSV failed" in summary.errors[0]
+    def test_generate_bom_documents_validation_failure(self):
+        with pytest.raises(DocumentGenerationError, match="No resources"):
+            self.generator.generate_bom_documents(_bom_data(resources=[]), ["csv"])
 
-    def test_cleanup_failed_files(self):
-        """Test cleanup of failed generation files."""
-        # Create temporary files
-        temp_dir = tempfile.mkdtemp()
-        test_file1 = os.path.join(temp_dir, "test1.xlsx")
-        test_file2 = os.path.join(temp_dir, "test2.docx")
+    def test_generate_bom_documents_without_validation(self):
+        self.config.validate_before_generation = False
+        summary = self.generator.generate_bom_documents(
+            _bom_data(resources=[]), ["csv"]
+        )
+        assert summary.total_formats == 1
 
-        # Create the files
-        with open(test_file1, "w") as f:
-            f.write("test")
-        with open(test_file2, "w") as f:
-            f.write("test")
+    def test_available_formats_and_capabilities(self):
+        assert sorted(self.generator.get_available_formats()) == [
+            "csv",
+            "excel",
+            "word",
+        ]
+        caps = self.generator.get_format_capabilities()
+        assert caps["excel"]["dependencies_met"] is True
+        assert self.generator.validate_format_dependencies("pdf") == [
+            "No builder available for format: pdf"
+        ]
 
-        assert os.path.exists(test_file1)
-        assert os.path.exists(test_file2)
+    def test_load_template(self, tmp_path):
+        path = tmp_path / "t.yaml"
+        path.write_text("name: Corp\nsections: [summary]\nformatting_options: {x: 1}\n")
+        template = self.generator.load_template(str(path), "excel")
+        assert (template.name, template.sections, template.formatting_options) == (
+            "Corp",
+            ["summary"],
+            {"x": 1},
+        )
+        assert self.generator.load_template(str(tmp_path / "t.txt"), "excel") is None
 
-        # Test cleanup
-        self.generator._cleanup_failed_files([test_file1, test_file2])
-
-        assert not os.path.exists(test_file1)
-        assert not os.path.exists(test_file2)
-
-    def test_get_builder_for_format(self):
-        """Test builder selection for different formats."""
-        assert self.generator._get_builder_for_format("excel") == self.generator.excel_builder
-        assert self.generator._get_builder_for_format("word") == self.generator.word_builder
-        assert self.generator._get_builder_for_format("csv") == self.generator.csv_builder
-
-        # Test unsupported format
-        with pytest.raises(ValueError):
-            self.generator._get_builder_for_format("unsupported")
+    def test_save_generation_report(self, tmp_path):
+        summary = DocumentGenerationSummary(
+            total_formats=1,
+            successful_formats=1,
+            failed_formats=0,
+            results=[
+                DocumentGenerationResult("csv", "a.csv", True, file_size_bytes=10)
+            ],
+        )
+        target = tmp_path / "report.json"
+        self.generator.save_generation_report(summary, str(target))
+        report = json.loads(target.read_text())
+        assert report["generation_summary"]["successful_formats"] == 1
+        assert report["results"][0]["filename"] == "a.csv"
+        if os.name == "posix":
+            assert target.stat().st_mode & 0o777 == 0o600
 
 
 class TestBrandingConfig:

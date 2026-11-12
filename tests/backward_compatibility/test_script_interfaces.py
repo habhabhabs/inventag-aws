@@ -117,7 +117,7 @@ class TestScriptInterfaceCompatibility:
     def test_aws_resource_inventory_help(self):
         """Test that aws_resource_inventory.py --help works"""
         result = subprocess.run(
-            [sys.executable, "scripts/aws_resource_inventory.py", "--help"],
+            [sys.executable, "scripts/legacy/aws_resource_inventory.py", "--help"],
             capture_output=True,
             text=True,
             cwd=os.path.join(os.path.dirname(__file__), "..", ".."),
@@ -135,7 +135,7 @@ class TestScriptInterfaceCompatibility:
     def test_tag_compliance_checker_help(self):
         """Test that tag_compliance_checker.py --help works"""
         result = subprocess.run(
-            [sys.executable, "scripts/tag_compliance_checker.py", "--help"],
+            [sys.executable, "scripts/legacy/tag_compliance_checker.py", "--help"],
             capture_output=True,
             text=True,
             cwd=os.path.join(os.path.dirname(__file__), "..", ".."),
@@ -154,7 +154,7 @@ class TestScriptInterfaceCompatibility:
     def test_bom_converter_help(self):
         """Test that bom_converter.py --help works"""
         result = subprocess.run(
-            [sys.executable, "scripts/bom_converter.py", "--help"],
+            [sys.executable, "scripts/legacy/bom_converter.py", "--help"],
             capture_output=True,
             text=True,
             cwd=os.path.join(os.path.dirname(__file__), "..", ".."),
@@ -181,7 +181,7 @@ class TestScriptInterfaceCompatibility:
             result = subprocess.run(
                 [
                     sys.executable,
-                    "scripts/bom_converter.py",
+                    "scripts/legacy/bom_converter.py",
                     "--input",
                     input_file,
                     "--output",
@@ -207,7 +207,9 @@ class TestScriptInterfaceCompatibility:
                 # If successful, verify output file exists
                 assert os.path.exists(csv_output)
 
-    def test_tag_compliance_checker_output_format_compatibility(self, sample_inventory_data):
+    def test_tag_compliance_checker_output_format_compatibility(
+        self, sample_inventory_data
+    ):
         """Test that tag compliance checker produces expected output format"""
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create input file
@@ -230,7 +232,7 @@ class TestScriptInterfaceCompatibility:
             result = subprocess.run(
                 [
                     sys.executable,
-                    "scripts/tag_compliance_checker.py",
+                    "scripts/legacy/tag_compliance_checker.py",
                     "--input",
                     input_file,
                     "--config",
@@ -488,7 +490,9 @@ class TestWrapperScriptFunctionality:
             assert "DISCOVERY_IMPORT_SUCCESS" in result.stdout
         else:
             # Allow for missing dependencies but not module structure issues
-            assert "ModuleNotFoundError" in result.stderr or "ImportError" in result.stderr
+            assert (
+                "ModuleNotFoundError" in result.stderr or "ImportError" in result.stderr
+            )
 
         # Test compliance module
         result = subprocess.run(
@@ -505,7 +509,9 @@ class TestWrapperScriptFunctionality:
         if result.returncode == 0:
             assert "COMPLIANCE_IMPORT_SUCCESS" in result.stdout
         else:
-            assert "ModuleNotFoundError" in result.stderr or "ImportError" in result.stderr
+            assert (
+                "ModuleNotFoundError" in result.stderr or "ImportError" in result.stderr
+            )
 
         # Test reporting module
         result = subprocess.run(
@@ -522,15 +528,17 @@ class TestWrapperScriptFunctionality:
         if result.returncode == 0:
             assert "REPORTING_IMPORT_SUCCESS" in result.stdout
         else:
-            assert "ModuleNotFoundError" in result.stderr or "ImportError" in result.stderr
+            assert (
+                "ModuleNotFoundError" in result.stderr or "ImportError" in result.stderr
+            )
 
     def test_fallback_import_mechanism(self):
         """Test that scripts have fallback import mechanisms"""
         # Check that scripts handle import failures gracefully
         scripts = [
-            "scripts/aws_resource_inventory.py",
-            "scripts/tag_compliance_checker.py",
-            "scripts/bom_converter.py",
+            "scripts/legacy/aws_resource_inventory.py",
+            "scripts/legacy/tag_compliance_checker.py",
+            "scripts/legacy/bom_converter.py",
         ]
 
         for script in scripts:
