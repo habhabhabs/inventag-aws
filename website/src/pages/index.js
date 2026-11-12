@@ -8,8 +8,8 @@ export default function Home() {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title="Professional AWS Cloud Governance Platform"
-      description="InvenTag - Professional AWS Cloud Governance Platform with production safety, BOM generation, multi-account discovery, and advanced analysis suite.">
+      title="AWS inventory, tag compliance and BOM reports"
+      description="InvenTag is an open-source Python CLI that inventories AWS resources across accounts, checks tag compliance and writes Excel/Word bill-of-materials reports.">
       <HomepageHero />
       <main>
         <HomepageFeatures />

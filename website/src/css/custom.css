@@ -1,6 +1,6 @@
 /**
- * InvenTag Documentation Custom Styling  
- * Professional AWS Cloud Governance Platform
+ * InvenTag documentation styling.
+ * Brand tokens and the accessibility overrides are at the end of this file.
  */
 
 /* InvenTag Brand Colors and Variables */
@@ -75,7 +75,7 @@
 
 /* ===== NAVBAR STYLING ===== */
 .navbar {
-  background: linear-gradient(135deg, var(--inventag-blue) 0%, var(--inventag-blue-dark) 100%);
+  background: var(--inventag-chrome);
   box-shadow: var(--ifm-global-shadow-md);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -129,7 +129,7 @@
 
 /* ===== HERO SECTION STYLING ===== */
 .hero {
-  background: linear-gradient(135deg, var(--inventag-blue) 0%, var(--inventag-blue-dark) 50%, #1e3a8a 100%);
+  background: linear-gradient(135deg, var(--inventag-chrome) 0%, var(--inventag-chrome-end) 100%);
   color: white;
   padding: 4rem 0;
 }
@@ -301,8 +301,12 @@ code {
 }
 
 /* ===== SIDEBAR STYLING ===== */
-.theme-doc-sidebar-container {
-  border-right: 1px solid var(--ifm-color-emphasis-200);
+/* Desktop only: on phones the (hidden) sidebar's 1px border pushed the page
+   1px wider than the screen and caused horizontal scrolling. */
+@media (min-width: 997px) {
+  .theme-doc-sidebar-container {
+    border-right: 1px solid var(--ifm-color-emphasis-200);
+  }
 }
 
 /* Fix light theme sidebar text visibility */
@@ -589,8 +593,9 @@ tr:hover {
 
 /* ===== ACCESSIBILITY IMPROVEMENTS ===== */
 /* Focus indicators */
-*:focus {
-  outline: 2px solid var(--inventag-blue);
+/* Keyboard focus only (no ring after a mouse click); 3px for visibility */
+:focus-visible {
+  outline: 3px solid var(--inventag-focus);
   outline-offset: 2px;
 }
 
@@ -874,11 +879,9 @@ tr:hover {
     line-height: 1.4;
   }
   
-  /* Ensure consistent navigation across all pages */
-  .theme-doc-sidebar-container {
-    display: block !important;
-  }
-  
+  /* (Removed a rule that forced .theme-doc-sidebar-container visible on
+     mobile; it caused 1px of horizontal scrolling on every docs page.) */
+
   /* Fix sidebar consistency issues on mobile */
   .navbar__items--right {
     flex: 0 0 auto !important;
@@ -993,10 +996,14 @@ tr:hover {
   flex-direction: column !important;
 }
 
-/* Ensure consistent sidebar behavior across ALL pages */
-.theme-doc-sidebar-container {
-  display: block !important;
-  border-right: 1px solid var(--ifm-color-emphasis-200) !important;
+/* Ensure consistent sidebar behavior across ALL pages (desktop only: on
+   phones the sidebar lives in the navbar drawer, and forcing it visible here
+   left a 1px-wide column that made every docs page scroll sideways) */
+@media (min-width: 997px) {
+  .theme-doc-sidebar-container {
+    display: block !important;
+    border-right: 1px solid var(--ifm-color-emphasis-200) !important;
+  }
 }
 
 /* Force all pages to use the same sidebar structure */
@@ -1130,3 +1137,130 @@ a.hash-link::before {
   vertical-align: middle;
   margin-left: 0.25rem;
 }
+
+/* ===================================================================
+   Brand tokens + accessibility fixes (docs refresh, 2026-11)
+   - chrome: navbar and hero background; white text >= 6.7:1 in both themes
+   - accent: the amber from the logo's cursor; focus ring on blue/ink chrome
+   - every text colour pair below was checked at >= 4.5:1
+   =================================================================== */
+:root {
+  --inventag-chrome: #1d4ed8;
+  --inventag-chrome-end: #1e3a8a;
+  --inventag-accent: #fbbf24;
+  --inventag-focus: #1d4ed8;
+  --inventag-cli-bg: #eff6ff;
+  --inventag-cli-fg: #1e3a8a;
+  --inventag-label-bg: #1e40af;
+}
+
+[data-theme='dark'] {
+  --inventag-chrome: #0f172a;
+  --inventag-chrome-end: #172554;
+  --inventag-focus: #93c5fd;
+  --inventag-cli-bg: #172554;
+  --inventag-cli-fg: #bfdbfe;
+  --inventag-label-bg: #1e3a8a;
+}
+
+/* Focus ring on the blue/ink navbar and hero: amber, visible on both */
+.navbar :focus-visible,
+.hero :focus-visible,
+.footer :focus-visible {
+  outline-color: var(--inventag-accent);
+}
+
+/* Contrast fixes found by website/scripts/check-a11y.mjs */
+.prism-code[class*="language-"]::before { background: var(--inventag-label-bg); }
+.prism-code[class*="language-bash"]::before { background: #374151; }
+.prism-code[class*="language-json"]::before { background: #92400e; }
+.prism-code[class*="language-yaml"]::before { background: #065f46; }
+.prism-code[class*="language-text"]::after { background: #4b5563; }
+[data-theme='dark'] th { background: #1e3a8a; }
+[data-theme='dark'] .menu__link--active:not(.menu__link--sublist):not(.menu__link--sublist-caret) {
+  background: #1e3a8a !important;
+  color: #ffffff !important;
+}
+
+/* Hover styles only where a real pointer can hover (no sticky hover on touch),
+   and buttons change colour rather than move. */
+.button {
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.button:hover,
+.button--outline.button--primary:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+@media (hover: none) {
+  .menu__link:hover,
+  .navbar__link:hover,
+  tr:hover {
+    background-color: transparent;
+  }
+}
+
+/* Touch targets: at least 44px on coarse pointers (phones, tablets, touchscreens) */
+@media (pointer: coarse) {
+  .menu__link,
+  .menu__caret,
+  .navbar__toggle,
+  .navbar__item.navbar__link,
+  .dropdown__link,
+  .pagination-nav__link,
+  .table-of-contents__link,
+  .clean-btn,
+  .DocSearch-Button,
+  .button {
+    min-height: 44px;
+  }
+  .menu__link,
+  .dropdown__link,
+  .table-of-contents__link {
+    display: flex;
+    align-items: center;
+  }
+  .navbar__toggle,
+  .clean-btn {
+    min-width: 44px;
+  }
+  .footer__link-item,
+  .breadcrumbs__link,
+  .navbar__brand,
+  .theme-edit-this-page,
+  .theme-doc-footer a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .breadcrumbs__link {
+    min-width: 44px;
+  }
+  .navbar__search-input {
+    min-height: 44px;
+  }
+}
+
+/* Search box keyboard hint ("ctrl K") was 1.5:1 on the light search input */
+[class*='searchHint'] {
+  color: #4b5563 !important;
+  border-color: #6b7280 !important;
+}
+[data-theme='dark'] [class*='searchHint'] {
+  color: #d1d5db !important;
+  border-color: #9ca3af !important;
+}
+
+/* Notched phones: keep content clear of the safe areas */
+.navbar,
+.footer {
+  padding-left: max(var(--ifm-navbar-padding-horizontal), env(safe-area-inset-left));
+  padding-right: max(var(--ifm-navbar-padding-horizontal), env(safe-area-inset-right));
+}
+
+/* Images in docs never push the page wider than the screen */
+.markdown img {
+  max-width: 100%;
+  height: auto;
+}
+
