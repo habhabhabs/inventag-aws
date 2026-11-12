@@ -644,26 +644,17 @@ services:
 
 ## Monitoring and Alerting
 
-### CloudWatch Integration
+### CloudWatch and Prometheus
+
+The CLI has no built-in metrics export (earlier versions of this page showed
+`--enable-cloudwatch-metrics` and `--enable-prometheus-metrics`; they do not
+exist). Publish what you need from your pipeline after the run, for example
+the number of files produced:
 
 ```bash
-# Export metrics to CloudWatch
-python inventag_cli.py \
-  --accounts-file accounts.json \
-  --create-excel \
-  --enable-cloudwatch-metrics \
-  --cloudwatch-namespace "InvenTag/BOM"
-```
-
-### Prometheus Integration
-
-```bash
-# Export metrics to Prometheus
-python inventag_cli.py \
-  --accounts-file accounts.json \
-  --create-excel \
-  --enable-prometheus-metrics \
-  --prometheus-pushgateway http://prometheus:9091
+python inventag_cli.py --accounts-file accounts.json --create-excel
+aws cloudwatch put-metric-data --namespace "InvenTag/BOM" \
+  --metric-name ReportsGenerated --value "$(ls bom_output/*.xlsx | wc -l)"
 ```
 
 ### Custom Alerting Script

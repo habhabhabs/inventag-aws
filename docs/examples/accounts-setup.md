@@ -96,7 +96,7 @@ Override regions for all accounts:
 
 # Asia-Pacific regions only
 ./inventag.sh --accounts-file accounts.json --create-excel \
-  --account-regions ap-southeast-1,ap-southeast-2,ap-north-1,ap-south-1
+  --account-regions ap-southeast-1,ap-southeast-2,ap-northeast-1,ap-south-1
 ```
 
 ### Service Descriptions Configuration

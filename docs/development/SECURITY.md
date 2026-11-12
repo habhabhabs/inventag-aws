@@ -16,7 +16,7 @@ InvenTag includes a comprehensive security validation system that ensures all AW
 
 ### **ReadOnlyAccessValidator**
 
-The `ReadOnlyAccessValidator` class provides enterprise-grade security validation:
+The `ReadOnlyAccessValidator` class provides security validation:
 
 ```python
 from inventag.compliance import ReadOnlyAccessValidator, ComplianceStandard

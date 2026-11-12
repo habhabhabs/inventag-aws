@@ -16,11 +16,38 @@ import { resolve } from 'path';
 const versionData = JSON.parse(readFileSync(resolve('../version.json'), 'utf8'));
 const currentVersion = `v${versionData.version}`;
 
+// Code highlighting: the stock Prism themes have token colours below 4.5:1
+// (e.g. GitHub's comments at 2.7:1). Swap those colours for accessible ones.
+function recolor(theme, map) {
+  return {
+    ...theme,
+    styles: theme.styles.map((s) =>
+      s.style && map[s.style.color] ? {...s, style: {...s.style, color: map[s.style.color]}} : s,
+    ),
+  };
+}
+const codeLight = recolor(prismThemes.github, {
+  '#999988': '#57606a', // comments          2.7 -> 6.0:1 on #f6f8fa
+  '#e3116c': '#a3125a', // strings           4.3 -> 7.1:1
+  '#36acaa': '#0b7285', // properties, flags 2.6 -> 5.3:1
+  '#00a4db': '#0550ae', // keywords          2.7 -> 7.1:1
+  '#d73a49': '#b31d28', // functions         4.3 -> 6.3:1
+});
+const codeDark = recolor(prismThemes.dracula, {
+  'rgb(98, 114, 164)': '#a9b4dc', // comments 3.0 -> 6.9:1 on #282a36
+});
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'InvenTag Documentation',
-  tagline: 'Professional AWS Cloud Governance Platform',
-  favicon: 'img/favicon.svg',
+  title: 'InvenTag',
+  tagline: 'AWS resource inventory, tag compliance checks and BOM reports',
+  // .ico for older browsers; the SVG and touch icons are added in headTags below
+  favicon: 'img/favicon.ico',
+
+  headTags: [
+    {tagName: 'link', attributes: {rel: 'icon', type: 'image/svg+xml', href: '/inventag-aws/img/favicon.svg'}},
+    {tagName: 'link', attributes: {rel: 'apple-touch-icon', sizes: '180x180', href: '/inventag-aws/img/apple-touch-icon.png'}},
+  ],
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
@@ -40,9 +67,13 @@ const config = {
   deploymentBranch: 'gh-pages', // Branch for GitHub Pages deployment
   trailingSlash: false, // GitHub Pages compatibility
 
-  onBrokenLinks: 'ignore', // Allow broken links during migration phase
-  onBrokenMarkdownLinks: 'warn', // Allow some flexibility for markdown links during migration
-  onBrokenAnchors: 'ignore', // Allow broken anchors during migration phase
+  // 'warn' (not 'ignore') so broken links show up in the build log. Archived
+  // versions (versioned_docs/) still contain some old broken links, which is
+  // why this is not 'throw'. The current docs are checked strictly by
+  // `npm run check:links` (website/scripts/check-links.mjs).
+  onBrokenLinks: 'warn',
+  onBrokenMarkdownLinks: 'warn',
+  onBrokenAnchors: 'warn',
 
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
@@ -82,6 +113,14 @@ const config = {
             // Temporarily exclude problematic files during migration
             '**/template-system-summary.md',
             '**/complete-readme-backup.md',
+            // Internal status notes and dated reports: kept in the repo, not
+            // published (unverifiable numbers, superseded content)
+            'DOCUMENTATION_MIGRATION.md',
+            'DOCUMENTATION_STATUS_CURRENT.md',
+            'ENHANCED_DISCOVERY_FINAL.md',
+            'user-guides/production-safety-revision.md',
+            'testing/**',
+            'assets/readme.md',
           ],
           // Documentation versioning configuration  
           includeCurrentVersion: true,
@@ -154,16 +193,25 @@ const config = {
     ({
       // Enhanced metadata for better SEO and social sharing
       metadata: [
-        {name: 'keywords', content: 'aws, cloud-governance, inventory, tagging, compliance, documentation'},
-        {name: 'description', content: 'Professional AWS Cloud Governance Platform - Comprehensive documentation for InvenTag'},
+        {name: 'keywords', content: 'aws, inventory, tagging, tag compliance, bill of materials, bom, cli, python, open source'},
+        {name: 'description', content: 'InvenTag is an open-source Python CLI that inventories AWS resources across accounts, checks tag compliance and writes Excel/Word bill-of-materials reports.'},
+        {property: 'og:image:width', content: '1200'},
+        {property: 'og:image:height', content: '630'},
+        {property: 'og:image:alt', content: 'InvenTag logo with the text: AWS resource inventory, tag compliance checks and Excel/Word BOM reports.'},
+        {name: 'twitter:image:alt', content: 'InvenTag logo with the text: AWS resource inventory, tag compliance checks and Excel/Word BOM reports.'},
       ],
-      // Social card for better sharing
-      image: 'img/inventag-social-card.svg',
+      // Open Graph / Twitter card (PNG: LinkedIn, X and Slack do not render SVG cards).
+      // Regenerate with: python3 website/brand/generate_brand_assets.py
+      image: 'img/social-card.png',
       navbar: {
         title: 'InvenTag',
         logo: {
-          alt: 'InvenTag Logo',
-          src: 'img/logo.svg',
+          alt: 'InvenTag home',
+          // white mark on the blue light-theme navbar, colour mark on the dark navbar
+          src: 'img/logo-on-brand.svg',
+          srcDark: 'img/logo-dark.svg',
+          width: 32,
+          height: 32,
         },
         items: [
           {
@@ -248,11 +296,11 @@ const config = {
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} InvenTag Team. Built with Docusaurus. | <a href="https://github.com/habhabhabs/inventag-aws/edit/main/docs/" target="_blank" rel="noopener noreferrer">Edit on GitHub</a>`,
+        copyright: `Copyright © ${new Date().getFullYear()} InvenTag contributors. MIT licence. Built with Docusaurus.<br/>AWS is a trademark of Amazon.com, Inc. or its affiliates. InvenTag is an independent project and is not affiliated with, endorsed by, or sponsored by Amazon Web Services.`,
       },
       prism: {
-        theme: prismThemes.github,
-        darkTheme: prismThemes.dracula,
+        theme: codeLight,
+        darkTheme: codeDark,
         // Enhanced syntax highlighting for AWS and cloud technologies
         additionalLanguages: [
           'bash',

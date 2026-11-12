@@ -11,7 +11,7 @@ title: Project Description
 
 ## Executive Summary
 
-InvenTag is an enterprise-grade Python toolkit designed to solve the critical challenges of AWS™ resource inventory management and tag compliance at scale. As organizations grow their cloud footprint, maintaining visibility and governance over thousands of resources becomes increasingly complex. InvenTag addresses these challenges by providing automated discovery, intelligent analysis, and professional reporting capabilities that integrate seamlessly into modern DevOps workflows.
+InvenTag is a Python toolkit designed to solve the critical challenges of AWS™ resource inventory management and tag compliance at scale. As organizations grow their cloud footprint, maintaining visibility and governance over thousands of resources becomes increasingly complex. InvenTag addresses these challenges by providing automated discovery, intelligent analysis, and professional reporting capabilities that integrate seamlessly into modern DevOps workflows.
 
 ## Problem Statement
 

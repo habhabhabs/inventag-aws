@@ -3,131 +3,112 @@ import Heading from '@theme/Heading';
 import Link from '@docusaurus/Link';
 import styles from './styles.module.css';
 
+// Every line here should be something the code does today. If you add a
+// feature, add the flag or file that proves it in `cli`.
 const FeatureList = [
   {
-    title: '🛡️ Production Safety & Security',
-    icon: '🛡️',
+    title: 'Read-only discovery',
+    cli: 'List* · Describe* · Get*',
     description: (
       <>
-        Enterprise-grade security validation with built-in compliance standards 
-        (SOC 2, PCI, HIPAA, GDPR). Read-only enforcement, audit logging, and 
-        real-time risk assessment ensure your AWS environment stays secure.
+        Finds resources through the Resource Groups Tagging API, per-service
+        List/Describe/Get calls and Cost Explorer. Give it a read-only IAM
+        policy; the docs list the permissions.
       </>
     ),
     link: '/docs/user-guides/production-safety',
-    linkText: 'Security Guide'
+    linkText: 'Permissions and safety',
   },
   {
-    title: '📊 Professional BOM Generation',
-    icon: '📊',
+    title: 'Excel and Word reports',
+    cli: '--create-excel --create-word',
     description: (
       <>
-        Generate comprehensive Bill of Materials reports in Excel, Word, and Google Docs 
-        formats. Logical column ordering, service-specific sheets, and professional 
-        formatting for enterprise reporting needs.
+        A summary sheet plus one sheet per service, with your own tag columns
+        (<code>--tag-mappings</code>) and service descriptions
+        (<code>--service-descriptions</code>).
       </>
     ),
     link: '/docs/user-guides/cli-user-guide',
-    linkText: 'BOM Guide'
+    linkText: 'CLI guide',
   },
   {
-    title: '🔍 Multi-Account Discovery',
-    icon: '🔍',
+    title: 'One account or many',
+    cli: '--accounts-file accounts.json',
     description: (
       <>
-        Comprehensive resource scanning across multiple AWS accounts with parallel 
-        processing. Cross-account roles, interactive setup, and flexible credential 
-        management for complex enterprise environments.
+        AWS profiles, access keys or an assumed cross-account role. Accounts run
+        in parallel, four at a time by default.
       </>
     ),
     link: '/docs/examples/accounts-setup',
-    linkText: 'Setup Guide'
+    linkText: 'Account setup',
   },
   {
-    title: '🌐 Advanced Analysis Suite',
-    icon: '🌐',
+    title: 'Network and security sheets',
+    cli: '--enable-network-analysis',
     description: (
       <>
-        Network security analysis, cost optimization insights, and security posture 
-        assessment. Automated tag compliance checking and comprehensive change tracking 
-        with delta detection.
+        Optional extra sheets for VPCs and subnets, and for security groups
+        (<code>--enable-security-analysis</code>).
       </>
     ),
-    link: '/docs/user-guides/configuration-examples',
-    linkText: 'Analysis Features'
+    link: '/docs/architecture/network-analysis',
+    linkText: 'Network analysis',
   },
   {
-    title: '🏷️ Tag Compliance Checking',
-    icon: '🏷️',
+    title: 'Tag compliance',
+    cli: 'tag_compliance_checker.py --config',
     description: (
       <>
-        Automated validation against organizational tagging policies. Custom tag 
-        mappings, compliance reporting, and governance enforcement to maintain 
-        consistent resource organization.
+        Check resources against your own policy file: required tags and allowed
+        values. Today this runs as a separate script, not a flag on the main CLI.
       </>
     ),
     link: '/docs/architecture/tag-compliance',
-    linkText: 'Tag Compliance'
+    linkText: 'Tag compliance',
   },
   {
-    title: '⚡ CI/CD Ready',
-    icon: '⚡',
+    title: 'Change tracking',
+    cli: 'bom_output/state/',
     description: (
       <>
-        Easy integration with automated workflows, S3 upload support, and 
-        comprehensive API for custom integrations. Built for modern DevOps 
-        and infrastructure-as-code practices.
+        Each run saves a snapshot. The next run reports what was added, removed
+        or changed since then.
       </>
     ),
-    link: '/docs/examples/cicd-integration',
-    linkText: 'CI/CD Examples'
+    link: '/docs/architecture/state-management',
+    linkText: 'State management',
   },
 ];
 
-function Feature({icon, title, description, link, linkText}) {
+function Feature({title, cli, description, link, linkText}) {
   return (
-    <div className={clsx('col col--4')}>
-      <div className={styles.featureCard}>
-        <div className={styles.featureIcon}>
-          <span className={styles.iconEmoji}>{icon}</span>
-        </div>
-        <div className={styles.featureContent}>
-          <Heading as="h3" className={styles.featureTitle}>{title}</Heading>
-          <p className={styles.featureDescription}>{description}</p>
-          <Link
-            className={clsx('button button--outline button--primary', styles.featureLink)}
-            to={link}>
-            {linkText} →
-          </Link>
-        </div>
-      </div>
-    </div>
+    <article className={styles.featureCard}>
+      <p className={styles.cli}>{cli}</p>
+      <Heading as="h3" className={styles.featureTitle}>{title}</Heading>
+      <p className={styles.featureDescription}>{description}</p>
+      <Link className={clsx('button button--outline button--primary', styles.featureLink)} to={link}>
+        {linkText}
+      </Link>
+    </article>
   );
 }
 
 export default function HomepageFeatures() {
-  // Split features into rows of 3
-  const featuresInRows = [];
-  for (let i = 0; i < FeatureList.length; i += 3) {
-    featuresInRows.push(FeatureList.slice(i, i + 3));
-  }
-
   return (
-    <section className={styles.features}>
+    <section className={styles.features} aria-labelledby="what-it-does">
       <div className="container">
-        {featuresInRows.map((row, rowIdx) => (
-          <div 
-            className={clsx('row', styles.featureRow)} 
-            key={rowIdx}
-            style={{
-              marginBottom: rowIdx < featuresInRows.length - 1 ? '4rem' : '0'
-            }}
-          >
-            {row.map((props, idx) => (
-              <Feature key={`${rowIdx}-${idx}`} {...props} />
-            ))}
-          </div>
-        ))}
+        <Heading as="h2" id="what-it-does" className={styles.sectionTitle}>What it does</Heading>
+        <div className={styles.grid}>
+          {FeatureList.map((props) => (
+            <Feature key={props.title} {...props} />
+          ))}
+        </div>
+        <p className={styles.disclaimer}>
+          InvenTag is an independent open-source project. It is not affiliated with,
+          endorsed by, or sponsored by Amazon Web Services.
+        </p>
       </div>
     </section>
   );

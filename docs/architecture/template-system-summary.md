@@ -8,7 +8,7 @@ sidebar_position: 10
 
 ## Overview
 
-✅ **COMPLETED** - Successfully implemented task 11 "Build advanced document customization and template system" with all three sub-tasks completed. This comprehensive system provides enterprise-grade document customization capabilities for the InvenTag Cloud BOM generation platform.
+✅ **COMPLETED** - Successfully implemented task 11 "Build advanced document customization and template system" with all three sub-tasks completed. This comprehensive system provides document customization capabilities for the InvenTag Cloud BOM generation platform.
 
 ## 🎯 Implementation Status: COMPLETE
 

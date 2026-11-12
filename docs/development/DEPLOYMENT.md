@@ -19,7 +19,7 @@ This guide shows how to deploy InvenTag in your own repository using GitLab CI/C
 - [Security Best Practices](#security-best-practices)
 - [Troubleshooting](#troubleshooting)
 
-## 🔧 Prerequisites
+## Prerequisites
 
 ### AWS Setup
 1. **AWS Account** with resources to scan
@@ -45,7 +45,7 @@ This guide shows how to deploy InvenTag in your own repository using GitLab CI/C
 
 ---
 
-## 🐙 GitHub Actions Deployment
+## GitHub Actions Deployment
 
 ### 1. Basic Compliance Check Workflow
 
@@ -387,7 +387,7 @@ TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/...
 
 ---
 
-## 🦊 GitLab CI/CD Deployment
+## GitLab CI/CD Deployment
 
 ### 1. Basic Compliance Pipeline
 
@@ -789,7 +789,7 @@ In GitLab, go to **CI/CD > Schedules** and create:
 
 ---
 
-## ⚙️ Configuration Options
+## Configuration Options
 
 ### Tag Policy Customization
 
@@ -837,7 +837,7 @@ DEV_COMPLIANCE_THRESHOLD: "60"
 
 ---
 
-## 🔒 Security Best Practices
+## Security Best Practices
 
 ### 1. IAM Permissions
 
@@ -911,7 +911,7 @@ env:
 
 ---
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 

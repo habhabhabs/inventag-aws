@@ -295,7 +295,7 @@ VPC:
 ```yaml
 # Comprehensive service descriptions for enterprise environments
 EC2:
-  default_description: "Amazon Elastic Compute Cloud - Virtual servers providing scalable compute capacity with enterprise-grade security and compliance features"
+  default_description: "Amazon Elastic Compute Cloud - Virtual servers providing scalable compute capacity with security and compliance features"
   display_name: "EC2 (Elastic Compute Cloud)"
   category: "Compute"
   documentation_url: "https://docs.aws.amazon.com/ec2/"
@@ -618,7 +618,7 @@ output_configuration:
 ### Enterprise BOM Configuration
 
 ```yaml
-# Enterprise-grade BOM processing configuration
+# BOM processing configuration
 document_generation:
   formats:
     - excel

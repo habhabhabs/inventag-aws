@@ -2,6 +2,45 @@
 
 This guide provides comprehensive information for maintaining and developing the InvenTag Docusaurus documentation site.
 
+## Before you merge a docs change
+
+```bash
+cd website
+npm ci
+npm run build          # must succeed; broken links are printed as warnings
+npm run check:links    # fails on broken links/anchors in the homepage or current docs
+```
+
+Optional, needs Playwright with Chromium (not a site dependency):
+
+```bash
+npm run serve -- --port 4173 --no-open &   # serves build/ under /inventag-aws/
+npm run check:a11y -- --base http://localhost:4173/inventag-aws --shots ../screenshots
+```
+
+`check:a11y` tests text contrast (4.5:1) in light and dark mode, horizontal
+scrolling at 320 and 390px, 44px touch targets, visible keyboard focus and
+`prefers-reduced-motion`, and saves screenshots.
+
+Archived versions (`versioned_docs/`) are snapshots and still contain old
+broken links; they are reported but don't fail the check. Only edit them if a
+build breaks.
+
+## Logo, favicon and social card
+
+Sources and the generator live in [`brand/`](brand/README.md):
+
+```bash
+npm run brand          # = python3 brand/generate_brand_assets.py
+```
+
+## Analytics
+
+`docusaurus.config.js` enables Google Analytics 4 (`gtag`). As configured it
+loads on every page view without asking for consent. See the review notes in
+the pull request that introduced this section before relying on it in regions
+that require consent.
+
 ## 🏗️ Architecture Overview
 
 The InvenTag documentation uses Docusaurus v3.8.1 with a dual-platform approach:

@@ -244,7 +244,6 @@ CloudWatch:
   --s3-bucket cost-optimization-reports \
   --s3-key-prefix cost-analysis/$(date +%Y-%m-%d)/ \
   --generate-changelog \
-  --state-file previous-cost-state.json \
   --max-concurrent-accounts 8 \
   --verbose
 ```
@@ -287,67 +286,32 @@ CloudWatch:
 
 ## State Management and Change Tracking
 
-### Delta Analysis with Historical Comparison
+### Delta analysis between runs
+
+Snapshots are automatic. Run InvenTag with the **same `--output-directory`**
+each time; it compares with the previous snapshot in `<output-directory>/state/`
+(kept for 30 days) and, when something changed, writes
+`<output-directory>/changelog_<timestamp>.md`.
 
 ```bash
 #!/bin/bash
-# Advanced state management with change tracking
+# Weekly run; the second and later runs report changes since the last one
+OUT=reports/production
 
-# Initial baseline
 ./inventag.sh \
   --accounts-file production-accounts.json \
   --create-excel \
-  --state-file baseline-state.json \
+  --output-directory "$OUT" \
   --verbose
 
-# Weekly comparison
-./inventag.sh \
-  --accounts-file production-accounts.json \
-  --create-excel \
-  --state-file current-state.json \
-  --previous-state baseline-state.json \
-  --generate-changelog \
-  --s3-bucket change-tracking-reports \
-  --s3-key-prefix weekly-changes/$(date +%Y-%m-%d)/ \
-  --verbose
-
-# Move current to baseline for next comparison
-cp current-state.json baseline-state.json
-```
-
-### Automated Change Detection
-
-```bash
-#!/bin/bash
-# Automated change detection with notifications
-
-PREVIOUS_STATE="states/previous-state.json"
-CURRENT_STATE="states/current-state-$(date +%Y-%m-%d).json"
-CHANGELOG="changelogs/changelog-$(date +%Y-%m-%d).json"
-
-# Generate current state
-./inventag.sh \
-  --accounts-file monitoring-accounts.json \
-  --create-excel \
-  --state-file "$CURRENT_STATE" \
-  --previous-state "$PREVIOUS_STATE" \
-  --generate-changelog \
-  --changelog-output "$CHANGELOG" \
-  --verbose
-
-# Check for significant changes
-if [ -f "$CHANGELOG" ]; then
-    CHANGE_COUNT=$(jq '.changes | length' "$CHANGELOG")
-    if [ "$CHANGE_COUNT" -gt 10 ]; then
-        # Send alert for significant changes
-        aws sns publish \
-            --topic-arn "$SNS_TOPIC_ARN" \
-            --message "Significant infrastructure changes detected: $CHANGE_COUNT changes"
-    fi
+# Notify if this run produced a changelog
+LATEST=$(ls -t "$OUT"/changelog_*.md 2>/dev/null | head -1)
+if [ -n "$LATEST" ] && [ "$LATEST" -nt "$OUT/.last-notified" ]; then
+    aws sns publish \
+        --topic-arn "$SNS_TOPIC_ARN" \
+        --message "InvenTag found infrastructure changes: $(basename "$LATEST")"
+    touch "$OUT/.last-notified"
 fi
-
-# Update previous state
-cp "$CURRENT_STATE" "$PREVIOUS_STATE"
 ```
 
 ## Custom Output and Reporting
@@ -399,13 +363,14 @@ aws s3 sync "$OUTPUT_DIR" s3://enterprise-reports-bucket/reports/$TIMESTAMP/
 
 ```bash
 #!/bin/bash
-# Using custom templates for branded reports
+# Report settings from a BOM processing config file (--bom-config).
+# There are no --excel-template / --word-template flags; templates/ holds the
+# defaults used by the document builders.
 
 ./inventag.sh \
   --accounts-file branded-accounts.json \
   --create-excel --create-word \
-  --excel-template templates/custom-excel-template.json \
-  --word-template templates/custom-word-template.yaml \
+  --bom-config bom-config.yaml \
   --enable-network-analysis --enable-security-analysis \
   --s3-bucket branded-reports \
   --s3-key-prefix custom-branded/$(date +%Y-%m-%d)/ \
@@ -424,7 +389,7 @@ aws s3 sync "$OUTPUT_DIR" s3://enterprise-reports-bucket/reports/$TIMESTAMP/
   --accounts-file large-scale-accounts.json \
   --create-excel \
   --max-concurrent-accounts 12 \
-  --account-timeout 1800 \
+  --account-processing-timeout 1800 \
   --per-account-reports \
   --s3-bucket large-scale-reports \
   --s3-key-prefix bulk-processing/$(date +%Y-%m-%d)/ \
@@ -511,4 +476,4 @@ aws s3 sync "$OUTPUT_DIR" s3://enterprise-reports-bucket/reports/$TIMESTAMP/
 - [CLI User Guide](../user-guides/cli-user-guide) - Complete CLI reference
 - [Configuration Examples](../user-guides/configuration-examples) - Basic configuration patterns
 - [Production Safety Guide](../user-guides/production-safety) - Security and compliance features
-- [CI/CD Integration](/examples/cicd-integration) - Automated deployment patterns
+- [CI/CD Integration](./cicd-integration.md) - Automated deployment patterns

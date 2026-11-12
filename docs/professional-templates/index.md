@@ -1,16 +1,16 @@
 ---
 title: Professional Templates
-description: Enterprise-grade templates and configurations for AWS governance
+description: Templates and configurations for AWS governance
 sidebar_position: 8
 ---
 
 # Professional Templates
 
-This section provides enterprise-grade templates, configurations, and best practices for implementing comprehensive AWS cloud governance using InvenTag.
+This section provides templates, configurations, and best practices for implementing comprehensive AWS cloud governance using InvenTag.
 
 ## Available Templates
 
-### 🏷️ [AWS Cost Allocation Tagging](./aws-cost-allocation-tagging)
+### 🏷️ [AWS Cost Allocation Tagging](./aws-cost-allocation-tagging.md)
 Professional tagging templates following AWS Prescriptive Guidance for accurate cost allocation and financial management.
 
 **Features:**
