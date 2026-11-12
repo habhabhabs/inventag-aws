@@ -107,16 +107,27 @@ class TestGitHubActionsCompatibility:
             assert job in release_config["jobs"], f"Missing release job: {job}"
 
     def test_workflow_python_setup_consistency(self, workflows_dir):
-        """Test that all workflows use consistent Python setup"""
-        workflow_files = ["ci.yml", "pr-checks.yml", "release.yml"]
+        """Every action is pinned to a full commit SHA with a version comment."""
+        import re
 
-        for workflow_file in workflow_files:
-            with open(workflows_dir / workflow_file, "r") as f:
-                content = f.read()
+        pattern = re.compile(r"uses:\s*([\w.-]+/[\w./-]+)@(\S+)(.*)$")
+        for workflow in sorted(workflows_dir.glob("*.yml")):
+            for line in workflow.read_text().splitlines():
+                match = pattern.search(line)
+                if not match:
+                    continue
+                ref, comment = match.group(2), match.group(3)
+                assert re.fullmatch(r"[0-9a-f]{40}", ref), f"{workflow.name}: {line.strip()}"
+                assert re.search(r"#\s*v\d+", comment), f"{workflow.name}: {line.strip()}"
 
-            # Should use actions/setup-python@v4 or later
-            if "setup-python" in content:
-                assert "actions/setup-python@v4" in content or "actions/setup-python@v5" in content
+    def test_no_untrusted_checkout_in_pull_request_target(self, workflows_dir):
+        """pull_request_target runs with the base repo's token: never run PR code there."""
+        for workflow in sorted(workflows_dir.glob("*.yml")):
+            content = workflow.read_text()
+            if "pull_request_target" in content:
+                assert "github.event.pull_request.head.sha" not in content, workflow.name
+                assert "github.event.pull_request.head.ref }}" not in content.split("env:")[0]
+                assert "actions/checkout" not in content, workflow.name
 
 
 class TestCIJobCompatibility:

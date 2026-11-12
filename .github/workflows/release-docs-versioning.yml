@@ -22,26 +22,29 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: 0
         token: ${{ secrets.VERSION_BUMP_WORKFLOW }}
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
-        node-version: '20'
+        node-version: '26'  # Active LTS; must be >= 26.12.1 (Oct 2026 security release)
         cache: 'npm'
         cache-dependency-path: 'website/package-lock.json'
 
     - name: Determine version
       id: version
+      env:
+        RELEASE_TAG: ${{ github.event.release.tag_name }}
+        INPUT_VERSION: ${{ github.event.inputs.version }}
       run: |
         if [ "${{ github.event_name }}" = "release" ]; then
-          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="$RELEASE_TAG"
           echo "Using release tag: $VERSION"
         else
-          VERSION="${{ github.event.inputs.version }}"
+          VERSION="$INPUT_VERSION"
           echo "Using manual input: $VERSION"
         fi
         
@@ -372,14 +375,17 @@ jobs:
           
           echo "✅ Changes committed for release $VERSION with N-1 strategy"
           
-          # Push to main using the workflow token
-          git remote set-url origin https://x-access-token:${{ secrets.VERSION_BUMP_WORKFLOW }}@github.com/habhabhabs/inventag-aws.git
+          # Push to main with the token actions/checkout persisted (VERSION_BUMP_WORKFLOW);
+          # never write the token into the remote URL.
           git push origin main
           echo "✅ Changes pushed to main"
         fi
 
     - name: Generate workflow summary
       if: always()
+      env:
+        RELEASE_NAME: ${{ github.event.release.name }}
+        RELEASE_URL: ${{ github.event.release.html_url }}
       run: |
         VERSION="${{ env.VERSION }}"
         
@@ -395,7 +401,7 @@ jobs:
           echo "- **Version**: $VERSION" >> $GITHUB_STEP_SUMMARY
           echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           if [ "${{ github.event_name }}" = "release" ]; then
-            echo "- **Release**: [${{ github.event.release.name }}](${{ github.event.release.html_url }})" >> $GITHUB_STEP_SUMMARY
+            echo "- **Release**: [$RELEASE_NAME]($RELEASE_URL)" >> $GITHUB_STEP_SUMMARY
           fi
           echo "- **Documentation Files**: $(find website/versioned_docs/version-$VERSION -name "*.md" | wc -l 2>/dev/null || echo 'N/A')" >> $GITHUB_STEP_SUMMARY
           echo "- **Total Versions**: $(jq length website/versions.json 2>/dev/null || echo 'N/A')" >> $GITHUB_STEP_SUMMARY
@@ -408,7 +414,7 @@ jobs:
 
     - name: Upload artifacts
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: version-creation-summary
         path: |

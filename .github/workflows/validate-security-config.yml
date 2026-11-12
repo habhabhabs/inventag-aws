@@ -26,15 +26,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         
       - name: Validate YAML syntax
         run: |
           echo "🔍 Validating GitHub Actions workflow YAML syntax..."
           
           # Install yq for YAML validation
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
+          YQ_VERSION=v4.54.3
+          curl -sSfLo yq_linux_amd64 "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          curl -sSfLo yq.sums "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums-bsd"
+          EXPECTED=$(grep 'SHA256 (yq_linux_amd64)' yq.sums | awk '{print $NF}')
+          echo "${EXPECTED}  yq_linux_amd64" | sha256sum -c -
+          sudo install -m 0755 yq_linux_amd64 /usr/local/bin/yq
           
           # Validate all workflow files
           validation_errors=0
@@ -63,16 +67,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         
       - name: Install GitLeaks
         run: |
-          # Get the latest GitLeaks release
-          GITLEAKS_VERSION=$(curl -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest | jq -r .tag_name)
-          echo "Installing GitLeaks version: $GITLEAKS_VERSION"
-          
-          wget -q "https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_${GITLEAKS_VERSION#v}_linux_x64.tar.gz"
-          tar -xzf "gitleaks_${GITLEAKS_VERSION#v}_linux_x64.tar.gz"
+          # Pinned GitLeaks release, verified against its published checksums
+          GITLEAKS_VERSION=8.30.1
+          BASE="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          curl -sSfLO "${BASE}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfLO "${BASE}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          sha256sum --ignore-missing -c "gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          tar -xzf "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           sudo mv gitleaks /usr/local/bin/
           
           # Verify installation
@@ -99,12 +104,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '20'
+          node-version: '26'  # Active LTS; must be >= 26.12.1 (Oct 2026 security release)
           cache: 'npm'
           cache-dependency-path: 'website/package-lock.json'
           
@@ -147,7 +152,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         
       - name: Validate security documentation structure
         run: |

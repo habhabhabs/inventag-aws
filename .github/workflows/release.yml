@@ -16,15 +16,15 @@ on:
           - major
 
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
-  actions: write
+  contents: read
 
 jobs:
   check-for-release:
     name: Check if Release Needed
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       should_release: ${{ steps.check.outputs.should_release }}
       version_bump: ${{ steps.check.outputs.version_bump }}
@@ -32,7 +32,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: 0
 
@@ -46,9 +46,10 @@ jobs:
         
         # Check if manual dispatch with version bump
         if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          case "$INPUT_VERSION_BUMP" in patch|minor|major) ;; *) echo "invalid bump"; exit 1;; esac
           echo "should_release=true" >> $GITHUB_OUTPUT
-          echo "version_bump=${{ github.event.inputs.version_bump }}" >> $GITHUB_OUTPUT
-          echo "Manual release triggered with ${{ github.event.inputs.version_bump }} bump"
+          echo "version_bump=$INPUT_VERSION_BUMP" >> $GITHUB_OUTPUT
+          echo "Manual release triggered with $INPUT_VERSION_BUMP bump"
           exit 0
         fi
         
@@ -93,10 +94,16 @@ jobs:
         fi
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        INPUT_VERSION_BUMP: ${{ github.event.inputs.version_bump }}
 
   release:
     name: Create Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: write
     needs: check-for-release
     if: needs.check-for-release.outputs.should_release == 'true'
     outputs:
@@ -104,14 +111,14 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: 0
         token: ${{ secrets.VERSION_BUMP_WORKFLOW }}
         persist-credentials: true
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
       with:
         python-version: '3.10'
 
@@ -701,10 +708,10 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
       with:
         python-version: '3.10'
 

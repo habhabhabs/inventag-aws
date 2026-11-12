@@ -22,27 +22,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # Need full history for git operations
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '20'
+          node-version: '26'  # Active LTS; must be >= 26.12.1 (Oct 2026 security release)
           cache: 'npm'
           cache-dependency-path: 'website/package-lock.json'
 
       - name: Setup Python for SBOM generation
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
 
       - name: Validate version input
         id: validate
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          INPUT_CREATE_TAG: ${{ github.event.inputs.create_tag }}
         run: |
-          VERSION="${{ github.event.inputs.version }}"
+          VERSION="$INPUT_VERSION"
           echo "Validating version: $VERSION"
           
           # Check version format
@@ -60,7 +63,7 @@ jobs:
           fi
           
           # Check if git tag exists (if we're not supposed to create it)
-          if git tag --list | grep -q "^$VERSION$" && [ "${{ github.event.inputs.create_tag }}" != "true" ]; then
+          if git tag --list | grep -q "^$VERSION$" && [ "$INPUT_CREATE_TAG" != "true" ]; then
             echo "❌ Error: Git tag $VERSION already exists and create_tag is disabled"
             exit 1
           fi
@@ -124,7 +127,7 @@ jobs:
           
           # Install SBOM generation tools
           pip install cyclonedx-bom cyclonedx-python-lib
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/v1.57.1/install.sh | sh -s -- -b /usr/local/bin v1.57.1
           
           # Create version-specific security directory
           mkdir -p "docs/security/versions/$VERSION"
@@ -382,7 +385,7 @@ jobs:
 
       - name: Create summary issue comment
         if: always() && steps.summary.outputs.summary_created == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs');
@@ -412,7 +415,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: version-creation-logs
           path: |

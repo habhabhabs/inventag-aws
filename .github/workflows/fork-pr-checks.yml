@@ -8,7 +8,7 @@ on:
 # CRITICAL: Use pull_request_target for forks but with restricted permissions
 permissions:
   contents: read
-  pull-requests: write
+  pull-requests: write  # post the assessment comment
   issues: write
   # DO NOT grant secrets access to fork PRs
 
@@ -21,19 +21,26 @@ jobs:
     
     steps:
       - name: Log fork PR details
+        # PR-controlled text is passed through env, never interpolated into the script.
+        env:
+          FORK_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           echo "🔍 Fork PR Security Screening"
-          echo "Fork Repository: ${{ github.event.pull_request.head.repo.full_name }}"
-          echo "Author: ${{ github.event.pull_request.user.login }}"
-          echo "PR Title: ${{ github.event.pull_request.title }}"
-          echo "Branch: ${{ github.event.pull_request.head.ref }}"
+          echo "Fork Repository: $FORK_REPO"
+          echo "Author: $PR_AUTHOR"
+          echo "PR Title: $PR_TITLE"
+          echo "Branch: $PR_BRANCH"
           
       # DO NOT checkout the fork code in this job for security
       - name: Check author reputation
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
-          AUTHOR="${{ github.event.pull_request.user.login }}"
+          AUTHOR="$PR_AUTHOR"
           echo "Checking author reputation for: $AUTHOR"
           
           # Get author info (this is safe as it doesn't execute fork code)
@@ -108,9 +115,10 @@ jobs:
       - name: Comment on PR with security assessment
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
-          REVIEW_LEVEL="${{ env.REQUIRES_MANUAL_REVIEW }}"
-          AUTHOR="${{ github.event.pull_request.user.login }}"
+          REVIEW_LEVEL="$REQUIRES_MANUAL_REVIEW"
+          AUTHOR="$PR_AUTHOR"
           
           case $REVIEW_LEVEL in
             "high")
@@ -175,63 +183,6 @@ jobs:
           
           gh pr comment ${{ github.event.number }} --body "$COMMENT"
 
-  # Only run safe tests for fork PRs (no secrets access)
-  safe-fork-tests:
-    name: Safe Fork Tests
-    runs-on: ubuntu-latest
-    if: |
-      github.event.pull_request.head.repo.full_name != github.repository &&
-      (contains(github.event.pull_request.labels.*.name, 'safe-to-test') ||
-       !contains(github.event.pull_request.body, 'security-sensitive'))
-    
-    steps:
-      - name: Checkout PR code (safe)
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          # Limit depth for performance
-          fetch-depth: 1
-          # DO NOT persist credentials
-          persist-credentials: false
-          
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          
-      - name: Install dependencies (restricted)
-        run: |
-          python -m pip install --upgrade pip
-          # Only install from requirements.txt, no arbitrary packages
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          fi
-          
-      - name: Run safe static tests
-        run: |
-          echo "🔍 Running safe static analysis tests..."
-          
-          # Test imports without execution
-          python -c "import ast; [ast.parse(open(f).read()) for f in ['inventag/__init__.py']]"
-          echo "✅ Python syntax valid"
-          
-          # Test basic imports (no AWS calls)
-          python -c "import inventag; print('✅ Package imports')" || echo "❌ Import failed"
-          
-      - name: Security scan (static only)
-        run: |
-          echo "🔒 Running static security scan..."
-          
-          # Check for obvious security issues without execution
-          if grep -r "eval\|exec\|os\.system\|subprocess\.call" inventag/ scripts/ 2>/dev/null; then
-            echo "⚠️ Potentially dangerous code patterns found"
-          else
-            echo "✅ No obvious dangerous patterns detected"
-          fi
-          
-          # Check for hardcoded credentials
-          if grep -r "aws_access_key\|aws_secret\|password\|token" inventag/ scripts/ 2>/dev/null; then
-            echo "⚠️ Potential credential leak detected - please review"
-          else
-            echo "✅ No obvious credential leaks detected"
-          fi
+  # NOTE: this workflow runs on pull_request_target (base-repo token and cache
+  # scope). It must never check out or execute the fork's code. Fork PR tests
+  # run in ci.yml under the pull_request trigger, which uses a read-only token.

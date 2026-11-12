@@ -26,7 +26,13 @@ jobs:
   detect_failures:
     name: Detect and Analyze Failures
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'failure' || github.event_name == 'workflow_dispatch'
+    # Only react to failures of runs on this repository's own branches (never PR or
+    # fork runs): this job's token can push to main.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'failure' &&
+       github.event.workflow_run.event != 'pull_request' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     
     outputs:
       needs_recovery: ${{ steps.analysis.outputs.needs_recovery }}
@@ -35,11 +41,11 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         
       - name: Analyze workflow failure
         id: analysis
-        uses: actions/github-script@v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const workflowRun = context.payload.workflow_run;
@@ -116,7 +122,7 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           
@@ -273,7 +279,7 @@ jobs:
           fi
           
       - name: Create recovery report
-        uses: actions/github-script@v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const failureType = '${{ needs.detect_failures.outputs.failure_type }}';
