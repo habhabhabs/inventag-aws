@@ -9,6 +9,11 @@ This package transforms the proven functionality from standalone scripts into
 a unified, enterprise-grade platform suitable for both CLI usage and service deployment.
 """
 
+# Must stay first: fails with a plain message on Python older than 3.11.
+from ._python_version import MIN_PYTHON, check_python_version
+
+check_python_version()
+
 __version__ = "1.0.0"
 __author__ = "InvenTag Team"
 

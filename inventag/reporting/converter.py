@@ -10,7 +10,7 @@ import json
 import yaml
 import boto3
 from typing import Dict, List, Any, Union, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from botocore.exceptions import ClientError
 from ..security.safe_output import (
     neutralize_workbook_formulas,
@@ -341,9 +341,9 @@ class BOMConverter:
 
         return enriched
 
-    def _get_tag_value(self, tags: List[Dict], key: str) -> Optional[str]:
+    def _get_tag_value(self, tags: Optional[List[Dict]], key: str) -> Optional[str]:
         """Get tag value by key."""
-        for tag in tags:
+        for tag in tags or []:
             if tag.get("Key") == key:
                 return tag.get("Value")
         return None
@@ -1142,6 +1142,24 @@ class BOMConverter:
         self.export_to_excel(filename)
         return filename
 
+    def generate_csv_bom(self, bom_data, filename: str) -> str:
+        """Generate a CSV BOM (one row per resource) with provided data."""
+        if hasattr(bom_data, "resources"):
+            resources = bom_data.resources
+        elif isinstance(bom_data, list):
+            resources = bom_data
+        else:
+            resources = list(bom_data)
+
+        self.data = resources
+        self.headers = set()
+        for item in resources:
+            if isinstance(item, dict):
+                self.headers.update(item.keys())
+
+        self.export_to_csv(filename)
+        return filename
+
     def generate_word_bom(self, bom_data, filename: str) -> str:
         """Generate Word BOM document with professional formatting."""
         # Handle both BOMData objects and lists
@@ -1196,7 +1214,7 @@ class BOMConverter:
 
         # Add generation timestamp
         doc.add_paragraph(
-            f"Generated on: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+            f"Generated on: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
         )
 
         # Add executive summary

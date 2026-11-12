@@ -118,11 +118,17 @@ class DeltaDetector:
             ignore_metadata_fields: List of fields to ignore during comparison
             severity_rules: Custom rules for determining change severity
         """
+        # Fields that describe the scan, not the resource. They differ on every
+        # run, so comparing them would report every resource as modified.
         self.ignore_metadata_fields = ignore_metadata_fields or [
             "last_seen",
+            "discovered_at",
             "discovery_timestamp",
+            "consolidation_timestamp",
             "scan_time",
             "metadata",
+            "enrichment_metadata",
+            "tag_mapping_metadata",
         ]
 
         # Default severity rules based on attribute patterns
@@ -235,8 +241,10 @@ class DeltaDetector:
             new_resources_map,
         )
 
-        # Calculate change statistics
-        change_statistics = {
+        # Summary counts
+        summary = {
+            "total_resources_old": len(old_resources),
+            "total_resources_new": len(new_resources),
             "added_count": len(added_resources),
             "removed_count": len(removed_resources),
             "modified_count": len(modified_resources),
@@ -246,11 +254,23 @@ class DeltaDetector:
             + len(modified_resources),
         }
 
+        # Detailed statistics (by service, severity and category). The summary
+        # counts stay in change_statistics for existing consumers.
+        change_statistics = {
+            **summary,
+            **self._generate_change_statistics(
+                added_resources,
+                removed_resources,
+                modified_resources,
+                unchanged_resources,
+            ),
+        }
+
         return DeltaReport(
             state1_id=state1_id,
             state2_id=state2_id,
             timestamp=datetime.now(timezone.utc).isoformat(),
-            summary=change_statistics,
+            summary=summary,
             added_resources=added_resources,
             removed_resources=removed_resources,
             modified_resources=modified_resources,

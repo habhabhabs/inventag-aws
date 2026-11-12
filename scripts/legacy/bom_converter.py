@@ -26,7 +26,7 @@ Usage:
 import argparse
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Import from the unified inventag package
 try:
@@ -120,7 +120,7 @@ Examples:
 
         # Generate output filename if not specified
         if not args.output:
-            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             base_name = os.path.splitext(os.path.basename(args.input))[0]
             if args.format == "excel":
                 args.output = f"{base_name}_bom_{timestamp}.xlsx"

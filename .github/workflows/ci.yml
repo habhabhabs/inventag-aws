@@ -78,7 +78,7 @@ jobs:
         
         # Run test suite if exists
         if [ -d "tests" ]; then
-          python -m pytest tests/ -v --cov=inventag --cov-report=xml --timeout=300 || true
+          python -m pytest tests/ -v --cov=inventag --cov-report=xml --timeout=300
         fi
         
         # Test script help commands

@@ -33,9 +33,13 @@ class TestDeltaDetector:
         """Test DeltaDetector initialization."""
         assert self.detector.ignore_metadata_fields == [
             "last_seen",
+            "discovered_at",
             "discovery_timestamp",
+            "consolidation_timestamp",
             "scan_time",
             "metadata",
+            "enrichment_metadata",
+            "tag_mapping_metadata",
         ]
         assert ChangeSeverity.CRITICAL in self.detector.severity_rules.values()
         assert "EC2" in self.detector.dependency_patterns
@@ -370,9 +374,16 @@ class TestDeltaDetector:
         )
 
         assert stats["total_changes"] == 3  # added + removed + modified
-        assert stats["service_statistics"]["EC2"] == 1
-        assert stats["service_statistics"]["RDS"] == 1
-        assert stats["service_statistics"]["S3"] == 1
+        # Three changed resources out of four in total
+        assert stats["change_percentage"] == 75.0
+        # Per-service statistics are broken down by change type
+        assert stats["service_statistics"] == {
+            "EC2": {"added": 1, "removed": 0, "modified": 0},
+            "RDS": {"added": 0, "removed": 1, "modified": 0},
+            "S3": {"added": 0, "removed": 0, "modified": 1},
+        }
+        # Unchanged resources are not counted as changes
+        assert "Lambda" not in stats["service_statistics"]
 
     def test_detect_changes_integration(self):
         """Test the main detect_changes method integration."""

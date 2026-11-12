@@ -1,18 +1,27 @@
 # Development and CI tooling for InvenTag (exact pins; CI installs from here).
 # Bump deliberately: black's style changes between releases.
+# Last audited 2026-11-12 with pip-audit: no known vulnerabilities.
 
 # Testing
 pytest==9.2.0
 pytest-cov==7.1.0
 pytest-mock==3.17.0
-pytest-timeout==2.4.0
+pytest-timeout==2.4.0   # provides --timeout, used by CI
 moto[all]==5.2.5
 
 # Formatting and linting (run once in CI's lint job)
-black==26.10.1
+black==26.10.1          # 26.10.1 fixes CVE-2026-114134 (Oct 2026); do not pin lower
 flake8==7.5.0
 mypy==2.4.1
 
 # Security
 bandit==1.9.4
 pip-audit==2.10.1
+
+# Security floors for transitive dependencies of the tools above
+# (advisories published in October 2026).
+werkzeug>=3.1.9         # via moto: CVE-2026-102598
+joserfc>=1.7.6          # via moto: CVE-2026-119283, CVE-2026-119284
+graphql-core>=3.3.1     # via moto: CVE-2026-75507, CVE-2026-75508, CVE-2026-119286
+msgpack>=1.2.3          # via pip-audit (cachecontrol): CVE-2026-114613
+filelock>=4.2.1         # via pip-audit (cachecontrol): CVE-2026-112906 and 20 related advisories

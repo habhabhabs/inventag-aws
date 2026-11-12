@@ -6,7 +6,7 @@ The full, maintained version of this page is
 The short version:
 
 ```bash
-# 1. install (Python 3.8+)
+# 1. install (Python 3.11+)
 git clone https://github.com/habhabhabs/inventag-aws.git
 cd inventag-aws
 python3 -m venv .venv && source .venv/bin/activate

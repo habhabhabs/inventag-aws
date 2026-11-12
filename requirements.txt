@@ -1,4 +1,11 @@
-boto3>=1.26.0
+# Runtime dependencies for InvenTag (Python 3.11+).
+#
+# Lower bounds are the oldest versions with no known vulnerability on the day
+# of the last audit (2026-11-12, pip-audit against the PyPI advisory database
+# and OSV). CI runs `pip-audit` on this file and fails on a new advisory;
+# raise the bound to the fixed version when it does.
+
+boto3>=1.35.0           # first floor whose botocore accepts urllib3 2.x on every supported Python
 PyYAML>=6.0
 openpyxl>=3.0.0
 python-docx>=0.8.11
@@ -6,5 +13,12 @@ colorama>=0.4.4
 semver>=3.0.0
 psutil>=5.9.0
 keyring>=24.0.0
-cryptography>=41.0.0
-requests>=2.31.0
+cryptography>=50.0.0    # CVE-2026-69247 (fixed 50.0.0); CVE-2026-69248, CVE-2026-69249 (fixed 49.0.0)
+requests>=2.33.0        # CVE-2026-25645 (fixed 2.33.0); CVE-2024-47081 (2.32.4); CVE-2024-35195 (2.32.0)
+
+# Security floors for transitive dependencies (not imported by InvenTag
+# directly; listed so that an older, vulnerable release cannot be selected).
+urllib3>=2.8.0          # via botocore, requests: CVE-2026-97687, CVE-2026-97688, CVE-2026-97689 (Oct 2026)
+certifi>=2026.10.18     # via requests: GHSA-6q48-6c7w-9gw2 / PYSEC-2026-4320 (Oct 2026)
+idna>=3.15              # via requests: CVE-2026-45409
+lxml>=6.1.0             # via python-docx: CVE-2026-41066

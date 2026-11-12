@@ -30,6 +30,7 @@ import os
 
 from botocore.config import Config
 
+from ..timeutil import parse_timestamp
 from .cloud_bom_generator import AccountCredentials, AccountContext
 from ..security.arn import (
     build_role_arn,
@@ -421,11 +422,7 @@ class CredentialManager:
         if cache_key in self._validation_cache:
             cached_result = self._validation_cache[cache_key]
             # Return cached result if less than 5 minutes old
-            validated_at = datetime.fromisoformat(
-                cached_result.validation_timestamp.replace("Z", "+00:00")
-            )
-            if validated_at.tzinfo is None:
-                validated_at = validated_at.replace(tzinfo=timezone.utc)
+            validated_at = parse_timestamp(cached_result.validation_timestamp)
             if validated_at > datetime.now(timezone.utc) - timedelta(minutes=5):
                 return cached_result
 

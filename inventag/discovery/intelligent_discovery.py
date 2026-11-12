@@ -18,7 +18,7 @@ import logging
 import threading
 from typing import Dict, List, Any, Optional, Set, Tuple
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
 
@@ -65,7 +65,7 @@ class StandardResource:
     child_resources: List[str] = field(default_factory=list)
 
     # Discovery metadata
-    discovered_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    discovered_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     discovery_method: str = "IntelligentDiscovery"
     api_operation: Optional[str] = None
     confidence_score: float = 1.0

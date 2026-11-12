@@ -123,9 +123,13 @@ class TestDeltaDetector:
 
         assert detector.ignore_metadata_fields == [
             "last_seen",
+            "discovered_at",
             "discovery_timestamp",
+            "consolidation_timestamp",
             "scan_time",
             "metadata",
+            "enrichment_metadata",
+            "tag_mapping_metadata",
         ]
         assert ChangeSeverity.CRITICAL in detector.severity_rules.values()
         assert "EC2" in detector.dependency_patterns

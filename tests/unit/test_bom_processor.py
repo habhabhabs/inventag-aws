@@ -6,6 +6,7 @@ Tests the central orchestrator that processes raw inventory data and coordinates
 with specialized analyzers.
 """
 
+import json
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 import boto3
@@ -23,6 +24,16 @@ from inventag.reporting.bom_processor import (
     BOMProcessingConfig,
     BOMData,
     ProcessingStatistics,
+)
+from inventag.discovery.network_analyzer import (
+    NetworkAnalyzer as RealNetworkAnalyzer,
+    SubnetAnalysis,
+    VPCAnalysis,
+)
+from inventag.discovery.security_analyzer import (
+    SecurityAnalyzer as RealSecurityAnalyzer,
+    SecurityGroupAnalysis,
+    SecurityRule,
 )
 
 
@@ -425,17 +436,89 @@ class TestBOMDataProcessor(unittest.TestCase):
         mock_security_analyzer,
         mock_network_analyzer,
     ):
-        """Test successful inventory data processing."""
-        # Setup mocks
-        mock_network_analyzer.return_value.enrich_resource_with_network_info.side_effect = (
-            lambda x: x
-        )
-        mock_network_analyzer.return_value.generate_network_summary.return_value = {"vpc_count": 1}
+        """Test successful inventory data processing.
 
-        mock_security_analyzer.return_value.enrich_resource_with_security_info.side_effect = (
-            lambda x: x
+        The AWS-calling analysis steps are replaced with canned analysis
+        objects; the summary generation is the real analyzer code, so this
+        checks that the dataclass summaries reach BOMData as the plain
+        dictionaries the document builders read.
+        """
+        # Only the bom_processor names are patched; these are the real classes.
+        real_network = RealNetworkAnalyzer(self.mock_session)
+        real_security = RealSecurityAnalyzer(self.mock_session)
+
+        vpc_analysis = {
+            "vpc-12345678": VPCAnalysis(
+                vpc_id="vpc-12345678",
+                vpc_name="prod-vpc",
+                cidr_block="10.0.0.0/16",
+                total_ips=65531,
+                available_ips=65000,
+                utilization_percentage=0.8,
+                subnets=[
+                    SubnetAnalysis(
+                        subnet_id="subnet-0a1b2c3d",
+                        subnet_name="prod-private-a",
+                        cidr_block="10.0.1.0/24",
+                        availability_zone="us-east-1a",
+                        vpc_id="vpc-12345678",
+                        total_ips=251,
+                        available_ips=200,
+                        utilization_percentage=20.3,
+                    )
+                ],
+            )
+        }
+        sg_analysis = {
+            "sg-0123456789abcdef0": SecurityGroupAnalysis(
+                group_id="sg-0123456789abcdef0",
+                group_name="web-sg",
+                description="Web tier",
+                vpc_id="vpc-12345678",
+                inbound_rules=[
+                    SecurityRule(
+                        protocol="tcp",
+                        port_range="22",
+                        source_destination="0.0.0.0/0",
+                        description="SSH from anywhere",
+                        rule_type="inbound",
+                        risk_assessment="high",
+                        is_permissive=True,
+                        common_service="SSH",
+                    ),
+                    SecurityRule(
+                        protocol="tcp",
+                        port_range="443",
+                        source_destination="10.0.0.0/16",
+                        description="HTTPS from the VPC",
+                        rule_type="inbound",
+                        risk_assessment="low",
+                    ),
+                ],
+                associated_resources=["i-1234567890abcdef0"],
+                risk_level="high",
+            ),
+            "sg-0fedcba9876543210": SecurityGroupAnalysis(
+                group_id="sg-0fedcba9876543210",
+                group_name="unused-sg",
+                description="Left over",
+                vpc_id="vpc-12345678",
+                is_unused=True,
+            ),
+        }
+
+        network = mock_network_analyzer.return_value
+        network.enrich_resource_with_network_info.side_effect = lambda x: x
+        network.analyze_vpc_resources.return_value = vpc_analysis
+        network.generate_network_summary.side_effect = real_network.generate_network_summary
+
+        security = mock_security_analyzer.return_value
+        security.enrich_resource_with_security_info.side_effect = lambda x: x
+        security.analyze_security_groups.return_value = sg_analysis
+        security.generate_security_summary.side_effect = real_security.generate_security_summary
+        security.identify_overly_permissive_rules.side_effect = (
+            real_security.identify_overly_permissive_rules
         )
-        mock_security_analyzer.return_value.generate_security_summary.return_value = {"sg_count": 2}
 
         mock_service_enricher.return_value.enrich_resource.side_effect = lambda x: x
         mock_desc_manager.return_value.apply_description_to_resource.side_effect = lambda x: x
@@ -443,25 +526,103 @@ class TestBOMDataProcessor(unittest.TestCase):
 
         processor = BOMDataProcessor(self.config, self.mock_session)
 
+        resources = self.sample_resources + [
+            {
+                "id": "sg-0123456789abcdef0",
+                "service": "EC2",
+                "type": "SecurityGroup",
+                "region": "us-east-1",
+                "arn": "arn:aws:ec2:us-east-1:123456789012:security-group/sg-0123456789abcdef0",
+            }
+        ]
+
         # Process data
-        bom_data = processor.process_inventory_data(self.sample_resources)
+        bom_data = processor.process_inventory_data(resources)
 
         # Verify results
         self.assertIsInstance(bom_data, BOMData)
-        self.assertEqual(len(bom_data.resources), 2)
-        self.assertEqual(bom_data.network_analysis["vpc_count"], 1)
-        self.assertEqual(bom_data.security_analysis["sg_count"], 2)
+        self.assertEqual(len(bom_data.resources), 3)
         self.assertIn("generated_at", bom_data.generation_metadata)
         self.assertIn("processing_statistics", bom_data.generation_metadata)
+        self.assertFalse(bom_data.error_summary["has_errors"])
+
+        # Only the reclassified VPC/SecurityGroup resources reach the analyzers
+        (vpc_arg,), _ = network.analyze_vpc_resources.call_args
+        self.assertEqual([r["id"] for r in vpc_arg], ["vpc-12345678"])
+        (sg_arg,), _ = security.analyze_security_groups.call_args
+        self.assertEqual([r["id"] for r in sg_arg], ["sg-0123456789abcdef0"])
+
+        # Network summary is a plain dict in the shape the builders read
+        self.assertIsInstance(bom_data.network_analysis, dict)
+        self.assertEqual(bom_data.network_analysis["total_vpcs"], 1)
+        self.assertEqual(bom_data.network_analysis["total_subnets"], 1)
+        self.assertEqual(
+            bom_data.network_analysis["vpc_utilization"]["vpc-12345678"],
+            {
+                "name": "prod-vpc",
+                "cidr_block": "10.0.0.0/16",
+                "utilization_percentage": 0.8,
+                "available_ips": 65000,
+            },
+        )
+
+        # Security summary: counts are real, rules are a list of dicts
+        self.assertIsInstance(bom_data.security_analysis, dict)
+        self.assertEqual(bom_data.security_analysis["total_security_groups"], 2)
+        self.assertEqual(bom_data.security_analysis["unused_security_groups"], 1)
+        self.assertEqual(bom_data.security_analysis["overly_permissive_rule_count"], 1)
+        self.assertEqual(bom_data.security_analysis["high_risk_rules"], 1)
+        self.assertEqual(
+            bom_data.security_analysis["high_risk_resources"], ["i-1234567890abcdef0"]
+        )
+        (rule,) = bom_data.security_analysis["overly_permissive_rules"]
+        self.assertEqual(rule["group_id"], "sg-0123456789abcdef0")
+        self.assertEqual(rule["rule"], "inbound tcp 22 0.0.0.0/0")
+        self.assertEqual(rule["risk_level"], "high")
+
+        # The analysis must survive JSON output and document validation
+        json.dumps(bom_data.network_analysis)
+        json.dumps(bom_data.security_analysis)
 
         # Verify VPC reclassification happened
         vpc_resource = next(r for r in bom_data.resources if r["type"] == "VPC")
         self.assertEqual(vpc_resource["service"], "VPC")
 
     @patch("inventag.reporting.bom_processor.NetworkAnalyzer")
+    @patch("inventag.reporting.bom_processor.SecurityAnalyzer")
+    def test_process_inventory_data_without_network_resources(
+        self, mock_security_analyzer, mock_network_analyzer
+    ):
+        """No VPC, subnet or security group resources: analysis stays empty."""
+        mock_network_analyzer.return_value.enrich_resource_with_network_info.side_effect = (
+            lambda x: x
+        )
+        mock_security_analyzer.return_value.enrich_resource_with_security_info.side_effect = (
+            lambda x: x
+        )
+        config = BOMProcessingConfig(
+            enable_service_enrichment=False,
+            enable_service_descriptions=False,
+            enable_tag_mapping=False,
+            enable_parallel_processing=False,
+        )
+        processor = BOMDataProcessor(config, self.mock_session)
+
+        bom_data = processor.process_inventory_data([self.sample_resources[0]])
+
+        self.assertEqual(bom_data.network_analysis, {})
+        self.assertEqual(bom_data.security_analysis, {})
+        mock_network_analyzer.return_value.analyze_vpc_resources.assert_not_called()
+        mock_security_analyzer.return_value.analyze_security_groups.assert_not_called()
+
+    @patch("inventag.reporting.bom_processor.NetworkAnalyzer")
     def test_process_inventory_data_with_errors(self, mock_network_analyzer):
         """Test inventory data processing with errors."""
-        # Setup mock to raise exception
+        # Per-resource enrichment passes resources through unchanged; the
+        # summary step then fails.
+        mock_network_analyzer.return_value.enrich_resource_with_network_info.side_effect = (
+            lambda x: x
+        )
         mock_network_analyzer.return_value.generate_network_summary.side_effect = Exception(
             "Network error"
         )

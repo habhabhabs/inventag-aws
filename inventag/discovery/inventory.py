@@ -14,7 +14,7 @@ import logging
 import time
 import sys
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Any, Optional, Set
 from botocore.exceptions import ClientError
 
@@ -1191,7 +1191,7 @@ class AWSResourceInventory:
                                     "account_id": account_id,
                                     "tags": tags,
                                     "discovered_via": "ResourceGroupsTaggingAPI",
-                                    "discovered_at": datetime.utcnow().isoformat(),
+                                    "discovered_at": datetime.now(timezone.utc).isoformat(),
                                 }
 
                                 # Apply service filters if specified
@@ -1593,7 +1593,7 @@ class AWSResourceInventory:
                 "tags": tags,
                 "discovered_via": "DynamicDiscovery",
                 "api_operation": operation_name,
-                "discovered_at": datetime.utcnow().isoformat(),
+                "discovered_at": datetime.now(timezone.utc).isoformat(),
                 "raw_data": resource_data,  # Include raw data for debugging/enhancement
             }
 
@@ -2170,7 +2170,7 @@ class AWSResourceInventory:
                             "engine": instance["Engine"],
                             "status": instance["DBInstanceStatus"],
                             "discovered_via": "BillingTargetedDiscovery",
-                            "discovered_at": datetime.utcnow().isoformat(),
+                            "discovered_at": datetime.now(timezone.utc).isoformat(),
                         }
                     )
                     resources_found.append("DB Instance")
@@ -2194,7 +2194,7 @@ class AWSResourceInventory:
                             "engine": cluster["Engine"],
                             "status": cluster["Status"],
                             "discovered_via": "BillingTargetedDiscovery",
-                            "discovered_at": datetime.utcnow().isoformat(),
+                            "discovered_at": datetime.now(timezone.utc).isoformat(),
                         }
                     )
                     resources_found.append("DB Cluster")
@@ -2230,7 +2230,7 @@ class AWSResourceInventory:
                             "arn": table.get("TableArn", ""),
                             "status": table["TableStatus"],
                             "discovered_via": "BillingTargetedDiscovery",
-                            "discovered_at": datetime.utcnow().isoformat(),
+                            "discovered_at": datetime.now(timezone.utc).isoformat(),
                         }
                     )
                 except Exception as e:
@@ -2260,7 +2260,7 @@ class AWSResourceInventory:
                             "engine": cluster["Engine"],
                             "status": cluster["CacheClusterStatus"],
                             "discovered_via": "BillingTargetedDiscovery",
-                            "discovered_at": datetime.utcnow().isoformat(),
+                            "discovered_at": datetime.now(timezone.utc).isoformat(),
                         }
                     )
             except Exception as e:
@@ -2287,7 +2287,7 @@ class AWSResourceInventory:
                         "name": cluster["ClusterIdentifier"],
                         "status": cluster["ClusterStatus"],
                         "discovered_via": "BillingTargetedDiscovery",
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2312,7 +2312,7 @@ class AWSResourceInventory:
                         "arn": lb["LoadBalancerArn"],
                         "status": lb["State"]["Code"],
                         "discovered_via": "BillingTargetedDiscovery",
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2335,7 +2335,7 @@ class AWSResourceInventory:
                         "id": api["id"],
                         "name": api["name"],
                         "discovered_via": "BillingTargetedDiscovery",
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2361,7 +2361,7 @@ class AWSResourceInventory:
                         "name": topic_name,
                         "arn": topic_arn,
                         "discovered_via": "BillingTargetedDiscovery",
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2386,7 +2386,7 @@ class AWSResourceInventory:
                         "name": queue_name,
                         "queue_url": queue_url,
                         "discovered_via": "BillingTargetedDiscovery",
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2408,7 +2408,7 @@ class AWSResourceInventory:
                         "id": stream_name,
                         "name": stream_name,
                         "discovered_via": "BillingTargetedDiscovery",
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2431,7 +2431,7 @@ class AWSResourceInventory:
                         "name": sm["name"],
                         "arn": sm["stateMachineArn"],
                         "discovered_via": "BillingTargetedDiscovery",
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2454,7 +2454,7 @@ class AWSResourceInventory:
                         "name": secret["Name"],
                         "arn": secret["ARN"],
                         "discovered_via": "BillingTargetedDiscovery",
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2478,7 +2478,7 @@ class AWSResourceInventory:
                             "id": param["Name"],
                             "name": param["Name"],
                             "discovered_via": "BillingTargetedDiscovery",
-                            "discovered_at": datetime.utcnow().isoformat(),
+                            "discovered_at": datetime.now(timezone.utc).isoformat(),
                         }
                     )
             except Exception as e:
@@ -2507,7 +2507,7 @@ class AWSResourceInventory:
                         "id": zone["Id"].split("/")[-1],
                         "name": zone["Name"],
                         "discovered_via": "BillingTargetedDiscovery",
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2533,7 +2533,7 @@ class AWSResourceInventory:
                         "name": dist.get("DomainName", dist["Id"]),
                         "status": dist["Status"],
                         "discovered_via": "BillingTargetedDiscovery",
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2557,7 +2557,7 @@ class AWSResourceInventory:
                         "arn": cert["CertificateArn"],
                         "status": cert["Status"],
                         "discovered_via": "BillingTargetedDiscovery",
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2581,7 +2581,7 @@ class AWSResourceInventory:
                         "name": acl["Name"],
                         "arn": acl["ARN"],
                         "discovered_via": "BillingTargetedDiscovery",
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2619,7 +2619,7 @@ class AWSResourceInventory:
                                 tag["Key"]: tag["Value"]
                                 for tag in instance.get("Tags", [])
                             },
-                            "discovered_at": datetime.utcnow().isoformat(),
+                            "discovered_at": datetime.now(timezone.utc).isoformat(),
                         }
                     )
 
@@ -2641,7 +2641,7 @@ class AWSResourceInventory:
                         "tags": {
                             tag["Key"]: tag["Value"] for tag in volume.get("Tags", [])
                         },
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2660,7 +2660,7 @@ class AWSResourceInventory:
                         "tags": {
                             tag["Key"]: tag["Value"] for tag in sg.get("Tags", [])
                         },
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2701,7 +2701,7 @@ class AWSResourceInventory:
                                 "name": bucket["Name"],
                                 "creation_date": bucket["CreationDate"].isoformat(),
                                 "tags": tags,
-                                "discovered_at": datetime.utcnow().isoformat(),
+                                "discovered_at": datetime.now(timezone.utc).isoformat(),
                             }
                         )
                     except ClientError as e:
@@ -2746,7 +2746,7 @@ class AWSResourceInventory:
                         "allocated_storage": instance.get("AllocatedStorage"),
                         "vpc_id": instance.get("DbSubnetGroup", {}).get("VpcId"),
                         "tags": tags,
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2781,7 +2781,7 @@ class AWSResourceInventory:
                         "timeout": function["Timeout"],
                         "last_modified": function["LastModified"],
                         "tags": tags,
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2819,7 +2819,7 @@ class AWSResourceInventory:
                         "path": role["Path"],
                         "create_date": role["CreateDate"].isoformat(),
                         "tags": tags,
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2846,7 +2846,7 @@ class AWSResourceInventory:
                         "path": user["Path"],
                         "create_date": user["CreateDate"].isoformat(),
                         "tags": tags,
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2874,7 +2874,7 @@ class AWSResourceInventory:
                         "tags": {
                             tag["Key"]: tag["Value"] for tag in vpc.get("Tags", [])
                         },
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2895,7 +2895,7 @@ class AWSResourceInventory:
                         "tags": {
                             tag["Key"]: tag["Value"] for tag in subnet.get("Tags", [])
                         },
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2935,7 +2935,7 @@ class AWSResourceInventory:
                         "status": stack["StackStatus"],
                         "creation_time": stack["CreationTime"].isoformat(),
                         "tags": tags,
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -2978,7 +2978,7 @@ class AWSResourceInventory:
                             "pending_tasks": cluster["pendingTasksCount"],
                             "active_services": cluster["activeServicesCount"],
                             "tags": tags,
-                            "discovered_at": datetime.utcnow().isoformat(),
+                            "discovered_at": datetime.now(timezone.utc).isoformat(),
                         }
                     )
 
@@ -3011,7 +3011,7 @@ class AWSResourceInventory:
                             else None
                         ),
                         "tags": cluster.get("tags", {}),
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -3037,7 +3037,7 @@ class AWSResourceInventory:
                         "state": alarm["StateValue"],
                         "metric_name": alarm["MetricName"],
                         "namespace": alarm["Namespace"],
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -3073,7 +3073,7 @@ class AWSResourceInventory:
                         "is_multi_region": trail.get(
                             "IncludeGlobalServiceEvents", False
                         ),
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -3104,7 +3104,7 @@ class AWSResourceInventory:
                             "arn": key_metadata.get("Arn", ""),
                             "key_usage": key_metadata.get("KeyUsage", ""),
                             "key_state": key_metadata.get("KeyState", ""),
-                            "discovered_at": datetime.utcnow().isoformat(),
+                            "discovered_at": datetime.now(timezone.utc).isoformat(),
                         }
                     )
                 except ClientError as key_error:
@@ -3131,7 +3131,7 @@ class AWSResourceInventory:
                             "id": database["Name"],
                             "name": database["Name"],
                             "description": database.get("Description", ""),
-                            "discovered_at": datetime.utcnow().isoformat(),
+                            "discovered_at": datetime.now(timezone.utc).isoformat(),
                         }
                     )
             except ClientError:
@@ -3149,7 +3149,7 @@ class AWSResourceInventory:
                             "id": table["Name"],
                             "name": table["Name"],
                             "database": table.get("DatabaseName", ""),
-                            "discovered_at": datetime.utcnow().isoformat(),
+                            "discovered_at": datetime.now(timezone.utc).isoformat(),
                         }
                     )
             except ClientError:
@@ -3176,7 +3176,7 @@ class AWSResourceInventory:
                         "arn": rule.get("Arn", ""),
                         "state": rule.get("State", ""),
                         "description": rule.get("Description", ""),
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -3191,7 +3191,7 @@ class AWSResourceInventory:
                         "id": bus["Name"],
                         "name": bus["Name"],
                         "arn": bus.get("Arn", ""),
-                        "discovered_at": datetime.utcnow().isoformat(),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -3217,7 +3217,7 @@ class AWSResourceInventory:
                             "id": org["OrganizationId"],
                             "name": org.get("Alias", org["OrganizationId"]),
                             "state": org.get("State", ""),
-                            "discovered_at": datetime.utcnow().isoformat(),
+                            "discovered_at": datetime.now(timezone.utc).isoformat(),
                         }
                     )
             except ClientError as e:

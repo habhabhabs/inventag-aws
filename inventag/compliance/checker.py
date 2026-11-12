@@ -10,7 +10,7 @@ import json
 import yaml
 import boto3
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional, Set, Tuple
 from botocore.exceptions import ClientError, NoCredentialsError
 import time
@@ -190,7 +190,7 @@ class ComprehensiveTagComplianceChecker:
                                     "tags": tags,
                                     "account_id": account_id,
                                     "discovered_via": "ResourceGroupsTaggingAPI",
-                                    "discovered_at": datetime.utcnow().isoformat(),
+                                    "discovered_at": datetime.now(timezone.utc).isoformat(),
                                 }
 
                                 # Add additional info if available
@@ -327,7 +327,7 @@ class ComprehensiveTagComplianceChecker:
             "non_compliant_resources": non_compliant_count,
             "untagged_resources": untagged_count,
             "compliance_percentage": round(compliance_percentage, 2),
-            "check_timestamp": datetime.utcnow().isoformat(),
+            "check_timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         self.compliance_results = {
@@ -497,7 +497,7 @@ class ComprehensiveTagComplianceChecker:
         }
 
         # Generate timestamp for filenames
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
         # Generate documents
         generated_files = []
@@ -626,7 +626,7 @@ class ComprehensiveTagComplianceChecker:
             with open(filename.replace(".docx", ".txt"), "w") as f:
                 f.write("InvenTag Compliance BOM Report\n")
                 f.write("=" * 40 + "\n\n")
-                f.write(f"Generated: {datetime.utcnow().isoformat()}\n")
+                f.write(f"Generated: {datetime.now(timezone.utc).isoformat()}\n")
                 f.write(f"Total Resources: {len(bom_data.resources)}\n")
                 f.write(
                     f"Compliance Rate: {bom_data.compliance_details['compliance_percentage']}%\n\n"

@@ -32,7 +32,7 @@ class TestAccountCredentials:
 
         assert creds.account_id == "123456789012"
         assert creds.account_name == "Test Account"
-        assert creds.regions == ["us-east-1"]  # Default
+        assert creds.regions == []  # Default: empty means auto-discover all regions
         assert creds.services == []  # Default empty means all services
         assert creds.tags == {}  # Default empty
 
@@ -339,6 +339,9 @@ class TestCloudBOMGenerator:
             regions=["us-east-1"],
             services=None,  # Empty list becomes None for all services
             tag_filters={},
+            # Passed through from MultiAccountConfig (defaults)
+            enable_billing_validation=True,
+            fallback_display_mode="auto",
         )
 
         # Verify resources

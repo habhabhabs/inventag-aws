@@ -18,6 +18,7 @@ Features:
 import logging
 import boto3
 import json
+import os
 import yaml
 import getpass
 from typing import Dict, List, Any, Optional
@@ -188,6 +189,19 @@ class CloudBOMGenerator:
                 all_resources = self._parallel_account_discovery(account_contexts)
             else:
                 all_resources = self._sequential_account_discovery(account_contexts)
+
+            # A run in which no account could be scanned is a failure. An
+            # empty report and an empty state snapshot would otherwise look
+            # like every resource had been deleted.
+            if (
+                self.config.accounts
+                and self._processing_stats["successful_accounts"] == 0
+            ):
+                raise AccountSessionError(
+                    "Resource discovery failed for all "
+                    f"{len(self.config.accounts)} configured account(s); "
+                    "no report was generated"
+                )
 
             # Step 3: Consolidate resources if configured
             if self.config.consolidate_accounts:
@@ -639,6 +653,15 @@ class CloudBOMGenerator:
 
         all_resources = []
 
+        # Accounts whose session could not be created are failures too (the
+        # sequential path counts them the same way).
+        for account_id, context in account_contexts.items():
+            if context.session is None:
+                self.logger.warning(
+                    f"Skipping account {account_id} due to invalid session"
+                )
+                self._processing_stats["failed_accounts"] += 1
+
         with ThreadPoolExecutor(
             max_workers=self.config.max_concurrent_accounts
         ) as executor:
@@ -1000,6 +1023,12 @@ class CloudBOMGenerator:
                 except Exception as e:
                     self.logger.error(f"Failed to generate {format_type} format: {e}")
 
+            # Exporters write nothing when there is no data; only report files
+            # that exist (the S3 upload step reads this list).
+            generated_files = [
+                path for path in generated_files if os.path.isfile(path)
+            ]
+
             return {
                 "success": True,
                 "generated_files": generated_files,
@@ -1066,10 +1095,9 @@ class CloudBOMGenerator:
                     previous_states = state_manager.list_states()
 
                     if len(previous_states) > 1:
-                        # Compare with previous state
-                        previous_state_id = previous_states[-2][
-                            "state_id"
-                        ]  # Second to last
+                        # list_states() returns newest first, so index 0 is
+                        # the state just saved and index 1 the one before it.
+                        previous_state_id = previous_states[1]["state_id"]
                         delta_results = delta_detector.detect_changes_by_state_id(
                             state_manager, previous_state_id, state_id
                         )

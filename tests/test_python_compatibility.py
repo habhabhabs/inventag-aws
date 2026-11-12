@@ -13,9 +13,82 @@ class TestPythonCompatibility:
 
     def test_python_version_support(self):
         """Test that we're running on a supported Python version."""
-        version = sys.version_info
-        assert version.major == 3, f"Python 3.x required, got {version.major}.x"
-        assert version.minor >= 8, f"Python 3.8+ required, got 3.{version.minor}"
+        from inventag import MIN_PYTHON
+
+        assert MIN_PYTHON == (3, 11)
+        assert sys.version_info >= MIN_PYTHON, (
+            f"Python 3.11+ required, got {sys.version_info.major}.{sys.version_info.minor}"
+        )
+
+    @pytest.mark.parametrize("old_version", [(2, 7, 18), (3, 8, 20), (3, 10, 14)])
+    def test_package_refuses_unsupported_python(self, old_version):
+        """Importing the package on an old Python fails with a plain message."""
+        from inventag._python_version import (
+            check_python_version,
+            unsupported_python_message,
+        )
+
+        message = unsupported_python_message(old_version)
+        assert "requires Python 3.11 or later" in message
+        assert f"Python {old_version[0]}.{old_version[1]}" in message
+        with pytest.raises(ImportError, match="requires Python 3.11 or later"):
+            check_python_version(old_version)
+
+    @pytest.mark.parametrize("version", [(3, 11, 0), (3, 12, 3), (3, 13, 18), (3, 14, 0)])
+    def test_package_accepts_supported_python(self, version):
+        from inventag._python_version import (
+            check_python_version,
+            unsupported_python_message,
+        )
+
+        assert unsupported_python_message(version) is None
+        check_python_version(version)  # does not raise
+
+    def test_cli_entry_point_exits_on_unsupported_python(self, repo_root):
+        """inventag_cli.py exits with a message (not a traceback) on Python < 3.11."""
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "inventag_cli_under_test", repo_root / "inventag_cli.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)  # importing must not start the CLI
+
+        with pytest.raises(SystemExit) as excinfo:
+            module.require_supported_python((3, 10, 14))
+        message = str(excinfo.value)
+        assert "requires Python 3.11 or later" in message
+        assert "Python 3.10" in message
+        assert "Traceback" not in message
+
+        module.require_supported_python((3, 11, 0))  # does not exit
+        module.require_supported_python()  # the interpreter running the tests
+
+    def test_version_check_modules_parse_on_old_python(self, repo_root):
+        """The two files that carry the check must not use newer syntax.
+
+        An f-string or annotation there would raise SyntaxError on the very
+        interpreters the message is meant for.
+        """
+        import ast
+
+        for relative in ("inventag_cli.py", "inventag/_python_version.py"):
+            tree = ast.parse((repo_root / relative).read_text())
+            for node in ast.walk(tree):
+                assert not isinstance(node, ast.JoinedStr), f"f-string in {relative}"
+                assert not isinstance(node, ast.AnnAssign), f"annotation in {relative}"
+                if isinstance(node, ast.FunctionDef):
+                    assert node.returns is None, f"annotation in {relative}"
+                    for arg in node.args.args + node.args.kwonlyargs:
+                        assert arg.annotation is None, f"annotation in {relative}"
+
+    def test_launchers_require_python_311(self, repo_root):
+        """The wrapper scripts check for the same minimum version."""
+        for name in ("inventag.sh", "inventag.bat"):
+            text = (repo_root / name).read_text()
+            assert "sys.version_info >= (3, 11)" in text
+            assert "(3, 8)" not in text
+            assert "Python 3.11 or later" in text
 
     def test_basic_imports(self):
         """Test that core InvenTag modules can be imported."""
@@ -79,23 +152,29 @@ class TestPythonCompatibility:
 
         assert test_function(42) == "42"
 
-        # Test features available in Python 3.8+
-        if sys.version_info >= (3, 8):
-            # Walrus operator
-            test_list = [1, 2, 3, 4, 5]
-            if (length := len(test_list)) > 3:
-                assert length == 5
+        # Walrus operator (3.8+)
+        test_list = [1, 2, 3, 4, 5]
+        if (length := len(test_list)) > 3:
+            assert length == 5
 
-        # Test features available in Python 3.10+
-        if sys.version_info >= (3, 10):
-            # Pattern matching (basic test)
-            test_value = "match"
-            match test_value:
-                case "match":
-                    result = "matched"
-                case _:
-                    result = "not matched"
-            assert result == "matched"
+        # Pattern matching (3.10+)
+        test_value = "match"
+        match test_value:
+            case "match":
+                result = "matched"
+            case _:
+                result = "not matched"
+        assert result == "matched"
+
+        # Features of the minimum supported version (3.11)
+        import tomllib
+        from datetime import UTC, datetime
+
+        assert tomllib.loads('minimum = "3.11"') == {"minimum": "3.11"}
+        assert datetime.now(UTC).utcoffset().total_seconds() == 0
+        with pytest.raises(ExceptionGroup) as excinfo:
+            raise ExceptionGroup("discovery", [ValueError("us-east-1")])
+        assert excinfo.group_contains(ValueError)
 
 
 if __name__ == "__main__":

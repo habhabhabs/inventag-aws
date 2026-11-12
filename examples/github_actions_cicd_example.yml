@@ -21,7 +21,7 @@ on:
         default: true
 
 env:
-  PYTHON_VERSION: '3.9'
+  PYTHON_VERSION: '3.11'
   AWS_DEFAULT_REGION: 'us-east-1'
 
 jobs:

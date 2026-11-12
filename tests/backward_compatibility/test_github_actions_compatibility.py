@@ -188,28 +188,37 @@ class TestCIJobCompatibility:
         assert result.returncode in [0, 1]  # 0 = formatted, 1 = would reformat
 
     def test_pytest_compatibility(self):
-        """Test that pytest runs without critical errors"""
+        """Test that pytest can collect the whole suite (no import errors).
+
+        This used to run ``pytest tests/`` from inside the suite. That only
+        terminated because a module failed to import and aborted the inner
+        run; with a suite that collects cleanly the inner run reaches this
+        test again and recurses without end. Collection is what CI needs
+        checked here (the tests themselves run in the outer process), and it
+        cannot recurse because no test body is executed.
+        """
         result = subprocess.run(
-            [sys.executable, "-m", "pytest", "tests/", "-v", "--tb=short"],
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                "tests/",
+                "--collect-only",
+                "-q",
+                "-p",
+                "no:cacheprovider",
+            ],
             capture_output=True,
             text=True,
+            timeout=240,
             cwd=os.path.join(os.path.dirname(__file__), "..", ".."),
         )
 
-        # Should not have import errors or critical failures
-        if result.returncode != 0:
-            # Allow for missing dependencies but not structural issues
-            assert (
-                any(
-                    error in result.stdout
-                    for error in [
-                        "ModuleNotFoundError",
-                        "ImportError",
-                        "No module named",
-                    ]
-                )
-                or "FAILED" not in result.stdout
-            )
+        output = result.stdout + result.stderr
+        assert result.returncode == 0, output[-2000:]
+        for marker in ("ModuleNotFoundError", "ImportError", "No module named"):
+            assert marker not in output, output[-2000:]
+        assert "error" not in result.stdout.strip().splitlines()[-1].lower()
 
     def test_script_help_commands_work(self):
         """Test that all script help commands work (CI requirement)"""

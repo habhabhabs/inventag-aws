@@ -10,8 +10,8 @@ set PYTHON_CMD=
 REM Check for python3 first (preferred for modern systems)
 python3 --version >nul 2>&1
 if !errorlevel! == 0 (
-    REM Verify it's Python 3.8+
-    python3 -c "import sys; exit(0 if sys.version_info >= (3, 8) else 1)" >nul 2>&1
+    REM Verify it's Python 3.11+
+    python3 -c "import sys; exit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
     if !errorlevel! == 0 (
         set PYTHON_CMD=python3
         goto :run_inventag
@@ -21,8 +21,8 @@ if !errorlevel! == 0 (
 REM Check for python command
 python --version >nul 2>&1
 if !errorlevel! == 0 (
-    REM Verify it's Python 3.8+
-    python -c "import sys; exit(0 if sys.version_info >= (3, 8) else 1)" >nul 2>&1
+    REM Verify it's Python 3.11+
+    python -c "import sys; exit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
     if !errorlevel! == 0 (
         set PYTHON_CMD=python
         goto :run_inventag
@@ -32,8 +32,8 @@ if !errorlevel! == 0 (
 REM Check for py launcher (Windows Python Launcher)
 py -3 --version >nul 2>&1
 if !errorlevel! == 0 (
-    REM Verify it's Python 3.8+
-    py -3 -c "import sys; exit(0 if sys.version_info >= (3, 8) else 1)" >nul 2>&1
+    REM Verify it's Python 3.11+
+    py -3 -c "import sys; exit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
     if !errorlevel! == 0 (
         set PYTHON_CMD=py -3
         goto :run_inventag
@@ -42,9 +42,9 @@ if !errorlevel! == 0 (
 
 REM No suitable Python found
 echo Error: No suitable Python interpreter found.
-echo InvenTag requires Python 3.8 or later.
+echo InvenTag requires Python 3.11 or later.
 echo.
-echo Please install Python 3.8+ and ensure it's available:
+echo Please install Python 3.11+ and ensure it's available:
 echo   - Download from https://python.org
 echo   - Or install from Microsoft Store
 echo   - Make sure Python is added to PATH during installation

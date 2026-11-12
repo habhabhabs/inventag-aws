@@ -27,7 +27,7 @@ import argparse
 import sys
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from botocore.exceptions import NoCredentialsError
 from colorama import Fore, Style, init
 
@@ -195,7 +195,7 @@ Examples:
             results = checker.check_compliance()
 
         # Generate filename with timestamp
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
         if args.format == "excel":
             filename = f"{args.output}_{timestamp}.xlsx"

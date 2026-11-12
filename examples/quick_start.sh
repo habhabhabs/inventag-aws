@@ -41,7 +41,7 @@ check_python_version() {
     elif command_exists python; then
         PYTHON_CMD="python"
     else
-        print_error "Python is not installed. Please install Python 3.7 or later."
+        print_error "Python is not installed. Please install Python 3.11 or later."
         exit 1
     fi
     
@@ -49,8 +49,8 @@ check_python_version() {
     PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d'.' -f1)
     PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d'.' -f2)
     
-    if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 7 ]); then
-        print_error "Python 3.7 or later is required. Found: $PYTHON_VERSION"
+    if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 11 ]); then
+        print_error "Python 3.11 or later is required. Found: $PYTHON_VERSION"
         exit 1
     fi
     

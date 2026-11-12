@@ -17,7 +17,7 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Optional, Any, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import boto3
 from botocore.exceptions import ClientError
 
@@ -696,7 +696,7 @@ class ComprehensiveAWSDiscovery:
                 "tags": tags,
                 "raw_data": raw_data,
                 "discovered_via": f"ServiceAPI:{operation_name}",
-                "discovered_at": datetime.utcnow().isoformat(),
+                "discovered_at": datetime.now(timezone.utc).isoformat(),
                 "tagged": bool(tags),
                 "priority": "primary",  # Service API discoveries are primary
             }
@@ -728,7 +728,7 @@ class ComprehensiveAWSDiscovery:
                 "tags": {},
                 "raw_data": {"url": value},
                 "discovered_via": f"ServiceAPI:{operation_name}",
-                "discovered_at": datetime.utcnow().isoformat(),
+                "discovered_at": datetime.now(timezone.utc).isoformat(),
                 "tagged": False,
                 "priority": "primary",  # Service API discoveries are primary
             }
@@ -948,7 +948,7 @@ class ComprehensiveAWSDiscovery:
                                             "tags": tags,
                                             "raw_data": {"arn": arn},
                                             "discovered_via": "ResourceGroupsTaggingAPI:Fallback",
-                                            "discovered_at": datetime.utcnow().isoformat(),
+                                            "discovered_at": datetime.now(timezone.utc).isoformat(),
                                             "tagged": True,
                                             "priority": "fallback",  # Mark as lower priority
                                         }

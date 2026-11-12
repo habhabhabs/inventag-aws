@@ -13,7 +13,7 @@ import sys
 import os
 import logging
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from botocore.exceptions import NoCredentialsError
 
 # Import from the unified inventag package
@@ -80,7 +80,7 @@ def main():
             return
 
         # Generate filename with timestamp
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         filename = f"{args.output}_{timestamp}.{args.format}"
 
         # Save to local file

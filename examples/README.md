@@ -9,7 +9,7 @@ InvenTag provides wrapper scripts that automatically detect the best Python comm
 - **`inventag.sh`** (Unix/Linux/macOS) - Auto-detects `python3` or `python`
 - **`inventag.bat`** (Windows) - Auto-detects `python3`, `python`, or `py -3`
 
-Both scripts require Python 3.8+ and will show helpful error messages if no suitable Python is found.
+Both scripts require Python 3.11+ and will show helpful error messages if no suitable Python is found.
 
 ## Configuration Files
 

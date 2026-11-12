@@ -16,7 +16,7 @@ Features:
 import logging
 import boto3
 from typing import Dict, List, Any, Optional, Set
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, is_dataclass
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
@@ -210,15 +210,15 @@ class BOMDataProcessor:
                 else {}
             )
 
+            # Update statistics before they are copied into the BOM metadata
+            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+            self.statistics.processing_time_seconds = processing_time
+            self.statistics.processed_resources = len(enriched_resources)
+
             # Step 4: Create BOM data structure
             bom_data = self._create_bom_data_structure(
                 enriched_resources, network_analysis, security_analysis, cost_analysis
             )
-
-            # Update statistics
-            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
-            self.statistics.processing_time_seconds = processing_time
-            self.statistics.processed_resources = len(enriched_resources)
 
             self.logger.info(
                 f"BOM processing completed in {processing_time:.2f}s. "
@@ -704,7 +704,8 @@ class BOMDataProcessor:
                 vpc_analysis = self.network_analyzer.analyze_vpc_resources(
                     vpc_resources
                 )
-                return self.network_analyzer.generate_network_summary(vpc_analysis)
+                summary = self.network_analyzer.generate_network_summary(vpc_analysis)
+                return self._network_summary_to_dict(summary, vpc_analysis)
             return {}
         except Exception as e:
             self.logger.error(f"Network analysis generation failed: {e}")
@@ -730,12 +731,84 @@ class BOMDataProcessor:
                 sg_analysis = self.security_analyzer.analyze_security_groups(
                     sg_resources
                 )
-                return self.security_analyzer.generate_security_summary(sg_analysis)
+                # generate_security_summary expects the analysis keyed by kind
+                summary = self.security_analyzer.generate_security_summary(
+                    {"security_groups": sg_analysis}
+                )
+                return self._security_summary_to_dict(summary, sg_analysis)
             return {}
         except Exception as e:
             self.logger.error(f"Security analysis generation failed: {e}")
             self.statistics.errors.append(f"Security analysis failed: {e}")
             return {}
+
+    @staticmethod
+    def _summary_as_dict(summary: Any) -> Dict[str, Any]:
+        """Return an analyzer summary (dataclass or mapping) as a plain dict."""
+        if is_dataclass(summary) and not isinstance(summary, type):
+            return asdict(summary)
+        if isinstance(summary, dict):
+            return dict(summary)
+        raise TypeError(f"Unsupported analysis summary type: {type(summary).__name__}")
+
+    def _network_summary_to_dict(
+        self, summary: Any, vpc_analysis: Any
+    ) -> Dict[str, Any]:
+        """
+        Convert the NetworkSummary dataclass into the dictionary that BOMData,
+        the document validator and the Excel/Word builders expect.
+        """
+        data = self._summary_as_dict(summary)
+        if isinstance(vpc_analysis, dict) and "vpc_utilization" not in data:
+            data["vpc_utilization"] = {
+                vpc_id: {
+                    "name": vpc.vpc_name,
+                    "cidr_block": vpc.cidr_block,
+                    "utilization_percentage": vpc.utilization_percentage,
+                    "available_ips": vpc.available_ips,
+                }
+                for vpc_id, vpc in vpc_analysis.items()
+            }
+        return data
+
+    def _security_summary_to_dict(
+        self, summary: Any, sg_analysis: Any
+    ) -> Dict[str, Any]:
+        """
+        Convert the SecuritySummary dataclass into the dictionary that BOMData,
+        the document validator and the Excel/Word builders expect.
+
+        The builders read ``overly_permissive_rules`` as a list of rule
+        dictionaries and ``high_risk_rules`` as a count, so the summary's
+        integer count moves to ``overly_permissive_rule_count``.
+        """
+        data = self._summary_as_dict(summary)
+        if not isinstance(sg_analysis, dict):
+            return data
+
+        if isinstance(data.get("overly_permissive_rules"), int):
+            data["overly_permissive_rule_count"] = data["overly_permissive_rules"]
+
+        rules = []
+        for risk in self.security_analyzer.identify_overly_permissive_rules(
+            sg_analysis
+        ):
+            peer = risk.get("source") or risk.get("destination") or ""
+            rules.append(
+                {
+                    **risk,
+                    "group_id": risk.get("security_group_id", ""),
+                    "rule": (
+                        f"{risk.get('rule_type', '')} {risk.get('protocol', '')} "
+                        f"{risk.get('port_range', '')} {peer}"
+                    ).strip(),
+                }
+            )
+        data["overly_permissive_rules"] = rules
+        data["high_risk_rules"] = sum(
+            1 for rule in rules if rule.get("risk_level") in ("high", "critical")
+        )
+        return data
 
     def _create_bom_data_structure(
         self,

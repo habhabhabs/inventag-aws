@@ -16,6 +16,7 @@ import logging
 import hashlib
 from collections import defaultdict, Counter
 
+from ..timeutil import parse_timestamp
 from .delta_detector import (
     DeltaReport,
     ResourceChange,
@@ -879,15 +880,15 @@ class ChangelogGenerator:
             return None
 
         # Sort reports by timestamp
-        sorted_reports = sorted(historical_reports, key=lambda x: x.timestamp)
+        sorted_reports = sorted(
+            historical_reports, key=lambda x: parse_timestamp(x.timestamp)
+        )
 
         # Calculate time period
-        start_time = datetime.fromisoformat(
-            sorted_reports[0].timestamp.replace("Z", "+00:00")
-        )
-        end_time = datetime.fromisoformat(
-            sorted_reports[-1].timestamp.replace("Z", "+00:00")
-        )
+        # Reports written by older releases may carry timestamps without a
+        # UTC offset; parse_timestamp makes both forms comparable.
+        start_time = parse_timestamp(sorted_reports[0].timestamp)
+        end_time = parse_timestamp(sorted_reports[-1].timestamp)
         period_days = (end_time - start_time).days or 1
 
         # Calculate change velocity
