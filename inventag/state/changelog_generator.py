@@ -1171,8 +1171,7 @@ class ChangelogGenerator:
         html_parts = []
 
         # HTML header
-        html_parts.append(
-            """<!DOCTYPE html>
+        html_parts.append("""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1193,10 +1192,7 @@ class ChangelogGenerator:
         .remediation {{ background: #e7f3ff; padding: 10px; border-radius: 3px; margin: 10px 0; }}
     </style>
 </head>
-<body>""".format(
-                title=changelog.title
-            )
-        )
+<body>""".format(title=changelog.title))
 
         # Title and metadata
         html_parts.append(f"<h1>{changelog.title}</h1>")
