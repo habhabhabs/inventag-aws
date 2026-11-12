@@ -146,14 +146,16 @@ const config = {
         theme: {
           customCss: './src/css/custom.css',
         },
-        // Google Analytics 4 configuration
-        gtag: {
-          trackingID: 'G-CVK8311NYE',
-          anonymizeIP: true,
-        },
+        // Google Analytics 4 is loaded only after consent: see
+        // src/clientModules/analyticsConsent.js and src/theme/Root.js
       }),
     ],
   ],
+
+  customFields: {
+    gaMeasurementId: 'G-CVK8311NYE',
+  },
+  clientModules: ['./src/clientModules/analyticsConsent.js'],
 
   // Plugins for enhanced functionality
   plugins: [
@@ -292,6 +294,10 @@ const config = {
               {
                 label: 'License',
                 href: 'https://github.com/habhabhabs/inventag-aws/blob/main/LICENSE',
+              },
+              {
+                label: 'Analytics settings',
+                href: '#analytics-settings',
               },
             ],
           },

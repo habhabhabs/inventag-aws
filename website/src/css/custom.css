@@ -1264,3 +1264,23 @@ a.hash-link::before {
   height: auto;
 }
 
+
+/* Analytics consent banner (src/theme/Root.js) */
+.consent-banner {
+  position: fixed;
+  z-index: 300;
+  left: max(1rem, env(safe-area-inset-left));
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  max-width: 34rem;
+  margin-left: auto;
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-font-color-base);
+  box-shadow: 0 12px 32px rgba(2, 6, 23, 0.25);
+}
+.consent-banner p { margin: 0 0 0.75rem; }
+.consent-banner__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.consent-banner__actions .button { min-height: 44px; border-radius: 999px; }
