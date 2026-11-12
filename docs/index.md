@@ -1,36 +1,33 @@
 ---
 title: InvenTag documentation
-description: InvenTag is an open-source Python CLI that inventories AWS resources across accounts, checks tag compliance and writes Excel/Word bill-of-materials reports.
+description: InvenTag is an open-source Python command-line tool that lists the resources in your AWS accounts, checks their tags and writes Excel and Word reports.
 sidebar_position: 1
+slug: /
 ---
 
-# InvenTag
+# InvenTag documentation
 
-![InvenTag](/img/logo-wordmark.svg#gh-light-mode-only)![InvenTag](/img/logo-wordmark-dark.svg#gh-dark-mode-only)
+InvenTag is a free, open-source (MIT) command-line tool written in Python.
+You point it at one or more AWS accounts. It lists the resources it finds,
+checks their tags, and writes the result as an Excel workbook and a Word
+document that you can hand to someone who never opens the AWS console.
 
-InvenTag is an open-source (MIT) Python command-line tool. Point it at one or
-more AWS accounts and it will:
+We call that list a **bill of materials (BOM)**: what you run, where it runs,
+who owns it and how it is tagged.
 
-- **find your resources** through the Resource Groups Tagging API, per-service
-  `List*`/`Describe*`/`Get*` calls and Cost Explorer billing data;
-- **write a bill of materials (BOM)** as an Excel workbook and/or a Word
-  document, with your own tag columns and service descriptions;
-- **remember what it saw**, so the next run can tell you what was added,
-  removed or changed;
-- **upload the reports** to Amazon S3 with server-side encryption
-  (`--s3-bucket`).
+![The InvenTag wordmark](/img/logo-wordmark.svg#gh-light-mode-only)![The InvenTag wordmark](/img/logo-wordmark-dark.svg#gh-dark-mode-only)
 
-The CLI blocks each AWS API call that is not a read operation.
+## Start here
 
-Tag-policy checks (required tags, allowed values) run through a separate
-script today: see [Tag compliance](./architecture/tag-compliance.md).
-
-:::info Before you rely on it
-Some CLI flags are not implemented and stop the CLI with exit code `2`
-(for example `--create-google-docs` and `--compliance-standard`).
-For the full list, see
-[Current status and known limitations](./getting-started/status.md).
-:::
+| I want to... | Go to |
+|---|---|
+| Understand what InvenTag does and does not do | [What InvenTag is](./getting-started/introduction.md) |
+| Install it | [Install InvenTag](./getting-started/installation.md) |
+| Produce my first report in about ten minutes | [Generate your first report](./getting-started/quick-start.md) |
+| Know which features work today | [Feature status and known limitations](./getting-started/status.md) |
+| Reuse a report layout or a tag policy | [Templates](./templates/index.md) |
+| Copy a ready-made recipe | [Examples](./examples/index.md) |
+| Look up a flag, a file format or a permission | [Reference](./reference/cli.md) |
 
 ## Try it
 
@@ -39,56 +36,24 @@ git clone https://github.com/habhabhabs/inventag-aws.git
 cd inventag-aws
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-
-# uses your current AWS credentials (profile, env vars or SSO session)
-./inventag.sh --create-excel --verbose
+./inventag.sh --template standard-bom --create-excel --account-regions us-east-1
 ```
 
-The workbook is written to `bom_output/multi_account_bom_<timestamp>.xlsx`.
-Full walkthrough: [Quick start](./getting-started/quick-start.md).
+InvenTag uses your current AWS credentials and writes the workbook to
+`bom_output/`. Give it a read-only identity:
+[Set up read-only access](./guides/read-only-access.md).
 
-## Where to go next
+## Get help
 
-| If you want to… | Read |
-|---|---|
-| Install it and run your first report | [Installation](./getting-started/installation.md), [Quick start](./getting-started/quick-start.md) |
-| Know what works today and what does not | [Current status and known limitations](./getting-started/status.md) |
-| See every CLI flag | [CLI user guide](./user-guides/cli-user-guide.md) |
-| Scan several accounts | [Account setup](./examples/accounts-setup.md) |
-| Map tags to report columns | [Configuration examples](./user-guides/configuration-examples.md) |
-| Change the structure of the reports | [Report templates](./user-guides/report-templates.md) |
-| Set up IAM permissions safely | [Permissions and production safety](./user-guides/production-safety.md) |
-| Fix an error | [Troubleshooting](./user-guides/troubleshooting-guide.md) |
-| Understand the code | [Core module integration](./architecture/core-module-integration.md) |
-| Contribute | [Contributing](./development/CONTRIBUTING.md) |
+- Report a bug or ask for a feature in
+  [GitHub Issues](https://github.com/habhabhabs/inventag-aws/issues).
+- Ask a question in
+  [GitHub Discussions](https://github.com/habhabhabs/inventag-aws/discussions).
+- Report a security problem as described on the [Security](./security/index.md)
+  page.
 
-## Project layout
-
-```text
-inventag-aws/
-├── inventag_cli.py              # CLI entry point
-├── inventag.sh / inventag.bat   # wrappers that find a Python 3 interpreter
-├── inventag/                    # Python package
-│   ├── cli/                     # argument parsing, config validation, logging
-│   ├── core/                    # multi-account orchestration, credentials
-│   ├── discovery/               # resource discovery
-│   ├── compliance/              # tag compliance and safety helpers
-│   ├── reporting/               # Excel/Word/CSV builders
-│   └── state/                   # snapshots, deltas, changelogs
-├── scripts/legacy/              # standalone scripts (inventory, tag compliance, BOM converter)
-├── config/                      # example configs, IAM policy, JSON schemas
-├── examples/                    # account files and CI examples
-├── docs/                        # these docs (also rendered on GitHub)
-├── website/                     # Docusaurus site and brand assets
-└── tests/
-```
-
-## Support
-
-- [Issues](https://github.com/habhabhabs/inventag-aws/issues) for bugs and feature requests
-- [Discussions](https://github.com/habhabhabs/inventag-aws/discussions) for questions
-
-MIT licence: see [LICENSE](https://github.com/habhabhabs/inventag-aws/blob/main/LICENSE).
+InvenTag is released under the
+[MIT licence](https://github.com/habhabhabs/inventag-aws/blob/main/LICENSE).
 
 ---
 

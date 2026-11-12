@@ -1,0 +1,17 @@
+# FinOps cost-allocation report: the standard layout with the
+# cost-allocation tags as fixed columns, checked against the
+# finops-cost-allocation tag policy. Pair it with Cost Explorer or your
+# billing data: InvenTag lists resources and their tags, it does not
+# calculate costs.
+format_version: 1
+kind: report
+name: finops-cost-report
+description: Standard layout with cost-allocation tag columns, checked against finops-cost-allocation.
+extends: standard-bom
+spec:
+  title: Cost Allocation Tag Report
+  subtitle: Which resources carry the tags your cost reports rely on
+  tag_columns: [CostCenter, Owner, Project, Environment]
+  tag_policy: finops-cost-allocation
+  word:
+    sections: [cover, summary, tag-compliance, service-summary, about]

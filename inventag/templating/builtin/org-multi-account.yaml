@@ -1,0 +1,33 @@
+# AWS Organizations, many accounts: InvenTag assumes a read-only role in
+# each listed account from the credentials you run it with (for example
+# the management account or a delegated security tooling account).
+#
+# InvenTag does not list your organization's accounts for you. To build the
+# list, run:
+#   aws organizations list-accounts --query "Accounts[?Status=='ACTIVE'].[Id,Name]" --output text
+# and create the role (same name) in every account first. The role needs
+# the policy in config/defaults/iam-policy-read-only.json.
+#
+# The account IDs below are placeholders.
+format_version: 1
+kind: config
+name: org-multi-account
+description: Assume a read-only role in each listed account and write one consolidated report.
+spec:
+  accounts:
+    - account_id: "111111111111"
+      account_name: Production
+      role_arn: arn:aws:iam::111111111111:role/InvenTagReadOnly
+    - account_id: "222222222222"
+      account_name: Staging
+      role_arn: arn:aws:iam::222222222222:role/InvenTagReadOnly
+    - account_id: "333333333333"
+      account_name: Shared services
+      role_arn: arn:aws:iam::333333333333:role/InvenTagReadOnly
+      # external_id: your-external-id   # if the role's trust policy requires one
+  regions: [us-east-1]       # replace with the regions you use in every account
+  outputs: [excel, word]
+  output_directory: bom_output
+  report_template: standard-bom
+  tag_policy: finops-cost-allocation
+  max_concurrent_accounts: 4

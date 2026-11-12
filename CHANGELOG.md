@@ -14,12 +14,15 @@ These items are not done. A contributor can start any of them.
 
 - Docusaurus is at 3.8.1. The upgrade to the newest major version is not done.
 - The visual redesign of the website and the landing page is not done.
-- The documentation is not reorganized into Get started, Guides, Templates,
-  Examples, Reference, Security and Contributing.
-- Most documentation pages have no example output yet.
-- Templates do not cover tag policies or account configurations. A template
-  cannot build on a different template. There is no `inventag templates`
-  command group. Validation errors show the key path, not the line number.
+- There are two template mechanisms: named templates (`--template`,
+  `inventag/templating/`) and layout files (`--word-template`,
+  `--excel-template`, `inventag/reporting/report_template.py`). Merge them
+  into one.
+- Only some documentation pages have example output.
+- The pages in `docs/guides/`, `docs/examples/` and `docs/reference/` were
+  written before release 5.0.0. The flag tables are corrected. Do a full
+  check of each page against the CLI.
+- `--validate-credentials` is not re-tested.
 - AWS API calls are not checked against the current AWS documentation for
   deprecated or renamed operations.
 - `inventory.py` has a fixed fallback region list. The CLI uses it only if the
@@ -60,9 +63,16 @@ These items are not done. A contributor can start any of them.
 
 ### Added
 
-- Report templates for the Word and Excel reports: `--word-template`,
+- Named templates for reports, tag policies and run configurations
+  (`inventag/templating/`): `inventag templates list`, `show`, `init` and
+  `validate`, and `--template NAME|PATH`. A template can build on a different
+  template with `extends`. See `docs/templates/`.
+- Layout files for one Word or Excel report: `--word-template`,
   `--excel-template`, `--print-default-template`, `--validate-templates`.
-  See `docs/user-guides/report-templates.md`.
+  See `docs/templates/layout-flags.md`.
+- The documentation has a new structure: Get started, Guides, Templates,
+  Examples, Reference, Security and Contributing. The old page addresses
+  still work.
 - `--no-generate-changelog` stops the change report.
 - `--no-billing-validation` stops all Cost Explorer calls during discovery.
 - `--validate-operations` and `--audit-output` for the read-only guard.
@@ -92,13 +102,16 @@ These items are not done. A contributor can start any of them.
   ARN. It now makes one call for each discovery object.
 - If the filters removed all resources, the log showed a report path that did
   not exist. The CLI now writes a warning and lists only files that exist.
+- `--tag-mappings` and `--service-descriptions` were loaded and then not
+  applied. They now add their columns to the report. The older flat layout of
+  the tag-mappings file is accepted again.
 - `--cross-account-role` accepts a role name or a full role ARN.
 - The S3 lifecycle rule is merged into the existing rules of the bucket. It
   is off by default (`lifecycle_days` is 0).
 - `--debug` logs no longer contain secret keys, session tokens or request
   signatures.
 - `inventag.__version__` showed `1.0.0`. It now shows the release version.
-- The test suite passes: 1218 passed, 9 deselected (performance benchmarks).
+- The test suite passes: 1315 passed, 9 deselected (performance benchmarks).
   Before, 122 tests failed and 47 had errors.
 - CI: a test failure now makes the job fail. The `|| true` is removed.
 

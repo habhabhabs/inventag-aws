@@ -136,3 +136,48 @@ def test_ec2_instances_inside_reservations_are_discovered():
         "i-0bbb",
         "i-0ccc",
     ]
+
+
+def test_tag_mappings_and_descriptions_reach_the_report(tmp_path):
+    """Regression: both files were loaded and then never applied."""
+    from inventag.reporting.bom_processor import BOMDataProcessor, BOMProcessingConfig
+
+    mappings = tmp_path / "tags.yaml"
+    mappings.write_text(
+        "tag_mappings:\n  - tag: Environment\n    name: Env\n    default_value: Unknown\n"
+    )
+    flat = tmp_path / "flat.yaml"
+    flat.write_text(
+        '"Environment":\n  column_name: "Env"\n  default_value: "Unknown"\n'
+    )
+    descriptions = tmp_path / "descriptions.yaml"
+    descriptions.write_text("service_descriptions: {}\n")
+
+    for mapping_file in (mappings, flat):
+        with patch("boto3.Session"):
+            processor = BOMDataProcessor(
+                BOMProcessingConfig(
+                    enable_network_analysis=False,
+                    enable_security_analysis=False,
+                    tag_mappings_config=str(mapping_file),
+                    service_descriptions_config=str(descriptions),
+                )
+            )
+        tagged = processor._apply_tag_mappings(
+            {
+                "service": "EC2",
+                "type": "Instance",
+                "id": "i-1",
+                "tags": {"Environment": "prod"},
+            }
+        )
+        untagged = processor._apply_tag_mappings(
+            {"service": "EC2", "type": "Volume", "id": "vol-1", "tags": {}}
+        )
+        assert tagged["Env"] == "prod"
+        assert untagged["Env"] == "Unknown"
+
+    described = processor._apply_service_descriptions(
+        {"service": "EC2", "type": "Instance", "id": "i-1", "region": "us-east-1"}
+    )
+    assert described["service_description"]

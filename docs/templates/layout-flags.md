@@ -1,10 +1,14 @@
 ---
-title: Report templates
+title: Layout files for one report
 description: Change the title, sections, sheets, columns, header and footer of the Word and Excel BOM reports with a YAML or JSON template file.
-sidebar_position: 2
+sidebar_position: 5
 ---
 
-# Report templates
+# Layout files for one report
+
+This page describes the `--word-template` and `--excel-template` flags. Each flag
+takes one layout file for one report format. For named templates that you select
+with `--template`, see [Templates](./index.md).
 
 A report template is a YAML or JSON file. The template controls the structure
 of the Word report or the Excel report. Give the file to the CLI with

@@ -18,8 +18,9 @@ pull request.
 | Resource discovery in one account or in many accounts | `./inventag.sh`, `--accounts-file`, `--accounts-prompt`, `--cross-account-role` |
 | Excel BOM | `--create-excel` writes `bom_output/multi_account_bom_<timestamp>.xlsx`. Excel is the default format. |
 | Word BOM | `--create-word` writes `bom_output/multi_account_bom_<timestamp>.docx`. Each service table shows a maximum of 50 resources. |
-| Report templates for the Word and Excel reports | `--word-template PATH`, `--excel-template PATH`. See [Report templates](#report-templates). |
-| Custom tag columns and service descriptions | `--tag-mappings`, `--service-descriptions`. For the file formats, see [Configuration examples](../user-guides/configuration-examples.md). |
+| Named templates for reports, tag policies and run configurations | `inventag templates list`, `show`, `init`, `validate`, and `--template NAME` or `--template PATH`. See [Templates](../templates/index.md). |
+| Layout file for one Word or Excel report | `--word-template PATH`, `--excel-template PATH`. See [Report templates](#report-templates). |
+| Custom tag columns and service descriptions | `--tag-mappings`, `--service-descriptions`. For the file formats, see [Configuration files](../reference/configuration-files.md). |
 | Snapshots between runs | On by default. The CLI writes each snapshot to `bom_output/state/`. |
 | Change report between runs | On by default. The CLI writes `bom_output/changelog_<timestamp>.md` when a previous snapshot exists. Use `--no-generate-changelog` to stop this output. |
 | Region filter | `--account-regions us-east-1,eu-west-1` |
@@ -73,7 +74,7 @@ guard examines each API operation before the request goes to AWS.
   client only.
 
 The guard is a second layer. Use a read-only IAM policy as the first layer.
-See [Permissions and production safety](../user-guides/production-safety.md).
+See [Read-only access](../guides/read-only-access.md).
 
 ## Cross-account role
 
@@ -124,7 +125,7 @@ result is the same for all discovery paths.
 ## Report templates
 
 A template is a YAML or JSON file that controls the structure of a report.
-For the keys, see [Report templates](../user-guides/report-templates.md).
+For the keys, see [Layout files for one report](../templates/layout-flags.md).
 
 - A template controls the title and subtitle, the company name, the sections
   or sheets and their order, the columns, and the header and footer text.
@@ -187,7 +188,7 @@ requests, and AWS can throttle them.
 - **Use a read-only IAM policy.** The shipped policy
   `config/defaults/iam-policy-read-only.json` lists 106 discovery actions by
   name and uses no wildcard action. See
-  [Permissions and production safety](../user-guides/production-safety.md).
+  [Read-only access](../guides/read-only-access.md).
 - **`--accounts-prompt` hides secrets.** The prompt does not show the secret
   access key or the session token while you type.
 - **Spreadsheet formulas.** The Excel builder stores each discovered value as
@@ -214,7 +215,7 @@ code, install the guard with `inventag.security.install_global_guard()`.
 Run the unit tests with `python -m pytest tests/unit -q`. The tests use a
 simulated AWS backend and need no AWS credentials.
 
-On 2026-11-12, `python -m pytest tests` gave 1218 passed and 9 deselected on
+On 2026-11-12, `python -m pytest tests` gave 1315 passed and 9 deselected on
 Python 3.13. The 9 deselected tests are the performance benchmarks. Run them
 with `python -m pytest tests -m performance`. The CI workflow fails if a test
 fails.

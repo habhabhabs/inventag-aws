@@ -204,6 +204,7 @@ class TagMappingEngine:
                 else:
                     config_data = json.load(f)
 
+            config_data = self._normalize_config_format(config_data)
             if not self._validate_config_schema(config_data):
                 return False
 
@@ -217,6 +218,39 @@ class TagMappingEngine:
         except Exception as e:
             self.logger.error(f"Failed to load tag mappings from {config_path}: {e}")
             return False
+
+    @staticmethod
+    def _normalize_config_format(config_data: Any) -> Any:
+        """Accept the older flat format and return the list format.
+
+        Older example files map each tag key to its settings::
+
+            "inventag:owner":
+              column_name: "Owner"
+              default_value: "Unknown"
+
+        The list format is ``tag_mappings: [{tag: ..., name: ...}]``.
+        """
+        if (
+            isinstance(config_data, dict)
+            and config_data
+            and "tag_mappings" not in config_data
+            and all(
+                isinstance(value, dict) and ("column_name" in value or "name" in value)
+                for value in config_data.values()
+            )
+        ):
+            return {
+                "tag_mappings": [
+                    {
+                        **{k: v for k, v in settings.items() if k != "column_name"},
+                        "tag": tag,
+                        "name": settings.get("column_name") or settings.get("name"),
+                    }
+                    for tag, settings in config_data.items()
+                ]
+            }
+        return config_data
 
     def _validate_config_schema(self, config_data: Dict[str, Any]) -> bool:
         """Validate configuration schema."""

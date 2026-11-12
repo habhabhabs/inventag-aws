@@ -29,7 +29,7 @@ const FeatureList = [
         (<code>--service-descriptions</code>).
       </>
     ),
-    link: '/docs/user-guides/cli-user-guide',
+    link: '/docs/reference/cli',
     linkText: 'CLI guide',
   },
   {

@@ -42,6 +42,7 @@ from ..security.arn import (
     validate_role_arn,
     validate_role_name,
 )
+from ..templating.runner import add_template_arguments, prepare_template_run
 
 # Exit code for a template file that is not valid (same code as other
 # configuration files that are not valid).
@@ -158,7 +159,11 @@ Examples:
   # Validate AWS credentials only
   inventag --validate-credentials
 
-  # Your own report structure: print the default template, edit it, use it
+  # Templates: list them, then use one (see 'inventag templates --help')
+  inventag templates list
+  inventag --template executive-summary --create-word
+
+  # Or edit the report structure file directly
   inventag --print-default-template word > my_word_template.yaml
   inventag --create-word --word-template my_word_template.yaml
         """,
@@ -516,6 +521,8 @@ Examples:
             "the read-only guard and exit (0 if all allowed, 1 otherwise)"
         ),
     )
+
+    add_template_arguments(parser)
 
     return parser
 
@@ -1017,6 +1024,11 @@ def validate_credentials_only(config: MultiAccountConfig) -> bool:
 
 def main():
     """Main CLI entry point."""
+    if len(sys.argv) > 1 and sys.argv[1] == "templates":
+        from ..templating.cli import main as templates_main
+
+        sys.exit(templates_main(sys.argv[2:]))
+
     parser = create_parser()
     args = parser.parse_args()
 
@@ -1081,6 +1093,8 @@ def _run(args, logger):
     """Validate arguments and run the requested CLI action."""
     logger.info("InvenTag CLI started")
     logger.debug(f"CLI arguments: {vars(args)}")
+
+    template_run = prepare_template_run(args, sys.argv[1:], create_parser, logger)
 
     # Validate CLI arguments
     validator = ConfigValidator()
@@ -1160,7 +1174,10 @@ def _run(args, logger):
 
         # Create and run BOM generator
         logger.info("Initializing CloudBOMGenerator...")
-        generator = CloudBOMGenerator(config)
+        if template_run:
+            generator = template_run.create_generator(config)
+        else:
+            generator = CloudBOMGenerator(config)
 
         logger.info("Starting BOM generation process...")
         start_time = datetime.now()
@@ -1203,6 +1220,11 @@ def _run(args, logger):
                 logger.info(
                     f"  - Processing time: {processing_stats.get('processing_time_seconds', 0):.2f}s"
                 )
+
+            if template_run:
+                exit_code = template_run.finish(results, logger)
+                if exit_code:
+                    sys.exit(exit_code)
 
         else:
             logger.error("✗ BOM generation failed")

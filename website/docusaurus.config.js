@@ -250,12 +250,12 @@ const config = {
                 to: '/docs/',
               },
               {
-                label: 'User Guides',
+                label: 'Guides',
                 to: '/docs/user-guides/cli-user-guide',
               },
               {
-                label: 'Architecture',
-                to: '/docs/architecture/core-module-integration',
+                label: 'Templates',
+                to: '/docs/templates/',
               },
               {
                 label: 'Development',
@@ -284,8 +284,8 @@ const config = {
             title: 'Resources',
             items: [
               {
-                label: 'Configuration Examples',
-                to: '/docs/user-guides/configuration-examples',
+                label: 'CLI reference',
+                to: '/docs/reference/cli',
               },
               {
                 label: 'Contributing Guide',

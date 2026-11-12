@@ -1339,7 +1339,7 @@ class TestCli:
 
 # ----------------------------------------------------------------------- docs
 class TestDocs:
-    GUIDE = REPO_ROOT / "docs" / "user-guides" / "report-templates.md"
+    GUIDE = REPO_ROOT / "docs" / "templates" / "layout-flags.md"
 
     def test_guide_documents_every_key_variable_and_section_type(self):
         text = self.GUIDE.read_text()

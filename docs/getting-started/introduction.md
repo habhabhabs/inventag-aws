@@ -1,67 +1,81 @@
 ---
-title: Introduction
-description: What InvenTag does, how a run works, and what it is not.
-sidebar_position: 0
+title: What InvenTag is
+description: What InvenTag does in one run - find AWS resources, check tags, write Excel and Word reports - what it writes, and what it is not.
+sidebar_position: 1
 ---
 
-# Introduction
+# What InvenTag is
 
-InvenTag answers three questions about your AWS estate:
+**Who this is for:** anyone deciding whether InvenTag fits their job.
 
-1. **What is there?** An inventory of resources across accounts and regions.
-2. **Is it tagged properly?** Tag columns in the report, plus a tag-policy
-   checker for required tags and allowed values.
-3. **What changed since last time?** Snapshots and change reports between runs.
+**What you will know after reading:** what a run does, what it changes (only
+files on your disk), and where its limits are.
 
-The answer comes back as a bill of materials (BOM): an Excel workbook and/or a
-Word document you can hand to someone who will never open the AWS console.
+## Three questions, one report
+
+InvenTag answers three questions about your AWS accounts:
+
+1. **What is there?** A list of resources across accounts and regions.
+2. **Is it tagged properly?** Tag columns in the report and, with a
+   [tag-policy template](../templates/index.md), a check of required tags and
+   allowed values.
+3. **What changed since last time?** Each run saves a snapshot so runs can be
+   compared. Read [Track changes between runs](../guides/track-changes.md)
+   first: comparison has a known bug today.
+
+The answer is a bill of materials (BOM): an Excel workbook, a Word document,
+or both.
 
 ## How a run works
 
 ```text
-credentials ─► discovery ─► enrichment ─► BOM processing ─► Excel / Word
- (profile,      Tagging API,   service       tag columns,      bom_output/
-  keys, role)   List/Describe  attributes    descriptions,     + state/ snapshot
-                /Get, Cost                                     + change report
-                Explorer                                       + S3 upload (optional)
+your AWS credentials
+        |
+        v
+  1. find resources   --> List/Describe/Get calls per service,
+        |                 the Resource Groups Tagging API, Cost Explorer
+        v
+  2. tidy and enrich  --> service names, IDs, tags
+        |
+        v
+  3. check tags       --> only when a tag policy is active
+        |
+        v
+  4. write files      --> bom_output/*.xlsx, *.docx, state/ snapshot
 ```
 
-1. **Credentials.** The default AWS credential chain, a named profile, keys
-   from an accounts file, or a role assumed with `--cross-account-role`.
-2. **Discovery.** For each account and region: the Resource Groups Tagging API,
-   per-service `List*`/`Describe*`/`Get*` calls, and Cost Explorer
-   `GetCostAndUsage` to spot services that have spend but no tagged resources.
-   Use `--no-billing-validation` to make no Cost Explorer request.
-3. **Enrichment and processing.** Service-specific attributes, your tag
-   mappings and service descriptions.
-4. **Output.** `bom_output/multi_account_bom_<timestamp>.xlsx` / `.docx`, and
-   a snapshot in `bom_output/state/` that the next run compares against.
-   With `--s3-bucket`, the CLI also uploads the reports to Amazon S3.
+1. **Credentials.** InvenTag uses the normal AWS credential chain: a profile,
+   environment variables, an IAM Identity Center (SSO) session or an IAM role.
+   It can also assume a role in other accounts.
+2. **Discovery.** For each account and region it calls read-only AWS APIs.
+   It also calls Cost Explorer `GetCostAndUsage` to spot services that have
+   spend. AWS charges for Cost Explorer API requests.
+3. **Processing.** It standardises service names and IDs and collects tags.
+4. **Output.** It writes files to the output folder (`bom_output/` by default)
+   and a snapshot to `bom_output/state/`.
 
-## What it writes, and where
+## What it changes
 
-- Files in the output directory (default `bom_output/`). The CLI creates
-  these files with mode `0600`.
-- With `--s3-bucket`, encrypted copies of the reports in your S3 bucket.
-- The CLI does **not** create, change or delete AWS resources during
-  discovery. A read-only guard blocks each AWS API call that is not a read
-  operation. Also use a read-only IAM policy:
-  [Permissions and production safety](../user-guides/production-safety.md).
-- AWS bills each Cost Explorer API request. The default is two requests for
-  each account in each run.
+Only files on your disk. During discovery InvenTag calls `List*`,
+`Describe*` and `Get*` APIs and Cost Explorer. It does not create, change or
+delete AWS resources.
+
+On the current release nothing inside InvenTag *stops* a write call, so run
+it with a read-only IAM identity. That is your real safety net:
+[Set up read-only access](../guides/read-only-access.md).
 
 ## What it is not
 
-- Not a compliance certification tool. The `--compliance-standard` flag is
-  not implemented and stops the CLI with exit code `2`. InvenTag can collect
-  evidence (an inventory, tag coverage). It does not assess SOC 2, PCI DSS,
-  HIPAA or GDPR.
-- Not affiliated with AWS.
-- Not finished: [Current status and known limitations](./status.md) lists the
-  flags that are not implemented and the known defects.
+- **Not a compliance tool.** InvenTag can collect evidence, such as an
+  inventory and tag coverage. It does not assess or certify compliance with
+  SOC 2, PCI DSS, HIPAA, GDPR or any other framework.
+- **Not a cost tool.** It lists resources and tags. It does not calculate
+  what they cost.
+- **Not affiliated with AWS.**
+- **Not finished.** Some flags are not implemented. They stop the CLI with a
+  message. [Feature status and known limitations](./status.md) lists them.
 
-## Next
+## Next steps
 
-- [Installation](./installation.md)
-- [Quick start](./quick-start.md)
-- [CLI user guide](../user-guides/cli-user-guide.md)
+- [Install InvenTag](./installation.md)
+- [Generate your first report](./quick-start.md)

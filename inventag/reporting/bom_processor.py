@@ -654,32 +654,46 @@ class BOMDataProcessor:
         return resource
 
     def _apply_service_descriptions(self, resource: Dict[str, Any]) -> Dict[str, Any]:
-        """Add custom service descriptions to a resource."""
+        """Add the service description from --service-descriptions to a resource.
+
+        The column appears only if the user gave a descriptions file, so the
+        default report keeps its columns.
+        """
+        if not self.service_desc_manager or not self.config.service_descriptions_config:
+            return resource
         try:
-            if self.service_desc_manager:
-                enriched = self.service_desc_manager.apply_description_to_resource(
-                    resource
-                )
-                if enriched != resource:
-                    self.statistics.description_enriched += 1
+            description = self.service_desc_manager.get_dynamic_description(resource)
+            if description:
+                enriched = dict(resource)
+                enriched["service_description"] = description
+                self.statistics.description_enriched += 1
                 return enriched
         except Exception as e:
-            self.logger.debug(
+            self.logger.warning(
                 f"Description application failed for {resource.get('id', 'unknown')}: {e}"
             )
 
         return resource
 
     def _apply_tag_mappings(self, resource: Dict[str, Any]) -> Dict[str, Any]:
-        """Apply custom tag attribute mappings to a resource."""
+        """Add one column for each mapping in the --tag-mappings file.
+
+        The column name is the mapping's column name. The value is the tag
+        value, or the mapping's default value if the resource has no such tag.
+        """
+        if not self.tag_mapping_engine or not self.config.tag_mappings_config:
+            return resource
         try:
-            if self.tag_mapping_engine:
-                enriched = self.tag_mapping_engine.apply_mappings_to_resource(resource)
-                if enriched != resource:
-                    self.statistics.tag_mapped += 1
+            result = self.tag_mapping_engine.extract_custom_attributes(resource)
+            if result.mapped_attributes:
+                enriched = dict(resource)
+                for column, value in result.mapped_attributes.items():
+                    # Never replace a discovered field with a mapped value
+                    enriched.setdefault(column, value)
+                self.statistics.tag_mapped += 1
                 return enriched
         except Exception as e:
-            self.logger.debug(
+            self.logger.warning(
                 f"Tag mapping failed for {resource.get('id', 'unknown')}: {e}"
             )
 

@@ -1,0 +1,20 @@
+# Executive summary: a short Word document for people who want the totals,
+# not every resource. The Excel file is a Summary sheet plus a single
+# "Resources" sheet that can be filtered.
+#
+# It extends standard-bom, so it only lists what is different.
+format_version: 1
+kind: report
+name: executive-summary
+description: Short Word report with totals and tag compliance; Excel has one filterable sheet.
+extends: standard-bom
+spec:
+  title: AWS Inventory Summary
+  subtitle: Totals by service and tag compliance
+  tag_columns: none
+  excel:
+    layout: single-sheet
+    single_sheet_name: Resources
+  word:
+    orientation: portrait
+    sections: [cover, summary, service-summary, tag-compliance, about]
