@@ -8,39 +8,79 @@ sidebar_position: 3
 
 ## What actually keeps a run safe
 
-1. **A read-only IAM identity.** This is the only control that is enforced.
-   The CLI's discovery path calls `List*`/`Describe*`/`Get*` operations, the
-   Resource Groups Tagging API and Cost Explorer `GetCostAndUsage`; it does not
-   create, change or delete resources. But nothing in the CLI *checks* that at
-   runtime, so a broader policy would not be caught.
-2. **Short-lived credentials** (IAM Identity Center or an assumed role) rather
+1. **A read-only IAM identity.** This is the first layer. AWS enforces it.
+2. **The read-only guard.** This is the second layer. The CLI installs the
+   guard on each AWS client before the first AWS call. You cannot set it to
+   off.
+3. **Short-lived credentials** (IAM Identity Center or an assumed role) rather
    than long-lived access keys.
-3. **Care with `--debug`**, which logs request headers including session
-   tokens ([details](../getting-started/status.md#security-notes)).
+4. **Care with `--debug`.** InvenTag removes secret keys and session tokens
+   from the log. The log continues to show account IDs, ARNs and resource
+   names ([details](../getting-started/status.md#security-notes)).
 
-:::warning The safety flags are not wired up yet
-`--enable-production-safety`, `--enforce-read-only`, `--security-validation`,
-`--compliance-standard`, `--risk-threshold`, `--audit-output` and
-`--validate-operations` are accepted by the CLI but currently not used.
-The classes described further down this page exist in the `inventag.compliance`
-package and work when you call them from Python; the CLI does not call them.
-See [Current status](../getting-started/status.md).
-:::
+## Read-only guard
+
+The guard examines each AWS API operation before the request goes to AWS.
+The code is in `inventag/security/read_only_guard.py`.
+
+| Rule | Operations |
+|---|---|
+| Allowed by name prefix | `List`, `Describe`, `Get`, `Head`, `Lookup`, `Search`, `BatchGet` |
+| Allowed by name | `sts:AssumeRole` |
+| Blocked, because the operation returns secrets | For example `GetSecretValue`, `GetAuthorizationToken`, `GetSessionToken`, `GetPasswordData`, `ssm:GetParameter`, `ssm:GetParameters`, `glue:GetConnection` |
+| Blocked, because the operation returns a signed download URL | `lambda:GetFunction`, `lambda:GetLayerVersion`, `ecr:GetDownloadUrlForLayer` |
+| Blocked, because the operation returns customer data | For example `s3:GetObject`, `dynamodb:GetItem`, `dynamodb:BatchGetItem`, `kinesis:GetRecords`, `logs:GetLogEvents`, `ec2:GetConsoleOutput` |
+| Blocked | All other operations, for example `Create*`, `Put*`, `Delete*`, `Update*`, `Scan` and `Query` |
+| Allowed on one client only | `s3:PutObject` on the upload client, if you use `--s3-bucket` |
+
+If the guard blocks an operation, the code gets a `ReadOnlyViolationError`
+and AWS does not receive the request.
+
+### Guard flags
+
+| Flag | Function |
+|---|---|
+| `--validate-operations ec2:DescribeInstances s3:PutObject` | Compares each `service:Operation` name with the rules, prints `ALLOWED`, `BLOCKED` or `INVALID` for each name, then exits. Exit code `0` if the guard allows all names, `1` if not. No AWS call. |
+| `--audit-output audit.json` | Writes a JSON file at the end of the run, also if the run fails. The file contains `total_calls`, `allowed_calls`, `blocked_calls`, the call count of each operation, and the details of each blocked call. |
+| `--enforce-read-only`, `--enable-production-safety`, `--security-validation` | Accepted for compatibility. These flags have no effect, because the guard is always on. |
+| `--disable-production-safety`, `--compliance-standard`, `--risk-threshold` | Not implemented. The CLI stops with exit code `2`. |
+
+Example output of `--validate-operations`:
+
+```text
+ALLOWED  ec2:DescribeInstances (read-only prefix)
+BLOCKED  s3:PutObject (operation is not on the read-only allowlist)
+BLOCKED  secretsmanager:GetSecretValue (operation returns secrets, signed URLs or customer data)
+```
+
+### The guard and library code
+
+The CLI installs the guard. If you call the InvenTag library from your own
+code, install the guard yourself:
+
+```python
+from inventag.security import install_global_guard
+
+guard = install_global_guard()
+# ... create boto3 clients and run discovery ...
+report = guard.audit_report()
+```
 
 ## IAM permissions
 
-Use the AWS managed `ReadOnlyAccess` policy plus a small extras policy for the
-Tagging API and Cost Explorer. The exact JSON is in
+Use the shipped least-privilege policy
+`config/defaults/iam-policy-read-only.json`, or the AWS managed
+`ReadOnlyAccess` policy plus a small extras policy. For the two options, see
 [Installation → IAM permissions](../getting-started/installation.md#iam-permissions).
 
-Things that **do** write to AWS, and are therefore *not* covered by a read-only
-policy (good: they will fail rather than surprise you):
+These parts of the code write to AWS:
 
 | Code | Writes | Used by the CLI? |
 |---|---|---|
-| `CredentialManager.setup_cross_account_roles()` | Creates an IAM role and a policy in each target account | No |
-| `CICDIntegration` S3 upload | `PutObject`, and replaces the bucket lifecycle configuration when `lifecycle_days > 0` (default 90) | No (`--s3-bucket` is not implemented) |
-| `scripts/legacy/*.py --s3-bucket` | `PutObject` of the report | Only if you pass `--s3-bucket` to those scripts |
+| `--s3-bucket` | `s3:PutObject` of each report, with server-side encryption. No public ACL. No change to the bucket lifecycle. | Yes, only if you give `--s3-bucket` |
+| `CredentialManager.setup_cross_account_roles()` | Creates an IAM role and a managed policy in each target account, and attaches the policy. The policy contains the explicit read actions of the shipped policy. | No |
+| `CICDIntegration` S3 upload | `s3:PutObject` with server-side encryption. If `lifecycle_days` is more than `0` (the default is `0`), it adds or updates the lifecycle rule `InvenTagBOMLifecycle` and keeps the other rules of the bucket. | No |
+| `scripts/legacy/*.py --s3-bucket` | `s3:PutObject` of the report | Only if you give `--s3-bucket` to those scripts |
 
 ## Compliance frameworks
 
@@ -52,7 +92,8 @@ can be useful *evidence* for an audit; treat it as that.
 ## Python API: `inventag.compliance`
 
 The rest of this page documents three helper classes for people who build on
-InvenTag as a library. They are not used by the `inventag` CLI today.
+InvenTag as a library. The `inventag` CLI does not use them. The CLI uses the
+read-only guard in `inventag.security`.
 
 1. **ReadOnlyAccessValidator**: classifies AWS operations as read-only or
    mutating and keeps an audit log of the operations you pass to it.
@@ -133,8 +174,8 @@ validator.save_compliance_report(compliance_report, "compliance_report.json")
 
 `general`, `soc2`, `iso27001`, `custom`. They change the labels and notes in
 the generated report only; no framework-specific controls are checked.
-(The CLI's `--compliance-standard` offers `soc2`, `pci`, `hipaa` and `gdpr`;
-three of those don't exist in this enum, and the flag is unused anyway.)
+(The CLI flag `--compliance-standard` is not implemented and stops the CLI
+with exit code `2`.)
 
 ### Operation Classification
 

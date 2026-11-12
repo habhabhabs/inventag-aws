@@ -91,8 +91,6 @@ jobs:
             --accounts-file accounts.json \
             --create-excel --create-word \
             --enable-network-analysis --enable-security-analysis --enable-cost-analysis \
-            --compliance-standard soc2 \
-            --enable-production-safety --security-validation \
             --s3-bucket ${{ secrets.REPORTS_BUCKET }} \
             --s3-key-prefix secure-reports/$(date +%Y-%m-%d)/ \
             --audit-output security-audit.json \
@@ -180,8 +178,6 @@ phases:
           --tag-mappings tag-mappings.yaml \
           --create-excel --create-word \
           --enable-network-analysis --enable-security-analysis --enable-cost-analysis \
-          --compliance-standard $COMPLIANCE_STANDARD \
-          --enable-production-safety --security-validation \
           --s3-bucket $REPORTS_BUCKET \
           --s3-key-prefix secure-reports/$(date +%Y-%m-%d)/ \
           --audit-output security-audit.json \

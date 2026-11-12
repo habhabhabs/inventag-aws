@@ -52,9 +52,8 @@ Use all configuration files together with comprehensive analysis:
   --accounts-file examples/accounts-example.json \
   --service-descriptions examples/service-descriptions-example.yaml \
   --tag-mappings examples/tag-mappings-example.yaml \
-  --create-excel --create-word --create-google-docs \
+  --create-excel --create-word \
   --enable-network-analysis --enable-security-analysis --enable-cost-analysis \
-  --compliance-standard soc2 --security-validation \
   --verbose
 ```
 
@@ -102,13 +101,12 @@ cp docs/assets/files/service-descriptions-example.yaml config/service-descriptio
 cp docs/assets/files/tag-mappings-example.yaml config/tag-mappings.yaml
 
 # Edit the files for your environment
-# Then use them with production safety:
+# Then use them:
 ./inventag.sh \
   --accounts-file config/accounts.json \
   --service-descriptions config/service-descriptions.yaml \
   --tag-mappings config/tag-mappings.yaml \
-  --create-excel --create-word \
-  --enable-production-safety --security-validation
+  --create-excel --create-word
 ```
 
 ## Validation

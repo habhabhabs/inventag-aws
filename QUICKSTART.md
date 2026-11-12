@@ -6,7 +6,7 @@ The full, maintained version of this page is
 The short version:
 
 ```bash
-# 1. install (Python 3.8+)
+# 1. install (Python 3.11 or later)
 git clone https://github.com/habhabhabs/inventag-aws.git
 cd inventag-aws
 python3 -m venv .venv && source .venv/bin/activate
@@ -26,7 +26,11 @@ pip install -r requirements.txt
 Before you rely on it:
 
 - Use a **read-only** IAM identity: [IAM permissions](docs/getting-started/installation.md#iam-permissions).
-- Discovery calls Cost Explorer, which AWS bills per request.
-- `--s3-bucket`, `--create-google-docs` and the production-safety flags are
-  accepted but do nothing yet: [Current status](docs/getting-started/status.md).
+- By default, discovery makes two Cost Explorer requests for each account.
+  AWS bills each request. Add `--no-billing-validation` to make no Cost
+  Explorer request.
+- `--create-google-docs`, `--per-account-reports`, `--compliance-standard`,
+  `--risk-threshold` and `--disable-production-safety` are not implemented.
+  The CLI stops with exit code `2` if you use one of them. See
+  [Current status](docs/getting-started/status.md).
 - On Windows use `inventag.bat` instead of `./inventag.sh`.

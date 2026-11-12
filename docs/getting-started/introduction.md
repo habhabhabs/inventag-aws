@@ -22,8 +22,8 @@ Word document you can hand to someone who will never open the AWS console.
 credentials ─► discovery ─► enrichment ─► BOM processing ─► Excel / Word
  (profile,      Tagging API,   service       tag columns,      bom_output/
   keys, role)   List/Describe  attributes    descriptions,     + state/ snapshot
-                /Get, Cost                   network/security  + change report
-                Explorer                     sheets (optional)
+                /Get, Cost                                     + change report
+                Explorer                                       + S3 upload (optional)
 ```
 
 1. **Credentials.** The default AWS credential chain, a named profile, keys
@@ -31,28 +31,34 @@ credentials ─► discovery ─► enrichment ─► BOM processing ─► Exce
 2. **Discovery.** For each account and region: the Resource Groups Tagging API,
    per-service `List*`/`Describe*`/`Get*` calls, and Cost Explorer
    `GetCostAndUsage` to spot services that have spend but no tagged resources.
+   Use `--no-billing-validation` to make no Cost Explorer request.
 3. **Enrichment and processing.** Service-specific attributes, your tag
-   mappings and service descriptions, optional network and security analysis.
+   mappings and service descriptions.
 4. **Output.** `bom_output/multi_account_bom_<timestamp>.xlsx` / `.docx`, and
    a snapshot in `bom_output/state/` that the next run compares against.
+   With `--s3-bucket`, the CLI also uploads the reports to Amazon S3.
 
 ## What it writes, and where
 
-- Files in the output directory (default `bom_output/`). That's it for the
-  normal CLI run.
-- It does **not** create, change or delete AWS resources during discovery. It
-  also doesn't *enforce* that at runtime, so run it with a read-only IAM policy:
+- Files in the output directory (default `bom_output/`). The CLI creates
+  these files with mode `0600`.
+- With `--s3-bucket`, encrypted copies of the reports in your S3 bucket.
+- The CLI does **not** create, change or delete AWS resources during
+  discovery. A read-only guard blocks each AWS API call that is not a read
+  operation. Also use a read-only IAM policy:
   [Permissions and production safety](../user-guides/production-safety.md).
-- Cost Explorer API requests are billed by AWS.
+- AWS bills each Cost Explorer API request. The default is two requests for
+  each account in each run.
 
 ## What it is not
 
-- Not a compliance certification tool. Flags like `--compliance-standard soc2`
-  are accepted but currently unused; InvenTag can collect evidence (an
-  inventory, tag coverage), not assess SOC 2, PCI DSS, HIPAA or GDPR.
+- Not a compliance certification tool. The `--compliance-standard` flag is
+  not implemented and stops the CLI with exit code `2`. InvenTag can collect
+  evidence (an inventory, tag coverage). It does not assess SOC 2, PCI DSS,
+  HIPAA or GDPR.
 - Not affiliated with AWS.
 - Not finished: [Current status and known limitations](./status.md) lists the
-  flags that parse but do nothing yet.
+  flags that are not implemented and the known defects.
 
 ## Next
 

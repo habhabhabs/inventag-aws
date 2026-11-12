@@ -46,10 +46,8 @@ This guide covers advanced InvenTag usage patterns for complex enterprise enviro
   --accounts-file global-accounts.json \
   --create-excel --create-word \
   --enable-security-analysis --enable-cost-analysis \
-  --enable-production-safety --security-validation \
   --s3-bucket global-compliance-reports \
   --s3-key-prefix compliance/$(date +%Y-%m-%d)/ \
-  --per-account-reports \
   --max-concurrent-accounts 6 \
   --verbose
 ```
@@ -220,8 +218,6 @@ CloudWatch:
   --tag-mappings security-tag-mappings.yaml \
   --create-excel --create-word \
   --enable-network-analysis --enable-security-analysis \
-  --compliance-standard soc2 \
-  --enable-production-safety --security-validation \
   --audit-output detailed-security-audit.json \
   --s3-bucket security-compliance-reports \
   --s3-key-prefix security-analysis/$(date +%Y-%m-%d)/ \
@@ -259,14 +255,11 @@ CloudWatch:
   --accounts-file soc2-accounts.json \
   --service-descriptions compliance-service-descriptions.yaml \
   --tag-mappings compliance-tag-mappings.yaml \
-  --create-excel --create-word --create-google-docs \
+  --create-excel --create-word \
   --enable-network-analysis --enable-security-analysis --enable-cost-analysis \
-  --compliance-standard soc2 \
-  --enable-production-safety --security-validation \
   --audit-output soc2-audit-$(date +%Y-%m-%d).json \
   --s3-bucket compliance-audit-reports \
   --s3-key-prefix soc2/$(date +%Y-%m-%d)/ \
-  --per-account-reports \
   --max-concurrent-accounts 6 \
   --verbose
 
@@ -276,8 +269,6 @@ CloudWatch:
   --account-regions eu-west-1,eu-central-1,eu-west-2,eu-north-1 \
   --create-excel --create-word \
   --enable-security-analysis \
-  --compliance-standard gdpr \
-  --enable-production-safety --security-validation \
   --audit-output gdpr-audit-$(date +%Y-%m-%d).json \
   --s3-bucket compliance-audit-reports \
   --s3-key-prefix gdpr/$(date +%Y-%m-%d)/ \
@@ -329,7 +320,7 @@ OUTPUT_DIR="enterprise-reports-$TIMESTAMP"
 ./inventag.sh \
   --accounts-file executive-accounts.json \
   --create-excel \
-  --output-dir "$OUTPUT_DIR/executive" \
+  --output-directory "$OUTPUT_DIR/executive" \
   --enable-cost-analysis \
   --verbose
 
@@ -339,7 +330,7 @@ OUTPUT_DIR="enterprise-reports-$TIMESTAMP"
   --service-descriptions technical-service-descriptions.yaml \
   --create-excel --create-word \
   --enable-network-analysis --enable-security-analysis \
-  --output-dir "$OUTPUT_DIR/technical" \
+  --output-directory "$OUTPUT_DIR/technical" \
   --verbose
 
 # Compliance Team (All formats)
@@ -347,12 +338,10 @@ OUTPUT_DIR="enterprise-reports-$TIMESTAMP"
   --accounts-file compliance-accounts.json \
   --service-descriptions compliance-service-descriptions.yaml \
   --tag-mappings compliance-tag-mappings.yaml \
-  --create-excel --create-word --create-google-docs \
+  --create-excel --create-word \
   --enable-security-analysis \
-  --compliance-standard soc2 \
-  --enable-production-safety --security-validation \
   --audit-output "$OUTPUT_DIR/compliance/audit-report.json" \
-  --output-dir "$OUTPUT_DIR/compliance" \
+  --output-directory "$OUTPUT_DIR/compliance" \
   --verbose
 
 # Upload all reports
@@ -390,7 +379,6 @@ aws s3 sync "$OUTPUT_DIR" s3://enterprise-reports-bucket/reports/$TIMESTAMP/
   --create-excel \
   --max-concurrent-accounts 12 \
   --account-processing-timeout 1800 \
-  --per-account-reports \
   --s3-bucket large-scale-reports \
   --s3-key-prefix bulk-processing/$(date +%Y-%m-%d)/ \
   --verbose \
@@ -408,7 +396,7 @@ aws s3 sync "$OUTPUT_DIR" s3://enterprise-reports-bucket/reports/$TIMESTAMP/
   --accounts-file us-accounts.json \
   --account-regions us-east-1,us-west-1,us-west-2 \
   --create-excel \
-  --output-dir "reports/us-regions" \
+  --output-directory "reports/us-regions" \
   --max-concurrent-accounts 8 \
   --verbose
 
@@ -417,7 +405,7 @@ aws s3 sync "$OUTPUT_DIR" s3://enterprise-reports-bucket/reports/$TIMESTAMP/
   --accounts-file eu-accounts.json \
   --account-regions eu-west-1,eu-central-1,eu-west-2 \
   --create-excel \
-  --output-dir "reports/eu-regions" \
+  --output-directory "reports/eu-regions" \
   --max-concurrent-accounts 8 \
   --verbose
 
@@ -426,7 +414,7 @@ aws s3 sync "$OUTPUT_DIR" s3://enterprise-reports-bucket/reports/$TIMESTAMP/
   --accounts-file apac-accounts.json \
   --account-regions ap-southeast-1,ap-northeast-1,ap-south-1 \
   --create-excel \
-  --output-dir "reports/apac-regions" \
+  --output-directory "reports/apac-regions" \
   --max-concurrent-accounts 8 \
   --verbose
 ```

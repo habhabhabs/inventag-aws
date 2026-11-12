@@ -10,7 +10,7 @@ About ten minutes, most of it waiting for discovery.
 
 ## 1. Prerequisites
 
-- Python 3.8 or newer (`python3 --version`)
+- Python 3.11 or later (`python3 --version`)
 - AWS credentials that boto3 can find: `aws configure`, `aws sso login`,
   a named profile or `AWS_*` environment variables. The AWS CLI itself is
   optional; it's just the easiest way to set credentials up.
@@ -58,8 +58,9 @@ Add `--create-word` for a `.docx` version, and `--output-directory reports/`
 to write somewhere else.
 
 :::note Cost Explorer
-Discovery calls Cost Explorer `GetCostAndUsage`, which AWS bills per request.
-See [Current status](./status.md#costs).
+By default, discovery makes two Cost Explorer `GetCostAndUsage` requests for
+each account. AWS bills each request. Add `--no-billing-validation` to make no
+Cost Explorer request. See [Current status](./status.md#costs).
 :::
 
 ## 4. Several accounts
@@ -142,13 +143,15 @@ without the `tag_mappings` key) that the report generator then ignores with an
 error in the log. Stick to the layouts above.
 :::
 
-## 6. Optional analysis sheets
+## 6. Upload the reports to Amazon S3
 
 ```bash
-./inventag.sh --create-excel \
-  --enable-network-analysis \
-  --enable-security-analysis
+./inventag.sh --create-excel --s3-bucket my-reports-bucket
 ```
+
+The CLI uploads each report with server-side encryption. The default
+credentials must have `s3:PutObject` on the bucket. See
+[Current status](./status.md#s3-upload).
 
 ## 7. Tag-policy check
 
@@ -166,11 +169,15 @@ python3 scripts/legacy/tag_compliance_checker.py \
 ./inventag.sh --help                                   # every flag
 ./inventag.sh --accounts-file accounts.json --validate-config
 ./inventag.sh --cross-account-role arn:aws:iam::123456789012:role/InvenTagReadOnly --create-excel
+./inventag.sh --accounts-file accounts.json --cross-account-role InvenTagReadOnly --create-excel
 ./inventag.sh --create-excel --log-file inventag.log --verbose
+./inventag.sh --create-excel --audit-output audit.json   # list of the AWS API calls
+./inventag.sh --validate-operations ec2:DescribeInstances s3:PutObject
 ```
 
-`--debug` is available too, but it logs request headers including session
-tokens: [details](./status.md#security-notes).
+`--debug` writes a detailed log. InvenTag removes secret keys and session
+tokens from the log, but the log shows account IDs, ARNs and resource names.
+Do not publish it: [details](./status.md#security-notes).
 
 ## Next steps
 

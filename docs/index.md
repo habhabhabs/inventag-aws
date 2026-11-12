@@ -17,15 +17,19 @@ more AWS accounts and it will:
   document, with your own tag columns and service descriptions;
 - **remember what it saw**, so the next run can tell you what was added,
   removed or changed;
-- optionally add **network** (VPC, subnet) and **security group** sheets.
+- **upload the reports** to Amazon S3 with server-side encryption
+  (`--s3-bucket`).
+
+The CLI blocks each AWS API call that is not a read operation.
 
 Tag-policy checks (required tags, allowed values) run through a separate
 script today: see [Tag compliance](./architecture/tag-compliance.md).
 
 :::info Before you rely on it
-Some CLI flags are accepted but do not do anything yet (for example
-`--s3-bucket`, `--create-google-docs` and the production-safety flags).
-[Current status and known limitations](./getting-started/status.md) lists them.
+Some CLI flags are not implemented and stop the CLI with exit code `2`
+(for example `--create-google-docs` and `--compliance-standard`).
+For the full list, see
+[Current status and known limitations](./getting-started/status.md).
 :::
 
 ## Try it
@@ -62,7 +66,7 @@ Full walkthrough: [Quick start](./getting-started/quick-start.md).
 ```text
 inventag-aws/
 ├── inventag_cli.py              # CLI entry point
-├── inventag.sh / inventag.bat   # wrappers that find a Python 3.8+ interpreter
+├── inventag.sh / inventag.bat   # wrappers that find a Python 3 interpreter
 ├── inventag/                    # Python package
 │   ├── cli/                     # argument parsing, config validation, logging
 │   ├── core/                    # multi-account orchestration, credentials

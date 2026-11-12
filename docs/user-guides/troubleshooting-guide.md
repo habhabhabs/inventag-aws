@@ -94,24 +94,10 @@ botocore.exceptions.ClientError: An error occurred (AccessDenied) when calling t
 **Solutions:**
 
 1. **Verify IAM permissions:**
-   ```json
-   {
-     "Version": "2012-10-17",
-     "Statement": [
-       {
-         "Effect": "Allow",
-         "Action": [
-           "sts:GetCallerIdentity",
-           "config:DescribeConfigurationRecorders",
-           "config:ListDiscoveredResources",
-           "resource-groups:GetResources",
-           "tag:GetResources"
-         ],
-         "Resource": "*"
-       }
-     ]
-   }
-   ```
+   Compare the policy of your identity with the shipped policy
+   `config/defaults/iam-policy-read-only.json`. See
+   [Installation → IAM permissions](../getting-started/installation.md#iam-permissions).
+   `sts:GetCallerIdentity` needs no IAM permission.
 
 2. **Test permissions:**
    ```bash
@@ -337,10 +323,11 @@ botocore.exceptions.ClientError: An error occurred (Throttling) when calling the
      --create-excel
    ```
 
-3. **Filter services and regions:**
+3. **Filter regions:**
+   A region filter decreases the number of API calls. A service filter
+   (`--account-services`) does not.
    ```bash
    python inventag_cli.py \
-     --account-services EC2,S3,RDS \
      --account-regions us-east-1 \
      --create-excel
    ```
@@ -486,24 +473,27 @@ Error uploading to S3: Bucket does not exist
 - Incorrect bucket configuration
 - Network issues
 
+If an upload fails, the run stops with exit code `1`. The upload uses the
+default AWS credentials, not the role of a scanned account.
+
 **Solutions:**
 
 1. **Verify S3 permissions:**
+   The default credentials need `s3:PutObject` only. The CLI sets no ACL.
    ```json
    {
      "Version": "2012-10-17",
      "Statement": [
        {
          "Effect": "Allow",
-         "Action": [
-           "s3:PutObject",
-           "s3:PutObjectAcl"
-         ],
-         "Resource": "arn:aws:s3:::your-bucket/*"
+         "Action": ["s3:PutObject"],
+         "Resource": "arn:aws:s3:::your-bucket/bom-reports/*"
        }
      ]
    }
    ```
+   If you use `--s3-encryption aws:kms` with your own key, the credentials
+   also need `kms:GenerateDataKey` on that key.
 
 2. **Test S3 access:**
    ```bash
@@ -581,6 +571,10 @@ Debug logs contain:
 - Error stack traces
 - Performance timing information
 
+InvenTag replaces secret keys, session tokens and signatures with
+`***REDACTED***`. The log continues to show account IDs, ARNs, resource names
+and API responses. Do not publish a debug log.
+
 ### Common Log Patterns
 
 1. **Credential Issues:**
@@ -647,7 +641,7 @@ python inventag_cli.py --create-excel --debug --log-file discovery.log
 
 2. **Focus on priority services:**
    ```bash
-   # Limit the services (partially applied: see the CLI guide)
+   # Keep only these services in the report (this does not make the run much faster)
    python inventag_cli.py --create-excel --account-services EC2,S3,RDS,Lambda
    ```
 
