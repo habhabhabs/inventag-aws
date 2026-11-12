@@ -1,6 +1,6 @@
 /**
  * Consent-gated Google Analytics 4.
- * Nothing is loaded until the visitor chooses "Allow" in the banner
+ * Nothing is loaded until the visitor chooses "Allow analytics" in the banner
  * (src/theme/Root.js). The choice is kept in localStorage under KEY.
  * The measurement ID comes from customFields.gaMeasurementId.
  */

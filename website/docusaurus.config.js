@@ -155,7 +155,7 @@ const config = {
   customFields: {
     gaMeasurementId: 'G-CVK8311NYE',
   },
-  clientModules: ['./src/clientModules/analyticsConsent.js'],
+  clientModules: ['./src/clientModules/analyticsConsent.js', './src/clientModules/a11yPatches.js'],
 
   // Plugins for enhanced functionality
   plugins: [
@@ -296,7 +296,7 @@ const config = {
                 href: 'https://github.com/habhabhabs/inventag-aws/blob/main/LICENSE',
               },
               {
-                label: 'Analytics settings',
+                label: 'Cookie settings',
                 href: '#analytics-settings',
               },
             ],
