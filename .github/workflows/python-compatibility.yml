@@ -22,18 +22,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.11', '3.12', '3.13', '3.14']
         experimental: [false]
         include:
-          # Test latest patch versions (more reliable than exact versions)
-          - python-version: '3.8.x'
-            experimental: false
-          - python-version: '3.9.x'
-            experimental: false
-          - python-version: '3.13.x'
-            experimental: false
-          # Test against development versions (experimental)
-          - python-version: '3.14-dev'
+          # Newest CPython (3.15, released Oct 2026): informational until all
+          # dependencies publish wheels for it.
+          - python-version: '3.15'
             experimental: true
 
     steps:

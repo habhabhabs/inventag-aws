@@ -10,12 +10,41 @@ permissions:
   contents: read
 
 jobs:
+  lint:
+    name: Lint and format
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: '3.13'
+
+    - name: Install pinned tools
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+
+    - name: Run linting
+      shell: bash
+      run: |
+        flake8 scripts/ inventag/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 scripts/ inventag/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+
+    - name: Check code formatting
+      shell: bash
+      run: |
+        black --check scripts/ inventag/
+
   test:
     name: Python Tests (${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.9', '3.11', '3.12']  # Reduced matrix for faster execution
+        python-version: ['3.11', '3.12', '3.13', '3.14']  # supported CPython versions
       fail-fast: false
 
     steps:
@@ -31,7 +60,7 @@ jobs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.cache/pip
-        key: python-${{ matrix.python-version }}-pip-${{ hashFiles('**/requirements.txt') }}
+        key: python-${{ matrix.python-version }}-pip-${{ hashFiles('**/requirements*.txt') }}
         restore-keys: |
           python-${{ matrix.python-version }}-pip-
 
@@ -39,20 +68,7 @@ jobs:
       shell: bash
       run: |
         python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        pip install pytest pytest-cov flake8 black mypy
-
-    - name: Run linting
-      shell: bash
-      run: |
-        # Basic linting
-        flake8 scripts/ inventag/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 scripts/ inventag/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
-
-    - name: Check code formatting
-      shell: bash
-      run: |
-        black --check scripts/ inventag/
+        pip install -r requirements.txt -r requirements-dev.txt
 
     - name: Run tests
       shell: bash
@@ -74,7 +90,7 @@ jobs:
         echo "✅ All help commands work correctly"
 
     - name: Upload coverage to Codecov
-      if: matrix.python-version == '3.11'
+      if: matrix.python-version == '3.13'
       uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
       with:
         files: ./coverage.xml
@@ -93,7 +109,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
       with:
-        python-version: '3.12'
+        python-version: '3.13'
 
     - name: Set up Node.js
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -109,12 +125,12 @@ jobs:
         echo "========================"
         
         # Install minimal security tools
-        pip install bandit safety
+        pip install -r requirements-dev.txt
         
         if [ -f "requirements.txt" ]; then
           echo "🔒 Running basic security checks..."
           bandit -r scripts/ inventag/ -ll || echo "⚠️ Bandit found issues"
-          safety check -r requirements.txt || echo "⚠️ Safety found vulnerable dependencies"
+          pip-audit -r requirements.txt
         else
           echo "ℹ️ No requirements.txt found"
         fi
@@ -163,7 +179,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
       with:
-        python-version: '3.12'
+        python-version: '3.13'
         
     - name: Install dependencies
       shell: bash
@@ -230,7 +246,7 @@ jobs:
         echo "## 🧪 CI/CD Pipeline Results" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### ✅ Completed Checks" >> $GITHUB_STEP_SUMMARY
-        echo "- Python tests across versions (3.9, 3.11, 3.12)" >> $GITHUB_STEP_SUMMARY
+        echo "- Python tests across versions (3.11, 3.12, 3.13, 3.14)" >> $GITHUB_STEP_SUMMARY
         echo "- Code formatting and linting" >> $GITHUB_STEP_SUMMARY
         echo "- Basic security scanning" >> $GITHUB_STEP_SUMMARY
         echo "- Integration tests" >> $GITHUB_STEP_SUMMARY

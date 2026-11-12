@@ -61,7 +61,7 @@ class TestGitHubActionsCompatibility:
         assert "jobs" in ci_config
 
         # Validate required jobs
-        required_jobs = ["test", "security", "validate-data"]
+        required_jobs = ["test", "basic-security", "integration-tests"]
         for job in required_jobs:
             assert job in ci_config["jobs"], f"Missing job: {job}"
 
@@ -70,6 +70,13 @@ class TestGitHubActionsCompatibility:
         assert "strategy" in test_job
         assert "matrix" in test_job["strategy"]
         assert "python-version" in test_job["strategy"]["matrix"]
+        # Supported CPython versions only (3.10 and older are end-of-life)
+        assert test_job["strategy"]["matrix"]["python-version"] == [
+            "3.11",
+            "3.12",
+            "3.13",
+            "3.14",
+        ]
 
         # Validate Python versions
         python_versions = test_job["strategy"]["matrix"]["python-version"]
