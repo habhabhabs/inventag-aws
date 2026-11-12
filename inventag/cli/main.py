@@ -14,7 +14,7 @@ import yaml
 import logging
 import boto3
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 from botocore.exceptions import ClientError, NoCredentialsError
 
@@ -26,6 +26,12 @@ from ..core import (
     CredentialManager,
 )
 from ..reporting import BOMProcessingConfig
+from ..reporting.report_template import (
+    FORMATS as TEMPLATE_FORMATS,
+    TemplateValidationError,
+    default_template_text,
+    load_report_template,
+)
 from .config_validator import ConfigValidator
 from .logging_setup import setup_logging, LoggingContext
 from . import safety
@@ -36,6 +42,10 @@ from ..security.arn import (
     validate_role_arn,
     validate_role_name,
 )
+
+# Exit code for a template file that is not valid (same code as other
+# configuration files that are not valid).
+EXIT_INVALID_TEMPLATE = 1
 
 
 def _validate_specific_configs(args, logger):
@@ -147,6 +157,10 @@ Examples:
 
   # Validate AWS credentials only
   inventag --validate-credentials
+
+  # Your own report structure: print the default template, edit it, use it
+  inventag --print-default-template word > my_word_template.yaml
+  inventag --create-word --word-template my_word_template.yaml
         """,
     )
 
@@ -330,6 +344,35 @@ Examples:
         "--validate-config-only",
         action="store_true",
         help="Only validate specific config files without running full validation",
+    )
+
+    # Report templates
+    template_group = parser.add_argument_group("Report Templates")
+    template_group.add_argument(
+        "--word-template",
+        type=str,
+        metavar="PATH",
+        help="Template file (YAML or JSON) for the Word report: title, "
+        "sections, columns, header and footer. Needs --create-word",
+    )
+    template_group.add_argument(
+        "--excel-template",
+        type=str,
+        metavar="PATH",
+        help="Template file (YAML or JSON) for the Excel report: sheets, "
+        "columns, header color, header and footer",
+    )
+    template_group.add_argument(
+        "--print-default-template",
+        choices=list(TEMPLATE_FORMATS),
+        help="Print the default template for the given format and exit. "
+        "Redirect the output to a file to start your own template",
+    )
+    template_group.add_argument(
+        "--validate-templates",
+        action="store_true",
+        help="Validate the files given with --word-template and "
+        "--excel-template and exit (no AWS call)",
     )
 
     # Output and state management
@@ -764,6 +807,8 @@ def create_multi_account_config(args) -> MultiAccountConfig:
         fallback_display_mode=(
             args.fallback_display if not args.hide_fallback_resources else "never"
         ),
+        word_template=getattr(args, "loaded_templates", {}).get("word"),
+        excel_template=getattr(args, "loaded_templates", {}).get("excel"),
     )
 
     return config
@@ -788,6 +833,56 @@ def _validate_cross_account_role(args) -> Optional[str]:
     except InvalidRoleError as e:
         return f"--cross-account-role: {e}"
     return None
+
+
+def _template_usage_errors(args) -> List[str]:
+    """Template flags that cannot have an effect with the other flags given."""
+    errors = []
+    validate_only = (
+        args.validate_templates
+        or args.validate_config
+        or args.validate_config_only
+        or args.validate_credentials
+    )
+    if args.validate_templates and not (args.word_template or args.excel_template):
+        errors.append(
+            "--validate-templates: give --word-template PATH or "
+            "--excel-template PATH (or the two) to validate."
+        )
+    if validate_only:
+        return errors
+    if args.word_template and not args.create_word:
+        errors.append(
+            "--word-template: this flag needs --create-word. Without "
+            "--create-word, InvenTag writes no Word report."
+        )
+    if args.excel_template and args.create_word and not args.create_excel:
+        errors.append(
+            "--excel-template: this flag needs --create-excel. With only "
+            "--create-word, InvenTag writes no Excel report."
+        )
+    return errors
+
+
+def load_report_templates(args) -> Tuple[Dict[str, Any], List[str]]:
+    """Load and validate the template files named on the command line.
+
+    Returns ``(templates, errors)``. ``templates`` maps ``"word"`` and
+    ``"excel"`` to a ReportTemplate, with only the formats that were given.
+    ``errors`` has one line for each problem in each file:
+    ``<file>: <key path>: <reason>``.
+    """
+    templates: Dict[str, Any] = {}
+    errors: List[str] = []
+    for format_type in TEMPLATE_FORMATS:
+        path = getattr(args, f"{format_type}_template", None)
+        if not path:
+            continue
+        try:
+            templates[format_type] = load_report_template(path, format_type)
+        except TemplateValidationError as e:
+            errors.extend(e.messages())
+    return templates, errors
 
 
 def validate_aws_credentials_early() -> bool:
@@ -930,10 +1025,30 @@ def main():
     role_error = _validate_cross_account_role(args)
     if role_error:
         usage_errors.append(role_error)
+    usage_errors.extend(_template_usage_errors(args))
     if usage_errors:
         for message in usage_errors:
             print(f"inventag: error: {message}", file=sys.stderr)
         sys.exit(safety.EXIT_NOT_IMPLEMENTED)
+
+    if args.print_default_template:
+        sys.stdout.write(default_template_text(args.print_default_template))
+        sys.exit(0)
+
+    # Templates are validated before any AWS call: a wrong template must not
+    # cost a discovery run.
+    args.loaded_templates, template_errors = load_report_templates(args)
+    if template_errors:
+        for message in template_errors:
+            print(f"inventag: error: {message}", file=sys.stderr)
+        sys.exit(EXIT_INVALID_TEMPLATE)
+    if args.validate_templates:
+        for format_type, template in args.loaded_templates.items():
+            print(
+                f"OK  {template.source} ({format_type} template, "
+                f"{len(template.sections)} sections)"
+            )
+        sys.exit(0)
 
     # Owner-only files, redacted logs, and the read-only guard before any AWS call.
     safety.harden_process()

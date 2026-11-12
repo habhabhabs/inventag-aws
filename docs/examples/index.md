@@ -52,9 +52,8 @@ Use all configuration files together with comprehensive analysis:
   --accounts-file examples/accounts-example.json \
   --service-descriptions examples/service-descriptions-example.yaml \
   --tag-mappings examples/tag-mappings-example.yaml \
-  --create-excel --create-word --create-google-docs \
+  --create-excel --create-word \
   --enable-network-analysis --enable-security-analysis --enable-cost-analysis \
-  --compliance-standard soc2 --security-validation \
   --verbose
 ```
 
@@ -90,8 +89,10 @@ All example configuration files are available in the centralized assets director
 - [Account Configuration Example](/files/accounts-example.json)
 - [Service Descriptions Example](/files/service-descriptions-example.yaml)
 - [Tag Mappings Example](/files/tag-mappings-example.yaml)
-- [Excel Template](/files/default_excel_template.json)
-- [Word Template](/files/default_word_template.yaml)
+- [Default Excel report template](/files/default_excel_template.json)
+- [Default Word report template](/files/default_word_template.yaml)
+
+For the template keys, see [Report templates](../user-guides/report-templates.md).
 
 Copy these example files and modify them for your environment:
 
@@ -102,13 +103,12 @@ cp docs/assets/files/service-descriptions-example.yaml config/service-descriptio
 cp docs/assets/files/tag-mappings-example.yaml config/tag-mappings.yaml
 
 # Edit the files for your environment
-# Then use them with production safety:
+# Then use them:
 ./inventag.sh \
   --accounts-file config/accounts.json \
   --service-descriptions config/service-descriptions.yaml \
   --tag-mappings config/tag-mappings.yaml \
-  --create-excel --create-word \
-  --enable-production-safety --security-validation
+  --create-excel --create-word
 ```
 
 ## Validation

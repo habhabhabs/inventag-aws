@@ -26,6 +26,12 @@ from .template_framework import (
     TemplateVariableResolver,
     TemplateLoader,
 )
+from .report_template import (
+    ReportTemplate,
+    TemplateValidationError,
+    default_template,
+    load_report_template,
+)
 
 __all__ = [
     "BOMConverter",
@@ -43,4 +49,8 @@ __all__ = [
     "TemplateManager",
     "TemplateVariableResolver",
     "TemplateLoader",
+    "ReportTemplate",
+    "TemplateValidationError",
+    "default_template",
+    "load_report_template",
 ]

@@ -24,7 +24,7 @@ InvenTag AWS uses a sophisticated dual-tier resource discovery system to ensure 
 
 ### Auto Mode (Default - Recommended)
 ```bash
-inventag-aws --fallback-display=auto
+./inventag.sh --create-excel --fallback-display=auto
 ```
 
 **Behavior**: Intelligent fallback display based on primary discovery results
@@ -40,7 +40,7 @@ inventag-aws --fallback-display=auto
 
 ### Always Mode (Maximum Visibility)
 ```bash
-inventag-aws --fallback-display=always
+./inventag.sh --create-excel --fallback-display=always
 ```
 
 **Behavior**: Shows all fallback resources regardless of primary discovery results
@@ -51,9 +51,9 @@ inventag-aws --fallback-display=always
 
 ### Never Mode (Primary Only)
 ```bash
-inventag-aws --fallback-display=never
+./inventag.sh --create-excel --fallback-display=never
 # OR legacy option:
-inventag-aws --hide-fallback-resources
+./inventag.sh --create-excel --hide-fallback-resources
 ```
 
 **Behavior**: Hides all fallback resources completely
@@ -90,7 +90,7 @@ Resources are deduplicated by ARN with priority-based selection:
 Enable debug logging to understand fallback decisions:
 
 ```bash
-inventag-aws --fallback-display=auto --verbose
+./inventag.sh --create-excel --fallback-display=auto --verbose
 ```
 
 Debug messages include:
@@ -106,7 +106,7 @@ Debug messages include:
 
 **Solution**: Use auto mode (default) with debug logging
 ```bash
-inventag-aws --fallback-display=auto --verbose
+./inventag.sh --create-excel --fallback-display=auto --verbose
 ```
 
 This reveals:
@@ -120,7 +120,7 @@ This reveals:
 
 **Solution**: Use always mode for comprehensive discovery
 ```bash
-inventag-aws --fallback-display=always
+./inventag.sh --create-excel --fallback-display=always
 ```
 
 **Note**: Review results for duplicates and validate against AWS console
@@ -131,7 +131,7 @@ inventag-aws --fallback-display=always
 
 **Solution**: Use never mode for primary-only discovery
 ```bash
-inventag-aws --fallback-display=never
+./inventag.sh --create-excel --fallback-display=never
 ```
 
 **Trade-off**: May miss resources not discoverable via service APIs
@@ -191,10 +191,10 @@ The `--hide-fallback-resources` flag is deprecated but still supported:
 
 ```bash
 # Legacy (deprecated)
-inventag-aws --hide-fallback-resources
+./inventag.sh --create-excel --hide-fallback-resources
 
 # New equivalent  
-inventag-aws --fallback-display=never
+./inventag.sh --create-excel --fallback-display=never
 ```
 
 **Migration Path**:
@@ -207,25 +207,25 @@ inventag-aws --fallback-display=never
 ### For Development and Debugging
 ```bash
 # Recommended: Smart fallback with detailed logging
-inventag-aws --fallback-display=auto --verbose
+./inventag.sh --create-excel --fallback-display=auto --verbose
 ```
 
 ### For Production Reports
 ```bash
 # Clean output, primary resources only
-inventag-aws --fallback-display=never
+./inventag.sh --create-excel --fallback-display=never
 ```
 
 ### For Compliance Audits
 ```bash  
 # Maximum resource coverage with verification
-inventag-aws --fallback-display=always --enable-security-analysis
+./inventag.sh --create-excel --fallback-display=always --enable-security-analysis
 ```
 
 ### For Cost Analysis
 ```bash
 # Smart fallback ensures all billable resources are captured
-inventag-aws --fallback-display=auto --enable-cost-analysis
+./inventag.sh --create-excel --fallback-display=auto --enable-cost-analysis
 ```
 
 ## Troubleshooting
@@ -250,10 +250,10 @@ inventag-aws --fallback-display=auto --enable-cost-analysis
 **Diagnosis**:
 ```bash
 # Check if RoboMaker has primary resources
-inventag-aws --services=robomaker --fallback-display=auto --verbose
+./inventag.sh --create-excel --account-services robomaker --fallback-display=auto --verbose
 
 # Force show fallback resources
-inventag-aws --services=robomaker --fallback-display=always
+./inventag.sh --create-excel --account-services robomaker --fallback-display=always
 ```
 
 **Common Services Relying on Fallback**: AppStream, RoboMaker, WorkSpaces, IoT devices
@@ -301,10 +301,10 @@ Services that may only be discoverable through ResourceGroupsTagging API due to:
 ### Service-Specific Discovery
 ```bash
 # Discover only RoboMaker with intelligent fallback
-inventag-aws --services=robomaker --fallback-display=auto
+./inventag.sh --create-excel --account-services robomaker --fallback-display=auto
 
 # Discover compute services with maximum coverage
-inventag-aws --services=ec2,lambda,ecs --fallback-display=always
+./inventag.sh --create-excel --account-services ec2,lambda,ecs --fallback-display=always
 ```
 
 ## API Reference

@@ -26,8 +26,10 @@ pip install -r requirements.txt
 ./inventag.sh --create-excel --verbose     # -> bom_output/multi_account_bom_<timestamp>.xlsx
 ```
 
-Use a read-only IAM identity. Discovery calls Cost Explorer, which AWS bills per
-request. Details: [Installation](https://habhabhabs.github.io/inventag-aws/docs/getting-started/installation).
+Use a read-only IAM identity. By default, discovery makes two Cost Explorer
+requests for each account, and AWS bills each request. Add
+`--no-billing-validation` to make no Cost Explorer request. Details:
+[Installation](https://habhabhabs.github.io/inventag-aws/docs/getting-started/installation).
 
 ## What it does
 
@@ -36,23 +38,27 @@ request. Details: [Installation](https://habhabhabs.github.io/inventag-aws/docs/
 - **Bill of materials** as an Excel workbook (`--create-excel`) and/or Word
   document (`--create-word`), with your own tag columns (`--tag-mappings`) and
   service descriptions (`--service-descriptions`).
+- **Report templates** (`--word-template`, `--excel-template`): a YAML or JSON
+  file selects the title, the sections or sheets, the columns, and the header
+  and footer text.
 - **Several accounts** from a file (`--accounts-file`), interactively
   (`--accounts-prompt`) or through an assumed role (`--cross-account-role`),
   processed in parallel.
 - **Change tracking**: each run saves a snapshot in `bom_output/state/`; the
   next run reports what was added, removed or changed.
-- **Optional sheets** for networks (`--enable-network-analysis`) and security
-  groups (`--enable-security-analysis`).
+- **Upload to Amazon S3** (`--s3-bucket`) with server-side encryption.
+- **Read-only guard**: the CLI blocks each AWS API call that is not a read
+  operation. `--audit-output audit.json` writes a list of the calls.
 - **Tag-policy checks** (required tags, allowed values) with
   `scripts/legacy/tag_compliance_checker.py --config policy.yaml`.
 
-### Not there yet
+### Not implemented
 
-Some flags are accepted but have no effect today: `--s3-bucket` (and the other
-`--s3-*` flags), `--create-google-docs`, and the production-safety flags
-(`--enforce-read-only`, `--compliance-standard`, `--audit-output`, …).
-`--compliance-standard soc2` does not make anything SOC 2 compliant. The full
-list is in [Current status and known limitations](https://habhabhabs.github.io/inventag-aws/docs/getting-started/status).
+These flags stop the CLI with an error message and exit code `2`:
+`--create-google-docs`, `--per-account-reports`, `--compliance-standard`,
+`--risk-threshold` and `--disable-production-safety`. InvenTag does not certify
+compliance with SOC 2 or other standards. For the full list, see
+[Current status and known limitations](https://habhabhabs.github.io/inventag-aws/docs/getting-started/status).
 
 ## More examples
 
@@ -63,9 +69,16 @@ list is in [Current status and known limitations](https://habhabhabs.github.io/i
   --tag-mappings config/defaults/mappings/tag_to_column_mappings_example.yaml \
   --service-descriptions config/defaults/services/service_descriptions_example.yaml
 
-# Assume a read-only role (pass the full role ARN; a bare role name fails today)
+# Assume a read-only role (full role ARN)
 ./inventag.sh --cross-account-role arn:aws:iam::123456789012:role/InvenTagReadOnly \
-  --create-excel --enable-network-analysis --enable-security-analysis
+  --create-excel
+
+# Assume the same role name in each account of accounts.json
+./inventag.sh --accounts-file accounts.json --cross-account-role InvenTagReadOnly \
+  --create-excel
+
+# Upload the reports to S3 (server-side encrypted)
+./inventag.sh --create-excel --s3-bucket my-reports-bucket
 
 # Faster runs: fewer regions, more accounts in parallel
 ./inventag.sh --accounts-file accounts.json --create-excel \
@@ -82,6 +95,7 @@ Every flag: [CLI user guide](https://habhabhabs.github.io/inventag-aws/docs/user
 | Current status and known limitations | [docs/getting-started/status.md](docs/getting-started/status.md) |
 | CLI user guide | [docs/user-guides/cli-user-guide.md](docs/user-guides/cli-user-guide.md) |
 | Configuration examples | [docs/user-guides/configuration-examples.md](docs/user-guides/configuration-examples.md) |
+| Report templates | [docs/user-guides/report-templates.md](docs/user-guides/report-templates.md) |
 | Permissions and production safety | [docs/user-guides/production-safety.md](docs/user-guides/production-safety.md) |
 | Architecture | [docs/architecture/core-module-integration.md](docs/architecture/core-module-integration.md) |
 | Contributing | [docs/development/CONTRIBUTING.md](docs/development/CONTRIBUTING.md) |

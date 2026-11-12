@@ -8,8 +8,7 @@ sidebar_position: 2
 
 ## Requirements
 
-- **Python 3.8+.** CI runs a version matrix; day-to-day development happens on
-  current Python 3 releases.
+- **Python 3.11 or later.** CI tests Python 3.11, 3.12, 3.13 and 3.14.
 - **Git**, to clone the repository.
 - **AWS credentials** that boto3 can find. The AWS CLI is optional but the
   easiest way to set them up.
@@ -29,10 +28,10 @@ pip install -r requirements.txt
 ./inventag.sh --help             # Windows: inventag.bat --help
 ```
 
-`inventag.sh` / `inventag.bat` look for a Python 3.8+ interpreter and run
+`inventag.sh` / `inventag.bat` look for a Python 3 interpreter and run
 `inventag_cli.py`. You can also call it directly: `python3 inventag_cli.py --help`.
 
-To pin a release instead of `main`, check out a tag, e.g. `git checkout v4.2.26`
+To pin a release instead of `main`, check out a tag, for example `git checkout v4.2.27`
 ([releases](https://github.com/habhabhabs/inventag-aws/releases)).
 
 ## AWS credentials
@@ -54,13 +53,38 @@ Then check them:
 
 ## IAM permissions
 
-Give InvenTag a **read-only** identity. Nothing in the CLI enforces read-only
-behaviour at runtime, so the IAM policy is your real safety net
+Give InvenTag a **read-only** identity. The CLI has a read-only guard that
+blocks each AWS API call that is not a read operation. The IAM policy is the
+first layer of protection, and the guard is the second layer
 ([details](../user-guides/production-safety.md)).
 
-The simplest setup is the AWS managed `ReadOnlyAccess` policy **plus** this
-small policy for the two things it may not cover (the Tagging API and Cost
-Explorer):
+### Option 1: the shipped least-privilege policy
+
+Use `config/defaults/iam-policy-read-only.json`. This policy has three
+statements:
+
+| Statement ID | Content |
+|---|---|
+| `InvenTagReadOnlyDiscovery` | 106 read actions, each listed by name. No wildcard action. Includes `tag:GetResources`, `ce:GetCostAndUsage` and `pricing:GetProducts`. |
+| `InvenTagApiGatewayMetadata` | `apigateway:GET` on REST APIs, domain names and usage plans only. |
+| `OptionalS3ReportUpload` | `s3:PutObject` on `arn:aws:s3:::YOUR-REPORTS-BUCKET-NAME/bom-reports/*`, only with server-side encryption. |
+
+If you use `--s3-bucket`, replace `YOUR-REPORTS-BUCKET-NAME` with the name of
+your bucket. If you do not use `--s3-bucket`, remove the
+`OptionalS3ReportUpload` statement.
+
+The policy does not include `sts:AssumeRole`. If you use
+`--cross-account-role`, give `sts:AssumeRole` to the identity that starts the
+scan.
+
+Discovery of a service that is not in the policy fails with `AccessDenied`.
+The CLI then continues with the next service.
+
+### Option 2: the AWS managed policy
+
+Use the AWS managed `ReadOnlyAccess` policy **plus** this small policy for the
+Tagging API and Cost Explorer. This option gives more permissions than
+Option 1:
 
 ```json
 {
@@ -82,15 +106,13 @@ Explorer):
 ```
 
 - `tag:GetResources`: the Resource Groups Tagging API (IAM prefix `tag`).
-- `ce:GetCostAndUsage`: finds services with spend. **Billed per request by AWS.**
+- `ce:GetCostAndUsage`: finds services with spend. **AWS bills each request.**
+  If you use `--no-billing-validation`, discovery does not use this action.
 - `ec2:DescribeRegions`: region auto-discovery.
 - `pricing:GetProducts`: only used by `--enable-cost-analysis`.
 
-Without `ReadOnlyAccess`, discovery still runs but service-specific details
-(e.g. S3 encryption, Lambda VPC config) come back empty where a `Describe*`
-call is denied. The repo also ships a narrower example policy at
-`config/defaults/iam-policy-read-only.json`; note that it does **not** include
-`ce:GetCostAndUsage` or `pricing:GetProducts`.
+If you use `--s3-bucket`, also give `s3:PutObject` on the reports bucket to
+the default credentials.
 
 ### IAM Identity Center (SSO)
 
@@ -128,10 +150,10 @@ See [Current status](./status.md#tests) for the state of the test suite.
 
 | Symptom | Try |
 |---|---|
-| `No suitable Python interpreter found` | Install Python 3.8+ and make sure `python3 --version` works |
+| `No suitable Python interpreter found` | Install Python 3.11 or later and make sure that `python3 --version` works |
 | `Permission denied: ./inventag.sh` | `chmod +x inventag.sh` |
 | `Unable to locate credentials` | `aws sts get-caller-identity`; set `AWS_PROFILE` or log in with `aws sso login` |
-| `AccessDenied` for `ce:GetCostAndUsage` | Add the extras policy above, or ignore: discovery continues without billing data |
+| `AccessDenied` for `ce:GetCostAndUsage` | Add the action to the policy, or add `--no-billing-validation`. Discovery continues without billing data. |
 | `ModuleNotFoundError` | Activate the virtualenv and re-run `pip install -r requirements.txt` |
 
 More: [Troubleshooting guide](../user-guides/troubleshooting-guide.md).

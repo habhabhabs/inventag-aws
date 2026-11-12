@@ -18,6 +18,12 @@ from ..security.safe_output import (
     precreate_private,
     write_safe_csv,
 )
+from .report_template import (
+    ReportTemplate,
+    build_context,
+    default_template,
+    substitute,
+)
 
 try:
     from openpyxl import Workbook
@@ -387,8 +393,13 @@ class BOMConverter:
 
         print(f"Data exported to {filename}")
 
-    def export_to_excel(self, filename: str):
-        """Export data to Excel format with service-specific sheets."""
+    def export_to_excel(self, filename: str, template: Optional[ReportTemplate] = None):
+        """Export data to Excel format.
+
+        ``template`` selects the sheets, their order and their columns. Without
+        a template the built-in default applies: a summary sheet, then one
+        sheet for each service.
+        """
         if not OPENPYXL_AVAILABLE:
             print(
                 "Error: openpyxl library not available. Please install it to export to Excel."
@@ -398,6 +409,9 @@ class BOMConverter:
         if not self.data:
             print("No data to export")
             return
+
+        template = self._resolve_template(template, "excel")
+        context = build_context(template, self.data)
 
         # Group resources by service
         services = {}
@@ -414,19 +428,43 @@ class BOMConverter:
         if "Sheet" in wb.sheetnames:
             wb.remove(wb["Sheet"])
 
-        # Create summary sheet
-        self._create_summary_sheet(wb, services)
+        for section in template.sections:
+            content_type = section["content_type"]
+            if content_type == "service_summary":
+                self._create_summary_sheet(
+                    wb, services, section=section, template=template, context=context
+                )
+            elif content_type == "resources":
+                selected = self._select_services(services, section.get("services"))
+                if section["group_by_service"]:
+                    for service, resources in selected:
+                        self._create_service_sheet(
+                            wb, service, resources, section=section, template=template
+                        )
+                else:
+                    combined = [r for _, group in selected for r in group]
+                    self._create_service_sheet(
+                        wb,
+                        section["sheet_name"],
+                        combined,
+                        section=section,
+                        template=template,
+                    )
+            elif content_type == "network_analysis":
+                if self.enable_advanced_analysis and self.network_analysis:
+                    self._create_network_analysis_sheet(wb)
+            elif content_type == "security_analysis":
+                if self.enable_advanced_analysis and self.security_analysis:
+                    self._create_security_analysis_sheet(wb)
 
-        # Create service-specific sheets
-        for service, resources in services.items():
-            self._create_service_sheet(wb, service, resources)
+        if not wb.sheetnames:
+            raise ValueError(
+                f"The Excel template {template.source} gives a workbook with no "
+                "sheets for this data. Enable a service_summary section, or "
+                "make sure that the 'services' list matches a service in the report."
+            )
 
-        # Create advanced analysis sheets if enabled
-        if self.enable_advanced_analysis:
-            if self.network_analysis:
-                self._create_network_analysis_sheet(wb)
-            if self.security_analysis:
-                self._create_security_analysis_sheet(wb)
+        self._apply_workbook_branding(wb, template, context)
 
         # Save workbook (no data value may become a live formula; owner-only file)
         neutralize_workbook_formulas(wb)
@@ -434,106 +472,232 @@ class BOMConverter:
         wb.save(filename)
         print(f"Data exported to {filename}")
 
-    def _create_summary_sheet(self, wb: Workbook, services: Dict[str, List]):
+    @staticmethod
+    def _resolve_template(
+        template: Optional[ReportTemplate], format_type: str
+    ) -> ReportTemplate:
+        """Return ``template`` or the built-in default for ``format_type``."""
+        if template is None:
+            return default_template(format_type)
+        if template.format_type != format_type:
+            raise ValueError(
+                f"Template {template.source} has format_type "
+                f"'{template.format_type}', but '{format_type}' is necessary"
+            )
+        return template
+
+    @staticmethod
+    def _select_services(
+        services: Dict[str, List], wanted: Optional[List[str]]
+    ) -> list:
+        """(service, resources) pairs to show, in order.
+
+        Without ``wanted`` every service is shown in discovery order. With
+        ``wanted`` only those services are shown, in the order of the list.
+        """
+        if not wanted:
+            return list(services.items())
+        from ..discovery.service_filter import canonical_service
+
+        by_key = {}
+        for name, resources in services.items():
+            by_key.setdefault(canonical_service(name), []).append((name, resources))
+        selected = []
+        seen = set()
+        for name in wanted:
+            key = canonical_service(name)
+            if key in seen:
+                continue
+            seen.add(key)
+            selected.extend(by_key.get(key, []))
+        return selected
+
+    @staticmethod
+    def _apply_workbook_branding(wb: Workbook, template: ReportTemplate, context: Dict):
+        """Workbook properties and print header/footer from the template."""
+        if context["document_title"]:
+            wb.properties.title = context["document_title"]
+        if context["document_subtitle"]:
+            wb.properties.subject = context["document_subtitle"]
+        if context["company_name"]:
+            wb.properties.creator = context["company_name"]
+        header_footer = template.data["header_footer"]
+        # "&" starts a formatting code in an Excel header/footer; "&&" is a literal "&".
+        header = substitute(header_footer["header_text"], context).replace("&", "&&")
+        footer = substitute(header_footer["footer_text"], context).replace("&", "&&")
+        if header or footer:
+            for ws in wb.worksheets:
+                if header:
+                    ws.oddHeader.center.text = header
+                if footer:
+                    ws.oddFooter.center.text = footer
+
+    @staticmethod
+    def _auto_fit_columns(ws, fixed_widths: Optional[Dict[int, float]] = None):
+        """Set column widths: template widths first, then the content length."""
+        fixed_widths = fixed_widths or {}
+        for column in ws.columns:
+            max_length = 0
+            index = column[0].column
+            column_letter = get_column_letter(index)
+            if index in fixed_widths:
+                ws.column_dimensions[column_letter].width = fixed_widths[index]
+                continue
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except Exception:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+
+    def _create_summary_sheet(
+        self,
+        wb: Workbook,
+        services: Dict[str, List],
+        section: Optional[Dict[str, Any]] = None,
+        template: Optional[ReportTemplate] = None,
+        context: Optional[Dict[str, str]] = None,
+    ):
         """Create a summary sheet with service statistics."""
-        ws = wb.create_sheet("Summary", 0)
+        legacy_call = section is None
+        if legacy_call:
+            template = default_template("excel")
+            section = next(
+                s for s in template.sections if s["content_type"] == "service_summary"
+            )
+        header_color = template.data["branding"]["header_color"]
+        if legacy_call:
+            ws = wb.create_sheet(section["sheet_name"], 0)
+        else:
+            ws = wb.create_sheet(section["sheet_name"])
+
+        columns = section["columns"]
+        default_headings = {
+            "service": "Service",
+            "resource_count": "Resource Count",
+            "percentage": "Percentage",
+        }
+
+        row = 1
+        if section.get("show_title") and context:
+            if context["document_title"]:
+                ws.cell(row=row, column=1, value=context["document_title"]).font = Font(
+                    bold=True, size=14
+                )
+                row += 1
+            if context["document_subtitle"]:
+                ws.cell(row=row, column=1, value=context["document_subtitle"])
+                row += 1
+            if row > 1:
+                row += 1  # blank row between the title block and the table
 
         # Headers
-        ws["A1"] = "Service"
-        ws["B1"] = "Resource Count"
-        ws["C1"] = "Percentage"
-
-        # Apply header formatting
         header_font = Font(bold=True)
         header_fill = PatternFill(
-            start_color="366092", end_color="366092", fill_type="solid"
+            start_color=header_color, end_color=header_color, fill_type="solid"
         )
-
-        for col in ["A1", "B1", "C1"]:
-            ws[col].font = header_font
-            ws[col].fill = header_fill
+        for col, column in enumerate(columns, 1):
+            cell = ws.cell(
+                row=row,
+                column=col,
+                value=column["heading"] or default_headings[column["field"]],
+            )
+            cell.font = header_font
+            cell.fill = header_fill
 
         # Calculate totals
         total_resources = sum(len(resources) for resources in services.values())
 
+        def values_for(service, count, percentage_text):
+            values = {
+                "service": service,
+                "resource_count": count,
+                "percentage": percentage_text,
+            }
+            return [values[column["field"]] for column in columns]
+
         # Add service data
-        row = 2
+        row += 1
         for service, resources in sorted(services.items()):
             count = len(resources)
             percentage = (count / total_resources * 100) if total_resources > 0 else 0
-
-            ws[f"A{row}"] = service
-            ws[f"B{row}"] = count
-            ws[f"C{row}"] = f"{percentage:.1f}%"
+            for col, value in enumerate(
+                values_for(service, count, f"{percentage:.1f}%"), 1
+            ):
+                ws.cell(row=row, column=col, value=value)
             row += 1
 
         # Add total row
-        ws[f"A{row}"] = "TOTAL"
-        ws[f"B{row}"] = total_resources
-        ws[f"C{row}"] = "100.0%"
+        for col, value in enumerate(values_for("TOTAL", total_resources, "100.0%"), 1):
+            ws.cell(row=row, column=col, value=value).font = Font(bold=True)
 
-        # Format total row
-        for col in [f"A{row}", f"B{row}", f"C{row}"]:
-            ws[col].font = Font(bold=True)
+        self._auto_fit_columns(
+            ws, {i: c["width"] for i, c in enumerate(columns, 1) if c["width"]}
+        )
 
-        # Auto-adjust column widths
-        for column in ws.columns:
-            max_length = 0
-            column_letter = get_column_letter(column[0].column)
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except Exception:
-                    pass
-            adjusted_width = min(max_length + 2, 50)
-            ws.column_dimensions[column_letter].width = adjusted_width
-
-    def _create_service_sheet(self, wb: Workbook, service: str, resources: List[Dict]):
-        """Create a sheet for a specific service."""
+    def _create_service_sheet(
+        self,
+        wb: Workbook,
+        service: str,
+        resources: List[Dict],
+        section: Optional[Dict[str, Any]] = None,
+        template: Optional[ReportTemplate] = None,
+    ):
+        """Create a sheet of resources (one service, or all resources)."""
+        header_color = (
+            template.data["branding"]["header_color"] if template else "366092"
+        )
         # Sanitize sheet name (Excel has restrictions)
         sheet_name = service[:31]  # Excel sheet names are limited to 31 characters
 
         ws = wb.create_sheet(sheet_name)
+        flattened_rows = [self._flatten_dict(resource) for resource in resources]
 
-        # Get all unique headers for this service
-        headers = set()
-        for resource in resources:
-            flattened = self._flatten_dict(resource)
-            headers.update(flattened.keys())
-
-        # Apply logical column ordering instead of alphabetical
-        sorted_headers = self._get_logical_column_order(headers)
+        columns = section["columns"] if section else "auto"
+        if columns == "auto":
+            # Get all unique headers for this sheet, in logical order
+            headers = set()
+            for flattened in flattened_rows:
+                headers.update(flattened.keys())
+            fields = self._get_logical_column_order(headers)
+            headings = list(fields)
+            widths = {}
+        else:
+            fields = [c["field"] for c in columns]
+            headings = [c["heading"] or c["field"] for c in columns]
+            widths = {i: c["width"] for i, c in enumerate(columns, 1) if c["width"]}
 
         # Write headers
-        for col, header in enumerate(sorted_headers, 1):
-            cell = ws.cell(row=1, column=col, value=header)
+        for col, heading in enumerate(headings, 1):
+            cell = ws.cell(row=1, column=col, value=heading)
             cell.font = Font(bold=True)
             cell.fill = PatternFill(
-                start_color="366092", end_color="366092", fill_type="solid"
+                start_color=header_color, end_color=header_color, fill_type="solid"
             )
 
         # Write data
-        for row, resource in enumerate(resources, 2):
-            flattened = self._flatten_dict(resource)
-            for col, header in enumerate(sorted_headers, 1):
-                value = flattened.get(header, "")
+        for row, (resource, flattened) in enumerate(zip(resources, flattened_rows), 2):
+            for col, field_name in enumerate(fields, 1):
+                if field_name in flattened:
+                    value = flattened[field_name]
+                else:
+                    value = self._format_structured_value(resource.get(field_name, ""))
                 ws.cell(
                     row=row, column=col, value=str(value) if value is not None else ""
                 )
 
-        # Auto-adjust column widths
-        for column in ws.columns:
-            max_length = 0
-            column_letter = get_column_letter(column[0].column)
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except Exception:
-                    pass
-            adjusted_width = min(max_length + 2, 50)
-            ws.column_dimensions[column_letter].width = adjusted_width
+        self._auto_fit_columns(ws, widths)
+
+    @staticmethod
+    def _format_structured_value(value: Any) -> Any:
+        """Text for a dict or list value that is shown in one cell."""
+        if isinstance(value, dict):
+            return ", ".join(f"{k}={v}" for k, v in value.items())
+        if isinstance(value, (list, tuple, set)):
+            return ", ".join(str(v) for v in value)
+        return value
 
     def _perform_network_analysis(self):
         """Perform network analysis on VPC and subnet resources."""
@@ -1119,7 +1283,9 @@ class BOMConverter:
 
         return ordered_headers
 
-    def generate_excel_bom(self, bom_data, filename: str) -> str:
+    def generate_excel_bom(
+        self, bom_data, filename: str, template: Optional[ReportTemplate] = None
+    ) -> str:
         """Generate Excel BOM document with provided data."""
         # Handle both BOMData objects and lists
         if hasattr(bom_data, "resources"):
@@ -1139,7 +1305,7 @@ class BOMConverter:
             if isinstance(item, dict):
                 self.headers.update(item.keys())
 
-        self.export_to_excel(filename)
+        self.export_to_excel(filename, template=template)
         return filename
 
     def generate_csv_bom(self, bom_data, filename: str) -> str:
@@ -1160,7 +1326,9 @@ class BOMConverter:
         self.export_to_csv(filename)
         return filename
 
-    def generate_word_bom(self, bom_data, filename: str) -> str:
+    def generate_word_bom(
+        self, bom_data, filename: str, template: Optional[ReportTemplate] = None
+    ) -> str:
         """Generate Word BOM document with professional formatting."""
         # Handle both BOMData objects and lists
         if hasattr(bom_data, "resources"):
@@ -1181,11 +1349,15 @@ class BOMConverter:
                 self.headers.update(item.keys())
 
         # Generate the Word document using our existing method
-        self.export_to_word(filename)
+        self.export_to_word(filename, template=template)
         return filename
 
-    def export_to_word(self, filename: str):
-        """Export data to Word format with professional formatting."""
+    def export_to_word(self, filename: str, template: Optional[ReportTemplate] = None):
+        """Export data to Word format.
+
+        ``template`` selects the sections, their order, the columns and the
+        header and footer. Without a template the built-in default applies.
+        """
         if not PYTHON_DOCX_AVAILABLE:
             print(
                 "Error: python-docx library not available. Please install it to export to Word."
@@ -1196,6 +1368,9 @@ class BOMConverter:
         if not self.data:
             print("No data to export")
             return
+
+        template = self._resolve_template(template, "word")
+        context = build_context(template, self.data)
 
         # Group resources by service
         services = {}
@@ -1208,145 +1383,255 @@ class BOMConverter:
         # Create Word document
         doc = Document()
 
-        # Add title
-        title = doc.add_heading("AWS Resource Inventory - BOM Report", 0)
-        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-        # Add generation timestamp
-        doc.add_paragraph(
-            f"Generated on: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
-        )
-
-        # Add executive summary
-        doc.add_heading("Executive Summary", level=1)
-        total_resources = sum(len(resources) for resources in services.values())
-        doc.add_paragraph(f"Total Resources: {total_resources}")
-        doc.add_paragraph(f"Services Covered: {len(services)}")
-        doc.add_paragraph(
-            f"AWS Regions: {len(set(r.get('region', 'Unknown') for r in self.data))}"
-        )
-
-        # Add service summary table
-        doc.add_heading("Service Summary", level=2)
-        table = doc.add_table(rows=1, cols=3)
-        table.style = "Light Grid Accent 1"
-        table.alignment = WD_TABLE_ALIGNMENT.CENTER
-
-        # Add headers
-        hdr_cells = table.rows[0].cells
-        hdr_cells[0].text = "Service"
-        hdr_cells[1].text = "Resource Count"
-        hdr_cells[2].text = "Percentage"
-
-        # Add service data
-        for service, resources in sorted(services.items()):
-            count = len(resources)
-            percentage = (count / total_resources * 100) if total_resources > 0 else 0
-
-            row_cells = table.add_row().cells
-            row_cells[0].text = service
-            row_cells[1].text = str(count)
-            row_cells[2].text = f"{percentage:.1f}%"
-
-        # Add detailed resource listings by service
-        doc.add_heading("Detailed Resource Inventory", level=1)
-
-        for service, resources in sorted(services.items()):
-            if not resources:
-                continue
-
-            # Service section
-            doc.add_heading(f"{service} Resources ({len(resources)})", level=2)
-
-            # Get common headers for this service
-            service_headers = set()
-            for resource in resources:
-                service_headers.update(resource.keys())
-
-            # Filter and order headers logically
-            ordered_headers = self._get_logical_column_order(service_headers)
-
-            # Limit to most important columns for Word format (to avoid very wide tables)
-            important_headers = []
-            priority_headers = [
-                "name",
-                "id",
-                "type",
-                "region",
-                "compliance_status",
-                "tags",
-            ]
-
-            for header in priority_headers:
-                if header in ordered_headers:
-                    important_headers.append(header)
-
-            # Add other important headers up to max of 6 columns total
-            max_cols = 6
-            for header in ordered_headers:
-                if len(important_headers) >= max_cols:
-                    break
-                if header not in important_headers and header not in [
-                    "arn",
-                    "account_id",
-                    "source_account_id",
-                ]:
-                    important_headers.append(header)
-
-            if important_headers:
-                # Create service resource table
-                resource_table = doc.add_table(rows=1, cols=len(important_headers))
-                resource_table.style = "Light List Accent 1"
-
-                # Add headers
-                hdr_cells = resource_table.rows[0].cells
-                for i, header in enumerate(important_headers):
-                    hdr_cells[i].text = header.replace("_", " ").title()
-
-                # Add resource data (limit to first 50 resources per service for Word format)
-                max_resources = 50
-                for resource in resources[:max_resources]:
-                    row_cells = resource_table.add_row().cells
-                    for i, header in enumerate(important_headers):
-                        value = resource.get(header, "")
-                        # Format complex values
-                        if isinstance(value, dict):
-                            if header == "tags" and value:
-                                # Format tags nicely
-                                tag_str = ", ".join(
-                                    [f"{k}={v}" for k, v in value.items()]
-                                )
-                                row_cells[i].text = tag_str[:100] + (
-                                    "..." if len(tag_str) > 100 else ""
-                                )
-                            else:
-                                row_cells[i].text = str(value)[:50] + (
-                                    "..." if len(str(value)) > 50 else ""
-                                )
-                        elif isinstance(value, list):
-                            row_cells[i].text = ", ".join(str(v) for v in value)[
-                                :100
-                            ] + ("..." if len(str(value)) > 100 else "")
-                        else:
-                            row_cells[i].text = str(value)
-
-                if len(resources) > max_resources:
-                    doc.add_paragraph(
-                        f"Note: Showing first {max_resources} of {len(resources)} {service} resources."
+        for section in template.sections:
+            if section.get("page_break_before"):
+                doc.add_page_break()
+            content_type = section["content_type"]
+            if content_type == "title":
+                self._add_word_title(doc, template, context)
+            elif content_type == "text":
+                if section["title"]:
+                    doc.add_heading(
+                        substitute(section["title"], context), level=section["level"]
                     )
+                for paragraph in section["paragraphs"]:
+                    doc.add_paragraph(substitute(paragraph, context))
+            elif content_type == "service_summary":
+                self._add_word_service_summary(doc, section, services, context)
+            elif content_type == "resources":
+                self._add_word_resources(doc, section, services, context)
 
-            doc.add_page_break()
-
-        # Add footer information
-        doc.add_heading("Report Information", level=1)
-        doc.add_paragraph(
-            "This report was generated using InvenTag - AWS Resource Inventory Tool"
-        )
-        doc.add_paragraph(
-            "For more information, visit: https://github.com/habhabhabs/inventag-aws"
-        )
+        self._apply_word_header_footer(doc, template, context)
 
         # Save the document (owner-only file)
         precreate_private(filename)
         doc.save(filename)
         print(f"Word document saved: {filename}")
+
+    @staticmethod
+    def _add_word_title(doc, template: ReportTemplate, context: Dict[str, str]):
+        """Logo, title and subtitle."""
+        if template.logo_file is not None:
+            doc.add_picture(
+                str(template.logo_file),
+                width=Inches(template.data["branding"]["logo_width_inches"]),
+            )
+            doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        title = doc.add_heading(context["document_title"], 0)
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        if context["document_subtitle"]:
+            subtitle = doc.add_paragraph(context["document_subtitle"], style="Subtitle")
+            subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    @staticmethod
+    def _set_word_column_widths(table, columns):
+        """Apply the template column widths (inches) to a table."""
+        if not any(column.get("width") for column in columns):
+            return
+        table.autofit = False
+        for index, column in enumerate(columns):
+            if column.get("width"):
+                width = Inches(column["width"])
+                for cell in table.columns[index].cells:
+                    cell.width = width
+
+    def _add_word_service_summary(self, doc, section, services, context):
+        """Heading and one table row for each service."""
+        if section["title"]:
+            doc.add_heading(
+                substitute(section["title"], context), level=section["level"]
+            )
+        columns = section["columns"]
+        default_headings = {
+            "service": "Service",
+            "resource_count": "Resource Count",
+            "percentage": "Percentage",
+        }
+        table = doc.add_table(rows=1, cols=len(columns))
+        table.style = section["table_style"]
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+
+        # Add headers
+        hdr_cells = table.rows[0].cells
+        for i, column in enumerate(columns):
+            hdr_cells[i].text = column["heading"] or default_headings[column["field"]]
+
+        # Add service data
+        total_resources = sum(len(resources) for resources in services.values())
+        for service, resources in sorted(services.items()):
+            count = len(resources)
+            percentage = (count / total_resources * 100) if total_resources > 0 else 0
+            values = {
+                "service": service,
+                "resource_count": str(count),
+                "percentage": f"{percentage:.1f}%",
+            }
+            row_cells = table.add_row().cells
+            for i, column in enumerate(columns):
+                row_cells[i].text = values[column["field"]]
+        self._set_word_column_widths(table, columns)
+
+    def _auto_word_columns(self, resources: List[Dict], max_cols: int) -> List[str]:
+        """The most important fields of a service, for a narrow Word table."""
+        service_headers = set()
+        for resource in resources:
+            service_headers.update(resource.keys())
+
+        # Filter and order headers logically
+        ordered_headers = self._get_logical_column_order(service_headers)
+
+        # Limit to most important columns for Word format (to avoid very wide tables)
+        important_headers = []
+        priority_headers = [
+            "name",
+            "id",
+            "type",
+            "region",
+            "compliance_status",
+            "tags",
+        ]
+
+        for header in priority_headers:
+            if header in ordered_headers and len(important_headers) < max_cols:
+                important_headers.append(header)
+
+        # Add other important headers up to the maximum number of columns
+        for header in ordered_headers:
+            if len(important_headers) >= max_cols:
+                break
+            if header not in important_headers and header not in [
+                "arn",
+                "account_id",
+                "source_account_id",
+            ]:
+                important_headers.append(header)
+        return important_headers
+
+    @staticmethod
+    def _format_word_value(header: str, value: Any) -> str:
+        """Cell text for a Word table: long structured values are shortened."""
+        if isinstance(value, dict):
+            if header == "tags" and value:
+                # Format tags nicely
+                tag_str = ", ".join([f"{k}={v}" for k, v in value.items()])
+                return tag_str[:100] + ("..." if len(tag_str) > 100 else "")
+            return str(value)[:50] + ("..." if len(str(value)) > 50 else "")
+        if isinstance(value, list):
+            return ", ".join(str(v) for v in value)[:100] + (
+                "..." if len(str(value)) > 100 else ""
+            )
+        return str(value)
+
+    def _add_word_resources(self, doc, section, services, context):
+        """Heading, then one heading and one table for each service."""
+        if section["title"]:
+            doc.add_heading(
+                substitute(section["title"], context), level=section["level"]
+            )
+
+        if section.get("services"):
+            selected = self._select_services(services, section["services"])
+        else:
+            selected = sorted(services.items())
+
+        max_resources = section["max_rows"]
+        for service, resources in selected:
+            if not resources:
+                continue
+            shown = resources[:max_resources]
+            service_context = dict(context)
+            service_context.update(
+                {
+                    "service": str(service),
+                    "service_resource_count": str(len(resources)),
+                    "shown_resource_count": str(len(shown)),
+                }
+            )
+
+            # Service section
+            doc.add_heading(
+                substitute(section["service_title"], service_context),
+                level=section["level"] + 1,
+            )
+
+            if section["columns"] == "auto":
+                columns = [
+                    {
+                        "field": header,
+                        "heading": header.replace("_", " ").title(),
+                        "width": None,
+                    }
+                    for header in self._auto_word_columns(
+                        resources, section["max_columns"]
+                    )
+                ]
+            else:
+                columns = [
+                    {
+                        "field": c["field"],
+                        "heading": c["heading"] or c["field"].replace("_", " ").title(),
+                        "width": c["width"],
+                    }
+                    for c in section["columns"]
+                ]
+
+            if columns:
+                # Create service resource table
+                resource_table = doc.add_table(rows=1, cols=len(columns))
+                resource_table.style = section["table_style"]
+
+                # Add headers
+                hdr_cells = resource_table.rows[0].cells
+                for i, column in enumerate(columns):
+                    hdr_cells[i].text = column["heading"]
+
+                # Add resource data (limited to max_rows resources per service)
+                for resource in shown:
+                    row_cells = resource_table.add_row().cells
+                    flattened = None
+                    for i, column in enumerate(columns):
+                        header = column["field"]
+                        if header in resource:
+                            value = resource[header]
+                        elif "." in header:
+                            if flattened is None:
+                                flattened = self._flatten_dict(resource)
+                            value = flattened.get(header, "")
+                        else:
+                            value = ""
+                        row_cells[i].text = self._format_word_value(header, value)
+                self._set_word_column_widths(resource_table, columns)
+
+                if len(resources) > max_resources and section["truncation_note"]:
+                    doc.add_paragraph(
+                        substitute(section["truncation_note"], service_context)
+                    )
+
+            if section["page_break_after_service"]:
+                doc.add_page_break()
+
+    @staticmethod
+    def _apply_word_header_footer(
+        doc, template: ReportTemplate, context: Dict[str, str]
+    ):
+        """Page header, page footer and the optional page number field."""
+        header_footer = template.data["header_footer"]
+        header = substitute(header_footer["header_text"], context)
+        footer = substitute(header_footer["footer_text"], context)
+        page_numbers = header_footer["include_page_numbers"]
+        if not (header or footer or page_numbers):
+            return
+        word_section = doc.sections[0]
+        if header:
+            word_section.header.paragraphs[0].text = header
+        if footer or page_numbers:
+            paragraph = word_section.footer.paragraphs[0]
+            paragraph.text = footer
+            if page_numbers:
+                from docx.oxml import OxmlElement
+                from docx.oxml.ns import qn
+
+                paragraph.add_run("  Page " if footer else "Page ")
+                field = OxmlElement("w:fldSimple")
+                field.set(qn("w:instr"), "PAGE")
+                paragraph._p.append(field)

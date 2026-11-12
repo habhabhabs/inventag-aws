@@ -168,7 +168,6 @@ Create a `tag-mappings.yaml` file:
   --tag-mappings tag-mappings.yaml \
   --create-excel --create-word \
   --enable-network-analysis --enable-security-analysis --enable-cost-analysis \
-  --compliance-standard soc2 --security-validation \
   --s3-bucket enterprise-reports \
   --s3-key-prefix daily-reports/$(date +%Y-%m-%d)/ \
   --max-concurrent-accounts 8 \
@@ -187,12 +186,10 @@ Create a `tag-mappings.yaml` file:
 # Validate credentials
 ./inventag.sh --accounts-file $ACCOUNTS_CONFIG --validate-credentials
 
-# Generate reports with security validation
+# Generate reports with an audit of the AWS API calls
 ./inventag.sh \
   --accounts-file $ACCOUNTS_CONFIG \
   --create-excel --create-word \
-  --enable-production-safety --security-validation \
-  --compliance-standard soc2 \
   --s3-bucket $REPORTS_BUCKET \
   --s3-key-prefix bom-reports/$(date +%Y-%m-%d)/ \
   --audit-output security-audit.json \
@@ -206,9 +203,6 @@ For interactive account configuration:
 ```bash
 # Interactive multi-account setup
 ./inventag.sh --accounts-prompt --create-excel --verbose
-
-# Interactive with Google Docs
-./inventag.sh --accounts-prompt --create-excel --create-google-docs
 ```
 
 ## Validation Commands

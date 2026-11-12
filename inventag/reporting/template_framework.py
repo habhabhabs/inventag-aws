@@ -11,6 +11,13 @@ Features:
 - Table of contents generation with automatic page/section references
 - Custom header and footer templates with company branding
 - Template variables for company name, document title, generation date
+
+The templates that the CLI applies to the Word and Excel BOM reports
+(``--word-template``, ``--excel-template``) are defined in
+:mod:`inventag.reporting.report_template`: a strict schema, validation with
+key paths, and a fixed-whitelist ``{{ name }}`` substitution. Its public
+functions are re-exported at the end of this module. The classes below are
+the older, generic document model; the CLI does not use them.
 """
 
 import logging
@@ -26,6 +33,18 @@ import re
 from collections import OrderedDict
 
 from .document_generator import BrandingConfig
+from .report_template import (
+    MAX_TEMPLATE_BYTES,
+    ReportTemplate,
+    TemplateIssue,
+    TemplateValidationError,
+    build_context,
+    default_template,
+    default_template_text,
+    load_report_template,
+    substitute,
+    validate_template_data,
+)
 
 
 @dataclass
@@ -316,6 +335,11 @@ class TemplateLoader:
         self.logger.info(f"Loading template from: {template_path}")
 
         try:
+            if os.path.getsize(template_path) > MAX_TEMPLATE_BYTES:
+                raise ValueError(
+                    f"Template file is larger than {MAX_TEMPLATE_BYTES} bytes: "
+                    f"{template_path}"
+                )
             with open(template_path, "r", encoding="utf-8") as f:
                 if template_path.endswith(".json"):
                     template_data = json.load(f)
