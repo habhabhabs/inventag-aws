@@ -11,20 +11,88 @@ npm run build          # must succeed; broken links are printed as warnings
 npm run check:links    # fails on broken links/anchors in the homepage or current docs
 ```
 
-Optional, needs Playwright with Chromium (not a site dependency):
-
-```bash
-npm run serve -- --port 4173 --no-open &   # serves build/ under /inventag-aws/
-npm run check:a11y -- --base http://localhost:4173/inventag-aws --shots ../screenshots
-```
-
-`check:a11y` tests text contrast (4.5:1) in light and dark mode, horizontal
-scrolling at 320 and 390px, 44px touch targets, visible keyboard focus and
-`prefers-reduced-motion`, and saves screenshots.
-
 Archived versions (`versioned_docs/`) are snapshots and still contain old
 broken links; they are reported but don't fail the check. Only edit them if a
 build breaks.
+
+## Accessibility checks
+
+`npm run check:a11y` runs axe-core in Chromium against the built site. CI runs
+the same command in `.github/workflows/docs-deploy.yml` after the build. A
+failure stops the deploy.
+
+Run the checks locally:
+
+1. Install the dependencies. Playwright and axe-core are `devDependencies`.
+
+   ```bash
+   cd website
+   npm ci
+   ```
+
+2. Install the browser. Do this once per machine, and again after a Playwright
+   upgrade.
+
+   ```bash
+   npx playwright install chromium
+   ```
+
+   On Linux, add `--with-deps` to install the system libraries too.
+
+3. Build the site. The checks read `build/`, not the dev server.
+
+   ```bash
+   npm run build
+   ```
+
+4. Run the checks. The script serves `build/` itself.
+
+   ```bash
+   npm run check:a11y
+   ```
+
+The exit code is `0` when the site is clean and `1` when a check fails. The
+console lists each failure by page, width and theme. The full result is in
+`a11y-report/report.json`. Git ignores that folder. CI uploads it as the
+`a11y-report` artifact.
+
+What the script tests:
+
+- Widths: 320, 768, 1024 and 1440 CSS pixels. The mobile layout ends at
+  996px, so two widths are on each side of the breakpoint. 320px is the
+  WCAG 1.4.10 reflow width.
+- Themes: light and dark. The script confirms the rendered colours before
+  each scan.
+- Pages: the homepage, the docs index, `getting-started/status`,
+  `user-guides/cli-user-guide`, the search page and the 404 page. Edit `PAGES`
+  in `scripts/check-a11y.mjs` to change the list.
+- States: the mobile menu open, the search suggestions open, and the
+  analytics consent banner open.
+
+What fails the run:
+
+- An axe-core violation of a WCAG 2.0 or 2.1 level A or AA rule.
+- Text below 4.5:1 on a gradient background.
+- Sideways page scroll at any width.
+- A Tab stop without a visible focus indicator, or a keyboard trap.
+- A mobile menu or search box that the keyboard cannot reach and use.
+- A consent banner that traps focus or covers content.
+- A looping animation under `prefers-reduced-motion`.
+
+The script also prints axe-core best-practice and WCAG 2.2 AA findings, and
+touch targets under 44px. These do not fail the run.
+
+Fix a failure in `src/` (CSS or components). Do not add it to `ALLOWLIST` in
+the script unless it cannot be fixed in this repository. Each `ALLOWLIST` entry
+needs a written reason.
+
+Useful options:
+
+```bash
+npm run check:a11y -- --shots ../screenshots   # save a screenshot of each page, width and theme
+npm run check:a11y -- --jobs 2                 # use less memory (default: 4 parallel contexts)
+npm run check:a11y -- --base http://localhost:3000/inventag-aws   # test a running server
+```
 
 ## Logo, favicon and social card
 
@@ -36,10 +104,10 @@ npm run brand          # = python3 brand/generate_brand_assets.py
 
 ## Analytics
 
-`docusaurus.config.js` enables Google Analytics 4 (`gtag`). As configured it
-loads on every page view without asking for consent. See the review notes in
-the pull request that introduced this section before relying on it in regions
-that require consent.
+Google Analytics 4 loads only after the visitor chooses "Allow" in the consent
+banner. The banner is in `src/theme/Root.js`. The loader is in
+`src/clientModules/analyticsConsent.js`. The measurement ID is
+`customFields.gaMeasurementId` in `docusaurus.config.js`.
 
 ## 🏗️ Architecture Overview
 

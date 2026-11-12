@@ -918,6 +918,27 @@ jobs:
           
           echo "Build validation completed"
 
+      # Playwright itself comes from website/package-lock.json (npm ci above).
+      # This step adds the matching Chromium build and its system libraries.
+      - name: Install Chromium for the accessibility checks
+        working-directory: ./website
+        run: npx playwright install --with-deps chromium
+
+      # axe-core at 320, 768, 1024 and 1440px in the light and the dark theme.
+      # Fails on any WCAG 2.1 A/AA violation; a failure here stops the deploy.
+      - name: Check accessibility (axe-core, 4 widths, 2 themes)
+        working-directory: ./website
+        run: npm run check:a11y
+
+      - name: Upload accessibility report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: a11y-report
+          path: website/a11y-report/
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Test mobile responsiveness and performance
         working-directory: ./website
         run: |

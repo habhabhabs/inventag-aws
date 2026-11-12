@@ -134,10 +134,15 @@
   padding: 4rem 0;
 }
 
+/* White text only inside the blue .hero banner. The theme's 404 page uses
+   .hero__title on the plain page background, where white text was invisible. */
 .hero__title {
   font-size: 3rem;
   font-weight: 800;
   margin-bottom: 1rem;
+}
+
+.hero .hero__title {
   color: #ffffff !important;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
@@ -145,9 +150,12 @@
 .hero__subtitle {
   font-size: 1.25rem;
   font-weight: 400;
-  color: #ffffff !important;
   opacity: 1;
   margin-bottom: 2rem;
+}
+
+.hero .hero__subtitle {
+  color: #ffffff !important;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
@@ -958,14 +966,10 @@ tr:hover {
 }
 
 /* ===== PERFORMANCE OPTIMIZATIONS ===== */
-/* Optimize font loading */
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-}
+/* (Removed an @font-face rule for 'Inter' whose src was a Google Fonts
+   stylesheet URL, not a font file. The browser could not decode it, so the
+   font never loaded, and every page view sent a request to Google before the
+   visitor had made a consent choice. The system font stack applies.) */
 
 /* Optimize animations for better performance */
 .navbar,
@@ -1124,10 +1128,9 @@ a.hash-link:hover::before {
   opacity: 1;
 }
 
-/* Hide the default hash-link content since we're replacing it with the emoji */
+/* The link keeps a real box (it used to be font-size: 0, so keyboard focus
+   landed on a 0px-high element and the focus ring had nothing to surround). */
 a.hash-link {
-  font-size: 0;
-  line-height: 0;
   text-decoration: none;
 }
 
@@ -1284,3 +1287,73 @@ a.hash-link::before {
 .consent-banner p { margin: 0 0 0.75rem; }
 .consent-banner__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .consent-banner__actions .button { min-height: 44px; border-radius: 999px; }
+/* Both choices look the same, so neither is pushed. A 2px border in the text
+   colour keeps each button distinct from the banner in both themes. */
+.consent-banner__button {
+  background: transparent;
+  color: var(--ifm-font-color-base);
+  border: 2px solid var(--ifm-font-color-base);
+  font-weight: 600;
+}
+.consent-banner__button:hover,
+.consent-banner__button:focus-visible {
+  background: var(--ifm-font-color-base);
+  color: var(--ifm-background-surface-color);
+  border-color: var(--ifm-font-color-base);
+}
+
+/* ===================================================================
+   Fixes for failures found by `npm run check:a11y`
+   (axe-core, WCAG 2.1 A/AA, four widths, both themes)
+   =================================================================== */
+
+/* WCAG 1.4.1: links inside text need more than colour. In the dark theme the
+   link colour was only 1.98:1 against the surrounding text. */
+.markdown a:not(.hash-link):not(.button):not(.card) {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+.markdown a:not(.hash-link):not(.button):not(.card):hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Search suggestions (local search plugin). Its muted grey was 2.66:1 on
+   white, and the dark theme put white text on the light-blue primary colour
+   (2.54:1) for the selected suggestion. */
+:root {
+  --search-local-muted-color: #4b5563;      /* 7.6:1 on #fff, 7.0:1 on #f5f6f7 */
+  --search-local-highlight-color: #1d4ed8;  /* white on it: 6.7:1 */
+}
+[data-theme='dark'] {
+  --search-local-muted-color: #cbd5e1;      /* 11.6:1 on the dark page background */
+  --search-local-highlight-color: #93c5fd;  /* matched words: 9.5:1 on the dark background */
+}
+/* (the extra .navbar__search outranks the plugin's own rule) */
+html[data-theme='dark'] .navbar__search [class*='dropdownMenu'] [class*='suggestion'][class*='cursor'] {
+  background-color: #1e40af;                /* white on it: 8.7:1 */
+}
+
+/* Search page: the clear button was 11x16px (WCAG 2.5.8 asks for 24x24) */
+button[class*='searchClearButton'] {
+  min-width: 24px;
+  min-height: 24px;
+}
+
+/* Consent banner: while it is open, keep the end of the page readable and
+   never scroll a focused control underneath it (WCAG 2.4.11). Root.js sets
+   the attribute and the measured height. */
+html[data-consent-banner='open'] {
+  scroll-padding-bottom: var(--consent-banner-space, 0px);
+}
+html[data-consent-banner='open'] .footer {
+  padding-bottom: calc(var(--ifm-footer-padding-vertical) + var(--consent-banner-space, 0px));
+}
+/* The fixed "scroll back to top" button sits above the banner, not under it */
+html[data-consent-banner='open'] .theme-back-to-top-button {
+  bottom: calc(var(--consent-banner-space, 0px) + 0.5rem);
+}
+.consent-banner:focus-visible {
+  outline: 3px solid var(--inventag-focus);
+  outline-offset: 2px;
+}
