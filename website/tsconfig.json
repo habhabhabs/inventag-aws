@@ -1,0 +1,17 @@
+{
+  // Editor support and `npm run typecheck` only: Docusaurus compiles the
+  // TypeScript itself and never uses this file to emit code.
+  "extends": "@docusaurus/tsconfig",
+  "compilerOptions": {
+    // TypeScript 7 removed `baseUrl`, which @docusaurus/tsconfig 3.10 still
+    // sets; reset it and declare the @site alias relative to this file.
+    "baseUrl": null,
+    "paths": {"@site/*": ["./*"]},
+    "strict": true,
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "types": ["node", "@docusaurus/module-type-aliases", "@docusaurus/theme-classic"]
+  },
+  "include": ["src", "docusaurus.config.ts", "sidebars.ts", "scripts/*.d.mts"],
+  "exclude": ["build", ".docusaurus", "node_modules"]
+}

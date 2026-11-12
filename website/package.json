@@ -14,23 +14,29 @@
     "write-heading-ids": "docusaurus write-heading-ids",
     "check:links": "node scripts/check-links.mjs",
     "check:a11y": "node scripts/check-a11y.mjs",
-    "brand": "python3 brand/generate_brand_assets.py"
+    "brand": "python3 brand/generate_brand_assets.py",
+    "typecheck": "tsc",
+    "test:vendor": "node vendor/deepmerge/test.cjs",
+    "serve:pages": "node scripts/serve-pages.mjs"
   },
   "dependencies": {
-    "@docusaurus/core": "3.8.1",
-    "@docusaurus/preset-classic": "3.8.1",
-    "@easyops-cn/docusaurus-search-local": "^0.52.1",
-    "@mdx-js/react": "^3.0.0",
-    "clsx": "^2.0.0",
-    "prism-react-renderer": "^2.3.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "@docusaurus/core": "^3.10.2",
+    "@docusaurus/faster": "^3.10.2",
+    "@docusaurus/preset-classic": "^3.10.2",
+    "@easyops-cn/docusaurus-search-local": "^0.55.3",
+    "@mdx-js/react": "^3.1.1",
+    "clsx": "^2.1.1",
+    "prism-react-renderer": "^2.4.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "3.8.1",
-    "@docusaurus/types": "3.8.1",
-    "axe-core": "4.14.0",
-    "playwright": "1.63.0"
+    "@docusaurus/module-type-aliases": "^3.10.2",
+    "@docusaurus/tsconfig": "^3.10.2",
+    "@docusaurus/types": "^3.10.2",
+    "axe-core": "^4.14.0",
+    "deepmerge": "file:vendor/deepmerge",
+    "typescript": "^7.0.2"
   },
   "browserslist": {
     "production": [
@@ -45,6 +51,14 @@
     ]
   },
   "engines": {
-    "node": ">=18.0"
+    "node": ">=26.12.1"
+  },
+  "overrides": {
+    "tinypool": "^2.2.0",
+    "serialize-javascript": "^7.1.4",
+    "sockjs": {
+      "uuid": "^11.1.1"
+    },
+    "deepmerge": "$deepmerge"
   }
 }

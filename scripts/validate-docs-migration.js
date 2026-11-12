@@ -347,7 +347,7 @@ class MigrationValidator {
   }
 
   async validateDocusaurusConfig() {
-    const configPath = path.join(CONFIG.websiteDir, 'docusaurus.config.js');
+    const configPath = ['docusaurus.config.ts', 'docusaurus.config.js'].map((f) => path.join(CONFIG.websiteDir, f)).find((f) => fs.existsSync(f)) || path.join(CONFIG.websiteDir, 'docusaurus.config.ts');
     
     if (!fs.existsSync(configPath)) {
       this.results.addError('Docusaurus config file not found', configPath);

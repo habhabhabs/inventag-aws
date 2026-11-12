@@ -1,0 +1,9 @@
+{
+  "name": "deepmerge",
+  "version": "4.3.2-inventag.1",
+  "description": "deepmerge 4.3.1 with a fix for CVE-2026-93753 (prototype poisoning in mergeObject). Vendored by the InvenTag website; see README.md.",
+  "main": "cjs.js",
+  "types": "index.d.ts",
+  "license": "MIT",
+  "private": true
+}
