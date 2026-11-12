@@ -340,6 +340,15 @@ function createTransformations(logger) {
           return match;
         }
         
+        // Leave relative links alone. Docusaurus resolves file links such as
+        // ./state-management.md or ../user-guides/cli-user-guide.md itself
+        // (and fails the build if one is broken), and they keep working on
+        // GitHub. Rewriting them to "/state-management" dropped both the
+        // /docs route and the directory, which published broken links.
+        if (!link.startsWith('/')) {
+          return match;
+        }
+
         // Only process .md files or links that look like internal docs
         if (link.endsWith('.md') || (!link.includes('.') && !link.startsWith('http'))) {
           hasChanges = true;
