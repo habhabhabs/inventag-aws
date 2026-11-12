@@ -1,0 +1,8 @@
+# InvenTag documentation (GitHub Pages project site).
+# Note: crawlers only read robots.txt at the host root
+# (https://habhabhabs.github.io/robots.txt), so this file is informational
+# for this subpath; the sitemap is also linked from Search Console.
+User-agent: *
+Allow: /
+
+Sitemap: https://habhabhabs.github.io/inventag-aws/sitemap.xml

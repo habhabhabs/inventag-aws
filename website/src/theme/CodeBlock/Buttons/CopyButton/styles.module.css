@@ -1,0 +1,11 @@
+.copyButton {
+  font-variant-numeric: tabular-nums;
+}
+.icon {
+  fill: currentColor;
+  flex: none;
+}
+.copied {
+  color: var(--it-ink) !important;
+  border-color: var(--it-accent) !important;
+}

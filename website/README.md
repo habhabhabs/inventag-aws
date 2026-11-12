@@ -4,122 +4,104 @@ This guide provides comprehensive information for maintaining and developing the
 
 ## Before you merge a docs change
 
+Node.js 26 (Active LTS, at least 26.12.1 for the 21 Oct 2026 security
+release; see `.nvmrc` and `engines` in `package.json`).
+
 ```bash
 cd website
 npm ci
-npm run build          # must succeed; broken links are printed as warnings
-npm run check:links    # fails on broken links/anchors in the homepage or current docs
+npm run typecheck      # TypeScript (tsconfig.json)
+npm run build          # fails on broken links/anchors in the homepage or current docs
+npm run check:links    # same link/SEO check on an existing build/
+npm run test:vendor    # the patched deepmerge copy (vendor/deepmerge)
 ```
 
-Archived versions (`versioned_docs/`) are snapshots and still contain old
-broken links; they are reported but don't fail the check. Only edit them if a
-build breaks.
+`npm run build` runs `scripts/check-links.mjs` at the end (a `postBuild` hook
+in `docusaurus.config.ts`). It fails the build on a broken link or anchor in
+the homepage or the current docs, and on a current page without exactly one
+`<h1>`, a meta description, a canonical URL, the social card or the favicon
+links. Archived versions (`versioned_docs/`) are snapshots and still contain
+old broken links; they are counted, not failed.
 
-## Accessibility checks
-
-`npm run check:a11y` runs axe-core in Chromium against the built site. CI runs
-the same command in `.github/workflows/docs-deploy.yml` after the build. A
-failure stops the deploy.
-
-Run the checks locally:
-
-1. Install the dependencies. Playwright and axe-core are `devDependencies`.
-
-   ```bash
-   cd website
-   npm ci
-   ```
-
-2. Install the browser. Do this once per machine, and again after a Playwright
-   upgrade.
-
-   ```bash
-   npx playwright install chromium
-   ```
-
-   On Linux, add `--with-deps` to install the system libraries too.
-
-3. Build the site. The checks read `build/`, not the dev server.
-
-   ```bash
-   npm run build
-   ```
-
-4. Run the checks. The script serves `build/` itself.
-
-   ```bash
-   npm run check:a11y
-   ```
-
-The exit code is `0` when the site is clean and `1` when a check fails. The
-console lists each failure by page, width and theme. The full result is in
-`a11y-report/report.json`. Git ignores that folder. CI uploads it as the
-`a11y-report` artifact.
-
-What the script tests:
-
-- Widths: 320, 768, 1024 and 1440 CSS pixels. The mobile layout ends at
-  996px, so two widths are on each side of the breakpoint. 320px is the
-  WCAG 1.4.10 reflow width.
-- Themes: light and dark. The script confirms the rendered colours before
-  each scan.
-- Pages: the homepage, the docs index, `getting-started/status`,
-  `user-guides/cli-user-guide`, the search page and the 404 page. Edit `PAGES`
-  in `scripts/check-a11y.mjs` to change the list.
-- States: the mobile menu open, the search suggestions open, and the
-  analytics consent banner open.
-
-What fails the run:
-
-- An axe-core violation of a WCAG 2.0 or 2.1 level A or AA rule.
-- Text below 4.5:1 on a gradient background.
-- Sideways page scroll at any width.
-- A Tab stop without a visible focus indicator, or a keyboard trap.
-- A mobile menu or search box that the keyboard cannot reach and use.
-- A consent banner that traps focus or covers content.
-- A looping animation under `prefers-reduced-motion`.
-
-The script also prints axe-core best-practice and WCAG 2.2 AA findings, and
-touch targets under 44px. These do not fail the run.
-
-Fix a failure in `src/` (CSS or components). Do not add it to `ALLOWLIST` in
-the script unless it cannot be fixed in this repository. Each `ALLOWLIST` entry
-needs a written reason.
-
-Useful options:
+Accessibility (needs Playwright with Chromium, which is not a site dependency):
 
 ```bash
-npm run check:a11y -- --shots ../screenshots   # save a screenshot of each page, width and theme
-npm run check:a11y -- --jobs 2                 # use less memory (default: 4 parallel contexts)
-npm run check:a11y -- --base http://localhost:3000/inventag-aws   # test a running server
+npm run serve:pages -- --port 4173 &        # serves build/ like GitHub Pages
+NODE_PATH=$(npm root -g) npm run check:a11y -- --base http://localhost:4173/inventag-aws --shots ../screenshots
 ```
 
-## Logo, favicon and social card
+`check:a11y` runs axe-core (WCAG 2.0/2.1/2.2 A and AA plus best practices) on
+the homepage and eight docs pages, in light and dark, at 320, 390, 768 and
+1440px. It also measures text contrast (including syntax colours), page
+overflow, target sizes (24px, or 44px on touch), controls hidden until hover,
+focus visibility, the skip link, keyboard use of the copy buttons, theme
+toggle, version dropdown and mobile menu, the analytics banner, and
+`prefers-reduced-motion`. Use `serve:pages`, not `npm run serve`:
+`docusaurus serve` resolves `/docs` to the `static/docs/index.html` redirect
+stub and loops, which GitHub Pages does not do.
 
-Sources and the generator live in [`brand/`](brand/README.md):
+## Design system
+
+- Tokens, Infima overrides and all docs chrome: `src/css/custom.css`
+- Homepage: `src/pages/index.tsx`, `src/components/landing/`
+- Code blocks (header bar, copy button, collapsing long blocks):
+  `src/theme/CodeBlock/`; syntax colours: `src/theme-config/prism.ts`
+- Tables that scroll sideways inside their frame: `src/theme/MDXComponents/`
+- Fonts (self-hosted, no Google requests): `static/fonts/README.md`
+- Logo, favicons, social card, palette and contrast table: [`brand/`](brand/README.md)
 
 ```bash
 npm run brand          # = python3 brand/generate_brand_assets.py
 ```
 
-## Analytics
+`sidebars.js` is the navigation (CI validates it with `require`);
+`sidebars.ts` only strips the emoji from its labels for display.
 
-Google Analytics 4 loads only after the visitor chooses "Allow" in the consent
-banner. The banner is in `src/theme/Root.js`. The loader is in
-`src/clientModules/analyticsConsent.js`. The measurement ID is
-`customFields.gaMeasurementId` in `docusaurus.config.js`.
+## Analytics and cookies
+
+Essential storage only by default: the cookie choice and the theme, both in
+local storage. Optional analytics load only after the visitor chooses "Allow
+analytics" in the banner (`src/theme/Root.tsx`,
+`src/clientModules/analyticsConsent.ts`). "Just the essentials", the close
+button and ignoring the banner all leave analytics off. The banner names no
+vendor; `src/pages/privacy.md` (`/privacy`) says what is stored, names the
+provider once, and explains how to opt out. Keep the two in sync if anything
+changes.
+
+The loader follows Consent Mode v2 in its basic form: nothing is requested
+before consent; after "Allow analytics" the consent defaults (all denied) are
+set, `analytics_storage` is granted (ad signals stay denied), then the tag
+loads. "Cookie preferences" in the footer reopens the banner; withdrawing
+stops page views and deletes the `_ga` cookies. `check:a11y` tests all of
+this, including that no analytics request happens before consent.
+
+## Dependencies and security
+
+`npm audit` reports 0 vulnerabilities. `package.json` `overrides` pin patched
+versions of transitive packages where Docusaurus 3.10.2 still pulls in
+vulnerable ones:
+
+| Override | Why |
+|---|---|
+| `tinypool` `^2.2.0` | GHSA-5gmw-xhrv-c9v3, GHSA-85c8-ppgw-ccpr (critical), via `@docusaurus/core` |
+| `serialize-javascript` `^7.1.4` | GHSA-5c6j-r48x-rmvq and two lower ones, via `copy-webpack-plugin`, `css-minimizer-webpack-plugin` |
+| `sockjs` > `uuid` `^11.1.1` | GHSA-w5hq-g745-h8pq, dev server only |
+| `deepmerge` -> `vendor/deepmerge` | CVE-2026-93753 / GHSA-gcqx-w48m-w2h4, no upstream fix; see `vendor/deepmerge/README.md` |
+
+Remove each override when Docusaurus ships the fixed versions (check with
+`npm ls <package>` and `npm audit` after deleting it).
 
 ## 🏗️ Architecture Overview
 
-The InvenTag documentation uses Docusaurus v3.8.1 with a dual-platform approach:
+The InvenTag documentation uses Docusaurus 3.10 with a dual-platform approach:
 - **GitHub**: Native markdown rendering for repository browsing
 - **Docusaurus**: Enhanced web interface with search, navigation, and theming
 
 ### Directory Structure
 ```
 website/                    # Docusaurus site configuration
-├── docusaurus.config.js   # Main configuration file
-├── sidebars.js            # Navigation structure
+├── docusaurus.config.ts   # Main configuration file
+├── sidebars.js            # Navigation structure (sidebars.ts strips emoji for display)
 ├── src/                   # Custom components and CSS
 │   └── css/
 │       └── custom.css     # Custom styling and branding
@@ -141,7 +123,7 @@ website/                    # Docusaurus site configuration
 ## 🚀 Development Workflow
 
 ### Prerequisites
-- Node.js >= 18.0.0
+- Node.js >= 26.12.1 (Active LTS)
 - npm (comes with Node.js)
 
 ### Quick Start Commands (from project root)
@@ -200,7 +182,7 @@ The development server runs on `http://localhost:3000` with:
 
 ## 🔧 Configuration Management
 
-### Main Configuration (`docusaurus.config.js`)
+### Main Configuration (`docusaurus.config.ts`)
 
 Key configuration areas:
 - **Site metadata**: Title, tagline, favicon
@@ -285,7 +267,7 @@ npm run build  # Test after updates
 #### Build Failures
 **Problem**: Site fails to build or deploy
 **Solutions**:
-1. Check Node.js version: `node --version` (requires >= 18.0.0)
+1. Check Node.js version: `node --version` (requires >= 26.12.1)
 2. Clear build cache: `npm run docs:clear`
 3. Reinstall dependencies: `cd website && rm -rf node_modules package-lock.json && npm install`
 4. Check GitHub Actions logs for specific errors
@@ -304,7 +286,7 @@ npm run build  # Test after updates
 1. Rebuild the site: `npm run docs:build`
 2. Check search index exists: `build/search-index.json`
 3. Clear browser cache and rebuild
-4. Verify search plugin configuration in `docusaurus.config.js`
+4. Verify search plugin configuration in `docusaurus.config.ts`
 
 #### Development Server Issues
 **Problem**: `npm run docs:start` fails or port conflicts

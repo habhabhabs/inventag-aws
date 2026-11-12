@@ -1,0 +1,100 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2.5rem;
+  padding: 0 0.4rem 0 var(--ifm-pre-padding);
+  border-bottom: 1px solid var(--it-line);
+  background: var(--it-surface);
+  font-family: var(--it-font-mono);
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+.language,
+.title {
+  color: var(--it-ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.language {
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.title {
+  color: var(--it-ink);
+  font-weight: 500;
+}
+.content {
+  position: relative;
+  direction: ltr;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+  flex: none;
+}
+.expand {
+  min-height: 28px;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--it-line-strong);
+  border-radius: 3px;
+  background: var(--it-surface);
+  color: var(--it-ink);
+  font-family: var(--it-font-mono);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.expand:hover {
+  background: var(--it-hover);
+  border-color: var(--it-ink);
+}
+/* the theme's button group floats over the code; here it sits in the header */
+.header .buttons {
+  position: static;
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+.header .buttons button {
+  opacity: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--it-line-strong);
+  border-radius: 3px;
+  background: var(--it-surface);
+  color: var(--it-ink);
+  font-family: var(--it-font-mono);
+  font-size: 0.75rem;
+  line-height: 1;
+  transition: color var(--ifm-transition-fast) ease, border-color var(--ifm-transition-fast) ease,
+    background-color var(--ifm-transition-fast) ease;
+}
+.header .buttons button:hover {
+  border-color: var(--it-ink);
+  background: var(--it-hover);
+}
+.header .buttons button svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+@media (pointer: coarse) {
+  .expand {
+    min-height: 44px;
+  }
+  .header {
+    min-height: 3rem;
+  }
+  .header .buttons button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
