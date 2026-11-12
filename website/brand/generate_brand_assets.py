@@ -2,41 +2,49 @@
 """Regenerate InvenTag's web brand assets from the SVG sources in ./src.
 
 Run from anywhere:
-    python3 website/brand/generate_brand_assets.py
+    python3 website/brand/generate_brand_assets.py      (or: cd website && npm run brand)
 
 Requirements: `rsvg-convert` (librsvg: `brew install librsvg`,
 `apt install librsvg2-bin`) and Pillow (`pip install pillow`).
 No fonts are needed: all text in the SVG sources is already outlined.
 
-It writes to website/static/img/:
-  logo.svg, logo-dark.svg           mark for light / dark backgrounds
-  logo-on-brand.svg                 white mark for the blue navbar and hero
-  logo-wordmark*.svg, logo-mono*.svg lockups and one-colour marks
-  favicon.svg                       small-size mark, follows the OS colour scheme
-  favicon.ico                       16, 32 and 48 px
-  favicon-32.png, logo-192.png, logo-512.png
-  apple-touch-icon.png              180 px on an opaque white tile
-  social-card.png                   1200x630 Open Graph / Twitter card
-and website/brand/preview.png, a one-page sheet for eyeballing the result.
+Writes to website/static/:
+  img/logo.svg, img/logo-dark.svg      mark for light / dark backgrounds
+  img/logo-on-brand.svg                one-colour ink mark for a vermilion field
+  img/logo-small*.svg                  pixel-aligned mark for 16-32 px
+  img/logo-wordmark*.svg, img/logo-mono*.svg   lockups and one-colour marks
+  img/favicon.svg                      small mark, follows the OS colour scheme
+  img/favicon.ico                      16, 32 and 48 px (paper halo: readable on dark tab bars)
+  img/favicon-32.png, img/logo-192.png, img/logo-512.png, img/logo-maskable-512.png
+  img/apple-touch-icon.png             180 px on an opaque paper tile
+  img/social-card.png                  1200x630 Open Graph / Twitter card
+  site.webmanifest                     name, colours and icons
+and website/brand/preview.png (the logo in context: navbar, browser tab,
+sizes, lockups, app icons, social card, palette).
 
-To change the shapes or the wordmark, edit build_logo_sources.py and run it
-first (it needs fonttools + uharfbuzz and the Inter font).
+To change shapes, colours or text, edit build_logo_sources.py and run it first.
 """
+import base64
 import io
+import json
 import pathlib
 import shutil
 import subprocess
 import sys
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageFilter
 
 BRAND = pathlib.Path(__file__).resolve().parent
 SRC = BRAND / "src"
-OUT = BRAND.parent / "static" / "img"
+STATIC = BRAND.parent / "static"
+OUT = STATIC / "img"
+PAPER = "#F9F8F6"
+DARK_BG = "#111110"
+BASE_URL = "/inventag-aws/"
 
 COPY_SVGS = [
-    "logo.svg", "logo-dark.svg", "logo-on-brand.svg", "logo-small.svg", "logo-mono.svg",
-    "logo-mono-black.svg", "logo-mono-white.svg", "logo-wordmark.svg",
+    "logo.svg", "logo-dark.svg", "logo-on-brand.svg", "logo-small.svg", "logo-small-dark.svg",
+    "logo-mono.svg", "logo-mono-black.svg", "logo-mono-white.svg", "logo-wordmark.svg",
     "logo-wordmark-dark.svg", "logo-wordmark-mono.svg", "favicon.svg",
 ]
 
@@ -44,19 +52,46 @@ COPY_SVGS = [
 def render(svg, width=None, height=None):
     if not shutil.which("rsvg-convert"):
         sys.exit("rsvg-convert not found: install librsvg (see the docstring)")
-    cmd = ["rsvg-convert", str(svg)]
+    cmd = ["rsvg-convert"]
     if width:
         cmd += ["-w", str(width)]
     if height:
         cmd += ["-h", str(height)]
-    png = subprocess.run(cmd, check=True, capture_output=True).stdout
+    if isinstance(svg, pathlib.Path):
+        cmd.append(str(svg))
+        data = None
+    else:  # SVG markup as a string
+        data = svg.encode()
+    png = subprocess.run(cmd, input=data, check=True, capture_output=True).stdout
     return Image.open(io.BytesIO(png)).convert("RGBA")
 
 
 def save_png(img, path):
     img.save(path, optimize=True)
     print(f"  {path.relative_to(BRAND.parent.parent)}  {img.size[0]}x{img.size[1]}  "
-          f"{path.stat().st_size // 1024} KB")
+          f"{max(1, path.stat().st_size // 1024)} KB")
+
+
+def with_halo(img, colour=PAPER, radius=1):
+    """Mark plus a 1px paper outline, so the ink tag stays visible on dark tab bars."""
+    alpha = img.getchannel("A").filter(ImageFilter.MaxFilter(radius * 2 + 1))
+    halo = Image.new("RGBA", img.size, colour)
+    halo.putalpha(alpha)
+    halo.alpha_composite(img)
+    return halo
+
+
+def tile(size, mark_svg, mark_size, bg=PAPER):
+    t = Image.new("RGBA", (size, size), bg)
+    m = render(mark_svg, mark_size, mark_size)
+    off = (size - mark_size) // 2
+    t.alpha_composite(m, (off, off))
+    return t
+
+
+def data_uri(img):
+    buf = io.BytesIO(); img.save(buf, "PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 def main():
@@ -68,82 +103,61 @@ def main():
 
     print("PNG / ICO:")
     small, big = SRC / "logo-small.svg", SRC / "logo.svg"
-    # <= 32 px uses the pixel-aligned small mark; larger sizes use the full mark
-    save_png(render(small, 32, 32), OUT / "favicon-32.png")
-    save_png(render(big, 192, 192), OUT / "logo-192.png")
-    save_png(render(big, 512, 512), OUT / "logo-512.png")
-
-    tile = Image.new("RGBA", (180, 180), "white")  # iOS paints transparency black
-    mark = render(big, 140, 140)
-    tile.alpha_composite(mark, (20, 20))
-    save_png(tile.convert("RGB"), OUT / "apple-touch-icon.png")
-
-    icons = [render(small, s, s) for s in (16, 32)] + [render(big, 48, 48)]
-    icons[2].save(OUT / "favicon.ico", sizes=[(16, 16), (32, 32), (48, 48)],
-                  append_images=icons[:2])
+    save_png(with_halo(render(small, 32, 32)), OUT / "favicon-32.png")
+    icons = [with_halo(render(small, s, s)) for s in (16, 32)] + [with_halo(render(big, 48, 48))]
+    icons[2].save(OUT / "favicon.ico", sizes=[(16, 16), (32, 32), (48, 48)], append_images=icons[:2])
     print("  website/static/img/favicon.ico  16/32/48")
+
+    # app icons on an opaque paper tile (iOS paints transparency black)
+    save_png(tile(180, big, 132).convert("RGB"), OUT / "apple-touch-icon.png")
+    save_png(tile(192, big, 140), OUT / "logo-192.png")
+    save_png(tile(512, big, 376), OUT / "logo-512.png")
+    # maskable: keep the mark inside the central 80% safe zone
+    save_png(tile(512, big, 300), OUT / "logo-maskable-512.png")
 
     card = render(SRC / "social-card.svg", 1200, 630).convert("RGB")
     save_png(card, OUT / "social-card.png")
 
+    manifest = {
+        "name": "InvenTag",
+        "short_name": "InvenTag",
+        "description": "Open-source Python CLI: AWS resource inventory, tag checks, Excel and Word reports.",
+        "start_url": BASE_URL,
+        "scope": BASE_URL,
+        "display": "browser",
+        "background_color": PAPER,
+        "theme_color": PAPER,
+        "icons": [
+            {"src": f"{BASE_URL}img/logo-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+            {"src": f"{BASE_URL}img/logo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+            {"src": f"{BASE_URL}img/logo-maskable-512.png", "sizes": "512x512", "type": "image/png",
+             "purpose": "maskable"},
+            {"src": f"{BASE_URL}img/favicon.svg", "sizes": "any", "type": "image/svg+xml"},
+        ],
+    }
+    (STATIC / "site.webmanifest").write_text(json.dumps(manifest, indent=2) + "\n")
+    print("  website/static/site.webmanifest")
+
     preview()
 
 
-def render_recoloured(svg_path, size):
-    """Small mark in the dark-background blue (what favicon.svg shows in dark mode)."""
-    tmp = BRAND / ".tmp-small-dark.svg"
-    tmp.write_text(svg_path.read_text().replace("#1d4ed8", "#60a5fa"))
-    try:
-        return render(tmp, size, size)
-    finally:
-        tmp.unlink()
-
-
 def preview():
-    """One sheet: mark at 16/32/64/256, both lockups, on light and dark."""
-    W, H = 1600, 760
-    sheet = Image.new("RGB", (W, H), "#ffffff")
-    d = ImageDraw.Draw(sheet)
-    d.rectangle([0, H // 2, W, H], fill="#0f172a")
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/opentype/inter/Inter-Medium.otf", 18)
-    except OSError:
-        font = ImageFont.load_default()
-
-    def row(y, bg_dark):
-        ink = "#cbd5e1" if bg_dark else "#334155"
-        mark = SRC / ("logo-dark.svg" if bg_dark else "logo.svg")
-        x = 60
-        for size in (16, 32, 64, 256):
-            src = SRC / "logo-small.svg" if size <= 32 else mark
-            if bg_dark and size <= 32:
-                img = render_recoloured(SRC / "logo-small.svg", size)
-            else:
-                img = render(src, size, size)
-            top = y + 40 + (256 - size) // 2
-            sheet.paste(img, (x, top), img)
-            label = f"{size}px" + (" (small variant)" if size <= 32 else "")
-            d.text((x, y + 310), label, fill=ink, font=font)
-            x += max(size, 150) + 60
-        lock = render(SRC / ("logo-wordmark-dark.svg" if bg_dark else "logo-wordmark.svg"),
-                      height=96)
-        sheet.paste(lock, (x, y + 60), lock)
-        d.text((x, y + 170), "wordmark lockup", fill=ink, font=font)
-        mono = render(SRC / ("logo-mono-white.svg" if bg_dark else "logo-mono-black.svg"), 96, 96)
-        sheet.paste(mono, (x, y + 200), mono)
-        d.text((x + 110, y + 240), "one-colour mark", fill=ink, font=font)
-        d.text((60, y + 10), "on dark" if bg_dark else "on light", fill=ink, font=font)
-        # 16px favicon pixels, enlarged 8x without smoothing
-        fav = render(SRC / "logo-small.svg", 16, 16)
-        if bg_dark:
-            fav = render_recoloured(SRC / "logo-small.svg", 16)
-        zoom = fav.resize((128, 128), Image.NEAREST)
-        sheet.paste(zoom, (1420, y + 60), zoom)
-        d.text((1420, y + 200), "16px, 8x zoom", fill=ink, font=font)
-
-    row(0, False)
-    row(H // 2, True)
-    save_png(sheet, BRAND / "preview.png")
+    """Render src/preview-sheet.svg with the real PNGs embedded."""
+    sheet = (SRC / "preview-sheet.svg").read_text()
+    fav_svg = (SRC / "favicon.svg").read_text()
+    # what a browser shows for favicon.svg in light and dark mode
+    dark_variant = fav_svg.replace(".t{fill:#141413}", ".t{fill:#F2F0EC}", 1)
+    assert dark_variant != fav_svg, "favicon.svg colours changed: update preview()"
+    tokens = {
+        "favicon-16-light.png": render(SRC / "favicon.svg", 16, 16),
+        "favicon-16-dark.png": render(dark_variant, 16, 16),
+        "apple-touch-icon.png": Image.open(OUT / "apple-touch-icon.png"),
+        "logo-192.png": Image.open(OUT / "logo-192.png"),
+        "social-card.png": Image.open(OUT / "social-card.png"),
+    }
+    for name, img in tokens.items():
+        sheet = sheet.replace("{{" + name + "}}", data_uri(img))
+    save_png(render(sheet, 1600).convert("RGB"), BRAND / "preview.png")
 
 
 if __name__ == "__main__":

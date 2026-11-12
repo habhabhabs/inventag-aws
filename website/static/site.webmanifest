@@ -1,0 +1,35 @@
+{
+  "name": "InvenTag",
+  "short_name": "InvenTag",
+  "description": "Open-source Python CLI: AWS resource inventory, tag checks, Excel and Word reports.",
+  "start_url": "/inventag-aws/",
+  "scope": "/inventag-aws/",
+  "display": "browser",
+  "background_color": "#F9F8F6",
+  "theme_color": "#F9F8F6",
+  "icons": [
+    {
+      "src": "/inventag-aws/img/logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/inventag-aws/img/logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/inventag-aws/img/logo-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/inventag-aws/img/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
