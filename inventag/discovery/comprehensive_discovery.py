@@ -36,8 +36,11 @@ class ComprehensiveAWSDiscovery:
         regions: List[str] = None,
         hide_fallback_resources: bool = False,  # Legacy, deprecated
         fallback_display_mode: str = "auto",  # "auto", "always", "never"
+        enable_billing_validation: bool = True,
     ):
         self.session = session or boto3.Session()
+        # False: never call Cost Explorer (AWS charges for each request)
+        self.enable_billing_validation = enable_billing_validation
         self.logger = logging.getLogger(__name__)
         self.logger.propagate = False  # Prevent duplicate logging
         self.regions = regions or ["us-east-1"]
@@ -345,7 +348,8 @@ class ComprehensiveAWSDiscovery:
         start_time = time.time()
 
         # Step 1: Discover billing services for validation
-        self._discover_billing_services()
+        if self.enable_billing_validation:
+            self._discover_billing_services()
 
         # Step 2: Comprehensive service-specific discovery (PRIMARY)
         self._discover_all_service_resources(max_workers)
@@ -354,7 +358,8 @@ class ComprehensiveAWSDiscovery:
         self._enrich_with_tagging_api()
 
         # Step 4: Validate against billing data
-        self._validate_with_billing()
+        if self.enable_billing_validation:
+            self._validate_with_billing()
 
         # Step 5: Post-process and enhance (including S3 bucket regions)
         self._post_process_resources()

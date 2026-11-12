@@ -12,6 +12,7 @@ import pytest
 import sys
 import os
 import json
+from datetime import datetime
 from unittest.mock import Mock, patch, MagicMock, call
 from botocore.exceptions import ClientError, NoCredentialsError, BotoCoreError
 
@@ -205,7 +206,8 @@ class TestAWSResourceDiscovery:
         }
 
         inventory = AWSResourceInventory(regions=["us-east-1"])
-        resources = inventory.discover_resources()
+        inventory._discover_ec2_resources_legacy("us-east-1")
+        resources = inventory.resources
 
         # Should find the EC2 instance
         ec2_instances = [r for r in resources if r["service"] == "EC2" and r["type"] == "Instance"]
@@ -219,7 +221,7 @@ class TestAWSResourceDiscovery:
 
         # Configure S3 mock with sample bucket
         mock_clients["s3"].list_buckets.return_value = {
-            "Buckets": [{"Name": "test-bucket", "CreationDate": "2023-01-01T00:00:00Z"}]
+            "Buckets": [{"Name": "test-bucket", "CreationDate": datetime(2023, 1, 1)}]
         }
 
         # Mock bucket tagging
@@ -230,8 +232,13 @@ class TestAWSResourceDiscovery:
             ]
         }
 
+        mock_clients["s3"].get_bucket_location.return_value = {
+            "LocationConstraint": None
+        }
+
         inventory = AWSResourceInventory(regions=["us-east-1"])
-        resources = inventory.discover_resources()
+        inventory._discover_s3_resources_legacy("us-east-1")
+        resources = inventory.resources
 
         # Should find the S3 bucket
         s3_buckets = [r for r in resources if r["service"] == "S3" and r["type"] == "Bucket"]
@@ -250,22 +257,27 @@ class TestAWSResourceDiscovery:
                     "DBInstanceIdentifier": "test-db",
                     "DBInstanceClass": "db.t3.micro",
                     "Engine": "mysql",
+                    "EngineVersion": "8.0.35",
                     "DBInstanceStatus": "available",
                     "AvailabilityZone": "us-east-1a",
-                    "TagList": [
-                        {"Key": "Environment", "Value": "test"},
-                        {"Key": "Role", "Value": "database"},
-                    ],
+                    "DBInstanceArn": "arn:aws:rds:us-east-1:123456789012:db:test-db",
                 }
+            ]
+        }
+        mock_clients["rds"].list_tags_for_resource.return_value = {
+            "TagList": [
+                {"Key": "Environment", "Value": "test"},
+                {"Key": "Role", "Value": "database"},
             ]
         }
 
         inventory = AWSResourceInventory(regions=["us-east-1"])
-        resources = inventory.discover_resources()
+        inventory._discover_rds_resources_legacy("us-east-1")
+        resources = inventory.resources
 
         # Should find the RDS instance
         rds_instances = [
-            r for r in resources if r["service"] == "RDS" and r["type"] == "DBInstance"
+            r for r in resources if r["service"] == "RDS" and r["type"] == "DB Instance"
         ]
         assert len(rds_instances) == 1
         assert rds_instances[0]["id"] == "test-db"
@@ -283,6 +295,10 @@ class TestAWSResourceDiscovery:
                     "FunctionArn": "arn:aws:lambda:us-east-1:123456789012:function:test-function",
                     "Runtime": "python3.9",
                     "Handler": "lambda_function.lambda_handler",
+                    "MemorySize": 128,
+                    "Timeout": 3,
+                    "CodeSize": 1024,
+                    "LastModified": "2023-01-01T00:00:00.000+0000",
                 }
             ]
         }
@@ -293,7 +309,8 @@ class TestAWSResourceDiscovery:
         }
 
         inventory = AWSResourceInventory(regions=["us-east-1"])
-        resources = inventory.discover_resources()
+        inventory._discover_lambda_resources_legacy("us-east-1")
+        resources = inventory.resources
 
         # Should find the Lambda function
         lambda_functions = [
@@ -487,7 +504,8 @@ class TestPerformanceScenarios:
     def test_large_dataset_processing(self, mock_session_large_dataset):
         """Test processing of large dataset (1000+ resources)"""
         inventory = AWSResourceInventory(regions=["us-east-1"])
-        resources = inventory.discover_resources()
+        inventory._discover_ec2_resources_legacy("us-east-1")
+        resources = inventory.resources
 
         # Should handle 1000+ resources
         ec2_instances = [r for r in resources if r["service"] == "EC2" and r["type"] == "Instance"]
@@ -517,19 +535,20 @@ class TestSecurityValidation:
         # Track all method calls
         called_methods = []
 
-        def track_calls(service_name):
-            mock_client = Mock()
+        class TrackingClient:
+            """Records the name of every client method that discovery uses."""
 
-            # Override __getattr__ to track method calls
-            def track_method_call(method_name):
-                called_methods.append(f"{service_name}.{method_name}")
-                # Return a mock method that returns empty results
-                mock_method = Mock()
-                mock_method.return_value = {}
-                return mock_method
+            def __init__(self, service_name):
+                self._service_name = service_name
 
-            mock_client.__getattr__ = track_method_call
-            return mock_client
+            def __getattr__(self, method_name):
+                if method_name.startswith("_"):
+                    raise AttributeError(method_name)
+                called_methods.append(f"{self._service_name}.{method_name}")
+                return Mock(return_value={})
+
+        def track_calls(service_name, **kwargs):
+            return TrackingClient(service_name)
 
         mock_session.return_value.client.side_effect = track_calls
 

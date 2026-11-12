@@ -105,6 +105,8 @@ class MultiAccountConfig:
     enable_state_management: bool = True
     enable_delta_detection: bool = True
     enable_changelog_generation: bool = True
+    # Cost Explorer lookups during discovery. AWS charges for each request.
+    enable_billing_validation: bool = True
     bom_processing_config: BOMProcessingConfig = field(
         default_factory=BOMProcessingConfig
     )
@@ -765,6 +767,7 @@ class CloudBOMGenerator:
                 services=context.credentials.services
                 or None,  # None means all services
                 tag_filters=context.credentials.tags,
+                enable_billing_validation=self.config.enable_billing_validation,
                 fallback_display_mode=self.config.fallback_display_mode,
             )
 

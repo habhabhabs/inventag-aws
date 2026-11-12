@@ -22,6 +22,7 @@ from botocore.exceptions import ClientError
 from .intelligent_discovery import IntelligentAWSDiscovery
 from .optimized_discovery import OptimizedAWSDiscovery
 from .comprehensive_discovery import ComprehensiveAWSDiscovery
+from .service_filter import canonical_service_set, filter_resources, service_matches
 
 
 class ProgressSpinner:
@@ -110,6 +111,7 @@ class AWSResourceInventory:
             session=self.session,
             regions=self.regions,
             fallback_display_mode=self.fallback_display_mode,
+            enable_billing_validation=enable_billing_validation,
         )
 
         # Store original regions for fallback logic
@@ -285,7 +287,7 @@ class AWSResourceInventory:
                 )
                 # Convert comprehensive discovery format to inventory format
                 for resource in comprehensive_resources:
-                    self.resources.append(resource)
+                    self.resources.append(self._to_inventory_format(resource))
             finally:
                 spinner.stop()
             rgt_resource_count = len(self.resources)
@@ -321,6 +323,14 @@ class AWSResourceInventory:
             undiscovered_services = (
                 set(self.billing_spend_by_service.keys()) - discovered_service_names
             )
+            if self.services:
+                # Do not make extra API calls for services the caller excluded
+                allowed_services = canonical_service_set(self.services)
+                undiscovered_services = {
+                    name
+                    for name in undiscovered_services
+                    if service_matches(name, allowed_services)
+                }
             if undiscovered_services:
                 self.logger.info(
                     f"Attempting optimized dynamic discovery for {len(undiscovered_services)} services with billing usage"
@@ -405,7 +415,10 @@ class AWSResourceInventory:
                 "Still few resources after service-specific discovery. Trying basic services."
             )
             basic_services = ["EC2", "S3", "RDS", "Lambda", "CloudWatch", "IAM"]
+            allowed_services = canonical_service_set(self.services)
             for service in basic_services:
+                if not service_matches(service, allowed_services):
+                    continue
                 try:
                     self._discover_service_by_name(service)
                 except Exception as e:
@@ -427,7 +440,11 @@ class AWSResourceInventory:
         if self.enable_billing_validation:
             self._add_billing_metadata()
 
-        # Step 10: Ensure consistent results for state management
+        # Step 10: Apply the service and tag filters to the full result. Only
+        # one discovery path filters as it goes, so filter the final list.
+        self._apply_resource_filters()
+
+        # Step 11: Ensure consistent results for state management
         if self.ensure_consistent_results:
             self._ensure_consistent_results()
 
@@ -1067,6 +1084,35 @@ class AWSResourceInventory:
                     f"Dynamic discovery failed for {service_name} in {region}: {e}"
                 )
 
+    @staticmethod
+    def _to_inventory_format(resource: Dict[str, Any]) -> Dict[str, Any]:
+        """Add the inventory keys (type, id, name) to a comprehensive-discovery
+        resource, which uses resource_type, resource_id and resource_name.
+
+        Reports, state snapshots and de-duplication read type/id/name. Without
+        this step those columns are empty for these resources.
+        """
+        for inventory_key, discovery_key in (
+            ("type", "resource_type"),
+            ("id", "resource_id"),
+            ("name", "resource_name"),
+        ):
+            if not resource.get(inventory_key) and resource.get(discovery_key):
+                resource[inventory_key] = resource[discovery_key]
+        return resource
+
+    def _apply_resource_filters(self):
+        """Drop resources that do not match ``services`` or ``tag_filters``."""
+        if not self.services and not self.tag_filters:
+            return
+        before = len(self.resources)
+        self.resources = filter_resources(
+            self.resources, self.services, self.tag_filters
+        )
+        self.logger.info(
+            f"Service/tag filters kept {len(self.resources)} of {before} resources"
+        )
+
     def _get_discovered_services(self) -> Set[str]:
         """Get set of services that have been discovered."""
         return set(resource.get("service", "").upper() for resource in self.resources)
@@ -1149,9 +1195,10 @@ class AWSResourceInventory:
                                 }
 
                                 # Apply service filters if specified
-                                if self.services and service.upper() not in [
-                                    s.upper() for s in self.services
-                                ]:
+                                if self.services and not service_matches(
+                                    normalized_service,
+                                    canonical_service_set(self.services),
+                                ):
                                     continue
 
                                 # Apply tag filters if specified
@@ -3001,9 +3048,9 @@ class AWSResourceInventory:
 
     def _get_tag_value(self, tags: List[Dict], key: str) -> Optional[str]:
         """Get tag value by key."""
-        for tag in tags:
-            if tag["Key"] == key:
-                return tag["Value"]
+        for tag in tags or []:
+            if tag.get("Key") == key:
+                return tag.get("Value")
         return None
 
     def _discover_cloudtrail_resources(self, region: str):

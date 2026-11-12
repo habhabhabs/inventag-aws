@@ -266,7 +266,17 @@ Examples:
     override_group.add_argument(
         "--account-services",
         type=str,
-        help="Comma-separated list of AWS services to include (empty means all services)",
+        help="Comma-separated list of AWS services to keep in the report, "
+        "matched against the Service column (for example EC2,S3,RDS). "
+        "Empty means all services",
+    )
+    override_group.add_argument(
+        "--billing-validation",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Use Cost Explorer during discovery to find services that have "
+        "spend (default: enabled). AWS charges for each Cost Explorer API "
+        "request; use --no-billing-validation to make no Cost Explorer calls",
     )
     override_group.add_argument(
         "--account-tags",
@@ -352,9 +362,10 @@ Examples:
     )
     output_group.add_argument(
         "--generate-changelog",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=True,
-        help="Generate changelog for detected changes (default: enabled)",
+        help="Generate a changelog for detected changes (default: enabled; "
+        "use --no-generate-changelog to turn it off)",
     )
     output_group.add_argument(
         "--per-account-reports",
@@ -746,6 +757,7 @@ def create_multi_account_config(args) -> MultiAccountConfig:
         enable_delta_detection=args.enable_delta_detection
         and not args.disable_delta_detection,
         enable_changelog_generation=args.generate_changelog,
+        enable_billing_validation=getattr(args, "billing_validation", True),
         bom_processing_config=bom_config,
         output_directory=output_dir,
         credential_validation_timeout=args.credential_timeout,
