@@ -84,5 +84,5 @@ jobs:
             cat sync-report.txt 2>/dev/null || echo "no report"
             echo '```'
             echo
-            [ "${{ inputs.dry_run }}" = "true" ] && echo "_Dry run: nothing was committed._"
+            if [ "${{ inputs.dry_run }}" = "true" ]; then echo "_Dry run: nothing was committed._"; fi
           } >> "$GITHUB_STEP_SUMMARY"
