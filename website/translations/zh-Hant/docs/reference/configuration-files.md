@@ -21,7 +21,7 @@ inventag --accounts-file accounts.yaml --tag-mappings tags.yaml \
   --validate-config-only --skip-credential-validation
 ```
 
-這條命令只讀取檔案，不掃描任何內容。它仍會呼叫一次 `ec2:DescribeRegions` 來列出區域，如果呼叫失敗，會記錄一條警告。
+這條命令只讀取檔案，不呼叫 AWS。
 
 ## 賬戶檔案 {#accounts-file}
 
@@ -141,7 +141,7 @@ enable_parallel_processing: true
 max_worker_threads: 4
 ```
 
-未知的鍵會被忽略且不給任何提示，所以拼錯的鍵不會有任何作用。
+未知的鍵會被忽略，並記錄一條列出這些鍵的警告，所以請在日誌中查詢拼錯的鍵。
 例如，`enable_network_analysis: true` 新增的工作表與 `--enable-network-analysis` 相同。
 這個檔案用於高階調優；大多數人從來不需要它。
 

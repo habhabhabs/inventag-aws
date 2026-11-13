@@ -29,6 +29,7 @@ de ejemplo).
 |---|---|---|
 | `multi_account_bom_<timestamp>.xlsx` | `--create-excel`, o ninguna opción de salida | El informe de Excel |
 | `multi_account_bom_<timestamp>.docx` | `--create-word` | El informe de Word |
+| `<account-id>_bom_<timestamp>.xlsx` y `.docx` | `--per-account-reports`, en lugar de los archivos `multi_account_bom_*` | Un informe por cada cuenta que tiene recursos |
 | `tag_compliance_<timestamp>.json` | Hay una política de etiquetas activa | Resultados de la comprobación de etiquetas |
 | `state/state_<timestamp>.json` | Cada ejecución, salvo con `--disable-state-management` | Instantánea de todos los recursos encontrados. Las instantáneas con más de 30 días, o más allá de las 100 más recientes, se eliminan. |
 | `state/metadata.json` | Con instantáneas | Índice de instantáneas: hora, cuenta, regiones, número de recursos, suma de comprobación |
@@ -47,6 +48,8 @@ de ejemplo).
   columnas aplanadas `raw_data.*` y `tags.*`. Las filas se ordenan por tipo, nombre e ID.
 - Hojas **Network Analysis** y **Security Analysis**, solo con
   `--enable-network-analysis` o `--enable-security-analysis`.
+- Hoja **Cost Analysis**, solo con `--enable-cost-analysis`: costes mensuales
+  estimados a partir de la API AWS Pricing, no tu factura.
 
 **Con una plantilla de informe**, el diseño sigue la plantilla:
 

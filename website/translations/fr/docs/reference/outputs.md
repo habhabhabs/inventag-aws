@@ -29,6 +29,7 @@ d’exemple).
 |---|---|---|
 | `multi_account_bom_<timestamp>.xlsx` | `--create-excel`, ou aucune option de sortie | Le rapport Excel |
 | `multi_account_bom_<timestamp>.docx` | `--create-word` | Le rapport Word |
+| `<account-id>_bom_<timestamp>.xlsx` et `.docx` | `--per-account-reports`, à la place des fichiers `multi_account_bom_*` | Un rapport pour chaque compte qui a des ressources |
 | `tag_compliance_<timestamp>.json` | Une politique d’étiquetage est active | Résultats de la vérification des étiquettes |
 | `state/state_<timestamp>.json` | Chaque exécution, sauf avec `--disable-state-management` | Instantané de chaque ressource trouvée. Les instantanés de plus de 30 jours, ou au-delà des 100 plus récents, sont supprimés. |
 | `state/metadata.json` | Avec les instantanés | Index des instantanés : heure, compte, régions, nombre de ressources, somme de contrôle |
@@ -47,6 +48,8 @@ d’exemple).
   `raw_data.*` et `tags.*`. Les lignes sont triées par type, nom et ID.
 - Des feuilles **Network Analysis** et **Security Analysis**, uniquement avec
   `--enable-network-analysis` ou `--enable-security-analysis`.
+- Une feuille **Cost Analysis**, uniquement avec `--enable-cost-analysis` : coûts
+  mensuels estimés à partir de l’API AWS Pricing, pas votre facture.
 
 **Avec un modèle de rapport**, la mise en page suit le modèle :
 

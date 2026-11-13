@@ -20,7 +20,7 @@ sidebar_position: 6
 | **配置模板（Config template）** | `kind: config` 的模板：掃描哪些賬戶和區域、寫出哪些檔案，以及使用哪個報告模板和標籤策略。 |
 | **Cost Explorer** | 報告支出的 AWS 服務。InvenTag 呼叫它來找出有支出的服務；AWS 按請求收費。 |
 | **憑證鏈（Credential chain）** | AWS 工具查詢憑證的順序：先是環境變數，然後是配置檔案，再然後是 IAM 角色。 |
-| **退出碼（Exit code）** | 命令結束時返回的數字。`0` 表示成功；InvenTag 用 `1` 表示錯誤，`2` 表示選項無效，`3` 表示標籤策略違規。 |
+| **退出碼（Exit code）** | 命令結束時返回的數字。`0` 表示成功；InvenTag 用 `1` 表示錯誤，`2` 表示選項無效，`3` 表示標籤策略違規，`4` 表示有安全組規則達到或超過 `--risk-threshold`。 |
 | **IAM** | AWS Identity and Access Management：使用者、角色，以及規定它們可以做什麼的策略。 |
 | **IAM Identity Center** | 用於單點登入（SSO）AWS 賬戶的 AWS 服務。它曾叫 AWS SSO。 |
 | **IAM 角色（IAM role）** | 一種帶有許可權的身份，其他身份可以臨時 assume 它。 |

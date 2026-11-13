@@ -20,7 +20,7 @@ La documentation emploie chacun des termes ci-dessous dans un seul sens.
 | **Modèle de configuration** | Un modèle avec `kind: config` : quels comptes et régions analyser, quels fichiers écrire, et quels modèle de rapport et politique d’étiquetage utiliser. |
 | **Cost Explorer** | Le service AWS qui rend compte des dépenses. InvenTag l’appelle pour repérer les services qui génèrent des dépenses ; AWS facture chaque requête. |
 | **Chaîne d’identifiants** | L’ordre dans lequel les outils AWS cherchent des identifiants : variables d’environnement, puis profils, puis rôles IAM. |
-| **Code de sortie** | Le nombre qu’une commande renvoie à la fin de son exécution. `0` signifie succès ; InvenTag utilise `1` pour les erreurs, `2` pour les options non valides et `3` pour les violations de la politique d’étiquetage. |
+| **Code de sortie** | Le nombre qu’une commande renvoie à la fin de son exécution. `0` signifie succès ; InvenTag utilise `1` pour les erreurs, `2` pour les options non valides, `3` pour les violations de la politique d’étiquetage et `4` pour les règles de groupe de sécurité au niveau de `--risk-threshold` ou au-dessus. |
 | **IAM** | AWS Identity and Access Management : les utilisateurs, les rôles et les politiques qui définissent ce qu’ils peuvent faire. |
 | **IAM Identity Center** | Le service AWS d’authentification unique (SSO) pour les comptes AWS. Il s’appelait AWS SSO. |
 | **Rôle IAM** | Une identité dotée d’autorisations que d’autres identités peuvent assumer pour une courte durée. |

@@ -25,8 +25,7 @@ inventag --accounts-file accounts.yaml --tag-mappings tags.yaml \
   --validate-config-only --skip-credential-validation
 ```
 
-Esto lee los archivos y no analiza nada. Aun así hace una llamada a `ec2:DescribeRegions`
-para listar las regiones, y registra una advertencia si falla.
+Esto lee los archivos y no hace ninguna llamada a AWS.
 
 ## Archivo de cuentas {#accounts-file}
 
@@ -156,7 +155,8 @@ enable_parallel_processing: true
 max_worker_threads: 4
 ```
 
-Las claves desconocidas se ignoran sin ningún mensaje, así que una clave mal escrita no hace nada.
+Las claves desconocidas se ignoran con una advertencia que las nombra, así que revisa el registro
+por si hay una clave mal escrita.
 Por ejemplo, `enable_network_analysis: true` añade la misma hoja que
 `--enable-network-analysis`. Este archivo es para ajustes avanzados; la mayoría de la gente nunca
 lo necesita.

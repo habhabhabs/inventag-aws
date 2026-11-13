@@ -23,6 +23,7 @@ InvenTag 寫入的其他位置只有你指定的檔案（`--log-file`、`--audit
 |---|---|---|
 | `multi_account_bom_<timestamp>.xlsx` | `--create-excel`，或沒有指定任何輸出引數 | Excel 報告 |
 | `multi_account_bom_<timestamp>.docx` | `--create-word` | Word 報告 |
+| `<account-id>_bom_<timestamp>.xlsx` 和 `.docx` | `--per-account-reports`，代替 `multi_account_bom_*` 檔案 | 每個有資源的賬戶一份報告 |
 | `tag_compliance_<timestamp>.json` | 啟用了標籤策略 | 標籤檢查結果 |
 | `state/state_<timestamp>.json` | 每次執行，除非使用 `--disable-state-management` | 所發現的每個資源的快照。超過 30 天的快照，或最新 100 份之外的快照會被刪除。 |
 | `state/metadata.json` | 有快照時 | 快照索引：時間、賬戶、區域、資源數量、校驗和 |
@@ -39,6 +40,7 @@ InvenTag 寫入的其他位置只有你指定的檔案（`--log-file`、`--audit
 - **每個服務一個工作表**（例如 `EC2`、`S3`、`VPC`），按服務名稱排序，包含其資源上發現的所有欄位，
   包括展平後的 `raw_data.*` 和 `tags.*` 列。行按型別、名稱和 ID 排序。
 - **Network Analysis** 和 **Security Analysis** 工作表，僅在使用 `--enable-network-analysis` 或 `--enable-security-analysis` 時出現。
+- **Cost Analysis** 工作表，僅在使用 `--enable-cost-analysis` 時出現：根據 AWS Pricing API 估算的每月費用，不是你的賬單。
 
 **使用報告模板時**，版式遵循模板：
 

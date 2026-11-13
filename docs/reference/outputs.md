@@ -29,6 +29,7 @@ data).
 |---|---|---|
 | `multi_account_bom_<timestamp>.xlsx` | `--create-excel`, or no output flag | The Excel report |
 | `multi_account_bom_<timestamp>.docx` | `--create-word` | The Word report |
+| `<account-id>_bom_<timestamp>.xlsx` and `.docx` | `--per-account-reports`, instead of the `multi_account_bom_*` files | One report for each account that has resources |
 | `tag_compliance_<timestamp>.json` | A tag policy is active | Tag check results |
 | `state/state_<timestamp>.json` | Every run, unless `--disable-state-management` | Snapshot of every resource found. Snapshots older than 30 days, or beyond the newest 100, are removed. |
 | `state/metadata.json` | With snapshots | Index of snapshots: time, account, regions, resource count, checksum |
@@ -47,6 +48,8 @@ data).
   `raw_data.*` and `tags.*` columns. Rows are sorted by type, name and ID.
 - **Network Analysis** and **Security Analysis** sheets, only with
   `--enable-network-analysis` or `--enable-security-analysis`.
+- **Cost Analysis** sheet, only with `--enable-cost-analysis`: estimated
+  monthly costs from the AWS Pricing API, not your invoice.
 
 **With a report template**, the layout follows the template:
 
