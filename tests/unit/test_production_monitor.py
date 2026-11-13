@@ -27,9 +27,12 @@ class TestProductionSafetyMonitor(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        with patch("boto3.Session"), patch("psutil.cpu_percent"), patch(
-            "psutil.virtual_memory"
-        ), patch("psutil.disk_usage"):
+        with (
+            patch("boto3.Session"),
+            patch("psutil.cpu_percent"),
+            patch("psutil.virtual_memory"),
+            patch("psutil.disk_usage"),
+        ):
             self.monitor = ProductionSafetyMonitor(
                 enable_cloudtrail=False,  # Disable for testing
                 enable_performance_monitoring=False,  # Disable for testing

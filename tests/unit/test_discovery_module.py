@@ -128,7 +128,9 @@ class TestAWSResourceDiscovery:
         # EC2 responses
         mock_clients["ec2"].describe_instances.return_value = {"Reservations": []}
         mock_clients["ec2"].describe_volumes.return_value = {"Volumes": []}
-        mock_clients["ec2"].describe_security_groups.return_value = {"SecurityGroups": []}
+        mock_clients["ec2"].describe_security_groups.return_value = {
+            "SecurityGroups": []
+        }
         mock_clients["ec2"].describe_vpcs.return_value = {"Vpcs": []}
         mock_clients["ec2"].describe_subnets.return_value = {"Subnets": []}
         mock_clients["ec2"].describe_regions.return_value = {
@@ -210,7 +212,9 @@ class TestAWSResourceDiscovery:
         resources = inventory.resources
 
         # Should find the EC2 instance
-        ec2_instances = [r for r in resources if r["service"] == "EC2" and r["type"] == "Instance"]
+        ec2_instances = [
+            r for r in resources if r["service"] == "EC2" and r["type"] == "Instance"
+        ]
         assert len(ec2_instances) == 1
         assert ec2_instances[0]["id"] == "i-1234567890abcdef0"
         assert ec2_instances[0]["name"] == "test-instance"
@@ -241,7 +245,9 @@ class TestAWSResourceDiscovery:
         resources = inventory.resources
 
         # Should find the S3 bucket
-        s3_buckets = [r for r in resources if r["service"] == "S3" and r["type"] == "Bucket"]
+        s3_buckets = [
+            r for r in resources if r["service"] == "S3" and r["type"] == "Bucket"
+        ]
         assert len(s3_buckets) == 1
         assert s3_buckets[0]["id"] == "test-bucket"
         assert s3_buckets[0]["name"] == "test-bucket"
@@ -472,7 +478,9 @@ class TestPerformanceScenarios:
 
             # Create large dataset (1000+ resources)
             large_reservations = []
-            for i in range(100):  # 100 reservations with 10 instances each = 1000 instances
+            for i in range(
+                100
+            ):  # 100 reservations with 10 instances each = 1000 instances
                 instances = []
                 for j in range(10):
                     instances.append(
@@ -489,8 +497,12 @@ class TestPerformanceScenarios:
                     )
                 large_reservations.append({"Instances": instances})
 
-            mock_ec2.describe_instances.return_value = {"Reservations": large_reservations}
-            mock_ec2.describe_regions.return_value = {"Regions": [{"RegionName": "us-east-1"}]}
+            mock_ec2.describe_instances.return_value = {
+                "Reservations": large_reservations
+            }
+            mock_ec2.describe_regions.return_value = {
+                "Regions": [{"RegionName": "us-east-1"}]
+            }
 
             # Configure other services with empty responses
             mock_ec2.describe_volumes.return_value = {"Volumes": []}
@@ -508,7 +520,9 @@ class TestPerformanceScenarios:
         resources = inventory.resources
 
         # Should handle 1000+ resources
-        ec2_instances = [r for r in resources if r["service"] == "EC2" and r["type"] == "Instance"]
+        ec2_instances = [
+            r for r in resources if r["service"] == "EC2" and r["type"] == "Instance"
+        ]
         assert len(ec2_instances) == 1000
 
         # Verify data integrity
@@ -578,7 +592,9 @@ class TestSecurityValidation:
             is_read_only = any(pattern in method_name for pattern in read_only_patterns)
 
             # Should not match write operation patterns
-            is_write_operation = any(pattern in method_name for pattern in write_operations)
+            is_write_operation = any(
+                pattern in method_name for pattern in write_operations
+            )
 
             assert not is_write_operation, f"Write operation detected: {method_call}"
 
@@ -589,7 +605,9 @@ class TestSecurityValidation:
 
         # Configure read-only responses
         mock_ec2.describe_instances.return_value = {"Reservations": []}
-        mock_ec2.describe_regions.return_value = {"Regions": [{"RegionName": "us-east-1"}]}
+        mock_ec2.describe_regions.return_value = {
+            "Regions": [{"RegionName": "us-east-1"}]
+        }
 
         # Ensure no write methods are available
         write_methods = [

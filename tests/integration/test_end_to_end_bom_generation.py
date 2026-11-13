@@ -81,7 +81,9 @@ def infrastructure(aws):
                 "IpProtocol": "tcp",
                 "FromPort": 22,
                 "ToPort": 22,
-                "IpRanges": [{"CidrIp": "0.0.0.0/0", "Description": "SSH from anywhere"}],
+                "IpRanges": [
+                    {"CidrIp": "0.0.0.0/0", "Description": "SSH from anywhere"}
+                ],
             }
         ],
     )
@@ -176,7 +178,9 @@ def _config(output_dir, **overrides) -> MultiAccountConfig:
 
 def _patched_discovery(resources):
     """Replace the discovery sweep; each call returns fresh copies."""
-    patcher = patch("inventag.core.cloud_bom_generator.AWSResourceInventory", autospec=True)
+    patcher = patch(
+        "inventag.core.cloud_bom_generator.AWSResourceInventory", autospec=True
+    )
     mock_class = patcher.start()
     mock_class.return_value.discover_all_resources.side_effect = lambda: [
         json.loads(json.dumps(r)) for r in resources
@@ -331,10 +335,14 @@ class TestEndToEndBOMGeneration:
         # Only the resized instance is modified: per-run timestamps are ignored
         assert report.summary["modified_count"] == 1
         assert report.summary["unchanged_count"] == 4
-        assert [c.resource_id for c in report.added_resources] == ["prod-archive-bucket"]
+        assert [c.resource_id for c in report.added_resources] == [
+            "prod-archive-bucket"
+        ]
         (modified,) = report.modified_resources
         assert modified.resource_id == "i-0abc1234def567890"
-        assert [c.attribute_path for c in modified.attribute_changes] == ["instance_type"]
+        assert [c.attribute_path for c in modified.attribute_changes] == [
+            "instance_type"
+        ]
         assert report.change_statistics["service_statistics"]["S3"]["added"] == 1
 
         # Changelog is written next to the reports
@@ -370,7 +378,9 @@ class TestEndToEndBOMGeneration:
         assert infrastructure["vpc_id"] in network["vpc_utilization_stats"]
         json.dumps(network)  # must be serialisable for the JSON report
 
-    def test_bom_generation_with_security_analysis(self, aws, infrastructure, inventory):
+    def test_bom_generation_with_security_analysis(
+        self, aws, infrastructure, inventory
+    ):
         """SSH open to the internet is reported as an overly permissive rule."""
         config = BOMProcessingConfig(
             enable_network_analysis=False,
@@ -569,7 +579,9 @@ class TestEndToEndBOMGeneration:
         bom_data = processor.process_inventory_data(inventory)
         # The document validator rejects analysis sections that are not dicts
         assert isinstance(bom_data.network_analysis, dict) and bom_data.network_analysis
-        assert isinstance(bom_data.security_analysis, dict) and bom_data.security_analysis
+        assert (
+            isinstance(bom_data.security_analysis, dict) and bom_data.security_analysis
+        )
 
         doc_config = DocumentConfig(
             output_formats=["excel", "word", "csv"],

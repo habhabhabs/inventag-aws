@@ -70,7 +70,9 @@ class TestDeltaDetector:
         assert "arn:aws:s3:::test-bucket" in resource_map
 
         # Check resource data is preserved
-        ec2_resource = resource_map["arn:aws:ec2:us-east-1:123456789012:instance/i-12345"]
+        ec2_resource = resource_map[
+            "arn:aws:ec2:us-east-1:123456789012:instance/i-12345"
+        ]
         assert ec2_resource["id"] == "i-12345"
         assert ec2_resource["service"] == "EC2"
 
@@ -180,7 +182,9 @@ class TestDeltaDetector:
 
         assert len(modified) == 1
         change = modified[0]
-        assert change.resource_arn == "arn:aws:ec2:us-east-1:123456789012:instance/i-12345"
+        assert (
+            change.resource_arn == "arn:aws:ec2:us-east-1:123456789012:instance/i-12345"
+        )
         assert change.change_type == ChangeType.MODIFIED
 
         # Should have detected attribute changes
@@ -206,7 +210,9 @@ class TestDeltaDetector:
         assert len(changes) >= 1
 
         # Check for instance type change
-        instance_type_changes = [c for c in changes if c.attribute_path == "instance_type"]
+        instance_type_changes = [
+            c for c in changes if c.attribute_path == "instance_type"
+        ]
         if instance_type_changes:
             assert instance_type_changes[0].old_value == "t3.micro"
             assert instance_type_changes[0].new_value == "t3.small"
@@ -226,7 +232,9 @@ class TestDeltaDetector:
         assert category == ChangeCategory.COMPLIANCE
 
         # Test network-related change
-        category = self.detector._categorize_attribute_change("vpc_id", "vpc-old", "vpc-new")
+        category = self.detector._categorize_attribute_change(
+            "vpc_id", "vpc-old", "vpc-new"
+        )
         assert category == ChangeCategory.NETWORK
 
         # Test configuration change
@@ -238,7 +246,9 @@ class TestDeltaDetector:
     def test_determine_attribute_severity(self):
         """Test attribute severity determination."""
         # Critical severity
-        severity = self.detector._determine_attribute_severity("security_groups", [], [])
+        severity = self.detector._determine_attribute_severity(
+            "security_groups", [], []
+        )
         assert severity == ChangeSeverity.CRITICAL
 
         # High severity
@@ -252,7 +262,9 @@ class TestDeltaDetector:
         assert severity == ChangeSeverity.MEDIUM
 
         # Low severity
-        severity = self.detector._determine_attribute_severity("description", "old", "new")
+        severity = self.detector._determine_attribute_severity(
+            "description", "old", "new"
+        )
         assert severity == ChangeSeverity.LOW
 
     def test_detect_compliance_changes(self):
@@ -261,10 +273,14 @@ class TestDeltaDetector:
 
         new_resource = {
             "compliance_status": "non-compliant",
-            "compliance_violations": [{"type": "missing_tag", "details": "Missing CostCenter tag"}],
+            "compliance_violations": [
+                {"type": "missing_tag", "details": "Missing CostCenter tag"}
+            ],
         }
 
-        compliance_changes = self.detector._detect_compliance_changes(old_resource, new_resource)
+        compliance_changes = self.detector._detect_compliance_changes(
+            old_resource, new_resource
+        )
 
         assert len(compliance_changes) >= 1
 

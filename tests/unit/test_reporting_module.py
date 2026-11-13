@@ -224,7 +224,9 @@ class TestBOMConverterCore:
         import yaml
 
         path = tmp_path / "inventory.yaml"
-        path.write_text(yaml.safe_dump({"all_discovered_resources": sample_inventory_data}))
+        path.write_text(
+            yaml.safe_dump({"all_discovered_resources": sample_inventory_data})
+        )
 
         converter = BOMConverter(enrich_vpc_info=False)
         data = converter.load_data(str(path))
@@ -235,7 +237,9 @@ class TestBOMConverterCore:
             "prod-database",
         ]
 
-    def test_load_data_collects_flattened_headers(self, tmp_path, sample_inventory_data):
+    def test_load_data_collects_flattened_headers(
+        self, tmp_path, sample_inventory_data
+    ):
         """Nested keys (tags) are collected as dotted headers"""
         input_file = _write_json(tmp_path, sample_inventory_data)
 
@@ -338,9 +342,24 @@ class TestDataProcessing:
     def test_duplicates_without_arn_use_service_id_region(self, tmp_path):
         """Without an ARN the key is service + id + region"""
         resources = [
-            {"service": "EC2", "type": "Instance", "id": "i-0123", "region": "us-east-1"},
-            {"service": "EC2", "type": "Instance", "id": "i-0123", "region": "us-east-1"},
-            {"service": "EC2", "type": "Instance", "id": "i-0123", "region": "us-west-2"},
+            {
+                "service": "EC2",
+                "type": "Instance",
+                "id": "i-0123",
+                "region": "us-east-1",
+            },
+            {
+                "service": "EC2",
+                "type": "Instance",
+                "id": "i-0123",
+                "region": "us-east-1",
+            },
+            {
+                "service": "EC2",
+                "type": "Instance",
+                "id": "i-0123",
+                "region": "us-west-2",
+            },
         ]
         converter = BOMConverter(enrich_vpc_info=False)
         data = converter.load_data(_write_json(tmp_path, resources))
@@ -390,13 +409,31 @@ class TestDataProcessing:
         """Core identity columns come first and tag columns last"""
         converter = BOMConverter(enrich_vpc_info=False)
         ordered = converter._get_logical_column_order(
-            {"tags.Owner", "region", "arn", "id", "service", "zzz_custom", "type", "name"}
+            {
+                "tags.Owner",
+                "region",
+                "arn",
+                "id",
+                "service",
+                "zzz_custom",
+                "type",
+                "name",
+            }
         )
 
         assert ordered[:5] == ["service", "type", "id", "name", "arn"]
         assert ordered[-1] == "tags.Owner"
         assert sorted(ordered) == sorted(
-            ["tags.Owner", "region", "arn", "id", "service", "zzz_custom", "type", "name"]
+            [
+                "tags.Owner",
+                "region",
+                "arn",
+                "id",
+                "service",
+                "zzz_custom",
+                "type",
+                "name",
+            ]
         )
 
 
@@ -583,7 +620,9 @@ class TestExcelExport:
 
         assert not output_file.exists()
 
-    def test_generate_excel_bom_from_resource_list(self, sample_inventory_data, tmp_path):
+    def test_generate_excel_bom_from_resource_list(
+        self, sample_inventory_data, tmp_path
+    ):
         """generate_excel_bom accepts a plain list of resources"""
         converter = BOMConverter(enrich_vpc_info=False)
         output_file = tmp_path / "generated.xlsx"
@@ -694,7 +733,9 @@ class TestVPCEnrichment:
         assert len(data) == 1
         assert "vpc_name" not in data[0]
 
-    def test_vpc_enrichment_disabled(self, mock_session, sample_inventory_data, tmp_path):
+    def test_vpc_enrichment_disabled(
+        self, mock_session, sample_inventory_data, tmp_path
+    ):
         """With enrichment off, no EC2 client is ever created"""
         converter = BOMConverter(enrich_vpc_info=False, session=mock_session)
 
@@ -712,7 +753,9 @@ class TestErrorHandling:
         """An inventory with no resources loads as an empty list"""
         converter = BOMConverter(enrich_vpc_info=False)
 
-        data = converter.load_data(_write_json(tmp_path, {"all_discovered_resources": []}))
+        data = converter.load_data(
+            _write_json(tmp_path, {"all_discovered_resources": []})
+        )
 
         assert data == []
         assert converter.headers == set()
@@ -891,7 +934,9 @@ class TestDataFormatCompatibility:
 
         # Should extract all resources from compliance data
         assert len(data) == 3  # 2 compliant + 1 non-compliant
-        (non_compliant,) = [r for r in data if r["compliance_status"] == "non_compliant"]
+        (non_compliant,) = [
+            r for r in data if r["compliance_status"] == "non_compliant"
+        ]
         assert non_compliant["violations"] == ["Missing required tag: Role"]
 
     def test_mixed_format_compatibility(self, tmp_path):

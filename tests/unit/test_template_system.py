@@ -1323,9 +1323,10 @@ class TestCli:
         context.processing_time_seconds = 0.0
         context.processing_errors = []
         generator.account_contexts = {"111111111111": context}
-        with patch.object(module, "BOMDataProcessor") as processor, patch.object(
-            module, "BOMConverter"
-        ) as converter:
+        with (
+            patch.object(module, "BOMDataProcessor") as processor,
+            patch.object(module, "BOMConverter") as converter,
+        ):
             bom_data = Mock()
             bom_data.generation_metadata = {}
             bom_data.processing_statistics = {}

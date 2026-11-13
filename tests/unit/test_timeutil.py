@@ -37,7 +37,9 @@ class TestUtcNow:
     def test_utc_now_iso_has_explicit_utc_offset(self):
         text = utc_now_iso()
         assert text.endswith("+00:00")
-        assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{6})?\+00:00", text)
+        assert re.fullmatch(
+            r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{6})?\+00:00", text
+        )
         # Round trip without losing the instant
         assert parse_timestamp(text).isoformat() == text
 
@@ -74,7 +76,9 @@ class TestParseTimestamp:
 
     def test_datetime_input(self):
         naive = datetime(2026, 10, 1, 8, 15, 30)
-        assert parse_timestamp(naive) == datetime(2026, 10, 1, 8, 15, 30, tzinfo=timezone.utc)
+        assert parse_timestamp(naive) == datetime(
+            2026, 10, 1, 8, 15, 30, tzinfo=timezone.utc
+        )
         aware = datetime(2026, 10, 1, 8, 15, 30, tzinfo=timezone.utc)
         assert parse_timestamp(aware) == aware
 
@@ -133,7 +137,9 @@ class TestOldAndNewStateSnapshots:
         old = [_resource("2026-10-01T08:15:30.123456")]
         new = [_resource("2026-11-12T10:42:47.647344+00:00")]
 
-        report = DeltaDetector().detect_changes(old, new, "20261001_081530", "20261112_104247")
+        report = DeltaDetector().detect_changes(
+            old, new, "20261001_081530", "20261112_104247"
+        )
 
         assert report.summary["modified_count"] == 0
         assert report.summary["unchanged_count"] == 1
@@ -143,10 +149,14 @@ class TestOldAndNewStateSnapshots:
         old = [_resource("2026-10-01T08:15:30.123456")]
         new = [_resource("2026-11-12T10:42:47.647344+00:00", instance_type="m5.large")]
 
-        report = DeltaDetector().detect_changes(old, new, "20261001_081530", "20261112_104247")
+        report = DeltaDetector().detect_changes(
+            old, new, "20261001_081530", "20261112_104247"
+        )
 
         (modified,) = report.modified_resources
-        assert [c.attribute_path for c in modified.attribute_changes] == ["instance_type"]
+        assert [c.attribute_path for c in modified.attribute_changes] == [
+            "instance_type"
+        ]
 
     def test_state_file_from_older_release_loads_and_compares(self, tmp_path):
         """A snapshot written by 4.2.27 (naive timestamps) next to a new one."""
@@ -179,7 +189,13 @@ class TestOldAndNewStateSnapshots:
         )
         (state_dir / "metadata.json").write_text(
             json.dumps(
-                {old_id: {"file": str(old_file), "metadata": old_metadata, "size_bytes": 1}}
+                {
+                    old_id: {
+                        "file": str(old_file),
+                        "metadata": old_metadata,
+                        "size_bytes": 1,
+                    }
+                }
             )
         )
 

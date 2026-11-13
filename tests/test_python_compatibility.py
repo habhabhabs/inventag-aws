@@ -16,9 +16,9 @@ class TestPythonCompatibility:
         from inventag import MIN_PYTHON
 
         assert MIN_PYTHON == (3, 11)
-        assert sys.version_info >= MIN_PYTHON, (
-            f"Python 3.11+ required, got {sys.version_info.major}.{sys.version_info.minor}"
-        )
+        assert (
+            sys.version_info >= MIN_PYTHON
+        ), f"Python 3.11+ required, got {sys.version_info.major}.{sys.version_info.minor}"
 
     @pytest.mark.parametrize("old_version", [(2, 7, 18), (3, 8, 20), (3, 10, 14)])
     def test_package_refuses_unsupported_python(self, old_version):
@@ -34,7 +34,9 @@ class TestPythonCompatibility:
         with pytest.raises(ImportError, match="requires Python 3.11 or later"):
             check_python_version(old_version)
 
-    @pytest.mark.parametrize("version", [(3, 11, 0), (3, 12, 3), (3, 13, 18), (3, 14, 0)])
+    @pytest.mark.parametrize(
+        "version", [(3, 11, 0), (3, 12, 3), (3, 13, 18), (3, 14, 0)]
+    )
     def test_package_accepts_supported_python(self, version):
         from inventag._python_version import (
             check_python_version,

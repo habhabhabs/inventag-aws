@@ -30,9 +30,12 @@ class TestComplianceManager(unittest.TestCase):
             error_threshold=5,
         )
 
-        with patch("boto3.Session"), patch("psutil.cpu_percent"), patch(
-            "psutil.virtual_memory"
-        ), patch("psutil.disk_usage"):
+        with (
+            patch("boto3.Session"),
+            patch("psutil.cpu_percent"),
+            patch("psutil.virtual_memory"),
+            patch("psutil.disk_usage"),
+        ):
             self.manager = ComplianceManager(self.config)
 
     def test_initialization(self):
@@ -269,9 +272,12 @@ class TestComplianceManager(unittest.TestCase):
             enable_cloudtrail_integration=False,
         )
 
-        with patch("boto3.Session"), patch("psutil.cpu_percent"), patch(
-            "psutil.virtual_memory"
-        ), patch("psutil.disk_usage"):
+        with (
+            patch("boto3.Session"),
+            patch("psutil.cpu_percent"),
+            patch("psutil.virtual_memory"),
+            patch("psutil.disk_usage"),
+        ):
             manager = ComplianceManager(config)
 
         mock_operation = Mock(return_value={"result": "success"})
