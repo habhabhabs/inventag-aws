@@ -67,8 +67,8 @@ To verify that all assets are accessible from both GitHub and Docusaurus:
 
 ## Examples
 
-The sample-output pictures are inserted by the generator script as
-Reference images with markdown syntax, for example `![alt text](../assets/examples/img/<name>.png)`.
+The sample-output pictures are inserted by the generator script as markdown images, for example
+`![alt text](../assets/examples/img/<name>.png)`,
 between `<!-- BEGIN EXAMPLE OUTPUT: <name> -->` markers. Write other images
 and downloads as plain Markdown links relative to the page, for example
 `![Alt text](../assets/images/inventag-logo-placeholder.svg)`.
