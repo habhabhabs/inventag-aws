@@ -100,4 +100,6 @@ The sheet has 12 columns; the first 11 are shown.
 ## Next steps
 
 - Add a tag check: `inventag --template audit --template security-baseline`.
+- Values of fields that often hold secrets, such as Lambda environment variables,
+  show as `***REDACTED***` in the reports.
 - Run it every week: [Run InvenTag in CI/CD](../guides/run-in-ci.md).

@@ -87,4 +87,5 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ## 下一步 {#next-steps}
 
 - 新增標籤檢查：`inventag --template audit --template security-baseline`。
+- 常含機密的欄位的值（例如 Lambda 環境變數）在報告中顯示為 `***REDACTED***`。
 - 每週執行一次：[在 CI/CD 中執行 InvenTag](../guides/run-in-ci.md)。

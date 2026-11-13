@@ -88,4 +88,6 @@ La feuille compte 12 colonnes ; les 11 premières sont affichées.
 ## Étapes suivantes {#next-steps}
 
 - Ajoutez un contrôle des étiquettes : `inventag --template audit --template security-baseline`.
+- Les valeurs des champs qui contiennent souvent des secrets, comme les variables
+  d’environnement Lambda, apparaissent sous la forme `***REDACTED***` dans les rapports.
 - Lancez-le chaque semaine : [Exécuter InvenTag en CI/CD](../guides/run-in-ci.md).

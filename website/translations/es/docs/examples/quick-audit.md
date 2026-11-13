@@ -89,4 +89,6 @@ La hoja tiene 12 columnas; se muestran las 11 primeras.
 ## Siguientes pasos {#next-steps}
 
 - Añade una comprobación de etiquetas: `inventag --template audit --template security-baseline`.
+- Los valores de los campos que suelen contener secretos, como las variables de
+  entorno de Lambda, aparecen como `***REDACTED***` en los informes.
 - Ejecútalo cada semana: [Ejecutar InvenTag en CI/CD](../guides/run-in-ci.md).
