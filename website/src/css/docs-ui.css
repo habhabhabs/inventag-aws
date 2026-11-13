@@ -206,7 +206,7 @@ a.it-card:hover .it-card__go {
 .nav-cat-contrib{--it-nav-icon:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.9%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m16 18 6-6-6-6%22/%3E%3Cpath d=%22m8 6-6 6 6 6%22/%3E%3Cpath d=%22M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z%22/%3E%3Cpath d=%22M12 6v6l4 2%22/%3E%3Cpath d=%22M4 21v-7%22/%3E%3Cpath d=%22M4 10V3%22/%3E%3Cpath d=%22M12 21v-9%22/%3E%3Cpath d=%22M12 8V3%22/%3E%3Cpath d=%22M20 21v-5%22/%3E%3Cpath d=%22M20 12V3%22/%3E%3Cpath d=%22M2 14h4%22/%3E%3Cpath d=%22M10 8h4%22/%3E%3Cpath d=%22M18 16h4%22/%3E%3C/svg%3E")}
 
 /* Top navigation: small icon before each main link */
-@media (min-width: 997px) {
+@media (min-width: 1280px) {
 .navbar__item.nav-ico {
   display: inline-flex;
   align-items: center;
@@ -300,6 +300,58 @@ a.it-card:hover .it-card__go {
     white-space: nowrap;
   }
   .it-searchbtn__keys {
+    display: none;
+  }
+}
+
+/* Laptop widths: the three section links, version and language menus, search,
+   GitHub and theme buttons do not all fit with French or Spanish labels. Search
+   becomes an icon button (the same as on phones), the link icons are dropped and
+   labels never wrap. */
+@media (min-width: 997px) and (max-width: 1279px) {
+  .it-searchbtn {
+    width: 2.5rem;
+    padding: 0;
+    justify-content: center;
+  }
+  .it-searchbtn__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .it-searchbtn__keys {
+    display: none;
+  }
+  .navbar {
+    --ifm-navbar-item-padding-horizontal: 0.4rem;
+  }
+  .navbar__brand {
+    margin-right: 0.5rem;
+  }
+  /* the group that holds the logo and the three section links must not be squeezed
+     by the right-hand group, or the logo runs under the first link */
+  .theme-layout-navbar-left {
+    flex: none;
+  }
+  .theme-layout-navbar-right {
+    min-width: 0;
+  }
+  .theme-layout-navbar-left .navbar__link {
+    white-space: nowrap;
+  }
+  .navbar__item {
+    font-size: 0.875rem;
+  }
+  .navbar .header-github-link {
+    margin-inline: 0.15rem;
+  }
+}
+/* The repository link is also in the footer. */
+@media (min-width: 997px) and (max-width: 1119px) {
+  .navbar .header-github-link {
     display: none;
   }
 }
@@ -839,12 +891,17 @@ textarea {
   gap: 0.5rem;
   margin: 0 0 1rem;
 }
-/* On wide screens the controls sit in the top right corner of the article,
-   level with the breadcrumbs. */
+/* On wide articles the controls sit in the top right corner, level with the
+   breadcrumbs, which wrap before they can run under the buttons. In narrower
+   articles (for example a laptop window with the sidebar and table of contents,
+   or longer French and Spanish labels) they stay in the flow above the title. */
 @media (min-width: 997px) {
   [class*='docItemContainer'] {
     position: relative;
+    container-type: inline-size;
   }
+}
+@container (min-width: 44rem) {
   [class*='docItemContainer'] .it-listen {
     position: absolute;
     top: -0.35rem;
@@ -852,6 +909,10 @@ textarea {
     z-index: 2;
     margin: 0;
     flex-wrap: nowrap;
+  }
+  [class*='docItemContainer'] .theme-doc-breadcrumbs {
+    max-width: calc(100% - 18rem);
+    min-height: 2.75rem;
   }
 }
 .it-listen__btn {
