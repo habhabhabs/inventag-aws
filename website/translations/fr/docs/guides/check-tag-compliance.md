@@ -155,14 +155,17 @@ décrits dans la [référence des modèles](../templates/reference.md).
 ## Faire échouer un pipeline en cas de violation {#fail-a-pipeline-on-violations}
 
 Ajoutez un modèle de configuration avec `fail_on_tag_violations: true`. InvenTag écrit quand même tous
-les rapports, puis se termine avec le code 3. Voir
+les rapports, puis se termine avec le code 3. Si vous passez aussi `--fail-on-account-error` ou `--fail-if-empty` et que l’une des deux conditions se vérifie,
+le code de sortie est 5 ou 6 à la place, car les données sont incomplètes. Voir
 [Appliquer une politique d’étiquetage en CI](../examples/tag-policy-in-ci.md).
 
 ## L’ancien script de vérification {#the-older-checker-script}
 
 `scripts/legacy/tag_compliance_checker.py --config policy.yaml` est antérieur aux
-modèles et possède ses propres options (`--help` les liste). Il n’est pas couvert par
-cette documentation. Préférez les modèles de politique d’étiquetage.
+modèles et possède ses propres options (`--help` les liste). Il vérifie seulement que les clés d’étiquette obligatoires existent. Il n’applique ni `allowed_values`, ni `pattern`, ni aucun autre champ de son fichier de politique :
+il journalise un avertissement et les liste dans `summary.ignored_policy_fields` de son rapport. Il ignore les étiquettes dont la clé commence par `aws:`,
+car AWS les crée : une ressource qui n’a que des étiquettes `aws:` compte donc comme non étiquetée, et une clé d’étiquette obligatoire qui commence par `aws:` est une erreur.
+Au-delà, il n’est pas couvert par cette documentation. Préférez les modèles de politique d’étiquetage.
 
 ## Étapes suivantes {#next-steps}
 

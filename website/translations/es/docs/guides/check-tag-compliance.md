@@ -159,14 +159,17 @@ están en la [referencia de plantillas](../templates/reference.md).
 
 Añade una plantilla de configuración con `fail_on_tag_violations: true`.
 InvenTag sigue escribiendo todos los informes y después termina con el código
-3. Consulta [Aplicar una política de etiquetas en CI](../examples/tag-policy-in-ci.md).
+3. Si además pasas `--fail-on-account-error` o `--fail-if-empty` y se cumple alguna de las dos condiciones, el código de salida es 5 o 6 en su lugar,
+porque los datos están incompletos. Consulta [Aplicar una política de etiquetas en CI](../examples/tag-policy-in-ci.md).
 
 ## El script comprobador anterior {#the-older-checker-script}
 
 `scripts/legacy/tag_compliance_checker.py --config policy.yaml` es anterior a
-las plantillas y tiene sus propias opciones (`--help` las lista). Esta
-documentación no lo cubre. Es preferible usar plantillas de política de
-etiquetas.
+las plantillas y tiene sus propias opciones (`--help` las lista). Solo
+comprueba que existan las claves de etiqueta obligatorias. No aplica `allowed_values`, `pattern` ni ningún otro campo de su archivo de política:
+registra una advertencia y los lista en `summary.ignored_policy_fields` de su informe. Ignora las etiquetas cuya clave empieza por `aws:`,
+porque las crea AWS, así que un recurso con solo etiquetas `aws:` cuenta como sin etiquetar, y una clave de etiqueta obligatoria que empiece por `aws:` es un error.
+Aparte de eso, esta documentación no lo cubre. Es preferible usar plantillas de política de etiquetas.
 
 ## Siguientes pasos {#next-steps}
 

@@ -150,13 +150,16 @@ spec:
 ## 发现违规时让流水线失败 {#fail-a-pipeline-on-violations}
 
 添加一个设置了 `fail_on_tag_violations: true` 的配置模板。InvenTag 仍会写出所有报告，
-然后以退出码 3 退出。参见
+然后以退出码 3 退出。如果你还传了 `--fail-on-account-error` 或 `--fail-if-empty`，并且其中一个条件成立，
+则改用退出码 5 或 6，因为数据不完整。参见
 [在 CI 中强制执行标签策略](../examples/tag-policy-in-ci.md)。
 
 ## 旧版检查脚本 {#the-older-checker-script}
 
 `scripts/legacy/tag_compliance_checker.py --config policy.yaml` 早于模板出现，
-有自己的选项（`--help` 会列出）。本文档不涵盖它。请优先使用标签策略模板。
+有自己的选项（`--help` 会列出）。它只检查必需的标签键是否存在。它不执行其策略文件中的 `allowed_values`、`pattern` 或任何其他字段：
+它会记录一条警告，并把这些字段列在其报告的 `summary.ignored_policy_fields` 中。它会忽略键以 `aws:` 开头的标签，因为这些标签由 AWS 创建，
+所以只有 `aws:` 标签的资源算作未打标签，而以 `aws:` 开头的必需标签键会报错。除此之外，本文档不涵盖它。请优先使用标签策略模板。
 
 ## 下一步 {#next-steps}
 

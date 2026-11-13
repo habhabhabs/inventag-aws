@@ -150,13 +150,16 @@ spec:
 ## 發現違規時讓流水線失敗 {#fail-a-pipeline-on-violations}
 
 新增一個設定了 `fail_on_tag_violations: true` 的設定範本。InvenTag 仍會寫出所有報告，
-然後以結束代碼 3 退出。參見
+然後以結束代碼 3 退出。如果你還傳了 `--fail-on-account-error` 或 `--fail-if-empty`，並且其中一個條件成立，
+則改用結束代碼 5 或 6，因為資料不完整。參見
 [在 CI 中強制執行標籤策略](../examples/tag-policy-in-ci.md)。
 
 ## 舊版檢查指令碼 {#the-older-checker-script}
 
 `scripts/legacy/tag_compliance_checker.py --config policy.yaml` 早於範本出現，
-有自己的選項（`--help` 會列出）。本文件不涵蓋它。請優先使用標籤策略範本。
+有自己的選項（`--help` 會列出）。它只檢查必需的標籤鍵是否存在。它不執行其策略檔案中的 `allowed_values`、`pattern` 或任何其他欄位：
+它會記錄一條警告，並把這些欄位列在其報告的 `summary.ignored_policy_fields` 中。它會忽略鍵以 `aws:` 開頭的標籤，因為這些標籤由 AWS 建立，
+所以只有 `aws:` 標籤的資源算作未打標籤，而以 `aws:` 開頭的必需標籤鍵會報錯。除此之外，本文件不涵蓋它。請優先使用標籤策略範本。
 
 ## 下一步 {#next-steps}
 

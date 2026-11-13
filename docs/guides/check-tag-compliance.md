@@ -171,14 +171,22 @@ in the [template reference](../templates/reference.md).
 ## Fail a pipeline on violations
 
 Add a config template with `fail_on_tag_violations: true`. InvenTag still
-writes every report, then exits with code 3. See
+writes every report, then exits with code 3. If you also pass
+`--fail-on-account-error` or `--fail-if-empty` and one of them applies, the
+exit code is 5 or 6 instead, because the data is incomplete. See
 [Enforce a tag policy in CI](../examples/tag-policy-in-ci.md).
 
 ## The older checker script
 
 `scripts/legacy/tag_compliance_checker.py --config policy.yaml` predates
-templates and has its own options (`--help` lists them). It is not covered by
-this documentation. Prefer tag-policy templates.
+templates and has its own options (`--help` lists them). It only checks that
+the required tag keys exist. It does not enforce `allowed_values`, `pattern` or
+any other field of its policy file: it logs a warning and lists those fields
+in `summary.ignored_policy_fields` of its report. It ignores tags whose key
+starts with `aws:`, because AWS creates them, so a resource with only `aws:`
+tags counts as untagged, and a required tag key that starts with `aws:` is an
+error. Beyond that it is not covered by this documentation. Prefer tag-policy
+templates.
 
 ## Next steps
 
