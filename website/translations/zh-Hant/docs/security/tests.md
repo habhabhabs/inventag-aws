@@ -12,7 +12,7 @@ sidebar_position: 2
 
 ## 執行什麼，在哪裡執行 {#what-runs-and-where}
 
-測試套件共有 1,389 個測試（加上九個基準測試為 1,398 個）。沒有一個呼叫真實的
+測試套件有 2,300 多個測試，另外還有九個基準測試。沒有一個呼叫真實的
 AWS：需要 AWS 的測試使用 [moto](https://github.com/getmoto/moto)（它在記憶體中模擬 AWS）或模擬客戶端，並使用假憑證。
 測試離線執行，不產生費用。
 九個效能基準測試不在常規執行之內，只有在你要求時才會啟動。
@@ -44,6 +44,10 @@ moto 的 Resource Groups Tagging API 是 ARN 和標籤的參照。
 | 唯讀防護、審計、`--validate-operations`、S3 上傳、私有檔案 | `tests/unit/test_cli_security.py`, `tests/unit/test_security_read_only_guard.py` |
 | 機密的遮蔽，包括 Google 機密 | `tests/unit/test_security_redaction.py`, `tests/unit/test_google_output.py` |
 | Google Sheets 和 Docs 輸出（模擬的 Google 客戶端） | `tests/unit/test_google_output.py` |
+| 每份報告、快照、檢查點和日誌中的機密值都被遮蓋（埋入七個機密） | `tests/unit/test_integration_secrets_end_to_end.py` |
+| `--resume`、保留期限、區域回退、每個帳戶的時間限制 | `tests/unit/test_integration_wiring.py` |
+| 每個列出操作都會讀取第二頁；每一行都寫明來源 API | `tests/unit/test_integration_two_pages.py`, `tests/unit/test_integration_row_sources.py` |
+| 端到端的網路和安全分析 | `tests/unit/test_integration_analysis_end_to_end.py` |
 
 ## 自己執行測試 {#run-the-tests-yourself}
 

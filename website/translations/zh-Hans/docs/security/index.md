@@ -22,13 +22,23 @@ sidebar_position: 1
 ## InvenTag 如何处理你的账户 {#what-inventag-does-with-your-accounts}
 
 - **它只读取。** 只读防护会在每个 AWS 调用发出之前检查它。它会拦截所有非读取的调用，
-  以及会返回机密或数据的读取，例如 `secretsmanager:GetSecretValue` 或 `s3:GetObject`。
+  以及会返回机密或数据的读取，例如 `secretsmanager:GetSecretValue`、`s3:GetObject`、
+  `cloudformation:GetTemplate` 或 `ec2:GetLaunchTemplateData`。当参数要求返回机密时
+  （带 `includeValue` 的 API 密钥、针对 `userData` 的 `ec2:DescribeInstanceAttribute`），
+  它也会拦截原本允许的操作；它还会检查预签名 URL 和数据库认证令牌，这些在签名时不会调用 AWS。
   它始终开启。
+- **登录仍然可用。** 防护允许 AWS SDK 把 IAM Identity Center（SSO）、Web 身份或 `aws login`
+  令牌换成凭证。它只允许以下四个未签名的调用：`sso:GetRoleCredentials`、
+  `sso-oidc:CreateToken`、`sts:AssumeRoleWithWebIdentity` 和 `signin:CreateOAuth2Token`。
+  已签名的客户端发出同样的调用会被拦截。
+- **它会遮盖允许的响应中的机密值。** 常用于存放机密的字段（例如 Lambda 环境变量、EC2 用户数据或
+  CloudFormation 参数值）的值，在报告、快照和日志中会变成 `***REDACTED***`。名称会保留。
+  参见[功能状态](../getting-started/status.md#what-inventag-finds-and-what-it-does-not)。
 - **它不发送使用数据。** InvenTag 没有遥测。命令行工具只与 AWS 通信。
   Python 库中可选的 CI 辅助功能可以向 Slack、Microsoft Teams 或 Prometheus Pushgateway 发送消息，
   但只会发送到你自己配置的地址。
 - **它的文件是私有的。** 报告、快照和日志创建时只有你的用户可读。
-- **它的日志会隐藏机密。** 会话令牌、密钥和请求签名会被遮蔽，即使使用 `--debug` 也是如此。
+- **它的日志会隐藏机密。** 会话令牌、密钥、请求签名以及上面提到的被遮盖的值都会被隐藏，即使使用 `--debug` 也是如此。
 
 你可以用 `--audit-output audit.json` 检查一次运行做了什么，用 `--validate-operations`
 检查防护允许什么：

@@ -27,16 +27,31 @@ maintainer for a private channel.
 
 - **It only reads.** A read-only guard checks every AWS call before it is
   sent. It blocks anything that is not a read, and reads that return secrets
-  or data, such as `secretsmanager:GetSecretValue` or `s3:GetObject`. It is
-  always on.
+  or data, such as `secretsmanager:GetSecretValue`, `s3:GetObject`,
+  `cloudformation:GetTemplate` or `ec2:GetLaunchTemplateData`. It also blocks
+  allowed operations when a parameter asks for a secret (API keys with
+  `includeValue`, `ec2:DescribeInstanceAttribute` for `userData`), and it
+  checks presigned URLs and database auth tokens, which are signed without a
+  call to AWS. It is always on.
+- **Sign-in still works.** The guard lets the AWS SDK exchange an IAM Identity
+  Center (SSO), web-identity or `aws login` token for credentials. It allows
+  only these four unsigned calls: `sso:GetRoleCredentials`,
+  `sso-oidc:CreateToken`, `sts:AssumeRoleWithWebIdentity` and
+  `signin:CreateOAuth2Token`. A signed client that makes the same call is
+  blocked.
+- **It masks secret values in allowed answers.** Values of fields that often
+  hold secrets, such as Lambda environment variables, EC2 user data or
+  CloudFormation parameter values, become `***REDACTED***` in reports,
+  snapshots and logs. The names stay. See
+  [Feature status](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 - **It sends no usage data.** InvenTag has no telemetry. The command-line tool
   only talks to AWS. The optional CI helper in the Python library can post to
   Slack, Microsoft Teams or a Prometheus Pushgateway, but only to addresses
   you configure yourself.
 - **Its files are private.** Reports, snapshots and logs are created readable
   by your user only.
-- **Its logs hide secrets.** Session tokens, keys and request signatures are
-  masked, even with `--debug`.
+- **Its logs hide secrets.** Session tokens, keys, request signatures and the
+  masked values above are hidden, even with `--debug`.
 
 You can check what a run did with `--audit-output audit.json`, and what the
 guard allows with `--validate-operations`:

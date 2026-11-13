@@ -26,16 +26,33 @@ persona mantenedora un canal privado.
 
 - **Solo lee.** Una protección de solo lectura comprueba cada llamada a AWS
   antes de enviarla. Bloquea todo lo que no sea una lectura, y las lecturas que
-  devuelven secretos o datos, como `secretsmanager:GetSecretValue` o
-  `s3:GetObject`. Siempre está activa.
+  devuelven secretos o datos, como `secretsmanager:GetSecretValue`,
+  `s3:GetObject`, `cloudformation:GetTemplate` o `ec2:GetLaunchTemplateData`.
+  También bloquea operaciones permitidas cuando un parámetro pide un secreto
+  (claves de API con `includeValue`, `ec2:DescribeInstanceAttribute` para
+  `userData`), y comprueba las URL prefirmadas y los tokens de autenticación de
+  bases de datos, que se firman sin llamar a AWS. Siempre está activa.
+- **El inicio de sesión sigue funcionando.** La protección deja que el SDK de
+  AWS cambie un token de IAM Identity Center (SSO), de identidad web o de
+  `aws login` por credenciales. Solo permite estas cuatro llamadas sin firmar:
+  `sso:GetRoleCredentials`, `sso-oidc:CreateToken`,
+  `sts:AssumeRoleWithWebIdentity` y `signin:CreateOAuth2Token`. Un cliente
+  firmado que haga la misma llamada queda bloqueado.
+- **Oculta los valores secretos de las respuestas permitidas.** Los valores de
+  los campos que suelen contener secretos, como las variables de entorno de
+  Lambda, los datos de usuario de EC2 o los valores de parámetros de
+  CloudFormation, pasan a ser `***REDACTED***` en informes, instantáneas y
+  registros. Los nombres se mantienen. Consulta
+  [Estado de las funciones](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 - **No envía datos de uso.** InvenTag no tiene telemetría. La herramienta de
   línea de comandos solo se comunica con AWS. El asistente de CI opcional de la
   biblioteca de Python puede publicar en Slack, Microsoft Teams o un
   Prometheus Pushgateway, pero solo en las direcciones que configures tú.
 - **Sus archivos son privados.** Los informes, las instantáneas y los registros
   se crean legibles solo para tu usuario.
-- **Sus registros ocultan los secretos.** Los tokens de sesión, las claves y las
-  firmas de solicitud se enmascaran, incluso con `--debug`.
+- **Sus registros ocultan los secretos.** Los tokens de sesión, las claves, las
+  firmas de solicitud y los valores ocultos indicados arriba se enmascaran,
+  incluso con `--debug`.
 
 Puedes comprobar lo que hizo una ejecución con `--audit-output audit.json`, y
 lo que permite la protección con `--validate-operations`:

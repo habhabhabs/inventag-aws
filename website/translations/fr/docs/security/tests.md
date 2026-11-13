@@ -14,7 +14,7 @@ et comment les exécuter vous-même.
 
 ## Ce qui s’exécute, et où {#what-runs-and-where}
 
-La suite compte 1 389 tests (1 398 avec les neuf benchmarks). Aucun n’appelle le
+La suite compte plus de 2 300 tests, plus neuf benchmarks. Aucun n’appelle le
 vrai AWS : les tests qui ont besoin d’AWS utilisent [moto](https://github.com/getmoto/moto),
 qui imite AWS en mémoire, ou des clients simulés, avec de faux identifiants. Les
 tests s’exécutent hors ligne et ne coûtent rien. Neuf benchmarks de performance sont exclus de
@@ -49,6 +49,10 @@ référence pour les ARN et les étiquettes.
 | Protection en lecture seule, audit, `--validate-operations`, téléversement S3, fichiers privés | `tests/unit/test_cli_security.py`, `tests/unit/test_security_read_only_guard.py` |
 | Masquage des secrets, y compris les secrets Google | `tests/unit/test_security_redaction.py`, `tests/unit/test_google_output.py` |
 | Sortie Google Sheets et Docs (clients Google simulés) | `tests/unit/test_google_output.py` |
+| Valeurs secrètes masquées dans chaque rapport, instantané, point de reprise et journal (sept secrets placés) | `tests/unit/test_integration_secrets_end_to_end.py` |
+| `--resume`, rétention, repli des régions, limite de temps par compte | `tests/unit/test_integration_wiring.py` |
+| Chaque opération de listage lit une deuxième page ; chaque ligne nomme son API d’origine | `tests/unit/test_integration_two_pages.py`, `tests/unit/test_integration_row_sources.py` |
+| Analyse réseau et sécurité de bout en bout | `tests/unit/test_integration_analysis_end_to_end.py` |
 
 ## Exécuter les tests vous-même {#run-the-tests-yourself}
 

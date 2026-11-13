@@ -14,7 +14,7 @@ and how to run them yourself.
 
 ## What runs, and where
 
-The suite has 1,389 tests (1,398 with the nine benchmarks). None of them calls
+The suite has more than 2,300 tests, plus nine benchmarks. None of them calls
 real AWS: tests that need AWS use [moto](https://github.com/getmoto/moto), which
 imitates AWS in memory, or mocked clients, with fake credentials. The tests run
 offline and cost nothing. Nine performance benchmarks are kept out of
@@ -49,6 +49,10 @@ reference for ARNs and tags.
 | Read-only guard, audit, `--validate-operations`, S3 upload, private files | `tests/unit/test_cli_security.py`, `tests/unit/test_security_read_only_guard.py` |
 | Redaction of secrets, including Google secrets | `tests/unit/test_security_redaction.py`, `tests/unit/test_google_output.py` |
 | Google Sheets and Docs output (mocked Google clients) | `tests/unit/test_google_output.py` |
+| Secret values masked in every report, snapshot, checkpoint and log (seven planted secrets) | `tests/unit/test_integration_secrets_end_to_end.py` |
+| `--resume`, retention, region fallback, per-account time limit | `tests/unit/test_integration_wiring.py` |
+| Every listing operation reads a second page; every row names its source API | `tests/unit/test_integration_two_pages.py`, `tests/unit/test_integration_row_sources.py` |
+| Network and security analysis end to end | `tests/unit/test_integration_analysis_end_to_end.py` |
 
 ## Run the tests yourself
 

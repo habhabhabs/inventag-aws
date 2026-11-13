@@ -27,16 +27,32 @@ mainteneur un canal privé.
 
 - **Il ne fait que lire.** Une protection en lecture seule vérifie chaque appel AWS avant son
   envoi. Elle bloque tout ce qui n’est pas une lecture, ainsi que les lectures qui renvoient des secrets
-  ou des données, comme `secretsmanager:GetSecretValue` ou `s3:GetObject`. Elle est
-  toujours active.
+  ou des données, comme `secretsmanager:GetSecretValue`, `s3:GetObject`,
+  `cloudformation:GetTemplate` ou `ec2:GetLaunchTemplateData`. Elle bloque aussi des
+  opérations autorisées quand un paramètre demande un secret (clés d’API avec
+  `includeValue`, `ec2:DescribeInstanceAttribute` pour `userData`), et elle vérifie
+  les URL présignées et les jetons d’authentification de base de données, qui sont
+  signés sans appel à AWS. Elle est toujours active.
+- **La connexion fonctionne toujours.** La protection laisse le SDK AWS échanger un
+  jeton IAM Identity Center (SSO), d’identité web ou `aws login` contre des
+  identifiants. Elle n’autorise que ces quatre appels non signés :
+  `sso:GetRoleCredentials`, `sso-oidc:CreateToken`,
+  `sts:AssumeRoleWithWebIdentity` et `signin:CreateOAuth2Token`. Un client signé qui
+  fait le même appel est bloqué.
+- **Il masque les valeurs secrètes des réponses autorisées.** Les valeurs des
+  champs qui contiennent souvent des secrets, comme les variables d’environnement
+  Lambda, les données utilisateur EC2 ou les valeurs de paramètres CloudFormation,
+  deviennent `***REDACTED***` dans les rapports, les instantanés et les journaux.
+  Les noms restent. Voir
+  [État des fonctionnalités](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 - **Il n’envoie aucune donnée d’utilisation.** InvenTag n’a pas de télémétrie. L’outil en ligne de commande
   ne communique qu’avec AWS. L’assistant CI facultatif de la bibliothèque Python peut publier vers
   Slack, Microsoft Teams ou une Prometheus Pushgateway, mais uniquement vers des adresses
   que vous configurez vous-même.
 - **Ses fichiers sont privés.** Les rapports, instantanés et journaux sont créés lisibles
   par votre seul utilisateur.
-- **Ses journaux masquent les secrets.** Les jetons de session, les clés et les signatures de requête sont
-  masqués, même avec `--debug`.
+- **Ses journaux masquent les secrets.** Les jetons de session, les clés, les signatures de requête et les
+  valeurs masquées ci-dessus sont cachés, même avec `--debug`.
 
 Vous pouvez vérifier ce qu’une exécution a fait avec `--audit-output audit.json`, et ce que la
 protection autorise avec `--validate-operations` :
