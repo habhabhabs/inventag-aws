@@ -816,7 +816,9 @@ class BOMConverter:
             ]
 
             if vpc_resources:
-                self.network_analysis = analyzer.analyze_vpc_resources(vpc_resources)
+                # Every resource goes in: the analyzer uses them to count
+                # which resources sit in each VPC and subnet.
+                self.network_analysis = analyzer.analyze_vpc_resources(self.data)
 
                 # Enrich resources with network analysis data
                 for resource in self.data:
@@ -872,7 +874,9 @@ class BOMConverter:
             ]
 
             if sg_resources:
-                self.security_analysis = analyzer.analyze_security_groups(sg_resources)
+                # Every resource goes in, so that each group's associated
+                # resources are counted.
+                self.security_analysis = analyzer.analyze_security_groups(self.data)
 
                 # Enrich resources with security analysis data
                 for resource in self.data:

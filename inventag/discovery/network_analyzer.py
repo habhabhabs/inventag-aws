@@ -514,6 +514,8 @@ class NetworkAnalyzer:
             resource_id = resource.get("id", "unknown")
             if resource_id in self.vpc_cache or resource_id in self.subnet_cache:
                 continue  # a VPC or subnet is not a resource inside itself
+            if self._is_plumbing(resource):
+                continue
 
             # Add resource to VPC
             if vpc_id and vpc_id in self.vpc_cache:
@@ -595,13 +597,52 @@ class NetworkAnalyzer:
             subnet.route_table_id = table.get("RouteTableId")
             subnet.is_public = self._has_internet_route(table)
 
+    # Network plumbing of a VPC: not "resources in" it (every VPC has a
+    # default security group, NACL and route table).
+    _PLUMBING_TYPES = frozenset(
+        {
+            "securitygroup",
+            "networkacl",
+            "routetable",
+            "internetgateway",
+            "egressonlyinternetgateway",
+            "dhcpoptions",
+            "prefixlist",
+            "managedprefixlist",
+        }
+    )
+
+    @staticmethod
+    def _raw_sources(resource: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """The resource itself, its raw API data and the nested VPC configs
+        where AWS puts network IDs (EC2 VpcId/SubnetId, Lambda VpcConfig,
+        RDS DBSubnetGroup, ...)."""
+        sources = [resource]
+        for key in ("raw_data", "service_attributes"):
+            raw = resource.get(key)
+            if isinstance(raw, dict):
+                sources.append(raw)
+                for nested in ("VpcConfig", "DBSubnetGroup", "vpcConfig", "Placement"):
+                    if isinstance(raw.get(nested), dict):
+                        sources.append(raw[nested])
+                boto3_config = raw.get("boto3_config")
+                if isinstance(boto3_config, dict):
+                    sources.append(boto3_config)
+                    if isinstance(boto3_config.get("VpcConfig"), dict):
+                        sources.append(boto3_config["VpcConfig"])
+        return sources
+
+    def _is_plumbing(self, resource: Dict[str, Any]) -> bool:
+        kind = str(resource.get("type") or resource.get("resource_type") or "")
+        return kind.replace("_", "").replace(" ", "").lower() in self._PLUMBING_TYPES
+
     def _extract_vpc_id(self, resource: Dict[str, Any]) -> Optional[str]:
-        """Extract VPC ID from resource."""
-        # Try multiple possible fields
-        vpc_fields = ["vpc_id", "VpcId", "vpc"]
-        for field in vpc_fields:
-            if field in resource and resource[field]:
-                return resource[field]
+        """Extract VPC ID from resource (top level or its raw API data)."""
+        for source in self._raw_sources(resource):
+            for field in ("vpc_id", "VpcId", "vpc", "vpcId"):
+                value = source.get(field)
+                if isinstance(value, str) and value.startswith("vpc-"):
+                    return value
 
         # Try to extract from ARN or other fields
         arn = resource.get("arn", "")
@@ -615,12 +656,24 @@ class NetworkAnalyzer:
         return None
 
     def _extract_subnet_id(self, resource: Dict[str, Any]) -> Optional[str]:
-        """Extract subnet ID from resource."""
-        # Try multiple possible fields
-        subnet_fields = ["subnet_id", "SubnetId", "subnet"]
-        for field in subnet_fields:
-            if field in resource and resource[field]:
-                return resource[field]
+        """Extract subnet ID from resource (top level or its raw API data).
+
+        A resource in several subnets (Lambda VpcConfig.SubnetIds) is mapped
+        to the first one.
+        """
+        for source in self._raw_sources(resource):
+            for field in ("subnet_id", "SubnetId", "subnet", "subnetId"):
+                value = source.get(field)
+                if isinstance(value, str) and value.startswith("subnet-"):
+                    return value
+            for field in ("SubnetIds", "subnetIds", "Subnets"):
+                values = source.get(field)
+                if isinstance(values, list):
+                    for item in values:
+                        if isinstance(item, dict):
+                            item = item.get("SubnetIdentifier") or item.get("SubnetId")
+                        if isinstance(item, str) and item.startswith("subnet-"):
+                            return item
 
         # Try to extract from ARN or other fields
         arn = resource.get("arn", "")

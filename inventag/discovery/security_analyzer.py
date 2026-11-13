@@ -719,25 +719,60 @@ class SecurityAnalyzer:
                         self.sg_cache[sg_id].associated_resources.append(resource_id)
 
     def _extract_security_group_ids(self, resource: Dict[str, Any]) -> List[str]:
-        """Extract security group IDs from a resource."""
-        sg_ids = []
+        """Extract security group IDs from a resource.
 
-        # Try multiple possible fields
-        sg_fields = ["security_groups", "SecurityGroups", "security_group_ids"]
-        for field in sg_fields:
-            if field in resource:
-                value = resource[field]
-                if isinstance(value, list):
-                    for sg in value:
-                        if isinstance(sg, dict):
-                            sg_id = sg.get("GroupId") or sg.get("group_id")
-                            if sg_id:
-                                sg_ids.append(sg_id)
-                        elif isinstance(sg, str):
-                            sg_ids.append(sg)
-                elif isinstance(value, str):
+        Looks at the resource and at its raw API data, in the shapes AWS
+        uses: EC2 ``SecurityGroups[].GroupId``, RDS
+        ``VpcSecurityGroups[].VpcSecurityGroupId``, ElastiCache
+        ``SecurityGroups[].SecurityGroupId``, Lambda
+        ``VpcConfig.SecurityGroupIds``, ELB ``SecurityGroups`` (IDs), and
+        network interfaces ``Groups[].GroupId``.
+        """
+        if str(resource.get("type", "")).lower() == "securitygroup":
+            return []  # a group is not "associated" with itself
+        sources = [resource]
+        for key in ("raw_data", "service_attributes"):
+            raw = resource.get(key)
+            if isinstance(raw, dict):
+                sources.append(raw)
+                for nested in ("VpcConfig", "vpcConfig", "boto3_config"):
+                    if isinstance(raw.get(nested), dict):
+                        sources.append(raw[nested])
+        sg_ids: List[str] = []
+
+        def add(value):
+            if isinstance(value, dict):
+                value = (
+                    value.get("GroupId")
+                    or value.get("group_id")
+                    or value.get("VpcSecurityGroupId")
+                    or value.get("SecurityGroupId")
+                )
+            if isinstance(value, str) and value.startswith("sg-"):
+                if value not in sg_ids:
                     sg_ids.append(value)
 
+        sg_fields = (
+            "security_groups",
+            "SecurityGroups",
+            "security_group_ids",
+            "SecurityGroupIds",
+            "securityGroupIds",
+            "VpcSecurityGroups",
+            "Groups",
+        )
+        for source in sources:
+            for field in sg_fields:
+                value = source.get(field)
+                if isinstance(value, list):
+                    for item in value:
+                        add(item)
+                else:
+                    add(value)
+            for interface in source.get("NetworkInterfaces") or []:
+                if isinstance(interface, dict):
+                    for item in interface.get("Groups") or []:
+                        add(item)
         return sg_ids
 
     def _analyze_security_group_relationships(self):
