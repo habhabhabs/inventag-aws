@@ -98,18 +98,15 @@ a.it-card:hover .it-card__go {
 
 /* ---------------------------------------------------------------- Steps */
 .it-step {
-  position: relative;
-  padding-left: 3rem;
-  min-height: 2.25rem;
   display: flex;
   align-items: center;
+  gap: 0.9rem;
 }
+/* The badge is a flex item beside the text, so the two share one centre line
+   whatever padding or border the heading has. */
 .it-step::before {
   content: attr(data-step);
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  flex: none;
   box-sizing: border-box;
   width: 2.1rem;
   height: 2.1rem;
