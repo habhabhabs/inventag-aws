@@ -490,3 +490,83 @@ a.it-search__hit:hover .it-search__hit-go {
     right: calc(var(--ifm-navbar-padding-horizontal) + 2.75rem);
   }
 }
+
+/* ----------------------------------------------- Phone menu (drill-down) */
+.it-mnav {
+  padding: 0.25rem 0.25rem 1.5rem;
+}
+.it-mnav__label {
+  margin: 1.1rem 0.75rem 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--it-ink-2);
+}
+.it-mnav__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.it-mnav__row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+  min-height: 2.9rem;
+  padding: 0.5rem 0.75rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--it-ink);
+  font: inherit;
+  font-size: 1rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.it-mnav__row:hover {
+  background: var(--it-hover);
+  color: var(--it-ink);
+  text-decoration: none;
+}
+.it-mnav__row.is-active {
+  background: var(--it-accent-wash);
+  font-weight: 650;
+}
+.it-mnav__row.is-active .it-icon {
+  color: var(--it-accent-ink);
+}
+.it-mnav__row .it-icon {
+  flex: none;
+  color: var(--it-ink-2);
+}
+.it-mnav__row > span {
+  flex: 1;
+}
+.it-mnav__row--section.is-current {
+  font-weight: 650;
+}
+.it-mnav__row--section > .it-icon:last-child {
+  color: var(--it-ink-2);
+}
+.it-mnav__back {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 3rem;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--it-line);
+  border-radius: 10px;
+  background: var(--it-surface);
+  color: var(--it-ink);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.it-mnav__sub {
+  margin: 1.1rem 0.75rem 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--it-ink-2);
+}

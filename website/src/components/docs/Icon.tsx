@@ -71,6 +71,8 @@ const PATHS: Record<string, string[]> = {
     'M2 14h4', 'M10 8h4', 'M18 16h4',
   ],
   play: ['M6 3l14 9-14 9z'],
+  'chevron-left': ['m15 18-6-6 6-6'],
+  'chevron-right': ['m9 18 6-6-6-6'],
   search: ['M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z', 'm21 21-4.3-4.3'],
   hash: ['M4 9h16', 'M4 15h16', 'M10 3 8 21', 'M16 3l-2 18'],
   lines: ['M4 6h16', 'M4 12h16', 'M4 18h10'],
