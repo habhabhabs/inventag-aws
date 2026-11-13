@@ -405,9 +405,10 @@ def stable_zip(src: Path, dest: Path) -> None:
     document properties, so a re-run produces the same bytes."""
     import zipfile
 
-    with zipfile.ZipFile(src) as zin, zipfile.ZipFile(
-        dest, "w", zipfile.ZIP_DEFLATED
-    ) as zout:
+    with (
+        zipfile.ZipFile(src) as zin,
+        zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as zout,
+    ):
         for info in zin.infolist():
             data = zin.read(info.filename)
             if info.filename.endswith(".xml"):
