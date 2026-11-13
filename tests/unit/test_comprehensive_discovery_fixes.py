@@ -248,3 +248,62 @@ def test_aws_partition_fallback_has_more_than_four_regions():
     assert source == "botocore"
     assert {"us-east-1", "eu-central-1", "ap-southeast-1"} <= set(regions)
     assert not any(r.startswith(("cn-", "us-gov-")) for r in regions)
+
+
+def test_time_limit_keeps_found_resources_and_records_unfinished():
+    import threading
+
+    release = threading.Event()
+    disc = ComprehensiveAWSDiscovery(
+        session=mock.MagicMock(),
+        regions=["us-east-1"],
+        enable_billing_validation=False,
+        discovery_timeout=0.2,
+    )
+    disc.service_discovery_patterns = {
+        "fast": {"operations": [], "regional": True},
+        "slow": {"operations": [], "regional": True},
+    }
+
+    def run(task):
+        if task["service"] == "slow":
+            release.wait(5)
+            return 0
+        disc.resources.append({"service": "FAST", "resource_id": "kept"})
+        return 1
+
+    try:
+        with mock.patch.object(disc, "_discover_service_in_region", side_effect=run):
+            disc._discover_all_service_resources(max_workers=2)
+    finally:
+        release.set()
+    assert [r["resource_id"] for r in disc.resources] == ["kept"]
+    timeouts = [e for e in disc.coverage.entries if e.outcome == "timeout"]
+    assert [e.service for e in timeouts] == ["slow"]
+
+
+def test_default_time_limit_is_600_seconds():
+    assert _disc().discovery_timeout == 600
+
+
+def test_throttled_and_denied_calls_are_in_the_ledger():
+    sqs = _client("sqs")
+    stub = Stubber(sqs)
+    stub.add_client_error("list_queues", "RequestThrottled")
+    disc = _disc()
+    with stub:
+        disc._execute_discovery_operation(
+            sqs, "sqs", "us-east-1", ("list_queues", "QueueUrls", "Queue")
+        )
+    stub.add_client_error("list_queues", "AccessDenied")
+    with stub:
+        disc._execute_discovery_operation(
+            sqs, "sqs", "eu-west-1", ("list_queues", "QueueUrls", "Queue")
+        )
+    outcomes = [(e.region, e.outcome, e.operation) for e in disc.coverage.entries]
+    assert outcomes == [
+        ("us-east-1", "throttled", "ListQueues"),
+        ("eu-west-1", "denied", "ListQueues"),
+    ]
+    assert len(disc.coverage.failed_units()) == 2
+    assert disc.coverage.summary() == {"throttled": 1, "denied": 1}

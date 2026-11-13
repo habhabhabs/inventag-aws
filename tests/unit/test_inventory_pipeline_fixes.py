@@ -8,23 +8,6 @@ from inventag.discovery.comprehensive_discovery import ComprehensiveAWSDiscovery
 from inventag.discovery.inventory import AWSResourceInventory
 from inventag.discovery.optimized_dynamic_discovery import OptimizedDynamicDiscovery
 
-LAMBDA = {
-    "service": "Lambda",
-    "type": "Function",
-    "id": "fn1",
-    "name": "fn1",
-    "region": "us-east-1",
-    "arn": "arn:aws:lambda:us-east-1:111122223333:function:fn1",
-}
-ALARM = {
-    "service": "CloudWatch",
-    "type": "Alarm",
-    "id": "a1",
-    "name": "a1",
-    "region": "us-east-1",
-    "arn": "arn:aws:cloudwatch:us-east-1:111122223333:alarm:a1",
-}
-
 
 def _inventory(**kwargs):
     kwargs.setdefault("regions", ["us-east-1"])
@@ -32,20 +15,18 @@ def _inventory(**kwargs):
     return AWSResourceInventory(session=mock.MagicMock(), **kwargs)
 
 
-def test_no_predicted_rows_by_default():
+def test_prediction_code_is_gone():
+    """An inventory never contains invented resources."""
+    from inventag.discovery.optimized_discovery import OptimizedAWSDiscovery
+
     inv = _inventory()
-    inv.resources = [dict(LAMBDA), dict(ALARM)]
-    inv._apply_ai_predictions()
-    assert len(inv.resources) == 2
-    assert not any(r.get("predicted") for r in inv.resources)
-
-
-def test_predicted_rows_only_when_asked_for_and_marked():
-    inv = _inventory(enable_ai_prediction=True)
-    inv.resources = [dict(LAMBDA), dict(ALARM)]
-    inv._apply_ai_predictions()
-    predicted = [r for r in inv.resources if r.get("predicted")]
-    assert [r["id"] for r in predicted] == ["/aws/lambda/fn1"]
+    assert not hasattr(inv, "_apply_ai_predictions")
+    assert not hasattr(OptimizedAWSDiscovery, "_apply_ai_predictions")
+    # The public name stays importable and only discovers
+    disc = OptimizedAWSDiscovery(session=mock.MagicMock(), regions=["us-east-1"])
+    with mock.patch.object(disc, "discover_all_services", return_value=[]) as real:
+        assert disc.discover_all_services_with_ai() == []
+    real.assert_called_once()
 
 
 @pytest.fixture

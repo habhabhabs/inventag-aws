@@ -16,13 +16,17 @@ This ensures resources like VPCs, subnets, security groups, etc. are always disc
 import logging
 import re
 import time
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import TimeoutError as FuturesTimeout
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta, timezone
 import boto3
 from botocore.exceptions import ClientError
 
+from . import coverage as coverage_mod
 from .aws_clients import create_client
+from .coverage import CoverageLedger
 from .regions import cost_explorer_region, global_home_region
 from .sensitive_fields import mask_secret_values
 from .service_filter import canonical_service
@@ -42,6 +46,15 @@ GLOBAL_REGION_LABEL = "global"
 GLOBAL_HOME_REGION = "us-east-1"
 
 
+def _add_source(resource: Dict[str, Any], source: str) -> None:
+    """Add ``source`` to a row's ``sources`` (sorted, joined with ``+``)."""
+    current = {s for s in str(resource.get("sources") or "").split("+") if s}
+    if resource.get("source"):
+        current.add(resource["source"])
+    current.add(source)
+    resource["sources"] = "+".join(sorted(current))
+
+
 class ComprehensiveAWSDiscovery:
     """
     Comprehensive AWS resource discovery that finds ALL resources regardless of tags.
@@ -57,6 +70,8 @@ class ComprehensiveAWSDiscovery:
         hide_fallback_resources: bool = False,  # Legacy, deprecated
         fallback_display_mode: str = "auto",  # "auto", "always", "never"
         enable_billing_validation: bool = True,
+        discovery_timeout: Optional[float] = 600,
+        coverage: Optional[CoverageLedger] = None,
     ):
         self.session = session or boto3.Session()
         # False: never call Cost Explorer (AWS charges for each request)
@@ -102,6 +117,13 @@ class ComprehensiveAWSDiscovery:
         # Billing data for validation
         self.billing_services = set()
         self.billing_spend = {}
+
+        # Seconds the service-API phase may take (None: no limit). Results
+        # found before the limit are kept; unfinished calls are recorded.
+        self.discovery_timeout = discovery_timeout
+        self._stop = threading.Event()
+        # One entry per listing call: what was tried and how it ended
+        self.coverage = coverage if coverage is not None else CoverageLedger()
 
         # Comprehensive service discovery patterns
         self.service_discovery_patterns = {
@@ -412,6 +434,18 @@ class ComprehensiveAWSDiscovery:
 
         return self.resources
 
+    def _record_billing(self, outcome: str, count: int, code: str = "") -> None:
+        self.coverage.record(
+            region=GLOBAL_REGION_LABEL,
+            source="billing",
+            service="ce",
+            resource_type="",
+            operation="GetCostAndUsage",
+            outcome=outcome,
+            count=count,
+            error_code=code,
+        )
+
     def _discover_billing_services(self):
         """Discover services with billing usage for validation."""
         try:
@@ -453,8 +487,17 @@ class ComprehensiveAWSDiscovery:
             self.logger.info(
                 f"💰 Found {len(self.billing_services)} services with billing usage"
             )
+            self._record_billing(coverage_mod.OK, len(self.billing_services))
 
         except Exception as e:
+            code = (
+                e.response.get("Error", {}).get("Code", "")
+                if isinstance(e, ClientError)
+                else type(e).__name__
+            )
+            self._record_billing(
+                coverage_mod.outcome_for_error(code, self.DENIED_CODES), 0, code
+            )
             self._warn_once(
                 "billing",
                 f"Cost Explorer data is not available, so billing "
@@ -506,18 +549,15 @@ class ComprehensiveAWSDiscovery:
         )
 
         # Execute parallel discovery
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            future_to_task = {}
-
-            for task in discovery_tasks:
-                future = executor.submit(self._discover_service_in_region, task)
-                future_to_task[future] = task
-
-            # Collect results
-            completed = 0
-            # No overall timeout: a TimeoutError here threw away every
-            # result of a long scan. Each call has botocore's own timeouts.
-            for future in as_completed(future_to_task):
+        self._stop.clear()
+        executor = ThreadPoolExecutor(max_workers=max_workers)
+        future_to_task = {
+            executor.submit(self._discover_service_in_region, task): task
+            for task in discovery_tasks
+        }
+        completed = 0
+        try:
+            for future in as_completed(future_to_task, timeout=self.discovery_timeout):
                 task = future_to_task[future]
                 try:
                     resources_found = future.result()
@@ -537,6 +577,29 @@ class ComprehensiveAWSDiscovery:
                     self.logger.warning(
                         f"❌ {task['service']} in {task['region']} failed: {e}"
                     )
+        except FuturesTimeout:
+            # Keep what was found. Running calls stop at their next page and
+            # add nothing more; calls not started are cancelled.
+            self._stop.set()
+            unfinished = [t for f, t in future_to_task.items() if not f.done()]
+            for task in unfinished:
+                self.coverage.record(
+                    region=task["region"],
+                    source="service-api",
+                    service=task["service"],
+                    resource_type="",
+                    operation="",
+                    outcome=coverage_mod.TIMEOUT,
+                    count=0,
+                )
+            self.logger.warning(
+                f"Discovery time limit ({self.discovery_timeout:.0f} s) reached: "
+                f"{len(unfinished)} of {len(discovery_tasks)} service/region "
+                "listings did not finish; their resources may be missing. "
+                "Found resources are kept."
+            )
+        finally:
+            executor.shutdown(wait=self._stop.is_set() is False, cancel_futures=True)
 
     def _discover_cloudfront_certificates(self) -> int:
         """ACM certificates in us-east-1 that a CloudFront distribution uses."""
@@ -663,11 +726,13 @@ class ComprehensiveAWSDiscovery:
         own continuation token, so a second page is never silently dropped.
         A failing page raises; pages already returned are kept by the caller.
         """
-        if client.can_paginate(operation_name):
+        can_paginate = getattr(client, "can_paginate", None)
+        if can_paginate is None or can_paginate(operation_name):
             yield from client.get_paginator(operation_name).paginate(**params)
             return
         operation = getattr(client, operation_name)
-        api_name = client.meta.method_to_api_mapping.get(operation_name)
+        meta = getattr(client, "meta", None)
+        api_name = meta.method_to_api_mapping.get(operation_name) if meta else None
         input_members, output_members = set(), set()
         if api_name:
             model = client.meta.service_model.operation_model(api_name)
@@ -715,9 +780,41 @@ class ComprehensiveAWSDiscovery:
     def _execute_discovery_operation(
         self, client, service_name: str, region: str, operation_config
     ) -> int:
-        """Execute a single discovery operation and extract resources."""
+        """Execute a single discovery operation and extract resources.
+
+        Every exit writes one coverage entry. Resources from pages read before
+        a failure are kept.
+        """
         spec = self._op_spec(operation_config)
         operation_name = spec["op"]
+        api_name = operation_name
+        try:
+            api_name = client.meta.method_to_api_mapping.get(
+                operation_name, operation_name
+            )
+        except Exception:
+            pass
+        started = time.time()
+        found = 0
+
+        def record(outcome: str, error_code: str = "") -> None:
+            self.coverage.record(
+                region=(
+                    GLOBAL_REGION_LABEL
+                    if not self.service_discovery_patterns.get(service_name, {}).get(
+                        "regional", True
+                    )
+                    else region
+                ),
+                source="service-api",
+                service=service_name,
+                resource_type=spec["type"],
+                operation=api_name,
+                outcome=outcome,
+                count=found,
+                error_code=error_code,
+                seconds=round(time.time() - started, 3),
+            )
 
         try:
             param_sets = [dict(spec["params"])]
@@ -728,7 +825,6 @@ class ComprehensiveAWSDiscovery:
                     for value in page.get(parent["key"], []) or []:
                         param_sets.append({**spec["params"], parent["param"]: value})
 
-            resources_found = 0
             for params in param_sets:
                 pages = (
                     self._pages_with_token(client, spec, params)
@@ -736,7 +832,10 @@ class ComprehensiveAWSDiscovery:
                     else self._pages(client, operation_name, params)
                 )
                 for page in pages:
-                    resources_found += self._extract_resources_from_response(
+                    if self._stop.is_set():
+                        record(coverage_mod.TIMEOUT)
+                        return found
+                    found += self._extract_resources_from_response(
                         page,
                         spec["key"],
                         service_name,
@@ -745,11 +844,14 @@ class ComprehensiveAWSDiscovery:
                         operation_name,
                         spec,
                     )
-            return resources_found
+            record(coverage_mod.OK if found else coverage_mod.EMPTY)
+            return found
 
         except ClientError as e:
             code = e.response.get("Error", {}).get("Code", "")
-            if code in self.DENIED_CODES:
+            outcome = coverage_mod.outcome_for_error(code, self.DENIED_CODES)
+            record(outcome, code)
+            if outcome == coverage_mod.DENIED:
                 self._warn_once(
                     f"denied:{service_name}",
                     f"No permission for {service_name} "
@@ -758,14 +860,22 @@ class ComprehensiveAWSDiscovery:
                     "read permission to see them.",
                 )
             else:
-                self.logger.debug(
-                    f"{service_name} {operation_name} in {region} failed: {e}"
+                # Not a permission problem: resources of this service in this
+                # region may be missing, so say so (once per service/region).
+                self._warn_once(
+                    f"failed:{service_name}:{region}",
+                    f"{service_name} {operation_name} in {region} failed "
+                    f"({code or e}); its resources there may be incomplete.",
                 )
-            return 0
+            return found
         except Exception as e:
-            # Operation-level errors are expected and handled gracefully
-            self.logger.debug(f"{service_name} {operation_name} failed: {e}")
-            return 0
+            record(coverage_mod.ERROR, type(e).__name__)
+            self._warn_once(
+                f"failed:{service_name}:{region}",
+                f"{service_name} {operation_name} in {region} failed ({e}); "
+                "its resources there may be incomplete.",
+            )
+            return found
 
     DENIED_CODES = {
         "AccessDenied",
@@ -904,6 +1014,9 @@ class ComprehensiveAWSDiscovery:
                 "discovered_at": datetime.now(timezone.utc).isoformat(),
                 "tagged": bool(tags),
                 "priority": "primary",  # Service API discoveries are primary
+                "source": "service-api",
+                "sources": "service-api",
+                "detail_level": "full",
             }
 
             return resource
@@ -948,6 +1061,9 @@ class ComprehensiveAWSDiscovery:
                 "discovered_at": datetime.now(timezone.utc).isoformat(),
                 "tagged": False,
                 "priority": "primary",  # Service API discoveries are primary
+                "source": "service-api",
+                "sources": "service-api",
+                "detail_level": "full",
             }
 
             return resource
@@ -1136,13 +1252,37 @@ class ComprehensiveAWSDiscovery:
         """
 
         def fetch(region: str) -> List[Dict[str, Any]]:
+            started = time.time()
             client = self._client("resourcegroupstaggingapi", region)
             items: List[Dict[str, Any]] = []
-            for page in client.get_paginator("get_resources").paginate(
-                ResourcesPerPage=100
-            ):
-                items.extend(page.get("ResourceTagMappingList", []))
-            return items
+            outcome, code = coverage_mod.OK, ""
+            try:
+                for page in client.get_paginator("get_resources").paginate(
+                    ResourcesPerPage=100
+                ):
+                    items.extend(page.get("ResourceTagMappingList", []))
+                if not items:
+                    outcome = coverage_mod.EMPTY
+                return items
+            except ClientError as e:
+                code = e.response.get("Error", {}).get("Code", "")
+                outcome = coverage_mod.outcome_for_error(code, self.DENIED_CODES)
+                raise
+            except Exception as e:
+                outcome, code = coverage_mod.ERROR, type(e).__name__
+                raise
+            finally:
+                self.coverage.record(
+                    region=region,
+                    source="tagging-api",
+                    service="resourcegroupstaggingapi",
+                    resource_type="",
+                    operation="GetResources",
+                    outcome=outcome,
+                    count=len(items),
+                    error_code=code,
+                    seconds=round(time.time() - started, 3),
+                )
 
         results: Dict[str, List[Dict[str, Any]]] = {}
         regions = self._tagging_regions()
@@ -1199,6 +1339,7 @@ class ComprehensiveAWSDiscovery:
                 existing_resource = index.find(arn)
                 if existing_resource is not None:
                     existing_resource.setdefault("tags", {}).update(tags)
+                    _add_source(existing_resource, "tagging-api")
                     existing_resource["tagged"] = bool(existing_resource["tags"])
                     enriched_count += 1
                     continue
@@ -1233,6 +1374,9 @@ class ComprehensiveAWSDiscovery:
                         "discovered_at": datetime.now(timezone.utc).isoformat(),
                         "tagged": True,
                         "priority": "fallback",  # Mark as lower priority
+                        "source": "tagging-api",
+                        "sources": "tagging-api",
+                        "detail_level": "identity",
                     }
                     self.resources.append(new_resource)
                     index.add(new_resource)
@@ -1420,6 +1564,9 @@ class ComprehensiveAWSDiscovery:
                     "discovered_at": datetime.now(timezone.utc).isoformat(),
                     "tagged": False,
                     "priority": "fallback",
+                    "source": "billing",
+                    "sources": "billing",
+                    "detail_level": "identity",
                     "estimated_monthly_cost": cost,
                 }
             )
@@ -1675,6 +1822,10 @@ class ComprehensiveAWSDiscovery:
 
                 best_resource["tags"] = all_tags
                 best_resource["tagged"] = bool(all_tags)
+                for other in resource_group[1:]:
+                    for src in str(other.get("sources") or "").split("+"):
+                        if src:
+                            _add_source(best_resource, src)
                 best_resource["duplicate_sources"] = len(resource_group)
 
                 deduplicated.append(best_resource)

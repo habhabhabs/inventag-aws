@@ -140,3 +140,25 @@ def test_full_inventory_has_no_planted_secret(account_with_planted_secrets):
     assert PLANTED not in json.dumps(resources, default=str)
     fn = next(r for r in resources if r.get("id") == "fn-with-secret")
     assert fn["raw_data"]["Environment"]["Variables"] == {"DB_PASSWORD": MASK}
+
+
+def test_every_row_comes_from_an_api_and_says_which(account_with_planted_secrets):
+    """No invented rows: each row names the API that returned it."""
+    from inventag.discovery.inventory import AWSResourceInventory
+
+    inv = AWSResourceInventory(regions=["us-east-1"], enable_billing_validation=False)
+    resources = inv.discover_resources()
+    assert resources
+    for r in resources:
+        assert r["source"] in {"service-api", "tagging-api", "billing"}, r
+        assert r["detail_level"] in {"full", "identity"}
+        assert not r.get("predicted")
+        assert "prediction" not in str(r.get("discovery_method", "")).lower()
+        assert str(r.get("discovered_via") or r.get("discovery_method"))
+    # Every listing call is in the coverage ledger
+    ops = {(e.service, e.operation) for e in inv.coverage.entries}
+    assert ("lambda", "ListFunctions") in ops
+    assert ("ecs", "ListServices") in ops
+    # moto does not implement WorkMail; that failure must be in the ledger
+    failed = {e.service for e in inv.coverage.failed_units()}
+    assert failed <= {"workmail"}

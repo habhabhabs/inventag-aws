@@ -24,6 +24,7 @@ from .optimized_discovery import OptimizedAWSDiscovery
 from .comprehensive_discovery import ComprehensiveAWSDiscovery
 from .arn_utils import build_arn, normalize_arn
 from .aws_clients import create_client
+from .coverage import outcome_for_error
 from .sensitive_fields import mask_secret_values
 from .service_filter import (
     canonical_service,
@@ -86,14 +87,17 @@ class AWSResourceInventory:
         use_comprehensive: bool = True,
         hide_fallback_resources: bool = False,  # Legacy, deprecated
         fallback_display_mode: str = "auto",  # "auto", "always", "never"
-        enable_ai_prediction: bool = False,
+        discovery_timeout: Optional[float] = 600,
     ):
         """Initialize the AWS Resource Inventory tool.
 
-        enable_ai_prediction: add rows for resources that were NOT found but
-            usually exist (for example a ``/aws/lambda/<name>`` log group for
-            each Lambda function), marked ``predicted: True``. Off by default:
-            an inventory lists only what AWS returned.
+        discovery_timeout: seconds the service-API phase of comprehensive
+            discovery may take for this account (None: no limit). Results
+            found before the limit are kept; unfinished calls are recorded in
+            the coverage ledger as "timeout".
+
+        Every row comes from an AWS API response (service API, Resource
+        Groups Tagging API or Cost Explorer). There are no predicted rows.
         """
         self.session = session or boto3.Session()
         self.resources = []
@@ -127,7 +131,10 @@ class AWSResourceInventory:
             regions=self.regions,
             fallback_display_mode=self.fallback_display_mode,
             enable_billing_validation=enable_billing_validation,
+            discovery_timeout=discovery_timeout,
         )
+        # What each listing call returned (ok, empty, denied, throttled ...)
+        self.coverage = self.comprehensive_discovery.coverage
 
         # Store original regions for fallback logic
         self.original_regions = self.regions.copy() if self.regions else None
@@ -138,12 +145,11 @@ class AWSResourceInventory:
         self.use_comprehensive_discovery = use_comprehensive
         self.standardized_output = standardized_output
 
-        # Predicted (not discovered) rows are opt-in; see the docstring.
-        self.enable_ai_prediction = enable_ai_prediction
+        # Kept for compatibility; predicted rows were removed and never return.
+        self.enable_ai_prediction = False
         self.ensure_consistent_results = (
             True  # Ensure consistent results for state management
         )
-        self.resource_prediction_cache = {}  # Cache for AI predictions
 
     def configure_discovery_mode(
         self,
@@ -462,15 +468,6 @@ class AWSResourceInventory:
         # Step 7: Remove duplicates based on ARN
         self._deduplicate_resources()
 
-        # Step 8: Apply AI predictions for enhanced discovery
-        if self.enable_ai_prediction:
-            spinner = ProgressSpinner("🤖 Applying AI-based resource predictions")
-            spinner.start()
-            try:
-                self._apply_ai_predictions()
-            finally:
-                spinner.stop()
-
         # Step 9: Add billing metadata to resources
         if self.enable_billing_validation:
             self._add_billing_metadata()
@@ -487,6 +484,9 @@ class AWSResourceInventory:
         # found the resource (see sensitive_fields.py)
         self._mask_secret_values()
 
+        # Step 13: every row says which API returned it
+        self._label_sources()
+
         discovered_services = len(self._get_discovered_services())
         billing_validated = (
             len(self.billing_validated_services)
@@ -500,6 +500,33 @@ class AWSResourceInventory:
             f"({billing_validated} billing-validated)."
         )
         return self.resources
+
+    @staticmethod
+    def _source_of(resource: Dict[str, Any]) -> str:
+        via = str(
+            resource.get("discovered_via") or resource.get("discovery_method") or ""
+        )
+        if via.startswith("CostExplorer"):
+            return "billing"
+        if via.startswith("ResourceGroupsTagging"):
+            return "tagging-api"
+        return "service-api"
+
+    def _label_sources(self):
+        """Set ``source``, ``sources`` and ``detail_level`` on rows that lack them.
+
+        Rows from comprehensive discovery are labelled where they are made;
+        this covers the other paths (dynamic discovery, merged rows).
+        """
+        for resource in self.resources:
+            if not resource.get("source"):
+                resource["source"] = self._source_of(resource)
+            if not resource.get("sources"):
+                resource["sources"] = resource["source"]
+            if not resource.get("detail_level"):
+                resource["detail_level"] = (
+                    "full" if resource["source"] == "service-api" else "identity"
+                )
 
     def _mask_secret_values(self):
         """Mask secret-bearing values in every resource's copied AWS data."""
@@ -618,13 +645,7 @@ class AWSResourceInventory:
         )
 
         try:
-            # Use the optimized discovery system with AI predictions
-            if self.enable_ai_prediction:
-                standard_resources = (
-                    self.optimized_discovery.discover_all_services_with_ai()
-                )
-            else:
-                standard_resources = self.optimized_discovery.discover_all_services()
+            standard_resources = self.optimized_discovery.discover_all_services()
 
             if self.standardized_output:
                 # Convert StandardResource objects to standardized dictionaries
@@ -780,127 +801,6 @@ class AWSResourceInventory:
 
         return service_mappings.get(service_name.upper(), service_name)
 
-    def _apply_ai_predictions(self):
-        """Apply AI-based predictions to enhance resource discovery."""
-
-        if not self.enable_ai_prediction:
-            return
-
-        self.logger.info("Applying AI-based resource predictions...")
-
-        # Predict missing resources based on existing patterns
-        predicted_resources = self._predict_missing_resources()
-
-        if predicted_resources:
-            self.logger.info(
-                f"AI prediction suggests {len(predicted_resources)} potentially missing resources"
-            )
-
-            # Add predicted resources with lower confidence scores
-            for predicted in predicted_resources:
-                predicted["discovery_method"] = "AI_Prediction"
-                predicted["confidence_score"] = predicted.get("confidence_score", 0.3)
-                predicted["predicted"] = True
-                self.resources.append(predicted)
-
-    def _predict_missing_resources(self) -> List[Dict[str, Any]]:
-        """Predict missing resources based on existing resource patterns."""
-
-        predicted = []
-
-        # Analyze existing resources for patterns
-        service_patterns = {}
-        region_patterns = {}
-
-        for resource in self.resources:
-            service = resource.get("service", "")
-            region = resource.get("region", "")
-
-            if service not in service_patterns:
-                service_patterns[service] = []
-            service_patterns[service].append(resource)
-
-            if region not in region_patterns:
-                region_patterns[region] = []
-            region_patterns[region].append(resource)
-
-        # Predict based on service patterns
-        predicted.extend(self._predict_from_service_patterns(service_patterns))
-
-        # Predict based on region patterns
-        predicted.extend(self._predict_from_region_patterns(region_patterns))
-
-        return predicted
-
-    def _predict_from_service_patterns(
-        self, service_patterns: Dict[str, List[Dict[str, Any]]]
-    ) -> List[Dict[str, Any]]:
-        """Predict missing resources based on service usage patterns."""
-
-        predicted = []
-
-        # If we have Lambda functions, predict CloudWatch log groups
-        if "Lambda" in service_patterns and "CloudWatch" in service_patterns:
-            lambda_functions = service_patterns["Lambda"]
-            cloudwatch_resources = service_patterns["CloudWatch"]
-
-            # Check if we have log groups for all Lambda functions
-            log_group_names = {
-                r.get("name", "")
-                for r in cloudwatch_resources
-                if "log" in r.get("type", "").lower()
-            }
-
-            for func in lambda_functions:
-                func_name = func.get("name", "")
-                expected_log_group = f"/aws/lambda/{func_name}"
-
-                if expected_log_group not in log_group_names:
-                    predicted.append(
-                        {
-                            "arn": f"arn:aws:logs:{func.get('region', 'us-east-1')}:{func.get('account_id', 'unknown')}:log-group:{expected_log_group}",
-                            "id": expected_log_group,
-                            "service": "CloudWatch",
-                            "type": "LogGroup",
-                            "name": expected_log_group,
-                            "region": func.get("region", "us-east-1"),
-                            "account_id": func.get("account_id"),
-                            "tags": {},
-                            "confidence_score": 0.7,
-                            "predicted_reason": f"Lambda function {func_name} typically has associated log group",
-                        }
-                    )
-
-        return predicted
-
-    def _predict_from_region_patterns(
-        self, region_patterns: Dict[str, List[Dict[str, Any]]]
-    ) -> List[Dict[str, Any]]:
-        """Predict missing resources based on region usage patterns."""
-
-        predicted = []
-
-        # If we have resources in multiple regions, predict default VPCs
-        regions_with_resources = [
-            r for r in region_patterns.keys() if r and r != "global"
-        ]
-
-        if len(regions_with_resources) > 1:
-            # Check if we have VPCs in all regions where we have resources
-            vpc_regions = set()
-            for region, resources in region_patterns.items():
-                for resource in resources:
-                    if (
-                        resource.get("service") == "EC2"
-                        and resource.get("type") == "VPC"
-                    ):
-                        vpc_regions.add(region)
-
-            # Predict missing default VPCs (but these would be filtered out as AWS managed)
-            # This is more for demonstration of the prediction capability
-
-        return predicted
-
     def _discover_services_via_billing(self):
         """Discover services with actual usage via AWS Cost Explorer billing data."""
         self.logger.info("Discovering services with actual usage via billing data...")
@@ -948,6 +848,15 @@ class AWSResourceInventory:
                         }
                         total_spend += cost_amount
 
+            self.coverage.record(
+                region="global",
+                source="billing",
+                service="ce",
+                resource_type="",
+                operation="GetCostAndUsage",
+                outcome="ok" if services_with_usage else "empty",
+                count=len(services_with_usage),
+            )
             # Store billing-validated services
             self.billing_validated_services = set(services_with_usage.keys())
             self.billing_spend_by_service = {
@@ -969,6 +878,18 @@ class AWSResourceInventory:
 
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "")
+            self.coverage.record(
+                region="global",
+                source="billing",
+                service="ce",
+                resource_type="",
+                operation="GetCostAndUsage",
+                outcome=outcome_for_error(
+                    error_code, ComprehensiveAWSDiscovery.DENIED_CODES
+                ),
+                count=0,
+                error_code=error_code,
+            )
             if error_code in (
                 "UnauthorizedOperation",
                 "AccessDenied",
@@ -1235,6 +1156,9 @@ class AWSResourceInventory:
                     "discovered_at": datetime.now(timezone.utc).isoformat(),
                     "tagged": False,
                     "priority": "fallback",
+                    "source": "billing",
+                    "sources": "billing",
+                    "detail_level": "identity",
                     "billing_validated": True,
                     "billing_cost_30d": spend,
                 }
@@ -2231,6 +2155,19 @@ class AWSResourceInventory:
             elif key in ["arn", "name"] and not base_resource.get(key):
                 # Prefer non-empty ARNs and names
                 base_resource[key] = value
+
+        merged_sources = {
+            s
+            for r in (existing, new)
+            for s in str(r.get("sources") or r.get("source") or "").split("+")
+            if s
+        }
+        if merged_sources:
+            base_resource["sources"] = "+".join(sorted(merged_sources))
+            for best in ("service-api", "tagging-api", "billing"):
+                if best in merged_sources:
+                    base_resource["source"] = best
+                    break
 
         # Add merge metadata
         base_resource["data_sources"] = list(
