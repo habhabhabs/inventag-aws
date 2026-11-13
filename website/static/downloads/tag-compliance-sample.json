@@ -9,9 +9,9 @@
     "percent_compliant": 4.5,
     "missing_by_key": {
       "CostCenter": 19,
-      "Owner": 18,
+      "Owner": 16,
       "Project": 20,
-      "Environment": 18
+      "Environment": 16
     },
     "invalid_by_key": {
       "CostCenter": 1,
@@ -26,13 +26,11 @@
       "service": "DYNAMODB",
       "resource_type": "Table",
       "resource_id": "acme-orders",
-      "arn": "acme-orders",
+      "arn": "arn:aws:dynamodb:us-east-1:123456789012:table/acme-orders",
       "region": "us-east-1",
       "missing": [
         "CostCenter",
-        "Owner",
-        "Project",
-        "Environment"
+        "Project"
       ],
       "invalid": []
     },
@@ -54,7 +52,7 @@
       "service": "EC2",
       "resource_type": "Snapshot",
       "resource_id": "snap-3585ce88e25ef1196",
-      "arn": "arn:aws:ec2:us-east-1:123456789012:snapshot/snap-3585ce88e25ef1196",
+      "arn": "arn:aws:ec2:us-east-1::snapshot/snap-3585ce88e25ef1196",
       "region": "us-east-1",
       "missing": [
         "CostCenter",
@@ -115,7 +113,7 @@
       "resource_type": "Role",
       "resource_id": "acme-orders-api-role",
       "arn": "arn:aws:iam::123456789012:role/acme-orders-api-role",
-      "region": "us-east-1",
+      "region": "global",
       "missing": [
         "CostCenter",
         "Owner",
@@ -129,13 +127,11 @@
       "service": "LAMBDA",
       "resource_type": "Function",
       "resource_id": "acme-orders-api",
-      "arn": "arn:aws:lambda:us-east-1:123456789012:function/acme-orders-api",
+      "arn": "arn:aws:lambda:us-east-1:123456789012:function:acme-orders-api",
       "region": "us-east-1",
       "missing": [
         "CostCenter",
-        "Owner",
-        "Project",
-        "Environment"
+        "Project"
       ],
       "invalid": []
     },
@@ -184,7 +180,7 @@
       "service": "VPC",
       "resource_type": "NetworkAcl",
       "resource_id": "acl-3118daa9d5cc099a7",
-      "arn": "arn:aws:vpc:us-east-1:123456789012:networkacl/acl-3118daa9d5cc099a7",
+      "arn": "arn:aws:ec2:us-east-1:123456789012:network-acl/acl-3118daa9d5cc099a7",
       "region": "us-east-1",
       "missing": [
         "CostCenter",
@@ -199,7 +195,7 @@
       "service": "VPC",
       "resource_type": "RouteTable",
       "resource_id": "rtb-43ff34872ac9bc6fe",
-      "arn": "arn:aws:vpc:us-east-1:123456789012:routetable/rtb-43ff34872ac9bc6fe",
+      "arn": "arn:aws:ec2:us-east-1:123456789012:route-table/rtb-43ff34872ac9bc6fe",
       "region": "us-east-1",
       "missing": [
         "CostCenter",
@@ -214,7 +210,7 @@
       "service": "VPC",
       "resource_type": "SecurityGroup",
       "resource_id": "sg-46eeda8dc8fa7955d",
-      "arn": "arn:aws:vpc:us-east-1:123456789012:securitygroup/sg-46eeda8dc8fa7955d",
+      "arn": "arn:aws:ec2:us-east-1:123456789012:security-group/sg-46eeda8dc8fa7955d",
       "region": "us-east-1",
       "missing": [
         "CostCenter",
@@ -229,7 +225,7 @@
       "service": "VPC",
       "resource_type": "Subnet",
       "resource_id": "subnet-2a42af822e0b163e5",
-      "arn": "arn:aws:vpc:us-east-1:123456789012:subnet/subnet-2a42af822e0b163e5",
+      "arn": "arn:aws:ec2:us-east-1:123456789012:subnet/subnet-2a42af822e0b163e5",
       "region": "us-east-1",
       "missing": [
         "CostCenter",
@@ -244,7 +240,7 @@
       "service": "VPC",
       "resource_type": "Subnet",
       "resource_id": "subnet-61dc3d552b572c148",
-      "arn": "arn:aws:vpc:us-east-1:123456789012:subnet/subnet-61dc3d552b572c148",
+      "arn": "arn:aws:ec2:us-east-1:123456789012:subnet/subnet-61dc3d552b572c148",
       "region": "us-east-1",
       "missing": [
         "CostCenter",
@@ -259,7 +255,7 @@
       "service": "VPC",
       "resource_type": "Subnet",
       "resource_id": "subnet-9ae290544cd5493fa",
-      "arn": "arn:aws:vpc:us-east-1:123456789012:subnet/subnet-9ae290544cd5493fa",
+      "arn": "arn:aws:ec2:us-east-1:123456789012:subnet/subnet-9ae290544cd5493fa",
       "region": "us-east-1",
       "missing": [
         "CostCenter",
@@ -274,7 +270,7 @@
       "service": "VPC",
       "resource_type": "Subnet",
       "resource_id": "subnet-bd0ce262babcb3044",
-      "arn": "arn:aws:vpc:us-east-1:123456789012:subnet/subnet-bd0ce262babcb3044",
+      "arn": "arn:aws:ec2:us-east-1:123456789012:subnet/subnet-bd0ce262babcb3044",
       "region": "us-east-1",
       "missing": [
         "CostCenter",
@@ -289,7 +285,7 @@
       "service": "VPC",
       "resource_type": "Subnet",
       "resource_id": "subnet-c6646ad0b6700be70",
-      "arn": "arn:aws:vpc:us-east-1:123456789012:subnet/subnet-c6646ad0b6700be70",
+      "arn": "arn:aws:ec2:us-east-1:123456789012:subnet/subnet-c6646ad0b6700be70",
       "region": "us-east-1",
       "missing": [
         "CostCenter",
@@ -304,7 +300,7 @@
       "service": "VPC",
       "resource_type": "Subnet",
       "resource_id": "subnet-e585d909a6519f0d5",
-      "arn": "arn:aws:vpc:us-east-1:123456789012:subnet/subnet-e585d909a6519f0d5",
+      "arn": "arn:aws:ec2:us-east-1:123456789012:subnet/subnet-e585d909a6519f0d5",
       "region": "us-east-1",
       "missing": [
         "CostCenter",
@@ -319,7 +315,7 @@
       "service": "VPC",
       "resource_type": "VPC",
       "resource_id": "vpc-b790a8316b5a9b85e",
-      "arn": "arn:aws:vpc:us-east-1:123456789012:vpc/vpc-b790a8316b5a9b85e",
+      "arn": "arn:aws:ec2:us-east-1:123456789012:vpc/vpc-b790a8316b5a9b85e",
       "region": "us-east-1",
       "missing": [
         "CostCenter",
