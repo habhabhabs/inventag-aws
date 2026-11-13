@@ -58,7 +58,7 @@ class TestValidateConfigOnly:
             run_cli, "--validate-config-only", "--service-descriptions", str(bad)
         )
         assert result.code == 1
-        assert "must be a dictionary" in result.text
+        assert "must be a mapping" in result.text
 
     def test_service_descriptions_with_a_non_string_description_are_exit_1(
         self, run_cli, tmp_path
@@ -78,7 +78,7 @@ class TestValidateConfigOnly:
             run_cli, "--validate-config-only", "--service-descriptions", str(bad)
         )
         assert result.code == 1
-        assert "Unsupported file format" in result.text
+        assert "unsupported file type" in result.text
 
     def test_an_accounts_file_without_accounts_is_exit_1(self, run_cli, tmp_path):
         bad = tmp_path / "accounts.json"

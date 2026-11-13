@@ -134,6 +134,12 @@ class TestTaggingApiFallback:
             SecretString=SECRET_VALUE,
             Tags=[{"Key": "Owner", "Value": "platform"}],
         )
+        # CloudWatch Logs has no discovery code of its own (Secrets Manager
+        # has since this release: ListSecrets, metadata only), so a tagged
+        # log group can only arrive through the Tagging API.
+        boto3.client("logs", region_name="us-east-1").create_log_group(
+            logGroupName="e2e-logs", tags={"Owner": "platform"}
+        )
 
     def services(self, result):
         rows = all_resource_rows(result.files(".xlsx")[0])
@@ -144,7 +150,11 @@ class TestTaggingApiFallback:
     ):
         result = run_cli()
         assert result.code == 0, result.text
-        assert ("SECRETSMANAGER", "fallback") in self.services(result)
+        rows = all_resource_rows(result.files(".xlsx")[0])
+        logs = [r for r in rows if "e2e-logs" in str(r.get("arn", ""))]
+        assert logs and all(r["priority"] == "fallback" for r in logs)
+        # Secrets Manager is now listed by its own (metadata-only) call.
+        assert ("SECRETSMANAGER", "primary") in self.services(result)
 
     def test_fallback_display_never_hides_it(self, secret, run_cli):
         result = run_cli("--fallback-display", "never")
@@ -158,7 +168,11 @@ class TestTaggingApiFallback:
         result = run_cli("--audit-output", str(audit), "--create-word")
         assert result.code == 0, result.text
 
-        assert [k for k in audit_operations(audit) if k[0] == "secretsmanager"] == []
+        # Only the metadata listing; never GetSecretValue or any other read.
+        assert [k for k in audit_operations(audit) if k[0] == "secretsmanager"] in (
+            [],
+            [("secretsmanager", "ListSecrets")],
+        )
         produced = [p for p in result.output_dir.rglob("*") if p.is_file()]
         assert produced
         for path in produced:
