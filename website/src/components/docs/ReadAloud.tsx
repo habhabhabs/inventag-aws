@@ -28,8 +28,31 @@ function collectText(): string[] {
     const text = (clone.textContent ?? '').replace(/\s+/g, ' ').trim();
     if (text) parts.push(/[.!?。！？:：]$/.test(text) ? text : `${text}.`);
   });
-  // short chunks keep long pages from stalling in some browsers
-  return parts.flatMap((p) => p.match(/[^.!?。！？]+[.!?。！？]*\s*/g) ?? [p]).map((s) => s.trim()).filter(Boolean);
+  // Short chunks keep long pages from stalling: Chrome on desktop stops an utterance after
+  // about 15 seconds. Split after sentence ends (not inside "1.1.3" or "e.g."), then cut
+  // anything still long at a comma or space.
+  return parts.flatMap(splitSentences).flatMap(splitLong).map((s) => s.trim()).filter(Boolean);
+}
+
+const MAX_CHUNK = 160;
+
+function splitSentences(text: string): string[] {
+  return text.split(/(?<=[.!?])\s+|(?<=[。！？])/);
+}
+
+function splitLong(text: string): string[] {
+  const out: string[] = [];
+  let rest = text;
+  while (rest.length > MAX_CHUNK) {
+    const window = rest.slice(0, MAX_CHUNK);
+    let cut = Math.max(window.lastIndexOf(', '), window.lastIndexOf('; '), window.lastIndexOf('，'), window.lastIndexOf('、'));
+    if (cut < MAX_CHUNK / 2) cut = window.lastIndexOf(' ');
+    if (cut < MAX_CHUNK / 2) cut = MAX_CHUNK - 1;
+    out.push(rest.slice(0, cut + 1));
+    rest = rest.slice(cut + 1);
+  }
+  if (rest.trim()) out.push(rest);
+  return out;
 }
 
 type State = 'idle' | 'playing' | 'paused';
@@ -41,11 +64,15 @@ export default function ReadAloud(): ReactNode {
   const [state, setState] = useState<State>('idle');
   const [rateIndex, setRateIndex] = useState(0);
   const run = useRef(0); // bumped to invalidate a running queue
+  const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
+  // Chrome can garbage-collect queued utterances and then never fire their events
+  const queue = useRef<SpeechSynthesisUtterance[]>([]);
 
   const lang = SPEECH_LANG[i18n.currentLocale] ?? i18n.currentLocale;
 
   const stop = useCallback(() => {
     run.current += 1;
+    queue.current = [];
     try {
       window.speechSynthesis.cancel();
     } catch {
@@ -55,7 +82,23 @@ export default function ReadAloud(): ReactNode {
   }, []);
 
   useEffect(() => {
-    setSupported(typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window);
+    const ok = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+    setSupported(ok);
+    if (!ok) return undefined;
+    const synth = window.speechSynthesis;
+    // Voices load asynchronously in Chrome and Firefox; getVoices() is empty until then.
+    const load = () => {
+      voicesRef.current = synth.getVoices();
+    };
+    load();
+    synth.addEventListener?.('voiceschanged', load);
+    // A reload or tab close must not leave the browser speaking
+    const quiet = () => synth.cancel();
+    window.addEventListener('pagehide', quiet);
+    return () => {
+      synth.removeEventListener?.('voiceschanged', load);
+      window.removeEventListener('pagehide', quiet);
+    };
   }, []);
   // leaving the page (or changing language) ends the reading
   useEffect(() => stop, [pathname, stop]);
@@ -66,8 +109,9 @@ export default function ReadAloud(): ReactNode {
       if (!sentences.length) return;
       const synth = window.speechSynthesis;
       synth.cancel();
+      synth.resume(); // a cancel after pause() can leave Chrome paused for the next queue
       const id = ++run.current;
-      const voices = synth.getVoices();
+      const voices = voicesRef.current.length ? voicesRef.current : synth.getVoices();
       const voice =
         voices.find((v) => v.lang.replace('_', '-').toLowerCase() === lang.toLowerCase()) ??
         voices.find((v) => v.lang.toLowerCase().startsWith(lang.slice(0, 2).toLowerCase()));
@@ -76,13 +120,28 @@ export default function ReadAloud(): ReactNode {
         u.lang = lang;
         u.rate = rate;
         if (voice) u.voice = voice;
-        if (i === sentences.length - 1) u.onend = () => id === run.current && setState('idle');
+        if (i === sentences.length - 1) {
+          u.onend = () => {
+            if (id !== run.current) return;
+            queue.current = [];
+            setState('idle');
+          };
+        }
         u.onerror = (e) => {
           if (id === run.current && e.error !== 'interrupted' && e.error !== 'canceled') setState('idle');
         };
+        queue.current.push(u);
         synth.speak(u);
       });
       setState('playing');
+      // No voice or no audio output: nothing starts and no error event arrives. Do not
+      // leave the controls stuck on "Pause".
+      window.setTimeout(() => {
+        if (id === run.current && !synth.speaking && !synth.pending && !synth.paused) {
+          queue.current = [];
+          setState('idle');
+        }
+      }, 2500);
     },
     [lang],
   );
