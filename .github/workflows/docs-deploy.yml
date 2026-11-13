@@ -430,17 +430,17 @@ jobs:
           echo "" >> docs/security/current/sbom-summary.md
           echo "| Format | File | Description |" >> docs/security/current/sbom-summary.md
           echo "|--------|------|-------------|" >> docs/security/current/sbom-summary.md
-          echo "| JSON (Syft) | [current-sbom.json](./sbom/current-sbom.json) | Complete repository component analysis |" >> docs/security/current/sbom-summary.md
-          echo "| CycloneDX | [current-sbom-cyclonedx.json](./sbom/current-sbom-cyclonedx.json) | Industry-standard SBOM format |" >> docs/security/current/sbom-summary.md
-          echo "| SPDX | [current-sbom-spdx.json](./sbom/current-sbom-spdx.json) | Software Package Data Exchange format |" >> docs/security/current/sbom-summary.md
+          echo "| JSON (Syft) | [current-sbom.json](pathname:///inventag-aws/sbom/current-sbom.json) | Complete repository component analysis |" >> docs/security/current/sbom-summary.md
+          echo "| CycloneDX | [current-sbom-cyclonedx.json](pathname:///inventag-aws/sbom/current-sbom-cyclonedx.json) | Industry-standard SBOM format |" >> docs/security/current/sbom-summary.md
+          echo "| SPDX | [current-sbom-spdx.json](pathname:///inventag-aws/sbom/current-sbom-spdx.json) | Software Package Data Exchange format |" >> docs/security/current/sbom-summary.md
           if [ -f "docs/security/sbom/python-sbom.json" ]; then
-            echo "| Python (Environment) | [python-sbom.json](./sbom/python-sbom.json) | Python dependencies from environment |" >> docs/security/current/sbom-summary.md
+            echo "| Python (Environment) | [python-sbom.json](pathname:///inventag-aws/sbom/python-sbom.json) | Python dependencies from environment |" >> docs/security/current/sbom-summary.md
           fi
           if [ -f "docs/security/sbom/python-freeze-sbom.json" ]; then
-            echo "| Python (Exact Versions) | [python-freeze-sbom.json](./sbom/python-freeze-sbom.json) | Python dependencies with exact versions |" >> docs/security/current/sbom-summary.md
+            echo "| Python (Exact Versions) | [python-freeze-sbom.json](pathname:///inventag-aws/sbom/python-freeze-sbom.json) | Python dependencies with exact versions |" >> docs/security/current/sbom-summary.md
           fi
           if [ -f "docs/security/sbom/nodejs-website-sbom.json" ]; then
-            echo "| Node.js (CycloneDX) | [nodejs-website-sbom.json](./sbom/nodejs-website-sbom.json) | Website dependencies |" >> docs/security/current/sbom-summary.md
+            echo "| Node.js (CycloneDX) | [nodejs-website-sbom.json](pathname:///inventag-aws/sbom/nodejs-website-sbom.json) | Website dependencies |" >> docs/security/current/sbom-summary.md
           fi
           echo "" >> docs/security/current/sbom-summary.md
           
@@ -448,18 +448,18 @@ jobs:
           echo "" >> docs/security/current/sbom-summary.md
           echo "| Format | File | Description |" >> docs/security/current/sbom-summary.md
           echo "|--------|------|-------------|" >> docs/security/current/sbom-summary.md
-          echo "| JSON (Formatted) | [current-sbom-formatted.json](./sbom/current-sbom-formatted.json) | Pretty-printed JSON for manual review |" >> docs/security/current/sbom-summary.md
+          echo "| JSON (Formatted) | [current-sbom-formatted.json](pathname:///inventag-aws/sbom/current-sbom-formatted.json) | Pretty-printed JSON for manual review |" >> docs/security/current/sbom-summary.md
           if [ -f "docs/security/sbom/python-sbom.json" ]; then
-            echo "| Python (Formatted) | [python-sbom-formatted.json](./sbom/python-sbom-formatted.json) | Formatted Python dependencies |" >> docs/security/current/sbom-summary.md
+            echo "| Python (Formatted) | [python-sbom-formatted.json](pathname:///inventag-aws/sbom/python-sbom-formatted.json) | Formatted Python dependencies |" >> docs/security/current/sbom-summary.md
           fi
           if [ -f "docs/security/sbom/python-freeze-sbom.json" ]; then
-            echo "| Python Freeze (Formatted) | [python-freeze-sbom-formatted.json](./sbom/python-freeze-sbom-formatted.json) | Formatted exact version dependencies |" >> docs/security/current/sbom-summary.md
+            echo "| Python Freeze (Formatted) | [python-freeze-sbom-formatted.json](pathname:///inventag-aws/sbom/python-freeze-sbom-formatted.json) | Formatted exact version dependencies |" >> docs/security/current/sbom-summary.md
           fi
           if [ -f "docs/security/sbom/nodejs-website-sbom.json" ]; then
-            echo "| Node.js (Formatted) | [nodejs-website-sbom-formatted.json](./sbom/nodejs-website-sbom-formatted.json) | Formatted website dependencies |" >> docs/security/current/sbom-summary.md
+            echo "| Node.js (Formatted) | [nodejs-website-sbom-formatted.json](pathname:///inventag-aws/sbom/nodejs-website-sbom-formatted.json) | Formatted website dependencies |" >> docs/security/current/sbom-summary.md
           fi
           if [ -f "docs/security/sbom/vulnerabilities.json" ]; then
-            echo "| Vulnerabilities | [vulnerabilities-formatted.json](./sbom/vulnerabilities-formatted.json) | Security vulnerability report |" >> docs/security/current/sbom-summary.md
+            echo "| Vulnerabilities | [vulnerabilities-formatted.json](pathname:///inventag-aws/sbom/vulnerabilities-formatted.json) | Security vulnerability report |" >> docs/security/current/sbom-summary.md
           fi
           echo "" >> docs/security/current/sbom-summary.md
           

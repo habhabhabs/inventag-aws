@@ -443,7 +443,7 @@ title: ${title}
         }
         
         // Handle downloadable files (move to /files/ for Docusaurus)
-        if (src.includes('assets/files/') || src.includes('.json') || src.includes('.yaml')) {
+        if (src.includes('assets/files/')) {
           const fileName = path.basename(src);
           hasChanges = true;
           return `${linkText}(/files/${fileName})`;
