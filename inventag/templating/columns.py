@@ -6,6 +6,8 @@ import logging
 import re
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from ..reporting.data_keys import as_cell, is_data_keyed
+
 ILLEGAL_SHEET_CHARS = re.compile(r"[\[\]:*?/\\]")
 CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
@@ -112,6 +114,8 @@ def flatten(resource: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
         if key == "tags" and not prefix:
             for tag_key, tag_value in normalize_tags(value).items():
                 out[f"tags.{tag_key}"] = tag_value
+        elif isinstance(value, dict) and is_data_keyed(value):
+            out[name] = as_cell(value)
         elif isinstance(value, dict):
             out.update(flatten(value, name))
         else:

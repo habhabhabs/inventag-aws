@@ -12,6 +12,8 @@ import re
 import yaml
 import boto3
 from typing import Dict, List, Any, Union, Optional
+
+from .data_keys import as_cell, is_data_keyed
 from datetime import datetime, timezone
 from botocore.exceptions import ClientError
 from ..security.safe_output import (
@@ -988,7 +990,9 @@ class BOMConverter:
         items = []
         for k, v in d.items():
             new_key = f"{parent_key}{sep}{k}" if parent_key else k
-            if isinstance(v, dict):
+            if isinstance(v, dict) and is_data_keyed(v):
+                items.append((new_key, as_cell(v)))
+            elif isinstance(v, dict):
                 items.extend(self._flatten_dict(v, new_key, sep=sep).items())
             elif isinstance(v, list):
                 # Convert lists to comma-separated strings

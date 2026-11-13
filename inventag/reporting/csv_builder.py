@@ -10,6 +10,8 @@ import csv
 import os
 import logging
 from typing import Dict, List, Any, Optional
+
+from .data_keys import as_cell, is_data_keyed
 from datetime import datetime, timezone
 
 from .document_generator import DocumentBuilder, DocumentGenerationResult, BOMData
@@ -82,7 +84,9 @@ class CSVBuilder(DocumentBuilder):
         items = []
         for k, v in d.items():
             new_key = f"{parent_key}{sep}{k}" if parent_key else k
-            if isinstance(v, dict):
+            if isinstance(v, dict) and is_data_keyed(v):
+                items.append((new_key, as_cell(v)))
+            elif isinstance(v, dict):
                 items.extend(self._flatten_dict(v, new_key, sep=sep).items())
             elif isinstance(v, list):
                 # Convert lists to comma-separated strings
