@@ -22,7 +22,7 @@ git fetch --tags -q 2>/dev/null || true
 rm -rf i18n/*/docusaurus-plugin-content-docs/current   # generated copies must not leak into snapshots
 mkdir -p versioned_docs versioned_sidebars
 
-archived=(); skipped=(); present=()
+archived=(); skipped=(); present=(); dropped=()
 for tag in $(git tag -l | grep -E "$PATTERN" | sort -V); do
   v="${tag#v}"
   [ "$v" = "$CURRENT" ] && continue
@@ -42,6 +42,14 @@ for tag in $(git tag -l | grep -E "$PATTERN" | sort -V); do
   cp versions.json /tmp/versions.before.json
   rm -rf ../docs                                         # start empty: index.md vs index.mdx must not both land in a snapshot
   git checkout "$tag" -- ../docs
+  # Some tags carry a page twice, as X.md and X.mdx (v1.1.1 has docs/index.md and
+  # docs/index.mdx). Docusaurus refuses two docs with one id, so keep the .mdx.
+  while IFS= read -r mdx; do
+    if [ -f "${mdx%.mdx}.md" ]; then
+      rm -f "${mdx%.mdx}.md"
+      dropped+=("$tag: ${mdx#../}, dropped the duplicate .md")
+    fi
+  done < <(find ../docs -name '*.mdx')
   for sb in sidebars.ts sidebars.js; do git cat-file -e "$tag:website/$sb" 2>/dev/null && git checkout "$tag" -- "$sb"; done
   npm run docusaurus -- docs:version "$v"
   git reset -q HEAD -- ../docs sidebars.ts sidebars.js    # nothing from the old tag stays staged
@@ -64,6 +72,9 @@ echo "Current docs:  v$CURRENT (docs/)"
 echo "Archived now:  ${archived[*]:-none}"
 echo "Already there: ${present[*]:-none}"
 echo "versions.json: $(jq -c . versions.json)"
+if [ "${#dropped[@]}" -gt 0 ]; then
+  echo "Duplicate pages in tags:"; printf '  - %s\n' "${dropped[@]}"
+fi
 if [ "${#skipped[@]}" -gt 0 ]; then
   echo "Skipped tags:"; printf '  - %s\n' "${skipped[@]}"
 fi
