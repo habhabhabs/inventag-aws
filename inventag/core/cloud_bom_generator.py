@@ -1158,7 +1158,9 @@ class CloudBOMGenerator:
                     "generation_timestamp": datetime.now(timezone.utc).isoformat(),
                 }
 
-            security = bom_data.security_analysis or {}
+            security = getattr(bom_data, "security_analysis", None)
+            if not isinstance(security, dict):
+                security = {}
             return {
                 "success": True,
                 "generated_files": generated_files,
@@ -1169,7 +1171,7 @@ class CloudBOMGenerator:
                         "rule": rule.get("rule", ""),
                         "risk_level": rule.get("risk_level", ""),
                     }
-                    for rule in security.get("overly_permissive_rules", [])
+                    for rule in (security.get("overly_permissive_rules") or [])
                     if isinstance(rule, dict)
                 ],
                 "total_resources": len(resources),
