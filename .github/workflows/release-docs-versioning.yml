@@ -144,9 +144,13 @@ jobs:
             # Snapshot the docs as they were at that release's tag (docs/ now holds the
             # new release), then put the new release's docs back.
             if git rev-parse -q --verify "refs/tags/v$ARCHIVE_VERSION" >/dev/null; then
+              # Start from an empty docs/ so files renamed since the tag (index.md vs
+              # index.mdx) cannot end up in the snapshot twice.
+              rm -rf ../docs
               git checkout "v$ARCHIVE_VERSION" -- ../docs sidebars.ts sidebars.js
             fi
             npm run docusaurus -- docs:version "$ARCHIVE_VERSION"
+            rm -rf ../docs
             git checkout HEAD -- ../docs sidebars.ts sidebars.js
             
             # Verify the version was created
