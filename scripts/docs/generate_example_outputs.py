@@ -391,7 +391,31 @@ def normalise(text: str, workdir: Optional[Path] = None) -> str:
         r"20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(\+00:00|Z)?", FIXED_ISO, text
     )
     text = re.sub(r"20\d\d-\d\d-\d\d \d\d:\d\d UTC", FIXED_HUMAN, text)
+    # The missing-module name depends on which Google packages are installed.
+    text = re.sub(
+        r"(libraries that are not installed \()google(?:\.[\w.]+)?(\))",
+        r"\1google.auth\2",
+        text,
+    )
     return text
+
+
+def stable_zip(src: Path, dest: Path) -> None:
+    """Copy an Office file with fixed entry times and fixed dates in its
+    document properties, so a re-run produces the same bytes."""
+    import zipfile
+
+    with zipfile.ZipFile(src) as zin, zipfile.ZipFile(
+        dest, "w", zipfile.ZIP_DEFLATED
+    ) as zout:
+        for info in zin.infolist():
+            data = zin.read(info.filename)
+            if info.filename.endswith(".xml"):
+                data = normalise(data.decode("utf-8")).encode("utf-8")
+            new = zipfile.ZipInfo(info.filename, date_time=(2026, 11, 12, 9, 0, 0))
+            new.compress_type = zipfile.ZIP_DEFLATED
+            new.external_attr = info.external_attr
+            zout.writestr(new, data)
 
 
 def run_cli(
@@ -721,6 +745,8 @@ def publish_download(src: Path, name: str) -> Optional[Path]:
     dest.parent.mkdir(parents=True, exist_ok=True)
     if src.suffix == ".json":
         dest.write_text(normalise(src.read_text()))
+    elif src.suffix in (".xlsx", ".docx"):
+        stable_zip(src, dest)
     else:
         shutil.copy(src, dest)
     return dest
