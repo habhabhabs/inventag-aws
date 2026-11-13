@@ -94,6 +94,7 @@ def test_setup_cross_account_roles_uses_least_privilege_policy(monkeypatch):
             role_name="InvenTagReadOnly",
             trusted_account_id="210987654321",
             external_id="ext-id-123",
+            allow_iam_writes=True,
         )
         assert results["123456789012"]["success"], results
         assert (
@@ -128,9 +129,12 @@ def test_setup_cross_account_roles_rejects_bad_input():
     manager = CredentialManager(use_keyring=False)
     with pytest.raises(InvalidRoleError):
         manager.setup_cross_account_roles(
-            [], role_name="bad name!", trusted_account_id="123456789012"
+            [],
+            role_name="bad name!",
+            trusted_account_id="123456789012",
+            allow_iam_writes=True,
         )
     with pytest.raises(ValueError):
         manager.setup_cross_account_roles(
-            [], role_name="Ok", trusted_account_id="12345"
+            [], role_name="Ok", trusted_account_id="12345", allow_iam_writes=True
         )

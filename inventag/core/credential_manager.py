@@ -40,6 +40,7 @@ from ..security.arn import (
     validate_role_name,
 )
 from ..security.iam_policy import build_read_only_policy
+from ..security.read_only_guard import ReadOnlyViolationError
 from ..security.redaction import register_secrets
 from ..security.safe_output import open_private
 
@@ -497,20 +498,44 @@ class CredentialManager:
         role_name: str = "InvenTagCrossAccountRole",
         trusted_account_id: Optional[str] = None,
         external_id: Optional[str] = None,
+        *,
+        allow_iam_writes: bool = False,
     ) -> Dict[str, Any]:
         """
-        Setup cross-account roles for centralized scanning.
+        Create cross-account roles for centralized scanning.
+
+        THIS WRITES TO AWS: in each account it calls iam:CreateRole,
+        iam:CreatePolicy and iam:AttachRolePolicy. InvenTag itself is read-only
+        and no CLI path calls this method. It refuses to run unless the caller
+        passes ``allow_iam_writes=True``, and under the read-only guard (every
+        CLI run) the IAM calls are blocked even then.
 
         Args:
             accounts: List of target accounts
             role_name: Name of the cross-account role to create
             trusted_account_id: Account ID that can assume the role
             external_id: External ID for additional security
+            allow_iam_writes: must be True; confirms that the caller wants
+                IAM roles and policies created
 
         Returns:
             Dictionary with setup results for each account
+
+        Raises:
+            ReadOnlyViolationError: ``allow_iam_writes`` is not True.
         """
-        self.logger.info(f"Setting up cross-account roles: {role_name}")
+        if allow_iam_writes is not True:
+            raise ReadOnlyViolationError(
+                "iam",
+                "CreateRole",
+                "setup_cross_account_roles() creates IAM roles and policies; "
+                "pass allow_iam_writes=True to confirm, with credentials that "
+                "may write to IAM and without the read-only guard installed",
+            )
+        self.logger.warning(
+            f"Writing to AWS: creating IAM role {role_name} and its policy "
+            f"in {len(accounts)} account(s)"
+        )
         validate_role_name(role_name)
 
         partition = "aws"
