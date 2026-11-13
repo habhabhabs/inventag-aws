@@ -918,17 +918,27 @@ jobs:
           
           echo "Build validation completed"
 
-      # Playwright itself comes from website/package-lock.json (npm ci above).
-      # This step adds the matching Chromium build and its system libraries.
+      # Playwright is deliberately not a dependency of the site (the browsers add
+      # ~200 MB), so install it here without touching package.json, then add the
+      # matching Chromium build and its system libraries.
       - name: Install Chromium for the accessibility checks
         working-directory: ./website
-        run: npx playwright install --with-deps chromium
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.60.0
+          npx playwright install --with-deps chromium
 
-      # axe-core at 320, 768, 1024 and 1440px in the light and the dark theme.
+      # axe-core at 320, 390, 768 and 1440px in the light and the dark theme.
       # Fails on any WCAG 2.1 A/AA violation; a failure here stops the deploy.
+      # The checker needs the built site served the way GitHub Pages serves it.
       - name: Check accessibility (axe-core, 4 widths, 2 themes)
         working-directory: ./website
-        run: npm run check:a11y
+        run: |
+          npm run serve:pages -- --port 4173 > serve.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS -o /dev/null http://localhost:4173/inventag-aws/ && break
+            sleep 1
+          done
+          npm run check:a11y -- --base http://localhost:4173/inventag-aws
 
       - name: Upload accessibility report
         if: always()

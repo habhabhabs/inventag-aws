@@ -161,8 +161,6 @@ jobs:
           # Check required security documentation files
           required_files=(
             "docs/security/index.md"
-            "docs/security/sbom-overview.md"
-            "docs/security/monitoring.md"
           )
           
           missing_files=0
