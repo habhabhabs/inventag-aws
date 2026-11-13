@@ -64,7 +64,9 @@ def test_pipeline_end_to_end(aws, tmp_path):
     try:
         integration = CICDIntegration(
             s3_config=S3UploadConfig(bucket_name="reports", key_prefix="ci"),
-            compliance_gate_config=ComplianceGateConfig(minimum_compliance_percentage=0),
+            compliance_gate_config=ComplianceGateConfig(
+                minimum_compliance_percentage=0
+            ),
             artifacts_dir=str(tmp_path / "artifacts"),
         )
         result = integration.execute_pipeline_integration(
@@ -85,7 +87,10 @@ def test_pipeline_end_to_end(aws, tmp_path):
     keys = [o["Key"] for o in aws.list_objects_v2(Bucket="reports")["Contents"]]
     assert len(keys) == 2 and all(k.startswith("ci/") for k in keys)
     for key in keys:
-        assert aws.head_object(Bucket="reports", Key=key)["ServerSideEncryption"] == "AES256"
+        assert (
+            aws.head_object(Bucket="reports", Key=key)["ServerSideEncryption"]
+            == "AES256"
+        )
 
     summary = json.loads((tmp_path / "artifacts" / "pipeline_summary.json").read_text())
     assert summary["success"] is True and summary["s3_uploads"] == 2

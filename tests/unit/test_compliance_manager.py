@@ -39,7 +39,9 @@ class TestComplianceManager(unittest.TestCase):
         """Test compliance manager initialization."""
         self.assertIsNotNone(self.manager.security_validator)
         self.assertIsNotNone(self.manager.production_monitor)
-        self.assertEqual(self.manager.config.compliance_standard, ComplianceStandard.GENERAL)
+        self.assertEqual(
+            self.manager.config.compliance_standard, ComplianceStandard.GENERAL
+        )
 
     def test_initialization_with_disabled_components(self):
         """Test initialization with disabled components."""
@@ -174,7 +176,9 @@ class TestComplianceManager(unittest.TestCase):
             self.manager.cleanup_audit_logs(retention_days=30)
 
             # Should have fewer entries after cleanup
-            self.assertLessEqual(len(self.manager.security_validator.audit_entries), initial_count)
+            self.assertLessEqual(
+                len(self.manager.security_validator.audit_entries), initial_count
+            )
 
     def test_get_compliance_dashboard_data(self):
         """Test compliance dashboard data generation."""

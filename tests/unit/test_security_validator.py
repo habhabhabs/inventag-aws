@@ -42,10 +42,14 @@ class TestReadOnlyAccessValidator(unittest.TestCase):
         self.assertEqual(result, OperationType.READ_ONLY)
 
         # Test pattern-based read-only operations
-        result = self.validator._classify_operation("unknown_service", "describe_something")
+        result = self.validator._classify_operation(
+            "unknown_service", "describe_something"
+        )
         self.assertEqual(result, OperationType.READ_ONLY)
 
-        result = self.validator._classify_operation("unknown_service", "get_configuration")
+        result = self.validator._classify_operation(
+            "unknown_service", "get_configuration"
+        )
         self.assertEqual(result, OperationType.READ_ONLY)
 
     def test_classify_mutating_operation(self):
@@ -62,7 +66,9 @@ class TestReadOnlyAccessValidator(unittest.TestCase):
 
     def test_classify_unknown_operation(self):
         """Test classification of unknown operations."""
-        result = self.validator._classify_operation("unknown_service", "unknown_operation")
+        result = self.validator._classify_operation(
+            "unknown_service", "unknown_operation"
+        )
         self.assertEqual(result, OperationType.UNKNOWN)
 
     def test_validate_read_only_operation(self):
@@ -96,15 +102,21 @@ class TestReadOnlyAccessValidator(unittest.TestCase):
     def test_assess_risk_level(self):
         """Test risk level assessment."""
         # High risk for mutating operations
-        risk = self.validator._assess_risk_level(OperationType.MUTATING, "ec2", "create_instance")
+        risk = self.validator._assess_risk_level(
+            OperationType.MUTATING, "ec2", "create_instance"
+        )
         self.assertEqual(risk, "HIGH")
 
         # Medium risk for unknown operations
-        risk = self.validator._assess_risk_level(OperationType.UNKNOWN, "unknown", "unknown_op")
+        risk = self.validator._assess_risk_level(
+            OperationType.UNKNOWN, "unknown", "unknown_op"
+        )
         self.assertEqual(risk, "MEDIUM")
 
         # Medium risk for IAM/STS even if read-only
-        risk = self.validator._assess_risk_level(OperationType.READ_ONLY, "iam", "list_users")
+        risk = self.validator._assess_risk_level(
+            OperationType.READ_ONLY, "iam", "list_users"
+        )
         self.assertEqual(risk, "MEDIUM")
 
         # Low risk for normal read-only operations
@@ -162,7 +174,9 @@ class TestReadOnlyAccessValidator(unittest.TestCase):
         # Add some test audit entries
         self.validator.validate_operation("ec2", "describe_instances")
         self.validator.validate_operation("s3", "list_buckets")
-        self.validator.validate_operation("ec2", "create_instance")  # This should be blocked
+        self.validator.validate_operation(
+            "ec2", "create_instance"
+        )  # This should be blocked
 
         report = self.validator.generate_compliance_report()
 
@@ -212,7 +226,9 @@ class TestReadOnlyAccessValidator(unittest.TestCase):
         self.assertEqual(identity_type, "ASSUMED_ROLE")
 
         # Test root user
-        identity_type = self.validator._determine_identity_type("arn:aws:iam::123456789012:root")
+        identity_type = self.validator._determine_identity_type(
+            "arn:aws:iam::123456789012:root"
+        )
         self.assertEqual(identity_type, "ROOT_USER")
 
     def test_blocked_operations_tracking(self):
@@ -237,7 +253,9 @@ class TestReadOnlyAccessValidator(unittest.TestCase):
         report_dict = report.__dict__.copy()
 
         # Convert datetime objects to strings for JSON serialization
-        report_dict["generation_timestamp"] = report_dict["generation_timestamp"].isoformat()
+        report_dict["generation_timestamp"] = report_dict[
+            "generation_timestamp"
+        ].isoformat()
         for entry in report_dict["audit_entries"]:
             entry.timestamp = entry.timestamp.isoformat()
 

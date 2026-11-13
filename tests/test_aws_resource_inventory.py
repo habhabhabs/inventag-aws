@@ -88,7 +88,9 @@ class TestAWSResourceInventory:
         # Configure EC2 mock responses
         mock_clients["ec2"].describe_instances.return_value = {"Reservations": []}
         mock_clients["ec2"].describe_volumes.return_value = {"Volumes": []}
-        mock_clients["ec2"].describe_security_groups.return_value = {"SecurityGroups": []}
+        mock_clients["ec2"].describe_security_groups.return_value = {
+            "SecurityGroups": []
+        }
         mock_clients["ec2"].describe_vpcs.return_value = {"Vpcs": []}
         mock_clients["ec2"].describe_subnets.return_value = {"Subnets": []}
 

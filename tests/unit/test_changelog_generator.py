@@ -147,10 +147,14 @@ class TestChangelogGenerator:
         assert changelog.summary.total_changes == 2
         assert len(changelog.sections) > 0
 
-    def test_generate_changelog_with_custom_title(self, changelog_generator, sample_delta_report):
+    def test_generate_changelog_with_custom_title(
+        self, changelog_generator, sample_delta_report
+    ):
         """Test changelog generation with custom title"""
         custom_title = "Custom Infrastructure Changes Report"
-        changelog = changelog_generator.generate_changelog(sample_delta_report, title=custom_title)
+        changelog = changelog_generator.generate_changelog(
+            sample_delta_report, title=custom_title
+        )
 
         assert changelog.title == custom_title
 
@@ -173,7 +177,9 @@ class TestChangelogGenerator:
     def test_create_changelog_entry(self, changelog_generator, sample_resource_change):
         """Test creation of individual changelog entry"""
         timestamp = datetime.now(timezone.utc).isoformat()
-        entry = changelog_generator._create_changelog_entry(sample_resource_change, timestamp)
+        entry = changelog_generator._create_changelog_entry(
+            sample_resource_change, timestamp
+        )
 
         assert isinstance(entry, ChangelogEntry)
         assert entry.resource_arn == sample_resource_change.resource_arn
@@ -194,22 +200,32 @@ class TestChangelogGenerator:
         assert "EC2" in summary
         assert "modified" in summary.lower()
 
-    def test_generate_change_description(self, changelog_generator, sample_resource_change):
+    def test_generate_change_description(
+        self, changelog_generator, sample_resource_change
+    ):
         """Test detailed change description generation"""
-        description = changelog_generator._generate_change_description(sample_resource_change)
+        description = changelog_generator._generate_change_description(
+            sample_resource_change
+        )
 
         assert "Instance" in description
         assert "EC2" in description
         assert "modified" in description
         assert "attribute modification" in description
 
-    def test_determine_primary_category(self, changelog_generator, sample_resource_change):
+    def test_determine_primary_category(
+        self, changelog_generator, sample_resource_change
+    ):
         """Test primary category determination"""
-        category = changelog_generator._determine_primary_category(sample_resource_change)
+        category = changelog_generator._determine_primary_category(
+            sample_resource_change
+        )
 
         assert category == ChangeCategory.SECURITY
 
-    def test_generate_impact_assessment(self, changelog_generator, sample_resource_change):
+    def test_generate_impact_assessment(
+        self, changelog_generator, sample_resource_change
+    ):
         """Test impact assessment generation"""
         impact = changelog_generator._generate_impact_assessment(sample_resource_change)
 
@@ -217,7 +233,9 @@ class TestChangelogGenerator:
         assert "Security Impact" in impact
         assert "Network Impact" in impact
 
-    def test_collect_technical_details(self, changelog_generator, sample_resource_change):
+    def test_collect_technical_details(
+        self, changelog_generator, sample_resource_change
+    ):
         """Test technical details collection"""
         details = changelog_generator._collect_technical_details(sample_resource_change)
 
@@ -231,7 +249,9 @@ class TestChangelogGenerator:
         assert attr_change["category"] == "security"
         assert attr_change["severity"] == "high"
 
-    def test_generate_remediation_steps(self, changelog_generator, sample_resource_change):
+    def test_generate_remediation_steps(
+        self, changelog_generator, sample_resource_change
+    ):
         """Test remediation steps generation"""
         steps = changelog_generator._generate_remediation_steps(sample_resource_change)
 
@@ -252,7 +272,9 @@ class TestChangelogGenerator:
         assert "S3" in summary.changes_by_service
         assert len(summary.most_impacted_services) <= 5
 
-    def test_organize_entries_by_service(self, changelog_generator, sample_delta_report):
+    def test_organize_entries_by_service(
+        self, changelog_generator, sample_delta_report
+    ):
         """Test organizing entries by service"""
         changelog_generator.group_by_service = True
         entries = changelog_generator._convert_delta_to_entries(sample_delta_report)
@@ -271,7 +293,9 @@ class TestChangelogGenerator:
             assert "modified" in section.summary_stats
             assert "removed" in section.summary_stats
 
-    def test_organize_entries_by_severity(self, changelog_generator, sample_delta_report):
+    def test_organize_entries_by_severity(
+        self, changelog_generator, sample_delta_report
+    ):
         """Test organizing entries by severity"""
         changelog_generator.group_by_service = False
         entries = changelog_generator._convert_delta_to_entries(sample_delta_report)
@@ -318,7 +342,9 @@ class TestChangelogGenerator:
             )
             historical_reports.append(report)
 
-        trend_analysis = changelog_generator._generate_trend_analysis(historical_reports)
+        trend_analysis = changelog_generator._generate_trend_analysis(
+            historical_reports
+        )
 
         assert isinstance(trend_analysis, TrendAnalysis)
         assert trend_analysis.total_periods == 3
@@ -333,7 +359,9 @@ class TestChangelogGenerator:
         """Test Markdown formatting"""
         changelog = changelog_generator.generate_changelog(sample_delta_report)
 
-        output_file = changelog_generator.format_changelog(changelog, ChangelogFormat.MARKDOWN)
+        output_file = changelog_generator.format_changelog(
+            changelog, ChangelogFormat.MARKDOWN
+        )
 
         assert Path(output_file).exists()
         assert output_file.endswith(".markdown")
@@ -349,11 +377,15 @@ class TestChangelogGenerator:
         assert "EC2" in content
         assert "S3" in content
 
-    def test_format_changelog_html(self, changelog_generator, sample_delta_report, temp_output_dir):
+    def test_format_changelog_html(
+        self, changelog_generator, sample_delta_report, temp_output_dir
+    ):
         """Test HTML formatting"""
         changelog = changelog_generator.generate_changelog(sample_delta_report)
 
-        output_file = changelog_generator.format_changelog(changelog, ChangelogFormat.HTML)
+        output_file = changelog_generator.format_changelog(
+            changelog, ChangelogFormat.HTML
+        )
 
         assert Path(output_file).exists()
         assert output_file.endswith(".html")
@@ -367,11 +399,15 @@ class TestChangelogGenerator:
         assert "severity-high" in content
         assert "severity-medium" in content
 
-    def test_format_changelog_json(self, changelog_generator, sample_delta_report, temp_output_dir):
+    def test_format_changelog_json(
+        self, changelog_generator, sample_delta_report, temp_output_dir
+    ):
         """Test JSON formatting"""
         changelog = changelog_generator.generate_changelog(sample_delta_report)
 
-        output_file = changelog_generator.format_changelog(changelog, ChangelogFormat.JSON)
+        output_file = changelog_generator.format_changelog(
+            changelog, ChangelogFormat.JSON
+        )
 
         assert Path(output_file).exists()
         assert output_file.endswith(".json")
@@ -385,11 +421,15 @@ class TestChangelogGenerator:
         assert "sections" in data
         assert len(data["sections"]) > 0
 
-    def test_format_changelog_yaml(self, changelog_generator, sample_delta_report, temp_output_dir):
+    def test_format_changelog_yaml(
+        self, changelog_generator, sample_delta_report, temp_output_dir
+    ):
         """Test YAML formatting"""
         changelog = changelog_generator.generate_changelog(sample_delta_report)
 
-        output_file = changelog_generator.format_changelog(changelog, ChangelogFormat.YAML)
+        output_file = changelog_generator.format_changelog(
+            changelog, ChangelogFormat.YAML
+        )
 
         assert Path(output_file).exists()
         assert output_file.endswith(".yaml")
@@ -408,7 +448,9 @@ class TestChangelogGenerator:
         """Test PDF formatting (falls back to HTML)"""
         changelog = changelog_generator.generate_changelog(sample_delta_report)
 
-        output_file = changelog_generator.format_changelog(changelog, ChangelogFormat.PDF)
+        output_file = changelog_generator.format_changelog(
+            changelog, ChangelogFormat.PDF
+        )
 
         # Should create HTML file instead
         assert Path(output_file).exists()
@@ -439,7 +481,9 @@ class TestChangelogGenerator:
         assert "## Change Summary" in content
         assert "| Total Changes |" in content
 
-    def test_generate_bom_section_content(self, changelog_generator, sample_delta_report):
+    def test_generate_bom_section_content(
+        self, changelog_generator, sample_delta_report
+    ):
         """Test BOM section content generation"""
         changelog = changelog_generator.generate_changelog(sample_delta_report)
         content = changelog_generator._generate_bom_section_content(changelog)
@@ -497,7 +541,9 @@ class TestChangelogGenerator:
         assert entry.compliance_impact is not None
         assert "compliant" in entry.compliance_impact
 
-    def test_changelog_with_trend_analysis(self, changelog_generator, sample_delta_report):
+    def test_changelog_with_trend_analysis(
+        self, changelog_generator, sample_delta_report
+    ):
         """Test changelog generation with trend analysis"""
         # Create historical reports
         historical_reports = [sample_delta_report]
@@ -512,14 +558,18 @@ class TestChangelogGenerator:
         assert changelog.trend_analysis.change_velocity >= 0
         assert len(changelog.trend_analysis.most_active_services) > 0
 
-    def test_error_handling_invalid_format(self, changelog_generator, sample_delta_report):
+    def test_error_handling_invalid_format(
+        self, changelog_generator, sample_delta_report
+    ):
         """Test error handling for invalid format"""
         changelog = changelog_generator.generate_changelog(sample_delta_report)
 
         with pytest.raises(ValueError, match="Unsupported format"):
             changelog_generator.format_changelog(changelog, "invalid_format")
 
-    def test_changelog_without_technical_details(self, temp_output_dir, sample_delta_report):
+    def test_changelog_without_technical_details(
+        self, temp_output_dir, sample_delta_report
+    ):
         """Test changelog generation without technical details"""
         generator = ChangelogGenerator(
             output_dir=temp_output_dir,
@@ -644,7 +694,9 @@ class TestChangelogIntegration:
         )
 
         # Generate changelog
-        changelog = generator.generate_changelog(delta_report, title="Test Infrastructure Changes")
+        changelog = generator.generate_changelog(
+            delta_report, title="Test Infrastructure Changes"
+        )
 
         # Verify changelog structure
         assert changelog.title == "Test Infrastructure Changes"

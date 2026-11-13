@@ -444,7 +444,9 @@ class TestStateManager:
         assert snapshot is not None
         assert len(snapshot.resources) == 2
 
-    def test_error_handling_invalid_export_format(self, state_manager, sample_resources):
+    def test_error_handling_invalid_export_format(
+        self, state_manager, sample_resources
+    ):
         """Test error handling for invalid export format"""
         state_id = state_manager.save_state(
             resources=sample_resources, account_id="123456789012", regions=["us-east-1"]
@@ -461,7 +463,9 @@ class TestStateManager:
     def test_error_handling_comparison_nonexistent_state(self, state_manager):
         """Test error handling when comparing non-existent states"""
         with pytest.raises(ValueError, match="One or both states not found"):
-            state_manager.get_state_comparison_data("20230101_120000", "20230101_130000")
+            state_manager.get_state_comparison_data(
+                "20230101_120000", "20230101_130000"
+            )
 
 
 if __name__ == "__main__":

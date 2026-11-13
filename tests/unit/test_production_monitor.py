@@ -39,44 +39,62 @@ class TestProductionSafetyMonitor(unittest.TestCase):
     def test_assess_error_severity_critical(self):
         """Test critical error severity assessment."""
         error = NoCredentialsError()
-        severity = self.monitor._assess_error_severity(error, "describe_instances", "ec2")
+        severity = self.monitor._assess_error_severity(
+            error, "describe_instances", "ec2"
+        )
         self.assertEqual(severity, ErrorSeverity.CRITICAL)
 
     def test_assess_error_severity_high(self):
         """Test high error severity assessment."""
         error = ClientError(
-            error_response={"Error": {"Code": "AccessDenied", "Message": "Access denied"}},
+            error_response={
+                "Error": {"Code": "AccessDenied", "Message": "Access denied"}
+            },
             operation_name="DescribeInstances",
         )
-        severity = self.monitor._assess_error_severity(error, "describe_instances", "ec2")
+        severity = self.monitor._assess_error_severity(
+            error, "describe_instances", "ec2"
+        )
         self.assertEqual(severity, ErrorSeverity.HIGH)
 
     def test_assess_error_severity_medium(self):
         """Test medium error severity assessment."""
         error = ClientError(
-            error_response={"Error": {"Code": "Throttling", "Message": "Rate exceeded"}},
+            error_response={
+                "Error": {"Code": "Throttling", "Message": "Rate exceeded"}
+            },
             operation_name="DescribeInstances",
         )
-        severity = self.monitor._assess_error_severity(error, "describe_instances", "ec2")
+        severity = self.monitor._assess_error_severity(
+            error, "describe_instances", "ec2"
+        )
         self.assertEqual(severity, ErrorSeverity.MEDIUM)
 
     def test_assess_user_impact(self):
         """Test user impact assessment."""
         # Critical impact
-        impact = self.monitor._assess_user_impact(ErrorSeverity.CRITICAL, "describe_instances")
+        impact = self.monitor._assess_user_impact(
+            ErrorSeverity.CRITICAL, "describe_instances"
+        )
         self.assertIn("High", impact)
         self.assertIn("user intervention required", impact)
 
         # High impact
-        impact = self.monitor._assess_user_impact(ErrorSeverity.HIGH, "describe_instances")
+        impact = self.monitor._assess_user_impact(
+            ErrorSeverity.HIGH, "describe_instances"
+        )
         self.assertIn("Medium", impact)
 
         # Medium impact
-        impact = self.monitor._assess_user_impact(ErrorSeverity.MEDIUM, "describe_instances")
+        impact = self.monitor._assess_user_impact(
+            ErrorSeverity.MEDIUM, "describe_instances"
+        )
         self.assertIn("Low", impact)
 
         # Low impact
-        impact = self.monitor._assess_user_impact(ErrorSeverity.LOW, "describe_instances")
+        impact = self.monitor._assess_user_impact(
+            ErrorSeverity.LOW, "describe_instances"
+        )
         self.assertIn("Minimal", impact)
 
     def test_handle_error_creates_context(self):
@@ -116,7 +134,9 @@ class TestProductionSafetyMonitor(unittest.TestCase):
         for i in range(6):
             self.monitor.handle_error(error, "test_operation", "test_service")
 
-        breaker_state = self.monitor.circuit_breaker_state["test_service:test_operation"]
+        breaker_state = self.monitor.circuit_breaker_state[
+            "test_service:test_operation"
+        ]
         self.assertEqual(breaker_state["state"], "open")
         self.assertEqual(breaker_state["failures"], 6)
 
@@ -243,7 +263,9 @@ class TestProductionSafetyMonitor(unittest.TestCase):
         self.monitor.handle_error(error, "test_operation", "test_service")
         self.monitor.record_operation("test_operation", "test_service", 1.0, True)
 
-        report = self.monitor.generate_security_validation_report(validation_period_hours=1)
+        report = self.monitor.generate_security_validation_report(
+            validation_period_hours=1
+        )
 
         self.assertIsInstance(report, SecurityValidationReport)
         self.assertIsNotNone(report.report_id)
@@ -294,7 +316,9 @@ class TestProductionSafetyMonitor(unittest.TestCase):
     def test_graceful_degradation_s3_upload(self):
         """Test graceful degradation for S3 upload failures."""
         error = ClientError(
-            error_response={"Error": {"Code": "NoSuchBucket", "Message": "Bucket not found"}},
+            error_response={
+                "Error": {"Code": "NoSuchBucket", "Message": "Bucket not found"}
+            },
             operation_name="PutObject",
         )
 
@@ -323,7 +347,9 @@ class TestProductionSafetyMonitor(unittest.TestCase):
 
         # Should have triggered threshold alert (logged as critical)
         # This is tested indirectly through the error history length
-        self.assertGreaterEqual(len(self.monitor.error_history), self.monitor.error_threshold)
+        self.assertGreaterEqual(
+            len(self.monitor.error_history), self.monitor.error_threshold
+        )
 
     def test_performance_metric_creation(self):
         """Test performance metric creation."""

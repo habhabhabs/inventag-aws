@@ -65,7 +65,9 @@ class TestS3Handler:
         # Mock encryption response
         mock_s3_client.get_bucket_encryption.return_value = {
             "ServerSideEncryptionConfiguration": {
-                "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
+                "Rules": [
+                    {"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}
+                ]
             }
         }
 
@@ -73,7 +75,9 @@ class TestS3Handler:
         mock_s3_client.get_bucket_versioning.return_value = {"Status": "Enabled"}
 
         # Mock location response
-        mock_s3_client.get_bucket_location.return_value = {"LocationConstraint": "us-west-2"}
+        mock_s3_client.get_bucket_location.return_value = {
+            "LocationConstraint": "us-west-2"
+        }
 
         # Mock lifecycle response
         mock_s3_client.get_bucket_lifecycle_configuration.return_value = {
@@ -297,7 +301,9 @@ class TestEC2Handler:
             "PrivateDnsName": "ip-10-0-1-100.ec2.internal",
             "PublicDnsName": "ec2-54-123-45-67.compute-1.amazonaws.com",
             "SecurityGroups": [{"GroupId": "sg-12345678"}],
-            "IamInstanceProfile": {"Arn": "arn:aws:iam::123456789012:instance-profile/test-role"},
+            "IamInstanceProfile": {
+                "Arn": "arn:aws:iam::123456789012:instance-profile/test-role"
+            },
             "Monitoring": {"State": "disabled"},
             "SourceDestCheck": True,
             "EbsOptimized": False,
@@ -310,14 +316,18 @@ class TestEC2Handler:
             ],
             "NetworkInterfaces": [{"NetworkInterfaceId": "eni-12345678"}],
             "CpuOptions": {"CoreCount": 1, "ThreadsPerCore": 2},
-            "CapacityReservationSpecification": {"CapacityReservationPreference": "open"},
+            "CapacityReservationSpecification": {
+                "CapacityReservationPreference": "open"
+            },
             "HibernationOptions": {"Configured": False},
             "MetadataOptions": {"State": "applied", "HttpTokens": "optional"},
             "EnclaveOptions": {"Enabled": False},
         }
 
         with patch.object(self.handler, "_safe_api_call") as mock_safe_call:
-            mock_safe_call.return_value = {"Reservations": [{"Instances": [mock_instance]}]}
+            mock_safe_call.return_value = {
+                "Reservations": [{"Instances": [mock_instance]}]
+            }
 
             result = self.handler.enrich_resource(resource)
 
@@ -485,7 +495,9 @@ class TestECSHandler:
             "activeServicesCount": 3,
             "statistics": [{"name": "runningTasksCount", "value": "5"}],
             "capacityProviders": ["FARGATE", "EC2"],
-            "defaultCapacityProviderStrategy": [{"capacityProvider": "FARGATE", "weight": 1}],
+            "defaultCapacityProviderStrategy": [
+                {"capacityProvider": "FARGATE", "weight": 1}
+            ],
             "attachments": [],
             "settings": [{"name": "containerInsights", "value": "enabled"}],
             "configuration": {"executeCommandConfiguration": {"logging": "DEFAULT"}},
@@ -535,7 +547,9 @@ class TestEKSHandler:
             },
             "kubernetesNetworkConfig": {"serviceIpv4Cidr": "10.100.0.0/16"},
             "logging": {"clusterLogging": [{"types": ["api"], "enabled": True}]},
-            "identity": {"oidc": {"issuer": "https://oidc.eks.us-east-1.amazonaws.com/id/test"}},
+            "identity": {
+                "oidc": {"issuer": "https://oidc.eks.us-east-1.amazonaws.com/id/test"}
+            },
             "status": "ACTIVE",
             "certificateAuthority": {"data": "LS0tLS1CRUdJTi..."},
             "clientRequestToken": "test-token",

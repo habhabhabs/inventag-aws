@@ -223,7 +223,9 @@ class TestServiceDescriptionManager:
     def test_load_descriptions_from_json_file(self):
         """Test loading descriptions from JSON file."""
         config_data = {
-            "service_descriptions": {"S3": {"default": {"description": "Custom S3 description"}}}
+            "service_descriptions": {
+                "S3": {"default": {"description": "Custom S3 description"}}
+            }
         }
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
@@ -254,7 +256,9 @@ class TestServiceDescriptionManager:
         ]
 
         for config_data in invalid_configs:
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".json", delete=False
+            ) as f:
                 json.dump(config_data, f)
                 temp_path = f.name
 
@@ -360,7 +364,9 @@ class TestServiceDescriptionManager:
         """Test reloading descriptions from file."""
         # Create initial config
         config_data = {
-            "service_descriptions": {"EC2": {"default": {"description": "Initial description"}}}
+            "service_descriptions": {
+                "EC2": {"default": {"description": "Initial description"}}
+            }
         }
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
@@ -375,7 +381,9 @@ class TestServiceDescriptionManager:
 
             # Update config file
             updated_config = {
-                "service_descriptions": {"EC2": {"default": {"description": "Updated description"}}}
+                "service_descriptions": {
+                    "EC2": {"default": {"description": "Updated description"}}
+                }
             }
 
             with open(temp_path, "w") as f:
@@ -459,7 +467,9 @@ class TestServiceDescriptionManager:
         """Test checking for custom descriptions."""
         # Load custom config
         config_data = {
-            "service_descriptions": {"EC2": {"default": {"description": "Custom EC2 description"}}}
+            "service_descriptions": {
+                "EC2": {"default": {"description": "Custom EC2 description"}}
+            }
         }
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:

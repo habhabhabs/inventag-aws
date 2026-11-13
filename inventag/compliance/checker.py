@@ -20,14 +20,29 @@ from ..security.safe_output import open_private
 
 class ComprehensiveTagComplianceChecker:
     def __init__(
-        self, regions: Optional[List[str]] = None, config_file: Optional[str] = None
+        self,
+        regions: Optional[List[str]] = None,
+        config_file: Optional[str] = None,
+        session: Optional[boto3.Session] = None,
+        policy: Optional[Dict[str, Any]] = None,
     ):
-        """Initialize the Comprehensive Tag Compliance Checker."""
-        self.session = boto3.Session()
+        """Initialize the Comprehensive Tag Compliance Checker.
+
+        Args:
+            regions: regions to scan when discovering resources itself
+            config_file: tag policy file (YAML/JSON)
+            session: boto3 session to use (default: default credentials)
+            policy: tag policy as a dict (instead of config_file)
+        """
+        self.session = session or boto3.Session()
         self.logger = self._setup_logging()
         self.regions = regions or self._get_available_regions()
         self.config_file = config_file
-        self.tag_policy = self._load_tag_policy()
+        self.tag_policy = (
+            self._validate_tag_policy(policy)
+            if policy is not None
+            else self._load_tag_policy()
+        )
         self.all_resources = []
         self.compliance_results = {
             "compliant": [],
@@ -83,21 +98,8 @@ class ComprehensiveTagComplianceChecker:
                     except json.JSONDecodeError:
                         config = yaml.safe_load(content)
 
-            # Validate configuration structure
-            if "required_tags" not in config:
-                raise ValueError("Configuration must contain 'required_tags' section")
-
-            if not isinstance(config["required_tags"], list):
-                raise ValueError("'required_tags' must be a list")
-
-            if len(config["required_tags"]) == 0:
-                print(
-                    "WARNING: Configuration file contains no required tags. Consider adding at least 1 required tag key."
-                )
-
+            config = self._validate_tag_policy(config)
             self.logger.info(f"Loaded tag policy from {self.config_file}")
-            self.logger.info(f"Required tags: {len(config['required_tags'])}")
-
             return config
 
         except FileNotFoundError:
@@ -106,6 +108,22 @@ class ComprehensiveTagComplianceChecker:
         except Exception as e:
             self.logger.error(f"Error loading configuration: {e}")
             raise
+
+    def _validate_tag_policy(self, config: Any) -> Dict[str, Any]:
+        """Check a tag policy has a list of required tags."""
+        if not isinstance(config, dict):
+            raise ValueError("Tag policy must be a mapping")
+        if "required_tags" not in config:
+            raise ValueError("Configuration must contain 'required_tags' section")
+        if not isinstance(config["required_tags"], list):
+            raise ValueError("'required_tags' must be a list")
+        if len(config["required_tags"]) == 0:
+            self.logger.warning(
+                "Tag policy contains no required tags; only untagged resources "
+                "will be reported. Consider adding at least 1 required tag key."
+            )
+        self.logger.info(f"Required tags: {len(config['required_tags'])}")
+        return config
 
     def discover_all_resources(self) -> List[Dict[str, Any]]:
         """Discover ALL AWS resources using Resource Groups Tagging API and other comprehensive methods."""

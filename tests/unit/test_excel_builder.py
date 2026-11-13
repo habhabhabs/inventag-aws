@@ -239,7 +239,9 @@ class TestExcelWorkbookBuilder(unittest.TestCase):
             if found_compliance_overview:
                 break
 
-        self.assertTrue(found_compliance_overview, "Compliance Overview section not found")
+        self.assertTrue(
+            found_compliance_overview, "Compliance Overview section not found"
+        )
 
     @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_service_sheets_content(self):
@@ -396,7 +398,9 @@ class TestExcelWorkbookBuilder(unittest.TestCase):
         self.assertGreater(len(findings), 0)
 
         # Should include compliance finding
-        compliance_finding = any("compliance rate" in finding.lower() for finding in findings)
+        compliance_finding = any(
+            "compliance rate" in finding.lower() for finding in findings
+        )
         self.assertTrue(compliance_finding, "Compliance finding not generated")
 
         # Should include security finding (we have high risk rules)
@@ -416,7 +420,9 @@ class TestExcelWorkbookBuilder(unittest.TestCase):
 
         branded_wb = builder.apply_branding(wb)
 
-        self.assertEqual(branded_wb.properties.title, "Test Corporation - Cloud BOM Report")
+        self.assertEqual(
+            branded_wb.properties.title, "Test Corporation - Cloud BOM Report"
+        )
         self.assertEqual(branded_wb.properties.creator, "InvenTag Cloud BOM Generator")
 
     def test_custom_branding_colors(self):
@@ -438,7 +444,9 @@ class TestExcelWorkbookBuilder(unittest.TestCase):
             # Check that custom colors are used in styles (openpyxl uses ARGB format)
             self.assertIn("FF0000", builder.styles["header_fill"].start_color.rgb)
             self.assertIn("00FF00", builder.styles["compliant_fill"].start_color.rgb)
-            self.assertIn("0000FF", builder.styles["non_compliant_fill"].start_color.rgb)
+            self.assertIn(
+                "0000FF", builder.styles["non_compliant_fill"].start_color.rgb
+            )
             self.assertIn("FFFF00", builder.styles["warning_fill"].start_color.rgb)
 
     @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
@@ -501,7 +509,9 @@ class TestExcelWorkbookBuilder(unittest.TestCase):
 
         self.assertTrue(result.success)
         self.assertTrue(os.path.exists(output_path))
-        self.assertGreater(os.path.getsize(output_path), 10000)  # Should be reasonably large file
+        self.assertGreater(
+            os.path.getsize(output_path), 10000
+        )  # Should be reasonably large file
 
 
 if __name__ == "__main__":

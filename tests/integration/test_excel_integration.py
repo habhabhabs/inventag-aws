@@ -218,7 +218,9 @@ class TestExcelIntegration(unittest.TestCase):
         # Verify file was created
         output_file = os.path.join(self.temp_dir, result.filename)
         self.assertTrue(os.path.exists(output_file))
-        self.assertGreater(os.path.getsize(output_file), 10000)  # Should be substantial file
+        self.assertGreater(
+            os.path.getsize(output_file), 10000
+        )  # Should be substantial file
 
         # Load and verify Excel content
         wb = openpyxl.load_workbook(output_file)
@@ -252,15 +254,21 @@ class TestExcelIntegration(unittest.TestCase):
 
         # Verify Network Analysis sheet
         network_sheet = wb["Network Analysis"]
-        self.assertEqual(network_sheet["A1"].value, "Network Analysis & Capacity Planning")
+        self.assertEqual(
+            network_sheet["A1"].value, "Network Analysis & Capacity Planning"
+        )
 
         # Verify Security Analysis sheet
         security_sheet = wb["Security Analysis"]
-        self.assertEqual(security_sheet["A1"].value, "Security Analysis & Risk Assessment")
+        self.assertEqual(
+            security_sheet["A1"].value, "Security Analysis & Risk Assessment"
+        )
 
         # Verify Compliance Details sheet
         compliance_sheet = wb["Compliance Details"]
-        self.assertEqual(compliance_sheet["A1"].value, "Detailed Compliance Information")
+        self.assertEqual(
+            compliance_sheet["A1"].value, "Detailed Compliance Information"
+        )
 
     @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_excel_with_custom_branding(self):

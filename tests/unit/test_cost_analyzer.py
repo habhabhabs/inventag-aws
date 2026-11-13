@@ -35,7 +35,9 @@ class TestCostThresholds(unittest.TestCase):
         """Test default threshold values."""
         thresholds = CostThresholds()
 
-        self.assertEqual(thresholds.expensive_resource_monthly_threshold, Decimal("100.00"))
+        self.assertEqual(
+            thresholds.expensive_resource_monthly_threshold, Decimal("100.00")
+        )
         self.assertEqual(thresholds.forgotten_resource_days_threshold, 30)
         self.assertEqual(thresholds.high_cost_alert_threshold, Decimal("1000.00"))
         self.assertEqual(thresholds.cost_trend_alert_percentage, 50.0)
@@ -51,7 +53,9 @@ class TestCostThresholds(unittest.TestCase):
             unused_resource_utilization_threshold=10.0,
         )
 
-        self.assertEqual(thresholds.expensive_resource_monthly_threshold, Decimal("200.00"))
+        self.assertEqual(
+            thresholds.expensive_resource_monthly_threshold, Decimal("200.00")
+        )
         self.assertEqual(thresholds.forgotten_resource_days_threshold, 60)
         self.assertEqual(thresholds.high_cost_alert_threshold, Decimal("2000.00"))
         self.assertEqual(thresholds.cost_trend_alert_percentage, 25.0)
@@ -167,7 +171,9 @@ class TestCostAnalyzer(unittest.TestCase):
 
         # Test volume filters
         filters = self.cost_analyzer._build_ec2_filters("Volume", resource)
-        expected_filters = [{"Type": "TERM_MATCH", "Field": "volumeType", "Value": "gp3"}]
+        expected_filters = [
+            {"Type": "TERM_MATCH", "Field": "volumeType", "Value": "gp3"}
+        ]
 
         self.assertEqual(filters, expected_filters)
 
@@ -177,7 +183,9 @@ class TestCostAnalyzer(unittest.TestCase):
         pricing_info = {"price_per_unit": Decimal("0.0464"), "unit": "Hrs"}
         resource = {}
 
-        monthly_cost = self.cost_analyzer._calculate_monthly_cost(pricing_info, resource)
+        monthly_cost = self.cost_analyzer._calculate_monthly_cost(
+            pricing_info, resource
+        )
         expected_cost = Decimal("0.0464") * Decimal("730")  # 730 hours per month
         self.assertEqual(monthly_cost, expected_cost)
 
@@ -185,7 +193,9 @@ class TestCostAnalyzer(unittest.TestCase):
         pricing_info = {"price_per_unit": Decimal("0.10"), "unit": "GB-Mo"}
         resource = {"size_gb": 100}
 
-        monthly_cost = self.cost_analyzer._calculate_monthly_cost(pricing_info, resource)
+        monthly_cost = self.cost_analyzer._calculate_monthly_cost(
+            pricing_info, resource
+        )
         expected_cost = Decimal("0.10") * Decimal("100")
         self.assertEqual(monthly_cost, expected_cost)
 
@@ -236,7 +246,9 @@ class TestCostAnalyzer(unittest.TestCase):
             ),
         ]
 
-        expensive_resources = self.cost_analyzer.identify_expensive_resources(cost_estimates)
+        expensive_resources = self.cost_analyzer.identify_expensive_resources(
+            cost_estimates
+        )
 
         # With threshold of 50.00, only the first resource should be expensive
         self.assertEqual(len(expensive_resources), 1)
@@ -281,13 +293,17 @@ class TestCostAnalyzer(unittest.TestCase):
 
         for days, cost, expected_risk in test_cases:
             with self.subTest(days=days, cost=cost):
-                result = self.cost_analyzer._determine_forgotten_resource_risk(days, cost)
+                result = self.cost_analyzer._determine_forgotten_resource_risk(
+                    days, cost
+                )
                 self.assertEqual(result, expected_risk)
 
     def test_generate_forgotten_resource_recommendations(self):
         """Test forgotten resource recommendation generation."""
-        recommendations = self.cost_analyzer._generate_forgotten_resource_recommendations(
-            "EC2", "Instance", 95, Decimal("120.00")
+        recommendations = (
+            self.cost_analyzer._generate_forgotten_resource_recommendations(
+                "EC2", "Instance", 95, Decimal("120.00")
+            )
         )
 
         self.assertIsInstance(recommendations, list)
@@ -337,7 +353,9 @@ class TestCostAnalyzer(unittest.TestCase):
 
         # Test with no significant activity
         activity_indicators = {
-            "cpu_utilization": [{"Timestamp": recent_timestamp, "Average": 1.0}]  # Below threshold
+            "cpu_utilization": [
+                {"Timestamp": recent_timestamp, "Average": 1.0}
+            ]  # Below threshold
         }
 
         days = self.cost_analyzer._calculate_days_since_activity(activity_indicators)
@@ -404,7 +422,9 @@ class TestCostAnalyzer(unittest.TestCase):
 
     def test_enrich_resource_with_cost_info(self):
         """Test resource enrichment with cost information."""
-        with patch.object(self.cost_analyzer, "_estimate_single_resource_cost") as mock_estimate:
+        with patch.object(
+            self.cost_analyzer, "_estimate_single_resource_cost"
+        ) as mock_estimate:
             mock_estimate.return_value = ResourceCostEstimate(
                 resource_id="test-resource",
                 resource_type="Instance",
@@ -414,7 +434,9 @@ class TestCostAnalyzer(unittest.TestCase):
                 confidence_level="high",
             )
 
-            with patch.object(self.cost_analyzer, "_analyze_resource_activity") as mock_activity:
+            with patch.object(
+                self.cost_analyzer, "_analyze_resource_activity"
+            ) as mock_activity:
                 mock_activity.return_value = ForgottenResourceAnalysis(
                     resource_id="test-resource",
                     resource_type="Instance",
@@ -445,7 +467,9 @@ class TestCostAnalyzer(unittest.TestCase):
                 forgotten_info = enriched["forgotten_analysis"]
                 self.assertEqual(forgotten_info["days_since_last_activity"], 20)
                 self.assertEqual(forgotten_info["risk_level"], "medium")
-                self.assertTrue(forgotten_info["is_potentially_forgotten"])  # 20 > 15 threshold
+                self.assertTrue(
+                    forgotten_info["is_potentially_forgotten"]
+                )  # 20 > 15 threshold
 
 
 if __name__ == "__main__":

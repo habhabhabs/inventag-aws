@@ -44,19 +44,29 @@ class TestSecurityAnalyzer(unittest.TestCase):
     def test_assess_rule_risk(self):
         """Test security rule risk assessment."""
         # Critical risk: permissive source with SSH
-        self.assertEqual(self.analyzer._assess_rule_risk("0.0.0.0/0", 22, "tcp"), "critical")
+        self.assertEqual(
+            self.analyzer._assess_rule_risk("0.0.0.0/0", 22, "tcp"), "critical"
+        )
 
         # High risk: permissive source with well-known port
-        self.assertEqual(self.analyzer._assess_rule_risk("0.0.0.0/0", 80, "tcp"), "high")
+        self.assertEqual(
+            self.analyzer._assess_rule_risk("0.0.0.0/0", 80, "tcp"), "high"
+        )
 
         # Medium risk: permissive source with high port
-        self.assertEqual(self.analyzer._assess_rule_risk("0.0.0.0/0", 8080, "tcp"), "medium")
+        self.assertEqual(
+            self.analyzer._assess_rule_risk("0.0.0.0/0", 8080, "tcp"), "medium"
+        )
 
         # Medium risk: broad CIDR range
-        self.assertEqual(self.analyzer._assess_rule_risk("10.0.0.0/8", 22, "tcp"), "medium")
+        self.assertEqual(
+            self.analyzer._assess_rule_risk("10.0.0.0/8", 22, "tcp"), "medium"
+        )
 
         # Low risk: specific IP
-        self.assertEqual(self.analyzer._assess_rule_risk("10.0.1.100/32", 22, "tcp"), "low")
+        self.assertEqual(
+            self.analyzer._assess_rule_risk("10.0.1.100/32", 22, "tcp"), "low"
+        )
 
     def test_extract_regions(self):
         """Test region extraction from resources."""
@@ -85,7 +95,9 @@ class TestSecurityAnalyzer(unittest.TestCase):
         self.assertEqual(set(result1), {"sg-12345", "sg-67890"})
 
         # Test SecurityGroups field (AWS API format)
-        resource2 = {"SecurityGroups": [{"GroupId": "sg-abcdef"}, {"GroupId": "sg-fedcba"}]}
+        resource2 = {
+            "SecurityGroups": [{"GroupId": "sg-abcdef"}, {"GroupId": "sg-fedcba"}]
+        }
         result2 = self.analyzer._extract_security_group_ids(resource2)
         self.assertEqual(set(result2), {"sg-abcdef", "sg-fedcba"})
 
@@ -230,7 +242,9 @@ class TestSecurityAnalyzer(unittest.TestCase):
                             "IpProtocol": "tcp",
                             "FromPort": 80,
                             "ToPort": 80,
-                            "IpRanges": [{"CidrIp": "0.0.0.0/0", "Description": "HTTP"}],
+                            "IpRanges": [
+                                {"CidrIp": "0.0.0.0/0", "Description": "HTTP"}
+                            ],
                         }
                     ],
                     "IpPermissionsEgress": [
@@ -553,8 +567,12 @@ class TestSecurityAnalyzer(unittest.TestCase):
         }
 
         # Mock the methods that generate recommendations and find dependencies
-        self.analyzer._generate_security_recommendations = Mock(return_value=["rec1", "rec2"])
-        self.analyzer._find_circular_dependencies = Mock(return_value=[("sg-1", "sg-2")])
+        self.analyzer._generate_security_recommendations = Mock(
+            return_value=["rec1", "rec2"]
+        )
+        self.analyzer._find_circular_dependencies = Mock(
+            return_value=[("sg-1", "sg-2")]
+        )
 
         summary = self.analyzer.generate_security_summary(analysis)
 

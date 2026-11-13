@@ -154,7 +154,10 @@ class TestDeltaDetector:
         resource_map = delta_detector._create_resource_map(sample_old_resources)
 
         assert len(resource_map) == 3
-        assert "arn:aws:ec2:us-east-1:123456789012:instance/i-1234567890abcdef0" in resource_map
+        assert (
+            "arn:aws:ec2:us-east-1:123456789012:instance/i-1234567890abcdef0"
+            in resource_map
+        )
         assert "arn:aws:s3:::test-bucket" in resource_map
         assert "arn:aws:rds:us-east-1:123456789012:db:test-db" in resource_map
 
@@ -190,7 +193,9 @@ class TestDeltaDetector:
         assert len(resource_map) == 1
         # Should create synthetic key
         synthetic_keys = [
-            k for k in resource_map.keys() if k.startswith("CustomService:CustomType:us-east-1:")
+            k
+            for k in resource_map.keys()
+            if k.startswith("CustomService:CustomType:us-east-1:")
         ]
         assert len(synthetic_keys) == 1
 
@@ -210,7 +215,9 @@ class TestDeltaDetector:
         )
         assert added_resources[0].service == "Lambda"
         assert added_resources[0].change_type == ChangeType.ADDED
-        assert added_resources[0].severity == ChangeSeverity.HIGH  # Lambda is high impact service
+        assert (
+            added_resources[0].severity == ChangeSeverity.HIGH
+        )  # Lambda is high impact service
 
     def test_detect_removed_resources(
         self, delta_detector, sample_old_resources, sample_new_resources
@@ -222,10 +229,15 @@ class TestDeltaDetector:
         removed_resources = delta_detector._detect_removed_resources(old_map, new_map)
 
         assert len(removed_resources) == 1
-        assert removed_resources[0].resource_arn == "arn:aws:rds:us-east-1:123456789012:db:test-db"
+        assert (
+            removed_resources[0].resource_arn
+            == "arn:aws:rds:us-east-1:123456789012:db:test-db"
+        )
         assert removed_resources[0].service == "RDS"
         assert removed_resources[0].change_type == ChangeType.REMOVED
-        assert removed_resources[0].severity == ChangeSeverity.HIGH  # RDS is high impact service
+        assert (
+            removed_resources[0].severity == ChangeSeverity.HIGH
+        )  # RDS is high impact service
 
     def test_detect_modified_resources(
         self, delta_detector, sample_old_resources, sample_new_resources
@@ -234,8 +246,8 @@ class TestDeltaDetector:
         old_map = delta_detector._create_resource_map(sample_old_resources)
         new_map = delta_detector._create_resource_map(sample_new_resources)
 
-        modified_resources, unchanged_resources = delta_detector._detect_modified_resources(
-            old_map, new_map
+        modified_resources, unchanged_resources = (
+            delta_detector._detect_modified_resources(old_map, new_map)
         )
 
         assert len(modified_resources) == 2  # EC2 and S3 resources modified
@@ -343,8 +355,12 @@ class TestDeltaDetector:
         assert len(sg_changes) > 0
 
         # Check for added and removed items
-        added_change = next((c for c in sg_changes if c.change_type == ChangeType.ADDED), None)
-        removed_change = next((c for c in sg_changes if c.change_type == ChangeType.REMOVED), None)
+        added_change = next(
+            (c for c in sg_changes if c.change_type == ChangeType.ADDED), None
+        )
+        removed_change = next(
+            (c for c in sg_changes if c.change_type == ChangeType.REMOVED), None
+        )
 
         if added_change:
             assert "sg-abcde" in str(added_change.new_value)
@@ -373,16 +389,23 @@ class TestDeltaDetector:
             == ChangeCategory.NETWORK
         )
         assert (
-            delta_detector._categorize_attribute_change("subnet_id", "subnet-1", "subnet-2")
+            delta_detector._categorize_attribute_change(
+                "subnet_id", "subnet-1", "subnet-2"
+            )
             == ChangeCategory.NETWORK
         )
         assert (
-            delta_detector._categorize_attribute_change("ip_address", "1.1.1.1", "2.2.2.2")
+            delta_detector._categorize_attribute_change(
+                "ip_address", "1.1.1.1", "2.2.2.2"
+            )
             == ChangeCategory.NETWORK
         )
 
         # Tag-related attributes
-        assert delta_detector._categorize_attribute_change("tags", {}, {}) == ChangeCategory.TAGS
+        assert (
+            delta_detector._categorize_attribute_change("tags", {}, {})
+            == ChangeCategory.TAGS
+        )
         assert (
             delta_detector._categorize_attribute_change("tag_key", "old", "new")
             == ChangeCategory.TAGS
@@ -429,10 +452,16 @@ class TestDeltaDetector:
             )
             == ChangeSeverity.HIGH
         )
-        assert delta_detector._determine_attribute_severity("policy", {}, {}) == ChangeSeverity.HIGH
+        assert (
+            delta_detector._determine_attribute_severity("policy", {}, {})
+            == ChangeSeverity.HIGH
+        )
 
         # Medium severity
-        assert delta_detector._determine_attribute_severity("tags", {}, {}) == ChangeSeverity.MEDIUM
+        assert (
+            delta_detector._determine_attribute_severity("tags", {}, {})
+            == ChangeSeverity.MEDIUM
+        )
         assert (
             delta_detector._determine_attribute_severity("configuration", {}, {})
             == ChangeSeverity.MEDIUM
@@ -444,7 +473,8 @@ class TestDeltaDetector:
             == ChangeSeverity.LOW
         )
         assert (
-            delta_detector._determine_attribute_severity("name", "old", "new") == ChangeSeverity.LOW
+            delta_detector._determine_attribute_severity("name", "old", "new")
+            == ChangeSeverity.LOW
         )
 
     def test_determine_resource_severity(self, delta_detector):
@@ -458,7 +488,9 @@ class TestDeltaDetector:
 
         kms_resource = {"service": "KMS", "type": "Key"}
         assert (
-            delta_detector._determine_resource_severity(kms_resource, ChangeType.REMOVED)
+            delta_detector._determine_resource_severity(
+                kms_resource, ChangeType.REMOVED
+            )
             == ChangeSeverity.CRITICAL
         )
 
@@ -471,7 +503,9 @@ class TestDeltaDetector:
 
         rds_resource = {"service": "RDS", "type": "DBInstance"}
         assert (
-            delta_detector._determine_resource_severity(rds_resource, ChangeType.MODIFIED)
+            delta_detector._determine_resource_severity(
+                rds_resource, ChangeType.MODIFIED
+            )
             == ChangeSeverity.HIGH
         )
 
@@ -485,7 +519,9 @@ class TestDeltaDetector:
         # Low impact services
         unknown_resource = {"service": "UnknownService", "type": "UnknownType"}
         assert (
-            delta_detector._determine_resource_severity(unknown_resource, ChangeType.ADDED)
+            delta_detector._determine_resource_severity(
+                unknown_resource, ChangeType.ADDED
+            )
             == ChangeSeverity.LOW
         )
 
@@ -495,10 +531,14 @@ class TestDeltaDetector:
 
         new_resource = {
             "compliance_status": "non-compliant",
-            "compliance_violations": [{"type": "missing_tag", "details": "Missing CostCenter tag"}],
+            "compliance_violations": [
+                {"type": "missing_tag", "details": "Missing CostCenter tag"}
+            ],
         }
 
-        compliance_changes = delta_detector._detect_compliance_changes(old_resource, new_resource)
+        compliance_changes = delta_detector._detect_compliance_changes(
+            old_resource, new_resource
+        )
 
         assert len(compliance_changes) == 2  # Status and violations changed
 
@@ -514,7 +554,11 @@ class TestDeltaDetector:
 
         # Check violations change
         violations_change = next(
-            (c for c in compliance_changes if c.attribute_path == "compliance_violations"),
+            (
+                c
+                for c in compliance_changes
+                if c.attribute_path == "compliance_violations"
+            ),
             None,
         )
         assert violations_change is not None
@@ -531,7 +575,9 @@ class TestDeltaDetector:
 
         # Security group changes
         sg_resource = {"service": "EC2", "type": "SecurityGroup"}
-        impact = delta_detector._assess_security_impact(sg_resource, ChangeType.MODIFIED)
+        impact = delta_detector._assess_security_impact(
+            sg_resource, ChangeType.MODIFIED
+        )
         assert impact is not None
         assert "security group" in impact.lower()
         assert "network access" in impact
@@ -640,7 +686,9 @@ class TestDeltaDetector:
                 "arn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/test-lb",
                 "service": "ELB",
                 "vpc_id": "vpc-12345",  # Same VPC - should be related
-                "security_groups": ["sg-12345"],  # Same security group - should be related
+                "security_groups": [
+                    "sg-12345"
+                ],  # Same security group - should be related
             },
         }
 
@@ -650,7 +698,9 @@ class TestDeltaDetector:
         )
 
         # Should find the ELB as related (EC2 affects ELB and they share VPC/SG)
-        assert len(related_resources) >= 0  # May or may not find relations depending on exact logic
+        assert (
+            len(related_resources) >= 0
+        )  # May or may not find relations depending on exact logic
 
     def test_resources_are_related(self, delta_detector):
         """Test resource relationship detection"""
@@ -803,7 +853,9 @@ class TestDeltaDetector:
         assert stats["severity_statistics"]["low"] == 1
 
         # Check most changed service
-        assert stats["most_changed_service"] == "EC2"  # 2 changes (1 added + 1 modified)
+        assert (
+            stats["most_changed_service"] == "EC2"
+        )  # 2 changes (1 added + 1 modified)
 
     def test_ignore_metadata_fields(self, delta_detector):
         """Test that metadata fields are properly ignored"""

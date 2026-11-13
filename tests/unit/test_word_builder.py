@@ -246,7 +246,9 @@ class TestWordDocumentBuilder(unittest.TestCase):
 
         for expected in expected_headings:
             found = any(expected in heading for heading in headings)
-            self.assertTrue(found, f"Expected heading '{expected}' not found in document")
+            self.assertTrue(
+                found, f"Expected heading '{expected}' not found in document"
+            )
 
     @unittest.skipUnless(PYTHON_DOCX_AVAILABLE, "python-docx not available")
     def test_document_tables(self):
@@ -347,7 +349,9 @@ class TestWordDocumentBuilder(unittest.TestCase):
         self.assertGreater(len(findings), 0)
 
         # Should include compliance finding
-        compliance_finding = any("compliance rate" in finding.lower() for finding in findings)
+        compliance_finding = any(
+            "compliance rate" in finding.lower() for finding in findings
+        )
         self.assertTrue(compliance_finding, "Compliance finding not generated")
 
         # Should include security finding (we have high risk rules)
@@ -371,8 +375,12 @@ class TestWordDocumentBuilder(unittest.TestCase):
 
         branded_doc = builder.apply_branding(doc)
 
-        self.assertEqual(branded_doc.core_properties.title, "Test Corporation - Cloud BOM Report")
-        self.assertEqual(branded_doc.core_properties.author, "InvenTag Cloud BOM Generator")
+        self.assertEqual(
+            branded_doc.core_properties.title, "Test Corporation - Cloud BOM Report"
+        )
+        self.assertEqual(
+            branded_doc.core_properties.author, "InvenTag Cloud BOM Generator"
+        )
 
     def test_custom_branding_colors(self):
         """Test custom branding colors in styles."""
@@ -392,8 +400,12 @@ class TestWordDocumentBuilder(unittest.TestCase):
 
         if PYTHON_DOCX_AVAILABLE:
             # Check that custom colors are used in styles
-            self.assertEqual(builder.styles["primary_color"], docx.shared.RGBColor(255, 0, 0))
-            self.assertEqual(builder.styles["accent_color"], docx.shared.RGBColor(0, 255, 0))
+            self.assertEqual(
+                builder.styles["primary_color"], docx.shared.RGBColor(255, 0, 0)
+            )
+            self.assertEqual(
+                builder.styles["accent_color"], docx.shared.RGBColor(0, 255, 0)
+            )
             self.assertEqual(builder.styles["font_name"], "Arial")
 
     @unittest.skipUnless(PYTHON_DOCX_AVAILABLE, "python-docx not available")
@@ -456,7 +468,9 @@ class TestWordDocumentBuilder(unittest.TestCase):
 
         self.assertTrue(result.success)
         self.assertTrue(os.path.exists(output_path))
-        self.assertGreater(os.path.getsize(output_path), 20000)  # Should be reasonably large file
+        self.assertGreater(
+            os.path.getsize(output_path), 20000
+        )  # Should be reasonably large file
 
     @unittest.skipUnless(PYTHON_DOCX_AVAILABLE, "python-docx not available")
     def test_service_section_generation(self):
@@ -498,7 +512,9 @@ class TestWordDocumentBuilder(unittest.TestCase):
         doc = Document(output_path)
 
         # Should have sections for each service
-        headings = [p.text for p in doc.paragraphs if p.style.name.startswith("Heading")]
+        headings = [
+            p.text for p in doc.paragraphs if p.style.name.startswith("Heading")
+        ]
 
         # Check for service-specific headings
         ec2_found = any("EC2" in heading for heading in headings)

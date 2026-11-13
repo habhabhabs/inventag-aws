@@ -104,7 +104,9 @@ class TestNetworkAnalyzer(unittest.TestCase):
         ]
 
         self.assertEqual(self.analyzer._get_tag_value(tags, "Name"), "test-vpc")
-        self.assertEqual(self.analyzer._get_tag_value(tags, "Environment"), "production")
+        self.assertEqual(
+            self.analyzer._get_tag_value(tags, "Environment"), "production"
+        )
         self.assertIsNone(self.analyzer._get_tag_value(tags, "NonExistent"))
         self.assertIsNone(self.analyzer._get_tag_value([], "Name"))
 
@@ -117,8 +119,12 @@ class TestNetworkAnalyzer(unittest.TestCase):
         mock_ec2.describe_internet_gateways.side_effect = Exception("Access denied")
         mock_ec2.describe_nat_gateways.side_effect = Exception("Access denied")
         mock_ec2.describe_vpc_endpoints.side_effect = Exception("Access denied")
-        mock_ec2.describe_vpc_peering_connections.side_effect = Exception("Access denied")
-        mock_ec2.describe_transit_gateway_attachments.side_effect = Exception("Access denied")
+        mock_ec2.describe_vpc_peering_connections.side_effect = Exception(
+            "Access denied"
+        )
+        mock_ec2.describe_transit_gateway_attachments.side_effect = Exception(
+            "Access denied"
+        )
         self.mock_session.client.return_value = mock_ec2
 
         self.analyzer._cache_network_info("us-east-1")
@@ -388,7 +394,9 @@ class TestNetworkAnalyzer(unittest.TestCase):
             "vpc-no-nat": no_nat_vpc,
         }
 
-        recommendations = self.analyzer._generate_optimization_recommendations(vpc_analysis)
+        recommendations = self.analyzer._generate_optimization_recommendations(
+            vpc_analysis
+        )
 
         self.assertEqual(len(recommendations), 3)
 
@@ -450,8 +458,12 @@ class TestNetworkAnalyzer(unittest.TestCase):
         vpc_analysis = {"vpc-1": vpc1, "vpc-2": vpc2}
 
         # Mock the warning and recommendation methods
-        self.analyzer._generate_capacity_warnings = Mock(return_value=["warning1", "warning2"])
-        self.analyzer._generate_optimization_recommendations = Mock(return_value=["rec1"])
+        self.analyzer._generate_capacity_warnings = Mock(
+            return_value=["warning1", "warning2"]
+        )
+        self.analyzer._generate_optimization_recommendations = Mock(
+            return_value=["rec1"]
+        )
 
         summary = self.analyzer.generate_network_summary(vpc_analysis)
 
@@ -500,7 +512,9 @@ class TestNetworkAnalyzer(unittest.TestCase):
         mock_ec2.describe_internet_gateways.return_value = {"InternetGateways": []}
         mock_ec2.describe_nat_gateways.return_value = {"NatGateways": []}
         mock_ec2.describe_vpc_endpoints.return_value = {"VpcEndpoints": []}
-        mock_ec2.describe_vpc_peering_connections.return_value = {"VpcPeeringConnections": []}
+        mock_ec2.describe_vpc_peering_connections.return_value = {
+            "VpcPeeringConnections": []
+        }
         mock_ec2.describe_transit_gateway_attachments.return_value = {
             "TransitGatewayAttachments": []
         }

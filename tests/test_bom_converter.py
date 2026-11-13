@@ -97,7 +97,9 @@ class TestBOMConverterScript:
             ]
         }
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as input_file:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False
+        ) as input_file:
             json.dump(sample_data, input_file)
             input_filename = input_file.name
 
@@ -123,7 +125,9 @@ class TestBOMConverterScript:
 
             # The script might fail due to missing dependencies, but it should at least parse arguments
             # and show meaningful error messages
-            assert "Error:" not in result.stderr or "ModuleNotFoundError" in result.stderr
+            assert (
+                "Error:" not in result.stderr or "ModuleNotFoundError" in result.stderr
+            )
 
         finally:
             try:

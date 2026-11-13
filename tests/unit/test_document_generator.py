@@ -424,7 +424,9 @@ class TestDocumentGenerationSummary(unittest.TestCase):
         """Test DocumentGenerationSummary creation."""
         results = [
             DocumentGenerationResult("excel", "test.xlsx", True),
-            DocumentGenerationResult("word", "test.docx", False, error_message="Failed"),
+            DocumentGenerationResult(
+                "word", "test.docx", False, error_message="Failed"
+            ),
         ]
 
         summary = DocumentGenerationSummary(
