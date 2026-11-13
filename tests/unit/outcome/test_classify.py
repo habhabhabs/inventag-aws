@@ -5,6 +5,7 @@ change to a table in the code is a change to this file too (invariant I13).
 """
 
 import concurrent.futures
+import importlib
 import socket
 import ssl
 
@@ -12,11 +13,11 @@ import botocore.exceptions as bexc
 import pytest
 from botocore.retries.standard import ThrottledRetryableChecker
 
-import importlib
-
-cl = importlib.import_module("inventag.outcome.classify")
 from inventag.outcome.model import RETRYABLE, Category, Scope
 from tests.unit.outcome.helpers import bare, client_error
+
+# The module, not the function of the same name that inventag.outcome exports.
+cl = importlib.import_module("inventag.outcome.classify")
 
 C = Category
 
@@ -547,7 +548,8 @@ def test_aws_message_is_cleaned_and_cut():
     )
     issue = cl.classify(client_error("AccessDenied", message), scope=Scope.SERVICE)
     assert issue.aws_message.startswith(
-        "User: arn:aws:sts::222222222222:assumed-role/InvenTagRole/s is not authorized to"
+        "User: arn:aws:sts::222222222222:assumed-role/InvenTagRole/s is not "
+        "authorized to"
     )
     assert len(issue.aws_message) <= 300
     assert "Encoded authorization" not in issue.aws_message
