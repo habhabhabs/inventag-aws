@@ -3,4 +3,4 @@
 The release workflow rewrites this file. pyproject.toml reads it at build time.
 """
 
-__version__ = "1.1.3"
+__version__ = "1.1.4"
