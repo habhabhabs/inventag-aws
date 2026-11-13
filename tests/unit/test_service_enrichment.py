@@ -73,11 +73,15 @@ class TestServiceHandler:
         mock_session = Mock()
         handler = TestHandler(mock_session)
 
-        mock_client = Mock()
+        # A real client: the read-only policy check needs its service model
+        # (an operation must exist and be allowed); the call itself is mocked.
+        mock_client = boto3.client("ec2", region_name="us-east-1")
         mock_operation = Mock(return_value={"result": "success"})
-        mock_client.describe_test = mock_operation
+        mock_client.describe_instances = mock_operation
 
-        result = handler._safe_api_call(mock_client, "describe_test", param="value")
+        result = handler._safe_api_call(
+            mock_client, "describe_instances", param="value"
+        )
 
         assert result == {"result": "success"}
         mock_operation.assert_called_once_with(param="value")
@@ -117,17 +121,18 @@ class TestServiceHandler:
 
         handler = TestHandler(Mock())
 
-        mock_client = Mock()
+        mock_client = boto3.client("ec2", region_name="us-east-1")
         mock_operation = Mock(
             side_effect=ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "describe_test"
+                {"Error": {"Code": "AccessDenied"}}, "DescribeInstances"
             )
         )
-        mock_client.describe_test = mock_operation
+        mock_client.describe_instances = mock_operation
 
-        result = handler._safe_api_call(mock_client, "describe_test")
+        result = handler._safe_api_call(mock_client, "describe_instances")
 
         assert result is None
+        mock_operation.assert_called_once_with()
 
 
 class TestDynamicServiceHandler:
