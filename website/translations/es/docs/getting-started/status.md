@@ -107,11 +107,12 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 - **Una cuenta falla y las demás funcionan:** la ejecución termina con el
   código 0, o con el código 5 si pasas `--fail-on-account-error`. El resumen de
-  la ejecución y el informe nombran cada cuenta que falló y el motivo. Si fallan
+  la ejecución y el informe predeterminado nombran cada cuenta que falló y el
+  motivo; un informe hecho con `--template` no lo hace. Si fallan
   todas las cuentas, la ejecución termina con el código 1.
 - **Una cuenta se queda sin tiempo:** cuenta como fallida. Los recursos
-  encontrados antes del límite se quedan en el informe, y el informe dice que la
-  cuenta está incompleta.
+  encontrados antes del límite se quedan en el informe, y el informe
+  predeterminado dice que la cuenta está incompleta.
 - **No se encontraron recursos, o los filtros los quitaron todos:** sin
   `--template`, InvenTag no escribe ningún informe, registra una advertencia y
   termina con el código 0. Con `--template`, escribe un informe vacío.
@@ -123,14 +124,33 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **Un listado que falla por otro motivo** (limitado tras los reintentos, o un
   error) se registra como advertencia para ese servicio y región, y queda
   contado en la instantánea de estado (`metadata.tags.coverage_summary`).
+- **Todas las llamadas de una cuenta denegadas:** la cuenta no cuenta como
+  fallida. La ejecución termina con el código 0 sin recursos que informar, y la
+  instantánea que guarda hace que la siguiente ejecución informe de todos los
+  recursos de esa cuenta como eliminados.
+- **Un servicio cuyo listado se limitó o falló con un error** en una ejecución
+  aparece como eliminado en el siguiente informe de cambios.
+- **Una sesión que caduca durante el análisis:** la ejecución termina con el
+  código 0 y el informe parece completo.
+- **Un token de IAM Identity Center (SSO) caducado** detiene la ejecución con un
+  traceback de Python en lugar de un mensaje. Vuelve a ejecutar `aws sso login`.
+- **Las advertencias del descubrimiento** aparecen en la consola, pero no se
+  escriben en el archivo de `--log-file`.
 - **Acceso denegado a Cost Explorer:** la ejecución continúa sin datos de
   facturación y registra una advertencia.
-- **Una llamada bloqueada por la protección de solo lectura** lanza un error
-  que nombra la operación. La CLI no hace esas llamadas por sí misma.
+- **Una llamada bloqueada por la protección de solo lectura** se registra como
+  un error que nombra la operación. Si ocurre dentro de un listado, ese listado
+  se omite y la ejecución continúa con el código de salida 0. La CLI no hace
+  esas llamadas por sí misma.
 - **Una carga a S3 fallida** hace que toda la ejecución termine con el
   código 1, después de escribir los informes en local.
 - **Un formato de informe que falla** hace que la ejecución termine con el
-  código 1.
+  código 1, y no se sube nada a S3, ni siquiera los formatos que sí se
+  escribieron.
+- **Una instantánea que no se puede guardar** se registra como error, y la
+  ejecución termina igualmente con el código 0.
+- **La salida a Google con `--template`** se omite, y la ejecución termina con
+  el código 0.
 - **Algunos valores no válidos se detienen con el código de salida 1, no 2,**
   por ejemplo `--max-concurrent-accounts 0` o `--account-processing-timeout 0`.
 - **Los valores del bloque `settings` de un archivo de cuentas sustituyen a las

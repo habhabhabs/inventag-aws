@@ -105,11 +105,12 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 - **One account fails, the others work:** the run exits with code 0, or with
   code 5 when you pass `--fail-on-account-error`. The run summary and the
-  report name each account that failed and the reason. If every account
+  default report name each account that failed and the reason; a report made
+  with `--template` does not. If every account
   fails, the run exits with code 1.
 - **An account runs out of time:** it counts as failed. The resources found
-  before the limit stay in the report, and the report says the account is
-  incomplete.
+  before the limit stay in the report, and the default report says the account
+  is incomplete.
 - **No resources found, or the filters removed all of them:** without
   `--template`, InvenTag writes no report, logs a warning and exits with code
   0. With `--template`, it writes an empty report. `--fail-if-empty` makes
@@ -120,13 +121,30 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **A listing that fails for another reason** (throttled after the retries,
   or an error) is logged as a warning for that service and region, and
   counted in the state snapshot (`metadata.tags.coverage_summary`).
+- **Every call in an account denied:** the account does not count as failed.
+  The run exits with code 0 with no resources to report, and the snapshot it
+  saves makes the next run report every resource of that account as removed.
+- **A service whose listing was throttled or failed with an error** in one run
+  appears as removed in the next change report.
+- **A session that expires during the scan:** the run exits with code 0 and
+  the report looks complete.
+- **An expired IAM Identity Center (SSO) token** stops the run with a Python
+  traceback instead of a message. Run `aws sso login` again.
+- **Warnings from discovery** appear on the console but are not written to the
+  `--log-file` file.
 - **Cost Explorer access denied:** the run carries on without billing data and
   logs one warning.
-- **A call blocked by the read-only guard** raises an error that names the
-  operation. The CLI does not make such calls itself.
+- **A call blocked by the read-only guard** is logged as an error that names
+  the operation. If it happens inside a listing, that listing is skipped and
+  the run carries on with exit code 0. The CLI does not make such calls itself.
 - **A failed S3 upload** makes the whole run exit with code 1, after the
   reports are written locally.
-- **A failed report format** makes the run exit with code 1.
+- **A failed report format** makes the run exit with code 1, and nothing is
+  uploaded to S3, not even the formats that were written.
+- **A snapshot that cannot be saved** is logged as an error, and the run still
+  exits with code 0.
+- **Google output with `--template`** is skipped, and the run exits with
+  code 0.
 - **Some invalid values stop with exit code 1, not 2,** for example
   `--max-concurrent-accounts 0` or `--account-processing-timeout 0`.
 - **Values in the `settings` block of an accounts file override the matching

@@ -106,11 +106,12 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 - **Un compte échoue, les autres fonctionnent :** l’exécution se termine avec le
   code 0, ou avec le code 5 si vous passez `--fail-on-account-error`. Le résumé de
-  l’exécution et le rapport nomment chaque compte en échec et la raison. Si tous
+  l’exécution et le rapport par défaut nomment chaque compte en échec et la
+  raison ; un rapport fait avec `--template` ne le fait pas. Si tous
   les comptes échouent, l’exécution se termine avec le code 1.
 - **Un compte dépasse son temps :** il compte comme en échec. Les ressources
-  trouvées avant la limite restent dans le rapport, et le rapport indique que le
-  compte est incomplet.
+  trouvées avant la limite restent dans le rapport, et le rapport par défaut
+  indique que le compte est incomplet.
 - **Aucune ressource trouvée, ou les filtres les ont toutes retirées :** sans
   `--template`, InvenTag n’écrit aucun rapport, consigne un avertissement et se
   termine avec le code 0. Avec `--template`, il écrit un rapport vide.
@@ -122,13 +123,32 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **Un listage qui échoue pour une autre raison** (limité après les nouvelles
   tentatives, ou une erreur) est consigné comme avertissement pour ce service et
   cette région, et compté dans l’instantané d’état (`metadata.tags.coverage_summary`).
+- **Tous les appels d’un compte refusés :** le compte ne compte pas comme en
+  échec. L’exécution se termine avec le code 0 sans ressource à signaler, et
+  l’instantané enregistré fait que l’exécution suivante signale toutes les
+  ressources de ce compte comme supprimées.
+- **Un service dont le listage a été limité ou a échoué avec une erreur** lors
+  d’une exécution apparaît comme supprimé dans le rapport de changements suivant.
+- **Une session qui expire pendant l’analyse :** l’exécution se termine avec le
+  code 0 et le rapport semble complet.
+- **Un jeton IAM Identity Center (SSO) expiré** arrête l’exécution avec une trace
+  d’appels Python au lieu d’un message. Relancez `aws sso login`.
+- **Les avertissements de la découverte** s’affichent dans la console mais ne
+  sont pas écrits dans le fichier de `--log-file`.
 - **Accès refusé à Cost Explorer :** l’exécution continue sans données de
   facturation et consigne un avertissement.
-- **Un appel bloqué par la protection en lecture seule** lève une erreur qui
-  nomme l’opération. La CLI ne fait pas de tels appels elle-même.
+- **Un appel bloqué par la protection en lecture seule** est consigné comme une
+  erreur qui nomme l’opération. S’il survient dans un listage, ce listage est
+  ignoré et l’exécution continue avec le code de sortie 0. La CLI ne fait pas de
+  tels appels elle-même.
 - **Un téléversement S3 en échec** fait se terminer toute l’exécution avec le
   code 1, après l’écriture locale des rapports.
-- **Un format de rapport en échec** fait se terminer l’exécution avec le code 1.
+- **Un format de rapport en échec** fait se terminer l’exécution avec le code 1,
+  et rien n’est téléversé vers S3, pas même les formats qui ont été écrits.
+- **Un instantané qui ne peut pas être enregistré** est consigné comme une
+  erreur, et l’exécution se termine quand même avec le code 0.
+- **La sortie Google avec `--template`** est ignorée, et l’exécution se termine
+  avec le code 0.
 - **Certaines valeurs non valides s’arrêtent avec le code de sortie 1, pas 2,**
   par exemple `--max-concurrent-accounts 0` ou `--account-processing-timeout 0`.
 - **Les valeurs du bloc `settings` d’un fichier de comptes remplacent les
