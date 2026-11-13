@@ -14,6 +14,7 @@ psutil>=5.9.0
 keyring>=24.0.0
 cryptography>=50.0.0    # CVE-2026-69247 (fixed 50.0.0); CVE-2026-69248, CVE-2026-69249 (fixed 49.0.0)
 requests>=2.33.0        # CVE-2026-25645 (fixed 2.33.0); CVE-2024-47081 (2.32.4); CVE-2024-35195 (2.32.0)
+jsonschema>=4.18.0      # config schema checks in inventag/reporting/configuration_manager.py
 
 # Security floors for transitive dependencies (not imported by InvenTag
 # directly; listed so that an older, vulnerable release cannot be selected).

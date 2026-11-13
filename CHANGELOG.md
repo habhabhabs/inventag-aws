@@ -22,6 +22,10 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   Pricing API calls use the same session as the other cost calls (the first
   scanned account's credentials). Before, they used the default credentials,
   so they failed when the machine had none.
+- `jsonschema` is a declared dependency. The schema checks in
+  `inventag/reporting/configuration_manager.py` need it; a clean install did
+  not have it, so they reported "jsonschema library not available" instead of
+  checking.
 
 ## [1.1.3] - 2026-11-13
 
