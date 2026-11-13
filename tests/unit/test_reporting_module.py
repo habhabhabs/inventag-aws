@@ -561,7 +561,7 @@ class TestExcelExport:
         loaded_converter.export_to_excel(str(output_file))
 
         workbook = load_workbook(output_file)
-        assert workbook.sheetnames == ["Summary", "S3", "EC2", "RDS"]
+        assert workbook.sheetnames == ["Summary", "EC2", "RDS", "S3"]
         # The default empty sheet is removed
         assert "Sheet" not in workbook.sheetnames
 
