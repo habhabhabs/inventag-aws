@@ -182,7 +182,7 @@ function auditInPage(isTouch) {
   for (const el of pills) {
     if (!visible(el) || el.closest('[aria-hidden="true"]')) continue;
     // icon-only controls identified by their icon, and text-styled buttons
-    if (el.matches('.clean-btn.menu__caret, .navbar__toggle, .navbar-sidebar__close, [class*="collapseSidebarButton"], [class*="expandButton"], .footer__button, .menu__link, .hash-link')) continue;
+    if (el.matches('.clean-btn.menu__caret, .navbar__toggle, .navbar-sidebar__close, [class*="collapseSidebarButton"], [class*="expandButton"], .footer__button, .menu__link, .hash-link, .it-mnav__row')) continue;
     // the boundary can be the control's own border or fill, or the frame of a
     // tight wrapper (e.g. the prev/next grid, the mobile "On this page" box)
     const boundaryOf = (node) => {

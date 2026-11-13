@@ -556,7 +556,7 @@ a.it-search__hit:hover .it-search__hit-go {
   min-height: 3rem;
   margin-bottom: 0.5rem;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--it-line);
+  border: 1px solid var(--it-line-strong);
   border-radius: 10px;
   background: var(--it-surface);
   color: var(--it-ink);
@@ -604,5 +604,72 @@ a.it-search__hit:hover .it-search__hit-go {
   .navbar-sidebar--show .navbar__items--right,
   .navbar-sidebar--show .navbar__toggle {
     visibility: hidden;
+  }
+}
+
+/* ------------------------------------------- Desktop sidebar (same menu) */
+@media (min-width: 997px) {
+  .it-dsb {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding-top: var(--ifm-navbar-height);
+    width: var(--doc-sidebar-width);
+  }
+  .it-dsb--hidden {
+    opacity: 0;
+    visibility: hidden;
+  }
+  .it-dsb__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0.5rem 0.5rem 1rem;
+    scrollbar-gutter: stable;
+  }
+  .it-dsb .it-mnav {
+    padding: 0;
+  }
+  .it-dsb .it-mnav__row {
+    min-height: 2.5rem;
+    font-size: 0.95rem;
+  }
+}
+
+/* Menu button: hides and shows the desktop sidebar */
+@media (min-width: 997px) {
+  .it-dsb__head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.75rem 0.25rem;
+  }
+  .it-dsb__title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--it-ink-2);
+  }
+  .it-menubtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid var(--it-line-strong);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--it-ink);
+    cursor: pointer;
+  }
+  .it-menubtn:hover {
+    background: var(--it-hover);
+  }
+  .it-menubtn--rail {
+    position: absolute;
+    top: calc(var(--ifm-navbar-height) + 0.75rem);
+    left: 0.1rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    z-index: 2;
   }
 }
