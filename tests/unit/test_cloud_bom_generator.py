@@ -357,6 +357,9 @@ class TestCloudBOMGenerator:
             # Passed through from MultiAccountConfig (defaults)
             enable_billing_validation=True,
             fallback_display_mode="auto",
+            # The per-account limit (1800 s) minus a 300 s margin for the
+            # steps after the listings
+            discovery_timeout=pytest.approx(1500, abs=2),
         )
 
         # Verify resources

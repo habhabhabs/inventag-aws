@@ -40,6 +40,7 @@ from botocore.exceptions import (
 
 # Import InvenTag components
 from ..discovery import AWSResourceInventory
+from ..discovery.regions import discover_regions
 from .log_context import account_log_context
 from ..compliance import ComprehensiveTagComplianceChecker
 from ..reporting import BOMConverter, BOMDataProcessor, BOMProcessingConfig
@@ -55,29 +56,11 @@ from ..security.redaction import register_secrets
 from ..security.secret_values import mask_secret_values
 from .._version import __version__
 
-try:  # account-level checkpoints (inventag.state.partial_results)
-    from ..state.partial_results import PartialResultStore, make_run_key
-except ImportError:  # pragma: no cover - older state package
-    PartialResultStore = None
-    make_run_key = None
+from ..state.partial_results import PartialResultStore, make_run_key
 from ..security.safe_output import (
     ensure_private_dir,
     open_private,
 )
-
-
-def _supported_kwargs(func, **kwargs) -> Dict[str, Any]:
-    """The keyword arguments ``func`` accepts (lets this module work with the
-    state layer before and after it gained retention and scope options)."""
-    import inspect
-
-    try:
-        parameters = inspect.signature(func).parameters
-    except (TypeError, ValueError):
-        return {}
-    if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in parameters.values()):
-        return kwargs
-    return {key: value for key, value in kwargs.items() if key in parameters}
 
 
 class AccountSessionError(Exception):
@@ -93,7 +76,15 @@ class ReportGenerationError(Exception):
 
 
 class AccountTimeoutError(Exception):
-    """Raised when an account's discovery runs past ``account_processing_timeout``."""
+    """Raised when an account's discovery runs past ``account_processing_timeout``.
+
+    ``partial_resources`` holds what the account's scan found before the
+    limit, when the scan returned at all (else ``None``).
+    """
+
+    def __init__(self, message: str = "", partial_resources=None):
+        super().__init__(message)
+        self.partial_resources = partial_resources
 
 
 class _AccountDeadline:
@@ -122,6 +113,10 @@ class _AccountDeadline:
         self.active = False
         self.expired = False
         self.abandoned = False
+        self.abandoned_at: Optional[float] = None  # real time, for the grace period
+        # Written by the worker, read by the main thread after the scan ends.
+        self.coverage: List[Dict[str, Any]] = []
+        self.unfinished_listings = 0  # discovery's own limit (coverage "timeout")
 
     def start(self) -> None:
         self.started_at = self._clock()
@@ -133,12 +128,23 @@ class _AccountDeadline:
             and self._clock() - self.started_at > self.timeout_seconds
         )
 
-    def message(self) -> str:
-        return (
+    def remaining(self) -> float:
+        """Seconds left before the deadline (the full limit before start)."""
+        if self.started_at is None:
+            return float(self.timeout_seconds)
+        return self.timeout_seconds - (self._clock() - self.started_at)
+
+    def message(self, partial_count: Optional[int] = None) -> str:
+        text = (
             f"timed out after {self.timeout_seconds:g} seconds "
-            "(--account-processing-timeout); the account's partial results "
-            "are not in the report"
+            "(--account-processing-timeout); "
         )
+        if partial_count:
+            return text + (
+                f"the {partial_count} resource(s) found before the limit are in "
+                "the report, other resources of this account may be missing"
+            )
+        return text + "no results of this account are in the report"
 
     def before_call(self, **kwargs):
         if self.active and (self.abandoned or self.past_deadline()):
@@ -152,6 +158,8 @@ class _AccountDeadline:
         """The main thread gave up on this account: refuse its further calls."""
         self.expired = True
         self.abandoned = True
+        if self.abandoned_at is None:
+            self.abandoned_at = time.monotonic()
 
     def attach(self, session) -> None:
         events = getattr(session, "events", None)
@@ -199,6 +207,11 @@ class AccountContext:
     processing_warnings: List[str] = field(default_factory=list)
     resource_count: int = 0
     processing_time_seconds: float = 0.0
+    # What discovery attempted and how each listing ended (coverage ledger
+    # entries as dicts), and whether the account's results are incomplete
+    # because it ran out of time.
+    coverage: List[Dict[str, Any]] = field(default_factory=list)
+    partial: bool = False
 
 
 @dataclass
@@ -281,6 +294,11 @@ class CloudBOMGenerator:
         # checks it (both replaceable in tests).
         self._clock = time.monotonic
         self._poll_seconds = 1.0
+        # After an account's deadline its AWS calls are refused, so its worker
+        # winds down quickly. The main thread waits this long (real seconds)
+        # for it to return what it found; None = 10% of the limit, at most 30 s.
+        self._abandon_grace_seconds: Optional[float] = None
+        self._scan_local = threading.local()  # the deadline of this thread's scan
         self._checkpoints = None  # PartialResultStore, set per run
         self.reused_accounts: Dict[str, str] = {}  # account -> scanned at (UTC)
 
@@ -323,15 +341,21 @@ class CloudBOMGenerator:
             # A run in which no account could be scanned is a failure. An
             # empty report and an empty state snapshot would otherwise look
             # like every resource had been deleted.
+            only_partial = False
             if (
                 self.config.accounts
                 and self._processing_stats["successful_accounts"] == 0
             ):
-                raise AccountSessionError(
-                    "Resource discovery failed for all "
-                    f"{len(self.config.accounts)} configured account(s); "
-                    "no report was generated"
-                )
+                if not any(ctx.partial for ctx in self.account_contexts.values()):
+                    raise AccountSessionError(
+                        "Resource discovery failed for all "
+                        f"{len(self.config.accounts)} configured account(s); "
+                        "no report was generated"
+                    )
+                # Every account ran out of time, some with results: write a
+                # report of what was found (it names the accounts), but the
+                # run still fails and no snapshot is saved.
+                only_partial = True
 
             # Step 3: Consolidate resources if configured
             if self.config.consolidate_accounts:
@@ -362,6 +386,14 @@ class CloudBOMGenerator:
             if not bom_results.get("success", True):
                 raise ReportGenerationError(
                     bom_results.get("error") or "Report generation failed",
+                    bom_results,
+                )
+            if only_partial:
+                self._finish_checkpoints()
+                raise ReportGenerationError(
+                    "No account finished within its time limit "
+                    "(--account-processing-timeout); the report lists only the "
+                    "resources found before the limit",
                     bom_results,
                 )
 
@@ -508,6 +540,19 @@ class CloudBOMGenerator:
             self.logger.error(f"S3 upload failed: {e}")
             return {"uploaded": [], "errors": [{"file": "", "error": str(e)}]}
 
+    def _coverage_summary(self) -> Dict[str, Dict[str, int]]:
+        """Per account: how many listings ended ok, empty, denied, throttled,
+        error or timeout (from the discovery coverage ledger)."""
+        summary: Dict[str, Dict[str, int]] = {}
+        for acc_id, ctx in self.account_contexts.items():
+            counts: Dict[str, int] = {}
+            for entry in ctx.coverage:
+                outcome = str(entry.get("outcome", ""))
+                counts[outcome] = counts.get(outcome, 0) + 1
+            if counts:
+                summary[str(acc_id)] = counts
+        return summary
+
     def _failed_accounts(self) -> List[Dict[str, Any]]:
         """Accounts that were not scanned (or only partly), with the reasons."""
         failed = []
@@ -529,10 +574,30 @@ class CloudBOMGenerator:
         notes = []
         failed = self._failed_accounts()
         if failed:
-            notes.append(
-                f"{len(failed)} of {len(self.account_contexts)} account(s) were not "
-                "scanned, so this report does not include them:"
-            )
+            partial = [
+                item
+                for item in failed
+                if getattr(
+                    self.account_contexts.get(item["account_id"]), "partial", False
+                )
+            ]
+            if len(partial) == len(failed):
+                notes.append(
+                    f"{len(failed)} of {len(self.account_contexts)} account(s) were "
+                    "only partly scanned (time limit); the resources found are "
+                    "included, others may be missing:"
+                )
+            elif partial:
+                notes.append(
+                    f"{len(failed)} of {len(self.account_contexts)} account(s) failed: "
+                    f"{len(partial)} were only partly scanned (the resources found "
+                    "are included), the others are not in this report:"
+                )
+            else:
+                notes.append(
+                    f"{len(failed)} of {len(self.account_contexts)} account(s) were "
+                    "not scanned, so this report does not include them:"
+                )
             for item in failed:
                 reason = "; ".join(item["errors"])[:300]
                 notes.append(f"{item['account_id']} ({item['account_name']}): {reason}")
@@ -569,11 +634,10 @@ class CloudBOMGenerator:
         }
 
     def _open_checkpoints(self, account_contexts: Dict[str, AccountContext]):
-        if not self.config.enable_state_management or PartialResultStore is None:
+        if not self.config.enable_state_management:
             if self.config.resume:
                 self.logger.warning(
-                    "--resume has no effect: checkpoints need state management "
-                    "and the inventag.state.partial_results module"
+                    "--resume has no effect: checkpoints need state management"
                 )
             return None
         try:
@@ -725,26 +789,16 @@ class CloudBOMGenerator:
                                     f"AWS Account {actual_account_id}"
                                 )
 
-                # Auto-discover regions if none specified
+                # Auto-discover regions if none specified: ec2:DescribeRegions,
+                # then account:ListRegions, then every region of the partition
+                # (inventag.discovery.regions; never a fixed short list).
                 target_regions = credentials.regions
                 if not target_regions:
-                    try:
-                        ec2 = session.client("ec2", region_name="us-east-1")
-                        all_regions = ec2.describe_regions()["Regions"]
-                        target_regions = [
-                            region["RegionName"] for region in all_regions
-                        ]
-                        self.logger.info(
-                            f"Auto-discovered {len(target_regions)} regions for account {credentials.account_id}"
-                        )
-                    except Exception as e:
-                        self.logger.warning(f"Failed to auto-discover regions: {e}")
-                        target_regions = [
-                            "us-east-1",
-                            "us-west-2",
-                            "eu-west-1",
-                            "ap-southeast-1",
-                        ]  # Fallback
+                    target_regions, source = discover_regions(session, self.logger)
+                    self.logger.info(
+                        f"Auto-discovered {len(target_regions)} regions for "
+                        f"account {credentials.account_id} (from {source})"
+                    )
 
                 # Test accessible regions
                 accessible_regions = self._test_accessible_regions(
@@ -966,8 +1020,16 @@ class CloudBOMGenerator:
     def _test_accessible_regions(
         self, session: boto3.Session, target_regions: List[str]
     ) -> List[str]:
-        """Test which regions are accessible for the account."""
+        """Test which regions are accessible for the account.
+
+        The check is ``ec2:DescribeRegions`` in each region. A region where it
+        is denied is skipped (for example an SCP that blocks the region). If it
+        is denied in EVERY region, the policy simply lacks
+        ``ec2:DescribeRegions``: the check cannot tell anything, so all regions
+        are kept and their own calls show what is readable.
+        """
         accessible_regions = []
+        denied = []
 
         for region in target_regions:
             try:
@@ -980,11 +1042,18 @@ class CloudBOMGenerator:
                 error_code = e.response.get("Error", {}).get("Code", "")
                 if error_code in ["UnauthorizedOperation", "AccessDenied"]:
                     self.logger.warning(f"No access to region {region}")
+                    denied.append(region)
                 else:
                     self.logger.warning(f"Region {region} test failed: {e}")
             except Exception as e:
                 self.logger.warning(f"Region {region} test failed: {e}")
 
+        if denied and not accessible_regions and len(denied) == len(target_regions):
+            self.logger.warning(
+                "ec2:DescribeRegions is denied in every region, so region access "
+                f"cannot be checked; scanning all {len(denied)} regions."
+            )
+            return list(denied)
         return accessible_regions
 
     def _new_deadline(self, account_id: str) -> _AccountDeadline:
@@ -1039,7 +1108,11 @@ class CloudBOMGenerator:
                     try:
                         resources = future.result()
                     except Exception as e:
-                        self._record_account_failure(account_id, context, e)
+                        all_resources.extend(
+                            self._record_account_failure(
+                                account_id, context, e, deadlines[account_id]
+                            )
+                        )
                         continue
                     all_resources.extend(
                         self._record_account_success(
@@ -1049,14 +1122,20 @@ class CloudBOMGenerator:
                 for future in list(pending):
                     account_id = future_to_account[future]
                     deadline = deadlines[account_id]
-                    if deadline.past_deadline():
-                        deadline.abandon()
-                        pending.discard(future)
-                        self._record_account_failure(
-                            account_id,
-                            account_contexts[account_id],
-                            AccountTimeoutError(deadline.message()),
-                        )
+                    if not deadline.past_deadline():
+                        continue
+                    # Refuse the account's further AWS calls, then give the
+                    # worker a short grace period to return what it found.
+                    deadline.abandon()
+                    if time.monotonic() - deadline.abandoned_at < self._grace(deadline):
+                        continue
+                    pending.discard(future)
+                    self._record_account_failure(
+                        account_id,
+                        account_contexts[account_id],
+                        AccountTimeoutError(deadline.message()),
+                        deadline,
+                    )
         finally:
             # Do not wait for abandoned workers: they can make no more AWS
             # calls, and their results are ignored.
@@ -1079,12 +1158,17 @@ class CloudBOMGenerator:
         for account_id in self._accounts_to_scan(account_contexts, all_resources):
             context = account_contexts[account_id]
             self.logger.info(f"Discovering resources for account {account_id}")
+            deadline = self._new_deadline(account_id)
             try:
-                all_resources.extend(
-                    self._discover_account_resources(account_id, context)
-                )
+                resources = self._scan_account(account_id, context, deadline)
             except Exception as e:
-                self._record_account_failure(account_id, context, e, already_set=True)
+                all_resources.extend(
+                    self._record_account_failure(account_id, context, e, deadline)
+                )
+                continue
+            all_resources.extend(
+                self._record_account_success(account_id, context, resources, deadline)
+            )
 
         self.logger.info(
             f"Sequential discovery completed. Total resources: {len(all_resources)}"
@@ -1123,6 +1207,22 @@ class CloudBOMGenerator:
         if deadline is not None and deadline.started_at is not None:
             end = deadline.finished_at or self._clock()
             context.processing_time_seconds = max(end - deadline.started_at, 0.0)
+        if deadline is not None:
+            context.coverage = list(deadline.coverage)
+            if deadline.unfinished_listings:
+                # Discovery stopped at its share of the account's time limit:
+                # keep what it found, but the account is incomplete.
+                return self._record_account_failure(
+                    account_id,
+                    context,
+                    AccountTimeoutError(
+                        deadline.message(len(resources))
+                        + f" ({deadline.unfinished_listings} service/region "
+                        "listing(s) did not finish)",
+                        partial_resources=resources,
+                    ),
+                    deadline,
+                )
         context.resource_count = len(resources)
         context.discovered_services = list(set(r.get("service", "") for r in resources))
         self._processing_stats["successful_accounts"] += 1
@@ -1138,13 +1238,33 @@ class CloudBOMGenerator:
         account_id: str,
         context: AccountContext,
         error: Exception,
-        already_set: bool = False,
-    ) -> None:
+        deadline: Optional[_AccountDeadline] = None,
+    ) -> List[Dict[str, Any]]:
+        """Record a failed account (main thread only).
+
+        Returns the resources to keep: what a timed-out account found before
+        its limit (the account still counts as failed), else nothing.
+        """
+        partial = getattr(error, "partial_resources", None) or []
+        if deadline is not None:
+            context.coverage = list(deadline.coverage)
         self.logger.error(
             f"Resource discovery failed for account {account_id}: {error}"
         )
         self._processing_stats["failed_accounts"] += 1
         context.processing_errors.append(f"Resource discovery failed: {error}")
+        if partial:
+            context.partial = True
+            context.resource_count = len(partial)
+            context.discovered_services = list(
+                set(r.get("service", "") for r in partial)
+            )
+        return list(partial)
+
+    def _grace(self, deadline: _AccountDeadline) -> float:
+        if self._abandon_grace_seconds is not None:
+            return self._abandon_grace_seconds
+        return min(30.0, 0.1 * float(deadline.timeout_seconds))
 
     def _scan_account(
         self,
@@ -1155,22 +1275,27 @@ class CloudBOMGenerator:
         """Scan one account within its time limit. Writes nothing into
         ``context``: the caller records the result.
 
-        Raises :class:`AccountTimeoutError` if the account ran out of time
-        (its partial results are dropped).
+        Raises :class:`AccountTimeoutError` if the account ran out of time;
+        what it found before the limit is in the error's ``partial_resources``.
         """
         deadline = deadline or self._new_deadline(account_id)
         deadline.start()
         deadline.attach(context.session)
         try:
             with account_log_context(account_id, context.credentials.account_name):
+                self._scan_local.deadline = deadline
                 resources = self._discover_account_resources_inner(account_id, context)
         except AccountTimeoutError:
             deadline.expired = True
             resources = None
         finally:
+            self._scan_local.deadline = None
             deadline.detach(context.session)
         if deadline.expired:
-            raise AccountTimeoutError(deadline.message())
+            raise AccountTimeoutError(
+                deadline.message(len(resources) if resources else None),
+                partial_resources=resources,
+            )
         return resources
 
     def _discover_account_resources(
@@ -1182,31 +1307,60 @@ class CloudBOMGenerator:
         resources = self._scan_account(account_id, context, deadline)
         return self._record_account_success(account_id, context, resources, deadline)
 
+    @staticmethod
+    def _coverage_entries(inventory, account_id: str) -> List[Dict[str, Any]]:
+        """The discovery coverage ledger as a list of dicts (empty if none)."""
+        ledger = getattr(inventory, "coverage", None)
+        to_dict = getattr(ledger, "to_dict", None)
+        if not callable(to_dict):
+            return []
+        try:
+            entries = to_dict()
+        except Exception:
+            return []
+        if not isinstance(entries, list):
+            return []
+        out = []
+        for entry in entries:
+            if isinstance(entry, dict):
+                entry = dict(entry)
+                if not entry.get("account_id"):
+                    entry["account_id"] = str(account_id)
+                out.append(entry)
+        return out
+
+    @staticmethod
+    def _discovery_time_limit(deadline: Optional[_AccountDeadline]) -> float:
+        """Seconds the service listings of an account may take.
+
+        The per-account limit (``--account-processing-timeout``) is the one
+        that applies. Discovery's own listing phase gets the time left minus
+        a margin (20% of the limit, at most 300 s) for the steps that follow
+        it (tags, details, billing), so that it stops by itself and keeps what
+        it found instead of being cut off by the outer deadline.
+        """
+        if deadline is None:
+            return 600.0
+        limit = float(deadline.timeout_seconds)
+        margin = min(300.0, 0.2 * limit)
+        return max(deadline.remaining() - margin, 1.0)
+
     def _discover_account_resources_inner(
         self, account_id: str, context: AccountContext
     ) -> List[Dict[str, Any]]:
-        """Discover one account's resources (no time limit, no recording)."""
-        # Auto-discover regions if none specified
+        """Discover one account's resources (no recording in ``context``).
+
+        The account's deadline (set by :meth:`_scan_account` for this thread)
+        decides discovery's own time limit and receives the coverage ledger.
+        """
+        deadline = getattr(self._scan_local, "deadline", None)
         regions_to_use = context.accessible_regions
         if not regions_to_use and not context.credentials.regions:
-            # Auto-discover all regions if none specified
-            try:
-                ec2 = context.session.client("ec2", region_name="us-east-1")
-                all_regions = ec2.describe_regions()["Regions"]
-                regions_to_use = [region["RegionName"] for region in all_regions]
-                self.logger.info(
-                    f"Auto-discovered {len(regions_to_use)} regions for account {account_id}"
-                )
-            except Exception as e:
-                self.logger.warning(
-                    f"Failed to auto-discover regions for account {account_id}: {e}"
-                )
-                regions_to_use = [
-                    "us-east-1",
-                    "us-west-2",
-                    "eu-west-1",
-                    "ap-southeast-1",
-                ]  # Fallback
+            regions_to_use, source = discover_regions(context.session, self.logger)
+            self.logger.info(
+                f"Auto-discovered {len(regions_to_use)} regions for account "
+                f"{account_id} (from {source})"
+            )
         elif not regions_to_use:
             regions_to_use = context.credentials.regions
 
@@ -1218,15 +1372,24 @@ class CloudBOMGenerator:
             tag_filters=context.credentials.tags,
             enable_billing_validation=self.config.enable_billing_validation,
             fallback_display_mode=self.config.fallback_display_mode,
+            discovery_timeout=self._discovery_time_limit(deadline),
         )
 
         # Discover resources. Secret values that some read calls return
         # (Lambda environment variables, passwords in Describe output ...)
         # are removed here, before any report, snapshot or log sees them.
+        # This is the second line: discovery already applied the same
+        # deny-list (inventag.security.secret_values) at the source.
         resources = [
             mask_secret_values(resource)
             for resource in inventory.discover_all_resources()
         ]
+        if deadline is not None:
+            entries = self._coverage_entries(inventory, account_id)
+            deadline.coverage = entries
+            deadline.unfinished_listings = sum(
+                1 for e in entries if e.get("outcome") == "timeout"
+            )
 
         # Add account context to each resource
         # Use the account_id from credentials (which may have been updated from "default" to actual account ID)
@@ -1368,8 +1531,18 @@ class CloudBOMGenerator:
                             "resource_count": ctx.resource_count,
                             "processing_time_seconds": ctx.processing_time_seconds,
                             "error_count": len(ctx.processing_errors),
+                            "partial": bool(ctx.partial),
                         }
                         for acc_id, ctx in self.account_contexts.items()
+                    ],
+                    # What discovery attempted and how each listing ended, for
+                    # a Coverage sheet and for scripts (JSON output). Each row
+                    # of a resource also says which API returned it ("source").
+                    "coverage_summary": self._coverage_summary(),
+                    "coverage": [
+                        entry
+                        for ctx in self.account_contexts.values()
+                        for entry in ctx.coverage
                     ],
                 }
             )
@@ -1571,11 +1744,8 @@ class CloudBOMGenerator:
             # Initialize state manager
             state_manager = StateManager(
                 state_dir=str(self.output_dir / "state"),
-                **_supported_kwargs(
-                    StateManager.__init__,
-                    retention_days=self.config.state_retention_days,
-                    max_snapshots=self.config.state_max_snapshots,
-                ),
+                retention_days=self.config.state_retention_days,
+                max_snapshots=self.config.state_max_snapshots,
             )
 
             # Save current state
@@ -1599,18 +1769,19 @@ class CloudBOMGenerator:
                     "total_accounts": len(self.account_contexts),
                     "generation_type": "multi_account_bom",
                     "reused_accounts": dict(self.reused_accounts),
+                    # Listing outcomes per account (ok, empty, denied,
+                    # throttled, error, timeout): how complete the snapshot is.
+                    "coverage_summary": self._coverage_summary(),
                 },
-                # Accounts that failed are left out of the next comparison
-                # instead of showing every resource in them as removed.
-                **_supported_kwargs(
-                    state_manager.save_state,
-                    accounts_scanned=sorted(
-                        acc_id
-                        for acc_id in self.account_contexts
-                        if acc_id not in failed_ids
-                    ),
-                    accounts_failed=sorted(failed_ids),
+                # Accounts that failed (or were only partly scanned) are left
+                # out of the next comparison instead of showing every resource
+                # in them as removed.
+                accounts_scanned=sorted(
+                    acc_id
+                    for acc_id in self.account_contexts
+                    if acc_id not in failed_ids
                 ),
+                accounts_failed=sorted(failed_ids),
             )
 
             results = {
@@ -1623,18 +1794,30 @@ class CloudBOMGenerator:
             if self.config.enable_delta_detection:
                 try:
                     delta_detector = DeltaDetector()
-                    previous_states = state_manager.list_states()
+                    # The newest earlier snapshot that can be read; corrupt
+                    # or newer-format ones are skipped with a warning.
+                    previous_state_id, problems = state_manager.find_previous_state(
+                        state_id
+                    )
+                    for problem in problems:
+                        self.logger.warning(f"Skipped unreadable snapshot {problem}")
 
-                    if len(previous_states) > 1:
-                        # list_states() returns newest first, so index 0 is
-                        # the state just saved and index 1 the one before it.
-                        previous_state_id = previous_states[1]["state_id"]
+                    if previous_state_id is not None:
                         delta_results = delta_detector.detect_changes_by_state_id(
                             state_manager, previous_state_id, state_id
                         )
+                        summary = getattr(delta_results, "summary", None) or {}
+                        changed = sum(
+                            int(summary.get(key, 0) or 0)
+                            for key in (
+                                "added_count",
+                                "removed_count",
+                                "modified_count",
+                            )
+                        )
 
                         results["delta_detection"] = {
-                            "changes_detected": True,
+                            "changes_detected": changed > 0,
                             "previous_state_id": previous_state_id,
                             "current_state_id": state_id,
                             "summary": delta_results,

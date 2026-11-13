@@ -124,7 +124,14 @@ def test_timed_out_account_fails_and_the_others_are_kept(aws, tmp_path, parallel
         else:
             resources = generator._sequential_account_discovery(contexts)
 
-    assert [r["source_account_id"] for r in resources] == ["111111111111"]
+    # The timed-out account keeps what it found before the limit, and is
+    # still reported as failed (its results are incomplete).
+    assert sorted(r["source_account_id"] for r in resources) == [
+        "111111111111",
+        "222222222222",
+    ]
+    assert contexts["222222222222"].partial is True
+    assert contexts["111111111111"].partial is False
     assert SlowOrFastInventory.calls_after_limit == 0
     assert generator._processing_stats["successful_accounts"] == 1
     assert generator._processing_stats["failed_accounts"] == 1
@@ -200,6 +207,7 @@ def test_hung_account_is_abandoned_and_cannot_change_results_later(aws, tmp_path
     generator = CloudBOMGenerator(config)
     generator._clock = clock
     generator._poll_seconds = 0.01
+    generator._abandon_grace_seconds = 0.05
     contexts = _contexts(["111111111111", "222222222222"])
     contexts["222222222222"].session._hang = True
     generator.account_contexts.update(contexts)
