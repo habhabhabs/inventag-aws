@@ -706,5 +706,17 @@
   "footer.cookiePreferences": {
     "message": "Cookie 偏好設定",
     "description": "Footer button that reopens the cookie banner (read by docusaurus.config.ts)"
+  },
+  "listen.short": {
+    "message": "朗讀"
+  },
+  "home.heroFlow": {
+    "message": "它產生的報告"
+  },
+  "home.docCaption": {
+    "message": "Word 文件大綱範例"
+  },
+  "home.docNote": {
+    "message": "{flag} 產生的 Word 文件大綱。每個服務章節預設最多列出 50 個資源。"
   }
 }

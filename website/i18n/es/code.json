@@ -706,5 +706,17 @@
   "footer.cookiePreferences": {
     "message": "Preferencias de cookies",
     "description": "Footer button that reopens the cookie banner (read by docusaurus.config.ts)"
+  },
+  "listen.short": {
+    "message": "Escuchar"
+  },
+  "home.heroFlow": {
+    "message": "El informe que genera"
+  },
+  "home.docCaption": {
+    "message": "Esquema de ejemplo del documento de Word"
+  },
+  "home.docNote": {
+    "message": "El esquema del documento de Word generado con {flag}. Cada sección de servicio lista hasta 50 recursos por defecto."
   }
 }

@@ -192,6 +192,11 @@ function Hero(): ReactNode {
             </Translate>
           }
         />
+        <p className={styles.heroFlow}>
+          <span aria-hidden="true" className={styles.heroFlowLine} />
+          <Translate id="home.heroFlow">The report it writes</Translate>
+        </p>
+        <BomPreview />
       </div>
     </header>
   );
@@ -248,6 +253,43 @@ function BomPreview(): ReactNode {
   );
 }
 
+function DocOutlinePreview(): ReactNode {
+  return (
+    <figure className={styles.preview} aria-labelledby="doc-outline-caption">
+      <div className={styles.outline} role="group" aria-label={translate({id: 'home.docCaption', message: 'Sample Word document outline'})}>
+        <p className={styles.outlineTitle}>AWS Resource Inventory - BOM Report</p>
+        <ul className={styles.outlineList}>
+          <li>
+            Executive Summary
+            <ul>
+              <li>Service Summary</li>
+            </ul>
+          </li>
+          <li>
+            Detailed Resource Inventory
+            <ul>
+              {SAMPLE_SUMMARY.map(([service, count]) => (
+                <li key={service}>
+                  {service.toUpperCase()} Resources ({count})
+                </li>
+              ))}
+            </ul>
+          </li>
+          <li>Report Information</li>
+        </ul>
+      </div>
+      <figcaption id="doc-outline-caption" className={styles.previewCaption}>
+        <span className={styles.sampleBadge}>
+          <Translate id="home.sampleData">Sample data</Translate>
+        </span>{' '}
+        <Translate id="home.docNote" values={{flag: <code>--create-word</code>}}>
+          {'The outline of the Word document from {flag}. Each service section lists up to 50 resources by default.'}
+        </Translate>
+      </figcaption>
+    </figure>
+  );
+}
+
 type CellProps = {
   icon: ReactNode;
   title: string;
@@ -285,7 +327,7 @@ function Capabilities(): ReactNode {
           <Translate id="home.cap.eyebrow">01 · What you get</Translate>
         </p>
         <h2 id="capabilities" className={styles.sectionTitle}>
-          <Translate id="home.cap.title">One command. A report people can read.</Translate>
+          <Translate id="home.cap.title">One command. A\u00a0report people can read.</Translate>
         </h2>
         <p className={styles.sectionLead}>
           <Translate id="home.cap.lead">
@@ -301,7 +343,7 @@ function Capabilities(): ReactNode {
           flag="--create-excel  --create-word"
           link="/docs/reference/cli"
           linkLabel={translate({id: 'home.c1.link', message: 'See every report option'})}
-          preview={<BomPreview />}>
+          preview={<DocOutlinePreview />}>
           <p>
             <Translate id="home.c1.body" values={{dir: <code>bom_output/</code>}}>
               {'A summary sheet, then one sheet per service. Add a Word version for people who prefer documents. Files are saved in {dir}.'}

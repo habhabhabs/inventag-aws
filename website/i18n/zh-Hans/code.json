@@ -706,5 +706,17 @@
   "footer.cookiePreferences": {
     "message": "Cookie 偏好设置",
     "description": "Footer button that reopens the cookie banner (read by docusaurus.config.ts)"
+  },
+  "listen.short": {
+    "message": "朗读"
+  },
+  "home.heroFlow": {
+    "message": "它生成的报告"
+  },
+  "home.docCaption": {
+    "message": "Word 文档大纲示例"
+  },
+  "home.docNote": {
+    "message": "{flag} 生成的 Word 文档大纲。每个服务章节默认最多列出 50 个资源。"
   }
 }

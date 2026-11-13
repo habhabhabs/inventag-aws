@@ -152,6 +152,7 @@ export default function ReadAloud(): ReactNode {
 
   const label = {
     start: translate({id: 'listen.start', message: 'Listen to this page'}),
+    short: translate({id: 'listen.short', message: 'Listen'}),
     pause: translate({id: 'listen.pause', message: 'Pause'}),
     resume: translate({id: 'listen.resume', message: 'Resume'}),
     stop: translate({id: 'listen.stop', message: 'Stop'}),
@@ -176,11 +177,16 @@ export default function ReadAloud(): ReactNode {
   };
 
   return (
-    <div className="it-listen" role="group" aria-label={label.group}>
+    <div className={`it-listen${state === 'idle' ? ' it-listen--idle' : ''}`} role="group" aria-label={label.group}>
       {state === 'idle' ? (
-        <button type="button" className="it-listen__btn it-listen__btn--primary" onClick={() => speak(RATES[rateIndex])}>
+        <button
+          type="button"
+          className="it-listen__btn it-listen__btn--idle"
+          aria-label={label.start}
+          title={label.start}
+          onClick={() => speak(RATES[rateIndex])}>
           <Icon name="volume" size={16} />
-          {label.start}
+          {label.short}
         </button>
       ) : (
         <>
@@ -191,11 +197,11 @@ export default function ReadAloud(): ReactNode {
           <button type="button" className="it-listen__btn" onClick={stop}>
             {label.stop}
           </button>
+          <button type="button" className="it-listen__btn" onClick={nextRate}>
+            {label.speed}
+          </button>
         </>
       )}
-      <button type="button" className="it-listen__btn" onClick={nextRate}>
-        {label.speed}
-      </button>
     </div>
   );
 }

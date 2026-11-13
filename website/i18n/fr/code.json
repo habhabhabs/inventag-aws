@@ -706,5 +706,17 @@
   "footer.cookiePreferences": {
     "message": "Préférences en matière de cookies",
     "description": "Footer button that reopens the cookie banner (read by docusaurus.config.ts)"
+  },
+  "listen.short": {
+    "message": "Écouter"
+  },
+  "home.heroFlow": {
+    "message": "Le rapport qu’il produit"
+  },
+  "home.docCaption": {
+    "message": "Exemple de plan du document Word"
+  },
+  "home.docNote": {
+    "message": "Le plan du document Word produit avec {flag}. Chaque section de service liste jusqu’à 50 ressources par défaut."
   }
 }

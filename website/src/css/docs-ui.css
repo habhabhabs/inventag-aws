@@ -916,7 +916,7 @@ textarea {
   min-height: 2.75rem;
   padding: 0.3rem 0.9rem;
   border: 1px solid var(--it-border-strong, var(--ifm-color-emphasis-400));
-  border-radius: 8px;
+  border-radius: 2px;
   background: transparent;
   color: var(--it-fg, inherit);
   font: inherit;
@@ -944,3 +944,47 @@ textarea {
 :lang(zh-Hant) .theme-doc-toc-desktop::before { content: '本頁內容'; }
 :lang(es) .theme-doc-toc-desktop::before { content: 'En esta página'; }
 :lang(fr) .theme-doc-toc-desktop::before { content: 'Sur cette page'; }
+
+/* ------------------------------------------------------------------
+   Less chrome above the page title.
+
+   1. Until the reader starts it, read-aloud is one quiet button level with
+      the breadcrumbs, at every width. Pause, Stop and Speed appear only
+      while it is reading.
+   2. The version badge shows only on archived versions. On the current
+      version the navbar already names it.
+   ------------------------------------------------------------------ */
+[class*='docItemContainer'] {
+  position: relative;
+}
+[class*='docItemContainer'] .it-listen--idle {
+  position: absolute;
+  top: -0.35rem;
+  right: 0;
+  z-index: 2;
+  margin: 0;
+}
+[class*='docItemContainer']:has(.it-listen--idle) .theme-doc-breadcrumbs {
+  max-width: calc(100% - 7.5rem);
+  min-height: 2.75rem;
+}
+.it-listen__btn--idle {
+  color: var(--it-ink-2, inherit);
+}
+.it-listen__btn--idle:hover {
+  color: var(--it-ink, inherit);
+}
+html.docs-version-current .theme-doc-version-badge {
+  display: none;
+}
+
+/* Headings break into lines of similar length; paragraphs avoid a lone last word. */
+.theme-doc-markdown h1,
+.theme-doc-markdown h2,
+.theme-doc-markdown h3 {
+  text-wrap: balance;
+}
+.theme-doc-markdown p,
+.theme-doc-markdown li {
+  text-wrap: pretty;
+}

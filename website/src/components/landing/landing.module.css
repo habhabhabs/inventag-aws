@@ -33,7 +33,67 @@
   background: var(--it-surface);
   padding: clamp(1.5rem, 4vw, 3.5rem) var(--pad-x);
   display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+/* The hero shows the command and, under it, the report the command writes. */
+.heroAside > * {
+  width: 100%;
+}
+.heroAside .preview {
+  margin-top: 0;
+}
+.heroFlow {
+  display: flex;
   align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.9rem 0 0.9rem 1.5rem;
+  font-size: 0.8125rem;
+  color: var(--it-ink-2);
+}
+.heroFlowLine {
+  width: 1px;
+  height: 1.75rem;
+  background: var(--it-line-strong);
+}
+.outline {
+  border: 1px solid var(--it-line-strong);
+  border-radius: 2px;
+  background: var(--it-bg);
+  padding: 0.9rem 1rem 0.8rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.outlineTitle {
+  margin: 0 0 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--it-line);
+  font-weight: 600;
+  color: var(--it-ink);
+}
+.outlineList,
+.outlineList ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.outlineList > li {
+  margin-top: 0.3rem;
+  font-weight: 600;
+  color: var(--it-ink);
+}
+.outlineList ul {
+  margin: 0.15rem 0 0.25rem;
+  padding-left: 1rem;
+  border-left: 1px solid var(--it-line);
+  columns: 2;
+  column-gap: 1.5rem;
+}
+.outlineList ul li {
+  font-weight: 400;
+  color: var(--it-ink-2);
+  break-inside: avoid;
 }
 .kicker {
   display: flex;
@@ -688,4 +748,19 @@
     min-height: 44px;
     min-width: 44px;
   }
+}
+
+/* Headings break into lines of similar length; body text avoids one-word last lines. */
+.heroTitle,
+.sectionTitle,
+.closingTitle,
+.cellTitle,
+.stepTitle {
+  text-wrap: balance;
+}
+.heroLead,
+.sectionLead,
+.cellBody p,
+.heroNote {
+  text-wrap: pretty;
 }
