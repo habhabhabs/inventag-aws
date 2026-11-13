@@ -50,7 +50,7 @@ from ..security.arn import (
     partition_from_arn,
     validate_role_arn,
 )
-from ..security.redaction import register_secrets
+from ..security.redaction import register_secrets, scrub_secret_values
 from ..security.safe_output import (
     ensure_private_dir,
     open_private,
@@ -880,8 +880,13 @@ class CloudBOMGenerator:
                 fallback_display_mode=self.config.fallback_display_mode,
             )
 
-            # Discover resources
-            resources = inventory.discover_all_resources()
+            # Discover resources. Secret values that some read calls return
+            # (Lambda environment variables, passwords in Describe output ...)
+            # are removed here, before any report, snapshot or log sees them.
+            resources = [
+                scrub_secret_values(resource)
+                for resource in inventory.discover_all_resources()
+            ]
 
             # Add account context to each resource
             # Use the account_id from credentials (which may have been updated from "default" to actual account ID)

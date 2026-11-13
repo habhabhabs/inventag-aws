@@ -16,6 +16,10 @@ This module removes that material before anything is written:
 * :func:`install_log_record_redaction` installs a log-record factory so every
   record created in the process has its message redacted, whatever handler
   ends up writing it.
+* :func:`scrub_secret_values` removes secret values from discovered resource
+  data (Lambda and App Runner environment variables, ECS and CodeBuild
+  environment values, passwords and client secrets that some Describe calls
+  return) before reports and state snapshots are written.
 """
 
 import logging
@@ -52,6 +56,13 @@ _SECRET_FIELD_NAMES = (
     "refresh_token",
     "access_token",
     "id_token",
+    # SSO OIDC and ``aws login`` token exchange bodies
+    "refreshToken",
+    "clientSecret",
+    "idToken",
+    # Web identity sign-in (AssumeRoleWithWebIdentity request)
+    "WebIdentityToken",
+    "SAMLAssertion",
 )
 
 _FIELDS = "|".join(re.escape(f) for f in _SECRET_FIELD_NAMES)
@@ -116,6 +127,24 @@ _PATTERNS = [
         ),
         lambda m: m.group(1) + REDACTED,
     ),
+    # Form-encoded STS request bodies: ...&WebIdentityToken=eyJ...&...
+    (
+        re.compile(r"((?:^|[&?\s'\"])(?:WebIdentityToken|SAMLAssertion)=)[^&\s'\"]+"),
+        lambda m: m.group(1) + REDACTED,
+    ),
+    # Lambda environment variables in a raw response body or a dict repr:
+    # "Variables": {"DB_PASSWORD": "..."} keeps the names, drops the values.
+    (
+        re.compile(
+            r"""(["'])(Variables|RuntimeEnvironmentVariables)\1(\s*:\s*)"""
+            r"""\{(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^{}"'])*\}"""
+        ),
+        lambda m: m.group(1)
+        + m.group(2)
+        + m.group(1)
+        + m.group(3)
+        + _redact_flat_mapping_values(m.group(0)[m.group(0).index("{") :]),
+    ),
     # PEM private keys (a Google service-account key as it appears in a log)
     (
         re.compile(
@@ -153,6 +182,28 @@ _PATTERNS = [
         lambda m: m.group(1) + REDACTED,
     ),
 ]
+
+_FLAT_PAIR = re.compile(
+    r"""(["'])((?:\\.|(?!\1).)*)\1(\s*:\s*)(["'])(?:\\.|(?!\4).)*\4"""
+)
+
+
+def _redact_flat_mapping_values(text: str) -> str:
+    """``{"A": "x", "B": "y"}`` -> ``{"A": "***REDACTED***", ...}``."""
+    return _FLAT_PAIR.sub(
+        lambda m: "%s%s%s%s%s%s%s"
+        % (
+            m.group(1),
+            m.group(2),
+            m.group(1),
+            m.group(3),
+            m.group(4),
+            REDACTED,
+            m.group(4),
+        ),
+        text,
+    )
+
 
 _registered_secrets = set()
 _registered_lock = threading.Lock()
@@ -260,3 +311,80 @@ def uninstall_log_record_redaction() -> None:
             return
         logging.setLogRecordFactory(_original_factory)
         _original_factory = None
+
+
+# ------------------------------------------------- secret values in resource data
+# Keys (compared case-insensitively, without "_" and "-") whose value is a
+# secret wherever it appears in discovered resource data.
+_SECRET_DATA_KEYS = frozenset(
+    k.lower()
+    for k in (
+        "Password",
+        "MasterUserPassword",
+        "FsxAdminPassword",
+        "SaslPassword",
+        "SslClientKeyPassword",
+        "AccountPassword",
+        "SecretAccessKey",
+        "SessionToken",
+        "ClientSecret",
+        "SharedSecret",
+        "SecretString",
+        "SecretBinary",
+        "SecretToAuthenticateInitiator",
+        "SecretToAuthenticateTarget",
+        "BasicAuthCredentials",
+        "AuthToken",
+        "PrivateKey",
+        "UserData",
+    )
+)
+# Keys whose value is a name -> value mapping of environment variables: the
+# names are kept, the values are removed.
+_ENV_MAPPING_KEYS = frozenset(
+    k.lower()
+    for k in ("Variables", "RuntimeEnvironmentVariables", "EnvironmentVariables")
+)
+# Keys whose value is a list of {"name": ..., "value": ...} items (ECS container
+# definitions, CodeBuild projects).
+_ENV_LIST_KEYS = frozenset(k.lower() for k in ("environment", "environmentVariables"))
+
+
+def _norm(key: object) -> str:
+    return str(key).replace("_", "").replace("-", "").lower()
+
+
+def scrub_secret_values(data):
+    """Return ``data`` with secret values replaced by ``***REDACTED***``.
+
+    Walks dicts and lists. Environment variable names stay (they are useful
+    inventory); their values go. The input is not modified.
+    """
+    if isinstance(data, dict):
+        cleaned = {}
+        for key, value in data.items():
+            norm = _norm(key)
+            if norm in _SECRET_DATA_KEYS and value not in (None, "", {}, []):
+                cleaned[key] = REDACTED
+            elif norm in _ENV_MAPPING_KEYS and isinstance(value, dict):
+                cleaned[key] = {name: REDACTED for name in value}
+            elif norm in _ENV_LIST_KEYS and isinstance(value, list):
+                cleaned[key] = [
+                    (
+                        {
+                            k: (REDACTED if _norm(k) == "value" else v)
+                            for k, v in item.items()
+                        }
+                        if isinstance(item, dict)
+                        else scrub_secret_values(item)
+                    )
+                    for item in value
+                ]
+            else:
+                cleaned[key] = scrub_secret_values(value)
+        return cleaned
+    if isinstance(data, list):
+        return [scrub_secret_values(item) for item in data]
+    if isinstance(data, tuple):
+        return tuple(scrub_secret_values(item) for item in data)
+    return data
