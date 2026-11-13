@@ -17,13 +17,16 @@ caller passes an explicit share option.
 """
 
 import logging
+import math
 import os
 import re
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
+from ..security.redaction import redact
 from ..security.safe_output import ensure_private_dir, open_private
 
 logger = logging.getLogger(__name__)
@@ -39,8 +42,18 @@ SHARE_ROLES = ("reader", "commenter", "writer")
 
 # Google limits: 50,000 characters in one cell; keep a margin.
 MAX_CELL_CHARS = 49000
-# Rows sent to the Sheets API in one request.
+# Rows sent to the Sheets API in one request. The Sheets API advises keeping a
+# request under about 2 MB, so a request also stops at this many characters.
 ROWS_PER_REQUEST = 2000
+CHARS_PER_REQUEST = 1_000_000
+# A Google spreadsheet holds at most 10 million cells (the size of all its
+# sheets added up) and at most 18,278 columns on one sheet.
+MAX_SPREADSHEET_CELLS = 10_000_000
+MAX_SHEET_COLUMNS = 18_278
+# Waits (seconds) before retrying a call Google refused with "429 too many
+# requests". A 429 means the call was not carried out, so a retry cannot repeat it.
+RATE_LIMIT_WAITS = (5, 10, 20, 40, 60)
+_sleep = time.sleep
 # Docs API requests sent in one batchUpdate.
 DOC_REQUESTS_PER_BATCH = 400
 
@@ -199,28 +212,45 @@ def build_services(credentials) -> Dict[str, Any]:
 
 def _place_and_share(drive, file_id: str, options: GoogleOptions) -> None:
     """Move the file into the folder and share it, as the options say."""
+    # supportsAllDrives: without it Drive treats a folder on a shared drive as
+    # not found.
     if options.folder_id:
-        current = drive.files().get(fileId=file_id, fields="parents").execute()
+        current = _execute(
+            drive.files().get(fileId=file_id, fields="parents", supportsAllDrives=True)
+        )
+        update = {
+            "fileId": file_id,
+            "addParents": options.folder_id,
+            "fields": "id,parents",
+            "supportsAllDrives": True,
+        }
         parents = ",".join(current.get("parents", []))
-        drive.files().update(
-            fileId=file_id,
-            addParents=options.folder_id,
-            removeParents=parents,
-            fields="id,parents",
-        ).execute()
+        if parents:
+            update["removeParents"] = parents
+        _execute(drive.files().update(**update))
     for email in options.share_with:
-        drive.permissions().create(
-            fileId=file_id,
-            body={"type": "user", "role": options.share_role, "emailAddress": email},
-            sendNotificationEmail=False,
-            fields="id",
-        ).execute()
+        _execute(
+            drive.permissions().create(
+                fileId=file_id,
+                body={
+                    "type": "user",
+                    "role": options.share_role,
+                    "emailAddress": email,
+                },
+                sendNotificationEmail=False,
+                supportsAllDrives=True,
+                fields="id",
+            )
+        )
     if options.share_anyone:
-        drive.permissions().create(
-            fileId=file_id,
-            body={"type": "anyone", "role": "reader"},
-            fields="id",
-        ).execute()
+        _execute(
+            drive.permissions().create(
+                fileId=file_id,
+                body={"type": "anyone", "role": "reader"},
+                supportsAllDrives=True,
+                fields="id",
+            )
+        )
 
 
 def warn_if_file_will_be_invisible(
@@ -255,7 +285,12 @@ def workbook_to_sheets(workbook) -> List[Dict[str, Any]]:
                 if value is None:
                     row.append("")
                 elif isinstance(value, (int, float)) and not isinstance(value, bool):
-                    row.append(value)
+                    # NaN and infinity are not valid JSON numbers
+                    row.append(
+                        value
+                        if not isinstance(value, float) or math.isfinite(value)
+                        else str(value)
+                    )
                 else:
                     row.append(str(value)[:MAX_CELL_CHARS])
             rows.append(row)
@@ -282,6 +317,59 @@ def workbook_to_sheets(workbook) -> List[Dict[str, Any]]:
     return sheets
 
 
+def _api_reason(error: Exception) -> str:
+    """Why a Google call failed, short and with secrets masked."""
+    reason = getattr(error, "reason", None) or str(error)
+    return redact(str(reason))[:300]
+
+
+def _execute(request):
+    """Run a Google API request; wait and retry when Google says 429 (rate limit)."""
+    for wait in RATE_LIMIT_WAITS:
+        try:
+            return request.execute()
+        except Exception as e:
+            if getattr(e, "status_code", None) != 429:
+                raise
+            logger.warning(f"Google rate limit reached; waiting {wait} seconds")
+            _sleep(wait)
+    return request.execute()
+
+
+def _chunk_rows(rows: List[List[Any]]):
+    """Yield (first_row_index, rows) groups small enough for one Sheets request."""
+    start, size = 0, 0
+    for index, row in enumerate(rows):
+        row_chars = sum(len(v) if isinstance(v, str) else 8 for v in row)
+        if index > start and (
+            index - start >= ROWS_PER_REQUEST or size + row_chars > CHARS_PER_REQUEST
+        ):
+            yield start, rows[start:index]
+            start, size = index, 0
+        size += row_chars
+    if start < len(rows):
+        yield start, rows[start:]
+
+
+def check_spreadsheet_size(sheets_data: List[Dict[str, Any]]) -> None:
+    """Stop before any Google call if the report cannot fit in a spreadsheet."""
+    total = 0
+    for s in sheets_data:
+        columns = max((len(r) for r in s["rows"]), default=1)
+        if columns > MAX_SHEET_COLUMNS:
+            raise GoogleOutputError(
+                f"Sheet '{s['title']}' has {columns} columns; Google Sheets allows "
+                f"{MAX_SHEET_COLUMNS}. No spreadsheet was created."
+            )
+        total += max(len(s["rows"]), 1) * columns
+    if total > MAX_SPREADSHEET_CELLS:
+        raise GoogleOutputError(
+            f"The report has {total:,} cells; a Google spreadsheet allows "
+            f"{MAX_SPREADSHEET_CELLS:,}. No spreadsheet was created. Send fewer "
+            "resources (filters or an account subset) or use the Excel report."
+        )
+
+
 def _rgb(hex_color: str) -> Dict[str, float]:
     return {
         "red": int(hex_color[0:2], 16) / 255,
@@ -297,6 +385,7 @@ def create_spreadsheet(
     sheets_data = workbook_to_sheets(workbook)
     if not sheets_data:
         raise GoogleOutputError("The report has no sheets to send to Google Sheets.")
+    check_spreadsheet_size(sheets_data)
     sheets = services["sheets"]
 
     body = {
@@ -319,20 +408,46 @@ def create_spreadsheet(
             for s in sheets_data
         ],
     }
-    created = sheets.spreadsheets().create(body=body).execute()
+    created = _execute(sheets.spreadsheets().create(body=body))
     spreadsheet_id = created["spreadsheetId"]
+    url = created.get(
+        "spreadsheetUrl",
+        f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit",
+    )
+    try:
+        _fill_spreadsheet(services, created, spreadsheet_id, sheets_data, options)
+    except Exception as e:
+        raise GoogleOutputError(
+            f"Google API call failed ({type(e).__name__}): {_api_reason(e)}. The "
+            f"spreadsheet was already created and may be incomplete: {url} "
+            "(delete it in Google Drive)."
+        ) from e
+    return url
+
+
+def _fill_spreadsheet(
+    services: Dict[str, Any],
+    created: Dict[str, Any],
+    spreadsheet_id: str,
+    sheets_data: List[Dict[str, Any]],
+    options: GoogleOptions,
+) -> None:
+    """Write the cells, format the header rows, then place and share the file."""
+    sheets = services["sheets"]
 
     # RAW: a value that starts with "=" stays text and never becomes a formula.
     for s in sheets_data:
-        rows = s["rows"]
-        for start in range(0, len(rows), ROWS_PER_REQUEST):
-            chunk = rows[start : start + ROWS_PER_REQUEST]
-            sheets.spreadsheets().values().update(
-                spreadsheetId=spreadsheet_id,
-                range=f"'{s['title'].replace(chr(39), chr(39) * 2)}'!A{start + 1}",
-                valueInputOption="RAW",
-                body={"values": chunk},
-            ).execute()
+        for start, chunk in _chunk_rows(s["rows"]):
+            _execute(
+                sheets.spreadsheets()
+                .values()
+                .update(
+                    spreadsheetId=spreadsheet_id,
+                    range=f"'{s['title'].replace(chr(39), chr(39) * 2)}'!A{start + 1}",
+                    valueInputOption="RAW",
+                    body={"values": chunk},
+                )
+            )
 
     sheet_ids = {
         sheet["properties"]["title"]: sheet["properties"]["sheetId"]
@@ -374,15 +489,13 @@ def create_spreadsheet(
             }
         )
     if requests:
-        sheets.spreadsheets().batchUpdate(
-            spreadsheetId=spreadsheet_id, body={"requests": requests}
-        ).execute()
+        _execute(
+            sheets.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet_id, body={"requests": requests}
+            )
+        )
 
     _place_and_share(services["drive"], spreadsheet_id, options)
-    return created.get(
-        "spreadsheetUrl",
-        f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit",
-    )
 
 
 # ---------------------------------------------------------------- Docs
@@ -530,20 +643,28 @@ def create_document(
     if not blocks:
         raise GoogleOutputError("The report is empty; no Google Doc was created.")
     docs = services["docs"]
-    created = (
-        docs.documents()
-        .create(body={"title": options.resolved_title()[:250]})
-        .execute()
+    requests = blocks_to_doc_requests(blocks)
+    created = _execute(
+        docs.documents().create(body={"title": options.resolved_title()[:250]})
     )
     document_id = created["documentId"]
-    requests = blocks_to_doc_requests(blocks)
-    for start in range(0, len(requests), DOC_REQUESTS_PER_BATCH):
-        docs.documents().batchUpdate(
-            documentId=document_id,
-            body={"requests": requests[start : start + DOC_REQUESTS_PER_BATCH]},
-        ).execute()
-    _place_and_share(services["drive"], document_id, options)
-    return f"https://docs.google.com/document/d/{document_id}/edit"
+    url = f"https://docs.google.com/document/d/{document_id}/edit"
+    try:
+        for start in range(0, len(requests), DOC_REQUESTS_PER_BATCH):
+            _execute(
+                docs.documents().batchUpdate(
+                    documentId=document_id,
+                    body={"requests": requests[start : start + DOC_REQUESTS_PER_BATCH]},
+                )
+            )
+        _place_and_share(services["drive"], document_id, options)
+    except Exception as e:
+        raise GoogleOutputError(
+            f"Google API call failed ({type(e).__name__}): {_api_reason(e)}. The "
+            f"document was already created and may be incomplete: {url} "
+            "(delete it in Google Drive)."
+        ) from e
+    return url
 
 
 # ---------------------------------------------------------------- entry point
@@ -580,8 +701,7 @@ def publish(
         raise
     except Exception as e:
         # API errors (HttpError) carry the reason; never include credentials.
-        reason = getattr(e, "reason", None) or str(e)
         raise GoogleOutputError(
-            f"Google API call failed ({type(e).__name__}): {str(reason)[:300]}"
+            f"Google API call failed ({type(e).__name__}): {_api_reason(e)}"
         ) from e
     return results
