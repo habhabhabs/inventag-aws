@@ -1,0 +1,10 @@
+{
+  "label": "Examples",
+  "position": 5,
+  "link": {
+    "type": "doc",
+    "id": "examples/index"
+  },
+  "collapsed": true,
+  "className": "nav-cat-examples"
+}
