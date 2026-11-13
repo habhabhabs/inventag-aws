@@ -718,5 +718,17 @@
   },
   "home.docNote": {
     "message": "{flag} 生成的 Word 文档大纲。每个服务章节默认最多列出 50 个资源。"
+  },
+  "consent.body.off": {
+    "message": "分析已关闭。只启用必要的 Cookie。"
+  },
+  "consent.body.on": {
+    "message": "分析已开启。你可以在这里关闭。"
+  },
+  "consent.saved.off": {
+    "message": "已保存：分析已关闭。"
+  },
+  "consent.saved.on": {
+    "message": "已保存：分析已开启。"
   }
 }

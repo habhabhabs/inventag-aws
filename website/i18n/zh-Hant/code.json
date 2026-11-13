@@ -718,5 +718,17 @@
   },
   "home.docNote": {
     "message": "{flag} 產生的 Word 文件大綱。每個服務章節預設最多列出 50 個資源。"
+  },
+  "consent.body.off": {
+    "message": "分析已關閉。僅啟用必要的 Cookie。"
+  },
+  "consent.body.on": {
+    "message": "分析已開啟。你可以在這裡關閉。"
+  },
+  "consent.saved.off": {
+    "message": "已儲存：分析已關閉。"
+  },
+  "consent.saved.on": {
+    "message": "已儲存：分析已開啟。"
   }
 }

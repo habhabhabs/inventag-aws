@@ -718,5 +718,17 @@
   },
   "home.docNote": {
     "message": "Le plan du document Word produit avec {flag}. Chaque section de service liste jusqu’à 50 ressources par défaut."
+  },
+  "consent.body.off": {
+    "message": "L’analyse est désactivée. Seuls les cookies essentiels sont actifs."
+  },
+  "consent.body.on": {
+    "message": "L’analyse est activée. Vous pouvez la désactiver ici."
+  },
+  "consent.saved.off": {
+    "message": "Enregistré : l’analyse est désactivée."
+  },
+  "consent.saved.on": {
+    "message": "Enregistré : l’analyse est activée."
   }
 }

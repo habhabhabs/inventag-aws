@@ -212,9 +212,11 @@
   cursor: pointer;
   transition: background-color var(--ifm-transition-fast) ease, border-color var(--ifm-transition-fast) ease;
 }
-.copyButton:hover {
-  background: var(--it-hover);
-  border-color: var(--it-ink);
+@media (hover: hover) {
+  .copyButton:hover {
+    background: var(--it-hover);
+    border-color: var(--it-ink);
+  }
 }
 .copyButtonDone {
   border-color: var(--it-accent);

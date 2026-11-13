@@ -78,9 +78,11 @@
   transition: color var(--ifm-transition-fast) ease, border-color var(--ifm-transition-fast) ease,
     background-color var(--ifm-transition-fast) ease;
 }
-.header .buttons button:hover {
-  border-color: var(--it-ink);
-  background: var(--it-hover);
+@media (hover: hover) {
+  .header .buttons button:hover {
+    border-color: var(--it-ink);
+    background: var(--it-hover);
+  }
 }
 .header .buttons button svg {
   width: 0.95rem;

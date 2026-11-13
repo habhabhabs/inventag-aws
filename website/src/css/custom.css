@@ -471,9 +471,11 @@ kbd {
   border-radius: var(--it-radius);
   color: var(--it-ink);
 }
-[class*='colorModeToggle'] button:hover {
-  background: var(--it-hover);
-  border-color: var(--it-ink);
+@media (hover: hover) {
+  [class*='colorModeToggle'] button:hover {
+    background: var(--it-hover);
+    border-color: var(--it-ink);
+  }
 }
 @media (pointer: coarse) {
   [class*='colorModeToggle'] button,
@@ -1155,7 +1157,7 @@ pre code,
   color: var(--it-on-accent);
 }
 .button--primary:hover {
-  --ifm-button-background-color: #cf4429;
+  --ifm-button-background-color: var(--it-accent);
   --ifm-button-border-color: var(--it-ink);
   color: var(--it-on-accent);
 }
@@ -1490,9 +1492,43 @@ pre code,
     padding: 0.85rem 0.9rem 0.9rem;
   }
 }
+.consent-banner__actions .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.consent-banner__check {
+  flex: none;
+}
 /* keep focused content clear of the banner (WCAG 2.4.11) */
 html:has(.consent-banner) {
   scroll-padding-bottom: 14rem;
+}
+/* Phones: title, link and one row of two buttons; the longer sentence is left
+   out so the banner does not cover the first screen. The current choice is
+   still shown by the check mark and aria-pressed on the buttons. */
+@media (max-width: 576px) {
+  .consent-banner .consent-banner__text {
+    display: none;
+  }
+  .consent-banner p:not(.consent-banner__title) {
+    margin-bottom: 0.6rem;
+  }
+  .consent-banner__actions {
+    flex-wrap: nowrap;
+  }
+  .consent-banner__actions .button {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.2;
+    white-space: normal;
+  }
+  html:has(.consent-banner) {
+    scroll-padding-bottom: 10rem;
+  }
 }
 
 /* Visually hidden, still announced */

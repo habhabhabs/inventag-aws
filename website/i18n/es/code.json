@@ -718,5 +718,17 @@
   },
   "home.docNote": {
     "message": "El esquema del documento de Word generado con {flag}. Cada sección de servicio lista hasta 50 recursos por defecto."
+  },
+  "consent.body.off": {
+    "message": "La analítica está desactivada. Solo están activas las cookies esenciales."
+  },
+  "consent.body.on": {
+    "message": "La analítica está activada. Puedes desactivarla aquí."
+  },
+  "consent.saved.off": {
+    "message": "Guardado: la analítica está desactivada."
+  },
+  "consent.saved.on": {
+    "message": "Guardado: la analítica está activada."
   }
 }
