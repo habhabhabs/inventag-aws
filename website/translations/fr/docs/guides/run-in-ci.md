@@ -120,7 +120,7 @@ $ echo $?
 | 5 | Rapports écrits, un compte n’a pas pu être analysé, ou seulement en partie (`--fail-on-account-error`) |
 | 6 | Aucune ressource à signaler (`--fail-if-empty`) |
 
-Si plusieurs codes s’appliquent, le 5 passe en premier, puis le 6, puis le 3 et le 4, car les données derrière un résultat d’étiquettes ou de risque sont incomplètes quand un compte manque.
+Si plusieurs codes s’appliquent, le 5 passe en premier, puis le 6, puis le 3, puis le 4, car les données derrière un résultat d’étiquettes ou de risque sont incomplètes quand un compte manque.
 Des rapports sont écrits pour les codes 3, 4 et 5. Avec le code 6, une exécution avec `--template` écrit un rapport qui ne liste aucune ressource, et une exécution sans elle n’écrit aucun fichier.
 
 ## Rester prudent {#keep-it-safe}

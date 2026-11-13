@@ -142,7 +142,9 @@ YAML or JSON file. See [Layout files for one report](../templates/layout-flags.m
 | `--fail-on-account-error` | off | Works | Exit with code 5 when an account could not be scanned completely. The reports are still written. |
 | `--fail-if-empty` | off | Works | Exit with code 6 when no resources were found or the filters removed all of them. |
 
-Codes 5 and 6 take precedence over 3 and 4.
+If more than one applies, 5 comes first, then 6, then 3, then 4. Reports are
+written for codes 3, 4 and 5. With code 6, a run with `--template` writes a
+report that lists no resources, and a run without it writes no file.
 
 ## Logging
 

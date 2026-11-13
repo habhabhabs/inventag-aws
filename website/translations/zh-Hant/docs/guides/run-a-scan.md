@@ -170,6 +170,8 @@ $ echo $?
 | `--fail-on-account-error` | 5 | 有帳戶無法掃描，或只掃描了一部分 |
 | `--fail-if-empty` | 6 | 沒有可報告的資源 |
 
+對於結束代碼 6，帶 `--template` 的執行會寫出一份不列出任何資源的報告，不帶 `--template` 的執行則不寫檔案。
+
 完整列表見[在 CI/CD 中執行 InvenTag](./run-in-ci.md#exit-codes)。
 
 ## 下一步 {#next-steps}

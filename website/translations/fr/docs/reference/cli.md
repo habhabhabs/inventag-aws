@@ -142,7 +142,10 @@ un fichier YAML ou JSON. Voir [Fichiers de mise en page pour un rapport](../temp
 | `--fail-on-account-error` | désactivé | Fonctionne | Se termine avec le code 5 quand un compte n’a pas pu être analysé entièrement. Les rapports sont quand même écrits. |
 | `--fail-if-empty` | désactivé | Fonctionne | Se termine avec le code 6 quand aucune ressource n’a été trouvée ou que les filtres les ont toutes retirées. |
 
-Les codes 5 et 6 ont la priorité sur 3 et 4.
+Si plusieurs codes s’appliquent, le 5 passe en premier, puis le 6, puis le 3,
+puis le 4. Des rapports sont écrits pour les codes 3, 4 et 5. Avec le code 6,
+une exécution avec `--template` écrit un rapport qui ne liste aucune ressource,
+et une exécution sans elle n’écrit aucun fichier.
 
 ## Journalisation {#logging}
 

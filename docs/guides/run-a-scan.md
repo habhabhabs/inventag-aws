@@ -210,6 +210,9 @@ Two opt-in flags change that. With code 5 the reports are still written.
 | `--fail-on-account-error` | 5 | An account could not be scanned, or only partly |
 | `--fail-if-empty` | 6 | No resources to report |
 
+With code 6, a run with `--template` writes a report that lists no resources,
+and a run without it writes no file.
+
 The full list is in [Run InvenTag in CI/CD](./run-in-ci.md#exit-codes).
 
 ## Next steps

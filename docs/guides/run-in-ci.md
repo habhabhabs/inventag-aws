@@ -126,7 +126,7 @@ $ echo $?
 | 5 | Reports written, an account could not be scanned or only partly (`--fail-on-account-error`) |
 | 6 | No resources to report (`--fail-if-empty`) |
 
-If more than one applies, 5 comes first, then 6, then 3 and 4, because the data
+If more than one applies, 5 comes first, then 6, then 3, then 4, because the data
 behind a tag or risk result is incomplete when an account is missing. Reports
 are written for codes 3, 4 and 5. With code 6, a run with `--template` writes
 a report that lists no resources, and a run without it writes no file.

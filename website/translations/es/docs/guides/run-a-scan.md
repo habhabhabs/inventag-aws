@@ -190,6 +190,9 @@ InvenTag sale con código 0 aunque una cuenta haya fallado o no se haya encontra
 | `--fail-on-account-error` | 5 | Una cuenta no se pudo analizar, o solo en parte |
 | `--fail-if-empty` | 6 | No hay recursos que informar |
 
+Con el código 6, una ejecución con `--template` escribe un informe que no lista
+ningún recurso, y una ejecución sin ella no escribe ningún archivo.
+
 La lista completa está en [Ejecutar InvenTag en CI/CD](./run-in-ci.md#exit-codes).
 
 ## Siguientes pasos {#next-steps}

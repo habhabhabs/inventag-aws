@@ -124,7 +124,7 @@ $ echo $?
 | 5 | Informes escritos, una cuenta no se pudo analizar o solo en parte (`--fail-on-account-error`) |
 | 6 | No hay recursos que informar (`--fail-if-empty`) |
 
-Si se aplica más de uno, primero va el 5, luego el 6 y después el 3 y el 4, porque los datos detrás de un resultado de etiquetas o de riesgo están incompletos cuando falta una cuenta.
+Si se aplica más de uno, primero va el 5, luego el 6, después el 3 y por último el 4, porque los datos detrás de un resultado de etiquetas o de riesgo están incompletos cuando falta una cuenta.
 Se escriben informes con los códigos 3, 4 y 5. Con el código 6, una ejecución con `--template` escribe un informe que no lista ningún recurso, y una ejecución sin ella no escribe ningún archivo.
 
 ## Mantenlo seguro {#keep-it-safe}

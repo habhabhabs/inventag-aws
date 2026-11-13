@@ -20,7 +20,7 @@ sidebar_position: 6
 | **配置模板（Config template）** | `kind: config` 的模板：扫描哪些账户和区域、写出哪些文件，以及使用哪个报告模板和标签策略。 |
 | **Cost Explorer** | 报告支出的 AWS 服务。InvenTag 调用它来找出有支出的服务；AWS 按请求收费。 |
 | **凭证链（Credential chain）** | AWS 工具查找凭证的顺序：先是环境变量，然后是配置文件，再然后是 IAM 角色。 |
-| **退出码（Exit code）** | 命令结束时返回的数字。`0` 表示成功；InvenTag 用 `1` 表示错误，`2` 表示选项无效或相互冲突，`3` 表示标签策略违规，`4` 表示有安全组规则达到或超过 `--risk-threshold`，`5` 表示有账户未能完整扫描（使用 `--fail-on-account-error` 时），`6` 表示没有可报告的内容（使用 `--fail-if-empty` 时）。见[退出码](./cli.md#exit-codes)。 |
+| **退出码（Exit code）** | 命令结束时返回的数字。`0` 表示成功；InvenTag 用 `1` 表示错误，`2` 表示选项无效或相互冲突，`3` 表示标签策略违规，`4` 表示有安全组规则达到或超过 `--risk-threshold`，`5` 表示有账户未能完整扫描（使用 `--fail-on-account-error` 时），`6` 表示没有可报告的内容（使用 `--fail-if-empty` 时）。如果同时满足多个条件，先是 5，然后是 6，然后是 3，最后是 4。见[退出码](./cli.md#exit-codes)。 |
 | **IAM** | AWS Identity and Access Management：用户、角色，以及规定它们可以做什么的策略。 |
 | **IAM Identity Center** | 用于单点登录（SSO）AWS 账户的 AWS 服务。它曾叫 AWS SSO。 |
 | **IAM 角色（IAM role）** | 一种带有权限的身份，其他身份可以临时代入它。 |

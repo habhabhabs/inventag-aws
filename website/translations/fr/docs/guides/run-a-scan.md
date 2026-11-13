@@ -184,6 +184,9 @@ InvenTag se termine avec le code 0 même si un compte a échoué ou si rien n’
 | `--fail-on-account-error` | 5 | Un compte n’a pas pu être analysé, ou seulement en partie |
 | `--fail-if-empty` | 6 | Aucune ressource à signaler |
 
+Avec le code 6, une exécution avec `--template` écrit un rapport qui ne liste
+aucune ressource, et une exécution sans elle n’écrit aucun fichier.
+
 La liste complète est dans [Exécuter InvenTag en CI/CD](./run-in-ci.md#exit-codes).
 
 ## Étapes suivantes {#next-steps}
