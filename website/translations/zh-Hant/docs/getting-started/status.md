@@ -89,7 +89,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **你沒有權限的服務：** InvenTag 跳過該呼叫，為該服務記錄一條說明原因的警告，然後繼續。
   如果 Resource Groups Tagging API 返回該服務的資源，它們仍可能出現。
 - **因其他原因失敗的列出呼叫**（重試後仍被限流，或出現錯誤）會針對該服務和區域記錄為警告，
-  並記錄在 JSON 輸出中（`metadata.coverage`）。
+  並計入狀態快照（`metadata.tags.coverage_summary`）。
 - **Cost Explorer 存取被拒絕：** 執行在沒有帳單資料的情況下繼續，並記錄一條警告。
 - **被唯讀防護阻止的呼叫**會引發一個指明該操作的錯誤。CLI 本身不會發出這類呼叫。
 - **S3 上傳失敗**會讓整個執行以結束代碼 1 結束，此時報告已寫到本地。

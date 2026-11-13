@@ -25,10 +25,11 @@ InvenTag 写入的其他位置只有你指定的文件（`--log-file`、`--audit
 | `multi_account_bom_<timestamp>.docx` | `--create-word` | Word 报告 |
 | `<account-id>_bom_<timestamp>.xlsx` 和 `.docx` | `--per-account-reports`，代替 `multi_account_bom_*` 文件 | 每个有资源的账户一份报告 |
 | `tag_compliance_<timestamp>.json` | 启用了标签策略 | 标签检查结果 |
-| `state/state_<timestamp>.json` | 每次运行，除非使用 `--disable-state-management` | 所发现的每个资源的快照。超过 30 天的快照，或最新 100 份之外的快照会被删除。 |
+| `state/state_<timestamp>.json` | 每次运行，除非使用 `--disable-state-management` | 所发现的每个资源的快照，机密值已被遮盖。`metadata.tags.coverage_summary` 按账户统计列出调用的结束方式（`ok`、`empty`、`denied`、`throttled`、`error`、`timeout`）。超过 30 天的快照，或最新 100 份之外的快照会被删除（`--state-retention-days`、`--state-max-snapshots`）。 |
 | `state/metadata.json` | 有快照时 | 快照索引：时间、账户、区域、资源数量、校验和 |
 | `changelog_<timestamp>.md` | 第二次及之后的运行，除非使用 `--no-generate-changelog` 或 `--disable-delta-detection` | 自上一份快照以来新增、删除或变更了什么。见[跟踪变更](../guides/track-changes.md)。 |
 | 你用 `--audit-output` 指定的文件 | 你要求时 | 本次运行调用的每个 AWS 操作 |
+| `state/partial/<key>/<account-id>.json` | 有账户失败的运行 | 已完成账户的结果，供 `--resume` 复用，完整运行后会被删除 |
 
 `<timestamp>` 的格式是 `YYYYMMDD_HHMMSS`。
 
@@ -39,8 +40,13 @@ InvenTag 写入的其他位置只有你指定的文件（`--log-file`、`--audit
 - **Summary：** Service、Resource Count、Percentage，以及合计。
 - **每个服务一个工作表**（例如 `EC2`、`S3`、`VPC`），按服务名称排序，包含其资源上发现的所有字段，
   包括展平后的 `raw_data.*` 和 `tags.*` 列。行按类型、名称和 ID 排序。
+  每行都有 `source` 列（`service-api`、`tagging-api` 或 `billing`：返回该行的 API）、
+  `sources` 列（所有这些 API，用 `+` 连接）和 `detail_level` 列（来自服务自身 API 的行为 `full`，其他为 `identity`）。
 - **Network Analysis** 和 **Security Analysis** 工作表，仅在使用 `--enable-network-analysis` 或 `--enable-security-analysis` 时出现。
 - **Cost Analysis** 工作表，仅在使用 `--enable-cost-analysis` 时出现：根据 AWS Pricing API 估算的每月费用，不是你的账单。
+
+常用于存放机密的字段（例如 Lambda 环境变量）的值，在每份报告、快照和日志中都显示为 `***REDACTED***`。
+字段名称会保留。参见[功能状态](../getting-started/status.md#what-inventag-finds-and-what-it-does-not)。
 
 **使用报告模板时**，版式遵循模板：
 

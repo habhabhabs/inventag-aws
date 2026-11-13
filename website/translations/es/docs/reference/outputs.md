@@ -31,10 +31,11 @@ de ejemplo).
 | `multi_account_bom_<timestamp>.docx` | `--create-word` | El informe de Word |
 | `<account-id>_bom_<timestamp>.xlsx` y `.docx` | `--per-account-reports`, en lugar de los archivos `multi_account_bom_*` | Un informe por cada cuenta que tiene recursos |
 | `tag_compliance_<timestamp>.json` | Hay una política de etiquetas activa | Resultados de la comprobación de etiquetas |
-| `state/state_<timestamp>.json` | Cada ejecución, salvo con `--disable-state-management` | Instantánea de todos los recursos encontrados. Las instantáneas con más de 30 días, o más allá de las 100 más recientes, se eliminan. |
+| `state/state_<timestamp>.json` | Cada ejecución, salvo con `--disable-state-management` | Instantánea de todos los recursos encontrados, con los valores secretos ocultos. `metadata.tags.coverage_summary` cuenta, por cuenta, cómo terminaron las llamadas de listado (`ok`, `empty`, `denied`, `throttled`, `error`, `timeout`). Las instantáneas con más de 30 días, o más allá de las 100 más recientes, se eliminan (`--state-retention-days`, `--state-max-snapshots`). |
 | `state/metadata.json` | Con instantáneas | Índice de instantáneas: hora, cuenta, regiones, número de recursos, suma de comprobación |
 | `changelog_<timestamp>.md` | Segunda ejecución y siguientes, salvo con `--no-generate-changelog` o `--disable-delta-detection` | Qué se añadió, eliminó o cambió desde la instantánea anterior. Consulta [Sigue los cambios](../guides/track-changes.md). |
 | El archivo que nombres con `--audit-output` | Cuando lo pides | Todas las operaciones de AWS que llamó la ejecución |
+| `state/partial/<key>/<account-id>.json` | Una ejecución en la que fallaron algunas cuentas | Resultados de las cuentas que terminaron; `--resume` los reutiliza y se borran tras una ejecución completa |
 
 `<timestamp>` es `YYYYMMDD_HHMMSS`.
 
@@ -46,10 +47,19 @@ de ejemplo).
 - **Una hoja por servicio** (por ejemplo `EC2`, `S3`, `VPC`), ordenadas por
   nombre de servicio, con todos los campos encontrados en sus recursos, incluidas las
   columnas aplanadas `raw_data.*` y `tags.*`. Las filas se ordenan por tipo, nombre e ID.
+  Cada fila tiene una columna `source` (`service-api`, `tagging-api` o `billing`:
+  la API que la devolvió), una columna `sources` (todas ellas, unidas con `+`) y
+  una columna `detail_level` (`full` para las filas de la API del propio servicio,
+  `identity` para las demás).
 - Hojas **Network Analysis** y **Security Analysis**, solo con
   `--enable-network-analysis` o `--enable-security-analysis`.
 - Hoja **Cost Analysis**, solo con `--enable-cost-analysis`: costes mensuales
   estimados a partir de la API AWS Pricing, no tu factura.
+
+Los valores de los campos que suelen contener secretos, como las variables de
+entorno de Lambda, aparecen como `***REDACTED***` en todos los informes,
+instantáneas y registros. Los nombres de los campos se mantienen. Consulta
+[Estado de las funciones](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 
 **Con una plantilla de informe**, el diseño sigue la plantilla:
 

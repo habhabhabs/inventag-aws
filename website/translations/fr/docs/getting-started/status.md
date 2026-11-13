@@ -121,7 +121,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   Groups Tagging les renvoie.
 - **Un listage qui échoue pour une autre raison** (limité après les nouvelles
   tentatives, ou une erreur) est consigné comme avertissement pour ce service et
-  cette région, et enregistré dans la sortie JSON (`metadata.coverage`).
+  cette région, et compté dans l’instantané d’état (`metadata.tags.coverage_summary`).
 - **Accès refusé à Cost Explorer :** l’exécution continue sans données de
   facturation et consigne un avertissement.
 - **Un appel bloqué par la protection en lecture seule** lève une erreur qui

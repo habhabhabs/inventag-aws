@@ -31,10 +31,11 @@ data).
 | `multi_account_bom_<timestamp>.docx` | `--create-word` | The Word report |
 | `<account-id>_bom_<timestamp>.xlsx` and `.docx` | `--per-account-reports`, instead of the `multi_account_bom_*` files | One report for each account that has resources |
 | `tag_compliance_<timestamp>.json` | A tag policy is active | Tag check results |
-| `state/state_<timestamp>.json` | Every run, unless `--disable-state-management` | Snapshot of every resource found. Snapshots older than 30 days, or beyond the newest 100, are removed. |
+| `state/state_<timestamp>.json` | Every run, unless `--disable-state-management` | Snapshot of every resource found, with secret values masked. `metadata.tags.coverage_summary` counts, per account, how the listing calls ended (`ok`, `empty`, `denied`, `throttled`, `error`, `timeout`). Snapshots older than 30 days, or beyond the newest 100, are removed (`--state-retention-days`, `--state-max-snapshots`). |
 | `state/metadata.json` | With snapshots | Index of snapshots: time, account, regions, resource count, checksum |
 | `changelog_<timestamp>.md` | Second and later runs, unless `--no-generate-changelog` or `--disable-delta-detection` | What was added, removed or changed since the previous snapshot. See [Track changes](../guides/track-changes.md). |
 | The file you name with `--audit-output` | When you ask for it | Every AWS operation the run called |
+| `state/partial/<key>/<account-id>.json` | A run in which some accounts failed | Results of the accounts that finished, reused by `--resume` and removed after a complete run |
 
 `<timestamp>` is `YYYYMMDD_HHMMSS`.
 
@@ -46,10 +47,18 @@ data).
 - **One sheet per service** (for example `EC2`, `S3`, `VPC`), sorted by
   service name, with every field found on its resources, including flattened
   `raw_data.*` and `tags.*` columns. Rows are sorted by type, name and ID.
+  Every row has a `source` column (`service-api`, `tagging-api` or
+  `billing`: the API that returned it), a `sources` column (all of them,
+  joined with `+`) and a `detail_level` column (`full` for rows from the
+  service's own API, `identity` for the others).
 - **Network Analysis** and **Security Analysis** sheets, only with
   `--enable-network-analysis` or `--enable-security-analysis`.
 - **Cost Analysis** sheet, only with `--enable-cost-analysis`: estimated
   monthly costs from the AWS Pricing API, not your invoice.
+
+Values of fields that often hold secrets, such as Lambda environment
+variables, show `***REDACTED***` in every report, snapshot and log. The field
+names stay. See [Feature status](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 
 **With a report template**, the layout follows the template:
 

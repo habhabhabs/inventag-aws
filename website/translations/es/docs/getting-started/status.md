@@ -122,7 +122,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   Tagging los devuelve.
 - **Un listado que falla por otro motivo** (limitado tras los reintentos, o un
   error) se registra como advertencia para ese servicio y región, y queda
-  anotado en la salida JSON (`metadata.coverage`).
+  contado en la instantánea de estado (`metadata.tags.coverage_summary`).
 - **Acceso denegado a Cost Explorer:** la ejecución continúa sin datos de
   facturación y registra una advertencia.
 - **Una llamada bloqueada por la protección de solo lectura** lanza un error

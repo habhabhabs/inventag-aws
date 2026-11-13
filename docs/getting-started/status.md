@@ -119,7 +119,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   service can still appear if the Resource Groups Tagging API returns them.
 - **A listing that fails for another reason** (throttled after the retries,
   or an error) is logged as a warning for that service and region, and
-  recorded in the JSON output (`metadata.coverage`).
+  counted in the state snapshot (`metadata.tags.coverage_summary`).
 - **Cost Explorer access denied:** the run carries on without billing data and
   logs one warning.
 - **A call blocked by the read-only guard** raises an error that names the

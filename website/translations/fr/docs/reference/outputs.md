@@ -31,10 +31,11 @@ d’exemple).
 | `multi_account_bom_<timestamp>.docx` | `--create-word` | Le rapport Word |
 | `<account-id>_bom_<timestamp>.xlsx` et `.docx` | `--per-account-reports`, à la place des fichiers `multi_account_bom_*` | Un rapport pour chaque compte qui a des ressources |
 | `tag_compliance_<timestamp>.json` | Une politique d’étiquetage est active | Résultats de la vérification des étiquettes |
-| `state/state_<timestamp>.json` | Chaque exécution, sauf avec `--disable-state-management` | Instantané de chaque ressource trouvée. Les instantanés de plus de 30 jours, ou au-delà des 100 plus récents, sont supprimés. |
+| `state/state_<timestamp>.json` | Chaque exécution, sauf avec `--disable-state-management` | Instantané de chaque ressource trouvée, avec les valeurs secrètes masquées. `metadata.tags.coverage_summary` compte, par compte, comment les appels de listage se sont terminés (`ok`, `empty`, `denied`, `throttled`, `error`, `timeout`). Les instantanés de plus de 30 jours, ou au-delà des 100 plus récents, sont supprimés (`--state-retention-days`, `--state-max-snapshots`). |
 | `state/metadata.json` | Avec les instantanés | Index des instantanés : heure, compte, régions, nombre de ressources, somme de contrôle |
 | `changelog_<timestamp>.md` | Deuxième exécution et suivantes, sauf avec `--no-generate-changelog` ou `--disable-delta-detection` | Ce qui a été ajouté, supprimé ou modifié depuis l’instantané précédent. Voir [Suivre les changements](../guides/track-changes.md). |
 | Le fichier que vous nommez avec `--audit-output` | Quand vous le demandez | Chaque opération AWS appelée pendant l’exécution |
+| `state/partial/<key>/<account-id>.json` | Une exécution où certains comptes ont échoué | Résultats des comptes terminés, réutilisés par `--resume` et supprimés après une exécution complète |
 
 `<timestamp>` s’écrit `YYYYMMDD_HHMMSS`.
 
@@ -46,10 +47,19 @@ d’exemple).
 - **Une feuille par service** (par exemple `EC2`, `S3`, `VPC`), triées par nom de
   service, avec chaque champ trouvé sur ses ressources, y compris les colonnes aplaties
   `raw_data.*` et `tags.*`. Les lignes sont triées par type, nom et ID.
+  Chaque ligne a une colonne `source` (`service-api`, `tagging-api` ou `billing` :
+  l’API qui l’a renvoyée), une colonne `sources` (toutes, jointes par `+`) et une
+  colonne `detail_level` (`full` pour les lignes venant de l’API du service lui-même,
+  `identity` pour les autres).
 - Des feuilles **Network Analysis** et **Security Analysis**, uniquement avec
   `--enable-network-analysis` ou `--enable-security-analysis`.
 - Une feuille **Cost Analysis**, uniquement avec `--enable-cost-analysis` : coûts
   mensuels estimés à partir de l’API AWS Pricing, pas votre facture.
+
+Les valeurs des champs qui contiennent souvent des secrets, comme les variables
+d’environnement Lambda, apparaissent sous la forme `***REDACTED***` dans chaque
+rapport, instantané et journal. Les noms des champs restent. Voir
+[État des fonctionnalités](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 
 **Avec un modèle de rapport**, la mise en page suit le modèle :
 
