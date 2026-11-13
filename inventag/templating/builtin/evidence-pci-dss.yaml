@@ -1,0 +1,22 @@
+# Tag evidence for resources that may be in or next to a cardholder data
+# environment. It checks tag evidence only. It does not assess network
+# segmentation or any control and certifies nothing. Tag values are stated by
+# the resource owner and InvenTag cannot verify them.
+format_version: 1
+kind: tag-policy
+name: evidence-pci-dss
+description: >-
+  Tag evidence for cardholder-data scoping: PCI scope and how the resource
+  handles card data. Checks tag evidence only; certifies nothing.
+extends: security-baseline
+spec:
+  required_tags:
+    - key: PciScope
+      description: Does the owner place this resource in the cardholder data environment (cde), connected to it, or outside it?
+      allowed_values: [cde, connected, "out-of-scope"]
+    - key: CardholderData
+      description: What the resource does with card data, as stated by its owner. One value only; if more than one applies, pick the main one.
+      allowed_values: [stores, processes, transmits, none]
+  scope:
+    # Data holders plus the network and compute types a scoping review looks at.
+    resource_types: [Bucket, DBInstance, DBCluster, Table, Volume, Snapshot, Queue, Topic, Instance, LoadBalancer, SecurityGroup, Subnet, VPC]

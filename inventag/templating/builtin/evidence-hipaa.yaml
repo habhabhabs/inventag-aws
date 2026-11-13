@@ -1,0 +1,25 @@
+# Tag evidence for resources that may hold health information. It checks tag
+# evidence only. It does not assess safeguards and certifies nothing. Tag
+# values are stated by the resource owner and InvenTag cannot verify them.
+format_version: 1
+kind: tag-policy
+name: evidence-hipaa
+description: >-
+  Tag evidence for resources that may hold protected health information: PHI
+  flag, classification, retention period. Checks tag evidence only; certifies
+  nothing.
+extends: security-baseline
+spec:
+  required_tags:
+    - key: PHI
+      description: Does the owner say this resource stores or processes protected health information?
+      allowed_values: ["yes", "no"]
+    - key: DataClassification
+      description: Sensitivity of the data, as stated by the owner. Adds phi to the baseline values.
+      allowed_values: [public, internal, confidential, restricted, phi]
+    - key: RetentionPeriod
+      description: How long the owner keeps the data, such as 30d, 7y or indefinite.
+      pattern: '([0-9]+(d|y)|indefinite)'
+  scope:
+    # Types that hold data. Tell InvenTag about other types by copying this list.
+    resource_types: [Bucket, DBInstance, DBCluster, Table, Volume, Snapshot, Queue, Topic, Stream]
