@@ -12,6 +12,10 @@
  * version numbers that are historical facts (changelog text, "since 1.0.1",
  * Python, action and dependency versions) are not matched on purpose.
  *
+ * The current docs write %INVENTAG_VERSION% where they name the release (see
+ * src/remark/version-token.mjs). In a snapshot the token is replaced with the
+ * snapshot's literal version, so archived pages do not change afterwards.
+ *
  * Every replacement is printed. --check changes nothing and exits 1 when a
  * replacement would be made. Running it twice changes nothing the second time.
  *
@@ -19,6 +23,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import {VERSION_TOKEN} from '../src/remark/version-token.mjs';
 
 const SEMVER = String.raw`\d+\.\d+\.\d+`;
 
@@ -65,6 +70,13 @@ for (const file of walk(dir).sort()) {
   let changed = false;
   lines.forEach((line, i) => {
     let next = line;
+    if (next.includes(VERSION_TOKEN)) {
+      const n = next.split(VERSION_TOKEN).length - 1;
+      count += n;
+      changed = true;
+      console.log(`${path.relative(dir, file)}:${i + 1}: version token x${n} -> ${version}`);
+      next = next.split(VERSION_TOKEN).join(version);
+    }
     for (const [what, re] of PATTERNS) {
       next = next.replace(re, (m, before, found, after) => {
         if (found === version) return m;

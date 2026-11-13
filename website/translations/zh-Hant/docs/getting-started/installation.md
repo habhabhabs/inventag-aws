@@ -41,7 +41,7 @@ inventag --help
 報告範本已包含在軟體包中。
 
 升級請執行 `pip install --upgrade inventag-aws`。安裝指定版本請固定版本號，例如
-`pip install inventag-aws==1.1.3`。想讓它遠離你的專案環境？
+`pip install inventag-aws==%INVENTAG_VERSION%`。想讓它遠離你的專案環境？
 `pipx install inventag-aws` 會把它裝進獨立的隱藏環境，並把 `inventag` 命令放到
 PATH 中，你無需啟用任何環境。如果你的系統允許，直接把 `pip install inventag-aws`
 裝到使用者或系統 Python 中也可以。
@@ -65,7 +65,7 @@ inventag --help
 `pip install -r requirements.txt` 之後直接執行 `python inventag_cli.py --help`。
 
 若要從原始碼使用固定的發佈版本，而不是最新程式碼，請檢出它的標籤，例如
-`git checkout v1.1.3`。
+`git checkout v%INVENTAG_VERSION%`。
 [發佈頁面](https://github.com/habhabhabs/inventag-aws/releases)列出了所有版本。
 
 ## 連線你的 AWS 憑證 {#connect-your-aws-credentials}

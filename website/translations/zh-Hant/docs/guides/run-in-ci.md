@@ -55,7 +55,7 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
-      - run: pip install "inventag-aws==1.1.3"   # pin a release
+      - run: pip install "inventag-aws==%INVENTAG_VERSION%"   # pin a release
       - uses: aws-actions/configure-aws-credentials@<full-commit-SHA> # pin the current release
         with:
           role-to-assume: arn:aws:iam::123456789012:role/InvenTagGitHubReadOnly
@@ -109,7 +109,7 @@ $ echo $?
   並授予對該儲存貯體的 `s3:PutObject` 權限。參見
   [定時把報告上傳到 S3](../examples/scheduled-s3-upload.md)。
 - 保持角色唯讀，並把它限定在需要它的儲存庫和分支。
-- 把 InvenTag 固定到某個發佈版本（`inventag-aws==1.1.3`），而不是最新版本。想升級時再自己提高版本號。
+- 把 InvenTag 固定到某個發佈版本（`inventag-aws==%INVENTAG_VERSION%`），而不是最新版本。想升級時再自己提高版本號。
 
 ## 下一步 {#next-steps}
 

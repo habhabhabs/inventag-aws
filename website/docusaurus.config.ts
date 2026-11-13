@@ -7,6 +7,8 @@ import {resolve} from 'node:path';
 import type {Config, Plugin} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 import {inventagLight, inventagDark} from './src/theme-config/prism';
+// Replaces %INVENTAG_VERSION% in the docs with the release number (see the file)
+import remarkVersionToken from './src/remark/version-token.mjs';
 
 // version.json at the repo root is bumped by the release workflow.
 const versionData = JSON.parse(readFileSync(resolve('../version.json'), 'utf8')) as {version: string};
@@ -173,6 +175,7 @@ const config: Config = {
           showLastUpdateAuthor: false,
           breadcrumbs: true,
           include: ['**/*.md', '**/*.mdx'],
+          beforeDefaultRemarkPlugins: [remarkVersionToken],
           exclude: [
             '**/_*.{js,jsx,ts,tsx,md,mdx}',
             '**/_*/**',

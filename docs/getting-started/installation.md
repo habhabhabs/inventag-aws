@@ -44,7 +44,7 @@ This gives you the `inventag` command that these docs use. The report
 templates are included in the package.
 
 To upgrade, run `pip install --upgrade inventag-aws`. To install a specific
-release, pin it, for example `pip install inventag-aws==1.1.3`. Prefer to keep it out of your
+release, pin it, for example `pip install inventag-aws==%INVENTAG_VERSION%`. Prefer to keep it out of your
 project environments? `pipx install inventag-aws` installs it into its own
 hidden environment and puts the `inventag` command on your PATH, so you never
 activate anything. If your system allows it, a plain `pip install inventag-aws`
@@ -70,7 +70,7 @@ effect without a reinstall. You can also run `python inventag_cli.py --help`
 directly after `pip install -r requirements.txt`.
 
 To use a fixed release from source instead of the newest code, check out its tag, for
-example `git checkout v1.1.3`. The
+example `git checkout v%INVENTAG_VERSION%`. The
 [releases page](https://github.com/habhabhabs/inventag-aws/releases) lists
 every release.
 

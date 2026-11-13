@@ -60,7 +60,7 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
-      - run: pip install "inventag-aws==1.1.3"   # pin a release
+      - run: pip install "inventag-aws==%INVENTAG_VERSION%"   # pin a release
       - uses: aws-actions/configure-aws-credentials@<full-commit-SHA> # pin the current release
         with:
           role-to-assume: arn:aws:iam::123456789012:role/InvenTagGitHubReadOnly
@@ -119,7 +119,7 @@ $ echo $?
   [Téléverser les rapports vers S3 selon un calendrier](../examples/scheduled-s3-upload.md).
 - Gardez le rôle en lecture seule et limité au dépôt et à la branche qui en ont
   besoin.
-- Épinglez InvenTag sur une version publiée (`inventag-aws==1.1.3`), pas sur la dernière version. Augmentez le numéro quand vous choisissez de mettre à jour.
+- Épinglez InvenTag sur une version publiée (`inventag-aws==%INVENTAG_VERSION%`), pas sur la dernière version. Augmentez le numéro quand vous choisissez de mettre à jour.
 
 ## Étapes suivantes {#next-steps}
 

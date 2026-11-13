@@ -62,7 +62,7 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
-      - run: pip install "inventag-aws==1.1.3"   # pin a release
+      - run: pip install "inventag-aws==%INVENTAG_VERSION%"   # pin a release
       - uses: aws-actions/configure-aws-credentials@<full-commit-SHA> # pin the current release
         with:
           role-to-assume: arn:aws:iam::123456789012:role/InvenTagGitHubReadOnly
@@ -123,7 +123,7 @@ $ echo $?
   [Subir informes a S3 de forma programada](../examples/scheduled-s3-upload.md).
 - Mantén el rol de solo lectura y limitado al repositorio y la rama que lo
   necesitan.
-- Fija InvenTag a una versión publicada (`inventag-aws==1.1.3`), no a la última versión. Sube el número cuando decidas actualizar.
+- Fija InvenTag a una versión publicada (`inventag-aws==%INVENTAG_VERSION%`), no a la última versión. Sube el número cuando decidas actualizar.
 
 ## Siguientes pasos {#next-steps}
 

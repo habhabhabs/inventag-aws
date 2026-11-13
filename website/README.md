@@ -58,6 +58,43 @@ link targets, heading anchors, URLs and front matter keys are never changed, and
 script refuses to write a page where they would differ. Add new terms to `GLOSSARY` at
 the top of the script. The UI strings in `i18n/zh-Hant/` are edited by hand.
 
+## Version numbers in the docs
+
+Never type the current release number in `docs/` or `translations/`. Write the
+token `%INVENTAG_VERSION%` instead, the same in every language:
+
+```text
+pip install inventag-aws==%INVENTAG_VERSION%
+git checkout v%INVENTAG_VERSION%
+```
+
+The remark plugin `src/remark/version-token.mjs` replaces it at build time
+with the version in `../version.json`, so the page, the search index and the
+copy button show the release number, and the docs follow each release without
+an edit. It works in text, inline code, code blocks, link URLs and string
+attributes of MDX elements, in `.md` and `.mdx`. It does not work in front
+matter (the build stops) and should not be used in headings (the anchor would
+change with each release). On GitHub the page shows the token as written.
+Version numbers that are facts about the past ("since 1.0.1") stay literal.
+
+## Archived versions
+
+`versioned_docs/version-X.Y.Z` are snapshots of `docs/` at the release tag
+`vX.Y.Z`, made by `.github/scripts/sync-doc-versions.sh` (the "Sync doc
+versions" workflow). Each new snapshot is stamped by `scripts/stamp-doc-version.mjs`:
+the token becomes the literal `X.Y.Z`, and the places where an old page named
+another release as "this" release (status page, pinned install, `git checkout`,
+CI `ref:`, the CLI reference's `--help` sentence) are set to `X.Y.Z`. Check a
+snapshot with `node scripts/stamp-doc-version.mjs versioned_docs/version-X.Y.Z X.Y.Z --check`.
+`sync-doc-versions.sh` also writes `i18n/<locale>/docusaurus-plugin-content-docs/version-X.Y.Z.json`
+(version label and translated sidebar categories) from `current.json`.
+Archived page text is English only. To archive locally in a shallow clone,
+run from the repository root:
+
+```bash
+SYNC_DOCS_OFFLINE=1 SYNC_DOCS_SKIP_ANCESTRY=1 .github/scripts/sync-doc-versions.sh
+```
+
 ## Design system
 
 - Tokens, Infima overrides and all docs chrome: `src/css/custom.css`

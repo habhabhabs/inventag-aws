@@ -44,7 +44,7 @@ Con esto tienes el comando `inventag` que usa esta documentación. Las plantilla
 de informe vienen incluidas en el paquete.
 
 Para actualizar, ejecuta `pip install --upgrade inventag-aws`. Para instalar una versión
-concreta, fíjala, por ejemplo `pip install inventag-aws==1.1.3`. ¿Prefieres mantenerlo fuera de los
+concreta, fíjala, por ejemplo `pip install inventag-aws==%INVENTAG_VERSION%`. ¿Prefieres mantenerlo fuera de los
 entornos de tus proyectos? `pipx install inventag-aws` lo instala en su propio
 entorno oculto y pone el comando `inventag` en tu PATH, así que nunca tienes que activar
 nada. Si tu sistema lo permite, un simple `pip install inventag-aws`
@@ -70,7 +70,7 @@ se aplican sin reinstalar. También puedes ejecutar `python inventag_cli.py --he
 directamente después de `pip install -r requirements.txt`.
 
 Para usar desde el código fuente una versión fija en lugar del código más reciente, descarga su etiqueta, por
-ejemplo `git checkout v1.1.3`. La
+ejemplo `git checkout v%INVENTAG_VERSION%`. La
 [página de versiones](https://github.com/habhabhabs/inventag-aws/releases) lista
 todas las versiones.
 
