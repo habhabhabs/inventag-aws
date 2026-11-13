@@ -23,10 +23,6 @@
     "message": "Referencia",
     "description": "The label for category 'Reference' in sidebar 'docsSidebar'"
   },
-  "sidebar.docsSidebar.category.Security": {
-    "message": "Seguridad",
-    "description": "The label for category 'Security' in sidebar 'docsSidebar'"
-  },
   "sidebar.docsSidebar.category.Contributing": {
     "message": "Contribuir",
     "description": "The label for category 'Contributing' in sidebar 'docsSidebar'"

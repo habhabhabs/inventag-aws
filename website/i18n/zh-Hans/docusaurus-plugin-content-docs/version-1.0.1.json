@@ -23,10 +23,6 @@
     "message": "参考",
     "description": "The label for category 'Reference' in sidebar 'docsSidebar'"
   },
-  "sidebar.docsSidebar.category.Security": {
-    "message": "安全",
-    "description": "The label for category 'Security' in sidebar 'docsSidebar'"
-  },
   "sidebar.docsSidebar.category.Contributing": {
     "message": "参与贡献",
     "description": "The label for category 'Contributing' in sidebar 'docsSidebar'"
