@@ -244,6 +244,8 @@ const config: Config = {
         removeDefaultStopWordFilter: true,
         docsRouteBasePath: '/docs',
         explicitSearchResultPath: true,
+        // related-page tiles and card grids repeat other pages' titles: keep them out of the index
+        ignoreCssSelectors: ['.it-related', '.it-cards'],
       },
     ],
     brokenLinksGate,
