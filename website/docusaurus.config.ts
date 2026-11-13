@@ -2,8 +2,8 @@
 // See https://docusaurus.io/docs/api/docusaurus-config
 // This runs in Node.js: no browser APIs or JSX here.
 
-import {readFileSync, readdirSync, writeFileSync, statSync} from 'node:fs';
-import {resolve, join} from 'node:path';
+import {readFileSync} from 'node:fs';
+import {resolve} from 'node:path';
 import type {Config, Plugin} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 import {inventagLight, inventagDark} from './src/theme-config/prism';
@@ -40,7 +40,9 @@ function uiString(key: string, fallback: string): string {
 }
 
 // Open Graph wants language_TERRITORY values (zh_CN), not the BCP 47 tags in htmlLang (zh-Hans).
-// htmlLang stays as it is because it drives <html lang>, hreflang and :lang() CSS.
+// htmlLang stays as it is because it drives <html lang>, hreflang and :lang() CSS. The theme writes
+// og:locale from htmlLang; the tags in themeConfig.metadata below replace them (the later Helmet wins),
+// in the built HTML and in the hydrated page.
 const OG_LOCALES: Record<string, string> = {
   en: 'en_GB', // the English text uses British spelling
   'zh-Hans': 'zh_CN',
@@ -48,37 +50,6 @@ const OG_LOCALES: Record<string, string> = {
   es: 'es_ES',
   fr: 'fr_FR',
 };
-
-function walkHtml(dir: string, out: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    const full = join(dir, name);
-    if (statSync(full).isDirectory()) walkHtml(full, out);
-    else if (name.endsWith('.html')) out.push(full);
-  }
-  return out;
-}
-
-// Replaces the og:locale tags that the theme writes from htmlLang with valid ones.
-function ogLocaleFix(): Plugin {
-  return {
-    name: 'inventag-og-locale',
-    async postBuild({outDir, i18n}) {
-      const current = OG_LOCALES[i18n.currentLocale];
-      if (!current) throw new Error(`No Open Graph locale for "${i18n.currentLocale}" (see OG_LOCALES).`);
-      const alternates = Object.entries(OG_LOCALES).filter(([l]) => l !== i18n.currentLocale).map(([, v]) => v);
-      const tags =
-        `<meta data-rh="true" property="og:locale" content="${current}">` +
-        alternates.map((v) => `<meta data-rh="true" property="og:locale:alternate" content="${v}">`).join('');
-      const pattern = /<meta[^>]*property="?og:locale(?::alternate)?"?[^>]*>/g;
-      for (const file of walkHtml(outDir)) {
-        const html = readFileSync(file, 'utf8');
-        if (!pattern.test(html)) continue;
-        pattern.lastIndex = 0;
-        writeFileSync(file, html.replace(pattern, '').replace('</head>', `${tags}</head>`));
-      }
-    },
-  };
-}
 
 // Fail the build on broken links in the homepage and the current docs.
 // Archived versions only warn (they are snapshots and are not edited).
@@ -271,13 +242,16 @@ const config: Config = {
       },
     ],
     brokenLinksGate,
-    ogLocaleFix,
   ],
 
   themeConfig: {
     metadata: [
       // pages without their own description (404, search) get the localized home description
       {name: 'description', content: uiString('home.pageDescription', DESCRIPTION)},
+      {property: 'og:locale', content: OG_LOCALES[CURRENT_LOCALE] ?? OG_LOCALES.en},
+      ...Object.entries(OG_LOCALES)
+        .filter(([locale]) => locale !== CURRENT_LOCALE)
+        .map(([, content]) => ({property: 'og:locale:alternate', content})),
       {name: 'keywords', content: 'aws, inventory, tagging, tag policy, bill of materials, bom, cli, python, open source'},
       {property: 'og:type', content: 'website'},
       {property: 'og:site_name', content: 'InvenTag'},
