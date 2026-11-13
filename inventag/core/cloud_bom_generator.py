@@ -540,6 +540,15 @@ class CloudBOMGenerator:
                 aws_session_token=credentials.session_token,
             )
 
+        # The default credentials already belong to this account: use them
+        # directly instead of trying to assume a role in our own account.
+        if (
+            is_valid_account_id(credentials.account_id)
+            and self.config.cross_account_role_name == "InvenTagCrossAccountRole"
+            and self._default_caller_account() == str(credentials.account_id)
+        ):
+            return boto3.Session()
+
         if self.config.cross_account_role_name and is_valid_account_id(
             credentials.account_id
         ):
@@ -554,10 +563,19 @@ class CloudBOMGenerator:
                     role_arn, credentials.account_id, credentials.external_id
                 )
             except (InvalidRoleError, ClientError, BotoCoreError) as e:
+                # One line per account at INFO, without the full AWS error text
+                # (which repeats the caller ARN); the detail goes to DEBUG.
+                code = (
+                    e.response.get("Error", {}).get("Code", "error")
+                    if isinstance(e, ClientError)
+                    else type(e).__name__
+                )
                 self.logger.info(
-                    f"Cross-account role {role_arn or self.config.cross_account_role_name} "
-                    f"not usable for account {credentials.account_id} ({e}); "
-                    "trying default credentials"
+                    f"Cross-account role not usable for account "
+                    f"{credentials.account_id} ({code}); trying default credentials"
+                )
+                self.logger.debug(
+                    f"Cross-account role {role_arn or self.config.cross_account_role_name}: {e}"
                 )
 
         # Fallback to default session. _establish_account_contexts verifies
@@ -595,6 +613,17 @@ class CloudBOMGenerator:
             aws_secret_access_key=temp["SecretAccessKey"],
             aws_session_token=temp["SessionToken"],
         )
+
+    def _default_caller_account(self) -> Optional[str]:
+        """Account ID of the default credentials (looked up once per run)."""
+        if not hasattr(self, "_default_caller_account_id"):
+            try:
+                self._default_caller_account_id = str(
+                    boto3.Session().client("sts").get_caller_identity()["Account"]
+                )
+            except Exception:
+                self._default_caller_account_id = None
+        return self._default_caller_account_id
 
     def _default_partition(self) -> str:
         """Partition (aws, aws-cn, aws-us-gov...) of the default credentials."""

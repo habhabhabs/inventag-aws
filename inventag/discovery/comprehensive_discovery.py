@@ -360,6 +360,7 @@ class ComprehensiveAWSDiscovery:
         # Step 4: Validate against billing data
         if self.enable_billing_validation:
             self._validate_with_billing()
+            self._add_billing_fallback_resources()
 
         # Step 5: Post-process and enhance (including S3 bucket regions)
         self._post_process_resources()
@@ -874,6 +875,44 @@ class ComprehensiveAWSDiscovery:
         except Exception:
             return f"arn:aws:{service}:{region}:unknown:{resource_type.lower()}/{resource_id}"
 
+    def _prefetch_tagging_resources(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Read ResourceGroupsTagging API results for every region in parallel.
+
+        GetResources is slow (one page at a time, throttled per account), so
+        the regions are fetched concurrently and the results are merged by the
+        caller on a single thread. A region that fails is logged and left out.
+        """
+        from concurrent.futures import ThreadPoolExecutor
+        from botocore.config import Config
+
+        cfg = Config(retries={"max_attempts": 10, "mode": "adaptive"})
+
+        def fetch(region: str) -> List[Dict[str, Any]]:
+            client = self.session.client(
+                "resourcegroupstaggingapi", region_name=region, config=cfg
+            )
+            items: List[Dict[str, Any]] = []
+            for page in client.get_paginator("get_resources").paginate(
+                ResourcesPerPage=100
+            ):
+                items.extend(page.get("ResourceTagMappingList", []))
+            return items
+
+        results: Dict[str, List[Dict[str, Any]]] = {}
+        regions = list(self.regions)
+        if not regions:
+            return results
+        with ThreadPoolExecutor(max_workers=min(8, len(regions))) as pool:
+            futures = {pool.submit(fetch, r): r for r in regions}
+            for fut, region in futures.items():
+                try:
+                    results[region] = fut.result()
+                except Exception as e:
+                    self.logger.warning(
+                        f"ResourceGroupsTagging enrichment failed in {region}: {e}"
+                    )
+        return results
+
     def _enrich_with_tagging_api(self):
         """Enrich discovered resources with additional tag data from ResourceGroupsTagging API."""
         self.logger.info("🏷️ Enriching resources with ResourceGroupsTagging API data")
@@ -884,97 +923,93 @@ class ComprehensiveAWSDiscovery:
         enriched_count = 0
         new_resources_found = 0
 
+        prefetched = self._prefetch_tagging_resources()
+
         for region in self.regions:
             try:
-                rgt_client = self.session.client(
-                    "resourcegroupstaggingapi", region_name=region
-                )
-                paginator = rgt_client.get_paginator("get_resources")
+                if region not in prefetched:
+                    continue  # the fetch failed and was already logged
 
-                for page in paginator.paginate():
-                    for resource in page.get("ResourceTagMappingList", []):
-                        arn = resource.get("ResourceARN", "")
-                        tags = {
-                            tag["Key"]: tag["Value"] for tag in resource.get("Tags", [])
-                        }
+                for resource in prefetched[region]:
+                    arn = resource.get("ResourceARN", "")
+                    tags = {
+                        tag["Key"]: tag["Value"] for tag in resource.get("Tags", [])
+                    }
 
-                        if arn in arn_to_resource:
-                            # Enrich existing resource with additional tags
-                            existing_resource = arn_to_resource[arn]
-                            existing_resource["tags"].update(tags)
-                            existing_resource["tagged"] = bool(
-                                existing_resource["tags"]
-                            )
-                            enriched_count += 1
-                        else:
-                            # This is a resource we missed - add it as fallback only
-                            # Check if we should show this fallback resource based on display mode
+                    if arn in arn_to_resource:
+                        # Enrich existing resource with additional tags
+                        existing_resource = arn_to_resource[arn]
+                        existing_resource["tags"].update(tags)
+                        existing_resource["tagged"] = bool(existing_resource["tags"])
+                        enriched_count += 1
+                    else:
+                        # This is a resource we missed - add it as fallback only
+                        # Check if we should show this fallback resource based on display mode
+                        should_show_fallback = False
+
+                        if self.fallback_display_mode == "always":
+                            should_show_fallback = True
+                        elif self.fallback_display_mode == "never":
                             should_show_fallback = False
-
-                            if self.fallback_display_mode == "always":
+                        else:  # auto mode
+                            # Show fallback only if no primary resources were found for this service
+                            try:
+                                service = self._extract_service_from_arn(arn)
+                                should_show_fallback = (
+                                    service not in self.services_with_primary_resources
+                                )
+                            except Exception:
+                                # If we can't determine service, default to showing in auto mode
                                 should_show_fallback = True
+
+                        if should_show_fallback:
+                            try:
+                                service = self._extract_service_from_arn(arn)
+                                if service:
+                                    resource_id = (
+                                        arn.split("/")[-1]
+                                        if "/" in arn
+                                        else arn.split(":")[-1]
+                                    )
+
+                                    # Apply the same service classification logic for fallback resources
+                                    actual_service = self._determine_actual_service(
+                                        service, "Unknown", resource_id, arn
+                                    )
+
+                                    new_resource = {
+                                        "service": actual_service.upper(),
+                                        "resource_type": "Unknown",
+                                        "resource_id": resource_id,
+                                        "resource_name": tags.get("Name"),
+                                        "arn": arn,
+                                        "region": region,
+                                        "account_id": self._extract_account_id(arn),
+                                        "tags": tags,
+                                        "raw_data": {"arn": arn},
+                                        "discovered_via": "ResourceGroupsTaggingAPI:Fallback",
+                                        "discovered_at": datetime.now(
+                                            timezone.utc
+                                        ).isoformat(),
+                                        "tagged": True,
+                                        "priority": "fallback",  # Mark as lower priority
+                                    }
+                                    self.resources.append(new_resource)
+                                    new_resources_found += 1
+                            except Exception as e:
+                                self.logger.debug(
+                                    f"Failed to process tagged resource {arn}: {e}"
+                                )
+                        else:
+                            # Resource would have been added as fallback but is filtered
+                            if self.fallback_display_mode == "auto":
+                                self.logger.debug(
+                                    f"Skipping fallback resource {arn} - primary resources exist for service"
+                                )
                             elif self.fallback_display_mode == "never":
-                                should_show_fallback = False
-                            else:  # auto mode
-                                # Show fallback only if no primary resources were found for this service
-                                try:
-                                    service = self._extract_service_from_arn(arn)
-                                    should_show_fallback = (
-                                        service
-                                        not in self.services_with_primary_resources
-                                    )
-                                except Exception:
-                                    # If we can't determine service, default to showing in auto mode
-                                    should_show_fallback = True
-
-                            if should_show_fallback:
-                                try:
-                                    service = self._extract_service_from_arn(arn)
-                                    if service:
-                                        resource_id = (
-                                            arn.split("/")[-1]
-                                            if "/" in arn
-                                            else arn.split(":")[-1]
-                                        )
-
-                                        # Apply the same service classification logic for fallback resources
-                                        actual_service = self._determine_actual_service(
-                                            service, "Unknown", resource_id, arn
-                                        )
-
-                                        new_resource = {
-                                            "service": actual_service.upper(),
-                                            "resource_type": "Unknown",
-                                            "resource_id": resource_id,
-                                            "resource_name": tags.get("Name"),
-                                            "arn": arn,
-                                            "region": region,
-                                            "account_id": self._extract_account_id(arn),
-                                            "tags": tags,
-                                            "raw_data": {"arn": arn},
-                                            "discovered_via": "ResourceGroupsTaggingAPI:Fallback",
-                                            "discovered_at": datetime.now(
-                                                timezone.utc
-                                            ).isoformat(),
-                                            "tagged": True,
-                                            "priority": "fallback",  # Mark as lower priority
-                                        }
-                                        self.resources.append(new_resource)
-                                        new_resources_found += 1
-                                except Exception as e:
-                                    self.logger.debug(
-                                        f"Failed to process tagged resource {arn}: {e}"
-                                    )
-                            else:
-                                # Resource would have been added as fallback but is filtered
-                                if self.fallback_display_mode == "auto":
-                                    self.logger.debug(
-                                        f"Skipping fallback resource {arn} - primary resources exist for service"
-                                    )
-                                elif self.fallback_display_mode == "never":
-                                    self.logger.debug(
-                                        f"Skipping fallback resource {arn} - fallback display disabled"
-                                    )
+                                self.logger.debug(
+                                    f"Skipping fallback resource {arn} - fallback display disabled"
+                                )
 
             except Exception as e:
                 self.logger.warning(
@@ -1094,6 +1129,67 @@ class ComprehensiveAWSDiscovery:
             )
 
         self.logger.info("=" * 50)
+
+    # Billing lines that are not a service with resources.
+    _NON_SERVICE_BILLING = {"tax", "refund", "credit", "savingsplans", "support"}
+
+    def _add_billing_fallback_resources(self) -> int:
+        """Add one placeholder row per billed service with no discovered resources.
+
+        Discovery only knows the services it has handlers for. Cost Explorer
+        knows every service that was used, so a billed service that discovery
+        missed is still listed (as "detected from billing", with its monthly
+        cost) instead of disappearing from the report.
+        """
+        if self.fallback_display_mode == "never" or not self.billing_services:
+            return 0
+
+        found = {r["service"].lower() for r in self.resources}
+
+        def covered(billed: str) -> bool:
+            return any(
+                d == billed
+                or (len(d) >= 3 and d in billed)
+                or (len(billed) >= 3 and billed in d)
+                for d in found
+            )
+
+        added = 0
+        for service in sorted(self.billing_services):
+            if (
+                not service
+                or service in self._NON_SERVICE_BILLING
+                or any(service.startswith(x) for x in ("tax", "refund"))
+                or covered(service)
+            ):
+                continue
+            cost = self.billing_spend.get(service, 0.0)
+            self.resources.append(
+                {
+                    "service": service.upper(),
+                    "resource_type": "Service (detected from billing)",
+                    "resource_id": service,
+                    "resource_name": None,
+                    "arn": "",
+                    "region": "global",
+                    "account_id": getattr(self, "account_id", "") or "",
+                    "tags": {},
+                    "raw_data": {"billing_service": service, "monthly_cost": cost},
+                    "discovered_via": "CostExplorer:Fallback",
+                    "discovered_at": datetime.now(timezone.utc).isoformat(),
+                    "tagged": False,
+                    "priority": "fallback",
+                    "estimated_monthly_cost": cost,
+                }
+            )
+            added += 1
+
+        if added:
+            self.logger.info(
+                f"💰 Added {added} services found only on the bill "
+                "(no resources discovered; listed as 'detected from billing')"
+            )
+        return added
 
     def _post_process_resources(self):
         """Post-process resources for consistency and additional metadata."""
@@ -1443,6 +1539,11 @@ class ComprehensiveAWSDiscovery:
             "Amazon CloudWatch Events": "events",
         }
 
-        return mappings.get(
-            billing_name, billing_name.lower().replace(" ", "").replace("-", "")
-        )
+        if billing_name in mappings:
+            return mappings[billing_name]
+        name = billing_name
+        for prefix in ("Amazon ", "AWS "):
+            if name.startswith(prefix):
+                name = name[len(prefix) :]
+                break
+        return "".join(ch for ch in name.lower() if ch.isalnum())

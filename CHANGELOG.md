@@ -8,6 +8,27 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- A service that appears on the bill but has no discovered resources is now
+  listed as "Service (detected from billing)" with its last-30-day cost, so a
+  used service no longer disappears from the report. `--fallback-display never`
+  turns this off.
+
+### Changed
+
+- Tag enrichment reads the ResourceGroupsTagging API for all regions in
+  parallel (up to 8 at a time, with adaptive retries). It ran one region at a
+  time before.
+- Billing and discovery service names are compared with the same name rules,
+  so `AMAZONCLOUDWATCH`, `KEYMANAGEMENTSERVICE` and `CLOUDWATCHEVENTS` are no
+  longer reported as missing next to `CLOUDWATCH`, `KMS` and `EVENTS`.
+- Services billed at $0.00 are no longer probed in every region; they are
+  listed from billing instead.
+- When the default credentials already belong to the account being scanned,
+  the default `InvenTagCrossAccountRole` is not tried, and a failed role
+  attempt is logged as one short line per account.
+
 ## [5.1.0] - 2026-11-13
 
 ### Added

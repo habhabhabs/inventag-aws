@@ -22,7 +22,12 @@ from botocore.exceptions import ClientError
 from .intelligent_discovery import IntelligentAWSDiscovery
 from .optimized_discovery import OptimizedAWSDiscovery
 from .comprehensive_discovery import ComprehensiveAWSDiscovery
-from .service_filter import canonical_service_set, filter_resources, service_matches
+from .service_filter import (
+    canonical_service,
+    canonical_service_set,
+    filter_resources,
+    service_matches,
+)
 
 
 class ProgressSpinner:
@@ -320,9 +325,16 @@ class AWSResourceInventory:
 
         # For services with billing usage but no discovered resources, try dynamic discovery
         if self.enable_billing_validation and hasattr(self, "billing_spend_by_service"):
-            undiscovered_services = (
-                set(self.billing_spend_by_service.keys()) - discovered_service_names
-            )
+            discovered_keys = {canonical_service(n) for n in discovered_service_names}
+            undiscovered_services = {
+                name
+                for name, spend in self.billing_spend_by_service.items()
+                if canonical_service(name) not in discovered_keys
+                # A service billed at $0.00 is almost always free tier or an
+                # account-level feature; it is listed from billing instead of
+                # being probed in every region.
+                and spend > 0.01
+            }
             if self.services:
                 # Do not make extra API calls for services the caller excluded
                 allowed_services = canonical_service_set(self.services)
@@ -403,6 +415,11 @@ class AWSResourceInventory:
                             )
                 finally:
                     spinner.stop()
+
+        # Step 4b: services that are on the bill but still have no resources are
+        # listed from billing, so no service that was used is missing from the BOM
+        if self.enable_billing_validation and hasattr(self, "billing_spend_by_service"):
+            self._add_billing_fallback_resources()
 
         # Step 5: Service-specific discovery for enhanced details (always run for legacy mode)
         if not self.use_intelligent_discovery:
@@ -1013,7 +1030,13 @@ class AWSResourceInventory:
         discovered_services = self._get_discovered_services()
 
         # Find services with billing usage but no discovered resources
-        missing_services = self.billing_validated_services - discovered_services
+        discovered_keys = {canonical_service(n) for n in discovered_services}
+        billed_keys = {canonical_service(n) for n in self.billing_validated_services}
+        missing_services = {
+            n
+            for n in self.billing_validated_services
+            if canonical_service(n) not in discovered_keys
+        }
 
         if missing_services:
             self.logger.warning(
@@ -1026,7 +1049,9 @@ class AWSResourceInventory:
                 )
 
         # Find services with discovered resources but no billing usage
-        unbilled_services = discovered_services - self.billing_validated_services
+        unbilled_services = {
+            n for n in discovered_services if canonical_service(n) not in billed_keys
+        }
         if unbilled_services:
             self.logger.info(
                 f"Found {len(unbilled_services)} services with discovered resources but no recent billing:"
@@ -1112,6 +1137,57 @@ class AWSResourceInventory:
         self.logger.info(
             f"Service/tag filters kept {len(self.resources)} of {before} resources"
         )
+
+    def _add_billing_fallback_resources(self) -> int:
+        """List billed services that have no discovered resources.
+
+        Discovery only knows the services it has handlers for, but Cost
+        Explorer knows every service that was used. A billed service that
+        discovery still missed gets one row marked "detected from billing",
+        with its last-30-day cost, instead of disappearing from the report.
+        """
+        if self.fallback_display_mode == "never":
+            return 0
+        found = {canonical_service(r.get("service")) for r in self.resources}
+        allowed = canonical_service_set(self.services) if self.services else set()
+        skip = {"tax", "refund", "credit", "support", "savingsplans"}
+        account_id = next(
+            (r.get("account_id") for r in self.resources if r.get("account_id")), ""
+        )
+        added = 0
+        for name, spend in sorted(self.billing_spend_by_service.items()):
+            key = canonical_service(name)
+            if not key or key in found or key in skip or key.startswith("tax"):
+                continue
+            if allowed and key not in allowed:
+                continue
+            self.resources.append(
+                {
+                    "service": name.upper(),
+                    "resource_type": "Service (detected from billing)",
+                    "resource_id": name.lower(),
+                    "resource_name": None,
+                    "arn": "",
+                    "region": "global",
+                    "account_id": account_id,
+                    "tags": {},
+                    "raw_data": {"billing_service": name, "cost_last_30_days": spend},
+                    "discovered_via": "CostExplorer:Fallback",
+                    "discovered_at": datetime.now(timezone.utc).isoformat(),
+                    "tagged": False,
+                    "priority": "fallback",
+                    "billing_validated": True,
+                    "billing_cost_30d": spend,
+                }
+            )
+            found.add(key)
+            added += 1
+        if added:
+            self.logger.info(
+                f"Added {added} services found only on the bill "
+                "(listed as 'detected from billing')"
+            )
+        return added
 
     def _get_discovered_services(self) -> Set[str]:
         """Get set of services that have been discovered."""
