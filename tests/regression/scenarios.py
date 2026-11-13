@@ -181,8 +181,8 @@ PLAN = [
 
 A = "A"
 STS_B_DENIED = Fault(service="sts", op="GetCallerIdentity", key=ACCOUNTS["B"][1], error="InvalidClientTokenId", message="The security token included in the request is invalid.")
-SLOW_B = Fault(service="ec2", op="DescribeVpcs", key=ACCOUNTS["B"][1], sleep=6.0)
-SHORT = {"account_timeout": 3, "grace": 1, "poll": 0.2}
+SLOW_B = Fault(service="ec2", op="DescribeVpcs", key=ACCOUNTS["B"][1], sleep=14.0)
+SHORT = {"account_timeout": 8, "grace": 1, "poll": 0.2}
 ONE_SERVICE = ("--account-services", "SQS")
 
 # What a row overrides on its plan entry. ``source`` is "run" when S1 executed the
@@ -215,7 +215,7 @@ MATRIX: Dict[str, Dict[str, Any]] = {
     "B3": dict(
         source="run",
         accounts=("A", "B"), args=("--account-services", "VPC"), faults=(SLOW_B,), limits=SHORT,
-        pins=(("code", 0), ("out", "timed out after 3 seconds"), ("report_text", "only partly scanned")),
+        pins=(("code", 0), ("out", "timed out after 8 seconds"), ("report_text", "only partly scanned")),
         issue_keys=("timeout",), target=(("code", 0),), wp="WP-F2",
     ),
     "B5": dict(
@@ -235,7 +235,7 @@ MATRIX: Dict[str, Dict[str, Any]] = {
     "B10": dict(
         source="run", slow=True, process="child",
         accounts=("A", "B"), args=("--account-services", "VPC"),
-        faults=(Fault(service="ec2", op="DescribeVpcs", key=ACCOUNTS["B"][1], sleep=20.0),), limits=SHORT,
+        faults=(Fault(service="ec2", op="DescribeVpcs", key=ACCOUNTS["B"][1], sleep=25.0),), limits=SHORT,
         pins=(("code", 0),),
         target=(("code", 0), ("exit_within_after_summary", 12.0)), wp="WP-F2",
     ),
@@ -322,12 +322,12 @@ MATRIX: Dict[str, Dict[str, Any]] = {
     ),
     "K1": dict(
         source="code", process="child", signal="SIGINT",
-        faults=(Fault(service="ec2", op="DescribeVpcs", sleep=30.0),), args=("--account-services", "VPC"),
+        faults=(Fault(service="ec2", op="DescribeVpcs", sleep=12.0),), args=("--account-services", "VPC"),
         pins=(("code_nonzero",),), code=130, target=(("code", 130),), wp="WP-F1a",
     ),
     "K2": dict(
         source="code", process="child", signal="SIGTERM",
-        faults=(Fault(service="ec2", op="DescribeVpcs", sleep=30.0),), args=("--account-services", "VPC"),
+        faults=(Fault(service="ec2", op="DescribeVpcs", sleep=12.0),), args=("--account-services", "VPC"),
         pins=(("code_nonzero",),), code=143, target=(("code", 143),), wp="WP-F1a",
     ),
 }
