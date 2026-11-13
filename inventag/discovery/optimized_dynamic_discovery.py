@@ -223,14 +223,13 @@ class OptimizedDynamicDiscovery:
 
             # Handle global services (only use us-east-1)
             if service in self.global_services:
-                if "us-east-1" in regions:
-                    tasks.append(
-                        {
-                            "service": service,
-                            "region": "us-east-1",
-                            "priority": self.service_priority.get(service, 100),
-                        }
-                    )
+                tasks.append(
+                    {
+                        "service": service,
+                        "region": "us-east-1",
+                        "priority": self.service_priority.get(service, 100),
+                    }
+                )
             else:
                 # Regional services - try all regions
                 for region in regions:

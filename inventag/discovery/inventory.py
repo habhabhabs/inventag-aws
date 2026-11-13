@@ -22,6 +22,7 @@ from botocore.exceptions import ClientError
 from .intelligent_discovery import IntelligentAWSDiscovery
 from .optimized_discovery import OptimizedAWSDiscovery
 from .comprehensive_discovery import ComprehensiveAWSDiscovery
+from .arn_utils import build_arn, normalize_arn
 from .service_filter import (
     canonical_service,
     canonical_service_set,
@@ -501,7 +502,13 @@ class AWSResourceInventory:
                     resource = {
                         # Standardized core fields
                         "arn": standard_data.get("resource_arn")
-                        or f"arn:aws:{standard_data['service_name'].lower()}:{standard_data['region']}:{standard_data.get('account_id', 'unknown')}:resource/{standard_data['resource_id']}",
+                        or build_arn(
+                            standard_data["service_name"],
+                            standard_data["resource_type"],
+                            standard_data["resource_id"],
+                            standard_data["region"],
+                            standard_data.get("account_id"),
+                        ),
                         "id": standard_data["resource_id"],
                         "service": standard_data["service_name"],
                         "type": standard_data["resource_type"],
@@ -548,7 +555,13 @@ class AWSResourceInventory:
                 for standard_resource in standard_resources:
                     legacy_resource = {
                         "arn": standard_resource.resource_arn
-                        or f"arn:aws:{standard_resource.service_name.lower()}:{standard_resource.region}:{standard_resource.account_id or 'unknown'}:resource/{standard_resource.resource_id}",
+                        or build_arn(
+                            standard_resource.service_name,
+                            standard_resource.resource_type,
+                            standard_resource.resource_id,
+                            standard_resource.region,
+                            standard_resource.account_id,
+                        ),
                         "id": standard_resource.resource_id,
                         "service": standard_resource.service_name,
                         "type": standard_resource.resource_type,
@@ -592,7 +605,13 @@ class AWSResourceInventory:
                     resource = {
                         # Standardized core fields
                         "arn": standard_resource.resource_arn
-                        or f"arn:aws:{standard_resource.service_name.lower()}:{standard_resource.region}:{standard_resource.account_id or 'unknown'}:resource/{standard_resource.resource_id}",
+                        or build_arn(
+                            standard_resource.service_name,
+                            standard_resource.resource_type,
+                            standard_resource.resource_id,
+                            standard_resource.region,
+                            standard_resource.account_id,
+                        ),
                         "id": standard_resource.resource_id,
                         "service": standard_resource.service_name,
                         "type": standard_resource.resource_type,
@@ -637,7 +656,13 @@ class AWSResourceInventory:
                 for standard_resource in standard_resources:
                     legacy_resource = {
                         "arn": standard_resource.resource_arn
-                        or f"arn:aws:{standard_resource.service_name.lower()}:{standard_resource.region}:{standard_resource.account_id or 'unknown'}:resource/{standard_resource.resource_id}",
+                        or build_arn(
+                            standard_resource.service_name,
+                            standard_resource.resource_type,
+                            standard_resource.resource_id,
+                            standard_resource.region,
+                            standard_resource.account_id,
+                        ),
                         "id": standard_resource.resource_id,
                         "service": standard_resource.service_name,
                         "type": standard_resource.resource_type,
@@ -2107,7 +2132,9 @@ class AWSResourceInventory:
         """Create a comprehensive unique key for resource deduplication."""
         arn = resource.get("arn", "")
         if arn:
-            return f"arn:{arn}"
+            # Normalised, so the same resource under two spellings of its ARN
+            # (ec2/vpc, function/x or function:x) is one resource.
+            return f"arn:{normalize_arn(arn)}"
 
         # Service-specific unique key generation
         service = resource.get("service", "").upper()

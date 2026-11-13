@@ -1140,6 +1140,11 @@ class OptimizedAWSDiscovery(IntelligentAWSDiscovery):
     def _get_regions_for_service(self, service_name: str) -> List[str]:
         """Get regions to use for a specific service."""
 
+        # Global services are listed once per account, from us-east-1, whichever
+        # regions were requested.
+        if self._is_global_service(service_name):
+            return ["us-east-1"]
+
         # If specific regions were provided, use them
         if self.specified_regions:
             return self.specified_regions

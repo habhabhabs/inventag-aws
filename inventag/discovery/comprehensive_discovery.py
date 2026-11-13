@@ -14,12 +14,26 @@ This ensures resources like VPCs, subnets, security groups, etc. are always disc
 """
 
 import logging
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta, timezone
 import boto3
 from botocore.exceptions import ClientError
+
+from .arn_utils import (
+    ResourceArnIndex,
+    build_arn,
+    dedupe_key,
+    extract_arn,
+    parse_arn,
+)
+
+# Services whose resources belong to the account, not to a region. They are
+# listed once per account from the home region and shown with this region.
+GLOBAL_REGION_LABEL = "global"
+GLOBAL_HOME_REGION = "us-east-1"
 
 
 class ComprehensiveAWSDiscovery:
@@ -275,7 +289,7 @@ class ComprehensiveAWSDiscovery:
                 "operations": [
                     ("get_databases", "DatabaseList", "Database"),
                     ("get_jobs", "Jobs", "Job"),
-                    ("get_crawlers", "CrawlerList", "Crawler"),
+                    ("get_crawlers", "Crawlers", "Crawler"),
                     ("get_triggers", "Triggers", "Trigger"),
                 ],
                 "regional": True,
@@ -417,7 +431,11 @@ class ComprehensiveAWSDiscovery:
             )
 
         except Exception as e:
-            self.logger.warning(f"Billing discovery failed: {e}")
+            self._warn_once(
+                "billing",
+                f"Cost Explorer data is not available, so billing "
+                f"checks are skipped: {e}",
+            )
 
     def _discover_all_service_resources(self, max_workers: int):
         """Discover ALL resources using service-specific APIs (PRIMARY METHOD)."""
@@ -439,16 +457,21 @@ class ComprehensiveAWSDiscovery:
                         }
                     )
             else:
-                # Global service - discover from us-east-1 only
-                if "us-east-1" in self.regions:
-                    discovery_tasks.append(
-                        {
-                            "service": service_name,
-                            "region": "us-east-1",
-                            "config": config,
-                            "priority": 1 if config.get("critical", False) else 2,
-                        }
-                    )
+                # Global service - listed once per account from the home
+                # region, whichever regions were requested.
+                discovery_tasks.append(
+                    {
+                        "service": service_name,
+                        "region": GLOBAL_HOME_REGION,
+                        "config": config,
+                        "priority": 1 if config.get("critical", False) else 2,
+                    }
+                )
+
+        # Certificates CloudFront uses must be in us-east-1. Read them even
+        # when us-east-1 is not one of the requested regions.
+        if GLOBAL_HOME_REGION not in self.regions:
+            self._discover_cloudfront_certificates()
 
         # Sort by priority (critical services first)
         discovery_tasks.sort(key=lambda x: x["priority"])
@@ -487,6 +510,43 @@ class ComprehensiveAWSDiscovery:
                     self.logger.warning(
                         f"❌ {task['service']} in {task['region']} failed: {e}"
                     )
+
+    def _discover_cloudfront_certificates(self) -> int:
+        """ACM certificates in us-east-1 that a CloudFront distribution uses."""
+        found = 0
+        try:
+            acm = self.session.client("acm", region_name=GLOBAL_HOME_REGION)
+            for page in acm.get_paginator("list_certificates").paginate():
+                for summary in page.get("CertificateSummaryList", []):
+                    arn = summary.get("CertificateArn", "")
+                    detail = acm.describe_certificate(CertificateArn=arn)
+                    cert = detail.get("Certificate", {})
+                    if not any(":cloudfront:" in a for a in cert.get("InUseBy", [])):
+                        continue
+                    resource = self._normalize_resource(
+                        summary,
+                        "acm",
+                        GLOBAL_HOME_REGION,
+                        "Certificate",
+                        "list_certificates",
+                    )
+                    if resource:
+                        self.resources.append(resource)
+                        self.services_with_primary_resources.add("acm")
+                        found += 1
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code", "")
+            if code in self.DENIED_CODES:
+                self._warn_once(
+                    "denied:acm",
+                    f"No permission for acm in {GLOBAL_HOME_REGION} ({code}); "
+                    "CloudFront certificates are skipped.",
+                )
+            else:
+                self.logger.debug(f"CloudFront certificate lookup failed: {e}")
+        except Exception as e:
+            self.logger.debug(f"CloudFront certificate lookup failed: {e}")
+        return found
 
     def _discover_service_in_region(self, task: Dict[str, Any]) -> int:
         """Discover resources for a specific service in a specific region."""
@@ -583,9 +643,34 @@ class ComprehensiveAWSDiscovery:
 
             return resources_found
 
-        except Exception:
-            # Operation-level errors are expected and handled gracefully
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code", "")
+            if code in self.DENIED_CODES:
+                self._warn_once(
+                    f"denied:{service_name}",
+                    f"No permission for {service_name} "
+                    f"({operation_name} in {region}: {code}). "
+                    f"Resources of {service_name} are skipped; add the "
+                    "read permission to see them.",
+                )
+            else:
+                self.logger.debug(
+                    f"{service_name} {operation_name} in {region} failed: {e}"
+                )
             return 0
+        except Exception as e:
+            # Operation-level errors are expected and handled gracefully
+            self.logger.debug(f"{service_name} {operation_name} failed: {e}")
+            return 0
+
+    DENIED_CODES = {
+        "AccessDenied",
+        "AccessDeniedException",
+        "UnauthorizedOperation",
+        "UnauthorizedAccess",
+        "AuthorizationError",
+        "OptInRequired",
+    }
 
     def _extract_resources_from_response(
         self,
@@ -666,11 +751,9 @@ class ComprehensiveAWSDiscovery:
             resource_name = self._extract_resource_name(raw_data)
 
             # Extract ARN if available
-            arn = raw_data.get("Arn") or raw_data.get("ARN")
-            if not arn:
-                arn = self._construct_arn(
-                    service_name, region, resource_type, resource_id
-                )
+            arn = self._construct_arn(
+                service_name, region, resource_type, resource_id, raw_data
+            )
 
             # Extract tags
             tags = self._extract_tags(raw_data)
@@ -687,8 +770,12 @@ class ComprehensiveAWSDiscovery:
                 "resource_id": resource_id,
                 "resource_name": resource_name,
                 "arn": arn,
-                "region": region,
-                "account_id": self._extract_account_id(arn),
+                "region": (
+                    GLOBAL_REGION_LABEL
+                    if actual_service.lower() in self.GLOBAL_ARN_SERVICES
+                    else region
+                ),
+                "account_id": self._extract_account_id(arn) or raw_data.get("OwnerId"),
                 "tags": tags,
                 "raw_data": raw_data,
                 "discovered_via": f"ServiceAPI:{operation_name}",
@@ -711,18 +798,23 @@ class ComprehensiveAWSDiscovery:
         resource_type: str,
         operation_name: str,
     ) -> Optional[Dict]:
-        """Create resource from string value (like SQS queue URLs)."""
+        """Create a resource from a string a list call returns.
+
+        The string is a queue URL (SQS), an ARN (ECS) or a name (EKS).
+        """
         try:
+            arn = self._construct_arn(service_name, region, resource_type, value, {})
+            name = re.split(r"[/]", value)[-1] if value else value
             resource = {
                 "service": service_name.upper(),
                 "resource_type": resource_type,
                 "resource_id": value,
-                "resource_name": value.split("/")[-1] if "/" in value else value,
-                "arn": value,  # For some services, the URL is the ARN equivalent
+                "resource_name": name,
+                "arn": arn,
                 "region": region,
-                "account_id": None,
+                "account_id": self._extract_account_id(arn),
                 "tags": {},
-                "raw_data": {"url": value},
+                "raw_data": {"url" if value.startswith("http") else "name": value},
                 "discovered_via": f"ServiceAPI:{operation_name}",
                 "discovered_at": datetime.now(timezone.utc).isoformat(),
                 "tagged": False,
@@ -759,8 +851,14 @@ class ComprehensiveAWSDiscovery:
             "KeyPair": ["KeyName"],
             "Bucket": ["Name"],
             "DBInstance": ["DBInstanceIdentifier"],
+            "DBCluster": ["DBClusterIdentifier"],
+            "DBSnapshot": ["DBSnapshotIdentifier"],
+            "DBSubnetGroup": ["DBSubnetGroupName"],
+            "DBParameterGroup": ["DBParameterGroupName"],
             "Function": ["FunctionName"],
             "LoadBalancer": ["LoadBalancerName", "LoadBalancerArn"],
+            "LoadBalancerV2": ["LoadBalancerName", "LoadBalancerArn"],
+            "TargetGroup": ["TargetGroupName", "TargetGroupArn"],
             "User": ["UserName"],
             "Role": ["RoleName"],
             "HostedZone": ["Id"],
@@ -775,6 +873,8 @@ class ComprehensiveAWSDiscovery:
             "Topic": ["TopicArn"],  # SNS topics use ARN as identifier
             "Queue": ["QueueUrl"],  # SQS queues use URL as identifier
             "Table": ["TableName"],
+            "ElasticIP": ["AllocationId", "PublicIp"],
+            "Organization": ["OrganizationId"],
             "RestApi": ["id", "name"],
             "Certificate": ["CertificateArn"],
             "Trail": ["Name", "TrailARN"],
@@ -819,8 +919,11 @@ class ComprehensiveAWSDiscovery:
         """Extract tags from AWS resource data."""
         tags = {}
 
-        if "Tags" in data:
-            tag_data = data["Tags"]
+        # RDS returns its tags as "TagList"; most services use "Tags"
+        for tag_key in ("Tags", "TagList"):
+            if tag_key not in data:
+                continue
+            tag_data = data[tag_key]
             if isinstance(tag_data, list):
                 for tag in tag_data:
                     if isinstance(tag, dict) and "Key" in tag and "Value" in tag:
@@ -854,26 +957,37 @@ class ComprehensiveAWSDiscovery:
         return account_id
 
     def _construct_arn(
-        self, service: str, region: str, resource_type: str, resource_id: str
+        self,
+        service: str,
+        region: str,
+        resource_type: str,
+        resource_id: str,
+        raw_data: Optional[Dict] = None,
     ) -> str:
-        """Construct ARN for resources that don't provide one."""
-        try:
-            account_id = self._get_account_id()
+        """The real ARN: the one the list call returned, else the AWS form."""
+        found = extract_arn(raw_data)
+        if found:
+            return found
+        if service in ("s3",):
+            return build_arn(service, resource_type, resource_id, region, None)
+        return build_arn(
+            service,
+            resource_type,
+            resource_id,
+            region,
+            self._get_account_id(),
+            raw_data,
+        )
 
-            # Handle service-specific ARN formats
-            if service == "s3":
-                return f"arn:aws:s3:::{resource_id}"
-            elif service == "iam":
-                return (
-                    f"arn:aws:iam::{account_id}:{resource_type.lower()}/{resource_id}"
-                )
-            elif service in ["cloudfront", "route53"]:
-                return f"arn:aws:{service}::{account_id}:{resource_type.lower()}/{resource_id}"
-            else:
-                return f"arn:aws:{service}:{region}:{account_id}:{resource_type.lower()}/{resource_id}"
+    def _tagging_regions(self) -> List[str]:
+        """Regions to read tags from: the requested ones, plus the home region.
 
-        except Exception:
-            return f"arn:aws:{service}:{region}:unknown:{resource_type.lower()}/{resource_id}"
+        Tags of global services (IAM, Route 53, CloudFront) live in us-east-1.
+        """
+        regions = list(self.regions)
+        if GLOBAL_HOME_REGION not in regions:
+            regions.append(GLOBAL_HOME_REGION)
+        return regions
 
     def _prefetch_tagging_resources(self) -> Dict[str, List[Dict[str, Any]]]:
         """Read ResourceGroupsTagging API results for every region in parallel.
@@ -899,122 +1013,100 @@ class ComprehensiveAWSDiscovery:
             return items
 
         results: Dict[str, List[Dict[str, Any]]] = {}
-        regions = list(self.regions)
-        if not regions:
-            return results
+        regions = self._tagging_regions()
         with ThreadPoolExecutor(max_workers=min(8, len(regions))) as pool:
             futures = {pool.submit(fetch, r): r for r in regions}
             for fut, region in futures.items():
                 try:
                     results[region] = fut.result()
                 except Exception as e:
-                    self.logger.warning(
-                        f"ResourceGroupsTagging enrichment failed in {region}: {e}"
+                    self._warn_once(
+                        f"tagging:{region}",
+                        f"ResourceGroupsTagging enrichment failed in {region}: {e}",
                     )
         return results
 
+    def _warn_once(self, key: str, message: str) -> None:
+        """Log a warning once per key (a service or region), not once per call."""
+        warned = self.__dict__.setdefault("_warned_keys", set())
+        if key in warned:
+            self.logger.debug(message)
+            return
+        warned.add(key)
+        self.logger.warning(message)
+
     def _enrich_with_tagging_api(self):
-        """Enrich discovered resources with additional tag data from ResourceGroupsTagging API."""
+        """Enrich discovered resources with tags from the ResourceGroupsTagging API.
+
+        An ARN from the API is matched to a discovered resource by normalised
+        ARN, then by (service, region, name or ID), so a small ARN difference
+        never drops tags. An ARN that matches nothing is added as a fallback
+        resource, subject to ``fallback_display_mode``.
+        """
         self.logger.info("🏷️ Enriching resources with ResourceGroupsTagging API data")
 
-        # Create ARN lookup for existing resources
-        arn_to_resource = {r["arn"]: r for r in self.resources if r.get("arn")}
+        index = ResourceArnIndex(r for r in self.resources if r.get("arn"))
+        requested = set(self.regions)
 
         enriched_count = 0
         new_resources_found = 0
 
         prefetched = self._prefetch_tagging_resources()
 
-        for region in self.regions:
-            try:
-                if region not in prefetched:
-                    continue  # the fetch failed and was already logged
+        for region in self._tagging_regions():
+            if region not in prefetched:
+                continue  # the fetch failed and was already logged
+            for resource in prefetched[region]:
+                arn = resource.get("ResourceARN", "")
+                tags = {tag["Key"]: tag["Value"] for tag in resource.get("Tags", [])}
+                parsed = parse_arn(arn) or {}
+                is_global = parsed.get(
+                    "service"
+                ) in self.GLOBAL_ARN_SERVICES or not parsed.get("region")
 
-                for resource in prefetched[region]:
-                    arn = resource.get("ResourceARN", "")
-                    tags = {
-                        tag["Key"]: tag["Value"] for tag in resource.get("Tags", [])
+                existing_resource = index.find(arn)
+                if existing_resource is not None:
+                    existing_resource.setdefault("tags", {}).update(tags)
+                    existing_resource["tagged"] = bool(existing_resource["tags"])
+                    enriched_count += 1
+                    continue
+
+                if region not in requested and not is_global:
+                    continue  # the home region was read only for global tags
+                if not self._should_show_fallback(arn):
+                    continue
+                try:
+                    service = self._extract_service_from_arn(arn)
+                    if not service:
+                        continue
+                    resource_id = re.split(r"[/:]", parsed["resource"])[-1]
+                    actual_service = self._determine_actual_service(
+                        service, "Unknown", resource_id, arn
+                    )
+                    new_resource = {
+                        "service": actual_service.upper(),
+                        "resource_type": "Unknown",
+                        "resource_id": resource_id,
+                        "resource_name": tags.get("Name"),
+                        "arn": arn,
+                        "region": (
+                            GLOBAL_REGION_LABEL
+                            if parsed.get("service") in self.GLOBAL_ARN_SERVICES
+                            else region
+                        ),
+                        "account_id": self._extract_account_id(arn),
+                        "tags": tags,
+                        "raw_data": {"arn": arn},
+                        "discovered_via": "ResourceGroupsTaggingAPI:Fallback",
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
+                        "tagged": True,
+                        "priority": "fallback",  # Mark as lower priority
                     }
-
-                    if arn in arn_to_resource:
-                        # Enrich existing resource with additional tags
-                        existing_resource = arn_to_resource[arn]
-                        existing_resource["tags"].update(tags)
-                        existing_resource["tagged"] = bool(existing_resource["tags"])
-                        enriched_count += 1
-                    else:
-                        # This is a resource we missed - add it as fallback only
-                        # Check if we should show this fallback resource based on display mode
-                        should_show_fallback = False
-
-                        if self.fallback_display_mode == "always":
-                            should_show_fallback = True
-                        elif self.fallback_display_mode == "never":
-                            should_show_fallback = False
-                        else:  # auto mode
-                            # Show fallback only if no primary resources were found for this service
-                            try:
-                                service = self._extract_service_from_arn(arn)
-                                should_show_fallback = (
-                                    service not in self.services_with_primary_resources
-                                )
-                            except Exception:
-                                # If we can't determine service, default to showing in auto mode
-                                should_show_fallback = True
-
-                        if should_show_fallback:
-                            try:
-                                service = self._extract_service_from_arn(arn)
-                                if service:
-                                    resource_id = (
-                                        arn.split("/")[-1]
-                                        if "/" in arn
-                                        else arn.split(":")[-1]
-                                    )
-
-                                    # Apply the same service classification logic for fallback resources
-                                    actual_service = self._determine_actual_service(
-                                        service, "Unknown", resource_id, arn
-                                    )
-
-                                    new_resource = {
-                                        "service": actual_service.upper(),
-                                        "resource_type": "Unknown",
-                                        "resource_id": resource_id,
-                                        "resource_name": tags.get("Name"),
-                                        "arn": arn,
-                                        "region": region,
-                                        "account_id": self._extract_account_id(arn),
-                                        "tags": tags,
-                                        "raw_data": {"arn": arn},
-                                        "discovered_via": "ResourceGroupsTaggingAPI:Fallback",
-                                        "discovered_at": datetime.now(
-                                            timezone.utc
-                                        ).isoformat(),
-                                        "tagged": True,
-                                        "priority": "fallback",  # Mark as lower priority
-                                    }
-                                    self.resources.append(new_resource)
-                                    new_resources_found += 1
-                            except Exception as e:
-                                self.logger.debug(
-                                    f"Failed to process tagged resource {arn}: {e}"
-                                )
-                        else:
-                            # Resource would have been added as fallback but is filtered
-                            if self.fallback_display_mode == "auto":
-                                self.logger.debug(
-                                    f"Skipping fallback resource {arn} - primary resources exist for service"
-                                )
-                            elif self.fallback_display_mode == "never":
-                                self.logger.debug(
-                                    f"Skipping fallback resource {arn} - fallback display disabled"
-                                )
-
-            except Exception as e:
-                self.logger.warning(
-                    f"ResourceGroupsTagging enrichment failed in {region}: {e}"
-                )
+                    self.resources.append(new_resource)
+                    index.add(new_resource)
+                    new_resources_found += 1
+                except Exception as e:
+                    self.logger.debug(f"Failed to process tagged resource {arn}: {e}")
 
         # Report services with primary resources for transparency
         if self.fallback_display_mode == "auto":
@@ -1031,6 +1123,18 @@ class ComprehensiveAWSDiscovery:
             f"🏷️ Tag enrichment complete: enriched {enriched_count} resources, "
             f"found {new_resources_found} additional tagged resources"
         )
+
+    # ARN service codes of services that are not tied to one region.
+    GLOBAL_ARN_SERVICES = {"iam", "route53", "cloudfront"}
+
+    def _should_show_fallback(self, arn: str) -> bool:
+        """Whether an ARN no discovery handler returned is added to the report."""
+        if self.fallback_display_mode == "always":
+            return True
+        if self.fallback_display_mode == "never":
+            return False
+        service = self._extract_service_from_arn(arn)
+        return service not in self.services_with_primary_resources
 
     def _extract_service_from_arn(self, arn: str) -> Optional[str]:
         """Extract service name from ARN."""
@@ -1411,14 +1515,14 @@ class ComprehensiveAWSDiscovery:
 
     def _remove_duplicates_with_priority(self):
         """Remove duplicates prioritizing service API discoveries over fallback methods."""
-        # Group resources by ARN
+        # Group resources by normalised ARN, so the same resource found under
+        # two spellings of its ARN (vpc/ec2, function/x or function:x) is one.
         arn_groups = {}
         for resource in self.resources:
-            arn = resource.get("arn")
-            if arn:
-                if arn not in arn_groups:
-                    arn_groups[arn] = []
-                arn_groups[arn].append(resource)
+            if resource.get("arn"):
+                arn_groups.setdefault(dedupe_key(resource), []).append(resource)
+            else:
+                arn_groups.setdefault(f"noarn:{id(resource)}", []).append(resource)
 
         # Select best resource for each ARN (prioritize service API over fallback)
         deduplicated = []
