@@ -8,6 +8,16 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `inventag --version` prints the installed version. `python -m inventag` runs
+  the same command as `inventag`.
+
+### Added (documentation site)
+
+- The documentation site is also available in Traditional Chinese, Spanish
+  and French, and has a read-aloud button.
+
 ### Fixed
 
 - `--enable-cost-analysis`: a Pricing API lookup is made once per distinct
@@ -104,6 +114,8 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   work and are tested.
 - No empty `bom_output/changelogs/` folder is created.
 - Google secrets are masked in logs.
+- Report generation no longer fails at the end when there is no security
+  analysis result.
 
 ### Changed
 
