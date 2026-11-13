@@ -151,6 +151,35 @@ READ_ONLY_ACTIONS: Dict[str, Tuple[str, str]] = {
     "wafv2:ListRuleGroups": ("wafv2", "ListRuleGroups"),
     "wafv2:ListWebACLs": ("wafv2", "ListWebACLs"),
     "workmail:ListOrganizations": ("workmail", "ListOrganizations"),
+    # Added in this release: services listed by the table-driven discovery,
+    # region discovery (account:ListRegions) and the network/security
+    # analyzers (ec2:DescribeNetworkInterfaces).
+    "account:ListRegions": ("account", "ListRegions"),
+    "appsync:ListGraphqlApis": ("appsync", "ListGraphqlApis"),
+    "athena:ListWorkGroups": ("athena", "ListWorkGroups"),
+    "autoscaling:DescribeAutoScalingGroups": (
+        "autoscaling",
+        "DescribeAutoScalingGroups",
+    ),
+    "backup:ListBackupVaults": ("backup", "ListBackupVaults"),
+    "cognito-idp:ListUserPools": ("cognito-idp", "ListUserPools"),
+    "ec2:DescribeNetworkInterfaces": ("ec2", "DescribeNetworkInterfaces"),
+    "ecr:DescribeRepositories": ("ecr", "DescribeRepositories"),
+    "elasticbeanstalk:DescribeApplications": (
+        "elasticbeanstalk",
+        "DescribeApplications",
+    ),
+    "elasticbeanstalk:DescribeEnvironments": (
+        "elasticbeanstalk",
+        "DescribeEnvironments",
+    ),
+    "elasticfilesystem:DescribeFileSystems": ("efs", "DescribeFileSystems"),
+    "elasticmapreduce:ListClusters": ("emr", "ListClusters"),
+    "es:ListDomainNames": ("opensearch", "ListDomainNames"),
+    "firehose:ListDeliveryStreams": ("firehose", "ListDeliveryStreams"),
+    "kafka:ListClustersV2": ("kafka", "ListClustersV2"),
+    "redshift-serverless:ListNamespaces": ("redshift-serverless", "ListNamespaces"),
+    "redshift-serverless:ListWorkgroups": ("redshift-serverless", "ListWorkgroups"),
 }
 
 # API Gateway authorises by HTTP verb on resource paths. Only metadata paths,
