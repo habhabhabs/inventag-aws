@@ -157,13 +157,13 @@ def test_parameters_that_return_secrets(service, operation, params, allowed):
 
 # ------------------------------------------------- end to end through botocore
 def test_ec2_user_data_is_blocked_on_the_wire(aws_env, global_guard):
-    ec2 = boto3.client("ec2", region_name="us-east-1")
-    image = ec2.describe_images(Owners=["amazon"])["Images"][0]["ImageId"]
     uninstall_global_guard()
-    # Set up the instance without the guard (RunInstances is a write).
+    # Set up the instance without the guard (RunInstances is a write). A fixed
+    # image ID: moto's default AMIs may be switched off by an earlier test
+    # (MOTO_EC2_LOAD_DEFAULT_AMIS), and moto accepts any image ID.
     raw = boto3.client("ec2", region_name="us-east-1")
     instance = raw.run_instances(
-        ImageId=image, MinCount=1, MaxCount=1, UserData="password=hunter2"
+        ImageId="ami-12c6146b", MinCount=1, MaxCount=1, UserData="password=hunter2"
     )["Instances"][0]["InstanceId"]
     install_global_guard(global_guard)
 

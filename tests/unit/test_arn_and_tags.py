@@ -92,9 +92,10 @@ def world():
             VolumeId=ids["vol"],
             TagSpecifications=[{"ResourceType": "snapshot", "Tags": TAGS}],
         )["SnapshotId"]
-        ami = ec2.describe_images()["Images"][0]["ImageId"]
+        # A fixed image ID: moto's default AMIs may be switched off by an
+        # earlier test (MOTO_EC2_LOAD_DEFAULT_AMIS), and moto accepts any ID.
         ids["instance"] = ec2.run_instances(
-            ImageId=ami,
+            ImageId="ami-12c6146b",
             MinCount=1,
             MaxCount=1,
             TagSpecifications=[{"ResourceType": "instance", "Tags": TAGS}],
