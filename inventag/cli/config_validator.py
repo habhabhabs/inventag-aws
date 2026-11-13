@@ -3,6 +3,8 @@ Configuration validation for InvenTag CLI.
 """
 
 import json
+import os
+import stat
 import yaml
 import logging
 from pathlib import Path
@@ -105,6 +107,10 @@ class ConfigValidator:
                         "credentials only if they belong to this account"
                     )
 
+            warning = self._secret_file_permission_warning(path, accounts)
+            if warning:
+                result.warnings.append(warning)
+
             # Validate global settings
             if "settings" in config:
                 settings_errors = self._validate_settings_config(config["settings"])
@@ -120,6 +126,25 @@ class ConfigValidator:
             result.errors.append(f"Unexpected error validating accounts file: {e}")
 
         return result
+
+    @staticmethod
+    def _secret_file_permission_warning(path: Path, accounts) -> Optional[str]:
+        """Warn when a file with secret access keys can be read by others."""
+        has_secrets = any(
+            isinstance(a, dict)
+            and (a.get("secret_access_key") or a.get("session_token"))
+            for a in accounts
+        )
+        if not has_secrets or os.name != "posix":
+            return None
+        mode = stat.S_IMODE(path.stat().st_mode)
+        if not mode & 0o077:
+            return None
+        return (
+            f"{path} contains secret access keys and other users can read it "
+            f"(mode {mode:04o}). Run: chmod 600 {path}. Prefer profile_name or "
+            "role_arn over access keys in a file."
+        )
 
     def _validate_account_config(
         self, account: Dict[str, Any], index: int
