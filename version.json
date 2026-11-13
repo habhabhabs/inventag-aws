@@ -1,9 +1,9 @@
 {
-  "version": "1.1.0",
-  "release_notes": "Release 1.1.0 - 2026-11-13\\✨ New Features:\\  • feat: Google Sheets and Docs output, per-account reports, risk threshold, cost sheet, honest status\\🐛 Bug Fixes:\\  • fix: tolerate missing security analysis in the report summary\\  • fix: real ARNs and tag matching for every service; global services without us-east-1\\📚 Documentation:\\  • docs: phone menu opens as a two-level drawer with icons and a back button [skip release]\\  • docs: step number badge shares a centre line with its heading text [skip release]\\  • docs: first visit follows the system theme, then light/dark only [skip release]\\  • docs: step badges, callouts, related tiles, search palette, icons; Security and tests section [skip release]\\  • docs: version dropdown with archived v1.0.1 and v1.0.0; archive from the release tag\\📝 Other Changes:\\  • ci: release every push to main as a patch automatically [skip release]\\📊 Summary: 9 commits in this release",
-  "release_date": "2026-11-13T06:27:34.179307",
-  "previous_version": "1.0.2",
-  "version_bump_type": "minor",
-  "git_tag": "v1.1.0",
-  "github_release_url": "https://github.com/habhabhabs/inventag-aws/releases/tag/v1.1.0"
+  "version": "1.1.1",
+  "release_notes": "Release 1.1.1 - 2026-11-13\\🐛 Bug Fixes:\\  • fix: type-check the search palette; archive docs from an empty folder so renamed files are not duplicated [skip release]\\📚 Documentation:\\  • docs: archive documentation for release v1.1.0 (N-1 strategy)\\  • docs: regenerate sample downloads with real ARNs and corrected tag matching [skip release]\\  • docs: phone menu is a full-screen sheet; nothing from the page navbar shows beside it [skip release]\\📊 Summary: 4 commits in this release",
+  "release_date": "2026-11-13T06:44:10.006479",
+  "previous_version": "1.1.0",
+  "version_bump_type": "patch",
+  "git_tag": "v1.1.1",
+  "github_release_url": "https://github.com/habhabhabs/inventag-aws/releases/tag/v1.1.1"
 }
