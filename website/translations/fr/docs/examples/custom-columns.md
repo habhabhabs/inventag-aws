@@ -1,6 +1,6 @@
 ---
 title: "Exemple : vos propres colonnes"
-description: Choisissez exactement quelles colonnes et quelles colonnes d’étiquettes apparaissent dans le rapport Excel d’InvenTag, dans quel ordre, sur une seule feuille filtrable.
+description: Choisissez exactement les colonnes et les colonnes d’étiquettes du rapport Excel d’InvenTag, dans l’ordre que vous voulez, sur une seule feuille filtrable.
 sidebar_position: 8
 ---
 

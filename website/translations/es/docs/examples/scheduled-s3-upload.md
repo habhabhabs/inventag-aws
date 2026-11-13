@@ -1,6 +1,6 @@
 ---
 title: "Ejemplo: subir informes a S3 de forma programada"
-description: Sube los informes de Excel cifrados de InvenTag a un bucket de S3 después de cada ejecución programada, con una auditoría de cada llamada a AWS que hizo la ejecución.
+description: Sube los informes de Excel cifrados de InvenTag a un bucket de S3 tras cada ejecución programada, con una auditoría de cada llamada a AWS de la ejecución.
 sidebar_position: 9
 ---
 

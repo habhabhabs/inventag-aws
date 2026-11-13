@@ -1,6 +1,6 @@
 ---
 title: Comprobar etiquetas con una política
-description: Comprueba que tus recursos de AWS llevan las etiquetas obligatorias con valores permitidos, usando una plantilla de política de etiquetas de InvenTag, y lee los resultados.
+description: Comprueba que tus recursos de AWS llevan las etiquetas obligatorias con valores permitidos, usando una plantilla de política de etiquetas, y lee los resultados.
 sidebar_position: 4
 slug: /architecture/tag-compliance
 ---

@@ -1,6 +1,6 @@
 ---
 title: Vérifier les étiquettes selon une politique
-description: Vérifiez que vos ressources AWS portent les étiquettes requises avec des valeurs autorisées, à l’aide d’un modèle de politique d’étiquetage InvenTag, et lisez les résultats.
+description: Vérifiez que vos ressources AWS portent les étiquettes requises avec des valeurs autorisées, via un modèle de politique d’étiquetage, et lisez les résultats.
 sidebar_position: 4
 slug: /architecture/tag-compliance
 ---

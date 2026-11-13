@@ -1,6 +1,6 @@
 ---
 title: "Ejemplo: informe ejecutivo de Word con tu marca"
-description: Genera un informe breve de Word en horizontal con tu logotipo, tus colores y un resumen de cumplimiento de etiquetas para la dirección, usando una plantilla de informe de InvenTag.
+description: Genera un informe breve de Word en horizontal con tu logotipo, tus colores y un resumen del cumplimiento de etiquetas, usando una plantilla de informe.
 sidebar_position: 7
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: "Exemple : appliquer une politique d’étiquetage en CI"
-description: Faites échouer un job CI avec le code de sortie 3 lorsque des ressources AWS enfreignent votre politique d’étiquetage, tout en conservant les rapports InvenTag comme artefacts de build.
+description: Faites échouer un job CI avec le code de sortie 3 quand des ressources AWS enfreignent votre politique d’étiquetage, et gardez les rapports comme artefacts.
 sidebar_position: 4
 ---
 

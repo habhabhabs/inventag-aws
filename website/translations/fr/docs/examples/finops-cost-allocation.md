@@ -1,6 +1,6 @@
 ---
 title: "Exemple : étiquettes d’allocation des coûts FinOps"
-description: Trouvez quelles ressources AWS n’ont pas les étiquettes CostCenter, Owner, Project et Environment dont dépendent les rapports d’allocation des coûts, avec le modèle finops-cost-report d’InvenTag.
+description: Trouvez les ressources AWS sans les étiquettes CostCenter, Owner, Project et Environment dont dépendent les rapports de coûts, avec finops-cost-report.
 sidebar_position: 5
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Soluciona los problemas más comunes
-description: Los errores de InvenTag que más se encuentran - credenciales, permisos, regiones, limitación de solicitudes, plantillas y archivos de configuración - con los mensajes reales y cómo solucionarlos.
+description: Los errores más comunes de InvenTag (credenciales, permisos, regiones, limitación, plantillas y configuración), con los mensajes reales y cómo solucionarlos.
 sidebar_position: 8
 ---
 

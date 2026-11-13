@@ -1,6 +1,6 @@
 ---
 title: "Ejemplo: inventariar todas las cuentas de una organización"
-description: Analiza todas las cuentas de una AWS Organization en una sola ejecución de InvenTag asumiendo un rol de solo lectura en cada una, y obtén un informe consolidado.
+description: Analiza todas las cuentas de una AWS Organization en una sola ejecución de InvenTag, con un rol de solo lectura en cada una, y obtén un informe consolidado.
 sidebar_position: 3
 ---
 

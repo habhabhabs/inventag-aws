@@ -1,6 +1,6 @@
 ---
 title: Analyser plusieurs comptes
-description: Analysez de nombreux comptes AWS en une seule exécution d’InvenTag avec un fichier de comptes ou un modèle de configuration, en utilisant un rôle en lecture seule dans chaque compte.
+description: Analysez de nombreux comptes AWS en une exécution d’InvenTag avec un fichier de comptes ou un modèle de configuration, et un rôle en lecture seule par compte.
 sidebar_position: 3
 ---
 

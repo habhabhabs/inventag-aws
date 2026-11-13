@@ -1,6 +1,6 @@
 ---
 title: Analyse du réseau et de la sécurité
-description: Ce que les options d’analyse du réseau et des groupes de sécurité d’InvenTag ajoutent au rapport Excel, ce qu’elles laissent de côté, et comment examiner les VPC et les groupes de sécurité.
+description: Ce que les options d’analyse du réseau et des groupes de sécurité ajoutent au rapport Excel, ce qu’elles omettent, et comment examiner les VPC et les groupes.
 sidebar_position: 5
 slug: /architecture/network-analysis
 ---

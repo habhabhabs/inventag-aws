@@ -1,6 +1,6 @@
 ---
 title: Modèles intégrés
-description: Les huit modèles fournis avec InvenTag - trois mises en page de rapport, deux politiques d’étiquetage et trois configurations d’exécution - et ce que chacun produit.
+description: Les huit modèles fournis avec InvenTag (trois mises en page de rapport, deux politiques d’étiquetage, trois configurations d’exécution) et ce qu’ils produisent.
 sidebar_position: 2
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Modèles
-description: Réutilisez des mises en page de rapport, des politiques d’étiquetage et des paramètres d’exécution dans InvenTag grâce à de petits modèles YAML que vous pouvez lister, copier, adapter et valider.
+description: Réutilisez des mises en page de rapport, des politiques d’étiquetage et des paramètres d’exécution avec de petits modèles YAML à copier, adapter et valider.
 sidebar_position: 1
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: "Exemple : rapport Word de direction à votre image"
-description: Produisez un court rapport Word en paysage avec votre logo, vos couleurs et une synthèse de conformité des étiquettes pour la direction, à l’aide d’un modèle de rapport InvenTag.
+description: Produisez un court rapport Word en paysage avec votre logo, vos couleurs et une synthèse de conformité des étiquettes, à l’aide d’un modèle de rapport InvenTag.
 sidebar_position: 7
 ---
 

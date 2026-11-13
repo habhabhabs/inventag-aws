@@ -1,6 +1,6 @@
 ---
 title: Résoudre les problèmes courants
-description: Les erreurs d’InvenTag les plus fréquentes - identifiants, autorisations, régions, limitation de débit, modèles et fichiers de configuration - avec les vrais messages et la façon de les corriger.
+description: Les erreurs d’InvenTag les plus fréquentes (identifiants, autorisations, régions, limitation, modèles, configuration), avec les vrais messages et les solutions.
 sidebar_position: 8
 ---
 

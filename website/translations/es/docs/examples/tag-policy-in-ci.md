@@ -1,6 +1,6 @@
 ---
 title: "Ejemplo: aplicar una política de etiquetas en CI"
-description: Haz fallar un trabajo de CI con el código de salida 3 cuando los recursos de AWS incumplan tu política de etiquetas, conservando los informes de InvenTag como artefactos de la compilación.
+description: Haz fallar un trabajo de CI con el código de salida 3 cuando los recursos de AWS incumplan tu política de etiquetas y conserva los informes como artefactos.
 sidebar_position: 4
 ---
 

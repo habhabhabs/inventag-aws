@@ -1,6 +1,6 @@
 ---
 title: Exemples
-description: Recettes InvenTag à copier-coller pour les tâches courantes, chacune avec la commande, le modèle et la sortie qu’elle produit, de l’audit rapide aux envois planifiés vers S3.
+description: Recettes InvenTag à copier-coller pour les tâches courantes, avec la commande, le modèle et la sortie, de l’audit rapide aux envois planifiés vers S3.
 sidebar_position: 1
 ---
 

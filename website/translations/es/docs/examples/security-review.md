@@ -1,6 +1,6 @@
 ---
 title: "Ejemplo: revisión de etiquetado de seguridad"
-description: Comprueba que los recursos de AWS llevan las etiquetas Owner, Environment y DataClassification antes de una revisión de seguridad, con la política de etiquetas security-baseline de InvenTag.
+description: Comprueba que los recursos de AWS llevan las etiquetas Owner, Environment y DataClassification antes de una revisión de seguridad, con security-baseline.
 sidebar_position: 6
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: "Exemple : inventorier tous les comptes d’une organisation"
-description: Analysez tous les comptes d’une AWS Organization en une seule exécution d’InvenTag en assumant un rôle en lecture seule dans chacun, et obtenez un rapport consolidé.
+description: Analysez tous les comptes d’une AWS Organization en une seule exécution d’InvenTag, avec un rôle en lecture seule dans chacun, et obtenez un rapport consolidé.
 sidebar_position: 3
 ---
 

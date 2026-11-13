@@ -1,6 +1,6 @@
 ---
 title: "Example: FinOps cost-allocation tags"
-description: Find which AWS resources lack the CostCenter, Owner, Project and Environment tags that cost-allocation reports depend on, with InvenTag's finops-cost-report template.
+description: Find AWS resources that lack the CostCenter, Owner, Project and Environment tags that cost-allocation reports need, with the finops-cost-report template.
 sidebar_position: 5
 ---
 

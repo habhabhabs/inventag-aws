@@ -1,6 +1,6 @@
 ---
 title: Fix common problems
-description: The InvenTag errors people hit most - credentials, permissions, regions, throttling, templates and configuration files - with the real messages and how to fix them.
+description: The InvenTag errors people hit most (credentials, permissions, regions, throttling, templates, config files), with the real messages and how to fix them.
 sidebar_position: 8
 ---
 

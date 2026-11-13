@@ -1,6 +1,6 @@
 ---
 title: Exécuter InvenTag en CI/CD
-description: Exécutez InvenTag selon un calendrier dans GitHub Actions avec des identifiants OIDC de courte durée, conservez les rapports comme artefacts et faites échouer le job en cas de violation de la politique d’étiquetage.
+description: Exécutez InvenTag selon un calendrier dans GitHub Actions avec des identifiants OIDC de courte durée, gardez les rapports et faites échouer le job si besoin.
 sidebar_position: 7
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Salida a Google Sheets y Docs
-description: Cómo escribir el inventario de InvenTag en una hoja de cálculo de Google Sheets y en un Google Doc, cómo iniciar sesión, quién puede abrir los archivos y qué no se ha verificado con Google real.
+description: Escribe el inventario de InvenTag en Google Sheets y Google Docs: inicio de sesión, quién abre los archivos y qué no se ha verificado con Google real.
 sidebar_position: 9
 ---
 

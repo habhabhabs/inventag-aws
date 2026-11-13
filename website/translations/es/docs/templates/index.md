@@ -1,6 +1,6 @@
 ---
 title: Plantillas
-description: Reutiliza diseños de informe, políticas de etiquetas y ajustes de ejecución en InvenTag con pequeñas plantillas YAML que puedes listar, copiar, adaptar y validar.
+description: Reutiliza diseños de informe, políticas de etiquetas y ajustes de ejecución con pequeñas plantillas YAML que puedes listar, copiar, adaptar y validar.
 sidebar_position: 1
 ---
 

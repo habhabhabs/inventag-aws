@@ -1,6 +1,6 @@
 ---
 title: Ejecutar InvenTag en CI/CD
-description: Ejecuta InvenTag de forma programada en GitHub Actions con credenciales OIDC de corta duración, conserva los informes como artefactos y haz fallar el trabajo ante incumplimientos de la política de etiquetas.
+description: Ejecuta InvenTag de forma programada en GitHub Actions con credenciales OIDC de corta duración, conserva los informes y falla el trabajo si hay incumplimientos.
 sidebar_position: 7
 ---
 

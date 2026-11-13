@@ -1,6 +1,6 @@
 ---
 title: "Exemple : revue de l’étiquetage de sécurité"
-description: Vérifiez que les ressources AWS portent les étiquettes Owner, Environment et DataClassification avant une revue de sécurité, avec la politique d’étiquetage security-baseline d’InvenTag.
+description: Vérifiez que les ressources AWS ont les étiquettes Owner, Environment et DataClassification avant une revue de sécurité, avec la politique security-baseline.
 sidebar_position: 6
 ---
 

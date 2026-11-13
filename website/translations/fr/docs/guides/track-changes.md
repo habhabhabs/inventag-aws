@@ -1,6 +1,6 @@
 ---
 title: Suivre les changements entre deux exécutions
-description: Comment InvenTag enregistre un instantané de chaque exécution dans bom_output/state, ce que contient le rapport de changements et ce qu’il faut savoir avant de vous y fier.
+description: Comment InvenTag enregistre un instantané de chaque exécution dans bom_output/state, ce que contient le rapport de changements et les limites à connaître.
 sidebar_position: 6
 slug: /architecture/state-management
 ---

@@ -1,6 +1,6 @@
 ---
 title: Ejemplos
-description: Recetas de InvenTag para copiar y pegar en las tareas habituales, cada una con el comando, la plantilla y la salida que produce, desde una auditoría rápida hasta subidas a S3 programadas.
+description: Recetas de InvenTag para copiar y pegar en tareas habituales, cada una con el comando, la plantilla y la salida, desde una auditoría rápida hasta subidas a S3.
 sidebar_position: 1
 ---
 

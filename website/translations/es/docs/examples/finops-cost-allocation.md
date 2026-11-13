@@ -1,6 +1,6 @@
 ---
 title: "Ejemplo: etiquetas de asignación de costes para FinOps"
-description: Descubre qué recursos de AWS no tienen las etiquetas CostCenter, Owner, Project y Environment de las que dependen los informes de asignación de costes, con la plantilla finops-cost-report de InvenTag.
+description: Descubre qué recursos de AWS no tienen las etiquetas CostCenter, Owner, Project y Environment que necesitan los informes de costes, con finops-cost-report.
 sidebar_position: 5
 ---
 
