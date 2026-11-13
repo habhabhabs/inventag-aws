@@ -40,12 +40,11 @@ pip install inventag-aws
 inventag --help
 ```
 
-Vous disposez ainsi de la commande `inventag`. Tout ce qui, dans cette documentation, montre
-`inventag` fonctionne de la même façon. Les modèles de rapport sont
-inclus dans le paquet.
+Vous disposez ainsi de la commande `inventag` qu’utilise cette documentation. Les
+modèles de rapport sont inclus dans le paquet.
 
 Pour mettre à jour, exécutez `pip install --upgrade inventag-aws`. Pour installer une version
-précise, exécutez `pip install inventag-aws==1.0.2`. Vous préférez le tenir à l’écart de vos
+précise, épinglez-la, par exemple `pip install inventag-aws==1.1.3`. Vous préférez le tenir à l’écart de vos
 environnements de projet ? `pipx install inventag-aws` l’installe dans son propre
 environnement caché et place la commande `inventag` dans votre PATH ; vous n’avez donc jamais rien
 à activer. Si votre système l’autorise, un simple `pip install inventag-aws`
@@ -61,15 +60,17 @@ cd inventag-aws
 python3 -m venv .venv
 source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install -r requirements.txt
-inventag --help               # Windows: inventag --help
+pip install -e .
+inventag --help
 ```
 
-Exécutez `pip install -e .` dans le dossier cloné pour obtenir la commande `inventag` depuis
-votre copie des sources. Vous pouvez aussi exécuter directement `python inventag_cli.py --help`.
+`pip install -e .` installe les dépendances de `requirements.txt` et une commande
+`inventag` qui exécute votre copie des sources ; vos modifications du code prennent
+donc effet sans réinstallation. Vous pouvez aussi exécuter directement
+`python inventag_cli.py --help` après `pip install -r requirements.txt`.
 
 Pour utiliser depuis les sources une version figée plutôt que le code le plus récent, extrayez son étiquette, par
-exemple `git checkout v1.0.2`. La
+exemple `git checkout v1.1.3`. La
 [page des versions](https://github.com/habhabhabs/inventag-aws/releases) liste
 toutes les versions.
 

@@ -40,12 +40,11 @@ pip install inventag-aws
 inventag --help
 ```
 
-Con esto tienes el comando `inventag`. Todo lo que en esta documentación muestra
-`inventag` funciona igual. Las plantillas de informe vienen
-incluidas en el paquete.
+Con esto tienes el comando `inventag` que usa esta documentación. Las plantillas
+de informe vienen incluidas en el paquete.
 
 Para actualizar, ejecuta `pip install --upgrade inventag-aws`. Para instalar una versión
-concreta, ejecuta `pip install inventag-aws==1.0.2`. ¿Prefieres mantenerlo fuera de los
+concreta, fíjala, por ejemplo `pip install inventag-aws==1.1.3`. ¿Prefieres mantenerlo fuera de los
 entornos de tus proyectos? `pipx install inventag-aws` lo instala en su propio
 entorno oculto y pone el comando `inventag` en tu PATH, así que nunca tienes que activar
 nada. Si tu sistema lo permite, un simple `pip install inventag-aws`
@@ -61,15 +60,17 @@ cd inventag-aws
 python3 -m venv .venv
 source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install -r requirements.txt
-inventag --help               # Windows: inventag --help
+pip install -e .
+inventag --help
 ```
 
-Ejecuta `pip install -e .` en la carpeta clonada para obtener el comando `inventag` desde
-tu copia del código fuente. También puedes ejecutar `python inventag_cli.py --help` directamente.
+`pip install -e .` instala las dependencias de `requirements.txt` y un comando
+`inventag` que ejecuta tu copia del código fuente, así que tus cambios en el código
+se aplican sin reinstalar. También puedes ejecutar `python inventag_cli.py --help`
+directamente después de `pip install -r requirements.txt`.
 
 Para usar desde el código fuente una versión fija en lugar del código más reciente, descarga su etiqueta, por
-ejemplo `git checkout v1.0.2`. La
+ejemplo `git checkout v1.1.3`. La
 [página de versiones](https://github.com/habhabhabs/inventag-aws/releases) lista
 todas las versiones.
 

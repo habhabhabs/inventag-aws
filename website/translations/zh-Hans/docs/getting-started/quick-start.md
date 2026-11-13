@@ -10,9 +10,6 @@ sidebar_position: 3
 
 **读完后你可以：** 扫描一个账户、打开 Excel 和 Word 报告，并用模板选择更清晰的版式。
 
-下面的命令使用 `inventag`。如果你是用 `pip install inventag-aws` 安装的，
-请改输入 `inventag`；选项完全相同。
-
 本页所有示例输出都来自针对模拟 AWS 的离线运行（示例数据）。
 账户 `123456789012` 和 `acme-*` 资源都是虚构的。
 

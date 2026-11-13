@@ -12,9 +12,6 @@ read-only AWS credentials.
 **What you can do after reading:** scan one account, open the Excel and Word
 reports, and choose a clearer layout with a template.
 
-Commands below use `inventag`. If you installed with `pip install inventag-aws`,
-type `inventag` instead; the options are the same.
-
 All sample output on this page comes from an offline run against mocked AWS
 (sample data). Account `123456789012` and the `acme-*` resources are made up.
 

@@ -12,9 +12,6 @@ d’identifiants AWS en lecture seule.
 **Ce que vous saurez faire après lecture :** analyser un compte, ouvrir les rapports
 Excel et Word, et choisir une mise en page plus claire avec un modèle.
 
-Les commandes ci-dessous utilisent `inventag`. Si vous l’avez installé avec `pip install inventag-aws`,
-tapez plutôt `inventag` ; les options sont identiques.
-
 Tous les exemples de sortie de cette page proviennent d’une exécution hors ligne sur un AWS
 simulé (données d’exemple). Le compte `123456789012` et les ressources `acme-*` sont fictifs.
 

@@ -12,9 +12,6 @@ credenciales de AWS de solo lectura.
 **Qué podrás hacer después de leerlo:** analizar una cuenta, abrir los informes
 de Excel y Word y elegir un diseño más claro con una plantilla.
 
-Los comandos siguientes usan `inventag`. Si lo instalaste con `pip install inventag-aws`,
-escribe `inventag` en su lugar; las opciones son las mismas.
-
 Toda la salida de ejemplo de esta página procede de una ejecución sin conexión contra AWS
 simulado (datos de ejemplo). La cuenta `123456789012` y los recursos `acme-*` son inventados.
 

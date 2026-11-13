@@ -37,11 +37,11 @@ pip install inventag-aws
 inventag --help
 ```
 
-這樣你就有了 `inventag` 命令。本文件中所有出現 `inventag` 的地方，用法都相同。
+這樣你就有了本文件所用的 `inventag` 命令。
 報告模板已包含在軟體包中。
 
-升級請執行 `pip install --upgrade inventag-aws`。安裝指定版本請執行
-`pip install inventag-aws==1.0.2`。想讓它遠離你的專案環境？
+升級請執行 `pip install --upgrade inventag-aws`。安裝指定版本請固定版本號，例如
+`pip install inventag-aws==1.1.3`。想讓它遠離你的專案環境？
 `pipx install inventag-aws` 會把它裝進獨立的隱藏環境，並把 `inventag` 命令放到
 PATH 中，你無需啟用任何環境。如果你的系統允許，直接把 `pip install inventag-aws`
 裝到使用者或系統 Python 中也可以。
@@ -56,15 +56,16 @@ cd inventag-aws
 python3 -m venv .venv
 source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install -r requirements.txt
-inventag --help               # Windows: inventag --help
+pip install -e .
+inventag --help
 ```
 
-在克隆下來的資料夾裡執行 `pip install -e .`，即可從你的原始碼副本獲得 `inventag` 命令。
-你也可以直接執行 `python inventag_cli.py --help`。
+`pip install -e .` 會安裝 `requirements.txt` 中的依賴，以及一個執行你的原始碼副本的
+`inventag` 命令，因此程式碼改動無需重新安裝即可生效。你也可以在
+`pip install -r requirements.txt` 之後直接執行 `python inventag_cli.py --help`。
 
 若要從原始碼使用固定的釋出版本，而不是最新程式碼，請檢出它的標籤，例如
-`git checkout v1.0.2`。
+`git checkout v1.1.3`。
 [釋出頁面](https://github.com/habhabhabs/inventag-aws/releases)列出了所有版本。
 
 ## 連線你的 AWS 憑證 {#connect-your-aws-credentials}

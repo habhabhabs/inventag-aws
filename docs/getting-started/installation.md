@@ -1,6 +1,6 @@
 ---
 title: Install InvenTag
-description: Install InvenTag from GitHub into a Python virtual environment, connect your AWS credentials and check that everything works.
+description: Install InvenTag into a Python virtual environment, connect your AWS credentials and check that everything works.
 sidebar_position: 2
 ---
 
@@ -40,12 +40,11 @@ pip install inventag-aws
 inventag --help
 ```
 
-This gives you an `inventag` command. Everything in these docs that shows
-`inventag` works the same with `inventag`. The report templates are
-included in the package.
+This gives you the `inventag` command that these docs use. The report
+templates are included in the package.
 
 To upgrade, run `pip install --upgrade inventag-aws`. To install a specific
-release, run `pip install inventag-aws==1.0.2`. Prefer to keep it out of your
+release, pin it, for example `pip install inventag-aws==1.1.3`. Prefer to keep it out of your
 project environments? `pipx install inventag-aws` installs it into its own
 hidden environment and puts the `inventag` command on your PATH, so you never
 activate anything. If your system allows it, a plain `pip install inventag-aws`
@@ -61,15 +60,17 @@ cd inventag-aws
 python3 -m venv .venv
 source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install -r requirements.txt
-inventag --help               # Windows: inventag --help
+pip install -e .
+inventag --help
 ```
 
-Run `pip install -e .` in the cloned folder to get the `inventag` command from
-your source checkout. You can also run `python inventag_cli.py --help` directly.
+`pip install -e .` installs the dependencies from `requirements.txt` and an
+`inventag` command that runs your source checkout, so your code changes take
+effect without a reinstall. You can also run `python inventag_cli.py --help`
+directly after `pip install -r requirements.txt`.
 
 To use a fixed release from source instead of the newest code, check out its tag, for
-example `git checkout v1.0.2`. The
+example `git checkout v1.1.3`. The
 [releases page](https://github.com/habhabhabs/inventag-aws/releases) lists
 every release.
 
