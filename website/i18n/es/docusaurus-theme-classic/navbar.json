@@ -1,0 +1,18 @@
+{
+  "logo.alt": {
+    "message": "InvenTag",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.Docs": {
+    "message": "Documentación",
+    "description": "Navbar item with label Docs"
+  },
+  "item.label.Quick start": {
+    "message": "Inicio rápido",
+    "description": "Navbar item with label Quick start"
+  },
+  "item.label.CLI reference": {
+    "message": "Referencia de la CLI",
+    "description": "Navbar item with label CLI reference"
+  }
+}

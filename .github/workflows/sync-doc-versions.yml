@@ -1,0 +1,87 @@
+name: Sync Documentation Versions
+
+# Manual job. Compares the release tags with the archived documentation
+# versions, archives any that are missing and rebuilds website/versions.json.
+# Safe to run any time; it changes nothing when everything is in step.
+on:
+  workflow_dispatch:
+    inputs:
+      tag_pattern:
+        description: 'Regular expression for the release tags to reconcile'
+        required: false
+        default: '^v1\.[0-9]+\.[0-9]+$'
+        type: string
+      dry_run:
+        description: 'Report what would change without committing'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-doc-versions
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Reconcile documentation versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.VERSION_BUMP_WORKFLOW }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26'
+          cache: 'npm'
+          cache-dependency-path: 'website/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: ./website
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Reconcile tags and archived versions
+        env:
+          TAG_PATTERN: ${{ inputs.tag_pattern }}
+        run: |
+          set -o pipefail
+          .github/scripts/sync-doc-versions.sh "$TAG_PATTERN" | tee sync-report.txt
+
+      - name: Build the site
+        working-directory: ./website
+        run: npm run build
+
+      - name: Commit and push
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add website/versioned_docs website/versioned_sidebars website/versions.json
+          if git diff --staged --quiet; then
+            echo "Nothing to commit: documentation versions already match the tags."
+          else
+            git commit -m "docs: sync archived documentation versions with release tags [skip release]"
+            git pull --rebase origin main
+            git push origin main
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Documentation version sync"
+            echo
+            echo '```text'
+            cat sync-report.txt 2>/dev/null || echo "no report"
+            echo '```'
+            echo
+            [ "${{ inputs.dry_run }}" = "true" ] && echo "_Dry run: nothing was committed._"
+          } >> "$GITHUB_STEP_SUMMARY"

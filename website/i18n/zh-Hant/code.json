@@ -1,0 +1,706 @@
+{
+  "consent.region": {
+    "message": "Cookie 偏好設定"
+  },
+  "consent.close": {
+    "message": "關閉，僅保留必要的 Cookie"
+  },
+  "consent.title": {
+    "message": "一點小小的 Cookie 坦白"
+  },
+  "consent.body": {
+    "message": "目前只啟用了必要的 Cookie，它們只用來記住你的選擇。要不要再允許一項？這能幫我瞭解哪些頁面對大家有用。"
+  },
+  "consent.link": {
+    "message": "儲存了什麼，為什麼儲存"
+  },
+  "consent.allow": {
+    "message": "允許分析"
+  },
+  "consent.essentials": {
+    "message": "僅保留必要的"
+  },
+  "related.title": {
+    "message": "接下來看什麼"
+  },
+  "menu.sectionOverview": {
+    "message": "{label}概覽"
+  },
+  "menu.getStarted": {
+    "message": "快速上手"
+  },
+  "menu.overview": {
+    "message": "概覽"
+  },
+  "menu.documentation": {
+    "message": "文件"
+  },
+  "code.commandsCopied": {
+    "message": "命令已複製"
+  },
+  "code.copyAll": {
+    "message": "複製全部 {count} 條命令"
+  },
+  "code.copied": {
+    "message": "已複製"
+  },
+  "code.copy": {
+    "message": "複製"
+  },
+  "code.copiedClipboard": {
+    "message": "已複製到剪貼簿"
+  },
+  "code.copyFailedCommands": {
+    "message": "複製失敗。請手動選中命令。"
+  },
+  "search.suggest.quickstart": {
+    "message": "生成第一份報告"
+  },
+  "search.suggest.install": {
+    "message": "安裝 InvenTag"
+  },
+  "search.suggest.cli": {
+    "message": "命令列參考"
+  },
+  "search.suggest.troubleshooting": {
+    "message": "解決常見問題"
+  },
+  "theme.SearchBar.label": {
+    "message": "搜尋文件",
+    "description": "The ARIA label and placeholder for search button"
+  },
+  "search.results": {
+    "message": "搜尋結果"
+  },
+  "search.noResults": {
+    "message": "沒有找到“{query}”的結果。請嘗試更少或不同的關鍵詞。"
+  },
+  "search.suggested": {
+    "message": "推薦"
+  },
+  "search.toMove": {
+    "message": "移動"
+  },
+  "search.toOpen": {
+    "message": "開啟"
+  },
+  "search.seeAll": {
+    "message": "檢視全部結果"
+  },
+  "code.showLess": {
+    "message": "收起"
+  },
+  "code.showAll": {
+    "message": "顯示全部 {count} 行"
+  },
+  "menu.hide": {
+    "message": "隱藏選單"
+  },
+  "menu.title": {
+    "message": "選單"
+  },
+  "menu.sidebar": {
+    "message": "文件側邊欄"
+  },
+  "code.copyAria": {
+    "message": "複製程式碼到剪貼簿"
+  },
+  "code.copyFailed": {
+    "message": "複製失敗。請手動選中文字。"
+  },
+  "breadcrumb.home": {
+    "message": "InvenTag 文件"
+  },
+  "menu.show": {
+    "message": "顯示選單"
+  },
+  "theme.ErrorPageContent.title": {
+    "message": "頁面已崩潰。",
+    "description": "The title of the fallback page when the page crashed"
+  },
+  "theme.BackToTopButton.buttonAriaLabel": {
+    "message": "回到頂部",
+    "description": "The ARIA label for the back to top button"
+  },
+  "theme.blog.archive.title": {
+    "message": "歷史博文",
+    "description": "The page & hero title of the blog archive page"
+  },
+  "theme.blog.archive.description": {
+    "message": "歷史博文",
+    "description": "The page & hero description of the blog archive page"
+  },
+  "theme.blog.paginator.navAriaLabel": {
+    "message": "博文列表分頁導航",
+    "description": "The ARIA label for the blog pagination"
+  },
+  "theme.blog.paginator.newerEntries": {
+    "message": "較新的博文",
+    "description": "The label used to navigate to the newer blog posts page (previous page)"
+  },
+  "theme.blog.paginator.olderEntries": {
+    "message": "較舊的博文",
+    "description": "The label used to navigate to the older blog posts page (next page)"
+  },
+  "theme.blog.post.paginator.navAriaLabel": {
+    "message": "博文分頁導航",
+    "description": "The ARIA label for the blog posts pagination"
+  },
+  "theme.blog.post.paginator.newerPost": {
+    "message": "較新一篇",
+    "description": "The blog post button label to navigate to the newer/previous post"
+  },
+  "theme.blog.post.paginator.olderPost": {
+    "message": "較舊一篇",
+    "description": "The blog post button label to navigate to the older/next post"
+  },
+  "theme.tags.tagsPageLink": {
+    "message": "檢視所有標籤",
+    "description": "The label of the link targeting the tag list page"
+  },
+  "theme.colorToggle.ariaLabel.mode.system": {
+    "message": "跟隨系統",
+    "description": "The name for the system color mode"
+  },
+  "theme.colorToggle.ariaLabel.mode.light": {
+    "message": "淺色模式",
+    "description": "The name for the light color mode"
+  },
+  "theme.colorToggle.ariaLabel.mode.dark": {
+    "message": "暗黑模式",
+    "description": "The name for the dark color mode"
+  },
+  "theme.colorToggle.ariaLabel": {
+    "message": "切換淺色/暗黑模式（當前為{mode}）",
+    "description": "The ARIA label for the color mode toggle"
+  },
+  "theme.docs.breadcrumbs.navAriaLabel": {
+    "message": "頁面路徑",
+    "description": "The ARIA label for the breadcrumbs"
+  },
+  "theme.docs.paginator.navAriaLabel": {
+    "message": "檔案選項卡",
+    "description": "The ARIA label for the docs pagination"
+  },
+  "theme.docs.paginator.previous": {
+    "message": "上一頁",
+    "description": "The label used to navigate to the previous doc"
+  },
+  "theme.docs.paginator.next": {
+    "message": "下一頁",
+    "description": "The label used to navigate to the next doc"
+  },
+  "theme.docs.tagDocListPageTitle.nDocsTagged": {
+    "message": "{count} 篇文件帶有標籤",
+    "description": "Pluralized label for \"{count} docs tagged\". Use as much plural forms (separated by \"|\") as your language support (see https://www.unicode.org/cldr/cldr-aux/charts/34/supplemental/language_plural_rules.html)"
+  },
+  "theme.docs.tagDocListPageTitle": {
+    "message": "{nDocsTagged}「{tagName}」",
+    "description": "The title of the page for a docs tag"
+  },
+  "theme.docs.versionBadge.label": {
+    "message": "版本：{versionLabel}"
+  },
+  "theme.docs.versions.unreleasedVersionLabel": {
+    "message": "此為 {siteTitle} {versionLabel} 版尚未發行的文件。",
+    "description": "The label used to tell the user that he's browsing an unreleased doc version"
+  },
+  "theme.docs.versions.unmaintainedVersionLabel": {
+    "message": "此為 {siteTitle} {versionLabel} 版的文件，現已不再積極維護。",
+    "description": "The label used to tell the user that he's browsing an unmaintained doc version"
+  },
+  "theme.docs.versions.latestVersionSuggestionLabel": {
+    "message": "最新的文件請參閱 {latestVersionLink} ({versionLabel})。",
+    "description": "The label used to tell the user to check the latest version"
+  },
+  "theme.docs.versions.latestVersionLinkLabel": {
+    "message": "最新版本",
+    "description": "The label used for the latest version suggestion link label"
+  },
+  "theme.common.editThisPage": {
+    "message": "編輯此頁",
+    "description": "The link label to edit the current page"
+  },
+  "theme.common.headingLinkTitle": {
+    "message": "{heading}的直接連結",
+    "description": "Title for link to heading"
+  },
+  "theme.lastUpdated.atDate": {
+    "message": "於 {date} ",
+    "description": "The words used to describe on which date a page has been last updated"
+  },
+  "theme.lastUpdated.byUser": {
+    "message": "由 {user} ",
+    "description": "The words used to describe by who the page has been last updated"
+  },
+  "theme.lastUpdated.lastUpdatedAtBy": {
+    "message": "最後{byUser}{atDate}更新",
+    "description": "The sentence used to display when a page has been last updated, and by who"
+  },
+  "theme.NotFound.title": {
+    "message": "找不到頁面",
+    "description": "The title of the 404 page"
+  },
+  "theme.navbar.mobileVersionsDropdown.label": {
+    "message": "選擇版本",
+    "description": "The label for the navbar versions dropdown on mobile view"
+  },
+  "theme.tags.tagsListLabel": {
+    "message": "標籤：",
+    "description": "The label alongside a tag list"
+  },
+  "theme.admonition.caution": {
+    "message": "警告",
+    "description": "The default label used for the Caution admonition (:::caution)"
+  },
+  "theme.admonition.danger": {
+    "message": "危險",
+    "description": "The default label used for the Danger admonition (:::danger)"
+  },
+  "theme.admonition.info": {
+    "message": "資訊",
+    "description": "The default label used for the Info admonition (:::info)"
+  },
+  "theme.admonition.note": {
+    "message": "備註",
+    "description": "The default label used for the Note admonition (:::note)"
+  },
+  "theme.admonition.tip": {
+    "message": "提示",
+    "description": "The default label used for the Tip admonition (:::tip)"
+  },
+  "theme.admonition.warning": {
+    "message": "注意",
+    "description": "The default label used for the Warning admonition (:::warning)"
+  },
+  "theme.AnnouncementBar.closeButtonAriaLabel": {
+    "message": "關閉",
+    "description": "The ARIA label for close button of announcement bar"
+  },
+  "theme.blog.sidebar.navAriaLabel": {
+    "message": "最近博文導航",
+    "description": "The ARIA label for recent posts in the blog sidebar"
+  },
+  "theme.DocSidebarItem.expandCategoryAriaLabel": {
+    "message": "展開側邊欄分類 '{label}'",
+    "description": "The ARIA label to expand the sidebar category"
+  },
+  "theme.DocSidebarItem.collapseCategoryAriaLabel": {
+    "message": "摺疊側邊欄分類 '{label}'",
+    "description": "The ARIA label to collapse the sidebar category"
+  },
+  "theme.IconExternalLink.ariaLabel": {
+    "message": "（在新標籤頁開啟）",
+    "description": "The ARIA label for the external link icon"
+  },
+  "theme.NavBar.navAriaLabel": {
+    "message": "主導航",
+    "description": "The ARIA label for the main navigation"
+  },
+  "theme.NotFound.p1": {
+    "message": "我們找不到您要找的頁面。",
+    "description": "The first paragraph of the 404 page"
+  },
+  "theme.NotFound.p2": {
+    "message": "請聯絡原始連結來源網站的所有者，並告知他們連結已損壞。",
+    "description": "The 2nd paragraph of the 404 page"
+  },
+  "theme.navbar.mobileLanguageDropdown.label": {
+    "message": "選擇語言",
+    "description": "The label for the mobile language switcher dropdown"
+  },
+  "theme.TOCCollapsible.toggleButtonLabel": {
+    "message": "本頁總覽",
+    "description": "The label used by the button on the collapsible TOC component"
+  },
+  "theme.blog.post.readMore": {
+    "message": "閱讀更多",
+    "description": "The label used in blog post item excerpts to link to full blog posts"
+  },
+  "theme.blog.post.readMoreLabel": {
+    "message": "閱讀 {title} 的全文",
+    "description": "The ARIA label for the link to full blog posts from excerpts"
+  },
+  "theme.blog.post.readingTime.plurals": {
+    "message": "閱讀需 {readingTime} 分鐘",
+    "description": "Pluralized label for \"{readingTime} min read\". Use as much plural forms (separated by \"|\") as your language support (see https://www.unicode.org/cldr/cldr-aux/charts/34/supplemental/language_plural_rules.html)"
+  },
+  "theme.CodeBlock.copy": {
+    "message": "複製",
+    "description": "The copy button label on code blocks"
+  },
+  "theme.CodeBlock.copied": {
+    "message": "複製成功",
+    "description": "The copied button label on code blocks"
+  },
+  "theme.CodeBlock.copyButtonAriaLabel": {
+    "message": "複製程式碼到剪貼簿",
+    "description": "The ARIA label for copy code blocks button"
+  },
+  "theme.CodeBlock.wordWrapToggle": {
+    "message": "切換自動換行",
+    "description": "The title attribute for toggle word wrapping button of code block lines"
+  },
+  "theme.docs.breadcrumbs.home": {
+    "message": "文件首頁",
+    "description": "The ARIA label for the home page in the breadcrumbs"
+  },
+  "theme.docs.sidebar.collapseButtonTitle": {
+    "message": "收起側邊欄",
+    "description": "The title attribute for collapse button of doc sidebar"
+  },
+  "theme.docs.sidebar.collapseButtonAriaLabel": {
+    "message": "收起側邊欄",
+    "description": "The title attribute for collapse button of doc sidebar"
+  },
+  "theme.docs.sidebar.navAriaLabel": {
+    "message": "文件側邊欄",
+    "description": "The ARIA label for the sidebar navigation"
+  },
+  "theme.docs.sidebar.closeSidebarButtonAriaLabel": {
+    "message": "關閉導航欄",
+    "description": "The ARIA label for close button of mobile sidebar"
+  },
+  "theme.navbar.mobileSidebarSecondaryMenu.backButtonLabel": {
+    "message": "← 回到主選單",
+    "description": "The label of the back button to return to main menu, inside the mobile navbar sidebar secondary menu (notably used to display the docs sidebar)"
+  },
+  "theme.docs.sidebar.toggleSidebarButtonAriaLabel": {
+    "message": "切換導航欄",
+    "description": "The ARIA label for hamburger menu button of mobile navigation"
+  },
+  "theme.navbar.mobileDropdown.collapseButton.expandAriaLabel": {
+    "message": "展開下拉選單",
+    "description": "The ARIA label of the button to expand the mobile dropdown navbar item"
+  },
+  "theme.navbar.mobileDropdown.collapseButton.collapseAriaLabel": {
+    "message": "收起下拉選單",
+    "description": "The ARIA label of the button to collapse the mobile dropdown navbar item"
+  },
+  "theme.docs.sidebar.expandButtonTitle": {
+    "message": "展開側邊欄",
+    "description": "The ARIA label and title attribute for expand button of doc sidebar"
+  },
+  "theme.docs.sidebar.expandButtonAriaLabel": {
+    "message": "展開側邊欄",
+    "description": "The ARIA label and title attribute for expand button of doc sidebar"
+  },
+  "theme.SearchBar.noResultsText": {
+    "message": "沒有找到任何文件"
+  },
+  "theme.SearchBar.seeAllOutsideContext": {
+    "message": "檢視“{context}”以外的全部結果"
+  },
+  "theme.SearchBar.searchInContext": {
+    "message": "檢視“{context}”以內的全部結果"
+  },
+  "theme.SearchBar.seeAll": {
+    "message": "檢視全部結果"
+  },
+  "theme.SearchPage.existingResultsTitle": {
+    "message": "“{query}”的搜尋結果",
+    "description": "The search page title for non-empty query"
+  },
+  "theme.SearchPage.emptyResultsTitle": {
+    "message": "搜尋文件",
+    "description": "The search page title for empty query"
+  },
+  "theme.SearchPage.searchContext.everywhere": {
+    "message": "所有"
+  },
+  "theme.SearchPage.documentsFound.plurals": {
+    "message": "共找到 {count} 篇文件",
+    "description": "Pluralized label for \"{count} documents found\". Use as much plural forms (separated by \"|\") as your language support (see https://www.unicode.org/cldr/cldr-aux/charts/34/supplemental/language_plural_rules.html)"
+  },
+  "theme.SearchPage.noResultsText": {
+    "message": "沒有找到任何文件",
+    "description": "The paragraph for empty search result"
+  },
+  "theme.blog.post.plurals": {
+    "message": "{count} 篇博文",
+    "description": "Pluralized label for \"{count} posts\". Use as much plural forms (separated by \"|\") as your language support (see https://www.unicode.org/cldr/cldr-aux/charts/34/supplemental/language_plural_rules.html)"
+  },
+  "theme.blog.tagTitle": {
+    "message": "{nPosts} 含有標籤「{tagName}」",
+    "description": "The title of the page for a blog tag"
+  },
+  "theme.blog.author.pageTitle": {
+    "message": "{authorName} - {nPosts}",
+    "description": "The title of the page for a blog author"
+  },
+  "theme.blog.authorsList.pageTitle": {
+    "message": "作者",
+    "description": "The title of the authors page"
+  },
+  "theme.blog.authorsList.viewAll": {
+    "message": "檢視所有作者",
+    "description": "The label of the link targeting the blog authors page"
+  },
+  "theme.blog.author.noPosts": {
+    "message": "該作者尚未撰寫任何文章。",
+    "description": "The text for authors with 0 blog post"
+  },
+  "theme.contentVisibility.unlistedBanner.title": {
+    "message": "未列出頁",
+    "description": "The unlisted content banner title"
+  },
+  "theme.contentVisibility.unlistedBanner.message": {
+    "message": "此頁面未列出。搜尋引擎不會對其索引，只有擁有直接連結的使用者才能訪問。",
+    "description": "The unlisted content banner message"
+  },
+  "theme.contentVisibility.draftBanner.title": {
+    "message": "草稿頁",
+    "description": "The draft content banner title"
+  },
+  "theme.contentVisibility.draftBanner.message": {
+    "message": "此頁面是草稿，僅在開發環境中可見，不會包含在正式版本中。",
+    "description": "The draft content banner message"
+  },
+  "theme.docs.DocCard.categoryDescription.plurals": {
+    "message": "{count} 個專案",
+    "description": "The default description for a category card in the generated index about how many items this category includes"
+  },
+  "theme.ErrorPageContent.tryAgain": {
+    "message": "重試",
+    "description": "The label of the button to try again rendering when the React error boundary captures an error"
+  },
+  "theme.common.skipToMainContent": {
+    "message": "跳到主要內容",
+    "description": "The skip to content label used for accessibility, allowing to rapidly navigate to main content with keyboard tab/enter navigation"
+  },
+  "theme.tags.tagsPageTitle": {
+    "message": "標籤",
+    "description": "The title of the tag list page"
+  },
+  "home.pageTitle": {
+    "message": "AWS 資源清單、標籤檢查與 BOM 報告"
+  },
+  "home.pageDescription": {
+    "message": "InvenTag 是一款開源的 Python 命令列工具。它列出你的 AWS 賬戶中的資源，顯示每個資源的標籤情況，並生成 Excel 或 Word 物料清單。"
+  },
+  "home.kicker": {
+    "message": "面向 AWS 的開源命令列工具"
+  },
+  "home.releaseNotes": {
+    "message": "釋出說明"
+  },
+  "home.heroTitle": {
+    "message": "看清你的 AWS 賬戶裡在執行什麼。{emphasis}"
+  },
+  "home.heroTitleEm": {
+    "message": "然後把報告交出去。"
+  },
+  "home.heroLead": {
+    "message": "InvenTag 可以掃描一個或多個 AWS 賬戶，列出找到的資源及每個資源上的標籤，然後生成任何人都能讀懂的 Excel 或 Word 報告，也就是物料清單。"
+  },
+  "home.runQuickStart": {
+    "message": "執行快速開始"
+  },
+  "home.howItWorks": {
+    "message": "工作原理"
+  },
+  "home.heroNote": {
+    "message": "內建的防護只放行 {list}、{describe} 和 {get} 這類讀取呼叫。也請同時使用只讀的 IAM 角色：{link}。"
+  },
+  "home.heroNoteLink": {
+    "message": "檢視它需要哪些許可權"
+  },
+  "home.quickStartTitle": {
+    "message": "快速開始"
+  },
+  "home.snippetFootnote": {
+    "message": "用 pip 從 PyPI 安裝 {pkg}。使用你當前的 AWS 憑證。寫出 {file}。Cost Explorer 請求由 AWS 計費。"
+  },
+  "home.sheetCaption": {
+    "message": "示例 Summary 工作表"
+  },
+  "home.sheetTabs": {
+    "message": "工作簿中的工作表"
+  },
+  "home.sampleData": {
+    "message": "示例資料"
+  },
+  "home.sheetNote": {
+    "message": "{flag} 生成的 Summary 工作表版式。之後每個服務各有一個工作表，每個資源一行。"
+  },
+  "home.cap.eyebrow": {
+    "message": "01 · 你能得到什麼"
+  },
+  "home.cap.title": {
+    "message": "一條命令，一份人人都能讀的報告。"
+  },
+  "home.cap.lead": {
+    "message": "下面的一切在命令列中目前都能用。某項功能只完成了一部分時，文件會如實說明。"
+  },
+  "home.c1.title": {
+    "message": "Excel 和 Word 報告"
+  },
+  "home.c1.link": {
+    "message": "檢視所有報告選項"
+  },
+  "home.c1.body": {
+    "message": "先是一張摘要工作表，然後每個服務一張工作表。想要文件形式的人，可以再加一份 Word 版本。檔案儲存在 {dir}。"
+  },
+  "home.c2.title": {
+    "message": "只讀發現"
+  },
+  "home.c2.link": {
+    "message": "許可權與安全"
+  },
+  "home.c2.caption": {
+    "message": "{dir} 中的部分 boto3 呼叫。"
+  },
+  "home.c2.body": {
+    "message": "透過 Resource Groups Tagging API、各服務自己的 list 和 describe 呼叫以及 Cost Explorer 來查詢資源。防護機制會攔截任何可能改動內容的 AWS 呼叫。加上 {flag} 可儲存每次呼叫的記錄。"
+  },
+  "home.c3.title": {
+    "message": "一個賬戶或多個賬戶"
+  },
+  "home.c3.link": {
+    "message": "設定多個賬戶"
+  },
+  "home.c3.body": {
+    "message": "可使用 AWS 配置檔案、訪問金鑰或要代入的角色。賬戶並行掃描，預設同時掃描四個。"
+  },
+  "home.c4.title": {
+    "message": "你的標籤，你的列"
+  },
+  "home.c4.link": {
+    "message": "把標籤對映為列"
+  },
+  "home.c4.body": {
+    "message": "把團隊約定好的標籤變成預設報告中有名稱的列，還可以新增你自己的服務描述。"
+  },
+  "home.c5.title": {
+    "message": "與上次相比有什麼變化"
+  },
+  "home.c5.link": {
+    "message": "快照如何工作"
+  },
+  "home.c5.body": {
+    "message": "每次執行都會儲存快照。下一次執行會告訴你新增、移除或變化了什麼。"
+  },
+  "home.c6.title": {
+    "message": "可複用的模板"
+  },
+  "home.c6.link": {
+    "message": "瀏覽模板"
+  },
+  "home.c6.list": {
+    "message": "內建模板"
+  },
+  "home.c6.layouts": {
+    "message": "報告版式"
+  },
+  "home.c6.policies": {
+    "message": "標籤策略"
+  },
+  "home.c6.settings": {
+    "message": "執行設定"
+  },
+  "home.c6.body": {
+    "message": "從八個內建模板起步：報告版式、標籤策略和執行設定。用 {cmd} 列出它們，把其中一個複製到你的專案裡，只改你需要改的部分。"
+  },
+  "home.c7.title": {
+    "message": "網路與安全工作表"
+  },
+  "home.c7.link": {
+    "message": "網路分析"
+  },
+  "home.c7.body": {
+    "message": "可選的工作表，涵蓋 VPC 和子網；加上 {flag} 還包括安全組。"
+  },
+  "home.c8.title": {
+    "message": "標籤策略檢查"
+  },
+  "home.c8.link": {
+    "message": "標籤合規"
+  },
+  "home.c8.body": {
+    "message": "用標籤策略模板檢查必填標籤和允許的取值。結果會寫入一張工作表、Word 中的一節和一個 JSON 檔案。"
+  },
+  "home.s1.title": {
+    "message": "憑證"
+  },
+  "home.s1.body": {
+    "message": "你的預設 AWS 憑證、命名的配置檔案、賬戶檔案中的金鑰，或代入的角色。"
+  },
+  "home.s2.title": {
+    "message": "發現"
+  },
+  "home.s2.body": {
+    "message": "針對每個賬戶和區域：Tagging API、各服務的讀取呼叫和 Cost Explorer。"
+  },
+  "home.s3.title": {
+    "message": "豐富資訊"
+  },
+  "home.s3.body": {
+    "message": "服務屬性、你的標籤列和描述，以及可選的網路與安全分析。"
+  },
+  "home.s4.title": {
+    "message": "輸出"
+  },
+  "home.s4.body": {
+    "message": "bom_output/ 中的 Excel 和 Word 檔案，外加供下次執行對比的快照。"
+  },
+  "home.how.eyebrow": {
+    "message": "02 · 一次執行如何進行"
+  },
+  "home.how.title": {
+    "message": "四個步驟，從左到右。"
+  },
+  "home.honest.eyebrow": {
+    "message": "03 · 依賴它之前"
+  },
+  "home.honest.title": {
+    "message": "坦率說明它的邊界。"
+  },
+  "home.honest.1": {
+    "message": "有些選項尚未實現。如果你用到了，執行會以明確的“尚未實現”提示停止，而不是悄悄忽略。{link}列出了目前可用的功能。"
+  },
+  "home.honest.1.link": {
+    "message": "當前狀態頁面"
+  },
+  "home.honest.2": {
+    "message": "預設情況下，發現過程會呼叫 Cost Explorer，而 AWS 會對每次 Cost Explorer 請求收費。掃描多個賬戶之前，請先閱讀{link}。"
+  },
+  "home.honest.2.link": {
+    "message": "費用說明"
+  },
+  "home.honest.3": {
+    "message": "InvenTag 自帶 24 種 AWS 服務的發現程式碼，目前只在模擬的 AWS 上測試過，沒有在真實賬戶上測試。"
+  },
+  "home.honest.4": {
+    "message": "它收集的是證據，例如資源清單和標籤規範程度。它不會證明你符合任何合規標準。"
+  },
+  "home.closing.title": {
+    "message": "從一個賬戶開始。大約十分鐘。"
+  },
+  "home.sourceOnGitHub": {
+    "message": "GitHub 原始碼"
+  },
+  "home.disclaimer": {
+    "message": "InvenTag 是獨立的開源專案，與 Amazon Web Services 無關聯，也未獲其認可或贊助。"
+  },
+  "listen.start": {
+    "message": "朗讀本頁"
+  },
+  "listen.pause": {
+    "message": "暫停"
+  },
+  "listen.resume": {
+    "message": "繼續"
+  },
+  "listen.stop": {
+    "message": "停止"
+  },
+  "listen.group": {
+    "message": "朗讀本頁內容"
+  },
+  "listen.speed": {
+    "message": "語速 {rate}×"
+  },
+  "listen.speedAria": {
+    "message": "變更朗讀速度"
+  }
+}

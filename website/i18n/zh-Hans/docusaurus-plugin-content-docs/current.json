@@ -1,8 +1,4 @@
 {
-  "version.label": {
-    "message": "v1.1.2（当前）",
-    "description": "The label for version current"
-  },
   "sidebar.docsSidebar.category.Get started": {
     "message": "快速上手",
     "description": "The label for category 'Get started' in sidebar 'docsSidebar'"

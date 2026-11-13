@@ -1,0 +1,78 @@
+{
+  "link.title.Start here": {
+    "message": "Commencer ici",
+    "description": "The title of the footer links column with title=Start here in the footer"
+  },
+  "link.title.Guides": {
+    "message": "Guides",
+    "description": "The title of the footer links column with title=Guides in the footer"
+  },
+  "link.title.Project": {
+    "message": "Projet",
+    "description": "The title of the footer links column with title=Project in the footer"
+  },
+  "link.item.label.Overview": {
+    "message": "Présentation",
+    "description": "The label of footer link with label=Overview linking to /docs"
+  },
+  "link.item.label.Introduction": {
+    "message": "Introduction",
+    "description": "The label of footer link with label=Introduction linking to /docs/getting-started/introduction"
+  },
+  "link.item.label.Quick start": {
+    "message": "Démarrage rapide",
+    "description": "The label of footer link with label=Quick start linking to /docs/getting-started/quick-start"
+  },
+  "link.item.label.What works today": {
+    "message": "Ce qui fonctionne aujourd’hui",
+    "description": "The label of footer link with label=What works today linking to /docs/getting-started/status"
+  },
+  "link.item.label.CLI reference": {
+    "message": "Référence de la CLI",
+    "description": "The label of footer link with label=CLI reference linking to /docs/reference/cli"
+  },
+  "link.item.label.Account setup": {
+    "message": "Configuration des comptes",
+    "description": "The label of footer link with label=Account setup linking to /docs/examples/accounts-setup"
+  },
+  "link.item.label.Configuration examples": {
+    "message": "Exemples de configuration",
+    "description": "The label of footer link with label=Configuration examples linking to /docs/templates/"
+  },
+  "link.item.label.Permissions and safety": {
+    "message": "Autorisations et sécurité",
+    "description": "The label of footer link with label=Permissions and safety linking to /docs/user-guides/production-safety"
+  },
+  "link.item.label.Install from PyPI": {
+    "message": "Installer depuis PyPI",
+    "description": "The label of footer link with label=Install from PyPI linking to https://pypi.org/project/inventag-aws/"
+  },
+  "link.item.label.Source on GitHub": {
+    "message": "Code source sur GitHub",
+    "description": "The label of footer link with label=Source on GitHub linking to https://github.com/habhabhabs/inventag-aws"
+  },
+  "link.item.label.Report an issue": {
+    "message": "Signaler un problème",
+    "description": "The label of footer link with label=Report an issue linking to https://github.com/habhabhabs/inventag-aws/issues"
+  },
+  "link.item.label.Discussions": {
+    "message": "Discussions",
+    "description": "The label of footer link with label=Discussions linking to https://github.com/habhabhabs/inventag-aws/discussions"
+  },
+  "link.item.label.Contributing": {
+    "message": "Contribuer",
+    "description": "The label of footer link with label=Contributing linking to /docs/development/CONTRIBUTING"
+  },
+  "link.item.label.MIT licence": {
+    "message": "Licence MIT",
+    "description": "The label of footer link with label=MIT licence linking to https://github.com/habhabhabs/inventag-aws/blob/main/LICENSE"
+  },
+  "link.item.label.Privacy and cookies": {
+    "message": "Confidentialité et cookies",
+    "description": "The label of footer link with label=Privacy and cookies linking to /privacy"
+  },
+  "copyright": {
+    "message": "© 2026 contributeurs d’InvenTag. Publié sous licence MIT.<br/>AWS est une marque commerciale d’Amazon.com, Inc. ou de ses sociétés affiliées. InvenTag est un projet indépendant, non affilié à Amazon Web Services, ni approuvé, ni parrainé par celui-ci.",
+    "description": "The footer copyright"
+  }
+}

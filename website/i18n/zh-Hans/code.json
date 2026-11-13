@@ -681,5 +681,26 @@
   },
   "home.disclaimer": {
     "message": "InvenTag 是独立的开源项目，与 Amazon Web Services 无关联，也未获其认可或赞助。"
+  },
+  "listen.start": {
+    "message": "朗读本页"
+  },
+  "listen.pause": {
+    "message": "暂停"
+  },
+  "listen.resume": {
+    "message": "继续"
+  },
+  "listen.stop": {
+    "message": "停止"
+  },
+  "listen.group": {
+    "message": "朗读本页内容"
+  },
+  "listen.speed": {
+    "message": "语速 {rate}×"
+  },
+  "listen.speedAria": {
+    "message": "更改朗读速度"
   }
 }

@@ -72,6 +72,8 @@ const PATHS: Record<string, string[]> = {
   ],
   play: ['M6 3l14 9-14 9z'],
   menu: ['M4 6h16', 'M4 12h16', 'M4 18h16'],
+  volume: ['M11 5 6 9H3v6h3l5 4z', 'M15.5 8.5a5 5 0 0 1 0 7', 'M18.5 5.5a9 9 0 0 1 0 13'],
+  pause: ['M8 4v16', 'M16 4v16'],
   'chevron-left': ['m15 18-6-6 6-6'],
   'chevron-right': ['m9 18 6-6-6-6'],
   search: ['M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z', 'm21 21-4.3-4.3'],

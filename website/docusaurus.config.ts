@@ -79,10 +79,13 @@ const config: Config = {
 
   i18n: {
     defaultLocale: 'en',
-    locales: ['en', 'zh-Hans'],
+    locales: ['en', 'zh-Hans', 'zh-Hant', 'es', 'fr'],
     localeConfigs: {
       en: {label: 'English', htmlLang: 'en'},
       'zh-Hans': {label: '简体中文', htmlLang: 'zh-Hans'},
+      'zh-Hant': {label: '繁體中文', htmlLang: 'zh-Hant'},
+      es: {label: 'Español', htmlLang: 'es'},
+      fr: {label: 'Français', htmlLang: 'fr'},
     },
   },
 
@@ -201,7 +204,7 @@ const config: Config = {
         indexDocs: true,
         indexBlog: false,
         indexPages: false,
-        language: ['en', 'zh'],
+        language: ['en', 'zh', 'es', 'fr'],
         searchBarShortcut: true,
         searchBarShortcutHint: true,
         highlightSearchTermsOnTargetPage: true,

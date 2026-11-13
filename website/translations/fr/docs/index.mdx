@@ -1,0 +1,79 @@
+---
+title: Documentation d’InvenTag
+description: InvenTag est un outil en ligne de commande Python open source qui liste les ressources de vos comptes AWS, vérifie leurs étiquettes et produit des rapports Excel et Word.
+sidebar_position: 1
+slug: /
+---
+
+# Documentation d’InvenTag
+
+InvenTag est un outil en ligne de commande gratuit et open source (MIT), écrit en Python.
+Vous le pointez vers un ou plusieurs comptes AWS. Il liste les ressources qu’il trouve,
+vérifie leurs étiquettes et écrit le résultat dans un classeur Excel et un document
+Word que vous pouvez remettre à quelqu’un qui n’ouvre jamais la console AWS.
+
+Nous appelons cette liste une **nomenclature (BOM)** : ce que vous exploitez, où cela tourne,
+qui en est responsable et comment c’est étiqueté.
+
+![The InvenTag wordmark](/img/logo-wordmark.svg#gh-light-mode-only)![The InvenTag wordmark](/img/logo-wordmark-dark.svg#gh-dark-mode-only)
+
+## Commencez ici {/* #start-here */}
+
+<CardGroup cols={2}>
+  <Card title="Générer votre premier rapport" icon="rocket" href="/docs/getting-started/quick-start">
+    Analysez un compte et ouvrez les rapports Excel et Word en une dizaine de minutes.
+  </Card>
+  <Card title="Installer InvenTag" icon="download" href="/docs/getting-started/installation">
+    Installez-le avec pip ou pipx et connectez vos identifiants AWS.
+  </Card>
+  <Card title="Ce qu’est InvenTag" icon="info" href="/docs/getting-started/introduction">
+    Ce qu’il fait et ne fait pas, en une page.
+  </Card>
+  <Card title="État des fonctionnalités" icon="check" href="/docs/getting-started/status">
+    Quelles fonctionnalités marchent aujourd’hui et quelles sont les limites connues.
+  </Card>
+  <Card title="Modèles" icon="layers" href="/docs/templates">
+    Réutilisez une mise en page de rapport ou une politique d’étiquetage avec un petit fichier YAML.
+  </Card>
+  <Card title="Exemples" icon="terminal" href="/docs/examples">
+    Des recettes à copier-coller pour les tâches courantes.
+  </Card>
+  <Card title="Référence de la ligne de commande" icon="book" href="/docs/reference/cli">
+    Toutes les options, tous les formats de fichier et toutes les autorisations IAM.
+  </Card>
+  <Card title="Glossaire" icon="help" href="/docs/reference/glossary">
+    Le sens, en langage simple, des termes utilisés ici.
+  </Card>
+</CardGroup>
+
+## Essayez-le {/* #try-it */}
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install inventag-aws
+inventag --template standard-bom --create-excel --account-regions us-east-1
+```
+
+InvenTag est disponible sur [PyPI](https://pypi.org/project/inventag-aws/). Pour l’exécuter
+depuis les sources, voir [Installation](./getting-started/installation.md).
+
+InvenTag utilise vos identifiants AWS actuels et écrit le classeur dans
+`bom_output/`. Donnez-lui une identité en lecture seule :
+[Configurer l’accès en lecture seule](./guides/read-only-access.md).
+
+## Obtenir de l’aide {/* #get-help */}
+
+- Signalez un bogue ou demandez une fonctionnalité dans
+  [GitHub Issues](https://github.com/habhabhabs/inventag-aws/issues).
+- Posez une question dans
+  [GitHub Discussions](https://github.com/habhabhabs/inventag-aws/discussions).
+- Signalez un problème de sécurité comme indiqué sur la page
+  [Sécurité](./security/index.md).
+
+InvenTag est publié sous
+[licence MIT](https://github.com/habhabhabs/inventag-aws/blob/main/LICENSE).
+
+---
+
+*AWS est une marque commerciale d’Amazon.com, Inc. ou de ses sociétés affiliées. InvenTag est un
+projet indépendant, non affilié à Amazon Web Services, ni approuvé, ni parrainé par celui-ci.*

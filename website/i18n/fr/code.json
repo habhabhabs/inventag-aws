@@ -1,0 +1,706 @@
+{
+  "home.pageTitle": {
+    "message": "Inventaire AWS, contrôle des étiquettes et rapports BOM"
+  },
+  "home.pageDescription": {
+    "message": "InvenTag est une CLI Python open source. Elle liste les ressources de vos comptes AWS, montre comment chacune est étiquetée et produit une nomenclature (BOM) au format Excel ou Word."
+  },
+  "home.kicker": {
+    "message": "CLI open source pour AWS"
+  },
+  "home.releaseNotes": {
+    "message": "notes de version"
+  },
+  "home.heroTitle": {
+    "message": "Voyez ce qui tourne dans vos comptes AWS. {emphasis}"
+  },
+  "home.heroTitleEm": {
+    "message": "Puis remettez le rapport."
+  },
+  "home.heroLead": {
+    "message": "InvenTag analyse un compte AWS ou plusieurs. Il liste les ressources trouvées et les étiquettes de chacune. Il écrit ensuite un rapport Excel ou Word, une nomenclature, que tout le monde peut lire."
+  },
+  "home.runQuickStart": {
+    "message": "Lancer le démarrage rapide"
+  },
+  "home.howItWorks": {
+    "message": "Comment ça marche"
+  },
+  "home.heroNote": {
+    "message": "Une protection intégrée ne laisse passer que les appels en lecture comme {list}, {describe} et {get}. Utilisez-le aussi avec un rôle IAM en lecture seule : {link}."
+  },
+  "home.heroNoteLink": {
+    "message": "voir les autorisations nécessaires"
+  },
+  "home.quickStartTitle": {
+    "message": "Démarrage rapide"
+  },
+  "home.snippetFootnote": {
+    "message": "Installe {pkg} depuis PyPI avec pip. Utilise vos identifiants AWS actuels. Écrit {file}. AWS facture les requêtes Cost Explorer."
+  },
+  "home.sheetCaption": {
+    "message": "Exemple de feuille Summary"
+  },
+  "home.sheetTabs": {
+    "message": "Feuilles de calcul du classeur"
+  },
+  "home.sampleData": {
+    "message": "Données d’exemple"
+  },
+  "home.sheetNote": {
+    "message": "La mise en page de la feuille Summary produite avec {flag}. Chaque service a ensuite sa propre feuille, avec une ligne par ressource."
+  },
+  "home.cap.eyebrow": {
+    "message": "01 · Ce que vous obtenez"
+  },
+  "home.cap.title": {
+    "message": "Une commande. Un rapport lisible par tous."
+  },
+  "home.cap.lead": {
+    "message": "Tout ce qui suit fonctionne aujourd’hui dans la CLI. Lorsqu’une fonctionnalité n’est qu’en partie terminée, la documentation le dit."
+  },
+  "home.c1.title": {
+    "message": "Rapports Excel et Word"
+  },
+  "home.c1.link": {
+    "message": "Voir toutes les options de rapport"
+  },
+  "home.c1.body": {
+    "message": "Une feuille de synthèse, puis une feuille par service. Ajoutez une version Word pour ceux qui préfèrent les documents. Les fichiers sont enregistrés dans {dir}."
+  },
+  "home.c2.title": {
+    "message": "Découverte en lecture seule"
+  },
+  "home.c2.link": {
+    "message": "Autorisations et sécurité"
+  },
+  "home.c2.caption": {
+    "message": "Quelques appels boto3 dans {dir}."
+  },
+  "home.c2.body": {
+    "message": "Trouve les ressources via l’API Resource Groups Tagging, les appels list et describe propres à chaque service et Cost Explorer. Une protection bloque tout appel AWS susceptible de modifier quelque chose. Ajoutez {flag} pour enregistrer chaque appel effectué."
+  },
+  "home.c3.title": {
+    "message": "Un compte ou plusieurs"
+  },
+  "home.c3.link": {
+    "message": "Configurer plusieurs comptes"
+  },
+  "home.c3.body": {
+    "message": "Utilisez des profils AWS, des clés d’accès ou un rôle à assumer. Les comptes sont analysés en parallèle, quatre à la fois par défaut."
+  },
+  "home.c4.title": {
+    "message": "Vos étiquettes, vos colonnes"
+  },
+  "home.c4.link": {
+    "message": "Associer des étiquettes à des colonnes"
+  },
+  "home.c4.body": {
+    "message": "Transformez les étiquettes convenues par votre équipe en colonnes nommées dans le rapport par défaut. Ajoutez aussi vos propres descriptions de service."
+  },
+  "home.c5.title": {
+    "message": "Ce qui a changé depuis la dernière fois"
+  },
+  "home.c5.link": {
+    "message": "Comment fonctionnent les instantanés"
+  },
+  "home.c5.body": {
+    "message": "Chaque exécution enregistre un instantané. La suivante vous indique ce qui a été ajouté, supprimé ou modifié."
+  },
+  "home.c6.title": {
+    "message": "Modèles réutilisables"
+  },
+  "home.c6.link": {
+    "message": "Parcourir les modèles"
+  },
+  "home.c6.list": {
+    "message": "Modèles intégrés"
+  },
+  "home.c6.layouts": {
+    "message": "Mises en page de rapport"
+  },
+  "home.c6.policies": {
+    "message": "Politiques d’étiquetage"
+  },
+  "home.c6.settings": {
+    "message": "Paramètres d’exécution"
+  },
+  "home.c6.body": {
+    "message": "Partez de huit modèles intégrés : mises en page de rapport, politiques d’étiquetage et paramètres d’exécution. Listez-les avec {cmd}, copiez-en un dans votre projet et ne changez que le nécessaire."
+  },
+  "home.c7.title": {
+    "message": "Feuilles réseau et sécurité"
+  },
+  "home.c7.link": {
+    "message": "Analyse réseau"
+  },
+  "home.c7.body": {
+    "message": "Feuilles facultatives pour les VPC et les sous-réseaux, et pour les groupes de sécurité avec {flag}."
+  },
+  "home.c8.title": {
+    "message": "Contrôle des politiques d’étiquetage"
+  },
+  "home.c8.link": {
+    "message": "Conformité des étiquettes"
+  },
+  "home.c8.body": {
+    "message": "Vérifiez les étiquettes obligatoires et les valeurs autorisées avec un modèle de politique d’étiquetage. Les résultats vont dans une feuille, une section Word et un fichier JSON."
+  },
+  "home.s1.title": {
+    "message": "Identifiants"
+  },
+  "home.s1.body": {
+    "message": "Vos identifiants AWS par défaut, un profil nommé, des clés tirées d’un fichier de comptes ou un rôle assumé."
+  },
+  "home.s2.title": {
+    "message": "Découverte"
+  },
+  "home.s2.body": {
+    "message": "Pour chaque compte et chaque région : l’API Tagging, les appels en lecture propres à chaque service et Cost Explorer."
+  },
+  "home.s3.title": {
+    "message": "Enrichissement"
+  },
+  "home.s3.body": {
+    "message": "Attributs des services, vos colonnes d’étiquettes et descriptions, analyse réseau et sécurité facultative."
+  },
+  "home.s4.title": {
+    "message": "Sortie"
+  },
+  "home.s4.body": {
+    "message": "Fichiers Excel et Word dans bom_output/, plus un instantané auquel l’exécution suivante se compare."
+  },
+  "home.how.eyebrow": {
+    "message": "02 · Comment se déroule une exécution"
+  },
+  "home.how.title": {
+    "message": "Quatre étapes, de gauche à droite."
+  },
+  "home.honest.eyebrow": {
+    "message": "03 · Avant de vous y fier"
+  },
+  "home.honest.title": {
+    "message": "Clair sur les limites."
+  },
+  "home.honest.1": {
+    "message": "Certaines options ne sont pas encore développées. Si vous en utilisez une, l’exécution s’arrête avec un message clair « pas encore implémenté » au lieu de l’ignorer. La {link} indique ce qui fonctionne aujourd’hui."
+  },
+  "home.honest.1.link": {
+    "message": "page d’état actuel"
+  },
+  "home.honest.2": {
+    "message": "Par défaut, la découverte appelle Cost Explorer, et AWS facture chaque requête Cost Explorer. Lisez les {link} avant d’analyser de nombreux comptes."
+  },
+  "home.honest.2.link": {
+    "message": "notes sur les coûts"
+  },
+  "home.honest.3": {
+    "message": "InvenTag dispose de son propre code de découverte pour 24 services AWS et n’a été testé que sur un AWS simulé, pas sur un compte réel."
+  },
+  "home.honest.4": {
+    "message": "Il rassemble des éléments de preuve, comme une liste de ressources et la qualité de leur étiquetage. Il ne certifie pas que vous respectez une norme de conformité."
+  },
+  "home.closing.title": {
+    "message": "Commencez avec un compte. Comptez environ dix minutes."
+  },
+  "home.sourceOnGitHub": {
+    "message": "Code source sur GitHub"
+  },
+  "home.disclaimer": {
+    "message": "InvenTag est un projet open source indépendant. Il n’est ni affilié à Amazon Web Services, ni approuvé, ni parrainé par celui-ci."
+  },
+  "consent.region": {
+    "message": "Préférences en matière de cookies"
+  },
+  "consent.close": {
+    "message": "Fermer et ne garder que les cookies essentiels"
+  },
+  "consent.title": {
+    "message": "Une petite confession sur les cookies"
+  },
+  "consent.body": {
+    "message": "Seuls les cookies essentiels sont actifs : ils ne font que mémoriser votre choix. En autoriser un de plus ? Cela m’aide à voir quelles pages sont utiles."
+  },
+  "consent.link": {
+    "message": "Ce qui est stocké et pourquoi"
+  },
+  "consent.allow": {
+    "message": "Autoriser l’analyse"
+  },
+  "consent.essentials": {
+    "message": "L’essentiel seulement"
+  },
+  "related.title": {
+    "message": "Pour aller plus loin"
+  },
+  "menu.sectionOverview": {
+    "message": "Présentation : {label}"
+  },
+  "menu.getStarted": {
+    "message": "Pour commencer"
+  },
+  "menu.overview": {
+    "message": "Présentation"
+  },
+  "menu.documentation": {
+    "message": "Documentation"
+  },
+  "code.commandsCopied": {
+    "message": "Commandes copiées"
+  },
+  "code.copyAll": {
+    "message": "Copier les {count} commandes"
+  },
+  "code.copied": {
+    "message": "Copié"
+  },
+  "code.copy": {
+    "message": "Copier"
+  },
+  "code.copiedClipboard": {
+    "message": "Copié dans le presse-papiers"
+  },
+  "code.copyFailedCommands": {
+    "message": "Échec de la copie. Sélectionnez plutôt les commandes."
+  },
+  "search.suggest.quickstart": {
+    "message": "Générer votre premier rapport"
+  },
+  "search.suggest.install": {
+    "message": "Installer InvenTag"
+  },
+  "search.suggest.cli": {
+    "message": "Référence de la ligne de commande"
+  },
+  "search.suggest.troubleshooting": {
+    "message": "Résoudre les problèmes courants"
+  },
+  "theme.SearchBar.label": {
+    "message": "Rechercher",
+    "description": "The ARIA label and placeholder for search button"
+  },
+  "search.results": {
+    "message": "Résultats"
+  },
+  "search.noResults": {
+    "message": "Aucun résultat pour « {query} ». Essayez moins de mots ou d’autres mots."
+  },
+  "search.suggested": {
+    "message": "Suggestions"
+  },
+  "search.toMove": {
+    "message": "pour naviguer"
+  },
+  "search.toOpen": {
+    "message": "pour ouvrir"
+  },
+  "search.seeAll": {
+    "message": "Voir tous les résultats"
+  },
+  "code.showLess": {
+    "message": "Afficher moins"
+  },
+  "code.showAll": {
+    "message": "Afficher les {count} lignes"
+  },
+  "menu.hide": {
+    "message": "Masquer le menu"
+  },
+  "menu.title": {
+    "message": "Menu"
+  },
+  "menu.sidebar": {
+    "message": "Barre latérale de la documentation"
+  },
+  "code.copyAria": {
+    "message": "Copier le code dans le presse-papiers"
+  },
+  "code.copyFailed": {
+    "message": "Échec de la copie. Sélectionnez plutôt le texte."
+  },
+  "breadcrumb.home": {
+    "message": "Documentation d’InvenTag"
+  },
+  "menu.show": {
+    "message": "Afficher le menu"
+  },
+  "theme.ErrorPageContent.title": {
+    "message": "Cette page a planté.",
+    "description": "The title of the fallback page when the page crashed"
+  },
+  "theme.BackToTopButton.buttonAriaLabel": {
+    "message": "Retour au début de la page",
+    "description": "The ARIA label for the back to top button"
+  },
+  "theme.blog.archive.title": {
+    "message": "Archive",
+    "description": "The page & hero title of the blog archive page"
+  },
+  "theme.blog.archive.description": {
+    "message": "Archive",
+    "description": "The page & hero description of the blog archive page"
+  },
+  "theme.blog.paginator.navAriaLabel": {
+    "message": "Pagination de la liste des articles du blog",
+    "description": "The ARIA label for the blog pagination"
+  },
+  "theme.blog.paginator.newerEntries": {
+    "message": "Nouvelles entrées",
+    "description": "The label used to navigate to the newer blog posts page (previous page)"
+  },
+  "theme.blog.paginator.olderEntries": {
+    "message": "Anciennes entrées",
+    "description": "The label used to navigate to the older blog posts page (next page)"
+  },
+  "theme.blog.post.paginator.navAriaLabel": {
+    "message": "Pagination des articles du blog",
+    "description": "The ARIA label for the blog posts pagination"
+  },
+  "theme.blog.post.paginator.newerPost": {
+    "message": "Article plus récent",
+    "description": "The blog post button label to navigate to the newer/previous post"
+  },
+  "theme.blog.post.paginator.olderPost": {
+    "message": "Article plus ancien",
+    "description": "The blog post button label to navigate to the older/next post"
+  },
+  "theme.tags.tagsPageLink": {
+    "message": "Voir tous les tags",
+    "description": "The label of the link targeting the tag list page"
+  },
+  "theme.colorToggle.ariaLabel.mode.system": {
+    "message": "system mode",
+    "description": "The name for the system color mode"
+  },
+  "theme.colorToggle.ariaLabel.mode.light": {
+    "message": "mode clair",
+    "description": "The name for the light color mode"
+  },
+  "theme.colorToggle.ariaLabel.mode.dark": {
+    "message": "mode sombre",
+    "description": "The name for the dark color mode"
+  },
+  "theme.colorToggle.ariaLabel": {
+    "message": "Basculer entre le mode sombre et clair (actuellement {mode})",
+    "description": "The ARIA label for the color mode toggle"
+  },
+  "theme.docs.breadcrumbs.navAriaLabel": {
+    "message": "Fil d'Ariane",
+    "description": "The ARIA label for the breadcrumbs"
+  },
+  "theme.docs.paginator.navAriaLabel": {
+    "message": "Pages de documentation",
+    "description": "The ARIA label for the docs pagination"
+  },
+  "theme.docs.paginator.previous": {
+    "message": "Précédent",
+    "description": "The label used to navigate to the previous doc"
+  },
+  "theme.docs.paginator.next": {
+    "message": "Suivant",
+    "description": "The label used to navigate to the next doc"
+  },
+  "theme.docs.tagDocListPageTitle.nDocsTagged": {
+    "message": "Un document tagué|{count} documents tagués",
+    "description": "Pluralized label for \"{count} docs tagged\". Use as much plural forms (separated by \"|\") as your language support (see https://www.unicode.org/cldr/cldr-aux/charts/34/supplemental/language_plural_rules.html)"
+  },
+  "theme.docs.tagDocListPageTitle": {
+    "message": "{nDocsTagged} avec \"{tagName}\"",
+    "description": "The title of the page for a docs tag"
+  },
+  "theme.docs.versionBadge.label": {
+    "message": "Version: {versionLabel}"
+  },
+  "theme.docs.versions.unreleasedVersionLabel": {
+    "message": "Ceci est la documentation de la prochaine version {versionLabel} de {siteTitle}.",
+    "description": "The label used to tell the user that he's browsing an unreleased doc version"
+  },
+  "theme.docs.versions.unmaintainedVersionLabel": {
+    "message": "Ceci est la documentation de {siteTitle} {versionLabel}, qui n'est plus activement maintenue.",
+    "description": "The label used to tell the user that he's browsing an unmaintained doc version"
+  },
+  "theme.docs.versions.latestVersionSuggestionLabel": {
+    "message": "Pour une documentation à jour, consultez la {latestVersionLink} ({versionLabel}).",
+    "description": "The label used to tell the user to check the latest version"
+  },
+  "theme.docs.versions.latestVersionLinkLabel": {
+    "message": "dernière version",
+    "description": "The label used for the latest version suggestion link label"
+  },
+  "theme.common.editThisPage": {
+    "message": "Éditer cette page",
+    "description": "The link label to edit the current page"
+  },
+  "theme.common.headingLinkTitle": {
+    "message": "Lien direct vers {heading}",
+    "description": "Title for link to heading"
+  },
+  "theme.lastUpdated.atDate": {
+    "message": " le {date}",
+    "description": "The words used to describe on which date a page has been last updated"
+  },
+  "theme.lastUpdated.byUser": {
+    "message": " par {user}",
+    "description": "The words used to describe by who the page has been last updated"
+  },
+  "theme.lastUpdated.lastUpdatedAtBy": {
+    "message": "Dernière mise à jour{atDate}{byUser}",
+    "description": "The sentence used to display when a page has been last updated, and by who"
+  },
+  "theme.navbar.mobileVersionsDropdown.label": {
+    "message": "Versions",
+    "description": "The label for the navbar versions dropdown on mobile view"
+  },
+  "theme.NotFound.title": {
+    "message": "Page introuvable",
+    "description": "The title of the 404 page"
+  },
+  "theme.tags.tagsListLabel": {
+    "message": "Tags :",
+    "description": "The label alongside a tag list"
+  },
+  "theme.admonition.caution": {
+    "message": "attention",
+    "description": "The default label used for the Caution admonition (:::caution)"
+  },
+  "theme.admonition.danger": {
+    "message": "danger",
+    "description": "The default label used for the Danger admonition (:::danger)"
+  },
+  "theme.admonition.info": {
+    "message": "info",
+    "description": "The default label used for the Info admonition (:::info)"
+  },
+  "theme.admonition.note": {
+    "message": "remarque",
+    "description": "The default label used for the Note admonition (:::note)"
+  },
+  "theme.admonition.tip": {
+    "message": "astuce",
+    "description": "The default label used for the Tip admonition (:::tip)"
+  },
+  "theme.admonition.warning": {
+    "message": "attention",
+    "description": "The default label used for the Warning admonition (:::warning)"
+  },
+  "theme.AnnouncementBar.closeButtonAriaLabel": {
+    "message": "Fermer",
+    "description": "The ARIA label for close button of announcement bar"
+  },
+  "theme.blog.sidebar.navAriaLabel": {
+    "message": "Navigation article de blog récent",
+    "description": "The ARIA label for recent posts in the blog sidebar"
+  },
+  "theme.DocSidebarItem.expandCategoryAriaLabel": {
+    "message": "Développer la catégorie '{label}' de la barre latérale",
+    "description": "The ARIA label to expand the sidebar category"
+  },
+  "theme.DocSidebarItem.collapseCategoryAriaLabel": {
+    "message": "Réduire la catégorie '{label}' de la barre latérale",
+    "description": "The ARIA label to collapse the sidebar category"
+  },
+  "theme.IconExternalLink.ariaLabel": {
+    "message": "(opens in new tab)",
+    "description": "The ARIA label for the external link icon"
+  },
+  "theme.NavBar.navAriaLabel": {
+    "message": "Main",
+    "description": "The ARIA label for the main navigation"
+  },
+  "theme.navbar.mobileLanguageDropdown.label": {
+    "message": "Langues",
+    "description": "The label for the mobile language switcher dropdown"
+  },
+  "theme.NotFound.p1": {
+    "message": "Nous n'avons pas trouvé ce que vous recherchez.",
+    "description": "The first paragraph of the 404 page"
+  },
+  "theme.NotFound.p2": {
+    "message": "Veuillez contacter le propriétaire du site qui vous a lié à l'URL d'origine et leur faire savoir que leur lien est cassé.",
+    "description": "The 2nd paragraph of the 404 page"
+  },
+  "theme.TOCCollapsible.toggleButtonLabel": {
+    "message": "Sur cette page",
+    "description": "The label used by the button on the collapsible TOC component"
+  },
+  "theme.blog.post.readMore": {
+    "message": "Lire plus",
+    "description": "The label used in blog post item excerpts to link to full blog posts"
+  },
+  "theme.blog.post.readMoreLabel": {
+    "message": "En savoir plus sur {title}",
+    "description": "The ARIA label for the link to full blog posts from excerpts"
+  },
+  "theme.blog.post.readingTime.plurals": {
+    "message": "Une minute de lecture|{readingTime} minutes de lecture",
+    "description": "Pluralized label for \"{readingTime} min read\". Use as much plural forms (separated by \"|\") as your language support (see https://www.unicode.org/cldr/cldr-aux/charts/34/supplemental/language_plural_rules.html)"
+  },
+  "theme.CodeBlock.copy": {
+    "message": "Copier",
+    "description": "The copy button label on code blocks"
+  },
+  "theme.CodeBlock.copied": {
+    "message": "Copié",
+    "description": "The copied button label on code blocks"
+  },
+  "theme.CodeBlock.copyButtonAriaLabel": {
+    "message": "Copier le code",
+    "description": "The ARIA label for copy code blocks button"
+  },
+  "theme.CodeBlock.wordWrapToggle": {
+    "message": "Activer/désactiver le retour à la ligne",
+    "description": "The title attribute for toggle word wrapping button of code block lines"
+  },
+  "theme.docs.breadcrumbs.home": {
+    "message": "Page d'accueil",
+    "description": "The ARIA label for the home page in the breadcrumbs"
+  },
+  "theme.docs.sidebar.collapseButtonTitle": {
+    "message": "Réduire le menu latéral",
+    "description": "The title attribute for collapse button of doc sidebar"
+  },
+  "theme.docs.sidebar.collapseButtonAriaLabel": {
+    "message": "Réduire le menu latéral",
+    "description": "The title attribute for collapse button of doc sidebar"
+  },
+  "theme.docs.sidebar.navAriaLabel": {
+    "message": "Docs sidebar",
+    "description": "The ARIA label for the sidebar navigation"
+  },
+  "theme.docs.sidebar.closeSidebarButtonAriaLabel": {
+    "message": "Fermer la barre de navigation",
+    "description": "The ARIA label for close button of mobile sidebar"
+  },
+  "theme.navbar.mobileSidebarSecondaryMenu.backButtonLabel": {
+    "message": "← Retour au menu principal",
+    "description": "The label of the back button to return to main menu, inside the mobile navbar sidebar secondary menu (notably used to display the docs sidebar)"
+  },
+  "theme.docs.sidebar.toggleSidebarButtonAriaLabel": {
+    "message": "Ouvrir/fermer la barre de navigation",
+    "description": "The ARIA label for hamburger menu button of mobile navigation"
+  },
+  "theme.navbar.mobileDropdown.collapseButton.expandAriaLabel": {
+    "message": "Expand the dropdown",
+    "description": "The ARIA label of the button to expand the mobile dropdown navbar item"
+  },
+  "theme.navbar.mobileDropdown.collapseButton.collapseAriaLabel": {
+    "message": "Collapse the dropdown",
+    "description": "The ARIA label of the button to collapse the mobile dropdown navbar item"
+  },
+  "theme.docs.sidebar.expandButtonTitle": {
+    "message": "Déplier le menu latéral",
+    "description": "The ARIA label and title attribute for expand button of doc sidebar"
+  },
+  "theme.docs.sidebar.expandButtonAriaLabel": {
+    "message": "Déplier le menu latéral",
+    "description": "The ARIA label and title attribute for expand button of doc sidebar"
+  },
+  "theme.SearchBar.noResultsText": {
+    "message": "Aucun résultat"
+  },
+  "theme.SearchBar.seeAllOutsideContext": {
+    "message": "Voir tous les résultats hors de « {context} »"
+  },
+  "theme.SearchBar.searchInContext": {
+    "message": "Voir tous les résultats dans « {context} »"
+  },
+  "theme.SearchBar.seeAll": {
+    "message": "Voir tous les résultats"
+  },
+  "theme.SearchPage.existingResultsTitle": {
+    "message": "Résultats de recherche pour « {query} »",
+    "description": "The search page title for non-empty query"
+  },
+  "theme.SearchPage.emptyResultsTitle": {
+    "message": "Rechercher dans la documentation",
+    "description": "The search page title for empty query"
+  },
+  "theme.SearchPage.searchContext.everywhere": {
+    "message": "Partout"
+  },
+  "theme.SearchPage.documentsFound.plurals": {
+    "message": "1 document trouvé|{count} documents trouvés",
+    "description": "Pluralized label for \"{count} documents found\". Use as much plural forms (separated by \"|\") as your language support (see https://www.unicode.org/cldr/cldr-aux/charts/34/supplemental/language_plural_rules.html)"
+  },
+  "theme.SearchPage.noResultsText": {
+    "message": "Aucun document trouvé",
+    "description": "The paragraph for empty search result"
+  },
+  "theme.blog.post.plurals": {
+    "message": "Un article|{count} articles",
+    "description": "Pluralized label for \"{count} posts\". Use as much plural forms (separated by \"|\") as your language support (see https://www.unicode.org/cldr/cldr-aux/charts/34/supplemental/language_plural_rules.html)"
+  },
+  "theme.blog.tagTitle": {
+    "message": "{nPosts} tagués avec « {tagName} »",
+    "description": "The title of the page for a blog tag"
+  },
+  "theme.blog.author.pageTitle": {
+    "message": "{authorName} - {nPosts}",
+    "description": "The title of the page for a blog author"
+  },
+  "theme.blog.authorsList.pageTitle": {
+    "message": "Authors",
+    "description": "The title of the authors page"
+  },
+  "theme.blog.authorsList.viewAll": {
+    "message": "View All Authors",
+    "description": "The label of the link targeting the blog authors page"
+  },
+  "theme.blog.author.noPosts": {
+    "message": "This author has not written any posts yet.",
+    "description": "The text for authors with 0 blog post"
+  },
+  "theme.contentVisibility.unlistedBanner.title": {
+    "message": "Page non répertoriée",
+    "description": "The unlisted content banner title"
+  },
+  "theme.contentVisibility.unlistedBanner.message": {
+    "message": "Cette page n'est pas répertoriée. Les moteurs de recherche ne l'indexeront pas, et seuls les utilisateurs ayant un lien direct peuvent y accéder.",
+    "description": "The unlisted content banner message"
+  },
+  "theme.contentVisibility.draftBanner.title": {
+    "message": "Draft page",
+    "description": "The draft content banner title"
+  },
+  "theme.contentVisibility.draftBanner.message": {
+    "message": "This page is a draft. It will only be visible in dev and be excluded from the production build.",
+    "description": "The draft content banner message"
+  },
+  "theme.docs.DocCard.categoryDescription.plurals": {
+    "message": "1 élément|{count} éléments",
+    "description": "The default description for a category card in the generated index about how many items this category includes"
+  },
+  "theme.ErrorPageContent.tryAgain": {
+    "message": "Réessayer",
+    "description": "The label of the button to try again rendering when the React error boundary captures an error"
+  },
+  "theme.common.skipToMainContent": {
+    "message": "Aller au contenu principal",
+    "description": "The skip to content label used for accessibility, allowing to rapidly navigate to main content with keyboard tab/enter navigation"
+  },
+  "theme.tags.tagsPageTitle": {
+    "message": "Tags",
+    "description": "The title of the tag list page"
+  },
+  "listen.start": {
+    "message": "Écouter cette page"
+  },
+  "listen.pause": {
+    "message": "Pause"
+  },
+  "listen.resume": {
+    "message": "Reprendre"
+  },
+  "listen.stop": {
+    "message": "Arrêter"
+  },
+  "listen.group": {
+    "message": "Lire cette page à voix haute"
+  },
+  "listen.speed": {
+    "message": "Vitesse {rate}×"
+  },
+  "listen.speedAria": {
+    "message": "Modifier la vitesse de lecture"
+  }
+}
