@@ -1223,13 +1223,19 @@ a.it-card:is(:active, [data-nav-pending]) {
 }
 .it-nf__actions .button {
   min-height: 2.75rem;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
 }
 .it-nf__links {
   font-size: 0.9375rem;
 }
 
-/* Below 1280px there is no gutter for a labelled button: a 36px icon square */
-@media (min-width: 997px) and (max-width: 1279px) {
+/* With the menu hidden there is no free gutter at any width, so the floating button is a
+   36px icon square (its aria-label and title still say "Show menu") and the page keeps a
+   narrow left gutter for it. */
+@media (min-width: 997px) {
   .it-menubtn--rail {
     width: 2.25rem;
     padding: 0;
@@ -1238,5 +1244,9 @@ a.it-card:is(:active, [data-nav-pending]) {
   }
   .it-menubtn--rail span {
     display: none;
+  }
+  /* a gutter for the floating button, so it never covers the first letters of a line */
+  aside.theme-doc-sidebar-container[class*='docSidebarContainerHidden'] ~ main[class*='docMainContainer'] > .container {
+    padding-left: 3.25rem;
   }
 }
