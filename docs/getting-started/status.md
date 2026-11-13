@@ -134,12 +134,17 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   saves makes the next run report every resource of that account as removed.
 - **A service whose listing was throttled or failed with an error** in one run
   appears as removed in the next change report.
-- **A session that expires during the scan:** the run exits with code 0 and
-  the report looks complete.
+- **The first change report after upgrading from v1.1.4** lists the resources
+  of newly covered services as added, although they existed before.
+- **A session that expires during the scan:** the run exits with code 0, also
+  with `--fail-on-account-error`. The report holds only what was read before
+  the session expired and has no note about it; each failed listing is a
+  warning on the console and in the `--log-file` file. If the session is
+  already expired when the scan starts, no report file is written.
+- **With `--resume`**, an account whose session expired part-way in the first
+  run can be reused as if it were complete.
 - **An expired IAM Identity Center (SSO) token** stops the run with a Python
   traceback instead of a message. Run `aws sso login` again.
-- **Warnings from discovery** appear on the console but are not written to the
-  `--log-file` file.
 - **Cost Explorer access denied:** the run carries on without billing data and
   logs one warning.
 - **A call blocked by the read-only guard** is logged as an error that names
@@ -206,6 +211,14 @@ override this.
   with `none`.
 - With `--enable-network-analysis` or `--enable-security-analysis`, the
   analysis calls are made twice in one run.
+- Network analysis counts a resource in several subnets for the first subnet
+  only, and counts load balancers for their VPC but not for a subnet.
+- Service attribute enrichment (`enable_service_enrichment` in the BOM
+  settings) does not run; reports contain the fields that discovery returns.
+- In a template report, the Name column is empty when AWS returns no `Name`
+  field or `Name` tag for the resource; the ID column identifies it. For
+  Lambda functions, IAM roles and KMS aliases, a template report shows the ID
+  as the name.
 
 ## Security notes
 

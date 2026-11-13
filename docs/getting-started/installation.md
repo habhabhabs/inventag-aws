@@ -142,7 +142,7 @@ What you will notice after `pip install --upgrade inventag-aws`:
   `detail_level` columns. See [Output files](../reference/outputs.md).
 - **More services and more API calls.** InvenTag lists 22 more services,
   which adds sheets, rows and calls. The repository policy has 17 new read
-  actions (and no longer lists `cloudtrail:LookupEvents`); without them, those services are skipped with a warning. See
+  actions (and no longer lists `cloudtrail:LookupEvents`); without them, each denied listing is a warning, and those resources are found through the Tagging API as before, when they are tagged. The first change report after the upgrade shows the resources of the newly listed services as added, although they existed before. See
   [IAM permissions](../reference/iam-permissions.md).
 - **Stricter files.** An empty settings file, a key written twice or a
   `--bom-config` value of the wrong type stops the run with exit code 1.
@@ -153,7 +153,14 @@ What you will notice after `pip install --upgrade inventag-aws`:
   account that runs out of time keeps the resources it found and counts as
   failed.
 - **The default exit codes are the same.** Codes 5 and 6 are new and only
-  with `--fail-on-account-error` and `--fail-if-empty`.
+  with `--fail-on-account-error` and `--fail-if-empty`. A report format that
+  cannot be written exits with code 1.
+- **Service and sheet names stay.** Resources that v1.1.4 found only through
+  the Tagging API keep their service name and sheet (for example
+  `ELASTICFILESYSTEM`, `STATES`, `COGNITO-IDP`, `ELASTICMAPREDUCE`, `KAFKA`,
+  `ES`). Their rows now carry the details of the service API, and the ID column
+  of Secrets Manager secrets and MSK clusters holds the name instead of the last
+  part of the ARN.
 
 The full list is in the
 [changelog](https://github.com/habhabhabs/inventag-aws/blob/main/CHANGELOG.md).

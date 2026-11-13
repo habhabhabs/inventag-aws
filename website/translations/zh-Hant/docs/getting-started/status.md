@@ -99,9 +99,11 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **帳戶中的所有呼叫都被拒絕：** 該帳戶不算失敗。執行以結束代碼 0 結束，沒有可報告的資源，
   並且它儲存的快照會讓下一次執行把該帳戶的所有資源報告為已刪除。
 - **某個服務的列出呼叫被限流或出錯**，在下一次的變更報告中，該服務的資源會顯示為已刪除。
-- **掃描過程中會話過期：** 執行以結束代碼 0 結束，報告看起來是完整的。
+- **從 v1.1.4 升級後的第一份變更報告**會把新覆蓋服務的資源列為新增，儘管它們之前就存在。
+- **掃描過程中會話過期：** 執行以結束代碼 0 結束，使用 `--fail-on-account-error` 時也是如此。報告只包含會話過期前讀取到的內容，
+  而且沒有任何說明；每個失敗的列出呼叫都會在控制檯和 `--log-file` 檔案中記錄一條警告。如果掃描開始時會話已經過期，則不會寫出報告檔案。
+- **使用 `--resume` 時**，第一次執行中會話中途過期的帳戶，可能會被當作已完整掃描而複用。
 - **IAM Identity Center（SSO）權杖過期**時，執行會以 Python 回溯停止，而不是給出訊息。請重新執行 `aws sso login`。
-- **發現過程中的警告**會顯示在控制檯上，但不會寫入 `--log-file` 檔案。
 - **Cost Explorer 存取被拒絕：** 執行在沒有帳單資料的情況下繼續，並記錄一條警告。
 - **被唯讀防護阻止的呼叫**會記錄為一條指明該操作的錯誤。如果它發生在列出呼叫中，該列出會被跳過，
   執行繼續並以結束代碼 0 結束。CLI 本身不會發出這類呼叫。
@@ -145,6 +147,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   剛寫入的快照和與之比較的快照永遠不會被刪除。用 `--state-retention-days` 和 `--state-max-snapshots`
   修改這些限制，或用 `none` 保留全部。
 - 使用 `--enable-network-analysis` 或 `--enable-security-analysis` 時，分析呼叫在一次執行中會發出兩次。
+- 網路分析把位於多個子網中的資源只計入第一個子網，並且只把負載均衡器計入其 VPC，而不計入任何子網。
+- 服務屬性補充（BOM 設定中的 `enable_service_enrichment`）不會執行；報告包含發現過程返回的欄位。
+- 在範本報告中，如果 AWS 沒有為資源返回 `Name` 欄位或 `Name` 標籤，Name 列為空；ID 欄用於識別該資源。
+  對於 Lambda 函式、IAM 角色和 KMS 別名，範本報告會把 ID 顯示為名稱。
 
 ## 安全說明 {#security-notes}
 

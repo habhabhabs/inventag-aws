@@ -139,12 +139,19 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   recursos de esa cuenta como eliminados.
 - **Un servicio cuyo listado se limitó o falló con un error** en una ejecución
   aparece como eliminado en el siguiente informe de cambios.
+- **El primer informe de cambios después de actualizar desde v1.1.4** lista los
+  recursos de los servicios que ahora se cubren como añadidos, aunque ya
+  existían.
 - **Una sesión que caduca durante el análisis:** la ejecución termina con el
-  código 0 y el informe parece completo.
+  código 0, también con `--fail-on-account-error`. El informe contiene solo lo
+  que se leyó antes de que caducara la sesión y no lo indica; cada listado
+  fallido es una advertencia en la consola y en el archivo de `--log-file`. Si
+  la sesión ya ha caducado cuando empieza el análisis, no se escribe ningún
+  archivo de informe.
+- **Con `--resume`**, una cuenta cuya sesión caducó a mitad de la primera
+  ejecución puede reutilizarse como si estuviera completa.
 - **Un token de IAM Identity Center (SSO) caducado** detiene la ejecución con un
   traceback de Python en lugar de un mensaje. Vuelve a ejecutar `aws sso login`.
-- **Las advertencias del descubrimiento** aparecen en la consola, pero no se
-  escriben en el archivo de `--log-file`.
 - **Acceso denegado a Cost Explorer:** la ejecución continúa sin datos de
   facturación y registra una advertencia.
 - **Una llamada bloqueada por la protección de solo lectura** se registra como
@@ -216,6 +223,16 @@ veces (modo de reintento standard); `AWS_RETRY_MODE` y `AWS_MAX_ATTEMPTS` cambia
   consérvalo todo con `none`.
 - Con `--enable-network-analysis` o `--enable-security-analysis`, las llamadas
   del análisis se hacen dos veces en una misma ejecución.
+- El análisis de red cuenta un recurso que está en varias subredes solo para la
+  primera, y cuenta los balanceadores de carga para su VPC pero no para una
+  subred.
+- El enriquecimiento de atributos de servicio (`enable_service_enrichment` en
+  los ajustes de la BOM) no se ejecuta; los informes contienen los campos que
+  devuelve el descubrimiento.
+- En un informe de plantilla, la columna Name está vacía cuando AWS no devuelve
+  ningún campo `Name` ni etiqueta `Name` para el recurso; la columna ID lo
+  identifica. Para funciones Lambda, roles de IAM y alias de KMS, un informe de
+  plantilla muestra el ID como nombre.
 
 ## Notas de seguridad {#security-notes}
 

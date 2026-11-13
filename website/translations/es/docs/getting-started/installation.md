@@ -139,8 +139,8 @@ Lo que notarás después de `pip install --upgrade inventag-aws`:
   `sources` y `detail_level`. Consulta [Archivos de salida](../reference/outputs.md).
 - **Más servicios y más llamadas a la API.** InvenTag lista 22 servicios más,
   lo que añade hojas, filas y llamadas. La política del repositorio tiene 17
-  acciones de lectura nuevas (y ya no incluye `cloudtrail:LookupEvents`); sin ellas, esos servicios se omiten con una
-  advertencia. Consulta [Permisos de IAM](../reference/iam-permissions.md).
+  acciones de lectura nuevas (y ya no incluye `cloudtrail:LookupEvents`); sin ellas, cada listado denegado es una
+  advertencia, y esos recursos se encuentran mediante la API Tagging como antes, si tienen etiquetas. El primer informe de cambios después de actualizar muestra los recursos de los servicios que ahora se listan como añadidos, aunque ya existían. Consulta [Permisos de IAM](../reference/iam-permissions.md).
 - **Archivos más estrictos.** Un archivo de ajustes vacío, una clave escrita dos
   veces o un valor de `--bom-config` de tipo incorrecto detienen la ejecución
   con el código de salida 1.
@@ -151,7 +151,14 @@ Lo que notarás después de `pip install --upgrade inventag-aws`:
   Una cuenta que se queda sin tiempo conserva los recursos que encontró y
   cuenta como fallida.
 - **Los códigos de salida predeterminados no cambian.** Los códigos 5 y 6 son
-  nuevos y solo aparecen con `--fail-on-account-error` y `--fail-if-empty`.
+  nuevos y solo aparecen con `--fail-on-account-error` y `--fail-if-empty`. Un
+  formato de informe que no se puede escribir termina con el código 1.
+- **Los nombres de servicio y de hoja se mantienen.** Los recursos que v1.1.4
+  encontraba solo mediante la API Tagging conservan su nombre de servicio y su
+  hoja (por ejemplo `ELASTICFILESYSTEM`, `STATES`, `COGNITO-IDP`,
+  `ELASTICMAPREDUCE`, `KAFKA`, `ES`). Sus filas tienen ahora los detalles de la
+  API del servicio, y la columna ID de los secretos de Secrets Manager y los
+  clústeres de MSK contiene el nombre en lugar de la última parte del ARN.
 
 La lista completa está en el
 [registro de cambios](https://github.com/habhabhabs/inventag-aws/blob/main/CHANGELOG.md).

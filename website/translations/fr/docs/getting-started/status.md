@@ -138,12 +138,19 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   ressources de ce compte comme supprimées.
 - **Un service dont le listage a été limité ou a échoué avec une erreur** lors
   d’une exécution apparaît comme supprimé dans le rapport de changements suivant.
+- **Le premier rapport de changements après une mise à jour depuis v1.1.4**
+  liste les ressources des services nouvellement couverts comme ajoutées, alors
+  qu’elles existaient déjà.
 - **Une session qui expire pendant l’analyse :** l’exécution se termine avec le
-  code 0 et le rapport semble complet.
+  code 0, y compris avec `--fail-on-account-error`. Le rapport ne contient que ce
+  qui a été lu avant l’expiration de la session et ne le signale pas ; chaque
+  listage en échec est un avertissement dans la console et dans le fichier de
+  `--log-file`. Si la session a déjà expiré au début de l’analyse, aucun fichier
+  de rapport n’est écrit.
+- **Avec `--resume`**, un compte dont la session a expiré en cours de première
+  exécution peut être réutilisé comme s’il était complet.
 - **Un jeton IAM Identity Center (SSO) expiré** arrête l’exécution avec une trace
   d’appels Python au lieu d’un message. Relancez `aws sso login`.
-- **Les avertissements de la découverte** s’affichent dans la console mais ne
-  sont pas écrits dans le fichier de `--log-file`.
 - **Accès refusé à Cost Explorer :** l’exécution continue sans données de
   facturation et consigne un avertissement.
 - **Un appel bloqué par la protection en lecture seule** est consigné comme une
@@ -213,6 +220,16 @@ limitation de débit (AWS ralentit vos requêtes). InvenTag relance un appel lim
   `--state-max-snapshots`, ou gardez tout avec `none`.
 - Avec `--enable-network-analysis` ou `--enable-security-analysis`, les appels de
   l’analyse sont faits deux fois dans une même exécution.
+- L’analyse réseau ne compte une ressource présente dans plusieurs sous-réseaux
+  que pour le premier, et compte les équilibreurs de charge pour leur VPC mais
+  pas pour un sous-réseau.
+- L’enrichissement des attributs de service (`enable_service_enrichment` dans
+  les réglages de la BOM) ne s’exécute pas ; les rapports contiennent les champs
+  que renvoie la découverte.
+- Dans un rapport de modèle, la colonne Name est vide quand AWS ne renvoie ni
+  champ `Name` ni étiquette `Name` pour la ressource ; la colonne ID l’identifie.
+  Pour les fonctions Lambda, les rôles IAM et les alias KMS, un rapport de modèle
+  affiche l’ID comme nom.
 
 ## Notes de sécurité {#security-notes}
 

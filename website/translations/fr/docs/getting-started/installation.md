@@ -139,8 +139,8 @@ Ce que vous remarquerez après `pip install --upgrade inventag-aws` :
   `sources` et `detail_level`. Voir [Fichiers de sortie](../reference/outputs.md).
 - **Plus de services et plus d’appels d’API.** InvenTag liste 22 services de
   plus, ce qui ajoute des feuilles, des lignes et des appels. La politique du
-  dépôt compte 17 nouvelles actions de lecture (et ne liste plus `cloudtrail:LookupEvents`) ; sans elles, ces services sont
-  ignorés avec un avertissement. Voir [Permissions IAM](../reference/iam-permissions.md).
+  dépôt compte 17 nouvelles actions de lecture (et ne liste plus `cloudtrail:LookupEvents`) ; sans elles, chaque listage refusé est un
+  avertissement, et ces ressources sont trouvées par l’API Tagging comme avant, si elles sont étiquetées. Le premier rapport de changements après la mise à jour affiche les ressources des services nouvellement listés comme ajoutées, alors qu’elles existaient déjà. Voir [Permissions IAM](../reference/iam-permissions.md).
 - **Des fichiers vérifiés plus strictement.** Un fichier de réglages vide, une
   clé écrite deux fois ou une valeur `--bom-config` du mauvais type arrêtent
   l’exécution avec le code de sortie 1.
@@ -152,6 +152,13 @@ Ce que vous remarquerez après `pip install --upgrade inventag-aws` :
   compte comme en échec.
 - **Les codes de sortie par défaut ne changent pas.** Les codes 5 et 6 sont
   nouveaux et n’apparaissent qu’avec `--fail-on-account-error` et `--fail-if-empty`.
+  Un format de rapport impossible à écrire se termine avec le code 1.
+- **Les noms de service et de feuille restent.** Les ressources que v1.1.4
+  trouvait seulement par l’API Tagging gardent leur nom de service et leur
+  feuille (par exemple `ELASTICFILESYSTEM`, `STATES`, `COGNITO-IDP`,
+  `ELASTICMAPREDUCE`, `KAFKA`, `ES`). Leurs lignes portent maintenant les détails
+  de l’API du service, et la colonne ID des secrets Secrets Manager et des
+  clusters MSK contient le nom au lieu de la dernière partie de l’ARN.
 
 La liste complète figure dans le
 [journal des modifications](https://github.com/habhabhabs/inventag-aws/blob/main/CHANGELOG.md).

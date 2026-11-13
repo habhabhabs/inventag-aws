@@ -128,13 +128,16 @@ $ echo $?
   请删除它们或限制其访问。
 - **新列。** 每个服务工作表都有 `source`、`sources` 和 `detail_level` 列。参见[输出文件](../reference/outputs.md)。
 - **更多服务和更多 API 调用。** InvenTag 多列出 22 个服务，因此会增加工作表、行和调用。
-  仓库中的策略新增了 17 个读取操作（并且不再列出 `cloudtrail:LookupEvents`）；没有这些权限时，这些服务会被跳过并给出警告。
+  仓库中的策略新增了 17 个读取操作（并且不再列出 `cloudtrail:LookupEvents`）；没有这些权限时，每个被拒绝的列出调用都会给出一条警告，这些资源仍会像以前一样通过 Tagging API 找到（如果它们带有标签）。升级后的第一份变更报告会把新列出服务的资源显示为新增，尽管它们之前就存在。
   参见 [IAM 权限](../reference/iam-permissions.md)。
 - **更严格的文件检查。** 空的设置文件、写了两次的键，或类型错误的 `--bom-config` 值，都会以退出码 1 停止运行。
 - **相互冲突的选项会以退出码 2 停止**，例如同时使用 `--accounts-file` 和 `--accounts-prompt`，
   或给了 `--s3-kms-key-id` 但没有 `--s3-encryption aws:kms`。
 - **时间限制按账户计算**，从该账户开始扫描时算起。超时的账户保留已找到的资源，并算作失败。
-- **默认退出码不变。** 退出码 5 和 6 是新增的，只在使用 `--fail-on-account-error` 和 `--fail-if-empty` 时出现。
+- **默认退出码不变。** 退出码 5 和 6 是新增的，只在使用 `--fail-on-account-error` 和 `--fail-if-empty` 时出现。无法写出的报告格式会以退出码 1 结束。
+- **服务名称和工作表名称保持不变。** v1.1.4 只通过 Tagging API 找到的资源保留其服务名称和工作表（例如
+  `ELASTICFILESYSTEM`、`STATES`、`COGNITO-IDP`、`ELASTICMAPREDUCE`、`KAFKA`、`ES`）。它们的行现在带有服务 API 的详细信息，
+  Secrets Manager 密钥和 MSK 集群的 ID 列显示名称，而不是 ARN 的最后一部分。
 
 完整列表见[更新日志](https://github.com/habhabhabs/inventag-aws/blob/main/CHANGELOG.md)。
 
