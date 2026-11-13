@@ -1,18 +1,18 @@
 ---
-title: "示例：安全標籤審查"
+title: "範例：安全標籤審查"
 description: 使用 InvenTag 的 security-baseline 標籤策略，在安全審查之前檢查 AWS 資源是否帶有 Owner、Environment 和 DataClassification 標籤。
 sidebar_position: 6
 ---
 
-# 示例：安全標籤審查
+# 範例：安全標籤審查
 
 **目標：** 在安全審查或事件演練之前，找出沒有負責人、沒有環境或沒有資料分類的資源。
 
-**你需要：** 只讀憑證。
+**你需要：** 唯讀憑證。
 
-這裡只檢查標籤。它不評估任何東西的配置有多安全，透過檢查也不代表你符合任何框架的要求。
+這裡只檢查標籤。它不評估任何東西的設定有多安全，透過檢查也不代表你符合任何框架的要求。
 
-## 模板 {#template}
+## 範本 {#template}
 
 內建的 `security-baseline` 標籤策略要求：
 
@@ -41,7 +41,7 @@ Tag policy 'security-baseline': 1 of 22 resources compliant (4.5%), 21 non-compl
 
 **工作表：** `Summary`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`、`Tag Compliance`
 
-`Tag Compliance` 工作表的前幾行：
+`Tag Compliance` 工作表的前幾列：
 
 | Account | Region | Service | Type | Resource | ARN | Status | Missing tags | Problems |
 |---|---|---|---|---|---|---|---|---|
@@ -50,7 +50,7 @@ Tag policy 'security-baseline': 1 of 22 resources compliant (4.5%), 21 non-compl
 | 123456789012 | us-east-1 | EC2 | Volume | acme-build-cache | arn:aws:ec2:us-east-1:123456789012:volume/vol... | Non-compliant | Owner, Environment, DataClassification |  |
 | 123456789012 | global | IAM | Role | acme-orders-api-role | arn:aws:iam::123456789012:role/acme-orders-ap... | Non-compliant | Owner, Environment, DataClassification |  |
 
-在 "Missing tags" 列中篩選 `Owner`，即可先找出沒有負責人的資源。
+在 "Missing tags" 欄中篩選 `Owner`，即可先找出沒有負責人的資源。
 
 ## 下一步 {#next-steps}
 

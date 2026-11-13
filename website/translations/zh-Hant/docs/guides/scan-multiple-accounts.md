@@ -1,44 +1,44 @@
 ---
-title: 掃描多個賬戶
-description: 用賬戶檔案或配置模板，在一次 InvenTag 執行中掃描多個 AWS 賬戶，並在每個賬戶中使用只讀角色。
+title: 掃描多個帳戶
+description: 用帳戶檔案或設定範本，在一次 InvenTag 執行中掃描多個 AWS 帳戶，並在每個帳戶中使用唯讀角色。
 sidebar_position: 3
 ---
 
-# 掃描多個賬戶
+# 掃描多個帳戶
 
-**適合誰閱讀：** 你管理不止一個 AWS 賬戶，想得到一份合併的報告。
+**適合誰閱讀：** 你管理不止一個 AWS 帳戶，想得到一份合併的報告。
 
-**讀完後你可以：** 把賬戶列出一次，並在一次執行中全部掃描。
+**讀完後你可以：** 把帳戶列出一次，並在一次執行中全部掃描。
 
 ## 工作原理 {#how-it-works}
 
-InvenTag 讀取一份賬戶列表。對每個賬戶，它要麼從指定的 AWS CLI 配置檔案（profile）獲取憑證，
-要麼用你執行它時所用的身份去擔任一個 IAM 角色。它會掃描每個賬戶（預設最多同時掃描四個），
-並寫出一份帶有 Account 列的報告。
+InvenTag 讀取一份帳戶列表。對每個帳戶，它要麼從指定的 AWS CLI 設定檔（profile）獲取憑證，
+要麼用你執行它時所用的身份去擔任一個 IAM 角色。它會掃描每個帳戶（預設最多同時掃描四個），
+並寫出一份帶有 Account 欄的報告。
 
-InvenTag 不會替你列出 AWS Organization 中的賬戶。這份列表需要你自己寫。
+InvenTag 不會替你列出 AWS Organization 中的帳戶。這份列表需要你自己寫。
 
-## 1. 在每個賬戶中建立只讀角色 {#1-create-a-read-only-role-in-every-account}
+## 1. 在每個帳戶中建立唯讀角色 {#1-create-a-read-only-role-in-every-account}
 
-請按照[設定只讀訪問](./read-only-access.md#with-an-iam-role-in-each-account)操作。
-所有賬戶使用同一個角色名稱，例如 `InvenTagReadOnly`。
+請按照[設定唯讀存取](./read-only-access.md#with-an-iam-role-in-each-account)操作。
+所有帳戶使用同一個角色名稱，例如 `InvenTagReadOnly`。
 
-## 2. 獲取賬戶列表 {#2-get-your-account-list}
+## 2. 獲取帳戶列表 {#2-get-your-account-list}
 
-在管理賬戶或委派管理員賬戶中：
+在管理帳戶或委派管理員帳戶中：
 
 ```bash
 aws organizations list-accounts \
   --query "Accounts[?Status=='ACTIVE'].[Id,Name]" --output text
 ```
 
-## 3. 把列表寫成配置模板 {#3-write-the-list-as-a-config-template}
+## 3. 把列表寫成設定範本 {#3-write-the-list-as-a-config-template}
 
 ```bash
 inventag templates init org-multi-account --output .inventag/templates/our-org.yaml
 ```
 
-編輯 `accounts` 部分。每個賬戶都需要它的 12 位 ID（**要加引號**），
+編輯 `accounts` 部分。每個帳戶都需要它的 12 位 ID（**要加引號**），
 以及 `role_arn` 或 `profile_name` 之一：
 
 ```yaml
@@ -60,15 +60,15 @@ inventag templates validate our-org
 inventag --template our-org
 ```
 
-`validate` 能發現常見的錯誤：沒有加引號的賬戶 ID、指向與 `account_id` 不同賬戶的角色 ARN，
-以及檔案中的訪問金鑰（模板中不允許）。如果仍保留著佔位符 ID，它會提示（示例資料）：
+`validate` 能發現常見的錯誤：沒有加引號的帳戶 ID、指向與 `account_id` 不同帳戶的角色 ARN，
+以及檔案中的存取金鑰（範本中不允許）。如果仍保留著佔位符 ID，它會提示（範例資料）：
 
 ```text title="Terminal"
 WARNING ~/acme-infra/.inventag/templates/our-org.yaml: account IDs 111111111111, 222222222222, 333333333333 look like placeholders; replace them with your own
 OK    ~/acme-infra/.inventag/templates/our-org.yaml (config 'our-org')
 ```
 
-針對三個示例賬戶的一次執行：
+針對三個範例帳戶的一次執行：
 
 ```text title="Terminal"
 Wrote bom_output/tag_compliance_20261112_090000.json
@@ -94,16 +94,16 @@ Tag policy 'finops-cost-allocation': 0 of 36 resources compliant (0.0%), 36 non-
 | VPC | 30 | 38.5% |
 | Total | 78 | 100.0% |
 
-## 或者使用賬戶檔案 {#or-use-an-accounts-file}
+## 或者使用帳戶檔案 {#or-use-an-accounts-file}
 
-`--accounts-file` 選項同樣可用，並且它接受訪問金鑰（如果可以，請避免使用）。
-如果每個賬戶使用相同的角色名稱，就不需要逐個寫出 ARN：
+`--accounts-file` 選項同樣可用，並且它接受存取金鑰（如果可以，請避免使用）。
+如果每個帳戶使用相同的角色名稱，就不需要逐個寫出 ARN：
 
 ```bash title="Terminal"
 inventag --accounts-file accounts.yaml --cross-account-role InvenTagReadOnly --create-excel
 ```
 
-賬戶檔案的格式見[配置檔案](../reference/configuration-files.md#accounts-file)。
+帳戶檔案的格式見[設定檔](../reference/configuration-files.md#accounts-file)。
 
 ```bash
 inventag --accounts-file accounts.yaml --create-excel
@@ -111,18 +111,18 @@ inventag --accounts-file accounts.yaml --create-excel
 
 ## 調整執行 {#tune-the-run}
 
-| 設定 | 配置模板欄位 | 引數 |
+| 設定 | 設定範本欄位 | 引數 |
 |---|---|---|
-| 同時掃描的賬戶數（預設 4） | `max_concurrent_accounts` | `--max-concurrent-accounts` |
-| 每個賬戶允許的秒數（預設 1800） | `account_processing_timeout` | `--account-processing-timeout` |
-| 一次一個賬戶 | `parallel_processing: false` | `--disable-parallel-processing` |
+| 同時掃描的帳戶數（預設 4） | `max_concurrent_accounts` | `--max-concurrent-accounts` |
+| 每個帳戶允許的秒數（預設 1800） | `account_processing_timeout` | `--account-processing-timeout` |
+| 一次一個帳戶 | `parallel_processing: false` | `--disable-parallel-processing` |
 
-如果某個賬戶失敗，例如因為無法擔任它的角色，InvenTag 會記錄錯誤，並報告成功的那些賬戶。
-它不會對該賬戶回退到你的預設憑證。**執行仍然以退出碼 0 退出，而且報告不會指出缺少的賬戶。**
-請在日誌中搜尋 `Failed to establish context for account`。如果所有賬戶都失敗，
-執行會以退出碼 1 退出，並且不寫出任何報告。
+如果某個帳戶失敗，例如因為無法擔任它的角色，InvenTag 會記錄錯誤，並報告成功的那些帳戶。
+它不會對該帳戶回退到你的預設憑證。**執行仍然以結束代碼 0 退出，而且報告不會指出缺少的帳戶。**
+請在日誌中搜尋 `Failed to establish context for account`。如果所有帳戶都失敗，
+執行會以結束代碼 1 退出，並且不寫出任何報告。
 
 ## 下一步 {#next-steps}
 
-- [示例：為組織中的每個賬戶生成清單](../examples/accounts-setup.md)
+- [範例：為組織中的每個帳戶生成清單](../examples/accounts-setup.md)
 - [按策略檢查標籤](./check-tag-compliance.md)

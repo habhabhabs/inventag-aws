@@ -1,19 +1,19 @@
 ---
-title: "示例：在 CI 中強制執行標籤策略"
-description: 當 AWS 資源違反你的標籤策略時，讓 CI 作業以退出碼 3 失敗，同時把 InvenTag 報告保留為構建產物。
+title: "範例：在 CI 中強制執行標籤策略"
+description: 當 AWS 資源違反你的標籤策略時，讓 CI 作業以結束代碼 3 失敗，同時把 InvenTag 報告保留為建置產物。
 sidebar_position: 4
 ---
 
-# 示例：在 CI 中強制執行標籤策略
+# 範例：在 CI 中強制執行標籤策略
 
 **目標：** 一個流水線步驟，在資源缺少必需標籤或標籤值錯誤時失敗，並保留證據。
 
 **你需要：** 一個帶有隻讀 AWS 憑證的 CI 執行器，最好透過 OIDC（OpenID Connect）獲取。
 參見[在 CI/CD 中執行 InvenTag](../guides/run-in-ci.md)。
 
-## 模板 {#template}
+## 範本 {#template}
 
-內建的 `ci-pipeline` 配置模板會寫出 Excel 和一個 JSON 檔案，檢查 `finops-cost-allocation`，
+內建的 `ci-pipeline` 設定範本會寫出 Excel 和一個 JSON 檔案，檢查 `finops-cost-allocation`，
 並在出現違規時失敗：
 
 ```yaml title="ci-pipeline (built-in)"
@@ -50,7 +50,7 @@ $ echo $?
 3
 ```
 
-因為模板寫了 `outputs: [excel]`，所以只會寫出 Excel 檔案和 JSON 檔案：
+因為範本寫了 `outputs: [excel]`，所以只會寫出 Excel 檔案和 JSON 檔案：
 
 ```text title="bom_output/"
 multi_account_bom_20261112_090000.xlsx
@@ -84,7 +84,7 @@ for x in r['non_compliant_resources'][:10]:
 - S3 acme-reports missing:
 ```
 
-`acme-reports` 擁有所有標籤，但有兩個值是錯誤的。JSON 檔案中的 `invalid` 列表和工作簿中的 Problems 列會說明具體是哪兩個。
+`acme-reports` 擁有所有標籤，但有兩個值是錯誤的。JSON 檔案中的 `invalid` 列表和工作簿中的 Problems 欄會說明具體是哪兩個。
 
 ## 下一步 {#next-steps}
 

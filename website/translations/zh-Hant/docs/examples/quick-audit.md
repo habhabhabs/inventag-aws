@@ -1,19 +1,19 @@
 ---
-title: "示例：快速審計一個賬戶"
-description: 使用 InvenTag 的 single-account 配置模板，為你當前登入的 AWS 賬戶生成 Excel 和 Word 清單。
+title: "範例：快速審計一個帳戶"
+description: 使用 InvenTag 的 single-account 設定範本，為你目前登入的 AWS 帳戶生成 Excel 和 Word 清單。
 sidebar_position: 2
 ---
 
-# 示例：快速審計一個賬戶
+# 範例：快速審計一個帳戶
 
-**目標：** 幾分鐘內得到一個賬戶易於閱讀的 Excel 和 Word 清單。
+**目標：** 幾分鐘內得到一個帳戶易於閱讀的 Excel 和 Word 清單。
 
-**你需要：** 該賬戶的憑證，例如
+**你需要：** 該帳戶的憑證，例如
 `aws sso login --profile prod-readonly` 和 `export AWS_PROFILE=prod-readonly`。
 
-## 模板 {#template}
+## 範本 {#template}
 
-內建的 `single-account` 配置模板會掃描 `us-east-1`，並使用 `standard-bom` 版式寫出兩個檔案。
+內建的 `single-account` 設定範本會掃描 `us-east-1`，並使用 `standard-bom` 版面配置寫出兩個檔案。
 複製它並設定你的區域：
 
 ```bash title="Terminal"
@@ -41,7 +41,7 @@ inventag --template audit
 
 ## 輸出 {#output}
 
-以下是同一版式在一個區域上的離線執行結果（示例資料）：
+以下是同一版面配置在一個區域上的離線執行結果（範例資料）：
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
@@ -72,7 +72,7 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 
 **工作表：** `Summary`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`
 
-`S3` 工作表的前幾行：
+`S3` 工作表的前幾列：
 
 | Account | Region | Service | Type | Name | ID | ARN | Tag: CostCenter | Tag: DataClassification | Tag: Environment | Tag: Owner | ... |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -81,7 +81,7 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 | 123456789012 | us-east-1 | S3 | Bucket | acme-reports | acme-reports | arn:aws:s3:::acme-reports | 1234 |  | Production | finance | ... |
 | 123456789012 | us-east-1 | S3 | Bucket | acme-scratch | acme-scratch | arn:aws:s3:::acme-scratch |  |  |  |  | ... |
 
-該工作表共有 12 列；此處顯示前 11 列。
+該工作表共有 12 欄；此處顯示前 11 欄。
 
 ## 下一步 {#next-steps}
 

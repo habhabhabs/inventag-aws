@@ -1,16 +1,16 @@
 ---
-title: "示例：自定義列"
-description: 精確選擇 InvenTag 的 Excel 報告中出現哪些列和標籤列、按什麼順序排列，並放在同一個可篩選的工作表上。
+title: "範例：自定義欄"
+description: 精確選擇 InvenTag 的 Excel 報告中出現哪些欄和標籤欄、按什麼順序排列，並放在同一個可篩選的工作表上。
 sidebar_position: 8
 ---
 
-# 示例：自定義列
+# 範例：自定義欄
 
-**目標：** 一個工作表，包含團隊真正會看的列，並按你想要的順序排列。
+**目標：** 一個工作表，包含團隊真正會看的欄，並按你想要的順序排列。
 
-**你需要：** 只讀憑證。
+**你需要：** 唯讀憑證。
 
-## 模板 {#template}
+## 範本 {#template}
 
 ```yaml title=".inventag/templates/team-sheet.yaml"
 format_version: 1
@@ -33,10 +33,10 @@ spec:
     single_sheet_name: Inventory
 ```
 
-- `columns` 會完全替換繼承來的列表，所以請列出你想要的每一列。
-- `tag_columns` 在 `columns` 之後，為每個標籤鍵新增一列。用 `all` 表示每個找到的標籤，
+- `columns` 會完全替換繼承來的列表，所以請列出你想要的每一欄。
+- `tag_columns` 在 `columns` 之後，為每個標籤鍵新增一欄。用 `all` 表示每個找到的標籤，
   或用 `none` 表示不新增。
-- `raw_data.<Name>` 直接從 AWS API 響應中讀取一個值。對於沒有該值的資源，它是空白的。
+- `raw_data.<Name>` 直接從 AWS API 回應中讀取一個值。對於沒有該值的資源，它是空白的。
   要查詢名稱，請先用 `excel.include_all_fields: true` 執行一次。
 
 ## 命令 {#command}
@@ -59,7 +59,7 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 
 **工作表：** `Summary`、`Inventory`
 
-`Inventory` 工作表的前幾行：
+`Inventory` 工作表的前幾列：
 
 | Account | Service | Type | Name | Region | Volume type | Tag: Owner | Tag: CostCenter | Tag: Environment |
 |---|---|---|---|---|---|---|---|---|
@@ -70,18 +70,18 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 | 123456789012 | S3 | Bucket | acme-reports | us-east-1 |  | finance | 1234 | Production |
 | 123456789012 | S3 | Bucket | acme-scratch | us-east-1 |  |  |  |  |
 
-<img src={require("../assets/examples/img/team-sheet-inventory.png").default} alt="使用 team-sheet 模板所選列的 Inventory 工作表：Account、Service、Type、Name、Region、Volume type 和三個標籤列（示例資料）" width="1075" height="600" loading="lazy" />
+<img src={require("../assets/examples/img/team-sheet-inventory.png").default} alt="使用 team-sheet 範本所選欄的 Inventory 工作表：Account、Service、Type、Name、Region、Volume type 和三個標籤欄（範例資料）" width="1075" height="600" loading="lazy" />
 
-表頭行已凍結，並帶有篩選按鈕。
+表頭列已凍結，並帶有篩選按鈕。
 
-## 標籤對映和服務描述 {#tag-mappings-and-service-descriptions}
+## 標籤對應和服務描述 {#tag-mappings-and-service-descriptions}
 
-`--tag-mappings` 和 `--service-descriptions` 會為預設工作簿新增列。
+`--tag-mappings` 和 `--service-descriptions` 會為預設工作簿新增欄。
 與 `--template` 一起使用時它們不會新增任何內容，
-所以請像上面那樣使用 `tag_columns`。如果使用版式檔案（`--excel-template` 或 `--word-template`），
-請把對映的列列在 `extra_fields` 下。參見
-[配置檔案](../reference/configuration-files.md#tag-mappings)。
+所以請像上面那樣使用 `tag_columns`。如果使用版面配置檔案（`--excel-template` 或 `--word-template`），
+請把對應的欄列在 `extra_fields` 下。參見
+[設定檔](../reference/configuration-files.md#tag-mappings)。
 
 ## 下一步 {#next-steps}
 
-- 所有可用的列欄位：[模板參考](../templates/reference.md#resource-fields-you-can-use-as-columns)。
+- 所有可用的欄欄位：[範本參考](../templates/reference.md#resource-fields-you-can-use-as-columns)。

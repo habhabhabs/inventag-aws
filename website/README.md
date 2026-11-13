@@ -40,6 +40,24 @@ toggle, version dropdown and mobile menu, the analytics banner, and
 `docusaurus serve` resolves `/docs` to the `static/docs/index.html` redirect
 stub and loops, which GitHub Pages does not do.
 
+## Traditional Chinese (zh-Hant) pages
+
+`translations/zh-Hant/docs/` is generated from `translations/zh-Hans/docs/`.
+Never edit a zh-Hant page by hand. Edit the zh-Hans page, then run (from `website/`):
+
+```bash
+pip install opencc-python-reimplemented
+python3 scripts/zh-hant-convert.py --all            # or: --all --folders guides templates
+python3 scripts/zh-hant-convert.py --check --all    # exit 1 if a page is out of date
+```
+
+The script runs OpenCC `s2twp`, then a Taiwan term glossary (for example
+賬戶 to 帳戶, 許可權 to 權限, 模板 to 範本), and swaps the table words
+column and row (列 to 欄, 行 to 列) in a few conservative cases. Code blocks, inline code,
+link targets, heading anchors, URLs and front matter keys are never changed, and the
+script refuses to write a page where they would differ. Add new terms to `GLOSSARY` at
+the top of the script. The UI strings in `i18n/zh-Hant/` are edited by hand.
+
 ## Design system
 
 - Tokens, Infima overrides and all docs chrome: `src/css/custom.css`

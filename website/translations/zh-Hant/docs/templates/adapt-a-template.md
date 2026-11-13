@@ -1,18 +1,18 @@
 ---
-title: 調整模板
-description: 把 InvenTag 模板複製到你的專案中，只修改需要改的部分，用 templates validate 檢查，然後在執行中使用它。
+title: 調整範本
+description: 把 InvenTag 範本複製到你的專案中，只修改需要改的部分，用 templates validate 檢查，然後在執行中使用它。
 sidebar_position: 3
 ---
 
-# 調整模板
+# 調整範本
 
-**適合誰閱讀：** 你喜歡某個內建模板，但想要自己的標題、顏色、列或標籤規則。
+**適合誰閱讀：** 你喜歡某個內建範本，但想要自己的標題、顏色、欄或標籤規則。
 
-**讀完後你可以：** 分四步建立自己的模板：`init`、編輯、`validate`、執行。
+**讀完後你可以：** 分四步建立自己的範本：`init`、編輯、`validate`、執行。
 
-下面的輸出來自針對模擬 AWS 的離線執行（示例資料）。你的專案資料夾顯示為 `~/acme-infra/`。
+下面的輸出來自針對模擬 AWS 的離線執行（範例資料）。你的專案資料夾顯示為 `~/acme-infra/`。
 
-## 1. 把模板複製到你的專案中 {#1-copy-the-template-into-your-project}
+## 1. 把範本複製到你的專案中 {#1-copy-the-template-into-your-project}
 
 在你的專案資料夾中執行：
 
@@ -28,15 +28,15 @@ Next: edit it, then run 'inventag templates validate .inventag/templates/acme-bo
 你有兩種選擇：
 
 - **`--extend`**（上面使用的）會寫出一個簡短的檔案，繼承 `standard-bom` 的所有內容。
-  你只需新增想要更改的部分，並且可以免費獲得內建模板的改進。
+  你只需新增想要更改的部分，並且可以免費獲得內建範本的改進。
 - **不使用 `--extend`** 會得到帶有全部註釋的完整副本。當你想檢視並掌控每一項設定時，請使用這種方式。
 
-模板名稱來自檔名（`acme-bom.yaml` 變成 `acme-bom`）。用 `--name` 可以選擇其他名稱，
+範本名稱來自檔名（`acme-bom.yaml` 變成 `acme-bom`）。用 `--name` 可以選擇其他名稱，
 用 `--force` 可以替換已有的檔案。
 
 由於該檔案位於 `.inventag/templates/` 中，現在你可以在這個專案裡按名稱引用它。
 
-## 2. 編輯模板 {#2-edit-it}
+## 2. 編輯範本 {#2-edit-it}
 
 新檔案如下所示：
 
@@ -51,7 +51,7 @@ extends: standard-bom
 spec: {}
 ```
 
-把 `spec: {}` 替換成你的更改。這個版本把所有內容放在一個工作表上，使用綠色表頭，並顯示三個標籤列：
+把 `spec: {}` 替換成你的更改。這個版本把所有內容放在一個工作表上，使用綠色表頭，並顯示三個標籤欄：
 
 ```yaml
 format_version: 1
@@ -71,7 +71,7 @@ spec:
 
 繼承的工作方式：
 
-- **對映會合並。** 設定 `excel.layout` 會保留 `standard-bom` 中 `excel` 的其他所有設定。
+- **對應會合並。** 設定 `excel.layout` 會保留 `standard-bom` 中 `excel` 的其他所有設定。
 - **列表會替換。** 如果你設定了 `columns`，你的列表會替換繼承來的列表。請複製你想保留的條目。
 - **`null` 會把值重置**為預設值，例如 `tag_policy: null`。
 - **標籤策略按鍵合併 `required_tags`。** 子策略可以修改某個標籤、新增標籤，或用 `remove: true` 刪除某個標籤，而無需重複其餘部分。
@@ -79,7 +79,7 @@ spec:
 要檢視繼承之後的最終結果，請執行
 `inventag templates show acme-bom --resolved`。
 
-## 3. 驗證模板 {#3-validate-it}
+## 3. 驗證範本 {#3-validate-it}
 
 ```bash
 inventag templates validate acme-bom
@@ -99,9 +99,9 @@ OK    ~/acme-infra/.inventag/templates/acme-bom.yaml (report 'acme-bom')
 ```
 
 當每個檔案都有效時，`validate` 以 0 退出，否則以 1 退出，因此你可以在 CI 中執行它。
-它還會檢查你引用的模板（例如 `tag_policy`）是否存在，以及種類是否正確。
+它還會檢查你引用的範本（例如 `tag_policy`）是否存在，以及種類是否正確。
 
-現在你的模板會出現在列表中：
+現在你的範本會出現在列表中：
 
 ```bash title="Terminal"
 inventag templates list --kind report
@@ -123,9 +123,9 @@ Search order (first match wins):
   3. builtin  ~/inventag-aws/inventag/templating/builtin
 ```
 
-示例專案中還包含這些文件中使用的其他模板。
+範例專案中還包含這些文件中使用的其他範本。
 
-## 4. 使用模板 {#4-use-it}
+## 4. 使用範本 {#4-use-it}
 
 ```bash
 inventag --template acme-bom --create-excel --account-regions us-east-1
@@ -138,7 +138,7 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 
 **工作表：** `Summary`、`Resources`
 
-`Resources` 工作表的前幾行：
+`Resources` 工作表的前幾列：
 
 | Account | Region | Service | Type | Name | ID | ARN | Tag: Owner | Tag: CostCenter | Tag: Environment |
 |---|---|---|---|---|---|---|---|---|---|
@@ -147,20 +147,20 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 | 123456789012 | us-east-1 | S3 | Bucket | acme-reports | acme-reports | arn:aws:s3:::acme-reports | finance | 1234 | Production |
 | 123456789012 | us-east-1 | S3 | Bucket | acme-scratch | acme-scratch | arn:aws:s3:::acme-scratch |  |  |  |
 
-表頭行是綠色的，與模板中的設定一致。
+表頭列是綠色的，與範本中的設定一致。
 
-## 與團隊共享模板 {#share-templates-with-your-team}
+## 與團隊共享範本 {#share-templates-with-your-team}
 
-- **一個專案：** 把 `.inventag/templates/` 提交到該專案的倉庫。
-- **你機器上的每個專案：** 把模板放在 `~/.config/inventag/templates/`。
+- **一個專案：** 把 `.inventag/templates/` 提交到該專案的儲存庫。
+- **你機器上的每個專案：** 把範本放在 `~/.config/inventag/templates/`。
 - **共享資料夾或 CI 映象：** 設定
   `INVENTAG_TEMPLATE_PATH=/opt/acme/inventag-templates`。
 
-如果兩個資料夾中有同名的模板，則以[搜尋順序](./index.md#where-inventag-looks-for-templates)中靠前的為準。
-`inventag templates list --all` 也會顯示被隱藏的模板。
+如果兩個資料夾中有同名的範本，則以[搜尋順序](./index.md#where-inventag-looks-for-templates)中靠前的為準。
+`inventag templates list --all` 也會顯示被隱藏的範本。
 
 ## 下一步 {#next-steps}
 
-- [模板參考](./reference.md)：你可以設定的每個欄位。
+- [範本參考](./reference.md)：你可以設定的每個欄位。
 - [製作帶品牌標識的高管 Word 報告](../examples/branded-executive-report.md)：
   新增徽標。

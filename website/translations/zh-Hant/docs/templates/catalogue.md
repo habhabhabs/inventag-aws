@@ -1,14 +1,14 @@
 ---
-title: 內建模板
-description: InvenTag 自帶的八個模板（三種報告版式、兩個標籤策略和三種執行配置），以及每個模板會生成什麼。
+title: 內建範本
+description: InvenTag 自帶的八個範本（三種報告版面配置、兩個標籤策略和三種執行設定），以及每個範本會生成什麼。
 sidebar_position: 2
 ---
 
-# 內建模板
+# 內建範本
 
 **適合誰閱讀：** 正在選擇起點的人。
 
-**讀完後你可以：** 選出最接近你需求的模板，並確切知道它會生成什麼。
+**讀完後你可以：** 選出最接近你需求的範本，並確切知道它會生成什麼。
 
 要列出它們，請執行 `inventag templates list`。要列印其中一個，請執行
 `inventag templates show <name>`；加上 `--resolved` 可以看到繼承和預設值處理之後的結果。
@@ -30,15 +30,15 @@ Search order (first match wins):
   3. builtin  ~/inventag-aws/inventag/templating/builtin
 ```
 
-本頁的示例來自針對模擬 AWS 的離線執行（示例資料）。其中的賬戶和 `acme-*` 資源都是虛構的。
+本頁的範例來自針對模擬 AWS 的離線執行（範例資料）。其中的帳戶和 `acme-*` 資源都是虛構的。
 
-## 報告模板 {#report-templates}
+## 報告範本 {#report-templates}
 
 | 名稱 | Excel 工作簿 | Word 文件 |
 |---|---|---|
-| `standard-bom` | Summary 工作表，然後每個服務一個工作表。列：Account、Region、Service、Type、Name、ID、ARN，然後是該工作表上找到的每個標籤鍵各一列。表頭行凍結，帶篩選按鈕。 | 封面、摘要、按服務列出的資源、標籤合規（如果啟用了策略）、每個服務一張表（每張最多 50 行）、關於本報告。 |
-| `executive-summary` | Summary 工作表和一個包含所有資源的 `Resources` 工作表，沒有標籤列。 | 封面、摘要、按服務列出的資源、標籤合規（如果啟用了策略）、關於。沒有逐個資源的表格。 |
-| `finops-cost-report` | 與 `standard-bom` 類似，但標籤列固定為 CostCenter、Owner、Project 和 Environment，另加一個 Tag Compliance 工作表。 | 封面、摘要、標籤合規、按服務列出的資源、關於。 |
+| `standard-bom` | Summary 工作表，然後每個服務一個工作表。欄：Account、Region、Service、Type、Name、ID、ARN，然後是該工作表上找到的每個標籤鍵各一欄。表頭列凍結，帶篩選按鈕。 | 封面、摘要、按服務列出的資源、標籤合規（如果啟用了策略）、每個服務一張表（每張最多 50 列）、關於本報告。 |
+| `executive-summary` | Summary 工作表和一個包含所有資源的 `Resources` 工作表，沒有標籤欄。 | 封面、摘要、按服務列出的資源、標籤合規（如果啟用了策略）、關於。沒有逐個資源的表格。 |
+| `finops-cost-report` | 與 `standard-bom` 類似，但標籤欄固定為 CostCenter、Owner、Project 和 Environment，另加一個 Tag Compliance 工作表。 | 封面、摘要、標籤合規、按服務列出的資源、關於。 |
 
 `executive-summary` 和 `finops-cost-report` 都 `extends: standard-bom`，
 所以它們只列出不同之處。`finops-cost-report` 還會啟用
@@ -73,7 +73,7 @@ Search order (first match wins):
 
 **工作表：** `Summary`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`
 
-`S3` 工作表的前幾行：
+`S3` 工作表的前幾列：
 
 | Account | Region | Service | Type | Name | ID | ARN | Tag: CostCenter | Tag: DataClassification | Tag: Environment | Tag: Owner | ... |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -82,9 +82,9 @@ Search order (first match wins):
 | 123456789012 | us-east-1 | S3 | Bucket | acme-reports | acme-reports | arn:aws:s3:::acme-reports | 1234 |  | Production | finance | ... |
 | 123456789012 | us-east-1 | S3 | Bucket | acme-scratch | acme-scratch | arn:aws:s3:::acme-scratch |  |  |  |  | ... |
 
-該工作表有 12 列；此處顯示前 11 列。
+該工作表有 12 欄；此處顯示前 11 欄。
 
-<img src={require("../assets/examples/img/standard-bom-s3-sheet.png").default} alt="standard-bom 模板生成的 Excel S3 工作表：深藍色表頭行包含 Account、Region、Service、Type、Name、ID、ARN 以及每個標籤一列，其後是四行儲存桶資料（示例資料）" width="1075" height="108" loading="lazy" />
+<img src={require("../assets/examples/img/standard-bom-s3-sheet.png").default} alt="standard-bom 範本生成的 Excel S3 工作表：深藍色表頭列包含 Account、Region、Service、Type、Name、ID、ARN 以及每個標籤一欄，其後是四列儲存貯體資料（範例資料）" width="1075" height="108" loading="lazy" />
 
 **文件大綱：**
 
@@ -116,9 +116,9 @@ Search order (first match wins):
 | VPC | 10 | 27.8% |
 | Total | 36 | 100.0% |
 
-<img src={require("../assets/examples/img/standard-bom-word-page1.png").default} alt="standard-bom 模板生成的 Word 報告第一頁：標題、生成日期、摘要專案符號列表，以及按服務列出的資源表（示例資料）" width="702" height="900" loading="lazy" />
+<img src={require("../assets/examples/img/standard-bom-word-page1.png").default} alt="standard-bom 範本生成的 Word 報告第一頁：標題、生成日期、摘要專案符號列表，以及按服務列出的資源表（範例資料）" width="702" height="900" loading="lazy" />
 
-[下載示例工作簿](pathname:///inventag-aws/downloads/standard-bom-sample.xlsx)（13 KB，示例資料）和[示例 Word 報告](pathname:///inventag-aws/downloads/standard-bom-sample.docx)（37 KB，示例資料）
+[下載範例工作簿](pathname:///inventag-aws/downloads/standard-bom-sample.xlsx)（13 KB，範例資料）和[範例 Word 報告](pathname:///inventag-aws/downloads/standard-bom-sample.docx)（37 KB，範例資料）
 
 ### executive-summary {#executive-summary}
 
@@ -126,7 +126,7 @@ Search order (first match wins):
 
 **工作表：** `Summary`、`Resources`
 
-`Resources` 工作表的前幾行：
+`Resources` 工作表的前幾列：
 
 | Account | Region | Service | Type | Name | ID | ARN |
 |---|---|---|---|---|---|---|
@@ -162,7 +162,7 @@ Search order (first match wins):
 
 **工作表：** `Summary`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`、`Tag Compliance`
 
-`S3` 工作表的前幾行：
+`S3` 工作表的前幾列：
 
 | Account | Region | Service | Type | Name | ID | ARN | Tag: CostCenter | Tag: Owner | Tag: Project | Tag: Environment |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -172,9 +172,9 @@ Search order (first match wins):
 | 123456789012 | us-east-1 | S3 | Bucket | acme-scratch | acme-scratch | arn:aws:s3:::acme-scratch |  |  |  |  |
 
 Tag Compliance 工作表和 Word 章節見
-[示例：FinOps 成本分攤標籤](../examples/finops-cost-allocation.md)。
+[範例：FinOps 成本分攤標籤](../examples/finops-cost-allocation.md)。
 
-## 標籤策略模板 {#tag-policy-templates}
+## 標籤策略範本 {#tag-policy-templates}
 
 這些只是起點。在強制執行之前，請修改鍵和允許的值，使其符合你自己的標籤約定。
 
@@ -206,17 +206,17 @@ KMS 別名不在範圍內，因為別名無法攜帶標籤。
 
 KMS 別名不在範圍內。透過此策略並不意味著符合任何安全框架；它只告訴你這些標籤是否存在且有效。
 
-## config 模板 {#config-templates}
+## config 範本 {#config-templates}
 
 | 名稱 | 掃描 | 生成 | 備註 |
 |---|---|---|---|
-| `single-account` | 當前憑證所屬的賬戶，在 `us-east-1` | Excel 和 Word，`standard-bom` 版式 | 把 `regions` 改為你使用的區域。 |
-| `org-multi-account` | 三個示例賬戶，在每個賬戶中代入 `InvenTagReadOnly` | Excel 和 Word，`standard-bom` 版式，`finops-cost-allocation` 策略 | 賬戶 ID 是佔位符。InvenTag 不會替你列出組織的賬戶。 |
-| `ci-pipeline` | 流水線憑證所屬的賬戶，在 `us-east-1` | Excel 和一個標籤合規 JSON 檔案 | 如果有資源違反 `finops-cost-allocation` 策略，則以退出碼 3 結束。逐個掃描賬戶。 |
+| `single-account` | 目前憑證所屬的帳戶，在 `us-east-1` | Excel 和 Word，`standard-bom` 版面配置 | 把 `regions` 改為你使用的區域。 |
+| `org-multi-account` | 三個範例帳戶，在每個帳戶中擔任 `InvenTagReadOnly` | Excel 和 Word，`standard-bom` 版面配置，`finops-cost-allocation` 策略 | 帳戶 ID 是佔位符。InvenTag 不會替你列出組織的帳戶。 |
+| `ci-pipeline` | 流水線憑證所屬的帳戶，在 `us-east-1` | Excel 和一個標籤合規 JSON 檔案 | 如果有資源違反 `finops-cost-allocation` 策略，則以結束代碼 3 結束。逐個掃描帳戶。 |
 
-只要佔位符賬戶 ID 還在，`inventag templates validate org-multi-account` 就會發出警告。
+只要佔位符帳戶 ID 還在，`inventag templates validate org-multi-account` 就會發出警告。
 
 ## 下一步 {#next-steps}
 
-- [調整模板](./adapt-a-template.md)
-- [模板參考](./reference.md)
+- [調整範本](./adapt-a-template.md)
+- [範本參考](./reference.md)

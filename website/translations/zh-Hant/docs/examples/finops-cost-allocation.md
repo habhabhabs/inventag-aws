@@ -1,19 +1,19 @@
 ---
-title: "示例：FinOps 成本分攤標籤"
-description: 使用 InvenTag 的 finops-cost-report 模板，找出哪些 AWS 資源缺少成本分攤報告所依賴的 CostCenter、Owner、Project 和 Environment 標籤。
+title: "範例：FinOps 成本分攤標籤"
+description: 使用 InvenTag 的 finops-cost-report 範本，找出哪些 AWS 資源缺少成本分攤報告所依賴的 CostCenter、Owner、Project 和 Environment 標籤。
 sidebar_position: 5
 ---
 
-# 示例：FinOps 成本分攤標籤
+# 範例：FinOps 成本分攤標籤
 
 **目標：** 為 FinOps（雲財務運營）或財務團隊生成一份報告，逐個資源顯示成本分攤標籤是否存在且有效。
 
-**你需要：** 只讀憑證。標籤只有在你於 AWS Billing and Cost Management 控制檯中將其啟用為成本分攤標籤之後，
+**你需要：** 唯讀憑證。標籤只有在你於 AWS Billing and Cost Management 控制檯中將其啟用為成本分攤標籤之後，
 才會出現在 AWS 成本報告中。InvenTag 顯示哪些資源帶有這些標籤；它不計算成本。
 
-## 模板 {#template}
+## 範本 {#template}
 
-`finops-cost-report`（一個報告模板）把 CostCenter、Owner、Project 和 Environment 顯示為列，
+`finops-cost-report`（一個報告範本）把 CostCenter、Owner、Project 和 Environment 顯示為欄，
 並啟用 `finops-cost-allocation` 標籤策略：
 
 | 標籤鍵 | `finops-cost-allocation` 中的規則 |
@@ -57,7 +57,7 @@ Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-
 
 **工作表：** `Summary`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`、`Tag Compliance`
 
-`Tag Compliance` 工作表的前幾行：
+`Tag Compliance` 工作表的前幾列：
 
 | Account | Region | Service | Type | Resource | ARN | Status | Missing tags | Problems |
 |---|---|---|---|---|---|---|---|---|
@@ -66,7 +66,7 @@ Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-
 | 123456789012 | us-east-1 | EC2 | Volume | acme-build-cache | arn:aws:ec2:us-east-1:123456789012:volume/vol... | Non-compliant | CostCenter, Owner, Project, Environment |  |
 | 123456789012 | global | IAM | Role | acme-orders-api-role | arn:aws:iam::123456789012:role/acme-orders-ap... | Non-compliant | CostCenter, Owner, Project, Environment |  |
 
-<img src={require("../assets/examples/img/finops-tag-compliance-sheet.png").default} alt="Tag Compliance 工作表：每個資源一行，包含賬戶、區域、服務、型別、資源、ARN、狀態、缺少的標籤和問題，其後是策略規則表（示例資料）" width="1074" height="295" loading="lazy" />
+<img src={require("../assets/examples/img/finops-tag-compliance-sheet.png").default} alt="Tag Compliance 工作表：每個資源一列，包含帳戶、區域、服務、型別、資源、ARN、狀態、缺少的標籤和問題，其後是策略規則表（範例資料）" width="1074" height="295" loading="lazy" />
 
 Word 文件的 Tag compliance 章節：
 
@@ -132,7 +132,7 @@ JSON 檔案：
 }
 ```
 
-[下載示例標籤合規 JSON](pathname:///inventag-aws/downloads/tag-compliance-sample.json)（8 KB，示例資料）
+[下載範例標籤合規 JSON](pathname:///inventag-aws/downloads/tag-compliance-sample.json)（8 KB，範例資料）
 
 ## 下一步 {#next-steps}
 

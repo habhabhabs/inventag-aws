@@ -13,7 +13,7 @@ slug: /architecture/state-management
 
 ## 快照 {#snapshots}
 
-每次執行都會把發現的內容儲存在輸出資料夾中。針對模擬 AWS 執行兩次之後（示例資料）：
+每次執行都會把發現的內容儲存在輸出資料夾中。針對模擬 AWS 執行兩次之後（範例資料）：
 
 ```text title="bom_output/ after two runs (reports omitted)"
 bom_output/changelog_20261112_090100.md
@@ -51,7 +51,7 @@ bom_output/state/state_20261112_090100.json
 }
 ```
 
-如果想保留歷史記錄，請在兩次執行之間保留 `state/` 資料夾，例如作為 CI 快取或放在儲存桶中。
+如果想保留歷史記錄，請在兩次執行之間保留 `state/` 資料夾，例如作為 CI 快取或放在儲存貯體中。
 用 `--disable-state-management` 可以關閉快照。
 
 ## 變更報告 {#the-change-report}
@@ -59,10 +59,10 @@ bom_output/state/state_20261112_090100.json
 從第二次執行開始，InvenTag 會把新快照與上一個快照比較，並在輸出資料夾中寫出
 `changelog_<timestamp>.md`。第一次執行沒有可比較的物件，因此不會寫出變更報告。
 
-在這個示例中，兩次執行之間新增了一個儲存桶。變更報告列出了它：
+在這個範例中，兩次執行之間新增了一個儲存貯體。變更報告列出了它：
 
 <details>
-<summary>changelog_20261112_090100.md（前 30 行）</summary>
+<summary>changelog_20261112_090100.md（前 30 列）</summary>
 
 ```markdown
 # Multi-Account Infrastructure Changes
@@ -99,7 +99,7 @@ Changes detected in S3 service resources
 
 </details>
 
-報告包含一張摘要表，然後為每個有變化的服務各列一節。每項變化都有型別（例如 `added`）、嚴重程度、資源及其 ARN。
+報告包含一張摘要表，然後為每個有變化的服務各欄一節。每項變化都有型別（例如 `added`）、嚴重程度、資源及其 ARN。
 
 需要了解的事項：
 
@@ -126,7 +126,7 @@ print("Removed:", sorted(a - b))
 EOF
 ```
 
-在兩次執行之間新增一個儲存桶之後的示例輸出（示例資料）：
+在兩次執行之間新增一個儲存貯體之後的範例輸出（範例資料）：
 
 ```text title="Terminal"
 Added: ['arn:aws:s3:::acme-new-bucket']

@@ -1,6 +1,6 @@
 ---
 title: 按策略檢查標籤
-description: 使用 InvenTag 標籤策略模板，檢查 AWS 資源是否帶有必需的標籤且取值合規，並解讀檢查結果。
+description: 使用 InvenTag 標籤策略範本，檢查 AWS 資源是否帶有必需的標籤且取值合規，並解讀檢查結果。
 sidebar_position: 4
 slug: /architecture/tag-compliance
 ---
@@ -20,7 +20,7 @@ inventag --template finops-cost-allocation --create-excel --account-regions us-e
 ```
 
 InvenTag 照常掃描，然後檢查範圍內的每個資源。下面是使用
-`--template finops-cost-report` 離線執行的示例輸出（示例資料）：
+`--template finops-cost-report` 離線執行的範例輸出（範例資料）：
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
@@ -34,9 +34,9 @@ Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-
 
 | 位置 | 內容 |
 |---|---|
-| Excel，**Tag Compliance** 工作表 | 範圍內每個資源一行：賬戶、區域、服務、型別、資源、ARN、狀態、缺少的標籤和其他問題。不合規的行排在最前。表格下方列出每條規則，以及有多少資源缺少該標籤或取值錯誤。 |
+| Excel，**Tag Compliance** 工作表 | 範圍內每個資源一列：帳戶、區域、服務、型別、資源、ARN、狀態、缺少的標籤和其他問題。不合規的行排在最前。表格下方列出每條規則，以及有多少資源缺少該標籤或取值錯誤。 |
 | Excel，**Summary** 工作表 | 計數：已檢查、合規、不合規、範圍外、百分比。 |
-| Word，**Tag compliance** 章節 | 同樣的計數、各條規則，以及不合規資源的表格（預設最多 100 行）。 |
+| Word，**Tag compliance** 章節 | 同樣的計數、各條規則，以及不合規資源的表格（預設最多 100 列）。 |
 | `tag_compliance_<timestamp>.json` | 每條規則的計數和每個不合規資源，供指令碼和 CI 使用。 |
 
 當資源具有所有必需標籤，並且每個取值都符合其規則時，該資源即為**合規**。
@@ -46,11 +46,11 @@ Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-
 - `Environment: 'Production' is not one of prod, staging, dev, test, sandbox`
 - `Owner: found 'owner' instead (tag keys are case-sensitive)`
 
-同一示例中的 Tag Compliance 工作表：
+同一範例中的 Tag Compliance 工作表：
 
 **工作表：** `Summary`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`、`Tag Compliance`
 
-`Tag Compliance` 工作表的前幾行：
+`Tag Compliance` 工作表的前幾列：
 
 | Account | Region | Service | Type | Resource | ARN | Status | Missing tags | Problems |
 |---|---|---|---|---|---|---|---|---|
@@ -110,7 +110,7 @@ JSON 檔案中的 `summary` 部分：
 **在相信這些數字之前請先了解：** InvenTag 會按 ARN 把 Resource Groups Tagging API
 返回的標籤與資源匹配；當 ARN 不一致時，則退而使用服務、區域和資源 ID 匹配。
 使用 moto 的離線測試針對每個有自己發現程式碼的服務檢查了這一點。真實的 AWS
-可能給出不同的答案，因此在依賴某個策略結果之前，請把 ARN 列中的幾行與控制檯對照一下。
+可能給出不同的答案，因此在依賴某個策略結果之前，請把 ARN 欄中的幾行與控制檯對照一下。
 
 ## 編寫你自己的策略 {#write-your-own-policy}
 
@@ -145,20 +145,20 @@ spec:
 - 兩者都不寫：只要標籤存在，任何取值都可以。
 
 每個標籤使用 `allowed_values` 或 `pattern` 之一，不要兩者同時使用。所有欄位都列在
-[模板參考](../templates/reference.md)中。
+[範本參考](../templates/reference.md)中。
 
 ## 發現違規時讓流水線失敗 {#fail-a-pipeline-on-violations}
 
-新增一個設定了 `fail_on_tag_violations: true` 的配置模板。InvenTag 仍會寫出所有報告，
-然後以退出碼 3 退出。參見
+新增一個設定了 `fail_on_tag_violations: true` 的設定範本。InvenTag 仍會寫出所有報告，
+然後以結束代碼 3 退出。參見
 [在 CI 中強制執行標籤策略](../examples/tag-policy-in-ci.md)。
 
 ## 舊版檢查指令碼 {#the-older-checker-script}
 
-`scripts/legacy/tag_compliance_checker.py --config policy.yaml` 早於模板出現，
-有自己的選項（`--help` 會列出）。本文件不涵蓋它。請優先使用標籤策略模板。
+`scripts/legacy/tag_compliance_checker.py --config policy.yaml` 早於範本出現，
+有自己的選項（`--help` 會列出）。本文件不涵蓋它。請優先使用標籤策略範本。
 
 ## 下一步 {#next-steps}
 
 - [內建標籤策略](../templates/catalogue.md#tag-policy-templates)
-- [示例：FinOps 成本分攤標籤](../examples/finops-cost-allocation.md)
+- [範例：FinOps 成本分攤標籤](../examples/finops-cost-allocation.md)

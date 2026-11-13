@@ -13,19 +13,19 @@ sidebar_position: 7
 ## 組成部分 {#the-pieces}
 
 1. **不儲存金鑰的憑證。** 使用 OpenID Connect（OIDC）：GitHub 證明工作流的身份，
-   AWS 為它提供一個臨時的角色會話。你的倉庫機密中不儲存任何訪問金鑰。
-2. **一個配置模板**，包含你的區域、輸出和標籤策略。內建的 `ci-pipeline` 模板是個不錯的起點。
+   AWS 為它提供一個臨時的角色會話。你的儲存庫機密中不儲存任何存取金鑰。
+2. **一個設定範本**，包含你的區域、輸出和標籤策略。內建的 `ci-pipeline` 範本是個不錯的起點。
 3. **一個構件**，用來儲存 `bom_output/`。
 
-## 1. 讓 GitHub 擔任只讀角色 {#1-let-github-assume-a-read-only-role}
+## 1. 讓 GitHub 擔任唯讀角色 {#1-let-github-assume-a-read-only-role}
 
 在 AWS 中，把 GitHub 新增為 OIDC 身份提供商（`token.actions.githubusercontent.com`），
-並建立一個角色，附加[設定只讀訪問](./read-only-access.md)中的只讀策略。
-把它的信任策略限制在你的倉庫和分支上。AWS 的指南
+並建立一個角色，附加[設定唯讀存取](./read-only-access.md)中的唯讀策略。
+把它的信任策略限制在你的儲存庫和分支上。AWS 的指南
 [Use IAM roles to connect GitHub Actions to actions in AWS](https://aws.amazon.com/blogs/security/use-iam-roles-to-connect-github-actions-to-actions-in-aws/)
 有詳細講解。
 
-## 2. 把配置模板新增到你的倉庫 {#2-add-a-config-template-to-your-repository}
+## 2. 把設定範本新增到你的儲存庫 {#2-add-a-config-template-to-your-repository}
 
 ```bash
 inventag templates init ci-pipeline --output .inventag/templates/nightly.yaml
@@ -72,19 +72,19 @@ jobs:
 
 請把每個 action 固定到完整的提交 SHA，並在註釋中註明版本。這樣即使某個標籤被移到惡意程式碼上，
 你也能得到保護。上面 `checkout`、`setup-python` 和 `upload-artifact` 的 SHA，
-是本倉庫自己的工作流所使用的。對於 `aws-actions/configure-aws-credentials`，
-請到它的 GitHub 釋出頁面查詢當前釋出版本的 SHA：我們沒有為本頁驗證過任何一個。
+是本儲存庫自己的工作流所使用的。對於 `aws-actions/configure-aws-credentials`，
+請到它的 GitHub 發佈頁面查詢目前發佈版本的 SHA：我們沒有為本頁驗證過任何一個。
 更新版本時，請同時更新 SHA。
 
-InvenTag 從你倉庫的資料夾執行，因此 `.inventag/templates/nightly.yaml` 可以按名稱找到。
+InvenTag 從你儲存庫的資料夾執行，因此 `.inventag/templates/nightly.yaml` 可以按名稱找到。
 
 ## 發生違規時會怎樣 {#what-happens-on-a-violation}
 
-設定了 `fail_on_tag_violations: true` 時，InvenTag 會先寫出所有報告，然後以退出碼 3 退出。
+設定了 `fail_on_tag_violations: true` 時，InvenTag 會先寫出所有報告，然後以結束代碼 3 退出。
 作業會失敗，而構件中仍然儲存著 Excel 檔案和 `tag_compliance_<timestamp>.json`，
 後者包含每個不合規的資源。
 
-下面是離線執行 `inventag --template ci-pipeline` 的示例輸出（示例資料）：
+下面是離線執行 `inventag --template ci-pipeline` 的範例輸出（範例資料）：
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
@@ -96,22 +96,22 @@ $ echo $?
 3
 ```
 
-| 退出碼 | 含義 |
+| 結束代碼 | 含義 |
 |---|---|
 | 0 | 報告已寫出，沒有標籤違規（或沒有會導致失敗的策略） |
-| 1 | 錯誤：模板無效、憑證問題、所有賬戶都失敗，或 S3 上傳失敗 |
+| 1 | 錯誤：範本無效、憑證問題、所有帳戶都失敗，或 S3 上傳失敗 |
 | 3 | 報告已寫出，發現標籤策略違規 |
 
 ## 保持安全 {#keep-it-safe}
 
-- 在 CI 中避免使用 `--debug`。除錯日誌中的機密會被遮蔽，但日誌很長，仍然會描述你的賬戶。
+- 在 CI 中避免使用 `--debug`。除錯日誌中的機密會被遮蔽，但日誌很長，仍然會描述你的帳戶。
 - 如果想把報告儲存在 S3 中（代替構件，或與構件並用），請新增 `--s3-bucket`，
-  並授予對該儲存桶的 `s3:PutObject` 許可權。參見
+  並授予對該儲存貯體的 `s3:PutObject` 權限。參見
   [定時把報告上傳到 S3](../examples/scheduled-s3-upload.md)。
-- 保持角色只讀，並把它限定在需要它的倉庫和分支。
-- 把 InvenTag 固定到某個釋出版本（`inventag-aws==1.1.3`），而不是最新版本。想升級時再自己提高版本號。
+- 保持角色唯讀，並把它限定在需要它的儲存庫和分支。
+- 把 InvenTag 固定到某個發佈版本（`inventag-aws==1.1.3`），而不是最新版本。想升級時再自己提高版本號。
 
 ## 下一步 {#next-steps}
 
-- [示例：在 CI 中強制執行標籤策略](../examples/tag-policy-in-ci.md)
+- [範例：在 CI 中強制執行標籤策略](../examples/tag-policy-in-ci.md)
 - [跟蹤兩次執行之間的變化](./track-changes.md)

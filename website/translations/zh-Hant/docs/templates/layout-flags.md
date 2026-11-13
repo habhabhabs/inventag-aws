@@ -1,20 +1,20 @@
 ---
-title: 單份報告的版式檔案
-description: 用 YAML 或 JSON 模板檔案修改 Word 和 Excel BOM 報告的標題、章節、工作表、列、頁首和頁尾。
+title: 單份報告的版面配置檔案
+description: 用 YAML 或 JSON 範本檔案修改 Word 和 Excel BOM 報告的標題、章節、工作表、欄、頁首和頁尾。
 sidebar_position: 5
 ---
 
-# 單份報告的版式檔案
+# 單份報告的版面配置檔案
 
-本頁介紹 `--word-template` 和 `--excel-template` 引數。每個引數接收一個版式檔案，
-對應一種報告格式。關於用 `--template` 選擇的命名模板，請參閱[模板](./index.md)。
+本頁介紹 `--word-template` 和 `--excel-template` 引數。每個引數接收一個版面配置檔案，
+對應一種報告格式。關於用 `--template` 選擇的命名範本，請參閱[範本](./index.md)。
 
-報告模板是一個 YAML 或 JSON 檔案。模板控制 Word 報告或 Excel 報告的結構。
+報告範本是一個 YAML 或 JSON 檔案。範本控制 Word 報告或 Excel 報告的結構。
 用 `--word-template` 或 `--excel-template` 把檔案交給 CLI。
 
-如果不提供模板，InvenTag 使用內建的預設模板。此時報告的結構與沒有模板功能的版本相同。
+如果不提供範本，InvenTag 使用內建的預設範本。此時報告的結構與沒有範本功能的版本相同。
 
-## 模板可以修改什麼 {#what-a-template-can-change}
+## 範本可以修改什麼 {#what-a-template-can-change}
 
 | 專案 | Word 報告 | Excel 報告 |
 |---|---|---|
@@ -22,15 +22,15 @@ sidebar_position: 5
 | 公司名稱 | `{{ company_name }}` 的值 | `{{ company_name }}` 的值，以及工作簿的建立者屬性 |
 | 徽標 | 標題上方的 PNG 或 JPEG 檔案 | 不可用 |
 | 章節或工作表 | 顯示哪些章節及其順序 | 顯示哪些工作表及其順序 |
-| 列 | 顯示哪些列，以及它們的順序、標題和寬度 | 顯示哪些列，以及它們的順序、標題和寬度 |
+| 欄 | 顯示哪些欄，以及它們的順序、標題和寬度 | 顯示哪些欄，以及它們的順序、標題和寬度 |
 | 服務 | 資源表中出現哪些服務及其順序 | 哪些服務有工作表及其順序 |
 | 頁首和頁尾 | 頁首、頁尾、頁碼 | 每個工作表的列印頁首和列印頁尾 |
-| 表頭行顏色 | 不可用 | 表頭行的填充顏色 |
+| 表頭列顏色 | 不可用 | 表頭列的填充顏色 |
 | 自由文字 | 帶變數的標題和段落 | 不可用 |
 
-## 製作模板 {#make-a-template}
+## 製作範本 {#make-a-template}
 
-1. 把預設模板列印到檔案。
+1. 把預設範本列印到檔案。
 
    ```bash
    inventag --print-default-template word > my_word_template.yaml
@@ -47,7 +47,7 @@ sidebar_position: 5
      --excel-template my_excel_template.json
    ```
 
-   如果檔案有效，CLI 會為每個檔案列印一行 `OK`，並以退出碼 `0` 結束。
+   如果檔案有效，CLI 會為每個檔案列印一列 `OK`，並以結束代碼 `0` 結束。
 
 4. 在執行中使用該檔案。
 
@@ -57,22 +57,22 @@ sidebar_position: 5
      --excel-template my_excel_template.json
    ```
 
-CLI 接受 `.yaml`、`.yml` 和 `.json` 這幾種副檔名，兩種格式均適用。預設模板檔案也在倉庫中：
+CLI 接受 `.yaml`、`.yml` 和 `.json` 這幾種副檔名，兩種格式均適用。預設範本檔案也在儲存庫中：
 `templates/default_word_template.yaml` 和
 `templates/default_excel_template.json`。
 
-## 模板引數 {#template-flags}
+## 範本引數 {#template-flags}
 
 | 引數 | 功能 |
 |---|---|
-| `--word-template PATH` | Word 報告的模板。此引數需要 `--create-word`。 |
-| `--excel-template PATH` | Excel 報告的模板。此標誌需要 `--create-excel`。沒有它，CLI 會以退出碼 `2` 停止。 |
-| `--print-default-template word` 或 `--print-default-template excel` | 列印預設模板並以退出碼 `0` 結束。 |
+| `--word-template PATH` | Word 報告的範本。此引數需要 `--create-word`。 |
+| `--excel-template PATH` | Excel 報告的範本。此標誌需要 `--create-excel`。沒有它，CLI 會以結束代碼 `2` 停止。 |
+| `--print-default-template word` 或 `--print-default-template excel` | 列印預設範本並以結束代碼 `0` 結束。 |
 | `--validate-templates` | 驗證 `--word-template` 和 `--excel-template` 指定的檔案，然後結束。不發出 AWS 呼叫。 |
 
-## 最小示例 {#minimal-examples}
+## 最小範例 {#minimal-examples}
 
-這個 Word 模板包含一個標題、每個服務一張資源表，以及一張摘要表。
+這個 Word 範本包含一個標題、每個服務一張資源表，以及一張摘要表。
 
 ```yaml title="my_word_template.yaml"
 template_version: "2.0"
@@ -105,7 +105,7 @@ sections:
     title: "Summary of {{ total_resources }} resources"
 ```
 
-這個 Excel 模板包含一個列出所有資源的工作表，然後是摘要工作表。
+這個 Excel 範本包含一個列出所有資源的工作表，然後是摘要工作表。
 
 ```json title="my_excel_template.json"
 {
@@ -147,8 +147,8 @@ sections:
 | `{{ document_subtitle }}` | 替換之後的 `document.subtitle` 的值。 |
 | `{{ generated_at }}` | UTC 生成時間，格式為 `YYYY-MM-DD HH:MM:SS`。 |
 | `{{ generated_date }}` | UTC 生成日期，格式為 `YYYY-MM-DD`。 |
-| `{{ account_ids }}` | 報告中的賬戶 ID，已排序，以逗號加空格分隔。 |
-| `{{ account_count }}` | 報告中不同賬戶 ID 的數量。 |
+| `{{ account_ids }}` | 報告中的帳戶 ID，已排序，以逗號加空格分隔。 |
+| `{{ account_count }}` | 報告中不同帳戶 ID 的數量。 |
 | `{{ total_resources }}` | 報告中的資源數量。 |
 | `{{ service_count }}` | 報告中不同服務的數量。 |
 | `{{ region_count }}` | 報告中不同區域的數量。 |
@@ -157,9 +157,9 @@ sections:
 
 | 變數 | 值 |
 |---|---|
-| `{{ service }}` | 當前表格的服務名稱。 |
-| `{{ service_resource_count }}` | 當前服務的資源數量。 |
-| `{{ shown_resource_count }}` | 當前表格中的行數。 |
+| `{{ service }}` | 目前表格的服務名稱。 |
+| `{{ service_resource_count }}` | 目前服務的資源數量。 |
+| `{{ shown_resource_count }}` | 目前表格中的列數。 |
 
 你可以在 `variables` 下定義自己的變數：
 
@@ -181,7 +181,7 @@ header_footer:
 - 以下鍵接受變數：`document.title`、`document.subtitle`、
   `header_footer.header_text`、`header_footer.footer_text`，以及章節鍵
   `title`、`paragraphs`、`service_title` 和 `truncation_note`。
-- 列標題、工作表名稱和 `branding.company_name` 不接受變數。
+- 欄標題、工作表名稱和 `branding.company_name` 不接受變數。
 - InvenTag 不支援表示式、過濾器、條件、迴圈或檔案包含。例如，`{{ company_name | upper }}` 是錯誤。
 - InvenTag 不會替換資源資料中的變數。名稱中含有文字 `{{ company_name }}` 的資源，
   在報告中保持原樣。
@@ -197,13 +197,13 @@ header_footer:
 |---|---|---|---|---|
 | `template_version` | 字串 | Word 和 Excel | 必填 | 模式版本。必須是 `"2.0"`。 |
 | `format_type` | 字串 | Word 和 Excel | 必填 | `word` 或 `excel`。 |
-| `name` | 字串 | Word 和 Excel | 空 | 模板的名稱。不會顯示在報告中。 |
+| `name` | 字串 | Word 和 Excel | 空 | 範本的名稱。不會顯示在報告中。 |
 | `description` | 字串 | Word 和 Excel | 空 | 說明。不會顯示在報告中。 |
-| `document` | 對映 | Word 和 Excel | 見下文 | 標題和副標題。 |
-| `branding` | 對映 | Word 和 Excel | 見下文 | 公司名稱、徽標和顏色。 |
-| `variables` | 對映 | Word 和 Excel | 空 | 你自己的變數：名稱對應文字。 |
-| `extra_fields` | 列表 | Word 和 Excel | 空 | `columns` 可以使用的更多資源欄位名。例如，來自你的標籤對映的列。 |
-| `header_footer` | 對映 | Word 和 Excel | 見下文 | 頁首和頁尾文字。 |
+| `document` | 對應 | Word 和 Excel | 見下文 | 標題和副標題。 |
+| `branding` | 對應 | Word 和 Excel | 見下文 | 公司名稱、徽標和顏色。 |
+| `variables` | 對應 | Word 和 Excel | 空 | 你自己的變數：名稱對應文字。 |
+| `extra_fields` | 列表 | Word 和 Excel | 空 | `columns` 可以使用的更多資源欄位名。例如，來自你的標籤對應的欄。 |
+| `header_footer` | 對應 | Word 和 Excel | 見下文 | 頁首和頁尾文字。 |
 | `sections` | 列表 | Word 和 Excel | 必填 | 章節（Word）或工作表（Excel），按報告順序排列。 |
 
 ### `document` {#document}
@@ -218,9 +218,9 @@ header_footer:
 | 鍵 | 型別 | 格式 | 預設值 | 說明 |
 |---|---|---|---|---|
 | `company_name` | 字串 | Word 和 Excel | 空 | `{{ company_name }}` 的值。Excel：同時也是工作簿的建立者屬性。 |
-| `logo_path` | 字串 | Word | 無 | 顯示在標題上方的 PNG 或 JPEG 檔案。路徑相對於模板檔案，且必須位於其目錄之內。 |
+| `logo_path` | 字串 | Word | 無 | 顯示在標題上方的 PNG 或 JPEG 檔案。路徑相對於範本檔案，且必須位於其目錄之內。 |
 | `logo_width_inches` | 數字 | Word | `1.5` | 徽標寬度，0.25 到 7。 |
-| `header_color` | 字串 | Excel | `366092` | 表頭行的填充顏色，六位十六進位制數字。 |
+| `header_color` | 字串 | Excel | `366092` | 表頭列的填充顏色，六位十六進位制數字。 |
 
 ### `header_footer` {#header_footer}
 
@@ -234,13 +234,13 @@ Excel 的列印頁首和列印頁尾只會在頁面佈局檢視和紙張上顯�
 
 ### `sections` {#sections}
 
-`sections` 的每個條目都是一個對映。`content_type` 鍵決定該章節顯示什麼。
+`sections` 的每個條目都是一個對應。`content_type` 鍵決定該章節顯示什麼。
 
 | `content_type` | 格式 | 功能 |
 |---|---|---|
 | `title` | Word | 文件標題、副標題和徽標。 |
 | `text` | Word | 一個可選的標題和一組段落。 |
-| `service_summary` | Word 和 Excel | 每個服務一行：名稱、資源數量、百分比。在 Word 中是一張表，在 Excel 中是一個工作表。 |
+| `service_summary` | Word 和 Excel | 每個服務一列：名稱、資源數量、百分比。在 Word 中是一張表，在 Excel 中是一個工作表。 |
 | `resources` | Word 和 Excel | 資源表。Word：每個服務一張表。Excel：每個服務一個工作表，或所有資源共用一個工作表。 |
 | `network_analysis` | Excel | 網路分析工作表。只有存在網路分析資料時，InvenTag 才會寫入它。 |
 | `security_analysis` | Excel | 安全分析工作表。只有存在安全分析資料時，InvenTag 才會寫入它。 |
@@ -257,12 +257,12 @@ Excel 的列印頁首和列印頁尾只會在頁面佈局檢視和紙張上顯�
 | `level` | 整數 | Word | `text`、`service_summary`、`resources` | `1` | 標題級別，1 到 3。服務標題使用下一級。 |
 | `page_break_before` | 布林值 | Word | 全部 | `false` | 讓章節從新的一頁開始。 |
 | `paragraphs` | 列表 | Word | `text` | 空列表 | `text` 章節的段落。 |
-| `columns` | `auto` 或列表 | Word 和 Excel | `service_summary`、`resources` | `auto` | `auto`，或列的列表。參見[列](#columns)。 |
+| `columns` | `auto` 或列表 | Word 和 Excel | `service_summary`、`resources` | `auto` | `auto`，或欄的列表。參見[欄](#columns)。 |
 | `table_style` | 字串 | Word | `service_summary`、`resources` | `service_summary` 為 `Light Grid Accent 1`，`resources` 為 `Light List Accent 1` | Word 表格樣式。 |
 | `services` | 列表 | Word 和 Excel | `resources` | 所有服務 | 只顯示這些服務，並按此順序。比較時忽略大小寫、空格以及字首 `Amazon` 和 `AWS`。 |
 | `service_title` | 字串 | Word | `resources` | `{{ service }} Resources ({{ service_resource_count }})` | 每個服務表的標題。 |
-| `max_rows` | 整數 | Word | `resources` | `50` | 每個服務表的最大行數，1 到 100000。 |
-| `max_columns` | 整數 | Word | `resources` | `6` | 當 `columns` 為 `auto` 時的最大列數，1 到 100。 |
+| `max_rows` | 整數 | Word | `resources` | `50` | 每個服務表的最大列數，1 到 100000。 |
+| `max_columns` | 整數 | Word | `resources` | `6` | 當 `columns` 為 `auto` 時的最大欄數，1 到 100。 |
 | `truncation_note` | 字串 | Word | `resources` | `Note: Showing first {{ shown_resource_count }} of {{ service_resource_count }} {{ service }} resources.` | 未顯示全部資源的表格下方的段落。 |
 | `page_break_after_service` | 布林值 | Word | `resources` | `true` | 在每個服務表之後另起一頁。 |
 | `sheet_name` | 字串 | Excel | `service_summary`、`resources` | `service_summary` 為 `Summary` | 工作表名稱，1 到 31 個字元。對於 `group_by_service: false` 的 `resources` 章節，此項必填。 |
@@ -278,15 +278,15 @@ Excel 的列印頁首和列印頁尾只會在頁面佈局檢視和紙張上顯�
 - `table_style` 的有效值是預設 Word 文件中的表格樣式。例如 `Table Grid`、`Light List Accent 1`、
   `Light Grid Accent 1` 和 `Medium Shading 1 Accent 1`。
 
-### 列 {#columns}
+### 欄 {#columns}
 
-`columns` 鍵是 `auto` 或一個列表。列表的每個條目是一個欄位名，或者是帶有以下鍵的對映：
+`columns` 鍵是 `auto` 或一個列表。列表的每個條目是一個欄位名，或者是帶有以下鍵的對應：
 
 | 鍵 | 型別 | 格式 | 預設值 | 說明 |
 |---|---|---|---|---|
 | `field` | 字串 | Word 和 Excel | 必填 | 要顯示的欄位。 |
-| `heading` | 字串 | Word 和 Excel | 見下文 | 列標題。 |
-| `width` | 數字 | Word 和 Excel | 自動 | 列寬。Word：英寸，0.2 到 10。Excel：字元數，1 到 255。 |
+| `heading` | 字串 | Word 和 Excel | 見下文 | 欄標題。 |
+| `width` | 數字 | Word 和 Excel | 自動 | 欄寬。Word：英寸，0.2 到 10。Excel：字元數，1 到 255。 |
 
 預設標題：
 
@@ -310,7 +310,7 @@ Excel 的列印頁首和列印頁尾只會在頁面佈局檢視和紙張上顯�
 | 分組 | 欄位 |
 |---|---|
 | 標識 | `service`, `type`, `id`, `name`, `arn` |
-| 賬戶和位置 | `account_id`, `source_account_id`, `source_account_name`, `account_name`, `region`, `availability_zone` |
+| 帳戶和位置 | `account_id`, `source_account_id`, `source_account_name`, `account_name`, `region`, `availability_zone` |
 | 資源詳情 | `status`, `state`, `creation_date`, `created_time`, `launch_time`, `size`, `instance_type`, `storage_type`, `engine`, `engine_version`, `allocated_storage`, `storage_encrypted`, `multi_az`, `publicly_accessible`, `vpc_id`, `vpc_name`, `subnet_id`, `subnet_name`, `security_groups`, `security_group_ids` |
 | 網路 | `vpc_cidr_block`, `vpc_total_ips`, `vpc_utilization_percentage`, `subnet_cidr_block`, `subnet_total_ips`, `subnet_utilization_percentage`, `subnet_is_public`, `subnet_availability_zone` |
 | 安全 | `security_risk_level`, `security_group_count`, `max_security_risk`, `inbound_rules_count`, `outbound_rules_count`, `associated_resources_count`, `has_permissive_rules`, `permissive_rules` |
@@ -324,14 +324,14 @@ Excel 的列印頁首和列印頁尾只會在頁面佈局檢視和紙張上顯�
 
 ## 驗證錯誤 {#validation-errors}
 
-CLI 在第一次 AWS 呼叫之前驗證每個模板。如果模板無效，CLI 會向標準錯誤輸出為每個問題列印一行，
-並以退出碼 `1` 結束。每一行的格式如下：
+CLI 在第一次 AWS 呼叫之前驗證每個範本。如果範本無效，CLI 會向標準錯誤輸出為每個問題列印一列，
+並以結束代碼 `1` 結束。每一行的格式如下：
 
 ```text
 inventag: error: <file>: <key path>: <reason>
 ```
 
-示例：
+範例：
 
 ```text
 inventag: error: my_word_template.yaml: colour: unknown key. Allowed keys: template_version, format_type, name, description, document, branding, variables, extra_fields, header_footer, sections
@@ -345,34 +345,34 @@ inventag: error: my_word_template.yaml: sections[1].columns[2].field: unknown co
 | 值的型別錯誤 | `must be a string, but the value is integer` |
 | 缺少必填鍵 | `missing key` |
 | 不存在的章節型別 | `unknown section type 'cover_page' for a Word template. Allowed values: ...` |
-| 不存在的列 | `unknown column 'owner_name'` |
+| 不存在的欄 | `unknown column 'owner_name'` |
 | 不存在的變數 | `unknown variable 'owner'. Allowed variables: ...` |
 | 表示式、過濾器或巢狀的大括號 | `malformed placeholder` |
 | 兩個章節使用相同的 `id` | `duplicate id 'summary'` |
-| 模板的格式錯誤 | `the file is a template for Excel reports, but this flag needs a template for Word reports` |
-| 帶有 `template_version: "1.0"` 的舊模板 | `unsupported version '1.0'` |
-| 超出模板目錄的徽標路徑 | `the path must stay in the directory of the template file` |
+| 範本的格式錯誤 | `the file is a template for Excel reports, but this flag needs a template for Word reports` |
+| 帶有 `template_version: "1.0"` 的舊範本 | `unsupported version '1.0'` |
+| 超出範本目錄的徽標路徑 | `the path must stay in the directory of the template file` |
 | 不是 YAML 或 JSON 的檔案 | `YAML syntax error at line ...` 或 `JSON syntax error at line ...` |
 | 副檔名不同的檔案 | `unsupported file type` |
 | 過大的檔案 | `The maximum is 262144 bytes` |
 
-模板引數的退出碼：
+範本引數的結束代碼：
 
-| 退出碼 | 條件 |
+| 結束代碼 | 條件 |
 |---|---|
-| `0` | `--validate-templates` 未發現問題，或 `--print-default-template` 列印了模板。 |
-| `1` | 模板檔案無效。 |
-| `2` | 用法錯誤。例如，使用 `--word-template` 而沒有 `--create-word`，或使用 `--validate-templates` 而沒有模板引數。 |
+| `0` | `--validate-templates` 未發現問題，或 `--print-default-template` 列印了範本。 |
+| `1` | 範本檔案無效。 |
+| `2` | 用法錯誤。例如，使用 `--word-template` 而沒有 `--create-word`，或使用 `--validate-templates` 而沒有範本引數。 |
 
 ## 限制 {#limits}
 
 | 專案 | 限制 |
 |---|---|
-| 模板檔案大小 | 262144 位元組（256 KiB） |
+| 範本檔案大小 | 262144 位元組（256 KiB） |
 | 文字值 | 2000 個字元 |
 | 頁首文字和頁尾文字 | 255 個字元 |
 | 章節 | 50 |
-| 一個章節中的列 | 100 |
+| 一個章節中的欄 | 100 |
 | 一個 `text` 章節中的段落 | 100 |
 | 你自己的變數 | 50 |
 | `extra_fields` 中的條目 | 200 |
@@ -382,21 +382,21 @@ inventag: error: my_word_template.yaml: sections[1].columns[2].field: unknown co
 
 其他限制：
 
-- 模板不能更改 Word 報告的字型、標題顏色或頁面大小。
-- 模板不能更改網路分析工作表和安全分析工作表的列。
-- 模板不能在 Excel 報告中新增目錄、圖表或徽標。
+- 範本不能更改 Word 報告的字型、標題顏色或頁面大小。
+- 範本不能更改網路分析工作表和安全分析工作表的欄。
+- 範本不能在 Excel 報告中新增目錄、圖表或徽標。
 - Word 表格樣式必須是預設 Word 文件中的樣式。
-- `scripts/legacy/` 中的舊指令碼沒有模板引數。
-- 舊配置示例中的配置鍵 `templates`、`document_templates` 和
-  `default_template` 沒有任何作用。只有 `--word-template` 和 `--excel-template` 會選擇模板。
-- 帶有 `template_version: "1.0"` 的模板檔案無效。直到 v4.2.27 的版本都附帶了這類檔案，
+- `scripts/legacy/` 中的舊指令碼沒有範本引數。
+- 舊設定範例中的設定鍵 `templates`、`document_templates` 和
+  `default_template` 沒有任何作用。只有 `--word-template` 和 `--excel-template` 會選擇範本。
+- 帶有 `template_version: "1.0"` 的範本檔案無效。直到 v4.2.27 的版本都附帶了這類檔案，
   但 CLI 並不會讀取它們。
 
-## 模板檔案的安全性 {#safety-of-template-files}
+## 範本檔案的安全性 {#safety-of-template-files}
 
 - InvenTag 用 `yaml.safe_load` 讀取 YAML。YAML 檔案無法執行程式碼。
 - InvenTag 不會計算表示式。替換隻會替換[變數](#variables)表中的名稱。
 - InvenTag 不會替換來自 AWS 的資源資料中的變數。
-- 模板不能包含另一個檔案。唯一的檔案引用是 `branding.logo_path`，
-  而且該檔案必須位於模板目錄中。
-- Excel 構建器把每個值都存為文字。以 `=` 開頭的值不會作為公式執行。
+- 範本不能包含另一個檔案。唯一的檔案引用是 `branding.logo_path`，
+  而且該檔案必須位於範本目錄中。
+- Excel 建置器把每個值都存為文字。以 `=` 開頭的值不會作為公式執行。

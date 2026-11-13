@@ -1,28 +1,28 @@
 ---
-title: "示例：盤點組織中的每個賬戶"
-description: 透過在每個賬戶中擔任只讀角色，一次 InvenTag 執行掃描 AWS Organization 中的所有賬戶，並得到一份合併的報告。
+title: "範例：盤點組織中的每個帳戶"
+description: 透過在每個帳戶中擔任唯讀角色，一次 InvenTag 執行掃描 AWS Organization 中的所有帳戶，並得到一份合併的報告。
 sidebar_position: 3
 ---
 
-# 示例：盤點組織中的每個賬戶
+# 範例：盤點組織中的每個帳戶
 
-**目標：** 一份覆蓋所有賬戶的報告，包含 Account 列和標籤檢查。
+**目標：** 一份覆蓋所有帳戶的報告，包含 Account 欄和標籤檢查。
 
 **你需要：**
 
-- 每個賬戶中都有一個同名角色（這裡是 `InvenTagReadOnly`），並附帶
-  [只讀策略](../guides/read-only-access.md#with-an-iam-role-in-each-account)；
-- 一個可以擔任這些角色的身份的憑證，例如管理賬戶或委派的安全賬戶中的憑證。
+- 每個帳戶中都有一個同名角色（這裡是 `InvenTagReadOnly`），並附帶
+  [唯讀策略](../guides/read-only-access.md#with-an-iam-role-in-each-account)；
+- 一個可以擔任這些角色的身份的憑證，例如管理帳戶或委派的安全帳戶中的憑證。
 
-## 模板 {#template}
+## 範本 {#template}
 
-列出你的賬戶：
+列出你的帳戶：
 
 ```bash title="Terminal"
 aws organizations list-accounts --query "Accounts[?Status=='ACTIVE'].[Id,Name]" --output text
 ```
 
-複製內建模板，並填入你的賬戶：
+複製內建範本，並填入你的帳戶：
 
 ```bash title="Terminal"
 inventag templates init org-multi-account --output .inventag/templates/our-org.yaml
@@ -67,7 +67,7 @@ WARNING ~/acme-infra/.inventag/templates/our-org.yaml: account IDs 111111111111,
 OK    ~/acme-infra/.inventag/templates/our-org.yaml (config 'our-org')
 ```
 
-執行結果如下，三個虛構賬戶中各有一個示例儲存桶：
+執行結果如下，三個虛構帳戶中各有一個範例儲存貯體：
 
 ```text title="Terminal"
 Wrote bom_output/tag_compliance_20261112_090000.json
@@ -95,7 +95,7 @@ Tag policy 'finops-cost-allocation': 0 of 36 resources compliant (0.0%), 36 non-
 
 **工作表：** `Summary`、`EVENTS`、`KMS`、`S3`、`VPC`、`Tag Compliance`
 
-`S3` 工作表的前幾行：
+`S3` 工作表的前幾列：
 
 | Account | Region | Service | Type | Name | ID | ARN | ... |
 |---|---|---|---|---|---|---|---|
@@ -103,10 +103,10 @@ Tag policy 'finops-cost-allocation': 0 of 36 resources compliant (0.0%), 36 non-
 | 333333333333 | us-east-1 | S3 | Bucket | acme-shared-services-artifacts | acme-shared-services-artifacts | arn:aws:s3:::acme-shared-services-artifacts | ... |
 | 222222222222 | us-east-1 | S3 | Bucket | acme-staging-artifacts | acme-staging-artifacts | arn:aws:s3:::acme-staging-artifacts | ... |
 
-該工作表共有 9 列；此處顯示前 7 列。
+該工作表共有 9 欄；此處顯示前 7 欄。
 
 ## 下一步 {#next-steps}
 
-- 如果某個賬戶失敗，InvenTag 會記錄錯誤、報告其他賬戶，並仍以退出碼 0 結束，
+- 如果某個帳戶失敗，InvenTag 會記錄錯誤、報告其他帳戶，並仍以結束代碼 0 結束，
   所以請檢查日誌。常見原因是角色的信任策略。
-- [掃描多個賬戶](../guides/scan-multiple-accounts.md)介紹了調優選項。
+- [掃描多個帳戶](../guides/scan-multiple-accounts.md)介紹了調優選項。
