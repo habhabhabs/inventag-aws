@@ -51,6 +51,9 @@ nada más de lo que necesita.
 | `ce:GetCostAndUsage` | Encuentra los servicios que tienen gasto. AWS cobra por solicitud. |
 | `ec2:DescribeRegions` | Lista las regiones habilitadas en la cuenta. |
 
+InvenTag también llama a `account:ListRegions`, pero solo cuando `ec2:DescribeRegions` falla, para leer las regiones habilitadas.
+Añádela si quieres ese respaldo.
+
 Añade `pricing:GetProducts` solo si usas `--enable-cost-analysis` (también
 llama a `cloudwatch:GetMetricStatistics`, que `ReadOnlyAccess` cubre), y
 `s3:PutObject` en tu bucket de informes si usas `--s3-bucket`.
@@ -61,17 +64,42 @@ para tu organización, usa la opción 2.
 
 ## Opción 2: la política más acotada del repositorio {#option-2-the-narrower-policy-in-the-repository}
 
-`config/defaults/iam-policy-read-only.json` lista 106 acciones de lectura
+`config/defaults/iam-policy-read-only.json` lista 123 acciones de lectura
 concretas, entre ellas `tag:GetResources`, `ce:GetCostAndUsage` y
-`pricing:GetProducts`. Se genera a partir de la misma lista que usa el código,
-así que coincide con lo que InvenTag llama.
+`pricing:GetProducts`, y `apigateway:GET` solo para metadatos de API (no claves de API). Se genera a partir de la misma lista que usa el código,
+así que coincide con lo que InvenTag llama. Incluye las acciones de los servicios que InvenTag lista con sus propias llamadas,
+y `ec2:DescribeRouteTables` y `ec2:DescribeNetworkInterfaces` para el
+[análisis de red y seguridad](./network-and-security-analysis.md#permissions).
+Si copiaste una versión antigua del archivo, cópialo de nuevo. Una acción que falte no detiene la ejecución, pero falta ese servicio o detalle.
 
 Su instrucción `OptionalS3ReportUpload` permite `s3:PutObject` con cifrado del
 lado del servidor, para `--s3-bucket`. Sustituye `YOUR-REPORTS-BUCKET-NAME` por
 tu bucket, o elimina la instrucción si no subes informes.
 
-Cuando falta una acción, el descubrimiento continúa, no imprime ningún mensaje
-y deja ese detalle vacío.
+Cuando falta una acción de listado, InvenTag registra una advertencia para ese servicio y continúa sin sus recursos:
+
+```text
+No permission for sqs (list_queues in us-east-1: AccessDenied). Resources of sqs are skipped; add the read permission to see them.
+```
+
+Cuando falta una acción para un detalle de un recurso, el descubrimiento continúa y deja ese detalle vacío.
+
+## Qué bloquea la protección de solo lectura {#what-the-read-only-guard-blocks}
+
+InvenTag comprueba cada llamada a AWS del proceso antes de enviarla. Solo permite operaciones cuyo nombre empieza por `List`, `Describe`, `Get`, `Head`,
+`Lookup`, `Search` o `BatchGet`, más `sts:AssumeRole` para llegar a otras cuentas. No se puede desactivar.
+
+Algunas operaciones parecen lecturas pero devuelven secretos o datos de clientes. La protección también las bloquea, de modo que una política amplia no pueda exponerlos a través de InvenTag.
+Ejemplos: `secretsmanager:GetSecretValue`, `ssm:GetParameter`, `s3:GetObject`, `dynamodb:GetItem`, `lambda:GetFunction` (devuelve un enlace de descarga del código),
+`cloudformation:GetTemplate`, `ec2:GetLaunchTemplateData`, `glue:GetConnection` y los resultados de consultas de Athena.
+También bloquea las claves de API con sus valores y `ec2:DescribeInstanceAttribute` para los datos de usuario, y comprueba las URL prefirmadas y los tokens de autenticación de bases de datos con las mismas reglas.
+Comprueba un nombre con `inventag --validate-operations <service>:<Operation>`.
+
+Los perfiles de IAM Identity Center (SSO) y de identidad web funcionan con la protección activa. La protección deja que el paso de inicio de sesión cambie un token por credenciales, y nada más.
+
+Dos funciones de la biblioteca de Python pueden escribir en AWS cuando las llamas desde tu propio código. El comando `inventag` nunca las llama, y la protección las bloquea en una ejecución del comando.
+`CredentialManager.setup_cross_account_roles()` crea roles de IAM y solo se ejecuta con `allow_iam_writes=True`.
+La función auxiliar de ciclo de vida de S3 cambia las reglas del bucket y solo se ejecuta con `allow_bucket_writes=True`.
 
 ## Con IAM Identity Center (SSO) {#with-iam-identity-center-sso}
 

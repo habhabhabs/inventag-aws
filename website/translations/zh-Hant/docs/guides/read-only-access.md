@@ -46,6 +46,8 @@ InvenTag 只需要讀取。它有自己的唯讀防護，會在傳送前攔截�
 | `ce:GetCostAndUsage` | 查詢有支出的服務。AWS 按請求收費。 |
 | `ec2:DescribeRegions` | 列出帳戶中已啟用的區域。 |
 
+InvenTag 還會呼叫 `account:ListRegions`，但僅在 `ec2:DescribeRegions` 失敗時，用它讀取已啟用的區域。如果你想要這個回退，就新增它。
+
 只有在使用 `--enable-cost-analysis` 時才需要新增 `pricing:GetProducts`（它還會呼叫
 `cloudwatch:GetMetricStatistics`，`ReadOnlyAccess` 已覆蓋該呼叫）；
 如果使用 `--s3-bucket`，則需要在報告儲存貯體上新增 `s3:PutObject`。
@@ -55,14 +57,40 @@ InvenTag 只需要讀取。它有自己的唯讀防護，會在傳送前攔截�
 
 ## 方案 2：儲存庫中範圍更窄的策略 {#option-2-the-narrower-policy-in-the-repository}
 
-`config/defaults/iam-policy-read-only.json` 列出了 106 個具體的讀取操作，
-包括 `tag:GetResources`、`ce:GetCostAndUsage` 和 `pricing:GetProducts`。
-它由程式碼所用的同一份清單生成，因此與 InvenTag 實際發出的呼叫一致。
+`config/defaults/iam-policy-read-only.json` 列出了 123 個具體的讀取操作，
+包括 `tag:GetResources`、`ce:GetCostAndUsage` 和 `pricing:GetProducts`，
+另有隻用於 API 後設資料（不含 API 金鑰）的 `apigateway:GET`。它由程式碼所用的同一份清單生成，因此與 InvenTag 實際發出的呼叫一致。
+它包含 InvenTag 用自己的呼叫列舉的各項服務所需的操作，以及
+[網路與安全分析](./network-and-security-analysis.md#permissions)所需的 `ec2:DescribeRouteTables` 和 `ec2:DescribeNetworkInterfaces`。
+如果你複製過舊版本的檔案，請重新複製。缺少某個操作不會讓執行停止，但該服務或細節會缺失。
 
 其中的 `OptionalS3ReportUpload` 語句允許帶服務端加密的 `s3:PutObject`，用於 `--s3-bucket`。
 請把 `YOUR-REPORTS-BUCKET-NAME` 替換為你的儲存貯體；如果不上傳報告，就刪除這條語句。
 
-如果缺少某個操作，發現過程會繼續進行，不列印任何訊息，並把相應的細節留空。
+如果缺少某個列舉操作，InvenTag 會為該服務記錄一條警告，並在沒有它的資源的情況下繼續：
+
+```text
+No permission for sqs (list_queues in us-east-1: AccessDenied). Resources of sqs are skipped; add the read permission to see them.
+```
+
+如果缺少的是某個資源細節所需的操作，發現過程會繼續進行，並把該細節留空。
+
+## 唯讀保護攔截什麼 {#what-the-read-only-guard-blocks}
+
+InvenTag 會在程序中的每一次 AWS 呼叫發出之前檢查它。它只允許名稱以 `List`、`Describe`、`Get`、`Head`、`Lookup`、`Search` 或 `BatchGet` 開頭的操作，
+外加用於存取其他帳戶的 `sts:AssumeRole`。它無法關閉。
+
+有些操作看起來像讀取，卻會返回機密或客戶資料。保護機制也會攔截它們，所以範圍很寬的策略也不會透過 InvenTag 洩露這些內容。
+例如：`secretsmanager:GetSecretValue`、`ssm:GetParameter`、`s3:GetObject`、`dynamodb:GetItem`、`lambda:GetFunction`（它會返回程式碼的下載連結）、
+`cloudformation:GetTemplate`、`ec2:GetLaunchTemplateData`、`glue:GetConnection` 和 Athena 查詢結果。
+它還會攔截帶值的 API 金鑰以及用於獲取使用者資料的 `ec2:DescribeInstanceAttribute`，並按同樣的規則檢查預簽名 URL 和資料庫認證權杖。
+可以用 `inventag --validate-operations <service>:<Operation>` 檢查某個名稱。
+
+IAM Identity Center（SSO）和 web identity 設定檔在保護機制下可以正常工作。保護機制只允許登入步驟用權杖換取憑證，別的都不允許。
+
+Python 庫中有兩個函式，在你自己的程式碼裡呼叫時可以寫入 AWS。`inventag` 命令從不呼叫它們，在命令執行中保護機制也會攔截它們。
+`CredentialManager.setup_cross_account_roles()` 會建立 IAM 角色，只有帶 `allow_iam_writes=True` 時才會執行。
+S3 生命週期輔助函式會修改儲存貯體規則，只有帶 `allow_bucket_writes=True` 時才會執行。
 
 ## 使用 IAM Identity Center（SSO） {#with-iam-identity-center-sso}
 

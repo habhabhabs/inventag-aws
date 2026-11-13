@@ -48,6 +48,9 @@ still refuse the call. Give InvenTag nothing more than it needs.
 | `ce:GetCostAndUsage` | Finds services that have spend. AWS charges per request. |
 | `ec2:DescribeRegions` | Lists the regions enabled in the account. |
 
+InvenTag also calls `account:ListRegions`, but only when `ec2:DescribeRegions`
+fails, to read the enabled regions. Add it if you want that fallback.
+
 Add `pricing:GetProducts` only if you use `--enable-cost-analysis` (it also
 calls `cloudwatch:GetMetricStatistics`, which `ReadOnlyAccess` covers), and
 `s3:PutObject` on your reports bucket if you use `--s3-bucket`.
@@ -58,17 +61,57 @@ organisation, use option 2.
 
 ## Option 2: the narrower policy in the repository
 
-`config/defaults/iam-policy-read-only.json` lists 106 specific read actions,
-including `tag:GetResources`, `ce:GetCostAndUsage` and `pricing:GetProducts`.
-It is generated from the same list the code uses, so it matches what InvenTag
-calls.
+`config/defaults/iam-policy-read-only.json` lists 123 specific read actions,
+including `tag:GetResources`, `ce:GetCostAndUsage` and `pricing:GetProducts`,
+and `apigateway:GET` for API metadata only (not API keys). It is generated
+from the same list the code uses, so it matches what InvenTag calls. It
+includes the actions for the services that InvenTag lists with its own calls,
+and `ec2:DescribeRouteTables` and `ec2:DescribeNetworkInterfaces` for the
+[network and security analysis](./network-and-security-analysis.md#permissions).
+If you copied an older version of the file, copy it again. A missing action
+does not stop the run, but that service or detail is missing.
 
 Its `OptionalS3ReportUpload` statement allows `s3:PutObject` with server-side
 encryption, for `--s3-bucket`. Replace `YOUR-REPORTS-BUCKET-NAME` with your
 bucket, or remove the statement if you don't upload reports.
 
-Where an action is missing, discovery carries on, prints no message and
-leaves that detail empty.
+Where a listing action is missing, InvenTag logs one warning for that service
+and carries on without its resources:
+
+```text
+No permission for sqs (list_queues in us-east-1: AccessDenied). Resources of sqs are skipped; add the read permission to see them.
+```
+
+Where an action for a detail of a resource is missing, discovery carries on
+and leaves that detail empty.
+
+## What the read-only guard blocks
+
+InvenTag checks every AWS call in the process before it is sent. It allows
+only operations whose names start with `List`, `Describe`, `Get`, `Head`,
+`Lookup`, `Search` or `BatchGet`, plus `sts:AssumeRole` to reach other
+accounts. It cannot be turned off.
+
+Some operations look like reads but return secrets or customer data. The guard
+blocks them as well, so a broad policy cannot expose them through InvenTag.
+Examples: `secretsmanager:GetSecretValue`, `ssm:GetParameter`,
+`s3:GetObject`, `dynamodb:GetItem`, `lambda:GetFunction` (it returns a
+download link for the code), `cloudformation:GetTemplate`,
+`ec2:GetLaunchTemplateData`, `glue:GetConnection` and Athena query results.
+It also blocks API keys with their values and `ec2:DescribeInstanceAttribute`
+for user data, and it checks presigned URLs and database authentication tokens
+by the same rules. Check a name with
+`inventag --validate-operations <service>:<Operation>`.
+
+IAM Identity Center (SSO) and web-identity profiles work under the guard.
+The guard lets the sign-in step exchange a token for credentials, and nothing
+else.
+
+Two functions in the Python library can write to AWS when you call them from
+your own code. The `inventag` command never calls them, and the guard blocks
+them in a command run. `CredentialManager.setup_cross_account_roles()` creates
+IAM roles and runs only with `allow_iam_writes=True`. The S3 lifecycle helper
+changes bucket rules and runs only with `allow_bucket_writes=True`.
 
 ## With IAM Identity Center (SSO)
 

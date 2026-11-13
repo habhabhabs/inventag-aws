@@ -48,6 +48,9 @@ refuserait quand même l’appel. Ne donnez à InvenTag rien de plus que ce dont
 | `ce:GetCostAndUsage` | Trouve les services qui ont des dépenses. AWS facture chaque requête. |
 | `ec2:DescribeRegions` | Liste les régions activées dans le compte. |
 
+InvenTag appelle aussi `account:ListRegions`, mais seulement quand `ec2:DescribeRegions` échoue, pour lire les régions activées.
+Ajoutez-la si vous voulez ce repli.
+
 Ajoutez `pricing:GetProducts` uniquement si vous utilisez `--enable-cost-analysis` (cette option
 appelle aussi `cloudwatch:GetMetricStatistics`, que `ReadOnlyAccess` couvre), et
 `s3:PutObject` sur votre bucket de rapports si vous utilisez `--s3-bucket`.
@@ -58,17 +61,42 @@ organisation, utilisez l’option 2.
 
 ## Option 2 : la politique plus restreinte du dépôt {#option-2-the-narrower-policy-in-the-repository}
 
-`config/defaults/iam-policy-read-only.json` liste 106 actions de lecture précises,
-dont `tag:GetResources`, `ce:GetCostAndUsage` et `pricing:GetProducts`.
+`config/defaults/iam-policy-read-only.json` liste 123 actions de lecture précises,
+dont `tag:GetResources`, `ce:GetCostAndUsage` et `pricing:GetProducts`, et `apigateway:GET` pour les métadonnées d’API seulement (pas les clés d’API).
 Elle est générée à partir de la même liste que celle utilisée par le code ; elle correspond donc à ce
-qu’InvenTag appelle.
+qu’InvenTag appelle. Elle inclut les actions des services qu’InvenTag liste avec ses propres appels,
+et `ec2:DescribeRouteTables` et `ec2:DescribeNetworkInterfaces` pour l’
+[analyse réseau et de sécurité](./network-and-security-analysis.md#permissions).
+Si vous avez copié une ancienne version du fichier, copiez-la de nouveau. Une action manquante n’arrête pas l’exécution, mais ce service ou ce détail est absent.
 
 Son instruction `OptionalS3ReportUpload` autorise `s3:PutObject` avec le chiffrement
 côté serveur, pour `--s3-bucket`. Remplacez `YOUR-REPORTS-BUCKET-NAME` par votre
 bucket, ou supprimez l’instruction si vous ne téléversez pas de rapports.
 
-Lorsqu’une action manque, la découverte continue, n’affiche aucun message et
-laisse ce détail vide.
+Lorsqu’une action de listage manque, InvenTag journalise un avertissement pour ce service et continue sans ses ressources :
+
+```text
+No permission for sqs (list_queues in us-east-1: AccessDenied). Resources of sqs are skipped; add the read permission to see them.
+```
+
+Lorsqu’une action pour un détail d’une ressource manque, la découverte continue et laisse ce détail vide.
+
+## Ce que bloque la protection en lecture seule {#what-the-read-only-guard-blocks}
+
+InvenTag vérifie chaque appel AWS du processus avant son envoi. Il n’autorise que les opérations dont le nom commence par `List`, `Describe`, `Get`, `Head`,
+`Lookup`, `Search` ou `BatchGet`, plus `sts:AssumeRole` pour atteindre d’autres comptes. Elle ne peut pas être désactivée.
+
+Certaines opérations ressemblent à des lectures mais renvoient des secrets ou des données clients. La protection les bloque aussi, pour qu’une politique large ne puisse pas les exposer via InvenTag.
+Exemples : `secretsmanager:GetSecretValue`, `ssm:GetParameter`, `s3:GetObject`, `dynamodb:GetItem`, `lambda:GetFunction` (il renvoie un lien de téléchargement du code),
+`cloudformation:GetTemplate`, `ec2:GetLaunchTemplateData`, `glue:GetConnection` et les résultats de requêtes Athena.
+Elle bloque aussi les clés d’API avec leurs valeurs et `ec2:DescribeInstanceAttribute` pour les données utilisateur, et vérifie les URL présignées et les jetons d’authentification de base de données selon les mêmes règles.
+Vérifiez un nom avec `inventag --validate-operations <service>:<Operation>`.
+
+Les profils IAM Identity Center (SSO) et d’identité web fonctionnent avec la protection active. La protection laisse l’étape de connexion échanger un jeton contre des identifiants, et rien d’autre.
+
+Deux fonctions de la bibliothèque Python peuvent écrire dans AWS quand vous les appelez depuis votre propre code. La commande `inventag` ne les appelle jamais, et la protection les bloque lors d’une exécution de la commande.
+`CredentialManager.setup_cross_account_roles()` crée des rôles IAM et ne s’exécute qu’avec `allow_iam_writes=True`.
+La fonction d’aide au cycle de vie S3 modifie les règles du bucket et ne s’exécute qu’avec `allow_bucket_writes=True`.
 
 ## Avec IAM Identity Center (SSO) {#with-iam-identity-center-sso}
 
