@@ -85,8 +85,15 @@ class AWSResourceInventory:
         use_comprehensive: bool = True,
         hide_fallback_resources: bool = False,  # Legacy, deprecated
         fallback_display_mode: str = "auto",  # "auto", "always", "never"
+        enable_ai_prediction: bool = False,
     ):
-        """Initialize the AWS Resource Inventory tool."""
+        """Initialize the AWS Resource Inventory tool.
+
+        enable_ai_prediction: add rows for resources that were NOT found but
+            usually exist (for example a ``/aws/lambda/<name>`` log group for
+            each Lambda function), marked ``predicted: True``. Off by default:
+            an inventory lists only what AWS returned.
+        """
         self.session = session or boto3.Session()
         self.resources = []
         self.logger = self._setup_logging()
@@ -130,8 +137,8 @@ class AWSResourceInventory:
         self.use_comprehensive_discovery = use_comprehensive
         self.standardized_output = standardized_output
 
-        # AI prediction and state management
-        self.enable_ai_prediction = True  # Enable AI-based resource prediction
+        # Predicted (not discovered) rows are opt-in; see the docstring.
+        self.enable_ai_prediction = enable_ai_prediction
         self.ensure_consistent_results = (
             True  # Ensure consistent results for state management
         )
@@ -379,8 +386,10 @@ class AWSResourceInventory:
                     )
 
                     # Add discovered resources to main resource list
-                    if discovery_results["resources"]:
-                        self.resources.extend(discovery_results["resources"])
+                    # Same id/type/name keys as the other rows, or those
+                    # columns are empty in the report
+                    for found in discovery_results["resources"]:
+                        self.resources.append(self._to_inventory_format(found))
 
                     # Log performance metrics
                     perf = discovery_results["performance"]
@@ -427,9 +436,15 @@ class AWSResourceInventory:
         if not self.use_intelligent_discovery:
             self._discover_service_specific_resources()
 
-        # Step 6: If still very few resources, try basic service discovery
+        # Step 6: If still very few resources, try basic service discovery.
+        # Comprehensive discovery already read these services with their own
+        # list calls; the generic calls here then add only AWS-owned items
+        # (such as managed prefix lists) and never the missing ones.
         total_resources_after_service_specific = len(self.resources)
-        if total_resources_after_service_specific < 10:
+        if (
+            not self.use_comprehensive_discovery
+            and total_resources_after_service_specific < 10
+        ):
             self.logger.warning(
                 "Still few resources after service-specific discovery. Trying basic services."
             )

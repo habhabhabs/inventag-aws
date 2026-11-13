@@ -223,13 +223,15 @@ class OptimizedDynamicDiscovery:
             if service in self._failed_services:
                 continue
 
+            # Billing gives upper-case names ("IAM"); the tables are lower-case
+            key = self._get_client_name(service)
             # Handle global services (only use us-east-1)
-            if service in self.global_services:
+            if key in self.global_services:
                 tasks.append(
                     {
                         "service": service,
                         "region": "us-east-1",
-                        "priority": self.service_priority.get(service, 100),
+                        "priority": self.service_priority.get(key, 100),
                     }
                 )
             else:
@@ -239,7 +241,7 @@ class OptimizedDynamicDiscovery:
                         {
                             "service": service,
                             "region": region,
-                            "priority": self.service_priority.get(service, 100),
+                            "priority": self.service_priority.get(key, 100),
                         }
                     )
 
@@ -354,8 +356,9 @@ class OptimizedDynamicDiscovery:
                 return self._operation_cache[cache_key]
 
         # Start with known effective operations if available
-        if service_name in self.known_effective_operations:
-            operations = self.known_effective_operations[service_name].copy()
+        key = self._get_client_name(service_name)
+        if key in self.known_effective_operations:
+            operations = self.known_effective_operations[key].copy()
         else:
             # Fall back to discovering operations
             operations = []
