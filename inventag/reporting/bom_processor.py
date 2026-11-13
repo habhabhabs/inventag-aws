@@ -18,7 +18,7 @@ import boto3
 from typing import Dict, List, Any, Optional, Set
 from dataclasses import asdict, dataclass, field, is_dataclass
 from datetime import datetime, timezone
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, wait
 import threading
 from collections import defaultdict
 
@@ -27,6 +27,7 @@ from ..discovery.network_analyzer import NetworkAnalyzer, NetworkSummary
 from ..discovery.security_analyzer import SecurityAnalyzer, SecuritySummary
 from ..discovery.service_enrichment import ServiceAttributeEnricher
 from ..discovery.service_descriptions import ServiceDescriptionManager
+from ..discovery.arn_utils import id_tail, parse_arn
 from ..discovery.tag_mapping import TagMappingEngine
 from ..discovery.cost_analyzer import CostAnalyzer, CostThresholds, CostAnalysisSummary
 
@@ -110,6 +111,11 @@ class BOMDataProcessor:
         self.statistics = ProcessingStatistics()
         self._processing_cache: Dict[str, Any] = {}
         self._lock = threading.Lock()
+
+    def _count(self, name: str) -> None:
+        """Add one to a statistics counter (enrichment runs in several threads)."""
+        with self._lock:
+            setattr(self.statistics, name, getattr(self.statistics, name, 0) + 1)
 
     def _initialize_components(self):
         """Initialize all processing components."""
@@ -390,14 +396,11 @@ class BOMDataProcessor:
         for resource in resources:
             arn = resource.get("arn", "")
             if arn and not resource.get("id"):
-                # Extract ID from ARN
-                arn_parts = arn.split(":")
-                if len(arn_parts) >= 6:
-                    resource_part = arn_parts[5]
-                    if "/" in resource_part:
-                        resource["id"] = resource_part.split("/")[-1]
-                    else:
-                        resource["id"] = resource_part
+                # The last segment of the resource part ("function:name" and
+                # "type/name" both give the name)
+                tail = id_tail(arn)
+                if tail:
+                    resource["id"] = tail
                     fixed_count += 1
 
         if fixed_count > 0:
@@ -417,10 +420,9 @@ class BOMDataProcessor:
             account_from_arn = None
 
             # Extract account ID from ARN if available
-            if arn:
-                arn_parts = arn.split(":")
-                if len(arn_parts) >= 5:
-                    account_from_arn = arn_parts[4]
+            parsed = parse_arn(arn) if arn else None
+            if parsed:
+                account_from_arn = parsed["account"] or None
 
             # Fix account_id field if missing
             if not resource.get("account_id") and account_from_arn:
@@ -445,38 +447,71 @@ class BOMDataProcessor:
 
         return resources
 
+    @staticmethod
+    def _dedup_key(resource: Dict[str, Any]) -> Optional[tuple]:
+        """Identity of a resource, or None when it has no identity to compare.
+
+        The ARN says everything (it holds the account, region, type and ID).
+        Without one, the key is account + service + type + ID + region, so the
+        same ID in two accounts is two resources. A resource with neither ARN
+        nor ID cannot be matched to another one and is never merged.
+        """
+        arn = resource.get("arn") or ""
+        if arn:
+            return ("arn", arn)
+        res_id = resource.get("id") or resource.get("resource_id") or ""
+        if not res_id:
+            return None
+        return (
+            "id",
+            resource.get("source_account_id") or resource.get("account_id") or "",
+            resource.get("service") or "",
+            resource.get("type") or resource.get("resource_type") or "",
+            res_id,
+            resource.get("region") or "",
+        )
+
+    @staticmethod
+    def _is_blank(value: Any) -> bool:
+        return value is None or value == "" or value == [] or value == {}
+
     def _deduplicate_resources(
         self, resources: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
-        """Remove duplicate resources keeping the one with more complete information."""
-        seen_resources = {}
-        deduplicated = []
+        """Remove duplicate resources, keeping the one with more fields.
+
+        Fields that only the discarded copy has (for example tags that came
+        from the other discovery path) are copied onto the kept one. Order of
+        first appearance is kept.
+        """
+        seen_resources: Dict[tuple, int] = {}
+        deduplicated: List[Dict[str, Any]] = []
         duplicate_count = 0
 
         for resource in resources:
-            # Create unique key based on ARN or fallback to service+id+region
-            arn = resource.get("arn", "")
-            if arn:
-                key = arn
-            else:
-                service = resource.get("service", "")
-                res_id = resource.get("id", "")
-                region = resource.get("region", "")
-                key = f"{service}:{res_id}:{region}"
+            key = self._dedup_key(resource)
+            if key is None:
+                deduplicated.append(resource)
+                continue
 
             if key in seen_resources:
-                # Keep the resource with more fields
-                existing = seen_resources[key]
+                index = seen_resources[key]
+                existing = deduplicated[index]
                 if len(resource) > len(existing):
-                    seen_resources[key] = resource
-                    # Replace in deduplicated list
-                    for i, item in enumerate(deduplicated):
-                        if item is existing:
-                            deduplicated[i] = resource
-                            break
+                    winner, loser = dict(resource), existing
+                else:
+                    winner, loser = existing, resource
+                for name, value in loser.items():
+                    if name not in winner or (
+                        self._is_blank(winner[name]) and not self._is_blank(value)
+                    ):
+                        if winner is existing:
+                            winner = dict(existing)
+                        winner[name] = value
+                deduplicated[index] = winner
                 duplicate_count += 1
             else:
-                seen_resources[key] = resource
+                seen_resources[key] = len(deduplicated)
                 deduplicated.append(resource)
 
         if duplicate_count > 0:
@@ -492,24 +527,27 @@ class BOMDataProcessor:
             f"Starting parallel enrichment processing with {self.config.max_worker_threads} threads"
         )
 
-        enriched_resources = []
+        # Results go back in the order of the input, so the same inventory gives
+        # the same resource order on every run whatever thread finishes first.
+        enriched_resources: List[Optional[Dict[str, Any]]] = [None] * len(resources)
 
-        with ThreadPoolExecutor(max_workers=self.config.max_worker_threads) as executor:
-            # Submit enrichment tasks
-            future_to_resource = {
-                executor.submit(self._enrich_single_resource, resource): resource
+        executor = ThreadPoolExecutor(max_workers=self.config.max_worker_threads)
+        try:
+            futures = [
+                executor.submit(self._enrich_single_resource, resource)
                 for resource in resources
-            }
-
-            # Collect results
-            for future in as_completed(
-                future_to_resource, timeout=self.config.processing_timeout
-            ):
+            ]
+            done, not_done = wait(futures, timeout=self.config.processing_timeout)
+            for index, future in enumerate(futures):
+                resource = resources[index]
+                if future in not_done:
+                    future.cancel()
+                    # Not enriched in time: keep the resource as it was found.
+                    enriched_resources[index] = resource
+                    continue
                 try:
-                    enriched_resource = future.result()
-                    enriched_resources.append(enriched_resource)
+                    enriched_resources[index] = future.result()
                 except Exception as e:
-                    resource = future_to_resource[future]
                     self.logger.warning(
                         f"Failed to enrich resource {resource.get('id', 'unknown')}: {e}"
                     )
@@ -518,7 +556,17 @@ class BOMDataProcessor:
                         f"Enrichment failed for {resource.get('id', 'unknown')}: {e}"
                     )
                     # Add the original resource without enrichment
-                    enriched_resources.append(resource)
+                    enriched_resources[index] = resource
+            if not_done:
+                message = (
+                    f"Enrichment did not finish within {self.config.processing_timeout}s "
+                    f"for {len(not_done)} of {len(resources)} resources; they are "
+                    "in the report without enrichment"
+                )
+                self.logger.warning(message)
+                self.statistics.warnings.append(message)
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
         self.logger.info(
             f"Parallel enrichment completed. Processed {len(enriched_resources)} resources"
@@ -608,7 +656,7 @@ class BOMDataProcessor:
                     resource
                 )
                 if enriched != resource:
-                    self.statistics.network_enriched += 1
+                    self._count("network_enriched")
                 return enriched
         except Exception as e:
             self.logger.debug(
@@ -627,7 +675,7 @@ class BOMDataProcessor:
                     resource
                 )
                 if enriched != resource:
-                    self.statistics.security_enriched += 1
+                    self._count("security_enriched")
                 return enriched
         except Exception as e:
             self.logger.debug(
@@ -644,7 +692,7 @@ class BOMDataProcessor:
             if self.service_enricher:
                 enriched = self.service_enricher.enrich_resource(resource)
                 if enriched != resource:
-                    self.statistics.service_enriched += 1
+                    self._count("service_enriched")
                 return enriched
         except Exception as e:
             self.logger.debug(
@@ -666,7 +714,7 @@ class BOMDataProcessor:
             if description:
                 enriched = dict(resource)
                 enriched["service_description"] = description
-                self.statistics.description_enriched += 1
+                self._count("description_enriched")
                 return enriched
         except Exception as e:
             self.logger.warning(
@@ -690,7 +738,7 @@ class BOMDataProcessor:
                 for column, value in result.mapped_attributes.items():
                     # Never replace a discovered field with a mapped value
                     enriched.setdefault(column, value)
-                self.statistics.tag_mapped += 1
+                self._count("tag_mapped")
                 return enriched
         except Exception as e:
             self.logger.warning(
@@ -935,9 +983,7 @@ class BOMDataProcessor:
             if self.cost_analyzer:
                 enriched = self.cost_analyzer.enrich_resource_with_cost_info(resource)
                 if enriched != resource:
-                    self.statistics.cost_enriched = (
-                        getattr(self.statistics, "cost_enriched", 0) + 1
-                    )
+                    self._count("cost_enriched")
                 return enriched
         except Exception as e:
             self.logger.debug(
