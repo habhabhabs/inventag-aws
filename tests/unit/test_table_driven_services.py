@@ -185,12 +185,12 @@ EXPECTED = {
         "rs-1",
     ): "arn:aws:redshift:us-east-1:123456789012:cluster:rs-1",
     (
-        "OPENSEARCH",
+        "ES",
         "Domain",
         "search-1",
     ): "arn:aws:es:us-east-1:123456789012:domain/search-1",
     ("ECR", "Repository", "repo-1"): "arn:aws:ecr:",
-    ("STEPFUNCTIONS", "StateMachine", "sm-1"): "arn:aws:states:",
+    ("STATES", "StateMachine", "sm-1"): "arn:aws:states:",
     ("KINESIS", "Stream", "stream-1"): "arn:aws:kinesis:",
     (
         "FIREHOSE",
@@ -210,7 +210,7 @@ EXPECTED = {
         "WorkGroup",
         "wg-athena",
     ): "arn:aws:athena:us-east-1:123456789012:workgroup/wg-athena",
-    ("MSK", "Cluster", "msk-1"): "arn:aws:kafka:",
+    ("KAFKA", "Cluster", "msk-1"): "arn:aws:kafka:",
     ("ELASTICBEANSTALK", "Application", "app-1"): "arn:aws:elasticbeanstalk:",
     ("ELASTICBEANSTALK", "Environment", "env-1"): "arn:aws:elasticbeanstalk:",
     ("WAFV2", "WebACL", "acl-1"): "arn:aws:wafv2:us-east-1:123456789012:regional/",
@@ -237,7 +237,12 @@ def test_table_driven_services_against_moto_under_the_guard(account):
         assert by_key[key]["arn"].startswith(arn_prefix), by_key[key]["arn"]
         assert by_key[key]["source"] == "service-api"
     services = {r["service"] for r in resources}
-    assert {"EFS", "EMR", "COGNITO", "APPSYNC"} <= services
+    assert {
+        "ELASTICFILESYSTEM",
+        "ELASTICMAPREDUCE",
+        "COGNITO-IDP",
+        "APPSYNC",
+    } <= services
     # Metadata only: no secret or parameter value
     blob = json.dumps(resources, default=str)
     assert "planted-secret-1" not in blob and "planted-param-1" not in blob

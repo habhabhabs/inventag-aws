@@ -105,6 +105,8 @@ TABLE_DRIVEN_SERVICES: Dict[str, Dict[str, Any]] = {
         "regional": True,
     },
     "opensearch": {
+        # v1.1.4 reported these under the ARN service name; keep it
+        "label": "es",
         "client_service": "opensearch",
         "arn_service": "es",
         "operations": [
@@ -119,6 +121,8 @@ TABLE_DRIVEN_SERVICES: Dict[str, Dict[str, Any]] = {
         "regional": True,
     },
     "efs": {
+        # v1.1.4 reported these under the ARN service name; keep it
+        "label": "elasticfilesystem",
         "arn_service": "elasticfilesystem",
         "operations": [
             {
@@ -145,6 +149,8 @@ TABLE_DRIVEN_SERVICES: Dict[str, Dict[str, Any]] = {
         "regional": True,
     },
     "stepfunctions": {
+        # v1.1.4 reported these under the ARN service name; keep it
+        "label": "states",
         "arn_service": "states",
         "operations": [
             {
@@ -233,6 +239,8 @@ TABLE_DRIVEN_SERVICES: Dict[str, Dict[str, Any]] = {
         "regional": True,
     },
     "cognito": {
+        # v1.1.4 reported these under the ARN service name; keep it
+        "label": "cognito-idp",
         "client_service": "cognito-idp",
         "arn_service": "cognito-idp",
         "operations": [
@@ -285,6 +293,8 @@ TABLE_DRIVEN_SERVICES: Dict[str, Dict[str, Any]] = {
         "regional": True,
     },
     "emr": {
+        # v1.1.4 reported these under the ARN service name; keep it
+        "label": "elasticmapreduce",
         "arn_service": "elasticmapreduce",
         "operations": [
             {
@@ -309,6 +319,8 @@ TABLE_DRIVEN_SERVICES: Dict[str, Dict[str, Any]] = {
         "regional": True,
     },
     "msk": {
+        # v1.1.4 reported these under the ARN service name; keep it
+        "label": "kafka",
         "client_service": "kafka",
         "arn_service": "kafka",
         "operations": [
