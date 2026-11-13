@@ -44,16 +44,24 @@ from ..security.arn import (
     validate_role_arn,
     validate_role_name,
 )
-from ..templating.runner import add_template_arguments, prepare_template_run
+from ..templating.runner import (
+    add_template_arguments,
+    bom_result_is_empty,
+    prepare_template_run,
+)
 
 # Exit code for a template file that is not valid (same code as other
 # configuration files that are not valid).
 EXIT_INVALID_TEMPLATE = 1
 
-# Exit codes (0 success, 1 error, 2 invalid options, 3 tag policy violations,
-# 4 risk threshold): the two below are opt-in.
-EXIT_ACCOUNT_FAILED = 5  # --fail-on-account-error
-EXIT_NO_RESOURCES = 6  # --fail-if-empty
+# Exit codes: the one list is inventag/exit_codes.py (0 success, 1 error,
+# 2 invalid options, 3 tag policy violations, 4 risk threshold, and the
+# opt-in 5 --fail-on-account-error and 6 --fail-if-empty).
+from ..exit_codes import (  # noqa: E402
+    EXIT_ACCOUNT_FAILED,
+    EXIT_NO_RESOURCES,
+    EXIT_RISK_THRESHOLD,
+)
 
 
 def _limit_or_none(text: str) -> Optional[int]:
@@ -1024,7 +1032,6 @@ def _google_usage_errors(args) -> List[str]:
 
 
 RISK_ORDER = {"low": 1, "medium": 2, "high": 3, "critical": 4}
-EXIT_RISK_THRESHOLD = 4
 
 
 def _risk_threshold_errors(args) -> List[str]:
@@ -1157,10 +1164,8 @@ def _opt_in_exit_code(args, results: Dict[str, Any], logger) -> int:
             f"--fail-on-account-error is set (exit code {EXIT_ACCOUNT_FAILED})"
         )
         return EXIT_ACCOUNT_FAILED
-    total = results.get("bom_generation", {}).get("total_resources")
-    if total is None:
-        total = results.get("processing_statistics", {}).get("total_resources", 0)
-    if args.fail_if_empty and not total:
+    # One definition of "empty" for the default and the --template paths.
+    if args.fail_if_empty and bom_result_is_empty(results):
         logger.error(
             "No resources in the report and --fail-if-empty is set "
             f"(exit code {EXIT_NO_RESOURCES})"

@@ -34,11 +34,10 @@ from .render_excel import render_excel
 from .render_word import render_word
 from .tag_policy import ComplianceReport, evaluate
 
-EXIT_TAG_VIOLATIONS = 3
-# Exit code for "no resources to report" when the caller asks for it (an
-# opt-in flag in the main command). 1 is a failed run, 2 a usage error and 3
-# a tag policy violation.
-EXIT_NO_RESOURCES = 4
+# Exit codes come from the one list in inventag/exit_codes.py: 3 for tag
+# policy violations, 6 for "no resources to report" (--fail-if-empty).
+from ..exit_codes import EXIT_NO_RESOURCES, EXIT_TAG_VIOLATIONS
+
 DEFAULT_REPORT = "standard-bom"
 
 
@@ -127,7 +126,7 @@ class TemplateRun:
         """Print a short summary and return the exit code.
 
         0 normally; 3 for tag policy violations when the config template asks
-        for that; ``EXIT_NO_RESOURCES`` (4) when ``fail_if_empty`` is true and
+        for that; ``EXIT_NO_RESOURCES`` (6) when ``fail_if_empty`` is true and
         no resources were found (or the filters removed them all).
         """
         files = results.get("bom_generation", {}).get("generated_files", [])

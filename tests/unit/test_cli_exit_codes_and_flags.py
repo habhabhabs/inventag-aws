@@ -103,12 +103,13 @@ def test_opt_in_exit_code(aws):
     log = logging.getLogger("test")
     args = SimpleNamespace(fail_on_account_error=True, fail_if_empty=True)
     failed = {"failed_accounts": [{"account_id": "1"}]}
-    empty = {"bom_generation": {"total_resources": 0}}
+    # _opt_in_exit_code runs only for successful runs (results["success"])
+    empty = {"success": True, "bom_generation": {"total_resources": 0}}
     assert cli_main._opt_in_exit_code(args, {**failed, **empty}, log) == 5
     assert cli_main._opt_in_exit_code(args, empty, log) == 6
     assert (
         cli_main._opt_in_exit_code(
-            args, {"bom_generation": {"total_resources": 3}}, log
+            args, {"success": True, "bom_generation": {"total_resources": 3}}, log
         )
         == 0
     )

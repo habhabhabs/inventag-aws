@@ -245,7 +245,7 @@ def test_finish_exit_code_for_empty_results(registry, capsys):
     run = TemplateRun(registry.resolve("standard-bom"), None, None)
     log = logging.getLogger("t")
     assert run.finish(result(), log) == 0  # default: unchanged
-    assert run.finish(result(), log, fail_if_empty=True) == EXIT_NO_RESOURCES == 4
+    assert run.finish(result(), log, fail_if_empty=True) == EXIT_NO_RESOURCES == 6
     assert run.finish(result(generation=2, stats=2), log, fail_if_empty=True) == 0
     assert "--fail-if-empty" in capsys.readouterr().err
 
