@@ -37,7 +37,7 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   not have it, so they reported "jsonschema library not available" instead of
   checking.
 
-## [1.1.3] - 2026-11-13
+## [v1.1.3] - 2026-11-13
 
 ### Changed
 
@@ -46,11 +46,11 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   page tree is in the menu, and the docs column lines up with the navbar and
   footer.
 
-## [1.1.2] - 2026-11-13
+## [v1.1.2] - 2026-11-13
 
 ### Fixed
 
-- Documentation versions: the 1.0.2 snapshot is added, a stray
+- Documentation versions: the v1.0.2 snapshot is added, a stray
   `docs/index.md` is removed, and a release archives the docs of the right
   previous release.
 
@@ -59,7 +59,7 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 - The desktop sidebar uses the same two-level menu as the phone. A menu button
   replaces the collapse arrow.
 
-## [1.1.1] - 2026-11-13
+## [v1.1.1] - 2026-11-13
 
 ### Fixed
 
@@ -72,9 +72,9 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   ARNs and corrected tag matching.
 - The phone menu is a full-screen sheet. Nothing from the page navbar shows
   beside it.
-- The docs for release 1.1.0 are archived.
+- The docs for release v1.1.0 are archived.
 
-## [1.1.0] - 2026-11-13
+## [v1.1.0] - 2026-11-13
 
 ### Added
 
@@ -148,7 +148,7 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   `release:minor` or `release:major` pull request label, or the manual
   workflow for a bigger bump.
 
-## [1.0.2] - 2026-11-13
+## [v1.0.2] - 2026-11-13
 
 ### Fixed
 
@@ -160,7 +160,7 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 - The install pages say that a virtual environment is optional and give
   `pipx` and plain `pip` as alternatives.
 
-## [1.0.1] - 2026-11-13
+## [v1.0.1] - 2026-11-13
 
 ### Added
 
@@ -171,7 +171,7 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 - `colorama` is a dependency again. `scripts/legacy/` imports it.
 
-## [1.0.0] - 2026-11-13
+## [v1.0.0] - 2026-11-13
 
 First numbered release. It includes everything from the alpha builds below,
 plus these changes.
@@ -199,11 +199,11 @@ plus these changes.
 
 ## Alpha builds
 
-Everything below shipped under the version numbers 5.1.0 and 5.0.0 (and the
-4.x versions before them). Those versions are now called alpha builds and are no longer
+Everything below shipped under the version numbers v5.1.0 and v5.0.0 (and the
+v4.x versions before them). Those versions are now called alpha builds and are no longer
 published. The entries are kept as they were written.
 
-## Alpha build 5.1.0 - 2026-11-13
+## Alpha build v5.1.0 - 2026-11-13
 
 ### Added
 
@@ -228,7 +228,7 @@ published. The entries are kept as they were written.
 
 ### Changed
 
-- Every page in `docs/` was checked against the code of 5.0.0 and corrected.
+- Every page in `docs/` was checked against the code of v5.0.0 and corrected.
   The page "Feature status and known limitations" lists the limits found:
   global services are scanned only from `us-east-1`, tags on Lambda, RDS,
   DynamoDB, SQS and SNS resources are not matched because the built ARN
@@ -288,7 +288,7 @@ These items are not done. A contributor can start any of them.
   `document_generator.py`, `configuration_manager.py`.
 - No test runs against a real AWS account. All tests use `moto`.
 
-## Alpha build 5.0.0 - 2026-11-12
+## Alpha build v5.0.0 - 2026-11-12
 
 ### Breaking changes
 
@@ -407,10 +407,10 @@ One-time setup for PyPI:
    `true`.
 
 [Unreleased]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.3...HEAD
-[1.1.3]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.2...v1.1.3
-[1.1.2]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.1...v1.1.2
-[1.1.1]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.0...v1.1.1
-[1.1.0]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.2...v1.1.0
-[1.0.2]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.1...v1.0.2
-[1.0.1]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.0...v1.0.1
-[1.0.0]: https://github.com/habhabhabs/inventag-aws/releases/tag/v1.0.0
+[v1.1.3]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.2...v1.1.3
+[v1.1.2]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.1...v1.1.2
+[v1.1.1]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.0...v1.1.1
+[v1.1.0]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.2...v1.1.0
+[v1.0.2]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.1...v1.0.2
+[v1.0.1]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.0...v1.0.1
+[v1.0.0]: https://github.com/habhabhabs/inventag-aws/releases/tag/v1.0.0
