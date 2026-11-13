@@ -21,6 +21,7 @@ import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 
 from .aws_clients import create_client
+from .sensitive_fields import mask_secret_values
 
 
 @dataclass
@@ -541,7 +542,7 @@ class OptimizedDynamicDiscovery:
             "resource_type": self._infer_resource_type(resource_data, operation_name),
             "tags": self._extract_tags(resource_data),
             "discovery_method": f"DynamicDiscovery:{operation_name}",
-            "raw_data": resource_data,
+            "raw_data": mask_secret_values(resource_data),
         }
 
     def _extract_resource_id(self, resource_data: Dict) -> Optional[str]:

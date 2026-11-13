@@ -448,8 +448,10 @@ class TestLambdaHandler:
         with patch.object(self.handler, "_safe_api_call") as mock_safe_call:
 
             def side_effect(client, operation, **kwargs):
-                if operation == "get_function":
-                    return {"Configuration": mock_function_config, "Code": mock_code}
+                # GetFunction returns a presigned code URL and is not used
+                assert operation != "get_function"
+                if operation == "get_function_configuration":
+                    return dict(mock_function_config)
                 elif operation == "get_function_concurrency":
                     return {"ReservedConcurrencyExecutions": 100}
                 return None
@@ -468,6 +470,10 @@ class TestLambdaHandler:
         assert attributes["timeout"] == 30
         assert attributes["package_type"] == "Zip"
         assert attributes["reserved_concurrency_executions"] == 100
+        # Environment variable names are kept, values are masked
+        assert attributes["environment"] == {"Variables": {"ENV": "***MASKED***"}}
+        assert "code_location" not in attributes
+        assert mock_code["Location"] not in str(result)
 
 
 class TestECSHandler:

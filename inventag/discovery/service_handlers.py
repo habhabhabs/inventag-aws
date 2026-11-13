@@ -10,6 +10,7 @@ import boto3
 import logging
 from typing import Dict, List, Any, Optional
 from botocore.exceptions import ClientError
+from .sensitive_fields import mask_secret_values
 from .service_enrichment import ServiceHandler
 
 
@@ -459,7 +460,6 @@ class LambdaHandler(ServiceHandler):
     def _define_read_only_operations(self) -> List[str]:
         """Define Lambda read-only operations."""
         return [
-            "get_function",
             "get_function_configuration",
             "get_function_code_signing_config",
             "get_function_concurrency",
@@ -485,13 +485,14 @@ class LambdaHandler(ServiceHandler):
             lambda_client = self.session.client("lambda")
             attributes = {}
 
-            # Get function configuration
+            # GetFunctionConfiguration, not GetFunction: GetFunction also
+            # returns a presigned URL to download the code (and the read-only
+            # guard blocks it). Environment variable values are masked.
             response = self._safe_api_call(
-                lambda_client, "get_function", FunctionName=resource_id
+                lambda_client, "get_function_configuration", FunctionName=resource_id
             )
             if response:
-                config = response.get("Configuration", {})
-                code = response.get("Code", {})
+                config = mask_secret_values(response)
 
                 attributes.update(
                     {
@@ -537,10 +538,6 @@ class LambdaHandler(ServiceHandler):
                             "RuntimeVersionConfig", {}
                         ),
                         "logging_config": config.get("LoggingConfig", {}),
-                        "code_repository_type": code.get("RepositoryType"),
-                        "code_location": code.get("Location"),
-                        "code_image_uri": code.get("ImageUri"),
-                        "code_resolved_image_uri": code.get("ResolvedImageUri"),
                     }
                 )
 

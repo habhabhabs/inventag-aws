@@ -24,6 +24,7 @@ from .optimized_discovery import OptimizedAWSDiscovery
 from .comprehensive_discovery import ComprehensiveAWSDiscovery
 from .arn_utils import build_arn, normalize_arn
 from .aws_clients import create_client
+from .sensitive_fields import mask_secret_values
 from .service_filter import (
     canonical_service,
     canonical_service_set,
@@ -482,6 +483,10 @@ class AWSResourceInventory:
         if self.ensure_consistent_results:
             self._ensure_consistent_results()
 
+        # Step 12: no secret-bearing value leaves discovery, whichever path
+        # found the resource (see sensitive_fields.py)
+        self._mask_secret_values()
+
         discovered_services = len(self._get_discovered_services())
         billing_validated = (
             len(self.billing_validated_services)
@@ -495,6 +500,13 @@ class AWSResourceInventory:
             f"({billing_validated} billing-validated)."
         )
         return self.resources
+
+    def _mask_secret_values(self):
+        """Mask secret-bearing values in every resource's copied AWS data."""
+        for resource in self.resources:
+            for key in ("raw_data", "service_attributes"):
+                if isinstance(resource.get(key), (dict, list)):
+                    resource[key] = mask_secret_values(resource[key])
 
     def _perform_intelligent_discovery(self):
         """Perform AI-capable intelligent resource discovery with standardized output."""
@@ -1719,7 +1731,7 @@ class AWSResourceInventory:
                 "discovered_via": "DynamicDiscovery",
                 "api_operation": operation_name,
                 "discovered_at": datetime.now(timezone.utc).isoformat(),
-                "raw_data": resource_data,  # Include raw data for debugging/enhancement
+                "raw_data": mask_secret_values(resource_data),
             }
 
             self.resources.append(resource_entry)
