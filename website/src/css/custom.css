@@ -520,70 +520,6 @@ kbd {
   box-shadow: inset 2px 0 0 var(--it-accent);
 }
 
-/* Search (@easyops-cn/docusaurus-search-local) */
-.navbar__search-input {
-  font-family: var(--it-font-sans);
-  font-size: 0.875rem;
-  background-color: var(--it-surface);
-  border: 1px solid var(--it-line-strong);
-  border-radius: var(--it-radius);
-  color: var(--it-ink);
-  height: 2.25rem;
-  width: 13rem;
-  padding-left: 2.1rem;
-}
-.navbar__search-input::placeholder {
-  color: var(--it-ink-2);
-  opacity: 1;
-}
-.navbar__search-input:hover {
-  border-color: var(--it-ink-2);
-}
-[class*='searchHintContainer'] {
-  right: 0.45rem;
-}
-.navbar__search kbd[class*='searchHint'] {
-  font-family: var(--it-font-mono);
-  background: var(--it-code-bg);
-  color: var(--it-ink-2);
-  border: 1px solid var(--it-line);
-  box-shadow: none;
-  border-radius: 3px;
-}
-.navbar__search [class*='dropdownMenu'] {
-  background: var(--it-surface);
-  border: 1px solid var(--it-line-strong);
-  border-radius: var(--it-radius);
-  box-shadow: none;
-}
-.navbar__search [class*='suggestion_'] {
-  border-radius: 2px;
-  box-shadow: none;
-  background: transparent;
-  border-bottom: 1px solid var(--it-line);
-}
-.navbar__search [class*='cursor_'] {
-  background: var(--it-accent-wash);
-}
-.navbar__search [class*='hitTitle'],
-.navbar__search [class*='hitPath'],
-.navbar__search [class*='hitFooter'],
-.navbar__search [class*='noResults'] {
-  color: var(--it-ink);
-}
-.navbar__search [class*='hitPath'],
-.navbar__search [class*='hitFooter'] {
-  color: var(--it-ink-2);
-}
-.navbar__search mark,
-.search-result-match {
-  background: var(--it-accent-wash);
-  color: var(--it-ink);
-  text-decoration: underline;
-  text-decoration-color: var(--it-accent);
-  padding: 0;
-}
-
 /* Mobile drawer */
 .navbar__toggle {
   width: 2.75rem;
@@ -1323,12 +1259,6 @@ pre code,
   outline-offset: 2px;
   border-radius: 2px;
 }
-.navbar__search-input:focus-visible,
-.navbar__search-input:focus {
-  outline: 2px solid var(--it-accent);
-  outline-offset: 1px;
-  border-color: var(--it-ink);
-}
 .menu__link:focus-visible,
 .table-of-contents__link:focus-visible {
   outline-offset: -2px;
@@ -1395,13 +1325,6 @@ pre code,
   }
   .footer__link-item {
     min-height: 44px;
-  }
-  .navbar__search-input {
-    width: 2.75rem;
-    height: 2.75rem;
-  }
-  .navbar__search-input:focus {
-    width: min(14rem, 60vw);
   }
   .table-of-contents__link {
     min-height: 44px;

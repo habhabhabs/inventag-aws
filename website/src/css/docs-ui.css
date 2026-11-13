@@ -616,12 +616,6 @@ a.it-search__hit:hover .it-search__hit-go {
   font-weight: 650;
   cursor: pointer;
 }
-.it-mnav__sub {
-  margin: 1.1rem 0.75rem 0.3rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--it-ink-2);
-}
 
 /* Phone drawer: a full-screen sheet. Nothing from the page navbar (theme
    button, search) can show beside or through it, on any browser. */
