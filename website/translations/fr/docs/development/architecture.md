@@ -43,6 +43,22 @@ inventag_cli.py
 | `inventag/compliance/` | Classes de bibliothèque pour les contrôles d’étiquettes et la sécurité ; la plupart ne sont pas utilisées par la CLI aujourd’hui | `checker.py` |
 | `inventag/security/` | La protection en lecture seule, la liste des politiques IAM, la rédaction des journaux, les fichiers de sortie sûrs | `read_only_guard.py`, `iam_policy.py` |
 
+## Modules partagés {#shared-modules}
+
+Chacun de ces modules est le seul endroit qui décide de son sujet. Changez le
+comportement là, pas dans une copie.
+
+| Module | Décide |
+|---|---|
+| `inventag/exit_codes.py` | Les codes de sortie (0 à 6) |
+| `inventag/security/secret_values.py` | Quelles valeurs de champ sont secrètes et deviennent `***REDACTED***` |
+| `inventag/discovery/regions.py` | Quelles régions une exécution analyse, et la région principale de chaque partition |
+| `inventag/discovery/aws_clients.py` | Les réglages de nouvelle tentative des clients AWS |
+| `inventag/discovery/coverage.py` | Comment chaque appel de listage s’est terminé, par service et par région |
+| `inventag/reporting/settings_loader.py` | Comment les fichiers de réglages sont lus et vérifiés |
+| `inventag/reporting/safe_save.py` | Écrire un rapport dans un fichier temporaire puis le mettre en place |
+| `inventag/state/partial_results.py` | Enregistrer et réutiliser les comptes terminés pour `--resume` |
+
 ## Le dictionnaire de ressource {#the-resource-dictionary}
 
 Tout ce qui se trouve entre la découverte et la sortie circule sous forme de dictionnaires simples,
@@ -60,26 +76,28 @@ qu’avant.
 
 ## Lacunes connues à corriger {#known-gaps-worth-fixing}
 
-Elles sont suivies sur [l’état des fonctionnalités](../getting-started/status.md) et dans la liste
-« Open work » de `CHANGELOG.md`. Chacune est une bonne première contribution :
+Les limites visibles par l’utilisateur figurent sur [l’état des fonctionnalités](../getting-started/status.md).
+Voici les lacunes côté code. Chacune est une bonne première contribution :
 
 - `discovery/arn_utils.py` est l’unique endroit qui construit et compare les ARN
   (`build_arn`, `normalize_arn`, `ResourceArnIndex`). `inventory.py` et
-  `comprehensive_discovery.py` l’utilisent tous deux. Les étiquettes de la Resource Groups
-  Tagging API sont associées par ARN normalisé, puis par service, région et ID.
-- Les services globaux (IAM, liste S3, CloudFront, Route 53, certificats ACM de
-  CloudFront) s’exécutent une fois par compte depuis `us-east-1` et portent la région
-  `global`.
-- La recherche des régions dans `cloud_bom_generator.py` se rabat sur quatre régions lorsque
-  `DescribeRegions` échoue. `discovery/inventory.py` a une autre liste de repli
-  de quatorze régions.
-- Une `description` personnalisée dans un fichier de descriptions de services est ignorée pour les
-  services qui ont un modèle intégré (S3, EC2, RDS, Lambda, VPC).
-- `--enable-cost-analysis` appelle Cost Explorer même avec
-  `--no-billing-validation`.
-- L’échec d’un compte ne modifie pas le code de sortie.
+  `comprehensive_discovery.py` l’utilisent tous les deux. Les étiquettes de l’API
+  Resource Groups Tagging sont associées par ARN normalisé, puis par service,
+  région et ID.
+- Les services globaux (IAM, liste S3, CloudFront, Route 53, WAF pour CloudFront,
+  certificats ACM de CloudFront) s’exécutent une fois par compte depuis la région
+  principale de la partition et portent la région `global`.
+- `discovery/inventory.py` a encore une liste fixe de quatorze régions, utilisée
+  seulement quand un appelant de la bibliothèque ne donne pas de régions.
+- `--enable-cost-analysis` appelle Cost Explorer même avec `--no-billing-validation`.
+- Un compte en échec ne change pas le code de sortie, sauf si vous passez
+  `--fail-on-account-error` (sortie 5).
+- L’analyse réseau et sécurité s’exécute deux fois dans une exécution (dans le
+  processeur de BOM et dans le convertisseur), donc ses appels AWS sont faits deux fois.
 - Ces modules ne sont pas sur le chemin de la CLI : `reporting/template_framework.py`,
   `branding_system.py`, `word_builder.py`, `excel_builder.py`,
-  `document_generator.py` et `configuration_manager.py`.
+  `document_generator.py` et `configuration_manager.py`, ainsi que
+  `discovery/enhanced_readonly_discovery.py` et des méthodes inaccessibles de
+  `discovery/inventory.py`.
 
 Les anciennes notes de conception ont été retirées du dépôt. Utilisez les pages de ce site.

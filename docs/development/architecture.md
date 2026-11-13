@@ -43,6 +43,22 @@ inventag_cli.py
 | `inventag/compliance/` | Library classes for tag checks and safety; mostly not used by the CLI today | `checker.py` |
 | `inventag/security/` | The read-only guard, IAM policy list, log redaction, safe output files | `read_only_guard.py`, `iam_policy.py` |
 
+## Shared modules
+
+Each of these is the one place that decides its topic. Change the behaviour
+there, not in a copy.
+
+| Module | Decides |
+|---|---|
+| `inventag/exit_codes.py` | The exit codes (0 to 6) |
+| `inventag/security/secret_values.py` | Which field values are secret and become `***REDACTED***` |
+| `inventag/discovery/regions.py` | Which regions a run scans, and the home region of each partition |
+| `inventag/discovery/aws_clients.py` | Retry settings of the AWS clients |
+| `inventag/discovery/coverage.py` | How each listing call ended, per service and region |
+| `inventag/reporting/settings_loader.py` | How settings files are read and checked |
+| `inventag/reporting/safe_save.py` | Writing a report to a temporary file and moving it into place |
+| `inventag/state/partial_results.py` | Saving and reusing finished accounts for `--resume` |
+
 ## The resource dictionary
 
 Everything between discovery and output passes around plain dictionaries,
@@ -60,26 +76,28 @@ before.
 
 ## Known gaps worth fixing
 
-These are tracked on [Feature status](../getting-started/status.md) and in the
-"Open work" list of `CHANGELOG.md`. Each is a good first contribution:
+The user-facing limits are on [Feature status](../getting-started/status.md).
+These are the code-side gaps. Each is a good first contribution:
 
 - `discovery/arn_utils.py` is the single place that builds and compares ARNs
   (`build_arn`, `normalize_arn`, `ResourceArnIndex`). `inventory.py` and
   `comprehensive_discovery.py` both use it. Tags from the Resource Groups
   Tagging API match by normalised ARN, then by service, region and ID.
-- Global services (IAM, S3 list, CloudFront, Route 53, CloudFront's ACM
-  certificates) run once per account from `us-east-1` and carry the region
-  `global`.
-- The region lookup in `cloud_bom_generator.py` falls back to four regions when
-  `DescribeRegions` fails. `discovery/inventory.py` has a different fallback
-  list of fourteen.
-- A custom `description` in a service-descriptions file is ignored for the
-  services that have a built-in template (S3, EC2, RDS, Lambda, VPC).
+- Global services (IAM, S3 list, CloudFront, Route 53, WAF for CloudFront,
+  CloudFront's ACM certificates) run once per account from the partition's
+  home region and carry the region `global`.
+- `discovery/inventory.py` still has a static list of fourteen regions, used
+  only when a library caller passes no regions.
 - `--enable-cost-analysis` calls Cost Explorer even with
   `--no-billing-validation`.
-- One failed account does not change the exit code.
+- One failed account does not change the exit code unless you pass
+  `--fail-on-account-error` (exit 5).
+- The network and security analysis runs twice in one run (in the BOM
+  processor and in the converter), so its AWS calls are made twice.
 - These modules are not on the CLI path: `reporting/template_framework.py`,
   `branding_system.py`, `word_builder.py`, `excel_builder.py`,
-  `document_generator.py` and `configuration_manager.py`.
+  `document_generator.py` and `configuration_manager.py`, as well as
+  `discovery/enhanced_readonly_discovery.py` and unreachable methods in
+  `discovery/inventory.py`.
 
 Older design notes were removed from the repository. Use the pages on this site.

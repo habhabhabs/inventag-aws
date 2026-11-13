@@ -42,6 +42,21 @@ inventag_cli.py
 | `inventag/compliance/` | 用於標籤檢查和安全的庫類；目前 CLI 基本不使用 | `checker.py` |
 | `inventag/security/` | 唯讀保護、IAM 策略列表、日誌脫敏、安全的輸出檔案 | `read_only_guard.py`, `iam_policy.py` |
 
+## 共享模組 {#shared-modules}
+
+下面每個模組都是決定其主題的唯一位置。要改變行為，請改這裡，不要改副本。
+
+| 模組 | 決定什麼 |
+|---|---|
+| `inventag/exit_codes.py` | 結束代碼（0 到 6） |
+| `inventag/security/secret_values.py` | 哪些欄位值是機密，會變成 `***REDACTED***` |
+| `inventag/discovery/regions.py` | 一次執行掃描哪些區域，以及每個分割槽的主區域 |
+| `inventag/discovery/aws_clients.py` | AWS 客戶端的重試設定 |
+| `inventag/discovery/coverage.py` | 每個列出呼叫在每個服務和區域的結束方式 |
+| `inventag/reporting/settings_loader.py` | 如何讀取和檢查設定檔案 |
+| `inventag/reporting/safe_save.py` | 把報告寫到臨時檔案，再移動到位 |
+| `inventag/state/partial_results.py` | 為 `--resume` 儲存和複用已完成的帳戶 |
+
 ## 資源字典 {#the-resource-dictionary}
 
 從發現到輸出之間的所有環節，傳遞的都是普通字典，每個資源一個。
@@ -57,22 +72,20 @@ inventag_cli.py
 
 ## 值得修復的已知缺口 {#known-gaps-worth-fixing}
 
-這些缺口記錄在[功能狀態](../getting-started/status.md)以及 `CHANGELOG.md` 的 "Open work" 列表中。
+面向使用者的限制列在[功能狀態](../getting-started/status.md)中。下面是程式碼方面的缺口。
 每一項都適合作為入門貢獻：
 
-- `discovery/arn_utils.py` 是建置和比較 ARN 的唯一位置
-  （`build_arn`、`normalize_arn`、`ResourceArnIndex`）。`inventory.py` 和
-  `comprehensive_discovery.py` 都使用它。來自 Resource Groups Tagging API 的標籤，
-  先按規範化後的 ARN 匹配，再按服務、區域和 ID 匹配。
-- 全域性服務（IAM、S3 列表、CloudFront、Route 53、CloudFront 的 ACM 證書）
-  對每個帳戶從 `us-east-1` 執行一次，並帶有區域 `global`。
-- 當 `DescribeRegions` 失敗時，`cloud_bom_generator.py` 中的區域查詢會回退到四個區域。
-  `discovery/inventory.py` 使用另一份包含十四個區域的回退列表。
-- 對於已有內建範本的服務（S3、EC2、RDS、Lambda、VPC），服務描述檔案中自定義的 `description` 會被忽略。
-- 即使使用了 `--no-billing-validation`，`--enable-cost-analysis` 仍會呼叫 Cost Explorer。
-- 一個帳戶失敗並不會改變結束代碼。
-- 這些模組不在 CLI 的執行路徑上：`reporting/template_framework.py`、
-  `branding_system.py`、`word_builder.py`、`excel_builder.py`、
-  `document_generator.py` 和 `configuration_manager.py`。
+- `discovery/arn_utils.py` 是建置和比較 ARN 的唯一位置（`build_arn`、`normalize_arn`、
+  `ResourceArnIndex`）。`inventory.py` 和 `comprehensive_discovery.py` 都使用它。
+  來自 Resource Groups Tagging API 的標籤先按規範化後的 ARN 匹配，再按服務、區域和 ID 匹配。
+- 全域性服務（IAM、S3 列表、CloudFront、Route 53、用於 CloudFront 的 WAF、CloudFront 的 ACM 證書）
+  每個帳戶從該分割槽的主區域執行一次，區域為 `global`。
+- `discovery/inventory.py` 仍有一份包含十四個區域的靜態列表，只在庫呼叫方沒有給出區域時使用。
+- 即使使用 `--no-billing-validation`，`--enable-cost-analysis` 也會呼叫 Cost Explorer。
+- 一個帳戶失敗不會改變結束代碼，除非你傳入 `--fail-on-account-error`（結束代碼 5）。
+- 網路和安全分析在一次執行中會執行兩次（在 BOM 處理器和轉換器中），因此它的 AWS 呼叫也會發出兩次。
+- 這些模組不在 CLI 路徑上：`reporting/template_framework.py`、`branding_system.py`、
+  `word_builder.py`、`excel_builder.py`、`document_generator.py` 和 `configuration_manager.py`，
+  以及 `discovery/enhanced_readonly_discovery.py` 和 `discovery/inventory.py` 中無法到達的方法。
 
 較早的設計筆記已從儲存庫中刪除。請使用本站的頁面。

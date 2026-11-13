@@ -43,6 +43,22 @@ inventag_cli.py
 | `inventag/compliance/` | Clases de biblioteca para comprobaciones de etiquetas y seguridad; hoy la CLI casi no las usa | `checker.py` |
 | `inventag/security/` | La protección de solo lectura, la lista de políticas de IAM, la redacción de registros, los archivos de salida seguros | `read_only_guard.py`, `iam_policy.py` |
 
+## Módulos compartidos {#shared-modules}
+
+Cada uno de estos módulos es el único lugar que decide su tema. Cambia el
+comportamiento ahí, no en una copia.
+
+| Módulo | Decide |
+|---|---|
+| `inventag/exit_codes.py` | Los códigos de salida (0 a 6) |
+| `inventag/security/secret_values.py` | Qué valores de campo son secretos y pasan a ser `***REDACTED***` |
+| `inventag/discovery/regions.py` | Qué regiones analiza una ejecución y la región principal de cada partición |
+| `inventag/discovery/aws_clients.py` | Los ajustes de reintento de los clientes de AWS |
+| `inventag/discovery/coverage.py` | Cómo terminó cada llamada de listado, por servicio y región |
+| `inventag/reporting/settings_loader.py` | Cómo se leen y comprueban los archivos de ajustes |
+| `inventag/reporting/safe_save.py` | Escribir un informe en un archivo temporal y moverlo a su sitio |
+| `inventag/state/partial_results.py` | Guardar y reutilizar las cuentas terminadas para `--resume` |
+
 ## El diccionario de recurso {#the-resource-dictionary}
 
 Todo lo que ocurre entre el descubrimiento y la salida circula en diccionarios
@@ -61,29 +77,28 @@ exactamente la de antes.
 
 ## Carencias conocidas que merece la pena corregir {#known-gaps-worth-fixing}
 
-Están registradas en el [Estado de las funciones](../getting-started/status.md)
-y en la lista "Open work" de `CHANGELOG.md`. Cada una es una buena primera
-contribución:
+Los límites que ve el usuario están en el [Estado de las funciones](../getting-started/status.md).
+Estas son las carencias del código. Cada una es una buena primera contribución:
 
 - `discovery/arn_utils.py` es el único lugar que construye y compara ARN
   (`build_arn`, `normalize_arn`, `ResourceArnIndex`). `inventory.py` y
-  `comprehensive_discovery.py` lo usan los dos. Las etiquetas de la Resource
-  Groups Tagging API se asocian por ARN normalizado y, si no, por servicio,
-  región e ID.
-- Los servicios globales (IAM, la lista de S3, CloudFront, Route 53 y los
-  certificados de ACM de CloudFront) se ejecutan una vez por cuenta desde
-  `us-east-1` y llevan la región `global`.
-- La búsqueda de regiones de `cloud_bom_generator.py` recurre a cuatro regiones
-  cuando `DescribeRegions` falla. `discovery/inventory.py` tiene otra lista de
-  respaldo, de catorce.
-- Una `description` personalizada en un archivo de descripciones de servicios se
-  ignora para los servicios que tienen una plantilla integrada (S3, EC2, RDS,
-  Lambda, VPC).
+  `comprehensive_discovery.py` lo usan. Las etiquetas de la API Resource Groups
+  Tagging se emparejan por ARN normalizado y después por servicio, región e ID.
+- Los servicios globales (IAM, lista de S3, CloudFront, Route 53, WAF para
+  CloudFront, certificados de ACM de CloudFront) se ejecutan una vez por cuenta
+  desde la región principal de la partición y llevan la región `global`.
+- `discovery/inventory.py` todavía tiene una lista fija de catorce regiones, que
+  solo se usa cuando quien llama a la biblioteca no indica regiones.
 - `--enable-cost-analysis` llama a Cost Explorer incluso con
   `--no-billing-validation`.
-- Una cuenta fallida no cambia el código de salida.
-- Estos módulos no están en la ruta de la CLI: `reporting/template_framework.py`,
+- Una cuenta fallida no cambia el código de salida, salvo que pases
+  `--fail-on-account-error` (salida 5).
+- El análisis de red y de seguridad se ejecuta dos veces en una ejecución (en el
+  procesador de la BOM y en el conversor), así que sus llamadas a AWS se hacen dos veces.
+- Estos módulos no están en el recorrido de la CLI: `reporting/template_framework.py`,
   `branding_system.py`, `word_builder.py`, `excel_builder.py`,
-  `document_generator.py` y `configuration_manager.py`.
+  `document_generator.py` y `configuration_manager.py`, además de
+  `discovery/enhanced_readonly_discovery.py` y métodos inalcanzables de
+  `discovery/inventory.py`.
 
 Las notas de diseño antiguas se eliminaron del repositorio. Usa las páginas de este sitio.
