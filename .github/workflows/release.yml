@@ -23,6 +23,13 @@ on:
 permissions:
   contents: read
 
+# One release run at a time. A running release is never cancelled; GitHub keeps
+# only the newest queued run, which is enough because a release covers every
+# commit on main since the previous tag.
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
 jobs:
   check-for-release:
     name: Check if Release Needed
@@ -69,6 +76,14 @@ jobs:
           # Get the merged PR info from the commit message
           COMMIT_MSG=$(git log --format=%B -n 1 ${{ github.sha }})
           echo "Commit message: $COMMIT_MSG"
+
+          # An earlier run releases from the tip of main, so it may already have
+          # released this commit. Then there is nothing new to release.
+          RELEASED_IN=$(git tag --contains "${{ github.sha }}" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | head -n 1 || true)
+          if [ -n "$RELEASED_IN" ]; then
+            echo "This commit is already part of $RELEASED_IN - no release triggered"
+            exit 0
+          fi
           
           # [skip release] wins over everything else, merge commits included
           # (their message carries the PR title).
@@ -138,6 +153,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
+        # Release from the tip of main, not the event commit: a push that landed
+        # while this run was queued is included, and the bump commit fast-forwards.
+        ref: main
         fetch-depth: 0
         token: ${{ secrets.VERSION_BUMP_WORKFLOW }}
         persist-credentials: true
@@ -669,7 +687,9 @@ jobs:
           git add version.json inventag/_version.py
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}" -m "Automated version bump after release creation." -m "Previous version: ${{ steps.version.outputs.current_version }}" -m "New version: ${{ steps.version.outputs.new_version }}" -m "Bump type: ${{ needs.check-for-release.outputs.version_bump }}"
           
-          # Push directly to main using the VERSION_BUMP_WORKFLOW token
+          # Push directly to main using the VERSION_BUMP_WORKFLOW token. Rebase first
+          # in case a commit landed during this job; the next run then finds it released.
+          git pull --rebase origin main
           git push origin main
           echo "✅ Successfully pushed version bump to main"
         fi
