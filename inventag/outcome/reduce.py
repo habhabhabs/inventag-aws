@@ -27,6 +27,8 @@ Resource-scope issues never change a state: the rows are kept.
 
 from __future__ import annotations
 
+import builtins
+
 from typing import (
     Any,
     Dict,
@@ -104,7 +106,7 @@ def entry_category(entry: Any) -> Optional[Category]:
         return C.TIMEOUT
     code = _get(entry, "error_code", "") or ""
     if code:
-        by_class = category_for_class_name(code)
+        by_class = category_for_class_name(code) or _builtin_class_category(code)
         if by_class is not None:
             return by_class
         category = category_for_code(
@@ -118,6 +120,21 @@ def entry_category(entry: Any) -> Optional[Category]:
             return _OUTCOME_CATEGORY[outcome]
         return category
     return _OUTCOME_CATEGORY.get(outcome, C.SERVICE_ERROR)
+
+
+def _builtin_class_category(name: str) -> Optional[Category]:
+    """Category of a Python built-in exception known by name (ledger code)."""
+    klass = getattr(builtins, name, None)
+    if not (isinstance(klass, type) and issubclass(klass, BaseException)):
+        return None
+    if issubclass(klass, TimeoutError):
+        return C.TIMEOUT
+    if issubclass(klass, ConnectionError):
+        return C.NETWORK
+    if issubclass(klass, KeyboardInterrupt):
+        return C.CANCELLED
+    # A response shape InvenTag did not understand: a defect, shown (D7).
+    return C.INTERNAL_ERROR
 
 
 def entry_issue(entry: Any) -> Optional[Issue]:
