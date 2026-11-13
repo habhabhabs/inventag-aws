@@ -10,7 +10,7 @@ sidebar_position: 2
 
 **读完后你可以：** 运行 `inventag --help`，并确认 InvenTag 能连上你的 AWS 账户。
 
-## 你需要准备
+## 你需要准备 {#what-you-need}
 
 - **Python 3.11 或更高版本。** Python 3.10 自 2026 年 10 月起不再获得安全修复。
   用 `python3 --version` 查看你的版本。
@@ -19,7 +19,7 @@ sidebar_position: 2
   [AWS 命令行界面（AWS CLI）](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
   是可选的，但它是最简单的配置方式。
 
-## 用 pip 安装（推荐）
+## 用 pip 安装（推荐） {#install-with-pip-recommended}
 
 InvenTag 以
 [`inventag-aws`](https://pypi.org/project/inventag-aws/) 之名发布在 Python 包索引上。
@@ -46,7 +46,7 @@ inventag --help
 PATH 中，你无需激活任何环境。如果你的系统允许，直接把 `pip install inventag-aws`
 装到用户或系统 Python 中也可以。
 
-## 从源码安装
+## 从源码安装 {#install-from-source}
 
 如果你想用最新的未发布代码，或打算修改 InvenTag，请用这种方式。
 
@@ -67,7 +67,7 @@ inventag --help               # Windows: inventag --help
 `git checkout v1.0.2`。
 [发布页面](https://github.com/habhabhabs/inventag-aws/releases)列出了所有版本。
 
-## 连接你的 AWS 凭证
+## 连接你的 AWS 凭证 {#connect-your-aws-credentials}
 
 InvenTag 使用标准的 AWS 凭证链，因此以下任一方式都可以：
 
@@ -81,7 +81,7 @@ aws configure                           # long-lived access keys (avoid if you c
 请优先使用短期凭证，例如 IAM Identity Center 或代入的角色，
 而不是存放在磁盘上的访问密钥。
 
-## 检查是否可用
+## 检查是否可用 {#check-that-it-works}
 
 ```bash title="Terminal"
 inventag --validate-credentials --verbose
@@ -107,12 +107,12 @@ $ echo $?
 如果凭证不可用，InvenTag 会说明原因并给出修复建议。
 参见[解决常见问题](../guides/troubleshooting.md#credentials)。
 
-## 授予 InvenTag 只读权限
+## 授予 InvenTag 只读权限 {#give-inventag-read-only-permissions}
 
 在第一次真正扫描之前，请给该身份配置只读策略：
 [设置只读访问](../guides/read-only-access.md)。
 
-## 为开发而安装
+## 为开发而安装 {#install-for-development}
 
 ```bash title="Terminal"
 pip install -r requirements.txt -r requirements-dev.txt
@@ -121,7 +121,7 @@ python -m pytest -q
 
 [贡献指南](../development/CONTRIBUTING.md)介绍了完整的测试套件。
 
-## 解决安装问题
+## 解决安装问题 {#fix-install-problems}
 
 | 你看到的现象 | 怎么办 |
 |---|---|
@@ -130,6 +130,6 @@ python -m pytest -q
 | `ModuleNotFoundError` | 激活虚拟环境，再次运行 `pip install -r requirements.txt`。 |
 | `No AWS credentials found!` | 运行 `aws sso login` 或 `aws configure`，或设置 `AWS_PROFILE`。 |
 
-## 下一步
+## 下一步 {#next-step}
 
 [生成第一份报告](./quick-start.md)

@@ -685,7 +685,7 @@ a.it-search__hit:hover .it-search__hit-go {
   }
   /* with the menu hidden, keep the page centred between the same edges */
   main[class*='docMainContainerEnhanced'] > .container {
-    max-width: 76rem;
+    max-width: 90rem;
     margin-inline: auto;
   }
   .it-menubtn--rail {
@@ -792,4 +792,41 @@ a.it-search__hit:hover .it-search__hit-go {
 /* Page content must not show through the navbar while scrolling */
 .navbar {
   background: var(--it-bg);
+}
+
+/* Only the article body and code can be highlighted. Navigation, menus,
+   breadcrumbs, the table of contents, pager and footer stay unselectable so
+   a drag across the page selects the text a reader actually wants to copy. */
+.navbar,
+.footer,
+.theme-doc-sidebar-container,
+.theme-doc-toc-desktop,
+.theme-doc-toc-mobile,
+.theme-doc-breadcrumbs,
+.theme-doc-version-badge,
+.theme-doc-footer,
+.pagination-nav,
+.it-dsb,
+.it-menubtn,
+.it-related,
+.theme-edit-this-page,
+.theme-last-updated,
+.theme-doc-markdown .hash-link,
+button {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.theme-doc-markdown,
+.theme-doc-markdown pre,
+.theme-doc-markdown pre *,
+.theme-doc-markdown code,
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+/* Copy buttons inside code blocks are controls, not content. */
+.theme-doc-markdown button {
+  -webkit-user-select: none;
+  user-select: none;
 }

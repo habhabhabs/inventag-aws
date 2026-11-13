@@ -16,12 +16,12 @@ sidebar_position: 5
 **没有任何测试在真实的 AWS 账户上运行过。** 凡是下面某一点取决于真实 AWS 的行为，
 本页都会明说。如果你修复或改动了其中一项，请在同一个拉取请求中更新本页。
 
-## 测试了什么
+## 测试了什么 {#what-is-tested}
 
 每项功能都有针对模拟 AWS（moto）的离线测试。测试清单以及每个测试检查什么，
 见[测试](../security/tests.md)页面。
 
-## 有限制的参数
+## 有限制的参数 {#flags-with-a-limit}
 
 | 参数 | 实际会发生什么 |
 |---|---|
@@ -52,7 +52,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 (exit code 2)
 ```
 
-## InvenTag 能找到什么，不能找到什么
+## InvenTag 能找到什么，不能找到什么 {#what-inventag-finds-and-what-it-does-not}
 
 - **有自己发现代码的服务（24 种）：** VPC（VPC、子网、安全组、互联网网关和 NAT 网关、
   路由表、网络 ACL、弹性 IP 地址）、EC2（实例、卷、快照、密钥对）、S3、RDS、Lambda、
@@ -70,7 +70,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   如果该调用失败，它会记录一条警告，并且只扫描 `us-east-1`、`us-west-2`、`eu-west-1`
   和 `ap-southeast-1`。访问检查失败的区域会被跳过并给出警告，运行仍然成功。
 
-## 运行出错时
+## 运行出错时 {#when-a-run-goes-wrong}
 
 - **一个账户失败，其他账户正常：** 运行以退出码 0 结束。运行摘要和报告会列出每个失败的账户及原因。
   如果所有账户都失败，运行以退出码 1 结束。
@@ -96,7 +96,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 其他调用是免费的，但大型账户意味着请求很多，并可能遇到限流（AWS 放慢你的请求）。
 
-## 性能与限制
+## 性能与限制 {#performance-and-limits}
 
 - InvenTag 没有针对真实账户的基准数据。扫描大型账户的所有区域很慢：
   每个服务在每个区域各有一组调用。
@@ -105,7 +105,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - 运行保存快照时，InvenTag 会删除 `bom_output/state/` 中超过 30 天或超出最新 100 个的快照。
   如果需要更长的历史，请自行保留副本。
 
-## 安全说明
+## 安全说明 {#security-notes}
 
 - **无论如何都要使用只读 IAM 身份。** 防护会拦截写入调用，而你的 IAM（身份与访问管理）策略是第二道独立的保险。
   参见[设置只读访问](../guides/read-only-access.md)。
@@ -114,7 +114,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   `CredentialManager.setup_cross_account_roles()` 会创建 IAM 角色，
   S3 辅助工具可以修改存储桶的生命周期规则（默认关闭，并且会与现有规则合并）。
 
-## 测试与软件物料清单
+## 测试与软件物料清单 {#tests-and-the-software-bill-of-materials}
 
 测试套件和依赖清单有各自的页面：
 [测试](../security/tests.md)和

@@ -11,7 +11,7 @@ sidebar_position: 1
 **读完后你会了解：** 一次运行做了什么、它会改动什么（只有你磁盘上的文件），
 以及它的局限在哪里。
 
-## 三个问题，一份报告
+## 三个问题，一份报告 {#three-questions-one-report}
 
 InvenTag 回答关于你的 AWS 账户的三个问题：
 
@@ -23,7 +23,7 @@ InvenTag 回答关于你的 AWS 账户的三个问题：
 
 结果就是一份物料清单（BOM）：一个 Excel 工作簿、一个 Word 文档，或两者都有。
 
-## 一次运行如何进行
+## 一次运行如何进行 {#how-a-run-works}
 
 ```text
 your AWS credentials
@@ -50,7 +50,7 @@ your AWS credentials
 4. **输出。** 它把文件写入输出文件夹（默认为 `bom_output/`），
    并把快照写入 `bom_output/state/`。
 
-## 它会改动什么
+## 它会改动什么 {#what-it-changes}
 
 只有你磁盘上的文件。InvenTag 读取你的 AWS 账户，绝不会修改它们。
 
@@ -61,7 +61,7 @@ your AWS credentials
 仍然请给 InvenTag 使用只读的 IAM 身份。两道相互独立的保险胜过一道：
 [设置只读访问](../guides/read-only-access.md)。
 
-## 它不是什么
+## 它不是什么 {#what-it-is-not}
 
 - **不是合规工具。** InvenTag 可以收集证据，例如资源清单和标签覆盖率。
   它不评估也不认证对 SOC 2、PCI DSS、HIPAA、GDPR 或任何其他框架的合规性。
@@ -71,7 +71,7 @@ your AWS credentials
   而且从未在真实的 AWS 账户上测试过。
   [功能状态与已知限制](./status.md)列出了这些限制。
 
-## 下一步
+## 下一步 {#next-steps}
 
 - [安装 InvenTag](./installation.md)
 - [生成第一份报告](./quick-start.md)

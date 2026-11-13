@@ -109,7 +109,7 @@
   --it-code-line: #f7e4dd; /* highlighted line */
   --it-navbar-bg: rgb(249 248 246 / 0.86);
   --it-radius: 4px;
-  --it-grid-max: 1320px;
+  --it-grid-max: 1520px;
 
   --it-note: #575652;
   --it-tip: #2f6b3a;
@@ -712,10 +712,10 @@ button[class*='expandButton'] {
 }
 
 /* Docs column: wide enough for tables and code, while running text stays
-   at about 65-75 characters a line (Instrument Sans averages ~0.48em a
-   character, so 35em is ~72 characters). */
+   at about 75-85 characters a line (Instrument Sans averages ~0.48em a
+   character, so 41em is ~85 characters). */
 .theme-doc-markdown {
-  max-width: 52rem;
+  max-width: 58rem;
 }
 .markdown > p,
 .markdown > ul,
@@ -726,7 +726,7 @@ button[class*='expandButton'] {
 .markdown > .theme-admonition,
 .markdown > h1,
 .markdown > header {
-  max-width: 35em;
+  max-width: 41em;
 }
 @media (min-width: 997px) {
   .docMainContainer_TBSr,
