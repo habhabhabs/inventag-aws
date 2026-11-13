@@ -80,12 +80,15 @@ const config: Config = {
     locales: ['en'],
   },
 
+  // A fixed storage namespace keeps the theme key ('theme-inventag') stable for the headTags script below.
+  storage: {type: 'localStorage', namespace: 'inventag'},
+
   headTags: [
     {
       tagName: 'script',
       attributes: {},
       innerHTML:
-        "(function(){try{if(!localStorage.getItem('theme')){var d=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';localStorage.setItem('theme',d);document.documentElement.setAttribute('data-theme',d)}}catch(e){}})()",
+        "(function(){try{if(!localStorage.getItem('theme-inventag')){var d=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';localStorage.setItem('theme-inventag',d);document.documentElement.setAttribute('data-theme',d);document.documentElement.setAttribute('data-theme-choice',d)}}catch(e){}})()",
     },
     // favicon.ico comes from `favicon` above; these add the scalable and touch icons
     {tagName: 'link', attributes: {rel: 'icon', type: 'image/svg+xml', href: `${BASE_URL}img/favicon.svg`}},
