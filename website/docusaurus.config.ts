@@ -201,7 +201,9 @@ const config: Config = {
               badge: true,
               path: '/',
             },
-            ...Object.fromEntries(archivedVersions.map((v) => [v, {noIndex: true}])),
+            // Same "v" prefix as the current version. Translated sites take the label from
+            // i18n/<locale>/docusaurus-plugin-content-docs/version-X.Y.Z.json, which says "vX.Y.Z" too.
+            ...Object.fromEntries(archivedVersions.map((v) => [v, {label: `v${v}`, noIndex: true}])),
           },
         },
         blog: false,

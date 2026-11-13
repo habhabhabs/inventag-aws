@@ -89,7 +89,7 @@ for tag in $(git tag -l | grep -E "$PATTERN" | sort -V); do
   for cur in i18n/*/docusaurus-plugin-content-docs/current.json; do
     out="${cur%current.json}version-$v.json"
     [ -f "$out" ] || jq --arg v "$v" \
-      '{"version.label": {message: $v, description: "The label for version \($v)"}} + .' "$cur" > "$out"
+      '{"version.label": {message: "v\($v)", description: "The label for version \($v)"}} + .' "$cur" > "$out"
   done
   archived+=("$v")
 done
