@@ -29,6 +29,7 @@ actual.
 | [Informe ejecutivo de Word con tu marca](./branded-executive-report.md) | Un informe breve de Word en horizontal con tu logotipo y tus colores |
 | [Tus propias columnas](./custom-columns.md) | Un libro con exactamente las columnas que elijas, en una sola hoja |
 | [Subir informes a S3 de forma programada](./scheduled-s3-upload.md) | Informes cifrados en un bucket de S3 después de cada ejecución |
+| [Evidencia de etiquetas antes de una conversación sobre el alcance de SOC 2](./evidence-soc2.md) | Una lista de los recursos sin alcance, sistema, método de aprovisionamiento ni criticidad de SOC 2 registrados |
 
 Todos los ejemplos suponen que has [instalado InvenTag](../getting-started/installation.md)
 y que has iniciado sesión con una [identidad de solo lectura](../guides/read-only-access.md).

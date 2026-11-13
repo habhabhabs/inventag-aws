@@ -1,6 +1,6 @@
 ---
 title: Built-in templates
-description: The eight templates that ship with InvenTag - three report layouts, two tag policies and three run configurations - and what each one produces.
+description: The thirteen templates that ship with InvenTag - three report layouts, seven tag policies and three run configurations - and what each one produces.
 sidebar_position: 2
 ---
 
@@ -22,6 +22,11 @@ NAME                    KIND        SOURCE   DESCRIPTION
 executive-summary       report      builtin  Short Word report with totals and tag compliance; Excel has one filterable sheet.
 finops-cost-report      report      builtin  Standard layout with cost-allocation tag columns, checked against finops-cost-allocation.
 standard-bom            report      builtin  Summary plus one sheet per service, with readable columns and every tag as a column.
+evidence-gdpr           tag-policy  builtin  Tag evidence for resources that may hold personal data: personal-data type, processing-record reference, data residency, retention. Checks tag evidence only; certifies nothing.
+evidence-hipaa          tag-policy  builtin  Tag evidence for resources that may hold protected health information: PHI flag, classification, retention period. Checks tag evidence only; certifies nothing.
+evidence-pci-dss        tag-policy  builtin  Tag evidence for cardholder-data scoping: PCI scope and how the resource handles card data. Checks tag evidence only; certifies nothing.
+evidence-pdpa           tag-policy  builtin  Tag evidence for resources that may hold personal data: personal-data flag, purpose, retention, location. Checks tag evidence only; certifies nothing.
+evidence-soc2           tag-policy  builtin  Tag evidence for SOC 2 scoping conversations: scope, system, provisioning method, criticality. Checks tag evidence only; certifies nothing.
 finops-cost-allocation  tag-policy  builtin  Requires CostCenter, Owner, Project and Environment so spend can be allocated.
 security-baseline       tag-policy  builtin  Requires Owner, Environment and DataClassification for security reviews.
 ci-pipeline             config      builtin  Excel report plus tag-compliance JSON; exits with code 3 on tag policy violations.
@@ -257,6 +262,168 @@ this, how sensitive is it, and is it production?
 KMS aliases are out of scope. Passing this policy does not make anything
 compliant with any security framework; it only tells you whether these tags
 are present and valid.
+
+### Tag evidence templates
+
+These five templates start from `security-baseline` and add the tags that
+support a conversation about SOC 2, HIPAA, PCI DSS, GDPR or PDPA. Each one
+answers a plain question about your tags: which resources have no record of
+the thing the template asks about?
+
+They check tag evidence only. Tag values are stated by the resource owner and
+InvenTag does not verify them. A passing result does not mean the account
+meets SOC 2, HIPAA, PCI DSS, GDPR or PDPA.
+
+Things that are true for all five:
+
+- Each template adds tags to the three that `security-baseline` already
+  checks (`Owner`, `Environment`, `DataClassification`), unless the entry
+  says it changes one of them.
+- Allowed values match in any case. Patterns (the retention period, the
+  processing record ID) match in the exact case, so `7y` passes and `7Y`
+  does not.
+- A run uses one tag-policy template. To check two frameworks, run twice, or
+  write your own template that combines the tags.
+- There are no "only if" rules. A tag that does not apply still needs a value;
+  the entries below say which value to use.
+- The scope list belongs to the whole template, so a template that narrows
+  the types also narrows the inherited `Owner`, `Environment` and
+  `DataClassification` checks to those types. Resources of other types are
+  counted as out of scope.
+
+### `evidence-soc2`
+
+:::note
+
+Checks tag evidence only; certifies nothing. Passing does not mean the account meets SOC 2.
+
+:::
+
+**The tags answer:** which system is this, does its owner treat it as in scope,
+how was it provisioned, and how critical is it?
+
+| Tag key | Rule |
+|---|---|
+| `Soc2Scope` | One of `in-scope`, `out-of-scope` |
+| `SystemName` | Any text that is not empty |
+| `ManagedBy` | One of `terraform`, `cloudformation`, `cdk`, `manual`, `other`. Use `other` for any method not listed. |
+| `Criticality` | One of `high`, `medium`, `low` |
+
+Scope: every resource type except KMS aliases. Default VPC resources
+(subnets, route tables, network ACLs) therefore show up as gaps until you tag
+them or narrow the scope.
+
+| Can show | Cannot show |
+|---|---|
+| Which resources have no recorded scope, system, provisioning method or criticality. Which resources the owner marked out of scope. | That the scope is right. That any control exists or works. That `ManagedBy` is true (compare it with the `aws:cloudformation:*` system tags yourself). Anything an auditor would test. |
+
+### `evidence-hipaa`
+
+:::note
+
+Checks tag evidence only; certifies nothing. Passing does not mean the account meets HIPAA.
+
+:::
+
+**The tags answer:** does the owner say this holds protected health
+information (PHI), what is its classification, and how long is it kept?
+
+| Tag key | Rule |
+|---|---|
+| `PHI` | One of `yes`, `no` |
+| `DataClassification` | One of `public`, `internal`, `confidential`, `restricted`, `phi`. This replaces the baseline rule and adds `phi`. |
+| `RetentionPeriod` | A number followed by `d` or `y` (days or years), or `indefinite`: `30d`, `7y` |
+
+Scope: `Bucket`, `DBInstance`, `DBCluster`, `Table`, `Volume`, `Snapshot`,
+`Queue`, `Topic` and `Stream` resources. EFS, Redshift and OpenSearch are not
+in the list; copy the list into your own template to add types.
+
+| Can show | Cannot show |
+|---|---|
+| Data-holding resources with no PHI flag, no classification or no retention value. | Whether a resource marked `PHI=no` really holds no PHI. Encryption, access control, agreements with vendors, logging. `PHI` and `DataClassification=phi` can disagree and InvenTag cannot cross-check them. Resource types outside the scope list. |
+
+A resource tagged `DataClassification=phi` fails `security-baseline` and the
+other templates, because they do not list `phi`.
+
+### `evidence-pci-dss`
+
+:::note
+
+Checks tag evidence only; certifies nothing. Passing does not mean the account meets PCI DSS.
+
+:::
+
+**The tags answer:** does the owner place this resource in the cardholder data
+environment, connected to it or outside it, and what does it do with card data?
+
+| Tag key | Rule |
+|---|---|
+| `PciScope` | One of `cde`, `connected`, `out-of-scope` |
+| `CardholderData` | One of `stores`, `processes`, `transmits`, `none`. One value only: if more than one applies, pick the main one. |
+
+Scope: `Bucket`, `DBInstance`, `DBCluster`, `Table`, `Volume`, `Snapshot`,
+`Queue`, `Topic`, `Instance`, `LoadBalancer`, `SecurityGroup`, `Subnet` and
+`VPC` resources.
+
+| Can show | Cannot show |
+|---|---|
+| Resources of the listed types with no scope or card-data handling recorded. | Whether segmentation holds. What is actually reachable. Whether a `none` is true. A resource that stores and transmits card data can carry only one `CardholderData` value. |
+
+### `evidence-gdpr`
+
+:::note
+
+Checks tag evidence only; certifies nothing. Passing does not mean the account meets GDPR.
+
+:::
+
+**The tags answer:** is there personal data, which entry of your own record of
+processing covers it, where is it kept, and for how long?
+
+| Tag key | Rule |
+|---|---|
+| `PersonalData` | One of `none`, `personal`, `special-category` |
+| `ProcessingRecord` | 1 to 64 letters, digits, `.`, `_` or `-`. Use `none` if `PersonalData` is `none`. The pattern checks the shape of the ID only; change it to your own ID format. |
+| `DataResidency` | One of `eu`, `uk`, `other` |
+| `RetentionPeriod` | A number followed by `d` or `y`, or `indefinite`: `30d`, `7y` |
+
+Scope: `Bucket`, `DBInstance`, `DBCluster`, `Table`, `Volume`, `Snapshot`,
+`Queue`, `Topic` and `Stream` resources.
+
+| Can show | Cannot show |
+|---|---|
+| Data-holding resources that are missing one of those four tags. | The lawful basis. Whether the record entry exists. Whether `DataResidency` matches the real region (the report has a region column, but InvenTag cannot compare it with the tag). Transfers. How requests from people are handled. |
+
+A resource with `PersonalData=none` must still carry `ProcessingRecord`, with
+the value `none`.
+
+### `evidence-pdpa`
+
+:::note
+
+Checks tag evidence only; certifies nothing. Passing does not mean the account meets PDPA.
+
+:::
+
+**The tags answer:** is there personal data, what purpose does the owner state,
+how long is it kept, and is it in Singapore or overseas?
+
+| Tag key | Rule |
+|---|---|
+| `PersonalData` | One of `none`, `personal`, `special-category` (the same values as `evidence-gdpr`) |
+| `Purpose` | Any text that is not empty |
+| `RetentionPeriod` | A number followed by `d` or `y`, or `indefinite`: `30d`, `7y` |
+| `DataLocation` | One of `sg`, `overseas` |
+
+Scope: `Bucket`, `DBInstance`, `DBCluster`, `Table`, `Volume`, `Snapshot`,
+`Queue`, `Topic` and `Stream` resources.
+
+| Can show | Cannot show |
+|---|---|
+| Data-holding resources that are missing those tags or have a value outside the list. | Whether the stated purpose is valid. Consent. Whether `sg` is true. Who can access the data. |
+
+For a worked example, see
+[Check tag evidence before a SOC 2 scoping conversation](../examples/evidence-soc2.md).
 
 ## Config templates
 

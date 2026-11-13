@@ -84,6 +84,9 @@ export const RELATED: Record<string, {ids: string[]; icons?: string[]}> = {
   'examples/tag-policy-in-ci': {
     ids: ['guides/check-tag-compliance', 'guides/run-in-ci', 'examples/finops-cost-allocation'],
   },
+  'examples/evidence-soc2': {
+    ids: ['templates/catalogue', 'guides/check-tag-compliance', 'examples/tag-policy-in-ci'],
+  },
   'examples/finops-cost-allocation': {
     ids: ['guides/check-tag-compliance', 'examples/security-review', 'examples/custom-columns'],
   },

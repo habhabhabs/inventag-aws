@@ -1,6 +1,6 @@
 ---
 title: 內建範本
-description: InvenTag 自帶的八個範本（三種報告版面配置、兩個標籤策略和三種執行設定），以及每個範本會生成什麼。
+description: InvenTag 自帶的十三個範本（三種報告版面配置、七個標籤策略和三種執行設定），以及每個範本會生成什麼。
 sidebar_position: 2
 ---
 
@@ -18,6 +18,11 @@ NAME                    KIND        SOURCE   DESCRIPTION
 executive-summary       report      builtin  Short Word report with totals and tag compliance; Excel has one filterable sheet.
 finops-cost-report      report      builtin  Standard layout with cost-allocation tag columns, checked against finops-cost-allocation.
 standard-bom            report      builtin  Summary plus one sheet per service, with readable columns and every tag as a column.
+evidence-gdpr           tag-policy  builtin  Tag evidence for resources that may hold personal data: personal-data type, processing-record reference, data residency, retention. Checks tag evidence only; certifies nothing.
+evidence-hipaa          tag-policy  builtin  Tag evidence for resources that may hold protected health information: PHI flag, classification, retention period. Checks tag evidence only; certifies nothing.
+evidence-pci-dss        tag-policy  builtin  Tag evidence for cardholder-data scoping: PCI scope and how the resource handles card data. Checks tag evidence only; certifies nothing.
+evidence-pdpa           tag-policy  builtin  Tag evidence for resources that may hold personal data: personal-data flag, purpose, retention, location. Checks tag evidence only; certifies nothing.
+evidence-soc2           tag-policy  builtin  Tag evidence for SOC 2 scoping conversations: scope, system, provisioning method, criticality. Checks tag evidence only; certifies nothing.
 finops-cost-allocation  tag-policy  builtin  Requires CostCenter, Owner, Project and Environment so spend can be allocated.
 security-baseline       tag-policy  builtin  Requires Owner, Environment and DataClassification for security reviews.
 ci-pipeline             config      builtin  Excel report plus tag-compliance JSON; exits with code 3 on tag policy violations.
@@ -209,6 +214,146 @@ KMS 別名不在範圍內，因為別名無法攜帶標籤。
 | `DataClassification` | `public`、`internal`、`confidential`、`restricted` 之一（不區分大小寫） |
 
 KMS 別名不在範圍內。透過此策略並不意味著符合任何安全框架；它只告訴你這些標籤是否存在且有效。
+
+### 標籤證據範本 {#tag-evidence-templates}
+
+這五個範本以 `security-baseline` 為起點，並加入了支援 SOC 2、HIPAA、PCI DSS、GDPR 或 PDPA 相關討論的標籤。
+每個範本都圍繞你的標籤回答一個樸素的問題：哪些資源沒有記錄範本所問的那件事？
+
+它們只檢查標籤證據。標籤值由資源所有者自行填寫，InvenTag 不會核實。檢查透過並不代表帳戶滿足
+SOC 2、HIPAA、PCI DSS、GDPR 或 PDPA。
+
+五個範本都適用的事項：
+
+- 每個範本都在 `security-baseline` 已檢查的三個標籤（`Owner`、`Environment`、`DataClassification`）之上再加標籤，
+  除非條目中說明它改動了其中某一個。
+- 允許的值不區分大小寫。模式（保留期限、處理記錄 ID）按原樣區分大小寫，所以 `7y` 透過，`7Y` 不透過。
+- 一次執行只使用一個標籤策略範本。要檢查兩個框架，請執行兩次，或自己編寫一個合併這些標籤的範本。
+- 沒有「僅當」規則。不適用的標籤仍然需要一個值；下面的條目會說明應填什麼值。
+- 範圍列表屬於整個範本，所以縮小型別的範本也會把繼承來的 `Owner`、`Environment` 和 `DataClassification` 檢查縮小到這些型別。
+  其他型別的資源會被計為範圍之外。
+
+### `evidence-soc2` {#evidence-soc2}
+
+:::note
+
+只檢查標籤證據，不證明任何事情。檢查透過並不代表帳戶滿足 SOC 2。
+
+:::
+
+**這些標籤回答：** 這是哪個系統、其所有者是否把它視為在範圍內、它是如何建立的、它有多關鍵？
+
+| 標籤鍵 | 規則 |
+|---|---|
+| `Soc2Scope` | `in-scope`、`out-of-scope` 之一 |
+| `SystemName` | 任意非空文字 |
+| `ManagedBy` | `terraform`、`cloudformation`、`cdk`、`manual`、`other` 之一。列表中沒有的方式請用 `other`。 |
+| `Criticality` | `high`、`medium`、`low` 之一 |
+
+範圍：除 KMS 別名之外的所有資源型別。因此預設 VPC 的資源（子網、路由表、網路 ACL）會顯示為缺口，
+直到你給它們打上標籤或縮小範圍。
+
+| 可以顯示 | 不能顯示 |
+|---|---|
+| 哪些資源沒有記錄範圍、系統、建立方式或關鍵程度。哪些資源被所有者標為範圍之外。 | 範圍是否正確。是否存在任何控制措施或它是否有效。`ManagedBy` 是否屬實（請自行與 `aws:cloudformation:*` 系統標籤比對）。審計人員會測試的任何內容。 |
+
+### `evidence-hipaa` {#evidence-hipaa}
+
+:::note
+
+只檢查標籤證據，不證明任何事情。檢查透過並不代表帳戶滿足 HIPAA。
+
+:::
+
+**這些標籤回答：** 所有者是否表示這裡存放受保護的健康資訊（PHI）、它的分類是什麼、保留多久？
+
+| 標籤鍵 | 規則 |
+|---|---|
+| `PHI` | `yes`、`no` 之一 |
+| `DataClassification` | `public`、`internal`、`confidential`、`restricted`、`phi` 之一。它取代基線規則並加入 `phi`。 |
+| `RetentionPeriod` | 數字後接 `d` 或 `y`（天或年），或 `indefinite`：`30d`、`7y` |
+
+範圍：`Bucket`、`DBInstance`、`DBCluster`、`Table`、`Volume`、`Snapshot`、`Queue`、`Topic` 和 `Stream` 資源。
+EFS、Redshift 和 OpenSearch 不在列表中；如需加入型別，請把該列表複製到你自己的範本中。
+
+| 可以顯示 | 不能顯示 |
+|---|---|
+| 沒有 PHI 標記、沒有分類或沒有保留值的存放資料的資源。 | 標為 `PHI=no` 的資源是否真的不含 PHI。加密、存取控制、與供應商的協議、日誌。`PHI` 與 `DataClassification=phi` 可能互相矛盾，InvenTag 無法交叉核對。範圍列表之外的資源型別。 |
+
+帶有 `DataClassification=phi` 的資源無法透過 `security-baseline` 和其他範本，因為它們的列表中沒有 `phi`。
+
+### `evidence-pci-dss` {#evidence-pci-dss}
+
+:::note
+
+只檢查標籤證據，不證明任何事情。檢查透過並不代表帳戶滿足 PCI DSS。
+
+:::
+
+**這些標籤回答：** 所有者是把這個資源放在持卡人資料環境內、與之相連，還是在其外？它對持卡人資料做什麼？
+
+| 標籤鍵 | 規則 |
+|---|---|
+| `PciScope` | `cde`、`connected`、`out-of-scope` 之一 |
+| `CardholderData` | `stores`、`processes`、`transmits`、`none` 之一。只能填一個值：如果有多種情況，請選主要的一個。 |
+
+範圍：`Bucket`、`DBInstance`、`DBCluster`、`Table`、`Volume`、`Snapshot`、`Queue`、`Topic`、`Instance`、
+`LoadBalancer`、`SecurityGroup`、`Subnet` 和 `VPC` 資源。
+
+| 可以顯示 | 不能顯示 |
+|---|---|
+| 所欄型別中沒有記錄範圍或持卡人資料處理方式的資源。 | 網路分段是否有效。實際能存取到什麼。`none` 是否屬實。既儲存又傳輸持卡人資料的資源只能帶一個 `CardholderData` 值。 |
+
+### `evidence-gdpr` {#evidence-gdpr}
+
+:::note
+
+只檢查標籤證據，不證明任何事情。檢查透過並不代表帳戶滿足 GDPR。
+
+:::
+
+**這些標籤回答：** 是否有個人資料、你自己的處理活動記錄中的哪一條涵蓋它、它存放在哪裡、保留多久？
+
+| 標籤鍵 | 規則 |
+|---|---|
+| `PersonalData` | `none`、`personal`、`special-category` 之一 |
+| `ProcessingRecord` | 1 到 64 個字母、數字、`.`、`_` 或 `-`。如果 `PersonalData` 是 `none`，請填 `none`。該模式只檢查 ID 的形式；請改成你自己的 ID 格式。 |
+| `DataResidency` | `eu`、`uk`、`other` 之一 |
+| `RetentionPeriod` | 數字後接 `d` 或 `y`，或 `indefinite`：`30d`、`7y` |
+
+範圍：`Bucket`、`DBInstance`、`DBCluster`、`Table`、`Volume`、`Snapshot`、`Queue`、`Topic` 和 `Stream` 資源。
+
+| 可以顯示 | 不能顯示 |
+|---|---|
+| 缺少這四個標籤中任何一個的存放資料的資源。 | 合法性依據。記錄條目是否存在。`DataResidency` 是否與真實區域一致（報告有區域欄，但 InvenTag 無法把它與標籤比較）。跨境傳輸。對個人請求的處理方式。 |
+
+`PersonalData=none` 的資源仍然必須帶有 `ProcessingRecord`，值為 `none`。
+
+### `evidence-pdpa` {#evidence-pdpa}
+
+:::note
+
+只檢查標籤證據，不證明任何事情。檢查透過並不代表帳戶滿足 PDPA。
+
+:::
+
+**這些標籤回答：** 是否有個人資料、所有者宣告的用途是什麼、保留多久、在新加坡還是在境外？
+
+| 標籤鍵 | 規則 |
+|---|---|
+| `PersonalData` | `none`、`personal`、`special-category` 之一（與 `evidence-gdpr` 的值相同） |
+| `Purpose` | 任意非空文字 |
+| `RetentionPeriod` | 數字後接 `d` 或 `y`，或 `indefinite`：`30d`、`7y` |
+| `DataLocation` | `sg`、`overseas` 之一 |
+
+範圍：`Bucket`、`DBInstance`、`DBCluster`、`Table`、`Volume`、`Snapshot`、`Queue`、`Topic` 和 `Stream` 資源。
+
+| 可以顯示 | 不能顯示 |
+|---|---|
+| 缺少這些標籤或值不在列表中的存放資料的資源。 | 所宣告的用途是否有效。同意。`sg` 是否屬實。誰可以存取這些資料。 |
+
+完整範例見
+[範例：在 SOC 2 範圍討論之前檢查標籤證據](../examples/evidence-soc2.md)。
 
 ## config 範本 {#config-templates}
 

@@ -1,6 +1,6 @@
 ---
 title: Plantillas integradas
-description: Las ocho plantillas que incluye InvenTag (tres diseños de informe, dos políticas de etiquetas y tres configuraciones de ejecución) y qué produce cada una.
+description: Las trece plantillas que incluye InvenTag (tres diseños de informe, siete políticas de etiquetas y tres configuraciones de ejecución) y qué produce cada una.
 sidebar_position: 2
 ---
 
@@ -20,6 +20,11 @@ NAME                    KIND        SOURCE   DESCRIPTION
 executive-summary       report      builtin  Short Word report with totals and tag compliance; Excel has one filterable sheet.
 finops-cost-report      report      builtin  Standard layout with cost-allocation tag columns, checked against finops-cost-allocation.
 standard-bom            report      builtin  Summary plus one sheet per service, with readable columns and every tag as a column.
+evidence-gdpr           tag-policy  builtin  Tag evidence for resources that may hold personal data: personal-data type, processing-record reference, data residency, retention. Checks tag evidence only; certifies nothing.
+evidence-hipaa          tag-policy  builtin  Tag evidence for resources that may hold protected health information: PHI flag, classification, retention period. Checks tag evidence only; certifies nothing.
+evidence-pci-dss        tag-policy  builtin  Tag evidence for cardholder-data scoping: PCI scope and how the resource handles card data. Checks tag evidence only; certifies nothing.
+evidence-pdpa           tag-policy  builtin  Tag evidence for resources that may hold personal data: personal-data flag, purpose, retention, location. Checks tag evidence only; certifies nothing.
+evidence-soc2           tag-policy  builtin  Tag evidence for SOC 2 scoping conversations: scope, system, provisioning method, criticality. Checks tag evidence only; certifies nothing.
 finops-cost-allocation  tag-policy  builtin  Requires CostCenter, Owner, Project and Environment so spend can be allocated.
 security-baseline       tag-policy  builtin  Requires Owner, Environment and DataClassification for security reviews.
 ci-pipeline             config      builtin  Excel report plus tag-compliance JSON; exits with code 3 on tag policy violations.
@@ -220,6 +225,172 @@ producción.
 Los alias de KMS quedan fuera del alcance. Superar esta política no hace que
 nada cumpla ningún marco de seguridad; solo te dice si estas etiquetas están
 presentes y son válidas.
+
+### Plantillas de evidencia de etiquetas {#tag-evidence-templates}
+
+Estas cinco plantillas parten de `security-baseline` y añaden las etiquetas que
+apoyan una conversación sobre SOC 2, HIPAA, PCI DSS, GDPR o PDPA. Cada una
+responde a una pregunta sencilla sobre tus etiquetas: ¿qué recursos no tienen
+registrado aquello que pregunta la plantilla?
+
+Solo comprueban la evidencia de las etiquetas. Los valores de las etiquetas los
+declara el propietario del recurso y InvenTag no los verifica. Un resultado
+correcto no significa que la cuenta cumpla SOC 2, HIPAA, PCI DSS, GDPR o PDPA.
+
+Lo que es cierto en las cinco:
+
+- Cada plantilla añade etiquetas a las tres que `security-baseline` ya
+  comprueba (`Owner`, `Environment`, `DataClassification`), salvo que la
+  entrada diga que cambia alguna.
+- Los valores permitidos se comparan sin distinguir mayúsculas. Los patrones
+  (el periodo de retención, el ID del registro de tratamiento) distinguen
+  mayúsculas, así que `7y` pasa y `7Y` no.
+- Una ejecución usa una sola plantilla de política de etiquetas. Para
+  comprobar dos marcos, ejecuta dos veces o escribe tu propia plantilla que
+  combine las etiquetas.
+- No hay reglas «solo si». Una etiqueta que no se aplica sigue necesitando un
+  valor; las entradas siguientes indican cuál usar.
+- La lista de alcance pertenece a toda la plantilla, así que una plantilla que
+  reduce los tipos también reduce a esos tipos las comprobaciones heredadas de
+  `Owner`, `Environment` y `DataClassification`. Los recursos de otros tipos
+  se cuentan como fuera del alcance.
+
+### `evidence-soc2` {#evidence-soc2}
+
+:::note
+
+Solo comprueba la evidencia de las etiquetas; no certifica nada. Superarla no significa que la cuenta cumpla SOC 2.
+
+:::
+
+**Las etiquetas responden:** ¿de qué sistema es este recurso, su propietario lo
+considera dentro del alcance, cómo se aprovisionó y qué criticidad tiene?
+
+| Clave de etiqueta | Regla |
+|---|---|
+| `Soc2Scope` | Uno de `in-scope`, `out-of-scope` |
+| `SystemName` | Cualquier texto que no esté vacío |
+| `ManagedBy` | Uno de `terraform`, `cloudformation`, `cdk`, `manual`, `other`. Usa `other` para cualquier método que no figure. |
+| `Criticality` | Uno de `high`, `medium`, `low` |
+
+Alcance: todos los tipos de recurso salvo los alias de KMS. Por eso los
+recursos de la VPC predeterminada (subredes, tablas de rutas, ACL de red)
+aparecen como carencias hasta que los etiquetes o reduzcas el alcance.
+
+| Puede mostrar | No puede mostrar |
+|---|---|
+| Qué recursos no tienen registrado el alcance, el sistema, el método de aprovisionamiento o la criticidad. Qué recursos marcó el propietario como fuera del alcance. | Que el alcance sea correcto. Que exista algún control o que funcione. Que `ManagedBy` sea verdad (compáralo tú con las etiquetas de sistema `aws:cloudformation:*`). Nada de lo que probaría un auditor. |
+
+### `evidence-hipaa` {#evidence-hipaa}
+
+:::note
+
+Solo comprueba la evidencia de las etiquetas; no certifica nada. Superarla no significa que la cuenta cumpla HIPAA.
+
+:::
+
+**Las etiquetas responden:** ¿el propietario dice que este recurso contiene
+información de salud protegida (PHI), qué clasificación tiene y cuánto tiempo
+se conserva?
+
+| Clave de etiqueta | Regla |
+|---|---|
+| `PHI` | Uno de `yes`, `no` |
+| `DataClassification` | Uno de `public`, `internal`, `confidential`, `restricted`, `phi`. Sustituye a la regla de la base y añade `phi`. |
+| `RetentionPeriod` | Un número seguido de `d` o `y` (días o años), o `indefinite`: `30d`, `7y` |
+
+Alcance: recursos `Bucket`, `DBInstance`, `DBCluster`, `Table`, `Volume`,
+`Snapshot`, `Queue`, `Topic` y `Stream`. EFS, Redshift y OpenSearch no están en
+la lista; copia la lista en tu propia plantilla para añadir tipos.
+
+| Puede mostrar | No puede mostrar |
+|---|---|
+| Recursos que contienen datos y no tienen indicador de PHI, clasificación o valor de retención. | Si un recurso marcado con `PHI=no` de verdad no contiene PHI. Cifrado, control de acceso, acuerdos con proveedores, registros. `PHI` y `DataClassification=phi` pueden contradecirse y InvenTag no puede cruzarlos. Los tipos de recurso que no están en la lista de alcance. |
+
+Un recurso con `DataClassification=phi` no pasa `security-baseline` ni las
+demás plantillas, porque no incluyen `phi`.
+
+### `evidence-pci-dss` {#evidence-pci-dss}
+
+:::note
+
+Solo comprueba la evidencia de las etiquetas; no certifica nada. Superarla no significa que la cuenta cumpla PCI DSS.
+
+:::
+
+**Las etiquetas responden:** ¿el propietario sitúa este recurso en el entorno de
+datos del titular de la tarjeta, conectado a él o fuera de él, y qué hace con
+los datos de tarjeta?
+
+| Clave de etiqueta | Regla |
+|---|---|
+| `PciScope` | Uno de `cde`, `connected`, `out-of-scope` |
+| `CardholderData` | Uno de `stores`, `processes`, `transmits`, `none`. Un solo valor: si se aplica más de uno, elige el principal. |
+
+Alcance: recursos `Bucket`, `DBInstance`, `DBCluster`, `Table`, `Volume`,
+`Snapshot`, `Queue`, `Topic`, `Instance`, `LoadBalancer`, `SecurityGroup`,
+`Subnet` y `VPC`.
+
+| Puede mostrar | No puede mostrar |
+|---|---|
+| Recursos de los tipos indicados sin alcance ni tratamiento de datos de tarjeta registrados. | Si la segmentación se mantiene. Qué es realmente accesible. Si un `none` es cierto. Un recurso que almacena y transmite datos de tarjeta solo puede llevar un valor de `CardholderData`. |
+
+### `evidence-gdpr` {#evidence-gdpr}
+
+:::note
+
+Solo comprueba la evidencia de las etiquetas; no certifica nada. Superarla no significa que la cuenta cumpla GDPR.
+
+:::
+
+**Las etiquetas responden:** ¿hay datos personales, qué entrada de tu propio
+registro de actividades de tratamiento los cubre, dónde se guardan y durante
+cuánto tiempo?
+
+| Clave de etiqueta | Regla |
+|---|---|
+| `PersonalData` | Uno de `none`, `personal`, `special-category` |
+| `ProcessingRecord` | De 1 a 64 letras, dígitos, `.`, `_` o `-`. Usa `none` si `PersonalData` es `none`. El patrón solo comprueba la forma del ID; cámbialo por tu propio formato. |
+| `DataResidency` | Uno de `eu`, `uk`, `other` |
+| `RetentionPeriod` | Un número seguido de `d` o `y`, o `indefinite`: `30d`, `7y` |
+
+Alcance: recursos `Bucket`, `DBInstance`, `DBCluster`, `Table`, `Volume`,
+`Snapshot`, `Queue`, `Topic` y `Stream`.
+
+| Puede mostrar | No puede mostrar |
+|---|---|
+| Recursos que contienen datos y les falta alguna de esas cuatro etiquetas. | La base jurídica. Si existe la entrada del registro. Si `DataResidency` coincide con la región real (el informe tiene una columna de región, pero InvenTag no puede compararla con la etiqueta). Transferencias. Cómo se atienden las solicitudes de las personas. |
+
+Un recurso con `PersonalData=none` debe llevar igualmente `ProcessingRecord`,
+con el valor `none`.
+
+### `evidence-pdpa` {#evidence-pdpa}
+
+:::note
+
+Solo comprueba la evidencia de las etiquetas; no certifica nada. Superarla no significa que la cuenta cumpla PDPA.
+
+:::
+
+**Las etiquetas responden:** ¿hay datos personales, qué finalidad declara el
+propietario, cuánto tiempo se conservan y están en Singapur o en el extranjero?
+
+| Clave de etiqueta | Regla |
+|---|---|
+| `PersonalData` | Uno de `none`, `personal`, `special-category` (los mismos valores que `evidence-gdpr`) |
+| `Purpose` | Cualquier texto que no esté vacío |
+| `RetentionPeriod` | Un número seguido de `d` o `y`, o `indefinite`: `30d`, `7y` |
+| `DataLocation` | Uno de `sg`, `overseas` |
+
+Alcance: recursos `Bucket`, `DBInstance`, `DBCluster`, `Table`, `Volume`,
+`Snapshot`, `Queue`, `Topic` y `Stream`.
+
+| Puede mostrar | No puede mostrar |
+|---|---|
+| Recursos que contienen datos y les faltan esas etiquetas o tienen un valor fuera de la lista. | Si la finalidad declarada es válida. El consentimiento. Si `sg` es cierto. Quién puede acceder a los datos. |
+
+Para ver un ejemplo completo, consulta
+[Ejemplo: comprobar la evidencia de etiquetas antes de una conversación sobre el alcance de SOC 2](../examples/evidence-soc2.md).
 
 ## Plantillas de configuración {#config-templates}
 

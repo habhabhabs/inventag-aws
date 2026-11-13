@@ -24,6 +24,7 @@ sidebar_position: 1
 | [带品牌标识的高管 Word 报告](./branded-executive-report.md) | 带有你的徽标和颜色的简短横向 Word 报告 |
 | [自定义列](./custom-columns.md) | 只包含你所选列、且在同一个工作表上的工作簿 |
 | [按计划将报告上传到 S3](./scheduled-s3-upload.md) | 每次运行后，S3 存储桶中都有加密的报告 |
+| [在 SOC 2 范围讨论之前检查标签证据](./evidence-soc2.md) | 一份列表，列出没有记录 SOC 2 范围、系统、创建方式或关键程度的资源 |
 
 所有示例都假定你已经[安装了 InvenTag](../getting-started/installation.md)，
 并使用[只读身份](../guides/read-only-access.md)登录。

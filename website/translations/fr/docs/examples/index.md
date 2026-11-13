@@ -29,6 +29,7 @@ code actuel.
 | [Rapport Word de direction à votre image](./branded-executive-report.md) | Un court rapport Word en paysage avec votre logo et vos couleurs |
 | [Vos propres colonnes](./custom-columns.md) | Un classeur avec exactement les colonnes de votre choix, sur une seule feuille |
 | [Envoyer les rapports vers S3 selon un calendrier](./scheduled-s3-upload.md) | Des rapports chiffrés dans un bucket S3 après chaque exécution |
+| [Preuves par les étiquettes avant une discussion sur le périmètre SOC 2](./evidence-soc2.md) | La liste des ressources sans périmètre, système, méthode de provisionnement ni criticité SOC 2 enregistrés |
 
 Tous les exemples supposent que vous avez [installé InvenTag](../getting-started/installation.md)
 et que vous êtes connecté avec une [identité en lecture seule](../guides/read-only-access.md).

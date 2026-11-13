@@ -1,6 +1,6 @@
 ---
 title: Modèles intégrés
-description: Les huit modèles fournis avec InvenTag (trois mises en page de rapport, deux politiques d’étiquetage, trois configurations d’exécution) et ce qu’ils produisent.
+description: Les treize modèles fournis avec InvenTag (trois mises en page de rapport, sept politiques d’étiquetage, trois configurations d’exécution) et ce qu’ils produisent.
 sidebar_position: 2
 ---
 
@@ -20,6 +20,11 @@ NAME                    KIND        SOURCE   DESCRIPTION
 executive-summary       report      builtin  Short Word report with totals and tag compliance; Excel has one filterable sheet.
 finops-cost-report      report      builtin  Standard layout with cost-allocation tag columns, checked against finops-cost-allocation.
 standard-bom            report      builtin  Summary plus one sheet per service, with readable columns and every tag as a column.
+evidence-gdpr           tag-policy  builtin  Tag evidence for resources that may hold personal data: personal-data type, processing-record reference, data residency, retention. Checks tag evidence only; certifies nothing.
+evidence-hipaa          tag-policy  builtin  Tag evidence for resources that may hold protected health information: PHI flag, classification, retention period. Checks tag evidence only; certifies nothing.
+evidence-pci-dss        tag-policy  builtin  Tag evidence for cardholder-data scoping: PCI scope and how the resource handles card data. Checks tag evidence only; certifies nothing.
+evidence-pdpa           tag-policy  builtin  Tag evidence for resources that may hold personal data: personal-data flag, purpose, retention, location. Checks tag evidence only; certifies nothing.
+evidence-soc2           tag-policy  builtin  Tag evidence for SOC 2 scoping conversations: scope, system, provisioning method, criticality. Checks tag evidence only; certifies nothing.
 finops-cost-allocation  tag-policy  builtin  Requires CostCenter, Owner, Project and Environment so spend can be allocated.
 security-baseline       tag-policy  builtin  Requires Owner, Environment and DataClassification for security reviews.
 ci-pipeline             config      builtin  Excel report plus tag-compliance JSON; exits with code 3 on tag policy violations.
@@ -217,6 +222,178 @@ cette ressource, quelle est sa sensibilité, et s’agit-il de production ?
 Les alias KMS sont hors périmètre. Satisfaire cette politique ne rend rien conforme à un
 cadre de sécurité quel qu’il soit ; elle indique seulement si ces étiquettes sont présentes et
 valides.
+
+### Modèles de preuve par les étiquettes {#tag-evidence-templates}
+
+Ces cinq modèles partent de `security-baseline` et ajoutent les étiquettes qui
+alimentent une discussion sur SOC 2, HIPAA, PCI DSS, le RGPD ou la PDPA. Chacun
+répond à une question simple sur vos étiquettes : quelles ressources n’ont pas
+enregistré ce que le modèle demande ?
+
+Ils vérifient uniquement les preuves par les étiquettes. Les valeurs des
+étiquettes sont déclarées par le propriétaire de la ressource et InvenTag ne les
+vérifie pas. Un résultat positif ne signifie pas que le compte satisfait SOC 2,
+HIPAA, PCI DSS, le RGPD ou la PDPA.
+
+Ce qui vaut pour les cinq :
+
+- Chaque modèle ajoute des étiquettes aux trois que `security-baseline`
+  vérifie déjà (`Owner`, `Environment`, `DataClassification`), sauf si
+  l’entrée indique qu’elle en modifie une.
+- Les valeurs autorisées sont comparées sans tenir compte de la casse. Les
+  motifs (la durée de conservation, l’ID du registre de traitement) respectent
+  la casse, donc `7y` passe et `7Y` ne passe pas.
+- Une exécution n’utilise qu’un seul modèle de politique d’étiquetage. Pour
+  vérifier deux référentiels, lancez deux exécutions ou écrivez votre propre
+  modèle qui combine les étiquettes.
+- Il n’y a pas de règle « seulement si ». Une étiquette qui ne s’applique pas
+  a quand même besoin d’une valeur ; les entrées ci-dessous disent laquelle
+  utiliser.
+- La liste de périmètre appartient à tout le modèle : un modèle qui réduit les
+  types réduit aussi à ces types les contrôles hérités de `Owner`,
+  `Environment` et `DataClassification`. Les ressources des autres types sont
+  comptées comme hors périmètre.
+
+### `evidence-soc2` {#evidence-soc2}
+
+:::note
+
+Vérifie uniquement les preuves par les étiquettes ; ne certifie rien. Un résultat positif ne signifie pas que le compte satisfait SOC 2.
+
+:::
+
+**Les étiquettes répondent à :** de quel système s’agit-il, son propriétaire
+le considère-t-il dans le périmètre, comment a-t-il été provisionné et quelle
+est sa criticité ?
+
+| Clé d’étiquette | Règle |
+|---|---|
+| `Soc2Scope` | L’une de `in-scope`, `out-of-scope` |
+| `SystemName` | N’importe quel texte non vide |
+| `ManagedBy` | L’une de `terraform`, `cloudformation`, `cdk`, `manual`, `other`. Utilisez `other` pour toute méthode non listée. |
+| `Criticality` | L’une de `high`, `medium`, `low` |
+
+Périmètre : tous les types de ressource sauf les alias KMS. Les ressources du
+VPC par défaut (sous-réseaux, tables de routage, ACL réseau) apparaissent donc
+comme des lacunes tant que vous ne les étiquetez pas ou ne réduisez pas le
+périmètre.
+
+| Peut montrer | Ne peut pas montrer |
+|---|---|
+| Quelles ressources n’ont ni périmètre, ni système, ni méthode de provisionnement, ni criticité enregistrés. Quelles ressources le propriétaire a marquées hors périmètre. | Que le périmètre est le bon. Qu’un contrôle existe ou fonctionne. Que `ManagedBy` est vrai (comparez-le vous-même aux étiquettes système `aws:cloudformation:*`). Tout ce qu’un auditeur testerait. |
+
+### `evidence-hipaa` {#evidence-hipaa}
+
+:::note
+
+Vérifie uniquement les preuves par les étiquettes ; ne certifie rien. Un résultat positif ne signifie pas que le compte satisfait HIPAA.
+
+:::
+
+**Les étiquettes répondent à :** le propriétaire dit-il que cette ressource
+contient des informations de santé protégées (PHI), quelle est sa
+classification et combien de temps est-elle conservée ?
+
+| Clé d’étiquette | Règle |
+|---|---|
+| `PHI` | L’une de `yes`, `no` |
+| `DataClassification` | L’une de `public`, `internal`, `confidential`, `restricted`, `phi`. Remplace la règle de base et ajoute `phi`. |
+| `RetentionPeriod` | Un nombre suivi de `d` ou `y` (jours ou années), ou `indefinite` : `30d`, `7y` |
+
+Périmètre : ressources `Bucket`, `DBInstance`, `DBCluster`, `Table`, `Volume`,
+`Snapshot`, `Queue`, `Topic` et `Stream`. EFS, Redshift et OpenSearch ne sont
+pas dans la liste ; copiez la liste dans votre propre modèle pour ajouter des
+types.
+
+| Peut montrer | Ne peut pas montrer |
+|---|---|
+| Les ressources qui contiennent des données et n’ont ni indicateur PHI, ni classification, ni valeur de conservation. | Si une ressource marquée `PHI=no` ne contient vraiment pas de PHI. Le chiffrement, le contrôle d’accès, les accords avec les fournisseurs, la journalisation. `PHI` et `DataClassification=phi` peuvent se contredire et InvenTag ne peut pas les recouper. Les types de ressource absents de la liste de périmètre. |
+
+Une ressource étiquetée `DataClassification=phi` échoue à `security-baseline` et
+aux autres modèles, car ils ne listent pas `phi`.
+
+### `evidence-pci-dss` {#evidence-pci-dss}
+
+:::note
+
+Vérifie uniquement les preuves par les étiquettes ; ne certifie rien. Un résultat positif ne signifie pas que le compte satisfait PCI DSS.
+
+:::
+
+**Les étiquettes répondent à :** le propriétaire place-t-il cette ressource dans
+l’environnement de données de titulaires de cartes, connectée à celui-ci ou en
+dehors, et que fait-elle des données de carte ?
+
+| Clé d’étiquette | Règle |
+|---|---|
+| `PciScope` | L’une de `cde`, `connected`, `out-of-scope` |
+| `CardholderData` | L’une de `stores`, `processes`, `transmits`, `none`. Une seule valeur : si plusieurs s’appliquent, choisissez la principale. |
+
+Périmètre : ressources `Bucket`, `DBInstance`, `DBCluster`, `Table`, `Volume`,
+`Snapshot`, `Queue`, `Topic`, `Instance`, `LoadBalancer`, `SecurityGroup`,
+`Subnet` et `VPC`.
+
+| Peut montrer | Ne peut pas montrer |
+|---|---|
+| Les ressources des types listés sans périmètre ni traitement des données de carte enregistrés. | Si la segmentation tient. Ce qui est réellement joignable. Si un `none` est vrai. Une ressource qui stocke et transmet des données de carte ne peut porter qu’une valeur de `CardholderData`. |
+
+### `evidence-gdpr` {#evidence-gdpr}
+
+:::note
+
+Vérifie uniquement les preuves par les étiquettes ; ne certifie rien. Un résultat positif ne signifie pas que le compte satisfait le RGPD.
+
+:::
+
+**Les étiquettes répondent à :** y a-t-il des données personnelles, quelle
+entrée de votre propre registre des activités de traitement les couvre, où
+sont-elles conservées et combien de temps ?
+
+| Clé d’étiquette | Règle |
+|---|---|
+| `PersonalData` | L’une de `none`, `personal`, `special-category` |
+| `ProcessingRecord` | De 1 à 64 lettres, chiffres, `.`, `_` ou `-`. Utilisez `none` si `PersonalData` vaut `none`. Le motif ne vérifie que la forme de l’ID ; adaptez-le à votre propre format. |
+| `DataResidency` | L’une de `eu`, `uk`, `other` |
+| `RetentionPeriod` | Un nombre suivi de `d` ou `y`, ou `indefinite` : `30d`, `7y` |
+
+Périmètre : ressources `Bucket`, `DBInstance`, `DBCluster`, `Table`, `Volume`,
+`Snapshot`, `Queue`, `Topic` et `Stream`.
+
+| Peut montrer | Ne peut pas montrer |
+|---|---|
+| Les ressources qui contiennent des données et auxquelles il manque l’une de ces quatre étiquettes. | La base juridique. Si l’entrée du registre existe. Si `DataResidency` correspond à la région réelle (le rapport a une colonne de région, mais InvenTag ne peut pas la comparer à l’étiquette). Les transferts. Le traitement des demandes des personnes. |
+
+Une ressource avec `PersonalData=none` doit quand même porter `ProcessingRecord`,
+avec la valeur `none`.
+
+### `evidence-pdpa` {#evidence-pdpa}
+
+:::note
+
+Vérifie uniquement les preuves par les étiquettes ; ne certifie rien. Un résultat positif ne signifie pas que le compte satisfait la PDPA.
+
+:::
+
+**Les étiquettes répondent à :** y a-t-il des données personnelles, quelle
+finalité le propriétaire indique-t-il, combien de temps sont-elles conservées
+et sont-elles à Singapour ou à l’étranger ?
+
+| Clé d’étiquette | Règle |
+|---|---|
+| `PersonalData` | L’une de `none`, `personal`, `special-category` (mêmes valeurs que `evidence-gdpr`) |
+| `Purpose` | N’importe quel texte non vide |
+| `RetentionPeriod` | Un nombre suivi de `d` ou `y`, ou `indefinite` : `30d`, `7y` |
+| `DataLocation` | L’une de `sg`, `overseas` |
+
+Périmètre : ressources `Bucket`, `DBInstance`, `DBCluster`, `Table`, `Volume`,
+`Snapshot`, `Queue`, `Topic` et `Stream`.
+
+| Peut montrer | Ne peut pas montrer |
+|---|---|
+| Les ressources qui contiennent des données et auxquelles il manque ces étiquettes ou dont une valeur est hors de la liste. | Si la finalité indiquée est valable. Le consentement. Si `sg` est vrai. Qui peut accéder aux données. |
+
+Pour un exemple complet, consultez
+[Exemple : vérifier les preuves par les étiquettes avant une discussion sur le périmètre SOC 2](../examples/evidence-soc2.md).
 
 ## Modèles de configuration {#config-templates}
 

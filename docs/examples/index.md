@@ -29,6 +29,7 @@ current code.
 | [Branded executive Word report](./branded-executive-report.md) | A short landscape Word report with your logo and colours |
 | [Your own columns](./custom-columns.md) | A workbook with exactly the columns you choose, on one sheet |
 | [Upload reports to S3 on a schedule](./scheduled-s3-upload.md) | Encrypted reports in an S3 bucket after every run |
+| [Tag evidence before a SOC 2 scoping conversation](./evidence-soc2.md) | A list of resources with no recorded SOC 2 scope, system, provisioning method or criticality |
 
 All examples assume you have [installed InvenTag](../getting-started/installation.md)
 and are signed in with a [read-only identity](../guides/read-only-access.md).
