@@ -8,11 +8,11 @@
     "description": "The label for category 'Guides' in sidebar 'docsSidebar'"
   },
   "sidebar.docsSidebar.category.Templates": {
-    "message": "模板",
+    "message": "範本",
     "description": "The label for category 'Templates' in sidebar 'docsSidebar'"
   },
   "sidebar.docsSidebar.category.Examples": {
-    "message": "示例",
+    "message": "範例",
     "description": "The label for category 'Examples' in sidebar 'docsSidebar'"
   },
   "sidebar.docsSidebar.category.Reference": {

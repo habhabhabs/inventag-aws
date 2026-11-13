@@ -27,7 +27,7 @@
     "message": "Comment ça marche"
   },
   "home.heroNote": {
-    "message": "Une protection intégrée ne laisse passer que les appels en lecture comme {list}, {describe} et {get}. Utilisez-le aussi avec un rôle IAM en lecture seule : {link}."
+    "message": "Une protection intégrée ne laisse passer que les appels en lecture comme {list}, {describe} et {get}. Utilisez-le aussi avec un rôle IAM en lecture seule : {link}."
   },
   "home.heroNoteLink": {
     "message": "voir les autorisations nécessaires"
@@ -126,7 +126,7 @@
     "message": "Paramètres d’exécution"
   },
   "home.c6.body": {
-    "message": "Partez de huit modèles intégrés : mises en page de rapport, politiques d’étiquetage et paramètres d’exécution. Listez-les avec {cmd}, copiez-en un dans votre projet et ne changez que le nécessaire."
+    "message": "Partez de huit modèles intégrés : mises en page de rapport, politiques d’étiquetage et paramètres d’exécution. Listez-les avec {cmd}, copiez-en un dans votre projet et ne changez que le nécessaire."
   },
   "home.c7.title": {
     "message": "Feuilles réseau et sécurité"
@@ -156,7 +156,7 @@
     "message": "Découverte"
   },
   "home.s2.body": {
-    "message": "Pour chaque compte et chaque région : l’API Tagging, les appels en lecture propres à chaque service et Cost Explorer."
+    "message": "Pour chaque compte et chaque région : l’API Tagging, les appels en lecture propres à chaque service et Cost Explorer."
   },
   "home.s3.title": {
     "message": "Enrichissement"
@@ -183,7 +183,7 @@
     "message": "Clair sur les limites."
   },
   "home.honest.1": {
-    "message": "Certaines options ne sont pas encore développées. Si vous en utilisez une, l’exécution s’arrête avec un message clair « pas encore implémenté » au lieu de l’ignorer. La {link} indique ce qui fonctionne aujourd’hui."
+    "message": "Certaines options ne sont pas encore développées. Si vous en utilisez une, l’exécution s’arrête avec un message clair « pas encore implémenté » au lieu de l’ignorer. La {link} indique ce qui fonctionne aujourd’hui."
   },
   "home.honest.1.link": {
     "message": "page d’état actuel"
@@ -219,7 +219,7 @@
     "message": "Une petite confession sur les cookies"
   },
   "consent.body": {
-    "message": "Seuls les cookies essentiels sont actifs : ils ne font que mémoriser votre choix. En autoriser un de plus ? Cela m’aide à voir quelles pages sont utiles."
+    "message": "Seuls les cookies essentiels sont actifs : ils ne font que mémoriser votre choix. En autoriser un de plus ? Cela m’aide à voir quelles pages sont utiles."
   },
   "consent.link": {
     "message": "Ce qui est stocké et pourquoi"
@@ -234,7 +234,7 @@
     "message": "Pour aller plus loin"
   },
   "menu.sectionOverview": {
-    "message": "Présentation : {label}"
+    "message": "Présentation : {label}"
   },
   "menu.getStarted": {
     "message": "Pour commencer"
@@ -283,7 +283,7 @@
     "message": "Résultats"
   },
   "search.noResults": {
-    "message": "Aucun résultat pour « {query} ». Essayez moins de mots ou d’autres mots."
+    "message": "Aucun résultat pour « {query} ». Essayez moins de mots ou d’autres mots."
   },
   "search.suggested": {
     "message": "Suggestions"
@@ -365,11 +365,11 @@
     "description": "The blog post button label to navigate to the older/next post"
   },
   "theme.tags.tagsPageLink": {
-    "message": "Voir tous les tags",
+    "message": "Voir toutes les étiquettes",
     "description": "The label of the link targeting the tag list page"
   },
   "theme.colorToggle.ariaLabel.mode.system": {
-    "message": "system mode",
+    "message": "mode système",
     "description": "The name for the system color mode"
   },
   "theme.colorToggle.ariaLabel.mode.light": {
@@ -385,7 +385,7 @@
     "description": "The ARIA label for the color mode toggle"
   },
   "theme.docs.breadcrumbs.navAriaLabel": {
-    "message": "Fil d'Ariane",
+    "message": "Fil d’Ariane",
     "description": "The ARIA label for the breadcrumbs"
   },
   "theme.docs.paginator.navAriaLabel": {
@@ -401,22 +401,22 @@
     "description": "The label used to navigate to the next doc"
   },
   "theme.docs.tagDocListPageTitle.nDocsTagged": {
-    "message": "Un document tagué|{count} documents tagués",
+    "message": "{count} document étiqueté|{count} documents étiquetés",
     "description": "Pluralized label for \"{count} docs tagged\". Use as much plural forms (separated by \"|\") as your language support (see https://www.unicode.org/cldr/cldr-aux/charts/34/supplemental/language_plural_rules.html)"
   },
   "theme.docs.tagDocListPageTitle": {
-    "message": "{nDocsTagged} avec \"{tagName}\"",
+    "message": "{nDocsTagged} avec l’étiquette « {tagName} »",
     "description": "The title of the page for a docs tag"
   },
   "theme.docs.versionBadge.label": {
-    "message": "Version: {versionLabel}"
+    "message": "Version : {versionLabel}"
   },
   "theme.docs.versions.unreleasedVersionLabel": {
     "message": "Ceci est la documentation de la prochaine version {versionLabel} de {siteTitle}.",
     "description": "The label used to tell the user that he's browsing an unreleased doc version"
   },
   "theme.docs.versions.unmaintainedVersionLabel": {
-    "message": "Ceci est la documentation de {siteTitle} {versionLabel}, qui n'est plus activement maintenue.",
+    "message": "Ceci est la documentation de {siteTitle} {versionLabel}, qui n’est plus activement maintenue.",
     "description": "The label used to tell the user that he's browsing an unmaintained doc version"
   },
   "theme.docs.versions.latestVersionSuggestionLabel": {
@@ -456,7 +456,7 @@
     "description": "The title of the 404 page"
   },
   "theme.tags.tagsListLabel": {
-    "message": "Tags :",
+    "message": "Étiquettes :",
     "description": "The label alongside a tag list"
   },
   "theme.admonition.caution": {
@@ -492,19 +492,19 @@
     "description": "The ARIA label for recent posts in the blog sidebar"
   },
   "theme.DocSidebarItem.expandCategoryAriaLabel": {
-    "message": "Développer la catégorie '{label}' de la barre latérale",
+    "message": "Développer la catégorie « {label} » de la barre latérale",
     "description": "The ARIA label to expand the sidebar category"
   },
   "theme.DocSidebarItem.collapseCategoryAriaLabel": {
-    "message": "Réduire la catégorie '{label}' de la barre latérale",
+    "message": "Réduire la catégorie « {label} » de la barre latérale",
     "description": "The ARIA label to collapse the sidebar category"
   },
   "theme.IconExternalLink.ariaLabel": {
-    "message": "(opens in new tab)",
+    "message": "(s’ouvre dans un nouvel onglet)",
     "description": "The ARIA label for the external link icon"
   },
   "theme.NavBar.navAriaLabel": {
-    "message": "Main",
+    "message": "Principale",
     "description": "The ARIA label for the main navigation"
   },
   "theme.navbar.mobileLanguageDropdown.label": {
@@ -512,11 +512,11 @@
     "description": "The label for the mobile language switcher dropdown"
   },
   "theme.NotFound.p1": {
-    "message": "Nous n'avons pas trouvé ce que vous recherchez.",
+    "message": "Nous n’avons pas trouvé ce que vous recherchez.",
     "description": "The first paragraph of the 404 page"
   },
   "theme.NotFound.p2": {
-    "message": "Veuillez contacter le propriétaire du site qui vous a lié à l'URL d'origine et leur faire savoir que leur lien est cassé.",
+    "message": "Veuillez contacter le propriétaire du site qui vous a lié à l’URL d’origine et leur faire savoir que leur lien est cassé.",
     "description": "The 2nd paragraph of the 404 page"
   },
   "theme.TOCCollapsible.toggleButtonLabel": {
@@ -532,7 +532,7 @@
     "description": "The ARIA label for the link to full blog posts from excerpts"
   },
   "theme.blog.post.readingTime.plurals": {
-    "message": "Une minute de lecture|{readingTime} minutes de lecture",
+    "message": "{readingTime} minute de lecture|{readingTime} minutes de lecture",
     "description": "Pluralized label for \"{readingTime} min read\". Use as much plural forms (separated by \"|\") as your language support (see https://www.unicode.org/cldr/cldr-aux/charts/34/supplemental/language_plural_rules.html)"
   },
   "theme.CodeBlock.copy": {
@@ -552,7 +552,7 @@
     "description": "The title attribute for toggle word wrapping button of code block lines"
   },
   "theme.docs.breadcrumbs.home": {
-    "message": "Page d'accueil",
+    "message": "Page d’accueil",
     "description": "The ARIA label for the home page in the breadcrumbs"
   },
   "theme.docs.sidebar.collapseButtonTitle": {
@@ -564,7 +564,7 @@
     "description": "The title attribute for collapse button of doc sidebar"
   },
   "theme.docs.sidebar.navAriaLabel": {
-    "message": "Docs sidebar",
+    "message": "Barre latérale de la documentation",
     "description": "The ARIA label for the sidebar navigation"
   },
   "theme.docs.sidebar.closeSidebarButtonAriaLabel": {
@@ -580,11 +580,11 @@
     "description": "The ARIA label for hamburger menu button of mobile navigation"
   },
   "theme.navbar.mobileDropdown.collapseButton.expandAriaLabel": {
-    "message": "Expand the dropdown",
+    "message": "Développer le menu déroulant",
     "description": "The ARIA label of the button to expand the mobile dropdown navbar item"
   },
   "theme.navbar.mobileDropdown.collapseButton.collapseAriaLabel": {
-    "message": "Collapse the dropdown",
+    "message": "Réduire le menu déroulant",
     "description": "The ARIA label of the button to collapse the mobile dropdown navbar item"
   },
   "theme.docs.sidebar.expandButtonTitle": {
@@ -599,16 +599,16 @@
     "message": "Aucun résultat"
   },
   "theme.SearchBar.seeAllOutsideContext": {
-    "message": "Voir tous les résultats hors de « {context} »"
+    "message": "Voir tous les résultats hors de « {context} »"
   },
   "theme.SearchBar.searchInContext": {
-    "message": "Voir tous les résultats dans « {context} »"
+    "message": "Voir tous les résultats dans « {context} »"
   },
   "theme.SearchBar.seeAll": {
     "message": "Voir tous les résultats"
   },
   "theme.SearchPage.existingResultsTitle": {
-    "message": "Résultats de recherche pour « {query} »",
+    "message": "Résultats de recherche pour « {query} »",
     "description": "The search page title for non-empty query"
   },
   "theme.SearchPage.emptyResultsTitle": {
@@ -619,7 +619,7 @@
     "message": "Partout"
   },
   "theme.SearchPage.documentsFound.plurals": {
-    "message": "1 document trouvé|{count} documents trouvés",
+    "message": "{count} document trouvé|{count} documents trouvés",
     "description": "Pluralized label for \"{count} documents found\". Use as much plural forms (separated by \"|\") as your language support (see https://www.unicode.org/cldr/cldr-aux/charts/34/supplemental/language_plural_rules.html)"
   },
   "theme.SearchPage.noResultsText": {
@@ -627,11 +627,11 @@
     "description": "The paragraph for empty search result"
   },
   "theme.blog.post.plurals": {
-    "message": "Un article|{count} articles",
+    "message": "{count} article|{count} articles",
     "description": "Pluralized label for \"{count} posts\". Use as much plural forms (separated by \"|\") as your language support (see https://www.unicode.org/cldr/cldr-aux/charts/34/supplemental/language_plural_rules.html)"
   },
   "theme.blog.tagTitle": {
-    "message": "{nPosts} tagués avec « {tagName} »",
+    "message": "{nPosts} avec l’étiquette « {tagName} »",
     "description": "The title of the page for a blog tag"
   },
   "theme.blog.author.pageTitle": {
@@ -639,15 +639,15 @@
     "description": "The title of the page for a blog author"
   },
   "theme.blog.authorsList.pageTitle": {
-    "message": "Authors",
+    "message": "Auteurs",
     "description": "The title of the authors page"
   },
   "theme.blog.authorsList.viewAll": {
-    "message": "View All Authors",
+    "message": "Voir tous les auteurs",
     "description": "The label of the link targeting the blog authors page"
   },
   "theme.blog.author.noPosts": {
-    "message": "This author has not written any posts yet.",
+    "message": "Cet auteur n’a pas encore écrit d’article.",
     "description": "The text for authors with 0 blog post"
   },
   "theme.contentVisibility.unlistedBanner.title": {
@@ -655,19 +655,19 @@
     "description": "The unlisted content banner title"
   },
   "theme.contentVisibility.unlistedBanner.message": {
-    "message": "Cette page n'est pas répertoriée. Les moteurs de recherche ne l'indexeront pas, et seuls les utilisateurs ayant un lien direct peuvent y accéder.",
+    "message": "Cette page n’est pas répertoriée. Les moteurs de recherche ne l’indexeront pas, et seuls les utilisateurs ayant un lien direct peuvent y accéder.",
     "description": "The unlisted content banner message"
   },
   "theme.contentVisibility.draftBanner.title": {
-    "message": "Draft page",
+    "message": "Page en brouillon",
     "description": "The draft content banner title"
   },
   "theme.contentVisibility.draftBanner.message": {
-    "message": "This page is a draft. It will only be visible in dev and be excluded from the production build.",
+    "message": "Cette page est un brouillon. Elle n’est visible qu’en développement et sera exclue de la version de production.",
     "description": "The draft content banner message"
   },
   "theme.docs.DocCard.categoryDescription.plurals": {
-    "message": "1 élément|{count} éléments",
+    "message": "{count} élément|{count} éléments",
     "description": "The default description for a category card in the generated index about how many items this category includes"
   },
   "theme.ErrorPageContent.tryAgain": {
@@ -679,7 +679,7 @@
     "description": "The skip to content label used for accessibility, allowing to rapidly navigate to main content with keyboard tab/enter navigation"
   },
   "theme.tags.tagsPageTitle": {
-    "message": "Tags",
+    "message": "Étiquettes",
     "description": "The title of the tag list page"
   },
   "listen.start": {

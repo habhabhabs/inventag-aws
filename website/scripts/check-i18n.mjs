@@ -9,6 +9,14 @@
  * each translated page compares it with the English source: same number of
  * headings, code blocks, tables and links, every heading pinned to the English
  * anchor, and the same code-block contents (commands must never be translated).
+ * It also compares the heading levels in order, the link targets in order,
+ * the number of table rows and admonitions, the front matter keys that are not
+ * text (sidebar_position, slug, id), and flags a page that is still byte-identical
+ * to the English source.
+ *
+ * It cannot tell that a translation is stale after the English text changed
+ * while the structure stayed the same. See the README or the audit report for
+ * the proposed per-page source hash.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -32,6 +40,11 @@ const facts = (s) => {
     fences,
     tables: [...prose.matchAll(/^\|[-: |]+\|$/gm)].length,
     links: [...prose.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1].replace(/#.*$/, '')),
+    levels: [...prose.matchAll(/^(#{1,6}) /gm)].map((m) => m[1].length).join(''),
+    targets: [...prose.matchAll(/\]\(([^)\s]+)[^)]*\)/g)].map((m) => m[1]),
+    rows: [...prose.matchAll(/^\|.*\|$/gm)].length,
+    admonitions: [...prose.matchAll(/^:::\w+/gm)].length,
+    meta: [...(s.match(/^---\n([\s\S]*?)\n---/) || ['', ''])[1].matchAll(/^(sidebar_position|slug|id|sidebar_class_name|hide_table_of_contents):\s*(.*)$/gm)].map((m) => `${m[1]}=${m[2]}`).join(','),
   };
 };
 const slug = (h) => h.toLowerCase().replace(/[^\w\s-]/g, '').trim().replace(/\s/g, '-');
@@ -54,6 +67,12 @@ for (const loc of locales) {
     // an unquoted front-matter value containing ": " is invalid YAML and breaks the build
     for (const m of tr.split(/\n---\n/)[0].matchAll(/^(title|description): (?!["'>|])(.*: .*)$/gm)) issues.push(`front matter ${m[1]} needs quotes`);
     if (a.headings !== b.headings) issues.push(`headings ${b.headings} vs ${a.headings}`);
+    if (en === tr) issues.push('identical to the English source (not translated)');
+    if (a.levels !== b.levels) issues.push(`heading levels ${b.levels} vs ${a.levels}`);
+    if (a.rows !== b.rows) issues.push(`table rows ${b.rows} vs ${a.rows}`);
+    if (a.admonitions !== b.admonitions) issues.push(`admonitions ${b.admonitions} vs ${a.admonitions}`);
+    if (a.meta !== b.meta) issues.push(`front matter differs: ${b.meta} vs ${a.meta}`);
+    if (a.targets.length === b.targets.length) a.targets.forEach((t, i) => t !== b.targets[i] && issues.push(`link ${i + 1} target ${b.targets[i]} vs ${t}`));
     if (a.tables !== b.tables) issues.push(`tables ${b.tables} vs ${a.tables}`);
     if (a.links.length !== b.links.length) issues.push(`links ${b.links.length} vs ${a.links.length}`);
     if (a.fences.length !== b.fences.length) issues.push(`code blocks ${b.fences.length} vs ${a.fences.length}`);
