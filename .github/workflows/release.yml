@@ -777,13 +777,17 @@ jobs:
     needs: [check-for-release, release]
     # Publishes in three cases:
     #   1. a release was just created (the release job commits the bumped version),
-    #   2. a push to main whose version is not on PyPI yet (see "Already on PyPI?"),
+    #   2. the push of that "chore: bump version to" commit, as a retry when case 1
+    #      did not upload (see "Already on PyPI?"); other pushes never publish,
+    #      so a [skip release] push does not touch the pypi environment,
     #   3. a manual run with "publish_existing_tag".
-    # A version that is already on PyPI is skipped, never re-uploaded (PyPI refuses it).
+    # A version that is already on PyPI is skipped, never re-uploaded (PyPI refuses it),
+    # and skip-existing turns a race between cases 1 and 2 into a no-op.
     if: >-
       always() && vars.PYPI_PUBLISH == 'true' && (
         (needs.check-for-release.outputs.should_release == 'true' && needs.release.result == 'success') ||
-        (github.event_name == 'push' && needs.check-for-release.outputs.should_release != 'true') ||
+        (github.event_name == 'push' && needs.check-for-release.outputs.should_release != 'true' &&
+         startsWith(github.event.head_commit.message, 'chore: bump version to ')) ||
         (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_existing_tag != '')
       )
     # PyPI Trusted Publishing (OIDC): no API token is stored in GitHub.
@@ -845,3 +849,5 @@ jobs:
     - name: Publish to PyPI
       if: steps.exists.outputs.published != 'true'
       uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+      with:
+        skip-existing: true
