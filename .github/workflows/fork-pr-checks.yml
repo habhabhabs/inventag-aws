@@ -128,14 +128,12 @@ jobs:
               
               **Security Assessment:** HIGH RISK
               - This PR modifies security-sensitive files
-              - **Manual review required before testing**
-              - Will not run automated tests until approved
+              - **Manual review required before merging**
               
               **Next Steps:**
               1. ✋ **DO NOT MERGE** until manual security review is complete
               2. 🔍 Maintainer will review all changes manually
-              3. ✅ Once approved, we'll add the \`safe-to-test\` label
-              4. 🤖 Automated tests will then run
+              3. 🤖 The pull_request checks run with a read-only token (first-time contributors need a maintainer to approve the run)
               
               **For Contributors:**
               - Keep your PR focused and avoid unnecessary file changes
@@ -156,8 +154,7 @@ jobs:
               
               **Next Steps:**
               1. 🔍 Maintainer will review changes
-              2. ✅ Add \`safe-to-test\` label when approved
-              3. 🤖 Automated tests will run
+              2. 🤖 The pull_request checks run with a read-only token (first-time contributors need a maintainer to approve the run)
               
               ---
               *This is an automated security check for fork contributions.*"

@@ -200,39 +200,6 @@ jobs:
           exit 1
         fi
 
-  dependency-check:
-    name: Dependency Check
-    runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.changed_files.*.filename, 'requirements.txt') || contains(github.event.pull_request.changed_files.*.filename, 'setup.py')
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-    - name: Set up Python
-      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-      with:
-        python-version: '3.13'
-
-    - name: Check for new dependencies
-      run: |
-        if [ -f requirements.txt ]; then
-          echo "🔍 Checking for potentially risky dependencies..."
-          
-          # List of potentially risky packages to watch for
-          RISKY_PACKAGES="exec eval subprocess os system"
-          
-          while read -r package; do
-            for risky in $RISKY_PACKAGES; do
-              if echo "$package" | grep -qi "$risky"; then
-                echo "⚠️ Potentially risky package detected: $package"
-              fi
-            done
-          done < requirements.txt
-          
-          echo "✅ Dependency check completed"
-        fi
-
   quick-python-test:
     name: Quick Python Compatibility Check
     runs-on: ubuntu-latest

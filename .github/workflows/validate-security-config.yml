@@ -18,7 +18,6 @@ name: Security Configuration Validation
 
 permissions:
   contents: read
-  issues: write
 
 jobs:
   validate-workflows:
@@ -43,7 +42,9 @@ jobs:
           # Validate all workflow files
           validation_errors=0
           
-          find .github/workflows -name "*.yml" -o -name "*.yaml" | while read workflow; do
+          # Read from process substitution, not a pipe: a piped loop runs in a
+          # subshell and its error count would be lost, so the job could never fail.
+          while read -r workflow; do
             echo "Validating: $workflow"
             
             if yq eval '.' "$workflow" > /dev/null 2>&1; then
@@ -53,7 +54,7 @@ jobs:
               yq eval '.' "$workflow"
               validation_errors=$((validation_errors + 1))
             fi
-          done
+          done < <(find .github/workflows -name "*.yml" -o -name "*.yaml")
           
           if [ $validation_errors -gt 0 ]; then
             echo "❌ Found $validation_errors workflow files with YAML syntax errors"
