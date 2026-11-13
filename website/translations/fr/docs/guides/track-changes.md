@@ -128,9 +128,9 @@ son ARN.
   supprime les instantanés et les rapports.
 - Si un compte n’a pas pu être analysé, ou seulement en partie, dans l’une des deux exécutions, ses ressources sont exclues de la comparaison.
   Sinon, toutes apparaîtraient comme ajoutées ou supprimées. Le rapport de changements nomme le compte dans sa section State Comparison (`accounts_not_compared`).
-- InvenTag compare les listes sans tenir compte de l’ordre : déplacer des éléments dans une liste n’est donc pas un changement.
+- InvenTag compare les listes sans tenir compte de l’ordre : déplacer des éléments dans une liste n’est donc pas un changement, sauf pour les couches Lambda, les politiques de résiliation Auto Scaling et les comportements de cache CloudFront, dont l’ordre fait partie de la configuration.
   Il ignore aussi les champs qui changent à chaque exécution : la voie de découverte, les chiffres de coût et les compteurs d’utilisation
-  comme `ItemCount` ou `ApproximateNumberOfMessages`.
+  comme `ItemCount`, `ApproximateNumberOfMessages` ou la taille EFS.
 - Quand une exécution enregistre un instantané, InvenTag supprime ceux de plus de 30 jours ou au-delà des 100 plus récents.
   Modifiez les limites avec `--state-retention-days N` et `--state-max-snapshots N` ; `0` ou `none` désactive une limite.
   L’instantané qui vient d’être écrit et celui auquel il est comparé ne sont jamais supprimés : `--state-max-snapshots 1` laisse donc deux fichiers.

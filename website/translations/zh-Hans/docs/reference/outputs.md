@@ -39,7 +39,7 @@ InvenTag 写入的其他位置只有你指定的文件（`--log-file`、`--audit
 
 - **Summary：** Service、Resource Count、Percentage，以及合计。
 - **每个服务一个工作表**（例如 `EC2`、`S3`、`VPC`），按服务名称排序，包含其资源上发现的所有字段，
-  包括展平后的 `raw_data.*` 和 `tags.*` 列。行按类型、名称和 ID 排序。
+  包括展平后的 `raw_data.*` 和 `tags.*` 列。以 ID 为键的映射类型 API 字段放在一个 JSON 单元格中。行按类型、名称和 ID 排序。
   每行都有 `source` 列（`service-api`、`tagging-api` 或 `billing`：返回该行的 API）、
   `sources` 列（所有这些 API，用 `+` 连接）和 `detail_level` 列（来自服务自身 API 的行为 `full`，其他为 `identity`）。
 - **Network Analysis** 和 **Security Analysis** 工作表，仅在使用 `--enable-network-analysis` 或 `--enable-security-analysis` 时出现。

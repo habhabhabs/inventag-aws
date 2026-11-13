@@ -149,9 +149,10 @@ What to know:
   would show as added or removed. The change report names the account in its
   State Comparison section (`accounts_not_compared`).
 - InvenTag compares lists as unordered, so moving items around in a list is
-  not a change. It also ignores fields that change on every run: the
-  discovery route, cost figures and usage counters such as `ItemCount` or
-  `ApproximateNumberOfMessages`.
+  not a change, except Lambda layers, Auto Scaling termination policies and
+  CloudFront cache behaviors, whose order is configuration. It also ignores
+  fields that change on every run: the discovery route, cost figures and usage
+  counters such as `ItemCount`, `ApproximateNumberOfMessages` or the EFS size.
 - When a run saves a snapshot, InvenTag removes snapshots older than 30 days
   or beyond the newest 100. Change the limits with `--state-retention-days N`
   and `--state-max-snapshots N`; `0` or `none` turns a limit off. The snapshot

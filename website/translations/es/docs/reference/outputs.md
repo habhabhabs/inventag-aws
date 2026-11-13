@@ -46,7 +46,8 @@ de ejemplo).
 - **Summary:** Service, Resource Count, Percentage y un total.
 - **Una hoja por servicio** (por ejemplo `EC2`, `S3`, `VPC`), ordenadas por
   nombre de servicio, con todos los campos encontrados en sus recursos, incluidas las
-  columnas aplanadas `raw_data.*` y `tags.*`. Las filas se ordenan por tipo, nombre e ID.
+  columnas aplanadas `raw_data.*` y `tags.*`. Un campo de la API que es un mapa con ID como claves
+  ocupa una sola celda JSON. Las filas se ordenan por tipo, nombre e ID.
   Cada fila tiene una columna `source` (`service-api`, `tagging-api` o `billing`:
   la API que la devolvió), una columna `sources` (todas ellas, unidas con `+`) y
   una columna `detail_level` (`full` para las filas de la API del propio servicio,

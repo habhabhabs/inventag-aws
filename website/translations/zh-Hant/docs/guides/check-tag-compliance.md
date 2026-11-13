@@ -162,7 +162,7 @@ spec:
 所以只有 `aws:` 標籤的資源算作未打標籤，而以 `aws:` 開頭的必需標籤鍵會報錯。除此之外，本文件不涵蓋它。請優先使用標籤策略範本。
 
 `scripts/legacy/` 中的舊指令碼在唯讀防護下執行，寫出的檔案只有所有者可讀寫。
-`aws_resource_inventory.py --s3-bucket` 上傳時使用 SSE-S3 加密。
+`aws_resource_inventory.py --s3-bucket` 上傳時使用 SSE-S3 加密。標籤檢查器的上傳也會加密。
 
 ## 下一步 {#next-steps}
 

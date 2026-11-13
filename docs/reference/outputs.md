@@ -46,7 +46,8 @@ data).
 - **Summary:** Service, Resource Count, Percentage, and a total.
 - **One sheet per service** (for example `EC2`, `S3`, `VPC`), sorted by
   service name, with every field found on its resources, including flattened
-  `raw_data.*` and `tags.*` columns. Rows are sorted by type, name and ID.
+  `raw_data.*` and `tags.*` columns. An API field that is a map keyed by IDs
+  is one JSON cell. Rows are sorted by type, name and ID.
   Every row has a `source` column (`service-api`, `tagging-api` or
   `billing`: the API that returned it), a `sources` column (all of them,
   joined with `+`) and a `detail_level` column (`full` for rows from the

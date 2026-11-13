@@ -39,7 +39,7 @@ InvenTag 寫入的其他位置只有你指定的檔案（`--log-file`、`--audit
 
 - **Summary：** Service、Resource Count、Percentage，以及合計。
 - **每個服務一個工作表**（例如 `EC2`、`S3`、`VPC`），按服務名稱排序，包含其資源上發現的所有欄位，
-  包括展平後的 `raw_data.*` 和 `tags.*` 欄。列按型別、名稱和 ID 排序。
+  包括展平後的 `raw_data.*` 和 `tags.*` 欄。以 ID 為鍵的對應型別 API 欄位放在一個 JSON 單元格中。列按型別、名稱和 ID 排序。
   每行都有 `source` 欄（`service-api`、`tagging-api` 或 `billing`：返回該行的 API）、
   `sources` 欄（所有這些 API，用 `+` 連線）和 `detail_level` 欄（來自服務自身 API 的行為 `full`，其他為 `identity`）。
 - **Network Analysis** 和 **Security Analysis** 工作表，僅在使用 `--enable-network-analysis` 或 `--enable-security-analysis` 時出現。

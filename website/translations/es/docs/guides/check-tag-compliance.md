@@ -173,7 +173,7 @@ Aparte de eso, esta documentación no lo cubre. Es preferible usar plantillas de
 
 Los scripts antiguos de `scripts/legacy/` se ejecutan con la protección de solo lectura y escriben
 archivos que solo puede leer su propietario. `aws_resource_inventory.py --s3-bucket` sube los archivos
-con cifrado SSE-S3.
+con cifrado SSE-S3. La carga del comprobador de etiquetas también se cifra.
 
 ## Siguientes pasos {#next-steps}
 

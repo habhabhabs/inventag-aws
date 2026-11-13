@@ -46,7 +46,8 @@ d’exemple).
 - **Summary :** Service, Resource Count, Percentage, et un total.
 - **Une feuille par service** (par exemple `EC2`, `S3`, `VPC`), triées par nom de
   service, avec chaque champ trouvé sur ses ressources, y compris les colonnes aplaties
-  `raw_data.*` et `tags.*`. Les lignes sont triées par type, nom et ID.
+  `raw_data.*` et `tags.*`. Un champ d’API qui est un dictionnaire indexé par des ID
+  tient dans une seule cellule JSON. Les lignes sont triées par type, nom et ID.
   Chaque ligne a une colonne `source` (`service-api`, `tagging-api` ou `billing` :
   l’API qui l’a renvoyée), une colonne `sources` (toutes, jointes par `+`) et une
   colonne `detail_level` (`full` pour les lignes venant de l’API du service lui-même,

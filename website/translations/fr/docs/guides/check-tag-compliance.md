@@ -169,7 +169,7 @@ Au-delà, il n’est pas couvert par cette documentation. Préférez les modèle
 
 Les anciens scripts de `scripts/legacy/` s’exécutent sous la protection en lecture seule et écrivent
 des fichiers réservés à leur propriétaire. `aws_resource_inventory.py --s3-bucket` téléverse avec le
-chiffrement SSE-S3.
+chiffrement SSE-S3. Le téléversement du vérificateur d’étiquettes est chiffré lui aussi.
 
 ## Étapes suivantes {#next-steps}
 

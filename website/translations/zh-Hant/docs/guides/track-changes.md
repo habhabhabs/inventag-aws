@@ -115,8 +115,8 @@ Changes detected in S3 service resources
   同樣會停止生成報告。`--disable-state-management` 會同時停止快照和報告。
 - 如果某個帳戶在兩次執行中的任何一次裡無法掃描或只掃描了一部分，它的資源會被排除在比較之外。
   否則它的所有資源都會顯示為新增或刪除。變更報告會在「State Comparison」部分（`accounts_not_compared`）列出該帳戶。
-- InvenTag 把列表當作無序處理，所以列表中專案的順序變化不算變更。它還會忽略每次執行都會變化的欄位：
-  發現途徑、成本數字，以及 `ItemCount` 或 `ApproximateNumberOfMessages` 之類的使用計數器。
+- InvenTag 把列表當作無序處理，所以列表中專案的順序變化不算變更，但 Lambda 層、Auto Scaling 終止策略和 CloudFront 快取行為除外，它們的順序屬於設定。它還會忽略每次執行都會變化的欄位：
+  發現途徑、成本數字，以及 `ItemCount`、`ApproximateNumberOfMessages` 或 EFS 大小之類的使用計數器。
 - 執行儲存快照時，InvenTag 會刪除超過 30 天或超出最新 100 個的快照。用 `--state-retention-days N` 和
   `--state-max-snapshots N` 修改限制；`0` 或 `none` 表示關閉該限制。剛寫入的快照和與它比較的快照永遠不會被刪除，
   所以 `--state-max-snapshots 1` 會留下兩個檔案。InvenTag 只會刪除它自己寫入的 `state_<timestamp>.json` 檔案。
