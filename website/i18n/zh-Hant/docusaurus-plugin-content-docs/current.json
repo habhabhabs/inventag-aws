@@ -26,5 +26,9 @@
   "sidebar.docsSidebar.category.Contributing": {
     "message": "參與貢獻",
     "description": "The label for category 'Contributing' in sidebar 'docsSidebar'"
+  },
+  "version.label": {
+    "message": "v1.1.3（目前）",
+    "description": "The label for version current"
   }
 }
