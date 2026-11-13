@@ -139,6 +139,10 @@ Comprehensive unit testing for all extracted `inventag` modules with mock AWS re
 
 ### Regression Tests (`regression/`)
 
+These two files are scripts, not pytest tests: their classes are not named `Test*`,
+so `pytest` collects nothing from them, and no CI workflow runs them. Run them by
+hand as shown under "Run Specific Test Categories".
+
 Comprehensive regression test suites to validate full InvenTag functionality and prevent regressions.
 
 #### `test_quick_regression.py`
@@ -184,6 +188,54 @@ End-to-end integration testing for complete workflows and CI/CD pipeline integra
   - Performance benchmarks to ensure no regression
 - **Requirements**: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6
 
+## What Every Test Gets for Free (`conftest.py`)
+
+These fixtures are `autouse`, so no test has to ask for them:
+
+- **Fake credentials.** `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are always
+  replaced with fakes, even if your shell has real ones. Session tokens, profiles,
+  web-identity and container credential variables are removed.
+- **No network.** A socket connection to a non-loopback address raises `OSError`
+  (it names the address). Proxy variables are removed so a stray call is refused
+  at its real destination.
+- **Scratch home.** `HOME`, `XDG_CONFIG_HOME` and the AWS shared config files point
+  into a temporary directory, so no test reads or writes your real `~`.
+- **No log files in the repository.** `production_monitor` and `security_validator`
+  open `inventag_*.log` in the current directory; the fixture redirects those bare
+  names to a temporary directory.
+- **No leaked monitor threads.** `ProductionSafetyMonitor` loops that a test starts
+  and forgets are stopped when the test ends.
+
+`tests/unit/test_test_isolation.py` tests these fixtures.
+
+## End-to-End Tests (`e2e/`)
+
+Whole-CLI runs against moto's in-memory AWS. They read back the files the CLI wrote.
+
+| File | What it covers |
+|---|---|
+| `test_cli_end_to_end.py` | `main()` in process: default run, Word, Excel, both, service filter, network/security/cost analysis, multi-account file, per-account reports, change tracking and changelog, `--audit-output`, exit codes 0, 1, 2, 3 and 4 |
+| `test_cli_subprocess.py` | `python -m inventag` in a child process through `_moto_runner.py`: the real entry point, exit codes, stdout and stderr |
+| `test_discovery_completeness.py` | paginated list calls; an `xfail(strict=True)` test for a known defect |
+| `test_live_smoke_script.py` | `scripts/live_smoke_test.py` against moto, including one test per failing check |
+| `test_benchmark_script.py` | `scripts/benchmark_scan.py` |
+
+`estate.py` builds the fixed estate (VPC, subnet, open security group, bucket, queue,
+topic, table; optionally an instance and a Lambda function). Each scan takes 5 to 15
+seconds. moto's HTTP server mode is not used because it needs Flask, which is not a
+dependency. moto's default AMIs are switched off (`MOTO_EC2_LOAD_DEFAULT_AMIS=false`):
+they add about 1,300 snapshots to every scan.
+
+A test marked `xfail(strict=True)` documents a defect in `inventag/`. When the defect
+is fixed the test fails with XPASS; delete the marker then.
+
+## Scripts That Use This Setup
+
+- `scripts/live_smoke_test.py`: for the owner, against a real AWS account with a
+  read-only profile. See the header of the file.
+- `scripts/benchmark_scan.py`: builds a synthetic estate in moto and reports scan
+  time, API call counts and peak memory.
+
 ## Running Tests
 
 ### Run All Tests
@@ -224,8 +276,17 @@ python -m pytest tests/ -v --cov=inventag --cov=scripts --cov-report=html
 ```
 
 ### Run Performance Tests
+The nine tests in `integration/test_performance_benchmarks.py` are marked
+`performance` and skipped by default (`addopts` in `pytest.ini` has
+`-m "not performance"`). They use wall-clock limits, so run them on a quiet
+machine. `-k performance` does not select them; use the marker:
 ```bash
-python -m pytest tests/ -v -k "performance or large_dataset"
+python -m pytest -m performance -o addopts= tests/integration/test_performance_benchmarks.py -v
+```
+
+### Run the End-to-End Tests Only
+```bash
+python -m pytest -m e2e tests/e2e -v
 ```
 
 ### Run Security Tests
