@@ -36,6 +36,7 @@ from ..reporting.report_template import (
 from .config_validator import ConfigValidator
 from .logging_setup import setup_logging, LoggingContext
 from . import safety
+from .._version import __version__
 from ..security.arn import (
     InvalidRoleError,
     account_id_from_role_arn,
@@ -476,6 +477,13 @@ Examples:
             "Write one report for each account (<account-id>_bom_<time>.xlsx) "
             "instead of one consolidated report"
         ),
+    )
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"inventag {__version__}",
+        help="Show the InvenTag version and exit",
     )
 
     # Logging and debug options
