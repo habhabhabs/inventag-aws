@@ -68,8 +68,8 @@ Details:
   the second run on, InvenTag writes a change report (`changelog_<timestamp>.md`)
   of what was added, removed or changed.
 - **Google Sheets and Docs** (`--create-google-sheets`, `--create-google-docs`;
-  install `inventag-aws[google]`): the same Excel and Word reports as Google
-  files, private unless you share them.
+  add the Google add-on with `pip install "inventag-aws[google]"`): the same
+  Excel and Word reports as Google files, private unless you share them.
 - **Global services** (IAM, S3 bucket list, CloudFront, Route 53) are read once
   per account from `us-east-1`, whichever regions you choose.
 - **Upload to Amazon S3** (`--s3-bucket`) with server-side encryption.

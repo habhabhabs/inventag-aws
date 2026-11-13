@@ -23,16 +23,31 @@ been verified.
   `--template` changes the Google files exactly as it changes the local ones.
 - The run prints the URL of each file.
 
-## Install the Google libraries
+## Install the Google add-on
 
-The Google libraries are an optional extra. Without them everything else works.
+Writing to Google needs a few extra Python packages (Google's sign-in and API
+libraries). Most people never use Google output, so these packages are not
+installed with InvenTag by default. You add them once with this command:
 
 ```bash title="Terminal"
 pip install "inventag-aws[google]"
 ```
 
-If you use a Google flag without the extra, InvenTag stops with exit code 2
-and prints this command.
+Read it as "install InvenTag, plus its Google add-on". The part in square
+brackets is the name of the add-on. It is not a placeholder, so type it exactly
+as shown, with the quotes (zsh, the default shell on macOS, needs them).
+
+- **You already have InvenTag.** Run the same command. pip keeps your
+  InvenTag and only adds the Google packages.
+- **You installed with pipx.** Run `pipx install "inventag-aws[google]"`, or
+  `pipx inject inventag-aws google-api-python-client google-auth google-auth-oauthlib`
+  to add the packages to the InvenTag you already have.
+- **You use a virtual environment.** Activate it first, so the packages land
+  next to InvenTag.
+
+You do not need the add-on for Excel, Word or anything else. If you use a
+Google flag without it, InvenTag stops with exit code 2, says which package is
+missing and prints this command.
 
 ## Sign in
 

@@ -58,7 +58,7 @@ The `inventag` command works the same on Linux, macOS and Windows.
 |---|---|---|---|
 | `--create-excel` | on if no other output flag | Works | Write `multi_account_bom_<timestamp>.xlsx`. |
 | `--create-word` | off | Works | Write `multi_account_bom_<timestamp>.docx`. |
-| `--create-google-docs` | off | Works (mocked clients only) | Create the Word report as a Google Doc. Needs `inventag-aws[google]`. See [Google Sheets and Docs](../guides/google-sheets-and-docs.md). |
+| `--create-google-docs` | off | Works (mocked clients only) | Create the Word report as a Google Doc. Needs the Google add-on (`pip install "inventag-aws[google]"`). See [Google Sheets and Docs](../guides/google-sheets-and-docs.md). |
 | `--create-google-sheets` | off | Works (mocked clients only) | Create the Excel report as a Google Sheets spreadsheet. |
 | `--google-credentials FILE` | none | Works (mocked clients only) | Service account key file. |
 | `--google-oauth-client FILE` | none | Works (mocked clients only) | OAuth client file; you sign in in the browser. |
