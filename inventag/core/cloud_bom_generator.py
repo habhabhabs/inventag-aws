@@ -795,7 +795,7 @@ class CloudBOMGenerator:
         if credentials.profile_name:
             try:
                 session = boto3.Session(profile_name=credentials.profile_name)
-                session.client("sts").get_caller_identity()
+                self._sts(session).get_caller_identity()
                 return session
             except (
                 ProfileNotFound,
@@ -868,7 +868,7 @@ class CloudBOMGenerator:
         # that it really belongs to the configured account.
         try:
             session = boto3.Session()
-            session.client("sts").get_caller_identity()
+            self._sts(session).get_caller_identity()
             return session
         except Exception as e:
             raise AccountSessionError(
@@ -879,7 +879,7 @@ class CloudBOMGenerator:
         self, role_arn: str, account_id: str, external_id: Optional[str] = None
     ) -> boto3.Session:
         """Assume ``role_arn`` with the default credentials and return a session."""
-        sts = boto3.Session().client("sts")
+        sts = self._sts(boto3.Session())
         session_label = "".join(
             ch if ch.isalnum() or ch in "+=,.@-" else "-" for ch in str(account_id)
         )
@@ -900,12 +900,26 @@ class CloudBOMGenerator:
             aws_session_token=temp["SessionToken"],
         )
 
+    def _sts(self, session):
+        """STS client bounded by --credential-timeout (sign-in and role checks)."""
+        timeout = self.config.credential_validation_timeout
+        if not timeout:
+            return session.client("sts")
+        return session.client(
+            "sts",
+            config=BotoConfig(
+                connect_timeout=timeout,
+                read_timeout=timeout,
+                retries={"max_attempts": 2},
+            ),
+        )
+
     def _default_caller_account(self) -> Optional[str]:
         """Account ID of the default credentials (looked up once per run)."""
         if not hasattr(self, "_default_caller_account_id"):
             try:
                 self._default_caller_account_id = str(
-                    boto3.Session().client("sts").get_caller_identity()["Account"]
+                    self._sts(boto3.Session()).get_caller_identity()["Account"]
                 )
             except Exception:
                 self._default_caller_account_id = None
@@ -915,9 +929,9 @@ class CloudBOMGenerator:
         """Partition (aws, aws-cn, aws-us-gov...) of the default credentials."""
         if self._default_identity is None:
             try:
-                self._default_identity = (
-                    boto3.Session().client("sts").get_caller_identity()
-                )
+                self._default_identity = self._sts(
+                    boto3.Session()
+                ).get_caller_identity()
             except Exception:
                 self._default_identity = {}
         return partition_from_arn(self._default_identity.get("Arn"))

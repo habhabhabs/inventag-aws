@@ -433,7 +433,7 @@ class CredentialManager:
 
         try:
             # Create session
-            session = self._create_session_from_credentials(credentials)
+            session = self._create_session_from_credentials(credentials, client_config)
 
             # Test basic connectivity with STS
             sts = session.client("sts", config=client_config)
@@ -745,7 +745,7 @@ class CredentialManager:
         return SecureCredentialFile(**data_dict)
 
     def _create_session_from_credentials(
-        self, credentials: AccountCredentials
+        self, credentials: AccountCredentials, client_config=None
     ) -> boto3.Session:
         """Create boto3 session from credentials."""
         register_secrets([credentials.secret_access_key, credentials.session_token])
@@ -764,7 +764,7 @@ class CredentialManager:
         # Try role assumption
         if credentials.role_arn:
             default_session = boto3.Session()
-            sts = default_session.client("sts")
+            sts = default_session.client("sts", config=client_config)
 
             assume_role_kwargs = {
                 "RoleArn": validate_role_arn(credentials.role_arn),

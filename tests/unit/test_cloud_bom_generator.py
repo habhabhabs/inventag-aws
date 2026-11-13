@@ -191,7 +191,10 @@ class TestCloudBOMGenerator:
         session = generator._create_account_session(credentials)
 
         mock_session_class.assert_called_with(profile_name="test-profile")
-        mock_session.client.assert_called_with("sts")
+        # The profile check is bounded by --credential-timeout.
+        assert mock_session.client.call_args.args == ("sts",)
+        config = mock_session.client.call_args.kwargs["config"]
+        assert config.connect_timeout == generator.config.credential_validation_timeout
         mock_sts.get_caller_identity.assert_called_once()
         assert session == mock_session
 
