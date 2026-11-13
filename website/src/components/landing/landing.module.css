@@ -221,6 +221,20 @@
 .copyButtonDone {
   border-color: var(--it-accent);
 }
+.copyButtonFailed {
+  border-color: var(--it-danger);
+}
+.copyLabels {
+  display: inline-grid;
+}
+.copyLabels > span {
+  grid-area: 1 / 1;
+  visibility: hidden;
+  text-align: left;
+}
+.copyLabels > span[data-on] {
+  visibility: visible;
+}
 .terminalBody {
   margin: 0;
   padding: 1.1rem 1rem 1.2rem;

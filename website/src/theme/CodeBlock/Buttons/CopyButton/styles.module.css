@@ -9,3 +9,20 @@
   color: var(--it-ink) !important;
   border-color: var(--it-accent) !important;
 }
+
+.failed {
+  color: var(--it-ink) !important;
+  border-color: var(--it-danger) !important;
+}
+/* all labels share one grid cell, so the button keeps the width of the longest */
+.labels {
+  display: inline-grid;
+}
+.labels > span {
+  grid-area: 1 / 1;
+  visibility: hidden;
+  text-align: left;
+}
+.labels > span[data-on] {
+  visibility: visible;
+}

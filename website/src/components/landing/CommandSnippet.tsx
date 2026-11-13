@@ -21,6 +21,7 @@ export default function CommandSnippet({
 }): ReactNode {
   const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const timer = useRef<number | undefined>(undefined);
+  const codeRef = useRef<HTMLElement>(null);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const copy = async () => {
@@ -29,10 +30,19 @@ export default function CommandSnippet({
     try {
       await navigator.clipboard.writeText(text);
       setStatus('copied');
+      timer.current = window.setTimeout(() => setStatus('idle'), 2000);
     } catch {
       setStatus('failed');
+      // select the commands so the reader can copy them by hand
+      if (codeRef.current) {
+        const range = document.createRange();
+        range.selectNodeContents(codeRef.current);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
+      timer.current = window.setTimeout(() => setStatus('idle'), 4000);
     }
-    timer.current = window.setTimeout(() => setStatus('idle'), 2500);
   };
 
   return (
@@ -43,11 +53,15 @@ export default function CommandSnippet({
         </figcaption>
         <button
           type="button"
-          className={clsx(styles.copyButton, status === 'copied' && styles.copyButtonDone)}
+          className={clsx(styles.copyButton, status === 'copied' && styles.copyButtonDone, status === 'failed' && styles.copyButtonFailed)}
           onClick={copy}
           aria-label={status === 'copied' ? translate({id: 'code.commandsCopied', message: 'Commands copied'}) : translate({id: 'code.copyAll', message: 'Copy all {count} commands'}, {count: lines.length})}>
           {status === 'copied' ? <IconDone /> : <IconCopy />}
-          <span aria-hidden="true">{status === 'copied' ? translate({id: 'code.copied', message: 'Copied'}) : translate({id: 'code.copy', message: 'Copy'})}</span>
+          <span className={styles.copyLabels} aria-hidden="true">
+            <span data-on={status === 'idle' ? '' : undefined}>{translate({id: 'code.copy', message: 'Copy'})}</span>
+            <span data-on={status === 'copied' ? '' : undefined}>{translate({id: 'code.copied', message: 'Copied'})}</span>
+            <span data-on={status === 'failed' ? '' : undefined}>{translate({id: 'code.notCopied', message: 'Not copied'})}</span>
+          </span>
         </button>
         <span className="sr-only" role="status" aria-live="polite">
           {status === 'copied'
@@ -58,7 +72,7 @@ export default function CommandSnippet({
         </span>
       </div>
       <pre className={styles.terminalBody} tabIndex={0}>
-        <code>
+        <code ref={codeRef}>
           {lines.map((l) => (
             <span key={l.cmd} className={styles.terminalLine}>
               <span className={styles.prompt} aria-hidden="true">

@@ -781,5 +781,8 @@
   },
   "listen.speedLabel": {
     "message": "朗读速度 {rate}×。点按可更改。"
+  },
+  "code.notCopied": {
+    "message": "未复制"
   }
 }

@@ -28,13 +28,26 @@ export default function CopyButton({className}: Props): ReactNode {
   const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const timer = useRef<number | undefined>(undefined);
 
-  const onClick = useCallback(() => {
+  const onClick = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    const button = e.currentTarget;
     window.clearTimeout(timer.current);
     copyToClipboard(code)
-      .then(() => setStatus('copied'))
-      .catch(() => setStatus('failed'))
-      .finally(() => {
+      .then(() => {
+        setStatus('copied');
         timer.current = window.setTimeout(() => setStatus('idle'), 2000);
+      })
+      .catch(() => {
+        setStatus('failed');
+        // select the code so the reader can copy it by hand
+        const block = button.closest('.theme-code-block')?.querySelector('pre code');
+        if (block) {
+          const range = document.createRange();
+          range.selectNodeContents(block);
+          const sel = window.getSelection();
+          sel?.removeAllRanges();
+          sel?.addRange(range);
+        }
+        timer.current = window.setTimeout(() => setStatus('idle'), 4000);
       });
   }, [code]);
   useEffect(() => () => window.clearTimeout(timer.current), []);
@@ -43,14 +56,18 @@ export default function CopyButton({className}: Props): ReactNode {
     <>
       <Button
         aria-label={status === 'copied' ? translate({id: 'code.copied', message: 'Copied'}) : translate({id: 'code.copyAria', message: 'Copy code to clipboard'})}
-        className={clsx(className, styles.copyButton, status === 'copied' && styles.copied)}
+        className={clsx(className, styles.copyButton, status === 'copied' && styles.copied, status === 'failed' && styles.failed)}
         onClick={onClick}>
         {status === 'copied' ? (
           <IconSuccess aria-hidden="true" className={styles.icon} />
         ) : (
           <IconCopy aria-hidden="true" className={styles.icon} />
         )}
-        <span aria-hidden="true">{status === 'copied' ? translate({id: 'code.copied', message: 'Copied'}) : translate({id: 'code.copy', message: 'Copy'})}</span>
+        <span className={styles.labels} aria-hidden="true">
+          <span data-on={status === 'idle' ? '' : undefined}>{translate({id: 'code.copy', message: 'Copy'})}</span>
+          <span data-on={status === 'copied' ? '' : undefined}>{translate({id: 'code.copied', message: 'Copied'})}</span>
+          <span data-on={status === 'failed' ? '' : undefined}>{translate({id: 'code.notCopied', message: 'Not copied'})}</span>
+        </span>
       </Button>
       <span className="sr-only" role="status" aria-live="polite">
         {status === 'copied' ? translate({id: 'code.copiedClipboard', message: 'Copied to clipboard'}) : status === 'failed' ? translate({id: 'code.copyFailed', message: 'Copy failed. Select the text instead.'}) : ''}

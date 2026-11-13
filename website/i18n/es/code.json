@@ -781,5 +781,8 @@
   },
   "listen.speedLabel": {
     "message": "Velocidad de lectura {rate}×. Pulsa para cambiar."
+  },
+  "code.notCopied": {
+    "message": "No copiado"
   }
 }
