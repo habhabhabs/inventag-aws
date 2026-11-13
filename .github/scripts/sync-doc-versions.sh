@@ -31,6 +31,23 @@ fi
 rm -rf i18n/*/docusaurus-plugin-content-docs/current   # generated copies must not leak into snapshots
 mkdir -p versioned_docs versioned_sidebars
 
+# versions.json = the snapshots on disk, newest first. Written before archiving too:
+# docs:version loads the site config, which fails when versions.json lists a
+# snapshot that is not on disk (for example one deleted to be archived again).
+write_versions_json() {
+  find versioned_docs -mindepth 1 -maxdepth 1 -type d -name 'version-*' -printf '%f\n' \
+    | sed 's/^version-//' | sort -rV | jq -R . | jq -s . > versions.json
+}
+write_versions_json
+
+# If archiving stops half-way, put the current docs and sidebars back.
+restore_current_docs() {
+  git reset -q HEAD -- ../docs sidebars.ts sidebars.js
+  rm -rf ../docs
+  git checkout -- ../docs sidebars.ts sidebars.js
+}
+trap 'echo "sync-doc-versions: failed, restoring docs/"; restore_current_docs' ERR
+
 archived=(); skipped=(); present=(); dropped=()
 for tag in $(git tag -l | grep -E "$PATTERN" | sort -V); do
   v="${tag#v}"
@@ -61,9 +78,7 @@ for tag in $(git tag -l | grep -E "$PATTERN" | sort -V); do
   done < <(find ../docs -name '*.mdx')
   for sb in sidebars.ts sidebars.js; do git cat-file -e "$tag:website/$sb" 2>/dev/null && git checkout "$tag" -- "$sb"; done
   npm run docusaurus -- docs:version "$v"
-  git reset -q HEAD -- ../docs sidebars.ts sidebars.js    # nothing from the old tag stays staged
-  rm -rf ../docs
-  git checkout -- ../docs sidebars.ts sidebars.js          # put the current docs back
+  restore_current_docs                                   # unstage the old tag's files, put the current docs back
   [ -d "versioned_docs/version-$v" ] && [ -f "versioned_sidebars/version-$v-sidebars.json" ] \
     || { echo "snapshot of $tag was not created"; exit 1; }
   # The docs at a tag can still name an older release ("This page describes
@@ -79,8 +94,8 @@ for tag in $(git tag -l | grep -E "$PATTERN" | sort -V); do
   archived+=("$v")
 done
 
-# versions.json = the snapshots on disk, newest first
-ls versioned_docs | sed -n 's/^version-//p' | sort -rV | jq -R . | jq -s . > versions.json
+trap - ERR
+write_versions_json
 for f in versioned_sidebars/version-*-sidebars.json; do
   v="${f#versioned_sidebars/version-}"; v="${v%-sidebars.json}"
   [ -d "versioned_docs/version-$v" ] || { echo "removing orphan sidebar $f"; rm -f "$f"; }
