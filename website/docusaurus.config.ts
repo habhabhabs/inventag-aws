@@ -2,8 +2,8 @@
 // See https://docusaurus.io/docs/api/docusaurus-config
 // This runs in Node.js: no browser APIs or JSX here.
 
-import {readFileSync} from 'node:fs';
-import {resolve} from 'node:path';
+import {readFileSync, readdirSync, writeFileSync, statSync} from 'node:fs';
+import {resolve, join} from 'node:path';
 import type {Config, Plugin} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 import {inventagLight, inventagDark} from './src/theme-config/prism';
@@ -24,6 +24,61 @@ const DESCRIPTION =
   'shows how they are tagged and writes Excel or Word reports.';
 const SOCIAL_ALT =
   'InvenTag: list what runs in your AWS accounts, check the tags, hand over an Excel or Word report.';
+
+// Docusaurus sets DOCUSAURUS_CURRENT_LOCALE for each locale build.
+const CURRENT_LOCALE = process.env.DOCUSAURUS_CURRENT_LOCALE ?? 'en';
+
+// Read one UI string from i18n/<locale>/code.json (English falls back to the given text).
+function uiString(key: string, fallback: string): string {
+  try {
+    const file = resolve('./i18n', CURRENT_LOCALE, 'code.json');
+    const data = JSON.parse(readFileSync(file, 'utf8')) as Record<string, {message?: string}>;
+    return data[key]?.message || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+// Open Graph wants language_TERRITORY values (zh_CN), not the BCP 47 tags in htmlLang (zh-Hans).
+// htmlLang stays as it is because it drives <html lang>, hreflang and :lang() CSS.
+const OG_LOCALES: Record<string, string> = {
+  en: 'en_GB', // the English text uses British spelling
+  'zh-Hans': 'zh_CN',
+  'zh-Hant': 'zh_TW',
+  es: 'es_ES',
+  fr: 'fr_FR',
+};
+
+function walkHtml(dir: string, out: string[] = []): string[] {
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) walkHtml(full, out);
+    else if (name.endsWith('.html')) out.push(full);
+  }
+  return out;
+}
+
+// Replaces the og:locale tags that the theme writes from htmlLang with valid ones.
+function ogLocaleFix(): Plugin {
+  return {
+    name: 'inventag-og-locale',
+    async postBuild({outDir, i18n}) {
+      const current = OG_LOCALES[i18n.currentLocale];
+      if (!current) throw new Error(`No Open Graph locale for "${i18n.currentLocale}" (see OG_LOCALES).`);
+      const alternates = Object.entries(OG_LOCALES).filter(([l]) => l !== i18n.currentLocale).map(([, v]) => v);
+      const tags =
+        `<meta data-rh="true" property="og:locale" content="${current}">` +
+        alternates.map((v) => `<meta data-rh="true" property="og:locale:alternate" content="${v}">`).join('');
+      const pattern = /<meta[^>]*property="?og:locale(?::alternate)?"?[^>]*>/g;
+      for (const file of walkHtml(outDir)) {
+        const html = readFileSync(file, 'utf8');
+        if (!pattern.test(html)) continue;
+        pattern.lastIndex = 0;
+        writeFileSync(file, html.replace(pattern, '').replace('</head>', `${tags}</head>`));
+      }
+    },
+  };
+}
 
 // Fail the build on broken links in the homepage and the current docs.
 // Archived versions only warn (they are snapshots and are not edited).
@@ -216,15 +271,16 @@ const config: Config = {
       },
     ],
     brokenLinksGate,
+    ogLocaleFix,
   ],
 
   themeConfig: {
     metadata: [
-      {name: 'description', content: DESCRIPTION},
+      // pages without their own description (404, search) get the localized home description
+      {name: 'description', content: uiString('home.pageDescription', DESCRIPTION)},
       {name: 'keywords', content: 'aws, inventory, tagging, tag policy, bill of materials, bom, cli, python, open source'},
       {property: 'og:type', content: 'website'},
       {property: 'og:site_name', content: 'InvenTag'},
-      {property: 'og:locale', content: 'en_GB'},
       {property: 'og:image:type', content: 'image/png'},
       {property: 'og:image:width', content: '1200'},
       {property: 'og:image:height', content: '630'},
@@ -298,7 +354,7 @@ const config: Config = {
             {label: 'MIT licence', href: 'https://github.com/habhabhabs/inventag-aws/blob/main/LICENSE'},
             {
               // a button, not a #fragment link: it reopens the cookie banner (src/theme/Root.tsx)
-              html: '<button type="button" class="footer__link-item footer__button" data-cookie-preferences>Cookie preferences</button>',
+              html: `<button type="button" class="footer__link-item footer__button" data-cookie-preferences>${uiString('footer.cookiePreferences', 'Cookie preferences')}</button>`,
             },
             {label: 'Privacy and cookies', to: '/privacy'},
           ],
