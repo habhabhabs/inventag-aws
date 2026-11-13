@@ -455,8 +455,16 @@ kbd {
   display: none; /* the external-link icon Docusaurus adds */
 }
 
-/* Theme toggle */
+/* Theme toggle: the wrapper is as tall as the button, so it lines up with the GitHub button */
+[class*='colorModeToggle'] {
+  display: flex;
+  align-items: center;
+  width: auto;
+  height: auto;
+  margin: 0;
+}
 [class*='colorModeToggle'] button {
+  flex: none;
   width: 2.5rem;
   height: 2.5rem;
   border: 1px solid var(--it-line-strong);
@@ -468,7 +476,8 @@ kbd {
   border-color: var(--it-ink);
 }
 @media (pointer: coarse) {
-  [class*='colorModeToggle'] button {
+  [class*='colorModeToggle'] button,
+  .header-github-link {
     width: 2.75rem;
     height: 2.75rem;
   }
@@ -693,12 +702,12 @@ kbd {
   background: var(--it-hover);
 }
 /* sidebar collapse controls */
-[class*='collapseSidebarButton'] {
+button[class*='collapseSidebarButton'] {
   border-top: 1px solid var(--it-line);
   border-radius: 0;
   height: 2.75rem;
 }
-[class*='expandButton'] {
+button[class*='expandButton'] {
   border-right: 1px solid var(--it-line);
 }
 
