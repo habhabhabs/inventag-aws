@@ -137,11 +137,13 @@ export default function ReadAloud(): ReactNode {
       // No voice or no audio output: nothing starts and no error event arrives. Do not
       // leave the controls stuck on "Pause".
       window.setTimeout(() => {
-        if (id === run.current && !synth.speaking && !synth.pending && !synth.paused) {
+        if (id === run.current && !synth.speaking && !synth.paused) {
+          run.current += 1;
           queue.current = [];
+          synth.cancel();
           setState('idle');
         }
-      }, 2500);
+      }, 5000);
     },
     [lang],
   );
