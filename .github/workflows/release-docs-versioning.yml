@@ -12,7 +12,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   create-docs-version:
@@ -147,7 +146,11 @@ jobs:
               # Start from an empty docs/ so files renamed since the tag (index.md vs
               # index.mdx) cannot end up in the snapshot twice.
               rm -rf ../docs
-              git checkout "v$ARCHIVE_VERSION" -- ../docs sidebars.ts sidebars.js
+              git checkout "v$ARCHIVE_VERSION" -- ../docs
+              # An old tag may not have both sidebar files; a missing pathspec would fail the step.
+              for sb in sidebars.ts sidebars.js; do
+                git cat-file -e "v$ARCHIVE_VERSION:website/$sb" 2>/dev/null && git checkout "v$ARCHIVE_VERSION" -- "$sb"
+              done
             fi
             npm run docusaurus -- docs:version "$ARCHIVE_VERSION"
             # Put the new release's docs back, and leave nothing from the old tag staged.
@@ -388,11 +391,7 @@ jobs:
           - Generated from release ${{ github.event.release.tag_name || 'manual trigger' }}
           - Documentation files archived: $DOC_COUNT
           - Total versions: $(jq length website/versions.json)
-          - Strategy: Current ($VERSION in docs/) + N-1 ($N1_VERSION in versioned_docs/)
-          
-          🤖 Generated with [Claude Code](https://claude.ai/code)
-          
-          Co-Authored-By: Claude <noreply@anthropic.com>"
+          - Strategy: Current ($VERSION in docs/) + N-1 ($N1_VERSION in versioned_docs/)"
           
           echo "✅ Changes committed for release $VERSION with N-1 strategy"
           
