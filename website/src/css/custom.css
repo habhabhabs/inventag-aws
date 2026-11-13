@@ -1033,7 +1033,13 @@ pre code,
   .table-frame[data-scrollable] .table-scroll td:first-child code {
     max-width: 42vw;
     white-space: normal;
-    overflow-wrap: anywhere;
+    /* break-word (not anywhere): a column of one-letter lines would be the result,
+       because anywhere also lowers the minimum width the table can shrink to */
+    overflow-wrap: break-word;
+  }
+  .table-frame[data-scrollable] .table-scroll th:first-child,
+  .table-frame[data-scrollable] .table-scroll td:first-child {
+    min-width: 6rem;
   }
   .table-frame[data-wide] .table-scroll td:last-child {
     min-width: 15rem;
