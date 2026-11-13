@@ -18,7 +18,6 @@
         "cloudformation:ListStacks",
         "cloudfront:ListDistributions",
         "cloudtrail:DescribeTrails",
-        "cloudtrail:LookupEvents",
         "cloudwatch:DescribeAlarms",
         "cloudwatch:GetMetricStatistics",
         "cloudwatch:ListDashboards",

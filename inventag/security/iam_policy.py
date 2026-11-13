@@ -15,6 +15,8 @@ Deliberately excluded:
   ``ssm:GetParameter*``, ``s3:GetObject``, ``lambda:GetFunction`` which returns
   a presigned code URL) - InvenTag uses ``lambda:GetFunctionConfiguration``.
 * ``apigateway:GET`` on ``/apikeys`` (API key values can be read there).
+* ``cloudtrail:LookupEvents``: returns event records with request parameters,
+  and no code path that runs calls it.
 
 ``sts:GetCallerIdentity`` needs no permission. ``sts:AssumeRole`` belongs on
 the *scanning* identity (to reach the role), not in this policy.
@@ -36,7 +38,6 @@ READ_ONLY_ACTIONS: Dict[str, Tuple[str, str]] = {
     "cloudformation:ListChangeSets": ("cloudformation", "ListChangeSets"),
     "cloudfront:ListDistributions": ("cloudfront", "ListDistributions"),
     "cloudtrail:DescribeTrails": ("cloudtrail", "DescribeTrails"),
-    "cloudtrail:LookupEvents": ("cloudtrail", "LookupEvents"),
     "cloudwatch:DescribeAlarms": ("cloudwatch", "DescribeAlarms"),
     "cloudwatch:ListDashboards": ("cloudwatch", "ListDashboards"),
     "cloudwatch:GetMetricStatistics": ("cloudwatch", "GetMetricStatistics"),
