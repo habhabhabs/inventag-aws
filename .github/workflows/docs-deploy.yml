@@ -785,6 +785,16 @@ jobs:
             fi
           fi
 
+      # Fast checks before the long build. check:links needs no step of its own:
+      # it runs at the end of every `npm run build` (postBuild hook in docusaurus.config.ts).
+      - name: Type-check the site
+        working-directory: ./website
+        run: npm run typecheck
+
+      - name: Check translation structure
+        working-directory: ./website
+        run: npm run check:i18n -- --strict
+
       - name: Build documentation site with fallback
         working-directory: ./website
         run: |
