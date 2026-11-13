@@ -257,20 +257,8 @@ jobs:
           
           echo "Next development version: $NEXT_DEV_VERSION"
           
-          # Update docusaurus.config.js
-          sed -i.bak "s/v[0-9]*\.[0-9]*\.[0-9]*-dev (Current)/$NEXT_DEV_VERSION (Current)/" docusaurus.config.js
-          
-          # Add the new version to the versions configuration
-          if ! grep -q "v$VERSION" docusaurus.config.js; then
-            # Add version configuration
-            sed -i.bak "/current: {/a\\
-            },\\
-            '$VERSION': {\\
-              label: '$VERSION',\\
-              badge: false,\
-            " docusaurus.config.js
-          fi
-          
+          # docusaurus.config.ts reads website/versions.json and version.json (repo root)
+          # itself, so there is no config file to edit when a version is archived.
           echo "✅ Configuration updated"
 
       - name: Test the versioned build
@@ -323,7 +311,6 @@ jobs:
           
           ## Updated Files
           - \`website/versions.json\`
-          - \`website/docusaurus.config.js\`
           
           ## Next Steps
           1. Review the generated version documentation
@@ -350,7 +337,6 @@ jobs:
           git add website/versioned_docs/
           git add website/versioned_sidebars/
           git add website/versions.json
-          git add website/docusaurus.config.js
           git add docs/security/versions/
           
           # Create commit
@@ -421,5 +407,4 @@ jobs:
           path: |
             version-summary.md
             website/versions.json
-            website/docusaurus.config.js
           retention-days: 90

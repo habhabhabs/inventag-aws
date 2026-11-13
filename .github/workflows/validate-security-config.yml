@@ -130,8 +130,8 @@ jobs:
             exit 1
           fi
           
-          # Check if docusaurus.config.js is valid
-          if node -e "require('./docusaurus.config.js')"; then
+          # Check that docusaurus.config.ts type-checks
+          if npx --no-install tsc --noEmit; then
             echo "✅ Docusaurus configuration is valid"
           else
             echo "❌ Docusaurus configuration has syntax errors"
