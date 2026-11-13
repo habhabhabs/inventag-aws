@@ -20,7 +20,8 @@
     "typecheck": "tsc",
     "test:vendor": "node vendor/deepmerge/test.cjs",
     "serve:pages": "node scripts/serve-pages.mjs",
-    "sync:i18n": "node scripts/sync-i18n.mjs"
+    "sync:i18n": "node scripts/sync-i18n.mjs",
+    "check:i18n": "node scripts/check-i18n.mjs"
   },
   "dependencies": {
     "@docusaurus/core": "^3.10.2",
