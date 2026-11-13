@@ -962,6 +962,15 @@ pre code,
   border: 0;
   word-break: normal;
 }
+/* In a table, code may break only at hyphens, slashes and bars; a word breaks
+   in the middle only when it is wider than the column can ever be.
+   word-break: break-word (above) lets every column shrink to one letter's width,
+   so the table layout squeezes a flag such as --create-google-sheets and it
+   breaks inside a word on phones. */
+.markdown table code {
+  word-break: normal;
+  overflow-wrap: break-word;
+}
 
 /* Images in docs */
 .markdown img {
@@ -1034,7 +1043,7 @@ pre code,
   .table-frame .table-scroll th:first-child,
   .table-frame .table-scroll td:first-child,
   .table-frame .table-scroll td:first-child code {
-    max-width: 42vw;
+    max-width: 50vw;
     white-space: normal;
     /* break-word (not anywhere): a column of one-letter lines would be the result,
        because anywhere also lowers the minimum width the table can shrink to */
