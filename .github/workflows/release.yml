@@ -139,11 +139,10 @@ jobs:
   release:
     name: Create Release
     runs-on: ubuntu-latest
+    # Every write (push, tag, release, assets) uses the VERSION_BUMP_WORKFLOW token.
+    # GITHUB_TOKEN only lists releases here.
     permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-      actions: write
+      contents: read
     needs: check-for-release
     if: needs.check-for-release.outputs.should_release == 'true'
     outputs:
