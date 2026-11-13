@@ -8,6 +8,13 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Every push to `main` is released as a patch version automatically. Use
+  `Release-As: minor` or `Release-As: major` in the commit message, a
+  `release:minor` or `release:major` pull request label, or the manual
+  workflow for a bigger bump.
+
 ## [1.0.2] - 2026-11-13
 
 ### Fixed
@@ -187,8 +194,9 @@ These items are not done. A contributor can start any of them.
   `inventag`.
 - The release workflow can publish to PyPI through Trusted Publishing. See
   "Release process" below.
-- A direct push to `main` starts a release if the commit message has a line
-  `Release-As: patch`, `Release-As: minor` or `Release-As: major`.
+- Every push to `main` starts a patch release. Add a line `Release-As: minor`
+  or `Release-As: major` to the commit message for a bigger bump. Put
+  `[skip release]` in the message to publish nothing.
 - Website: `npm run check:a11y` does accessibility checks (axe-core, WCAG 2.1
   A and AA) at four screen widths in the light theme and the dark theme. The
   docs workflow runs it after the build.
@@ -243,9 +251,11 @@ These items are not done. A contributor can start any of them.
 
 1. Put the changes on `main`. Make sure that the "Unreleased" section is
    correct.
-2. Start a release with one of these methods:
-   - Add a line `Release-As: major` (or `minor`, or `patch`) to the commit
-     message of the last commit that you push to `main`.
+2. The release starts by itself. A push to `main` is a patch release unless
+   you choose another bump:
+   - Add a line `Release-As: major` (or `minor`) to the commit message of the
+     commit that you push to `main`. Put `[skip release]` in the message to
+     skip the release.
    - Run the "Automated Release" workflow manually and select the bump type.
    - Merge a pull request that has a `release:major`, `release:minor` or
      `release:patch` label.
