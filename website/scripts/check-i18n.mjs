@@ -51,6 +51,8 @@ for (const loc of locales) {
     const tr = fs.readFileSync(path.join(dir, f), 'utf8');
     const a = facts(en), b = facts(tr);
     const issues = [];
+    // an unquoted front-matter value containing ": " is invalid YAML and breaks the build
+    for (const m of tr.split(/\n---\n/)[0].matchAll(/^(title|description): (?!["'>|])(.*: .*)$/gm)) issues.push(`front matter ${m[1]} needs quotes`);
     if (a.headings !== b.headings) issues.push(`headings ${b.headings} vs ${a.headings}`);
     if (a.tables !== b.tables) issues.push(`tables ${b.tables} vs ${a.tables}`);
     if (a.links.length !== b.links.length) issues.push(`links ${b.links.length} vs ${a.links.length}`);
