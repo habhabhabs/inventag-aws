@@ -389,7 +389,7 @@ inventag: error: my_word_template.yaml: sections[1].columns[2].field: unknown co
 - `scripts/legacy/` 中的舊指令碼沒有範本引數。
 - 舊設定範例中的設定鍵 `templates`、`document_templates` 和
   `default_template` 沒有任何作用。只有 `--word-template` 和 `--excel-template` 會選擇範本。
-- 帶有 `template_version: "1.0"` 的範本檔案無效。1.0.0 之前的 alpha 建置都附帶了這類檔案，
+- 帶有 `template_version: "1.0"` 的範本檔案無效。v1.0.0 之前的 alpha 建置都附帶了這類檔案，
   但 CLI 並不會讀取它們。
 
 ## 範本檔案的安全性 {#safety-of-template-files}

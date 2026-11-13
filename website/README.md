@@ -75,7 +75,12 @@ an edit. It works in text, inline code, code blocks, link URLs and string
 attributes of MDX elements, in `.md` and `.mdx`. It does not work in front
 matter (the build stops) and should not be used in headings (the anchor would
 change with each release). On GitHub the page shows the token as written.
-Version numbers that are facts about the past ("since 1.0.1") stay literal.
+Version numbers that are facts about the past ("since v1.0.1") stay literal.
+
+Write every InvenTag version that a person reads as `vX.Y.Z` ("InvenTag v1.1.4", "before v1.0.0").
+In prose put the `v` before the token: `v%INVENTAG_VERSION%`. The token itself expands to the
+bare number, so leave it bare inside machine syntax such as `inventag-aws==%INVENTAG_VERSION%`.
+Versions of other software (Python, Node, actions, boto3) are not InvenTag versions.
 
 ## Archived versions
 

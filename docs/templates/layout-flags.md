@@ -413,7 +413,7 @@ Other limits:
   `default_template` in older configuration examples have no effect. Only
   `--word-template` and `--excel-template` select a template.
 - Template files with `template_version: "1.0"` are not valid. Alpha builds
-  before 1.0.0 shipped such files, but the CLI did not read them.
+  before v1.0.0 shipped such files, but the CLI did not read them.
 
 ## Safety of template files
 

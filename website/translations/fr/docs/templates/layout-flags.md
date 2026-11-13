@@ -413,7 +413,7 @@ Autres limites :
   `default_template` dans d’anciens exemples de configuration n’ont aucun effet. Seules
   `--word-template` et `--excel-template` sélectionnent un modèle.
 - Les fichiers de modèle avec `template_version: "1.0"` ne sont pas valides. Les alpha builds
-  antérieures à 1.0.0 fournissaient de tels fichiers, mais la CLI ne les lisait pas.
+  antérieures à v1.0.0 fournissaient de tels fichiers, mais la CLI ne les lisait pas.
 
 ## Sécurité des fichiers de modèle {#safety-of-template-files}
 
