@@ -139,3 +139,22 @@ class TestBOMConverterScript:
 
 if __name__ == "__main__":
     pytest.main([__file__])
+
+
+class TestRepeatableOrder:
+    """The same estate gives the same sheets and rows whatever the discovery order."""
+
+    def test_group_by_service_sorts_services_and_rows(self):
+        from inventag.reporting.converter import _group_by_service
+
+        rows = [
+            {"service": "S3", "type": "Bucket", "id": "b-2"},
+            {"service": "EC2", "type": "Volume", "id": "vol-2"},
+            {"service": "EC2", "type": "Instance", "id": "i-1"},
+            {"service": "S3", "type": "Bucket", "id": "b-1"},
+        ]
+        for data in (rows, list(reversed(rows))):
+            groups = _group_by_service(data)
+            assert list(groups) == ["EC2", "S3"]
+            assert [r["id"] for r in groups["EC2"]] == ["i-1", "vol-2"]
+            assert [r["id"] for r in groups["S3"]] == ["b-1", "b-2"]

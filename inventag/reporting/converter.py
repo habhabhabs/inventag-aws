@@ -49,6 +49,26 @@ except ImportError:
     Document = Any
 
 
+def _group_by_service(resources: List[Dict[str, Any]]) -> Dict[str, List[Dict]]:
+    """Group resources by service. Services and rows are sorted, so the same
+    estate gives the same sheet order and row order on every run (discovery
+    runs in parallel and finishes in a different order each time)."""
+
+    def row_key(resource: Dict[str, Any]) -> tuple:
+        return tuple(
+            str(resource.get(k) or "").lower()
+            for k in ("type", "name", "id", "arn", "source_account_id", "region")
+        )
+
+    groups: Dict[str, List[Dict]] = {}
+    for resource in resources:
+        groups.setdefault(resource.get("service", "Unknown"), []).append(resource)
+    return {
+        service: sorted(rows, key=row_key)
+        for service, rows in sorted(groups.items(), key=lambda kv: str(kv[0]).lower())
+    }
+
+
 class BOMConverter:
     def __init__(
         self,
@@ -416,13 +436,8 @@ class BOMConverter:
         template = self._resolve_template(template, "excel")
         context = build_context(template, self.data)
 
-        # Group resources by service
-        services = {}
-        for resource in self.data:
-            service = resource.get("service", "Unknown")
-            if service not in services:
-                services[service] = []
-            services[service].append(resource)
+        # Group resources by service (sorted, so repeated runs match)
+        services = _group_by_service(self.data)
 
         # Create workbook
         wb = Workbook()
@@ -499,7 +514,7 @@ class BOMConverter:
     ) -> list:
         """(service, resources) pairs to show, in order.
 
-        Without ``wanted`` every service is shown in discovery order. With
+        Without ``wanted`` every service is shown, sorted by name. With
         ``wanted`` only those services are shown, in the order of the list.
         """
         if not wanted:
@@ -1387,13 +1402,8 @@ class BOMConverter:
         template = self._resolve_template(template, "word")
         context = build_context(template, self.data)
 
-        # Group resources by service
-        services = {}
-        for resource in self.data:
-            service = resource.get("service", "Unknown")
-            if service not in services:
-                services[service] = []
-            services[service].append(resource)
+        # Group resources by service (sorted, so repeated runs match)
+        services = _group_by_service(self.data)
 
         # Create Word document
         doc = Document()
