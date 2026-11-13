@@ -8,6 +8,21 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `--enable-cost-analysis`: a Pricing API lookup is made once per distinct
+  service and filter set, and its result, including "no price" and a failed
+  call, is reused for the rest of the run. Before, failed lookups were repeated
+  for every resource. A throttled lookup is retried once before it counts as
+  failed. Each failure reason is logged once at WARNING level.
+- `--enable-cost-analysis`: each EC2 instance type, EBS volume type, RDS class
+  and engine, and S3 storage class gets its own price. Before, they shared the
+  first price looked up for that resource type in that region.
+- `--enable-cost-analysis` with `--cross-account-role` or an accounts file:
+  Pricing API calls use the same session as the other cost calls (the first
+  scanned account's credentials). Before, they used the default credentials,
+  so they failed when the machine had none.
+
 ## [1.1.3] - 2026-11-13
 
 ### Changed

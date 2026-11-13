@@ -16,6 +16,7 @@ import json
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
+import time
 
 
 @dataclass
@@ -131,9 +132,15 @@ class CostAnalyzer:
         # Initialize AWS clients
         self._initialize_clients()
 
-        # Caching for pricing data
+        # Caching for pricing data. Lock order: a per-key lock may be held
+        # while _cache_lock or _warn_lock is taken, never the other way round.
         self._pricing_cache: Dict[str, Any] = {}
         self._cache_lock = threading.Lock()
+        self._pricing_key_locks: Dict[str, threading.Lock] = {}
+        self._client_lock = threading.Lock()
+        self._warn_lock = threading.Lock()
+        self._warned_apis: Set[str] = set()
+        self._warned_pricing_reasons: Set[str] = set()
 
         # Historical cost data storage
         self._historical_costs: Dict[str, List[Tuple[datetime, Decimal]]] = defaultdict(
@@ -150,15 +157,24 @@ class CostAnalyzer:
         self.logger.info("Cost analyzer initialized with lazy client loading")
 
     def _get_pricing_client(self):
-        """Lazily create and return pricing client."""
-        if self.pricing_client is None:
-            try:
-                self.pricing_client = boto3.client("pricing", region_name="us-east-1")
-                self.logger.debug("Created pricing client")
-            except Exception as e:
-                self.logger.warning(f"Failed to create pricing client: {e}")
-                raise
-        return self.pricing_client
+        """Lazily create and return pricing client.
+
+        The client comes from the analyzer's session, so a cross-account run
+        uses the assumed role, not the default credentials. The Pricing API
+        endpoint is in us-east-1. Worker threads call this at the same time,
+        and creating clients is not thread-safe, so creation is locked.
+        """
+        with self._client_lock:
+            if self.pricing_client is None:
+                try:
+                    self.pricing_client = self.session.client(
+                        "pricing", region_name="us-east-1"
+                    )
+                    self.logger.debug("Created pricing client")
+                except Exception as e:
+                    self.logger.warning(f"Failed to create pricing client: {e}")
+                    raise
+            return self.pricing_client
 
     def _get_cloudwatch_client(self):
         """Lazily create and return CloudWatch client."""
@@ -294,9 +310,10 @@ class CostAnalyzer:
         if isinstance(response, dict):
             code = response.get("Error", {}).get("Code", "")
         if code in self._DENIED:
-            warned = self.__dict__.setdefault("_warned_apis", set())
-            if api not in warned:
-                warned.add(api)
+            with self._warn_lock:
+                first = api not in self._warned_apis
+                self._warned_apis.add(api)
+            if first:
                 self.logger.warning(
                     f"Cost analysis: access to the {api} API was denied ({code}). "
                     "Cost and activity data from it will be missing."
@@ -306,6 +323,29 @@ class CostAnalyzer:
 
     _NOT_CACHED = object()
 
+    # Error codes worth one more try before a lookup is cached as failed.
+    # botocore has already retried these with backoff by the time they reach
+    # us; one late retry stops a short burst from removing a price for the
+    # whole run.
+    _TRANSIENT = {
+        "Throttling",
+        "ThrottlingException",
+        "TooManyRequestsException",
+        "RequestLimitExceeded",
+        "ServiceUnavailable",
+        "ServiceUnavailableException",
+        "InternalError",
+        "InternalErrorException",
+    }
+    _PRICING_RETRY_DELAY = 2.0  # seconds
+
+    @staticmethod
+    def _error_code(error: Exception) -> str:
+        response = getattr(error, "response", None)
+        if isinstance(response, dict):
+            return response.get("Error", {}).get("Code", "") or ""
+        return ""
+
     def _get_pricing_info(
         self, service: str, resource_type: str, region: str, resource: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
@@ -313,7 +353,9 @@ class CostAnalyzer:
 
         The result, including "no price" and a failed call, is cached for the
         run under the full lookup key (service code plus every filter), so N
-        resources that share a key cost one Pricing API call, not N.
+        resources that share a key cost one Pricing API call, not N. A
+        transient error (throttling, service unavailable) is retried once
+        before the failure is cached.
         """
         service_code = self._map_service_to_pricing_code(service)
         if not service_code:
@@ -323,49 +365,86 @@ class CostAnalyzer:
             filters = self._build_pricing_filters(
                 service, resource_type, region, resource
             )
+            cache_key = json.dumps([service_code, filters], sort_keys=True, default=str)
         except Exception as e:
             self.logger.debug(f"Could not build pricing filters for {service}: {e}")
             return None
-        cache_key = json.dumps([service_code, filters], sort_keys=True)
 
         with self._cache_lock:
             cached = self._pricing_cache.get(cache_key, self._NOT_CACHED)
             if cached is not self._NOT_CACHED:
-                return cached
-            key_lock = self.__dict__.setdefault("_pricing_key_locks", {}).setdefault(
-                cache_key, threading.Lock()
-            )
+                return self._pricing_for(cached, service, resource_type)
+            key_lock = self._pricing_key_locks.setdefault(cache_key, threading.Lock())
 
         # One thread looks a key up; the others wait for its answer.
         with key_lock:
             with self._cache_lock:
                 cached = self._pricing_cache.get(cache_key, self._NOT_CACHED)
                 if cached is not self._NOT_CACHED:
-                    return cached
+                    return self._pricing_for(cached, service, resource_type)
 
+            pricing_info = self._lookup_pricing(
+                service_code, filters, service, resource_type
+            )
+
+            with self._cache_lock:
+                self._pricing_cache[cache_key] = pricing_info
+                # Later callers hit the cache, so the key lock is not needed
+                # any more; threads already waiting on it keep their reference.
+                self._pricing_key_locks.pop(cache_key, None)
+            return self._pricing_for(pricing_info, service, resource_type)
+
+    def _lookup_pricing(
+        self,
+        service_code: str,
+        filters: List[Dict[str, Any]],
+        service: str,
+        resource_type: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Call GetProducts for one key; retry a transient error once."""
+        for attempt in (1, 2):
             try:
                 response = self._get_pricing_client().get_products(
                     ServiceCode=service_code, Filters=filters, MaxResults=10
                 )
-                pricing_info = self._parse_pricing_response(
-                    response, service, resource_type
-                )
+                return self._parse_pricing_response(response, service, resource_type)
             except Exception as e:
-                pricing_info = None
+                if attempt == 1 and self._error_code(e) in self._TRANSIENT:
+                    self.logger.debug(
+                        f"Pricing API lookup for {service}:{resource_type} "
+                        f"failed ({self._error_code(e)}); retrying once"
+                    )
+                    time.sleep(self._PRICING_RETRY_DELAY)
+                    continue
                 self._log_pricing_failure(service, resource_type, e)
+                return None
+        return None
 
-            with self._cache_lock:
-                self._pricing_cache[cache_key] = pricing_info
+    @staticmethod
+    def _pricing_for(
+        pricing_info: Optional[Dict[str, Any]], service: str, resource_type: str
+    ) -> Optional[Dict[str, Any]]:
+        """Return a per-caller copy of a cached price.
+
+        Resources of different types (EC2 volumes and security groups, ELB
+        and ELBV2) can share one lookup key; each estimate must name its own
+        service and type and must not share mutable dicts with other estimates.
+        """
+        if not pricing_info:
             return pricing_info
+        result = dict(pricing_info)
+        result["cost_factors"] = {
+            **pricing_info.get("cost_factors", {}),
+            "service": service,
+            "resource_type": resource_type,
+        }
+        return result
 
     def _log_pricing_failure(
         self, service: str, resource_type: str, error: Exception
     ) -> None:
         """Log a failed Pricing lookup once per distinct reason, not per resource."""
-        code = ""
-        response = getattr(error, "response", None)
-        if isinstance(response, dict):
-            code = response.get("Error", {}).get("Code", "")
+        code = self._error_code(error)
         if code in self._DENIED:
             self._log_aws_failure(
                 "pricing",
@@ -374,10 +453,9 @@ class CostAnalyzer:
             )
             return
         reason = code or type(error).__name__
-        warned = self.__dict__.setdefault("_warned_pricing_reasons", set())
-        with self._cache_lock:
-            first = reason not in warned
-            warned.add(reason)
+        with self._warn_lock:
+            first = reason not in self._warned_pricing_reasons
+            self._warned_pricing_reasons.add(reason)
         if first:
             self.logger.warning(
                 f"Cost analysis: a Pricing API lookup failed ({reason}); the same "
