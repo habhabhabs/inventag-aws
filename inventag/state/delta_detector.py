@@ -113,6 +113,10 @@ class DeltaReport:
 DEFAULT_VOLATILE_FIELDS = [
     "discovered_via",
     "data_sources",
+    # Which discovery route found the row (v1.2.0 columns), not the resource
+    "source",
+    "sources",
+    "detail_level",
     "api_operation",
     "priority",
     "billing_validated",
@@ -147,6 +151,15 @@ _ROUTE_FIELDS = {
     "resource_type",
     "raw_data",
 }
+
+
+def _found_by_tagging_only(resource: Dict) -> bool:
+    """True for a row only the Tagging API returned (v1.1.4 and v1.2.0 shapes)."""
+    if resource.get("source"):
+        return resource.get("source") == "tagging-api"
+    return str(resource.get("discovered_via") or "").startswith(
+        "ResourceGroupsTaggingAPI"
+    )
 
 
 def _is_arn(key: Any) -> bool:
@@ -286,6 +299,16 @@ class DeltaDetector:
         new_resources_map, route_changed = self._align_keys(
             old_resources_map, new_resources_map
         )
+        # Same ARN, but one run found it only through the Tagging API (ID and
+        # tags) and the other through its service API (full details): the
+        # route changed, not the resource.
+        route_changed = set(route_changed) | {
+            key
+            for key in old_resources_map
+            if key in new_resources_map
+            and _found_by_tagging_only(old_resources_map[key])
+            != _found_by_tagging_only(new_resources_map[key])
+        }
 
         # Detect different types of changes
         added_resources = self._detect_added_resources(
