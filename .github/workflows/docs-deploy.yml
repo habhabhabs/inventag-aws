@@ -79,7 +79,7 @@ jobs:
             exit 1
           fi
           
-          echo "✅ Found valid version.json with version: $VERSION"
+          echo "✅ Found valid version.json with version: v$VERSION"
           echo "version=$VERSION" >> $GITHUB_ENV
 
       - name: Install Python for SBOM generation
@@ -557,7 +557,7 @@ jobs:
           if [ -f "website/versions.json" ]; then
             version_count=$(jq length website/versions.json)
             echo "Found $version_count documented versions"
-            echo "Versions: $(jq -r '.[]' website/versions.json | tr '\n' ' ')"
+            echo "Versions: $(jq -r '.[] | "v" + .' website/versions.json | tr '\n' ' ')"
           else
             echo "No versions.json found - this is normal for new versioning setups"
           fi
@@ -814,7 +814,7 @@ jobs:
             if [ -f "versions.json" ]; then
               echo "Available versions:"
               jq -r '.[]' versions.json | while read version; do
-                echo "  - $version"
+                echo "  - v$version"
               done
             fi
           else

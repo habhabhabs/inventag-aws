@@ -8,8 +8,8 @@ What you can do after reading: create the token, variable and environment that r
 
 `release.yml` (Automated Release) runs on every push to `main`:
 
-1. It decides whether to release. A commit whose message contains `[skip release]` (or `[skip ci]`) does not release. The bot's own `chore: bump version to X.Y.Z` commit never releases. Every other push is a patch release, unless the commit message has a line `Release-As: minor` or `Release-As: major`. A merge commit ("Merge pull request #N") uses the PR label `release:patch`, `release:minor` or `release:major` if it has one.
-2. It computes the next version from the latest GitHub release and `inventag/_version.py`. It writes `version.json` and `inventag/_version.py`, commits them as `chore: bump version to X.Y.Z` and pushes `main`.
+1. It decides whether to release. A commit whose message contains `[skip release]` (or `[skip ci]`) does not release. The bot's own `chore: bump version to vX.Y.Z` commit never releases. Every other push is a patch release, unless the commit message has a line `Release-As: minor` or `Release-As: major`. A merge commit ("Merge pull request #N") uses the PR label `release:patch`, `release:minor` or `release:major` if it has one.
+2. It computes the next version from the latest GitHub release and `inventag/_version.py`. It writes `version.json` and `inventag/_version.py`, commits them as `chore: bump version to vX.Y.Z` and pushes `main`.
 3. It tags that commit `vX.Y.Z`, creates the GitHub release and attaches a `.tar.gz` and a `.zip` of the source.
 4. It builds the sdist and wheel and uploads them to PyPI through trusted publishing (no API token).
 

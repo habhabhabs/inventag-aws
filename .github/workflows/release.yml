@@ -187,20 +187,20 @@ jobs:
         
         # Remove 'v' prefix if present
         CURRENT_VERSION=${LATEST_RELEASE#v}
-        echo "Current version from GitHub releases: $CURRENT_VERSION"
+        echo "Current version from GitHub releases: v$CURRENT_VERSION"
         
         # Never go backwards: if inventag/_version.py is ahead of the latest
         # release (a version committed by hand), bump from that instead.
         FILE_VERSION=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' inventag/_version.py)
         if [ -n "$FILE_VERSION" ] && [ "$(printf '%s\n%s\n' "$CURRENT_VERSION" "$FILE_VERSION" | sort -V | tail -n 1)" = "$FILE_VERSION" ]; then
           CURRENT_VERSION="$FILE_VERSION"
-          echo "Using inventag/_version.py as the current version: $CURRENT_VERSION"
+          echo "Using inventag/_version.py as the current version: v$CURRENT_VERSION"
         fi
 
         # If no releases exist, start with 0.0.0
         if [ "$CURRENT_VERSION" = "" ] || [ "$CURRENT_VERSION" = "null" ]; then
           CURRENT_VERSION="0.0.0"
-          echo "No existing releases found, starting with version 0.0.0"
+          echo "No existing releases found, starting with version v0.0.0"
         fi
         
         # Calculate new version based on bump type
@@ -217,8 +217,8 @@ jobs:
         
         echo "✅ Version calculation complete:"
         echo "  📋 Source: GitHub Releases API"
-        echo "  📌 Current: $CURRENT_VERSION"  
-        echo "  🚀 New: $NEW_VERSION"
+        echo "  📌 Current: v$CURRENT_VERSION"  
+        echo "  🚀 New: v$NEW_VERSION"
         echo "  🏷️ Tag: v$NEW_VERSION"
         echo "  📈 Bump: $BUMP_TYPE"
         
@@ -288,7 +288,7 @@ jobs:
         
         # Build comprehensive release notes
         notes_parts = []
-        notes_parts.append(f'Release ${{ steps.version.outputs.new_version }} - {datetime.now().strftime(\"%Y-%m-%d\")}')
+        notes_parts.append(f'Release v${{ steps.version.outputs.new_version }} - {datetime.now().strftime(\"%Y-%m-%d\")}')
         notes_parts.append('')
         
         if features:
@@ -382,7 +382,7 @@ jobs:
         echo "Generating release notes for commits: $COMMIT_RANGE"
 
         {
-          echo "# InvenTag $NEW_VERSION"
+          echo "# InvenTag v$NEW_VERSION"
           echo
           echo "## Changes"
           echo
@@ -458,12 +458,12 @@ jobs:
         with open('version.json', 'w') as f:
             json.dump(version_data, f, indent=2, ensure_ascii=False)
         
-        print('✅ Updated version.json with new version ${{ steps.version.outputs.new_version }}')
+        print('✅ Updated version.json with new version v${{ steps.version.outputs.new_version }}')
         "
         
         echo "Version.json updated with:"
-        echo "  - New version: ${{ steps.version.outputs.new_version }}"
-        echo "  - Previous version: ${{ steps.version.outputs.current_version }}"
+        echo "  - New version: v${{ steps.version.outputs.new_version }}"
+        echo "  - Previous version: v${{ steps.version.outputs.current_version }}"
         echo "  - Bump type: ${{ needs.check-for-release.outputs.version_bump }}"
         echo "  - Git tag: ${{ steps.version.outputs.tag_name }}"
 
@@ -484,7 +484,7 @@ jobs:
         else
           # Add and commit the version changes directly to main
           git add version.json inventag/_version.py
-          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}" -m "Automated version bump after release creation." -m "Previous version: ${{ steps.version.outputs.current_version }}" -m "New version: ${{ steps.version.outputs.new_version }}" -m "Bump type: ${{ needs.check-for-release.outputs.version_bump }}"
+          git commit -m "chore: bump version to v${{ steps.version.outputs.new_version }}" -m "Automated version bump after release creation." -m "Previous version: v${{ steps.version.outputs.current_version }}" -m "New version: v${{ steps.version.outputs.new_version }}" -m "Bump type: ${{ needs.check-for-release.outputs.version_bump }}"
           
           # Push directly to main using the VERSION_BUMP_WORKFLOW token. Rebase first
           # in case a commit landed during this job; the next run then finds it released.
@@ -537,9 +537,9 @@ jobs:
 
     - name: Post-release notification
       run: |
-        echo "🚀 Successfully created InvenTag release ${{ steps.version.outputs.new_version }}"
+        echo "🚀 Successfully created InvenTag release v${{ steps.version.outputs.new_version }}"
         echo "📦 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag_name }}"
-        echo "📋 Release created for version ${{ steps.version.outputs.new_version }} (${{ needs.check-for-release.outputs.version_bump }} release)"
+        echo "📋 Release created for version v${{ steps.version.outputs.new_version }} (${{ needs.check-for-release.outputs.version_bump }} release)"
         echo "✅ Version.json updated and committed to main branch"
         echo "🏷️ Git tag ${{ steps.version.outputs.tag_name }} created and pushed"
 
