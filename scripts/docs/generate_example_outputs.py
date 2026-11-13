@@ -666,7 +666,8 @@ def render_png(
             ws.print_options.gridLines = True
             wb.save(src)
         else:
-            shutil.copy(source, src)
+            # Fixed dates inside the file, so the picture does not show today's time.
+            stable_zip(source, src)
         env = dict(os.environ, HOME=str(tmp))
         subprocess.run(
             [
