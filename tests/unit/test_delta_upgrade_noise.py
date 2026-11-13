@@ -4,6 +4,8 @@ and that is not a change of the resource."""
 
 import copy
 
+import pytest
+
 from inventag.state.delta_detector import DeltaDetector
 
 ARN = "arn:aws:states:us-east-1:123456789012:stateMachine:flow"
@@ -115,4 +117,20 @@ def test_order_of_termination_policies_and_cache_behaviors_is_a_change():
 def test_other_lists_stay_unordered():
     a, b = _fn(["l1"]), _fn(["l1"])
     b["raw_data"]["SecurityGroups"] = ["sg-2", "sg-1"]
+    assert not _report(a, b).modified_resources
+
+
+@pytest.mark.parametrize(
+    "field,old,new",
+    [
+        ("SizeInBytes", {"Value": 6144}, {"Value": 8192}),
+        ("LastAccessedDate", "2026-11-01", "2026-11-14"),
+        ("NumberOfRecoveryPoints", 3, 4),
+        ("NormalizedInstanceHours", 10, 12),
+        ("LatestRestorableTime", "2026-11-14T06:00", "2026-11-14T06:05"),
+    ],
+)
+def test_usage_counters_of_new_services_are_not_changes(field, old, new):
+    a, b = _v120_service_row({}), _v120_service_row({})
+    a["raw_data"][field], b["raw_data"][field] = old, new
     assert not _report(a, b).modified_resources

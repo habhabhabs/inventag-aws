@@ -136,6 +136,12 @@ DEFAULT_VOLATILE_FIELDS = [
     "RoleLastUsed",
     "PasswordLastUsed",
     "LastUsedDate",
+    # Counters and clocks of services listed since v1.2.0, and RDS
+    "SizeInBytes",  # EFS metered size, refreshed about hourly
+    "LastAccessedDate",  # Secrets Manager
+    "NumberOfRecoveryPoints",  # Backup vaults
+    "NormalizedInstanceHours",  # EMR clusters
+    "LatestRestorableTime",  # RDS, moves every few minutes
 ]
 
 # On a resource that two runs found by different routes (Tagging API in one,
