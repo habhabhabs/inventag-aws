@@ -1,443 +1,102 @@
 name: Auto-create Documentation Version on Release
 
+# Runs when a GitHub release is published. It archives the documentation of
+# every release tag of the same major line that has no snapshot yet, with the
+# same script as the manual "Sync Documentation Versions" job, and shares that
+# job's concurrency group so the two never push at the same time.
+#
+# The released version itself is the current docs (docs/), so it is archived
+# by the next release. To repair or re-run, use "Sync Documentation Versions".
 on:
   release:
     types: [published]
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to create (e.g., v4.3.0)'
-        required: true
-        type: string
 
+# GITHUB_TOKEN only reads; the push uses the VERSION_BUMP_WORKFLOW token.
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: sync-doc-versions
+  cancel-in-progress: false
 
 jobs:
-  create-docs-version:
-    name: Create Documentation Version
+  archive:
+    name: Archive documentation versions
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    
+    timeout-minutes: 20
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      with:
-        fetch-depth: 0
-        token: ${{ secrets.VERSION_BUMP_WORKFLOW }}
+      - name: Work out the tag pattern
+        id: pattern
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v([0-9]+)\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag $RELEASE_TAG is not vX.Y.Z: nothing to archive"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "pattern=^v${BASH_REMATCH[1]}\\.[0-9]+\\.[0-9]+\$" >> "$GITHUB_OUTPUT"
 
-    - name: Setup Node.js
-      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-      with:
-        node-version: '26'  # Active LTS; must be >= 26.12.1 (Oct 2026 security release)
-        cache: 'npm'
-        cache-dependency-path: 'website/package-lock.json'
+      - name: Checkout repository
+        if: steps.pattern.outputs.skip == 'false'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.VERSION_BUMP_WORKFLOW }}
 
-    - name: Determine version
-      id: version
-      env:
-        RELEASE_TAG: ${{ github.event.release.tag_name }}
-        INPUT_VERSION: ${{ github.event.inputs.version }}
-      run: |
-        if [ "${{ github.event_name }}" = "release" ]; then
-          VERSION="$RELEASE_TAG"
-          echo "Using release tag: $VERSION"
-        else
-          VERSION="$INPUT_VERSION"
-          echo "Using manual input: $VERSION"
-        fi
-        
-        # Validate version format
-        if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "❌ Error: Version must follow format vX.Y.Z (e.g., v4.3.0)"
-          exit 1
-        fi
-        
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
+      - name: Setup Node.js
+        if: steps.pattern.outputs.skip == 'false'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26'
+          cache: 'npm'
+          cache-dependency-path: 'website/package-lock.json'
 
-    - name: Check if version already exists
-      run: |
-        VERSION="${{ steps.version.outputs.version }}"
-        
-        if [ -f "website/versions.json" ]; then
-          if jq -e --arg v "${VERSION#v}" 'index($v) != null' website/versions.json > /dev/null; then
-            echo "ℹ️ Version $VERSION already exists in documentation, skipping creation"
-            echo "skip_creation=true" >> $GITHUB_ENV
+      - name: Install dependencies
+        if: steps.pattern.outputs.skip == 'false'
+        working-directory: ./website
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Reconcile tags and archived versions
+        if: steps.pattern.outputs.skip == 'false'
+        env:
+          TAG_PATTERN: ${{ steps.pattern.outputs.pattern }}
+        run: |
+          set -o pipefail
+          .github/scripts/sync-doc-versions.sh "$TAG_PATTERN" | tee sync-report.txt
+
+      - name: Build the site
+        if: steps.pattern.outputs.skip == 'false'
+        working-directory: ./website
+        run: npm run build
+
+      - name: Commit and push
+        if: steps.pattern.outputs.skip == 'false'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add website/versioned_docs website/versioned_sidebars website/versions.json
+          if git diff --staged --quiet; then
+            echo "Nothing to commit: documentation versions already match the tags."
           else
-            echo "✅ Version $VERSION is new, will create documentation version"
-            echo "skip_creation=false" >> $GITHUB_ENV
+            git commit -m "docs: archive documentation versions after release $RELEASE_TAG [skip release]"
+            git pull --rebase origin main
+            git push origin main
           fi
-        else
-          echo "✅ No versions.json found, this will be the first version"
-          echo "skip_creation=false" >> $GITHUB_ENV
-        fi
 
-    - name: Only archive docs for a new minor or major release
-      run: |
-        # Every push to main is a patch release, so archiving on each one would
-        # fill the version dropdown with near-identical copies. The dropdown
-        # lists one archived snapshot per minor/major release line.
-        if [[ ! "${{ steps.version.outputs.version }}" =~ \.0$ ]]; then
-          echo "Patch release: no new documentation version"
-          echo "skip_creation=true" >> $GITHUB_ENV
-        fi
-
-    - name: Install dependencies
-      if: env.skip_creation == 'false'
-      working-directory: ./website
-      run: |
-        echo "📦 Installing website dependencies..."
-        npm ci --prefer-offline --no-audit
-
-    - name: Manage documentation versions (N-1 strategy)
-      if: env.skip_creation == 'false'
-      working-directory: ./website
-      run: |
-        VERSION="${{ env.VERSION }}"
-        
-        echo "📚 Managing documentation versions with N-1 strategy"
-        echo "New release version will be: $VERSION"
-        
-        # Get the PREVIOUS version to archive as N-1 (not the current/new version)
-        # The new version is the one being released ($VERSION)
-        # We need to find the previous release tag to archive as N-1
-        echo "Finding previous version to archive as N-1..."
-        
-        # Get the second-to-last release (the one before the current release)
-        # First ensure we have all tags
-        git fetch --tags
-        PREVIOUS_RELEASE=$(git tag --merged "$VERSION" --sort=-version:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | grep -vx "$VERSION" | head -1)
-        
-        if [ ! -z "$PREVIOUS_RELEASE" ] && [ "$PREVIOUS_RELEASE" != "$VERSION" ]; then
-          ARCHIVE_VERSION="${PREVIOUS_RELEASE#v}"   # versions.json and versioned_docs use the number without "v"
-          echo "Previous version to archive as N-1: $ARCHIVE_VERSION"
-          echo "Current/new version will be: $VERSION (served from docs/ folder)"
-        else
-          echo "⚠️ No previous version found or previous version same as current"
-          ARCHIVE_VERSION=""
-        fi
-        
-        # IMPORTANT: Do NOT clean up existing versioned documentation!
-        # The N-1 strategy should preserve existing versions and only add the current version as N-1
-        
-        echo "📋 Checking existing versioned documentation..."
-        if [ -d "versioned_docs" ]; then
-          EXISTING_COUNT=$(find versioned_docs -name "version-*" -type d | wc -l)
-          echo "Found $EXISTING_COUNT existing versioned directories - preserving them"
-          ls -la versioned_docs/ | grep "version-" || echo "No versioned directories found"
-        else
-          echo "No versioned_docs directory exists yet"
-          mkdir -p versioned_docs versioned_sidebars
-        fi
-        
-        # Create N-1 version from current docs (if we have a version to archive)
-        if [ ! -z "$ARCHIVE_VERSION" ] && [ "v$ARCHIVE_VERSION" != "$VERSION" ]; then
-          echo "📚 Archiving CURRENT version as N-1: $ARCHIVE_VERSION"
-          echo "🆕 NEW version $VERSION will be served from docs/ folder (not versioned)"
-          
-          # Check if this version already exists to avoid duplicates
-          if [ -d "versioned_docs/version-$ARCHIVE_VERSION" ]; then
-            echo "⚠️ Version $ARCHIVE_VERSION already exists, skipping creation"
-          else
-            # Snapshot the docs as they were at that release's tag (docs/ now holds the
-            # new release), then put the new release's docs back.
-            if git rev-parse -q --verify "refs/tags/v$ARCHIVE_VERSION" >/dev/null; then
-              # Start from an empty docs/ so files renamed since the tag (index.md vs
-              # index.mdx) cannot end up in the snapshot twice.
-              rm -rf ../docs
-              git checkout "v$ARCHIVE_VERSION" -- ../docs
-              # An old tag may not have both sidebar files; a missing pathspec would fail the step.
-              for sb in sidebars.ts sidebars.js; do
-                git cat-file -e "v$ARCHIVE_VERSION:website/$sb" 2>/dev/null && git checkout "v$ARCHIVE_VERSION" -- "$sb"
-              done
-            fi
-            npm run docusaurus -- docs:version "$ARCHIVE_VERSION"
-            # Put the new release's docs back, and leave nothing from the old tag staged.
-            git reset -q HEAD -- ../docs sidebars.ts sidebars.js
-            rm -rf ../docs
-            git checkout -- ../docs sidebars.ts sidebars.js
-            
-            # Verify the version was created
-            if [ ! -d "versioned_docs/version-$ARCHIVE_VERSION" ]; then
-              echo "❌ Error: Version directory was not created"
-              exit 1
-            fi
-            
-            if [ ! -f "versioned_sidebars/version-$ARCHIVE_VERSION-sidebars.json" ]; then
-              echo "❌ Error: Version sidebar was not created"  
-              exit 1
-            fi
-            
-            echo "✅ Documentation version $ARCHIVE_VERSION created successfully as N-1"
-          fi
-          
-          # Update versions.json to include the N-1 version and preserve existing versions (max 4 total)
-          if [ -f "versions.json" ]; then
-            # Remove the version if it already exists, then add it at the top
-            EXISTING_VERSIONS=$(jq -r '.[]' versions.json | grep -v "^$ARCHIVE_VERSION$" | head -3)
-            if [ ! -z "$EXISTING_VERSIONS" ]; then
-              # Combine new version with existing (limit to 4 total)
-              (echo "$ARCHIVE_VERSION"; echo "$EXISTING_VERSIONS") | head -4 | jq -R . | jq -s . > versions.json
-            else
-              # Only the new version
-              echo "[\"$ARCHIVE_VERSION\"]" | jq '.' > versions.json
-            fi
-          else
-            # Create new versions.json with just the N-1 version
-            echo "[\"$ARCHIVE_VERSION\"]" | jq '.' > versions.json
-          fi
-          echo "✅ Updated versions.json with N-1 version: $ARCHIVE_VERSION at top"
-        else
-          echo "ℹ️ No version to archive (first release or same version)"
-          # Preserve existing versions.json or create empty one if none exists
-          if [ ! -f "versions.json" ]; then
-            echo "[]" > versions.json
-            echo "✅ Created empty versions.json for first release"
-          else
-            echo "✅ Preserved existing versions.json (no changes needed)"
-          fi
-        fi
-        
-        echo "📋 Final versioning state:"
-        echo "- Current version: $VERSION (from docs/ folder)"
-        if [ ! -z "$ARCHIVE_VERSION" ] && [ "v$ARCHIVE_VERSION" != "$VERSION" ]; then
-          echo "- N-1 version: $ARCHIVE_VERSION (in versioned_docs/)"
-        else
-          echo "- N-1 version: None"
-        fi
-
-    - name: Test the build with new version
-      if: env.skip_creation == 'false'
-      working-directory: ./website
-      run: |
-        echo "🧪 Testing documentation build with new version..."
-        
-        # Set production environment
-        export NODE_ENV=production
-        
-        # Test the build
-        if npm run build; then
-          echo "✅ Build successful with version ${{ env.VERSION }}"
-        else
-          echo "❌ Build failed with new version"
-          exit 1
-        fi
-        
-        # Verify build output
-        if [ ! -d "build" ]; then
-          echo "❌ Error: Build directory not found"
-          exit 1
-        fi
-        
-        echo "📊 Build size: $(du -sh build | cut -f1)"
-
-    - name: Validate version configuration
-      if: env.skip_creation == 'false'
-      working-directory: ./website
-      run: |
-        VERSION="${{ env.VERSION }}"
-        echo "🔄 Validating N-1 versioning configuration for $VERSION..."
-        
-        # Get the PREVIOUS version that should be in versions.json as N-1
-        echo "Determining expected N-1 version for validation..."
-        
-        # Get the second-to-last release (same logic as creation step)
-        git fetch --tags
-        PREVIOUS_RELEASE=$(git tag --merged "$VERSION" --sort=-version:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | grep -vx "$VERSION" | head -1)
-        
-        if [ ! -z "$PREVIOUS_RELEASE" ] && [ "$PREVIOUS_RELEASE" != "$VERSION" ]; then
-          EXPECTED_N1_VERSION="${PREVIOUS_RELEASE#v}"
-          echo "Expected N-1 version in versions.json: $EXPECTED_N1_VERSION"
-          
-          # Verify the correct N-1 version is in versions.json (not the new version)
-          if ! jq -e --arg v "$EXPECTED_N1_VERSION" 'index($v) != null' versions.json > /dev/null; then
-            echo "❌ Error: Expected N-1 version ($EXPECTED_N1_VERSION) was not found in versions.json"
-            echo "Current versions.json content:"
-            jq '.' versions.json
-            exit 1
-          fi
-          echo "✅ Correct N-1 version ($EXPECTED_N1_VERSION) found in versions.json"
-        else
-          echo "ℹ️ No previous release found - no N-1 version expected"
-        fi
-        
-        # Show available versions
-        echo "📋 Available documentation versions:"
-        if [ -s versions.json ]; then
-          jq -r '.[]' versions.json | while read version; do
-            echo "  - $version (versioned docs)"
-          done
-        else
-          echo "  - No versioned documentation (empty versions.json)"
-        fi
-        echo "  - $VERSION (current - from docs/ folder)"
-        
-        echo "✅ N-1 versioning configuration validated successfully"
-
-    - name: Generate summary
-      if: env.skip_creation == 'false'
-      run: |
-        VERSION="${{ env.VERSION }}"
-        
-        # Determine N-1 version for file counting using same logic as creation
-        git fetch --tags
-        PREVIOUS_RELEASE=$(git tag --merged "$VERSION" --sort=-version:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | grep -vx "$VERSION" | head -1)
-        
-        if [ ! -z "$PREVIOUS_RELEASE" ] && [ "$PREVIOUS_RELEASE" != "$VERSION" ]; then
-          N1_VERSION="${PREVIOUS_RELEASE#v}"
-        else
-          N1_VERSION=""
-        fi
-        
-        # Count documentation files in N-1 version (not new version)
-        if [ ! -z "$N1_VERSION" ] && [ -d "website/versioned_docs/version-$N1_VERSION" ]; then
-          VERSION_DOCS=$(find website/versioned_docs/version-$N1_VERSION -name "*.md" -type f | wc -l)
-          CREATED_VERSION=$N1_VERSION
-        else
-          VERSION_DOCS=0
-          CREATED_VERSION="None"
-        fi
-        
-        TOTAL_VERSIONS=$(jq length website/versions.json)
-        CURRENT_DOCS=$(find docs -name "*.md" -type f | wc -l)
-        
-        echo "## 📚 Documentation Versioning for Release $VERSION" > version-summary.md
-        echo "" >> version-summary.md
-        echo "### N-1 Versioning Summary" >> version-summary.md
-        echo "- **New Release**: $VERSION (current - in docs/ folder)" >> version-summary.md
-        echo "- **N-1 Version Created**: $CREATED_VERSION" >> version-summary.md
-        echo "- **N-1 Documentation files**: $VERSION_DOCS" >> version-summary.md
-        echo "- **Current Documentation files**: $CURRENT_DOCS" >> version-summary.md
-        echo "- **Total versioned releases**: $TOTAL_VERSIONS" >> version-summary.md
-        echo "- **Trigger**: ${{ github.event_name }}" >> version-summary.md
-        echo "" >> version-summary.md
-        echo "### Files Created/Updated" >> version-summary.md
-        if [ "$CREATED_VERSION" != "None" ]; then
-          echo "- \`website/versioned_docs/version-$CREATED_VERSION/\`" >> version-summary.md
-          echo "- \`website/versioned_sidebars/version-$CREATED_VERSION-sidebars.json\`" >> version-summary.md
-        else
-          echo "- No versioned documentation created (first release)" >> version-summary.md
-        fi
-        echo "- \`website/versions.json\` (updated)" >> version-summary.md
-        echo "" >> version-summary.md
-        echo "### Version Strategy" >> version-summary.md
-        echo "Using N-1 versioning strategy:" >> version-summary.md
-        echo "- **Current**: $VERSION (latest development, from docs/)" >> version-summary.md
-        if [ "$CREATED_VERSION" != "None" ]; then
-          echo "- **N-1**: $CREATED_VERSION (previous release, archived)" >> version-summary.md
-        else
-          echo "- **N-1**: None (first release)" >> version-summary.md
-        fi
-        echo "" >> version-summary.md
-        echo "Generated: $(date)" >> version-summary.md
-        
-        echo "✅ Summary created"
-        cat version-summary.md
-
-    - name: Commit and push changes
-      if: env.skip_creation == 'false'
-      run: |
-        VERSION="${{ env.VERSION }}"
-        
-        git config user.name "github-actions[bot]"
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        
-        # Ensure we're on main branch (not detached HEAD)
-        git checkout main
-        echo "✅ Switched to main branch"
-        
-        # Determine N-1 version for git operations using same logic as creation
-        git fetch --tags
-        PREVIOUS_RELEASE=$(git tag --merged "$VERSION" --sort=-version:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | grep -vx "$VERSION" | head -1)
-        
-        if [ ! -z "$PREVIOUS_RELEASE" ] && [ "$PREVIOUS_RELEASE" != "$VERSION" ]; then
-          N1_VERSION="${PREVIOUS_RELEASE#v}"
-          echo "Adding N-1 version files: $N1_VERSION"
-        else
-          N1_VERSION=""
-          echo "⚠️ No previous release found - no N-1 version to add"
-        fi
-        
-        # Add N-1 version-related files (not new version files)
-        if [ ! -z "$N1_VERSION" ] && [ -d "website/versioned_docs/version-$N1_VERSION" ]; then
-          git add website/versioned_docs/version-$N1_VERSION/
-          git add website/versioned_sidebars/version-$N1_VERSION-sidebars.json
-          echo "✅ Added N-1 version files for $N1_VERSION"
-        else
-          echo "ℹ️ No N-1 version directory to add"
-        fi
-        
-        # Always add versions.json
-        git add website/versions.json
-        
-        # Check if we have changes to commit
-        if git diff --staged --quiet; then
-          echo "ℹ️ No changes to commit for release $VERSION"
-        else
-          # Count documentation files in N-1 version
-          if [ ! -z "$N1_VERSION" ] && [ -d "website/versioned_docs/version-$N1_VERSION" ]; then
-            DOC_COUNT=$(find website/versioned_docs/version-$N1_VERSION -name "*.md" | wc -l)
-            VERSION_MESSAGE="N-1 version $N1_VERSION"
-          else
-            DOC_COUNT=0
-            VERSION_MESSAGE="no versioned docs (first release)"
-          fi
-          
-          # Create commit with N-1 strategy context
-          git commit -m "docs: archive documentation for release $VERSION (N-1 strategy) [skip release]
-
-          - Archive previous version as N-1: $VERSION_MESSAGE
-          - Generated from release ${{ github.event.release.tag_name || 'manual trigger' }}
-          - Documentation files archived: $DOC_COUNT
-          - Total versions: $(jq length website/versions.json)
-          - Strategy: Current ($VERSION in docs/) + N-1 ($N1_VERSION in versioned_docs/)"
-          
-          echo "✅ Changes committed for release $VERSION with N-1 strategy"
-          
-          # Push to main with the token actions/checkout persisted (VERSION_BUMP_WORKFLOW);
-          # never write the token into the remote URL.
-          git push origin main
-          echo "✅ Changes pushed to main"
-        fi
-
-    - name: Generate workflow summary
-      if: always()
-      env:
-        RELEASE_NAME: ${{ github.event.release.name }}
-        RELEASE_URL: ${{ github.event.release.html_url }}
-      run: |
-        VERSION="${{ env.VERSION }}"
-        
-        echo "## 🎯 Auto Documentation Versioning Results" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        
-        if [ "${{ env.skip_creation }}" = "true" ]; then
-          echo "### ℹ️ Version Already Exists" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: $VERSION" >> $GITHUB_STEP_SUMMARY
-          echo "- **Status**: Already documented, no action taken" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "### ✅ Version Created Successfully" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: $VERSION" >> $GITHUB_STEP_SUMMARY
-          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ github.event_name }}" = "release" ]; then
-            echo "- **Release**: [$RELEASE_NAME]($RELEASE_URL)" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "- **Documentation Files**: $(find website/versioned_docs/version-$VERSION -name "*.md" | wc -l 2>/dev/null || echo 'N/A')" >> $GITHUB_STEP_SUMMARY
-          echo "- **Total Versions**: $(jq length website/versions.json 2>/dev/null || echo 'N/A')" >> $GITHUB_STEP_SUMMARY
-        fi
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 🔗 Next Steps" >> $GITHUB_STEP_SUMMARY
-        echo "- Documentation will be deployed via the docs-deploy workflow" >> $GITHUB_STEP_SUMMARY
-        echo "- Version selector will be available in the documentation site" >> $GITHUB_STEP_SUMMARY
-        echo "- Changes committed to main branch" >> $GITHUB_STEP_SUMMARY
-
-    - name: Upload artifacts
-      if: always()
-      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-      with:
-        name: version-creation-summary
-        path: |
-          version-summary.md
-          website/versions.json
-        retention-days: 30
+      - name: Summary
+        if: always()
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          {
+            echo "## Documentation versions after release $RELEASE_TAG"
+            echo
+            echo '```text'
+            cat sync-report.txt 2>/dev/null || echo "no report"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
