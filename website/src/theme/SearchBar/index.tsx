@@ -98,6 +98,17 @@ export default function SearchBar(): ReactNode {
     if (returnFocus) triggerRef.current?.focus();
   }, []);
 
+  // Other parts of the site (the 404 page) can open the dialog with a first query
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      setOpen(true);
+      const q = (e as CustomEvent<{query?: string}>).detail?.query;
+      if (q) setQuery(q);
+    };
+    window.addEventListener('inventag:search', onOpen);
+    return () => window.removeEventListener('inventag:search', onOpen);
+  }, []);
+
   // Global shortcut: Ctrl or Cmd + K, and "/" outside text fields.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

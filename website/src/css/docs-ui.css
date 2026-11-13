@@ -1206,3 +1206,17 @@ a.it-card:is(:active, [data-nav-pending]) {
     display: none;
   }
 }
+
+/* 404 page */
+.it-nf__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1.5rem 0 1rem;
+}
+.it-nf__actions .button {
+  min-height: 2.75rem;
+}
+.it-nf__links {
+  font-size: 0.9375rem;
+}
