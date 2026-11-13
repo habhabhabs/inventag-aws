@@ -10,6 +10,12 @@
 # listed at the end so they can be fixed by hand. Safe to run repeatedly.
 #
 # Usage: sync-doc-versions.sh [tag-pattern]   (run from the repository root)
+#
+# Local runs in a shallow clone (no network, tags fetched at depth 1) can set
+#   SYNC_DOCS_OFFLINE=1        do not fetch or unshallow
+#   SYNC_DOCS_SKIP_ANCESTRY=1  do not test that the tag is on main's history
+#                              (git merge-base cannot answer in a shallow clone)
+# Neither is set in CI, where both checks run as usual.
 set -euo pipefail
 
 PATTERN="${1:-^v1\.[0-9]+\.[0-9]+$}"
@@ -17,8 +23,10 @@ MIN_PAGES=5                                   # a tag with fewer docs pages is n
 CURRENT="$(jq -r .version version.json)"
 cd website
 
-git rev-parse --is-shallow-repository | grep -q true && git fetch --unshallow --tags -q || true
-git fetch --tags -q 2>/dev/null || true
+if [ "${SYNC_DOCS_OFFLINE:-0}" != 1 ]; then
+  git rev-parse --is-shallow-repository | grep -q true && git fetch --unshallow --tags -q || true
+  git fetch --tags -q 2>/dev/null || true
+fi
 rm -rf i18n/*/docusaurus-plugin-content-docs/current   # generated copies must not leak into snapshots
 mkdir -p versioned_docs versioned_sidebars
 
@@ -26,7 +34,7 @@ archived=(); skipped=(); present=(); dropped=()
 for tag in $(git tag -l | grep -E "$PATTERN" | sort -V); do
   v="${tag#v}"
   [ "$v" = "$CURRENT" ] && continue
-  if ! git merge-base --is-ancestor "$tag" HEAD; then
+  if [ "${SYNC_DOCS_SKIP_ANCESTRY:-0}" != 1 ] && ! git merge-base --is-ancestor "$tag" HEAD; then
     skipped+=("$tag (not on main's history: $(git log -1 --format=%ad --date=short "$tag"))"); continue
   fi
   pages=$(git ls-tree -r --name-only "$tag" -- ../docs | grep -cE '\.mdx?$' || true)
@@ -57,6 +65,13 @@ for tag in $(git tag -l | grep -E "$PATTERN" | sort -V); do
   git checkout -- ../docs sidebars.ts sidebars.js          # put the current docs back
   [ -d "versioned_docs/version-$v" ] && [ -f "versioned_sidebars/version-$v-sidebars.json" ] \
     || { echo "snapshot of $tag was not created"; exit 1; }
+  # Sidebar and version-label strings for the translated sites: start from the
+  # current docs' strings (current.json) so the category labels stay translated.
+  for cur in i18n/*/docusaurus-plugin-content-docs/current.json; do
+    out="${cur%current.json}version-$v.json"
+    [ -f "$out" ] || jq --arg v "$v" \
+      '{"version.label": {message: $v, description: "The label for version \($v)"}} + .' "$cur" > "$out"
+  done
   archived+=("$v")
 done
 

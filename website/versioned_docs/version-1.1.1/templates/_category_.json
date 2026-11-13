@@ -1,0 +1,10 @@
+{
+  "label": "Templates",
+  "position": 4,
+  "link": {
+    "type": "doc",
+    "id": "templates/index"
+  },
+  "collapsed": false,
+  "className": "nav-cat-templates"
+}
