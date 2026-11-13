@@ -8,6 +8,45 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-11-13
+
+### Changed
+
+- The documentation site is available in English and Simplified Chinese, with
+  a language dropdown, translated interface text and translated key pages. The
+  page tree is in the menu, and the docs column lines up with the navbar and
+  footer.
+
+## [1.1.2] - 2026-11-13
+
+### Fixed
+
+- Documentation versions: the 1.0.2 snapshot is added, a stray
+  `docs/index.md` is removed, and a release archives the docs of the right
+  previous release.
+
+### Changed
+
+- The desktop sidebar uses the same two-level menu as the phone. A menu button
+  replaces the collapse arrow.
+
+## [1.1.1] - 2026-11-13
+
+### Fixed
+
+- The search palette passes the type check. The docs archive step starts from
+  an empty folder so renamed files are not duplicated.
+
+### Changed
+
+- The sample downloads on the documentation site are regenerated with real
+  ARNs and corrected tag matching.
+- The phone menu is a full-screen sheet. Nothing from the page navbar shows
+  beside it.
+- The docs for release 1.1.0 are archived.
+
+## [1.1.0] - 2026-11-13
+
 ### Added
 
 - Google Sheets and Google Docs output: `--create-google-sheets` and
@@ -65,13 +104,13 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   Software bill of materials pages. "Noise you can ignore" moved to
   "Fix common problems".
 
-### Added
+### Added (documentation site)
 
 - The documentation site has a version dropdown. It lists the current version
   and the archived v1.0.1 and v1.0.0 docs. A new minor or major release
   archives the previous release's docs from its git tag.
 
-### Changed
+### Changed (release process)
 
 - Every push to `main` is released as a patch version automatically. Use
   `Release-As: minor` or `Release-As: major` in the commit message, a
@@ -336,7 +375,11 @@ One-time setup for PyPI:
 3. In the GitHub repository settings, set the variable `PYPI_PUBLISH` to
    `true`.
 
-[Unreleased]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.3...HEAD
+[1.1.3]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.2...v1.1.3
+[1.1.2]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.1...v1.1.2
+[1.1.1]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.0...v1.1.1
+[1.1.0]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/habhabhabs/inventag-aws/releases/tag/v1.0.0

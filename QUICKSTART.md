@@ -7,10 +7,8 @@ The short version:
 
 ```bash
 # 1. install (Python 3.11 or later)
-git clone https://github.com/habhabhabs/inventag-aws.git
-cd inventag-aws
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install inventag-aws
 
 # 2. check credentials (any boto3 credential source: profile, SSO, env vars)
 inventag --validate-credentials
@@ -22,6 +20,9 @@ inventag --create-excel --account-regions us-east-1,ap-southeast-1 --verbose
 # 4. several accounts
 inventag --accounts-file accounts.json --create-excel --create-word
 ```
+
+To run from a clone of the repository instead, use `git clone
+https://github.com/habhabhabs/inventag-aws.git`, then `pip install -e .` inside it.
 
 Before you rely on it:
 

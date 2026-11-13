@@ -38,7 +38,7 @@ or run the newest unreleased version, install from source instead:
 git clone https://github.com/habhabhabs/inventag-aws.git
 cd inventag-aws
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -e .
 inventag --validate-credentials
 ```
 
@@ -99,6 +99,7 @@ compliance with SOC 2 or other standards. For the full list, see
 
 ```bash
 # Several accounts, Excel + Word, your own tag columns
+# (the example files below are in a clone of the repository)
 inventag --accounts-file accounts.json \
   --create-excel --create-word \
   --tag-mappings config/defaults/mappings/tag_to_column_mappings_example.yaml \
