@@ -67,6 +67,7 @@ GLOSSARY = [
     ('退出碼', '結束代碼'),
     ('拉取請求', '提取要求'),
     ('反饋', '回饋'),
+    ('站點', '網站'),
 ]
 
 # Mainland 行 (row) = Taiwan 列, and Mainland 列 (column) = Taiwan 欄.
