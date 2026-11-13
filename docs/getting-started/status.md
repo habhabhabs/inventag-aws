@@ -187,12 +187,6 @@ throttling (AWS slowing down your requests).
   longer history.
 - A second run creates an empty `bom_output/changelogs/` folder. It is not used.
 
-## Noise you can ignore
-
-With `--service-descriptions`, VPC resources log
-`Failed to render template vpc_vpc: 'cidr_block'` warnings. The report is not
-affected.
-
 ## Security notes
 
 - **Use a read-only IAM identity anyway.** The guard blocks write calls, and
@@ -205,8 +199,8 @@ affected.
   creates IAM roles, and the S3 helper can change bucket lifecycle rules
   (off by default, and it merges with existing rules).
 
-## Tests
+## Tests and the software bill of materials
 
-The suite has 1315 passing tests and 9 performance benchmarks that run only on
-request. All of them use moto. CI runs them on Python 3.11, 3.12, 3.13,
-3.14 and 3.15. No test runs against a real AWS account.
+The test suite and the dependency inventory have their own pages:
+[Tests](../security/tests.md) and
+[Software bill of materials](../security/sbom.md).

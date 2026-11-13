@@ -1,6 +1,10 @@
 {
-  "label": "Security",
+  "label": "Security and tests",
   "position": 7,
-  "link": { "type": "doc", "id": "security/index" },
-  "collapsed": true
+  "link": {
+    "type": "doc",
+    "id": "security/index"
+  },
+  "collapsed": true,
+  "className": "nav-cat-security"
 }

@@ -1839,38 +1839,3 @@ html:has(.consent-banner) {
     align-items: center;
   }
 }
-
-/* Mobile navbar: the search button sits to the left of the 44px theme toggle
-   instead of underneath it (Docusaurus puts it at the right edge). */
-@media (max-width: 996px) {
-  [class*='navbarSearchContainer'] {
-    right: calc(var(--ifm-navbar-padding-horizontal) + 2.75rem);
-  }
-}
-
-/* Mobile search: 16px text stops iOS from zooming the page when the field is
-   focused; a focused field takes the whole navbar row instead of sitting on
-   top of the logo and the menu button. */
-@media (max-width: 996px) {
-  .navbar__search-input {
-    font-size: 1rem;
-  }
-  .navbar:has(.navbar__search-input:focus) .navbar__toggle,
-  .navbar:has(.navbar__search-input:focus) .navbar__brand,
-  .navbar:has(.navbar__search-input:focus) [class*='colorModeToggle'] {
-    visibility: hidden;
-  }
-  .navbar:has(.navbar__search-input:focus) [class*='navbarSearchContainer'] {
-    left: var(--ifm-navbar-padding-horizontal);
-    right: var(--ifm-navbar-padding-horizontal);
-    padding: 0;
-    z-index: 10;
-  }
-  .navbar:has(.navbar__search-input:focus) .navbar__search,
-  .navbar:has(.navbar__search-input:focus) [class*='searchBar_'],
-  .navbar:has(.navbar__search-input:focus) .navbar__search-input {
-    display: block;
-    width: 100%;
-    margin: 0;
-  }
-}

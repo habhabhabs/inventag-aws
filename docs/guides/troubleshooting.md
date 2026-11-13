@@ -275,6 +275,16 @@ the JSON file to see which resources.
 | The change report is missing | The first run writes none. It also needs state management and delta detection to be on. See [Track changes between runs](./track-changes.md). |
 | Another user can't open `bom_output/` | Output files are private to the user who ran InvenTag. Share them on purpose. |
 
+## Noise you can ignore
+
+Some messages look like errors but change nothing in your report.
+
+| Message | Why you can ignore it |
+|---|---|
+| ``Failed to render template vpc_vpc: 'cidr_block'`` (with `--service-descriptions`) | The VPC description template wants a field the resource does not have. The report is not affected. |
+| `No account specification method provided. Using default AWS credentials.` | You did not name an account, so InvenTag used your current credentials. This is the normal case. |
+| `Cross-account role ... not usable ... trying default credentials` | InvenTag tried the default role name, could not assume it, and carried on with your own credentials. It is logged once per account. |
+
 ## Install problems
 
 See [Install InvenTag](../getting-started/installation.md#fix-install-problems).

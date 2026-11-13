@@ -81,6 +81,12 @@ const config: Config = {
   },
 
   headTags: [
+    {
+      tagName: 'script',
+      attributes: {},
+      innerHTML:
+        "(function(){try{if(!localStorage.getItem('theme')){var d=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';localStorage.setItem('theme',d);document.documentElement.setAttribute('data-theme',d)}}catch(e){}})()",
+    },
     // favicon.ico comes from `favicon` above; these add the scalable and touch icons
     {tagName: 'link', attributes: {rel: 'icon', type: 'image/svg+xml', href: `${BASE_URL}img/favicon.svg`}},
     {tagName: 'link', attributes: {rel: 'apple-touch-icon', sizes: '180x180', href: `${BASE_URL}img/apple-touch-icon.png`}},
@@ -126,7 +132,7 @@ const config: Config = {
           editCurrentVersion: true,
           editLocalizedFiles: false,
           showLastUpdateTime: true,
-          showLastUpdateAuthor: true,
+          showLastUpdateAuthor: false,
           breadcrumbs: true,
           include: ['**/*.md', '**/*.mdx'],
           exclude: [
@@ -159,7 +165,7 @@ const config: Config = {
         },
         blog: false,
         theme: {
-          customCss: './src/css/custom.css',
+          customCss: ['./src/css/custom.css', './src/css/docs-ui.css'],
         },
         sitemap: {
           lastmod: 'date',
@@ -218,7 +224,9 @@ const config: Config = {
     colorMode: {
       defaultMode: 'light',
       disableSwitch: false,
-      respectPrefersColorScheme: true,
+      // Two states only (light, dark). The first visit follows the system setting
+      // once (see the headTags script); after that the button decides.
+      respectPrefersColorScheme: false,
     },
     navbar: {
       // The logo is the lockup (mark + outlined "InvenTag" wordmark), so there is no live title text.
@@ -232,9 +240,9 @@ const config: Config = {
         height: 40,
       },
       items: [
-        {type: 'doc', docId: 'index', label: 'Docs', position: 'left'},
-        {to: '/docs/getting-started/quick-start', label: 'Quick start', position: 'left'},
-        {to: '/docs/reference/cli', label: 'CLI reference', position: 'left'},
+        {type: 'doc', docId: 'index', label: 'Docs', position: 'left', className: 'nav-ico nav-ico-docs'},
+        {to: '/docs/getting-started/quick-start', label: 'Quick start', position: 'left', className: 'nav-ico nav-ico-start'},
+        {to: '/docs/reference/cli', label: 'CLI reference', position: 'left', className: 'nav-ico nav-ico-cli'},
         {type: 'docsVersionDropdown', position: 'right', dropdownActiveClassDisabled: true},
         {type: 'search', position: 'right'},
         {

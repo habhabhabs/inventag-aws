@@ -8,6 +8,18 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (documentation site)
+
+- New look for the docs: numbered step badges, callout cards, "Where to next"
+  tiles on every page, icons on the sidebar sections and top links, and a
+  search palette (press Ctrl or Cmd + K, or `/`).
+- The theme button switches between light and dark only. The first visit
+  follows your system setting.
+- "Last updated" no longer shows an author name.
+- The Security section is now "Security and tests" and holds the Tests and
+  Software bill of materials pages. "Noise you can ignore" moved to
+  "Fix common problems".
+
 ### Added
 
 - The documentation site has a version dropdown. It lists the current version

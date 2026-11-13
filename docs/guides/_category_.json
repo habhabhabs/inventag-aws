@@ -2,5 +2,6 @@
   "label": "Guides",
   "position": 3,
   "link": null,
-  "collapsed": false
+  "collapsed": false,
+  "className": "nav-cat-guides"
 }
