@@ -14,14 +14,16 @@ ejecutarlas tú mismo.
 
 ## Qué se ejecuta y dónde {#what-runs-and-where}
 
-El conjunto tiene 1.389 pruebas (1.398 con los nueve benchmarks). Todas usan
-[moto](https://github.com/getmoto/moto), que imita AWS en memoria, así que las
+El conjunto tiene 1.389 pruebas (1.398 con los nueve benchmarks). Ninguna llama a
+AWS real: las pruebas que necesitan AWS usan [moto](https://github.com/getmoto/moto),
+que imita AWS en memoria, o clientes simulados, con credenciales falsas. Las
 pruebas se ejecutan sin conexión y no cuestan nada. Nueve benchmarks de
 rendimiento quedan fuera de la ejecución normal y solo se inician cuando los
 pides.
 
 CI ejecuta el conjunto en Python 3.11, 3.12, 3.13, 3.14 y 3.15, además de
-trabajos de lint, integración y seguridad básica, en cada push y pull request.
+trabajos de lint, integración y seguridad básica, en cada push a `main` o `develop`
+y en cada pull request a `main`.
 
 **Ninguna prueba se ejecuta contra una cuenta de AWS real.** Cuando un
 resultado depende de cómo se comporta AWS real, [Estado de las funciones](../getting-started/status.md)
@@ -36,7 +38,7 @@ Tagging de moto es la referencia para los ARN y las etiquetas.
 | Función | Pruebas |
 |---|---|
 | Recursos en una o varias cuentas, una cuenta fallida nombrada en el informe y en el resumen de la ejecución | `tests/integration/test_status_validation.py`, `tests/unit/test_cli_security.py` |
-| Informes de Excel y Word, orden estable de hojas y filas, columnas de etiquetas | `tests/integration/test_status_validation.py`, `tests/unit/test_bom_converter.py` |
+| Informes de Excel y Word, orden estable de hojas y filas, columnas de etiquetas | `tests/integration/test_status_validation.py`, `tests/test_bom_converter.py` |
 | Plantillas de informe, comprobaciones de política de etiquetas, código de salida 3 | `tests/integration/test_status_validation.py`, `tests/unit/templating/` |
 | Filtros (`--account-regions`, `--account-services`, `--account-tags`) en todas las rutas | `tests/integration/test_status_validation.py`, `tests/unit/test_global_services.py` |
 | ARN reales y asociación de etiquetas para cada servicio, sin duplicados | `tests/unit/test_arn_and_tags.py` |

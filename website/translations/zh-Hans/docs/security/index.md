@@ -56,7 +56,7 @@ $ echo $?
 | 开发工具 | 列在 `requirements-dev.txt` 中，测试和 lint 工具使用精确固定（`==`），它们的依赖项使用最低版本。 |
 | 网站 | 锁定在 `website/package-lock.json` 中。 |
 | CI 中的依赖项检查 | CI 工作流运行 `pip-audit -r requirements.txt`，发现问题就失败。它也运行 Bandit 和 `npm audit`，但它们的发现不会导致失败。 |
-| 定时扫描 | 另一个工作流在推送到 `main`、拉取请求以及每周（周日 02:00 UTC）时运行。它运行 Bandit、Safety、pip-audit、`npm audit` 和 detect-secrets。发现的问题会被报告，但不会让该工作流失败。 |
+| 定时扫描 | 另一个工作流在推送到 `main` 和 `develop`、指向 `main` 的拉取请求以及每周（周日 02:00 UTC）时运行。它运行 Bandit、Safety、pip-audit、`npm audit` 和 detect-secrets。发现的问题会被报告，但不会让该工作流失败。 |
 | 软件物料清单 | 文档构建会为 Python 和网站的依赖项生成 SBOM 文件。 |
 
 要检查你自己的安装：

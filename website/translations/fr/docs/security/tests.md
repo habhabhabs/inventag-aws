@@ -14,13 +14,15 @@ et comment les exécuter vous-même.
 
 ## Ce qui s’exécute, et où {#what-runs-and-where}
 
-La suite compte 1 389 tests (1 398 avec les neuf benchmarks). Chacun d’eux utilise
-[moto](https://github.com/getmoto/moto), qui imite AWS en mémoire ; les
-tests s’exécutent donc hors ligne et ne coûtent rien. Neuf benchmarks de performance sont exclus de
+La suite compte 1 389 tests (1 398 avec les neuf benchmarks). Aucun n’appelle le
+vrai AWS : les tests qui ont besoin d’AWS utilisent [moto](https://github.com/getmoto/moto),
+qui imite AWS en mémoire, ou des clients simulés, avec de faux identifiants. Les
+tests s’exécutent hors ligne et ne coûtent rien. Neuf benchmarks de performance sont exclus de
 l’exécution normale et ne démarrent que si vous les demandez.
 
 La CI exécute la suite sur Python 3.11, 3.12, 3.13, 3.14 et 3.15, ainsi que des jobs de lint,
-d’intégration et de sécurité de base, à chaque push et à chaque pull request.
+d’intégration et de sécurité de base, à chaque push sur `main` ou `develop` et à
+chaque pull request vers `main`.
 
 **Aucun test ne s’exécute sur un vrai compte AWS.** Lorsqu’un résultat dépend du comportement du
 vrai AWS, l’[état des fonctionnalités](../getting-started/status.md) le précise.
@@ -34,7 +36,7 @@ référence pour les ARN et les étiquettes.
 | Fonctionnalité | Tests |
 |---|---|
 | Ressources dans un ou plusieurs comptes, compte en échec nommé dans le rapport et le résumé d’exécution | `tests/integration/test_status_validation.py`, `tests/unit/test_cli_security.py` |
-| Rapports Excel et Word, ordre stable des feuilles et des lignes, colonnes d’étiquettes | `tests/integration/test_status_validation.py`, `tests/unit/test_bom_converter.py` |
+| Rapports Excel et Word, ordre stable des feuilles et des lignes, colonnes d’étiquettes | `tests/integration/test_status_validation.py`, `tests/test_bom_converter.py` |
 | Modèles de rapport, vérifications de politique d’étiquetage, code de sortie 3 | `tests/integration/test_status_validation.py`, `tests/unit/templating/` |
 | Filtres (`--account-regions`, `--account-services`, `--account-tags`) sur chaque chemin | `tests/integration/test_status_validation.py`, `tests/unit/test_global_services.py` |
 | ARN réels et association des étiquettes pour chaque service, sans doublons | `tests/unit/test_arn_and_tags.py` |

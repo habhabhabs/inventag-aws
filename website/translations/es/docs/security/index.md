@@ -63,7 +63,7 @@ correcciones de seguridad: 3.10 llegó al fin de su vida útil en octubre de 202
 | Herramientas de desarrollo | Listadas en `requirements-dev.txt` con versiones exactas (`==`) para las herramientas de pruebas y de lint, más versiones mínimas para sus dependencias. |
 | Sitio web | Bloqueadas en `website/package-lock.json`. |
 | Comprobación de dependencias en CI | El flujo de trabajo de CI ejecuta `pip-audit -r requirements.txt` y falla si encuentra algo. También ejecuta Bandit y `npm audit`, pero no falla por sus hallazgos. |
-| Análisis programado | Un flujo de trabajo aparte se ejecuta en los push a `main`, en las pull request y cada semana (domingos, 02:00 UTC). Ejecuta Bandit, Safety, pip-audit, `npm audit` y detect-secrets. Los hallazgos se comunican pero no hacen fallar ese flujo de trabajo. |
+| Análisis programado | Un flujo de trabajo aparte se ejecuta en los push a `main` y `develop`, en las pull request a `main` y cada semana (domingos, 02:00 UTC). Ejecuta Bandit, Safety, pip-audit, `npm audit` y detect-secrets. Los hallazgos se comunican pero no hacen fallar ese flujo de trabajo. |
 | Lista de materiales de software | La compilación de la documentación genera archivos SBOM de las dependencias de Python y del sitio web. |
 
 Para comprobar tu propia instalación:

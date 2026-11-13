@@ -64,7 +64,7 @@ de sécurité : la version 3.10 a atteint sa fin de vie en octobre 2026
 | Outils de développement | Listés dans `requirements-dev.txt` avec des versions exactes (`==`) pour les outils de test et de lint, plus des versions minimales pour leurs dépendances. |
 | Site web | Verrouillé dans `website/package-lock.json`. |
 | Vérification des dépendances en CI | Le workflow de CI exécute `pip-audit -r requirements.txt` et échoue en cas de résultat. Il exécute aussi Bandit et `npm audit`, mais n’échoue pas sur leurs résultats. |
-| Analyse planifiée | Un workflow distinct s’exécute à chaque push sur `main`, sur les pull requests et chaque semaine (le dimanche, 02:00 UTC). Il exécute Bandit, Safety, pip-audit, `npm audit` et detect-secrets. Les résultats sont signalés mais ne font pas échouer ce workflow. |
+| Analyse planifiée | Un workflow distinct s’exécute à chaque push sur `main` et `develop`, sur les pull requests vers `main` et chaque semaine (le dimanche, 02:00 UTC). Il exécute Bandit, Safety, pip-audit, `npm audit` et detect-secrets. Les résultats sont signalés mais ne font pas échouer ce workflow. |
 | Nomenclature logicielle | La génération de la documentation produit des fichiers SBOM pour les dépendances Python et du site web. |
 
 Pour vérifier votre propre installation :

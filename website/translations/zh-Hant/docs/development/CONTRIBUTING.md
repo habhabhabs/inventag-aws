@@ -38,8 +38,8 @@ python -m pytest -q
 ```
 
 CI 會執行相同的 `black --check` 和 `flake8` 命令，然後在 Python 3.11、3.12、3.13、3.14 和 3.15 上執行測試。
-完整的測試套件（`python -m pytest -q`）大約需要兩分鐘，在 `main` 上全部透過（1315 個透過，9 個效能基準測試被取消選中），
-並且不需要 AWS 賬戶：每個測試都使用 moto。你的更改必須保持它全部透過。
+完整的測試套件（`python -m pytest -q`）需要幾分鐘，在 `main` 上全部透過（9 個效能基準測試被取消選中），
+並且不需要 AWS 賬戶：測試使用 moto 或模擬客戶端，並使用假憑證。你的更改必須保持它全部透過。
 只有在需要時才執行基準測試：`python -m pytest -m performance`。
 更改依賴項時請執行 `pip-audit -r requirements.txt`；出現新的安全公告時，CI 會失敗。
 

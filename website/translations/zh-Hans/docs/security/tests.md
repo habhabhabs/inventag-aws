@@ -12,11 +12,12 @@ sidebar_position: 2
 
 ## 运行什么，在哪里运行 {#what-runs-and-where}
 
-测试套件共有 1,389 个测试（加上九个基准测试为 1,398 个）。每一个都使用
-[moto](https://github.com/getmoto/moto)，它在内存中模拟 AWS，因此测试离线运行，不产生费用。
+测试套件共有 1,389 个测试（加上九个基准测试为 1,398 个）。没有一个调用真实的
+AWS：需要 AWS 的测试使用 [moto](https://github.com/getmoto/moto)（它在内存中模拟 AWS）或模拟客户端，并使用假凭证。
+测试离线运行，不产生费用。
 九个性能基准测试不在常规运行之内，只有在你要求时才会启动。
 
-CI 在每次推送和拉取请求时，都会在 Python 3.11、3.12、3.13、3.14 和 3.15 上运行测试套件，
+CI 在每次推送到 `main` 或 `develop`、以及每个指向 `main` 的拉取请求时，都会在 Python 3.11、3.12、3.13、3.14 和 3.15 上运行测试套件，
 外加 lint、集成和基础安全作业。
 
 **没有任何测试针对真实的 AWS 账户运行。** 凡是结果取决于真实 AWS 行为的地方，
@@ -30,7 +31,7 @@ moto 的 Resource Groups Tagging API 是 ARN 和标签的参照。
 | 功能 | 测试 |
 |---|---|
 | 一个或多个账户中的资源，在报告和运行摘要中点名失败的账户 | `tests/integration/test_status_validation.py`, `tests/unit/test_cli_security.py` |
-| Excel 和 Word 报告，稳定的工作表和行顺序，标签列 | `tests/integration/test_status_validation.py`, `tests/unit/test_bom_converter.py` |
+| Excel 和 Word 报告，稳定的工作表和行顺序，标签列 | `tests/integration/test_status_validation.py`, `tests/test_bom_converter.py` |
 | 报告模板、标签策略检查、退出码 3 | `tests/integration/test_status_validation.py`, `tests/unit/templating/` |
 | 每条路径上的过滤条件（`--account-regions`、`--account-services`、`--account-tags`） | `tests/integration/test_status_validation.py`, `tests/unit/test_global_services.py` |
 | 每个服务真实的 ARN 和标签匹配，无重复 | `tests/unit/test_arn_and_tags.py` |

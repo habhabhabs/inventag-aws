@@ -43,9 +43,9 @@ python -m pytest -q
 
 CI ejecuta los mismos comandos `black --check` y `flake8`, y después las
 pruebas en Python 3.11, 3.12, 3.13, 3.14 y 3.15. La suite completa
-(`python -m pytest -q`) tarda unos dos minutos, pasa en `main` (1315 superadas,
-9 pruebas de rendimiento excluidas) y no necesita ninguna cuenta de AWS: todas
-las pruebas usan moto. Un cambio debe mantenerla en verde. Ejecuta las pruebas
+(`python -m pytest -q`) tarda unos minutos, pasa en `main` (con las 9 pruebas de
+rendimiento excluidas) y no necesita ninguna cuenta de AWS: las pruebas usan moto
+o clientes simulados con credenciales falsas. Un cambio debe mantenerla en verde. Ejecuta las pruebas
 de rendimiento solo cuando se pida: `python -m pytest -m performance`.
 Ejecuta `pip-audit -r requirements.txt` cuando cambies una dependencia; CI
 falla ante cualquier aviso nuevo.

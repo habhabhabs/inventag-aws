@@ -14,13 +14,15 @@ and how to run them yourself.
 
 ## What runs, and where
 
-The suite has 1,389 tests (1,398 with the nine benchmarks). Every one of them uses
-[moto](https://github.com/getmoto/moto), which imitates AWS in memory, so the
-tests run offline and cost nothing. Nine performance benchmarks are kept out of
+The suite has 1,389 tests (1,398 with the nine benchmarks). None of them calls
+real AWS: tests that need AWS use [moto](https://github.com/getmoto/moto), which
+imitates AWS in memory, or mocked clients, with fake credentials. The tests run
+offline and cost nothing. Nine performance benchmarks are kept out of
 the normal run and start only when you ask for them.
 
 CI runs the suite on Python 3.11, 3.12, 3.13, 3.14 and 3.15, plus lint,
-integration and basic security jobs, on every push and pull request.
+integration and basic security jobs, on every push to `main` or `develop` and
+on every pull request to `main`.
 
 **No test runs against a real AWS account.** Where a result depends on how
 real AWS behaves, [Feature status](../getting-started/status.md) says so.
@@ -34,7 +36,7 @@ reference for ARNs and tags.
 | Feature | Tests |
 |---|---|
 | Resources in one or more accounts, a failed account named in the report and run summary | `tests/integration/test_status_validation.py`, `tests/unit/test_cli_security.py` |
-| Excel and Word reports, stable sheet and row order, tag columns | `tests/integration/test_status_validation.py`, `tests/unit/test_bom_converter.py` |
+| Excel and Word reports, stable sheet and row order, tag columns | `tests/integration/test_status_validation.py`, `tests/test_bom_converter.py` |
 | Report templates, tag-policy checks, exit code 3 | `tests/integration/test_status_validation.py`, `tests/unit/templating/` |
 | Filters (`--account-regions`, `--account-services`, `--account-tags`) on every path | `tests/integration/test_status_validation.py`, `tests/unit/test_global_services.py` |
 | Real ARNs and tag matching for each service, no duplicates | `tests/unit/test_arn_and_tags.py` |

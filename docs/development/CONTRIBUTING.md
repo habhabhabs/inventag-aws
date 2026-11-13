@@ -41,8 +41,9 @@ python -m pytest -q
 
 CI runs the same `black --check` and `flake8` commands, then the tests on
 Python 3.11, 3.12, 3.13, 3.14 and 3.15. The full suite (`python -m pytest -q`) takes
-about two minutes, passes on `main` (1315 passed, 9 performance benchmarks
-deselected) and needs no AWS account: every test uses moto. A change must keep
+a few minutes, passes on `main` (with the 9 performance benchmarks
+deselected) and needs no AWS account: tests use moto or mocked clients with
+fake credentials. A change must keep
 it green. Run the benchmarks only on request: `python -m pytest -m performance`.
 Run `pip-audit -r requirements.txt` when you change a dependency; CI fails on a
 new advisory.
