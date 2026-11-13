@@ -18,7 +18,8 @@ For step-by-step setup, see [Set up read-only access](../guides/read-only-access
 | Permission | Why | Notes |
 |---|---|---|
 | `sts:GetCallerIdentity` | Finds out which account the credentials belong to | AWS allows this for every identity; you don't need to grant it. |
-| `ec2:DescribeRegions` | Lists enabled regions, and checks each region you scan | The check runs for every region, even with `--account-regions`. A region that fails it is skipped with a warning. |
+| `ec2:DescribeRegions` | Lists enabled regions, and checks each region you scan | The check runs for every region, even with `--account-regions`. A region that fails it is skipped with a warning. If the call is denied in every region, all regions are scanned. |
+| `account:ListRegions` | Lists enabled regions when `ec2:DescribeRegions` fails | Not called when `ec2:DescribeRegions` works. |
 | `tag:GetResources` | Finds tagged resources (Resource Groups Tagging API) | The IAM prefix is `tag`, not `resourcegroupstaggingapi`. |
 | `ce:GetCostAndUsage` | Finds services with spend | **AWS charges per request.** In our offline test a run made two for each account. If denied, discovery continues without billing data. `--no-billing-validation` stops the calls, and then you can leave this permission out. |
 | `List*`, `Describe*`, `Get*` for each service you want in the report | Per-service discovery | For example `s3:ListAllMyBuckets`, `s3:GetBucketTagging`, `lambda:ListFunctions`, `dynamodb:ListTables`. The AWS managed `ReadOnlyAccess` policy covers these. |
@@ -43,10 +44,15 @@ AWS when called from your own Python code (the CLI does not call them); see
 ## The policy in the repository
 
 `config/defaults/iam-policy-read-only.json` is generated from an explicit list
-of 106 read actions in the code (`inventag/security/iam_policy.py`), so it
+of 123 read actions in the code (`inventag/security/iam_policy.py`), so it
 matches what InvenTag calls. It includes `tag:GetResources`,
 `ce:GetCostAndUsage`, `pricing:GetProducts` and
-`lambda:GetFunctionConfiguration`.
+`lambda:GetFunctionConfiguration`. A second statement allows `apigateway:GET`
+only on `/restapis`, `/domainnames` and `/usageplans`, so API key values
+cannot be read.
+
+v1.2.0 added these 17 actions for the new services and the region fallback:
+`account:ListRegions`, `appsync:ListGraphqlApis`, `athena:ListWorkGroups`, `autoscaling:DescribeAutoScalingGroups`, `backup:ListBackupVaults`, `cognito-idp:ListUserPools`, `ec2:DescribeNetworkInterfaces`, `ecr:DescribeRepositories`, `elasticbeanstalk:DescribeApplications`, `elasticbeanstalk:DescribeEnvironments`, `elasticfilesystem:DescribeFileSystems`, `elasticmapreduce:ListClusters`, `es:ListDomainNames`, `firehose:ListDeliveryStreams`, `kafka:ListClustersV2`, `redshift-serverless:ListNamespaces`, `redshift-serverless:ListWorkgroups`.
 
 Its `OptionalS3ReportUpload` statement allows `s3:PutObject`, but only with
 server-side encryption. Put your bucket name in place of

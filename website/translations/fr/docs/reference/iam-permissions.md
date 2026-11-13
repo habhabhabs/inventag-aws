@@ -18,7 +18,8 @@ Pour une configuration pas à pas, voir [Configurer un accès en lecture seule](
 | Autorisation | Pourquoi | Remarques |
 |---|---|---|
 | `sts:GetCallerIdentity` | Détermine à quel compte appartiennent les identifiants | AWS l’autorise pour toutes les identités ; vous n’avez pas besoin de l’accorder. |
-| `ec2:DescribeRegions` | Liste les régions activées et vérifie chaque région que vous analysez | La vérification s’exécute pour chaque région, même avec `--account-regions`. Une région qui échoue à cette vérification est ignorée avec un avertissement. |
+| `ec2:DescribeRegions` | Liste les régions activées et vérifie chaque région que vous analysez | La vérification s’exécute pour chaque région, même avec `--account-regions`. Une région qui échoue à cette vérification est ignorée avec un avertissement. Si l’appel est refusé dans toutes les régions, toutes les régions sont analysées. |
+| `account:ListRegions` | Liste les régions activées quand `ec2:DescribeRegions` échoue | N’est pas appelé quand `ec2:DescribeRegions` fonctionne. |
 | `tag:GetResources` | Trouve les ressources étiquetées (API Resource Groups Tagging) | Le préfixe IAM est `tag`, et non `resourcegroupstaggingapi`. |
 | `ce:GetCostAndUsage` | Repère les services qui génèrent des dépenses | **AWS facture chaque requête.** Lors de notre test hors ligne, une exécution en a effectué deux par compte. En cas de refus, la découverte continue sans données de facturation. `--no-billing-validation` arrête ces appels, et vous pouvez alors omettre cette autorisation. |
 | `List*`, `Describe*`, `Get*` pour chaque service que vous voulez dans le rapport | Découverte par service | Par exemple `s3:ListAllMyBuckets`, `s3:GetBucketTagging`, `lambda:ListFunctions`, `dynamodb:ListTables`. La politique gérée AWS `ReadOnlyAccess` les couvre. |
@@ -43,10 +44,15 @@ AWS lorsqu’elles sont appelées depuis votre propre code Python (la CLI ne les
 ## La politique du dépôt {#the-policy-in-the-repository}
 
 `config/defaults/iam-policy-read-only.json` est générée à partir d’une liste explicite
-de 106 actions de lecture dans le code (`inventag/security/iam_policy.py`), si bien qu’elle
+de 123 actions de lecture dans le code (`inventag/security/iam_policy.py`), si bien qu’elle
 correspond à ce qu’InvenTag appelle. Elle inclut `tag:GetResources`,
 `ce:GetCostAndUsage`, `pricing:GetProducts` et
-`lambda:GetFunctionConfiguration`.
+`lambda:GetFunctionConfiguration`. Une seconde instruction n’autorise `apigateway:GET`
+que sur `/restapis`, `/domainnames` et `/usageplans`, si bien que les valeurs des clés
+d’API ne peuvent pas être lues.
+
+v1.2.0 a ajouté ces 17 actions pour les nouveaux services et le repli des régions :
+`account:ListRegions`, `appsync:ListGraphqlApis`, `athena:ListWorkGroups`, `autoscaling:DescribeAutoScalingGroups`, `backup:ListBackupVaults`, `cognito-idp:ListUserPools`, `ec2:DescribeNetworkInterfaces`, `ecr:DescribeRepositories`, `elasticbeanstalk:DescribeApplications`, `elasticbeanstalk:DescribeEnvironments`, `elasticfilesystem:DescribeFileSystems`, `elasticmapreduce:ListClusters`, `es:ListDomainNames`, `firehose:ListDeliveryStreams`, `kafka:ListClustersV2`, `redshift-serverless:ListNamespaces`, `redshift-serverless:ListWorkgroups`.
 
 Son instruction `OptionalS3ReportUpload` autorise `s3:PutObject`, mais uniquement avec
 un chiffrement côté serveur. Remplacez `YOUR-REPORTS-BUCKET-NAME` par le nom de votre bucket,

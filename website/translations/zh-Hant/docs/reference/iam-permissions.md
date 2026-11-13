@@ -17,7 +17,8 @@ sidebar_position: 3
 | 權限 | 原因 | 說明 |
 |---|---|---|
 | `sts:GetCallerIdentity` | 確定憑證屬於哪個帳戶 | AWS 對每個身份都允許此操作；你無需授予。 |
-| `ec2:DescribeRegions` | 列出已啟用的區域，並檢查你掃描的每個區域 | 即使使用 `--account-regions`，每個區域都會進行檢查。檢查失敗的區域會被跳過並給出警告。 |
+| `ec2:DescribeRegions` | 列出已啟用的區域，並檢查你掃描的每個區域 | 即使使用 `--account-regions`，每個區域都會進行檢查。檢查失敗的區域會被跳過並給出警告。如果該呼叫在每個區域都被拒絕，則掃描所有區域。 |
+| `account:ListRegions` | 在 `ec2:DescribeRegions` 失敗時列出已啟用的區域 | `ec2:DescribeRegions` 正常時不會呼叫。 |
 | `tag:GetResources` | 找出帶標籤的資源（Resource Groups Tagging API） | IAM 字首是 `tag`，而不是 `resourcegroupstaggingapi`。 |
 | `ce:GetCostAndUsage` | 找出有支出的服務 | **AWS 按請求收費。** 在我們的離線測試中，每個帳戶一次執行會發出兩次。如果被拒絕，發現過程會在沒有帳單資料的情況下繼續。`--no-billing-validation` 會停止這些呼叫，此後你可以不授予這項權限。 |
 | 你想放入報告的每個服務的 `List*`、`Describe*`、`Get*` | 按服務發現 | 例如 `s3:ListAllMyBuckets`、`s3:GetBucketTagging`、`lambda:ListFunctions`、`dynamodb:ListTables`。AWS 託管的 `ReadOnlyAccess` 策略涵蓋了這些。 |
@@ -38,10 +39,14 @@ sidebar_position: 3
 
 ## 儲存庫中的策略 {#the-policy-in-the-repository}
 
-`config/defaults/iam-policy-read-only.json` 由程式碼中明確列出的 106 個讀取操作
+`config/defaults/iam-policy-read-only.json` 由程式碼中明確列出的 123 個讀取操作
 （`inventag/security/iam_policy.py`）生成，因此它與 InvenTag 的呼叫一致。
 它包含 `tag:GetResources`、`ce:GetCostAndUsage`、`pricing:GetProducts` 和
-`lambda:GetFunctionConfiguration`。
+`lambda:GetFunctionConfiguration`。第二條語句只允許對 `/restapis`、`/domainnames` 和
+`/usageplans` 使用 `apigateway:GET`，因此無法讀取 API 金鑰的值。
+
+v1.2.0 為新服務和區域回退新增了以下 17 個操作：
+`account:ListRegions`, `appsync:ListGraphqlApis`, `athena:ListWorkGroups`, `autoscaling:DescribeAutoScalingGroups`, `backup:ListBackupVaults`, `cognito-idp:ListUserPools`, `ec2:DescribeNetworkInterfaces`, `ecr:DescribeRepositories`, `elasticbeanstalk:DescribeApplications`, `elasticbeanstalk:DescribeEnvironments`, `elasticfilesystem:DescribeFileSystems`, `elasticmapreduce:ListClusters`, `es:ListDomainNames`, `firehose:ListDeliveryStreams`, `kafka:ListClustersV2`, `redshift-serverless:ListNamespaces`, `redshift-serverless:ListWorkgroups`。
 
 它的 `OptionalS3ReportUpload` 語句允許 `s3:PutObject`，但僅限使用伺服器端加密時。
 請把你的儲存貯體名稱填在 `YOUR-REPORTS-BUCKET-NAME` 的位置；如果你不使用 `--s3-bucket`，就刪除這條語句。

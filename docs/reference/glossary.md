@@ -20,7 +20,7 @@ The docs use each term below in one meaning only.
 | **Config template** | A template with `kind: config`: which accounts and regions to scan, which files to write, and which report template and tag policy to use. |
 | **Cost Explorer** | The AWS service that reports spend. InvenTag calls it to spot services with spend; AWS charges per request. |
 | **Credential chain** | The order in which AWS tools look for credentials: environment variables, then profiles, then IAM roles. |
-| **Exit code** | The number a command returns when it ends. `0` means success; InvenTag uses `1` for errors, `2` for invalid options, `3` for tag policy violations and `4` for security group rules at or above `--risk-threshold`. |
+| **Exit code** | The number a command returns when it ends. `0` means success; InvenTag uses `1` for errors, `2` for invalid or conflicting options, `3` for tag policy violations, `4` for security group rules at or above `--risk-threshold`, `5` for an account that could not be scanned completely (with `--fail-on-account-error`) and `6` for nothing to report (with `--fail-if-empty`). See [Exit codes](./cli.md#exit-codes). |
 | **IAM** | AWS Identity and Access Management: users, roles and the policies that say what they may do. |
 | **IAM Identity Center** | The AWS service for single sign-on (SSO) to AWS accounts. It was called AWS SSO. |
 | **IAM role** | An identity with permissions that other identities can assume for a short time. |
