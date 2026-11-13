@@ -16,7 +16,7 @@ def _declared():
     for line in (ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines():
         line = line.split("#", 1)[0].strip()
         if line:
-            names.add(re.split(r"[<>=!~\[ ;]", line, 1)[0].lower())
+            names.add(re.split(r"[<>=!~\[ ;]", line, maxsplit=1)[0].lower())
     return names
 
 
