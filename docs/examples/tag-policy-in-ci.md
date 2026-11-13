@@ -106,4 +106,7 @@ in the JSON file and the Problems column in the workbook say which.
 
 - Start in report-only mode: set `fail_on_tag_violations: false` until the
   numbers are close to zero, then switch it on.
+- Do not let an incomplete run pass as clean: `--fail-on-account-error` exits
+  with code 5 when an account could not be scanned, and `--fail-if-empty` exits
+  with code 6 when no resources were found. Both win over code 3.
 - Use your own rules: [Check tags against a policy](../guides/check-tag-compliance.md#write-your-own-policy).

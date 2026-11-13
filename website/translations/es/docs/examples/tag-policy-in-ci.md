@@ -96,4 +96,8 @@ lista `invalid` del archivo JSON y la columna Problems del libro indican cuáles
 
 - Empieza en modo solo informe: pon `fail_on_tag_violations: false` hasta que
   las cifras estén cerca de cero y entonces actívalo.
+- No dejes que una ejecución incompleta pase por limpia: `--fail-on-account-error`
+  termina con el código 5 cuando no se pudo analizar una cuenta y
+  `--fail-if-empty` termina con el código 6 cuando no se encontró ningún recurso.
+  Ambos tienen prioridad sobre el código 3.
 - Usa tus propias reglas: [Comprobar etiquetas con una política](../guides/check-tag-compliance.md#write-your-own-policy).

@@ -89,4 +89,5 @@ for x in r['non_compliant_resources'][:10]:
 ## 下一步 {#next-steps}
 
 - 先从仅报告模式开始：在数字接近零之前，把 `fail_on_tag_violations` 设为 `false`，然后再打开它。
+- 不要让不完整的运行被当作通过：有账户无法扫描时，`--fail-on-account-error` 以退出码 5 结束；没有找到任何资源时，`--fail-if-empty` 以退出码 6 结束。两者都优先于退出码 3。
 - 使用你自己的规则：[对照策略检查标签](../guides/check-tag-compliance.md#write-your-own-policy)。

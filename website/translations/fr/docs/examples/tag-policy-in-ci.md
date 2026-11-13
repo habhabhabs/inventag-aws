@@ -94,4 +94,8 @@ du fichier JSON et la colonne Problems du classeur indiquent lesquelles.
 
 - Commencez en mode rapport seul : définissez `fail_on_tag_violations: false` jusqu’à ce que
   les chiffres soient proches de zéro, puis activez-le.
+- Ne laissez pas une exécution incomplète passer pour propre :
+  `--fail-on-account-error` se termine avec le code 5 quand un compte n’a pas pu
+  être analysé, et `--fail-if-empty` avec le code 6 quand aucune ressource n’a
+  été trouvée. Les deux l’emportent sur le code 3.
 - Utilisez vos propres règles : [Vérifier les étiquettes selon une politique](../guides/check-tag-compliance.md#write-your-own-policy).
