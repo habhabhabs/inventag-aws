@@ -38,6 +38,7 @@ spec:
   或用 `none` 表示不新增。
 - `raw_data.<Name>` 直接從 AWS API 回應中讀取一個值。對於沒有該值的資源，它是空白的。
   要查詢名稱，請先用 `excel.include_all_fields: true` 執行一次。
+- `source`、`sources` 和 `detail_level` 表示每一行來自哪裡。參見[欄位列表](../templates/reference.md#resource-fields-you-can-use-as-columns)。
 
 ## 命令 {#command}
 
@@ -77,8 +78,7 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ## 標籤對應和服務描述 {#tag-mappings-and-service-descriptions}
 
 `--tag-mappings` 和 `--service-descriptions` 會為預設工作簿新增欄。
-與 `--template` 一起使用時它們不會新增任何內容，
-所以請像上面那樣使用 `tag_columns`。如果使用版面配置檔案（`--excel-template` 或 `--word-template`），
+與 `--template` 一起使用時，在你列出這一欄之前它們不會新增任何內容：把 `- field: <列名>` 加到 `columns` 下（欄名取自對應檔案，或用 `service_description`），或設定 `excel.include_all_fields: true`。`tag_columns` 只顯示原始標籤值。InvenTag 會記錄一條警告，指出缺少的欄。如果使用版面配置檔案（`--excel-template` 或 `--word-template`），
 請把對應的欄列在 `extra_fields` 下。參見
 [設定檔](../reference/configuration-files.md#tag-mappings)。
 

@@ -41,6 +41,8 @@ spec:
 - `raw_data.<Name>` lit une valeur directement dans la réponse de l’API AWS. Elle est
   vide pour les ressources qui n’en disposent pas. Pour trouver les noms, lancez une fois avec
   `excel.include_all_fields: true`.
+- `source`, `sources` et `detail_level` indiquent d’où vient chaque ligne. Voir la
+  [liste des champs](../templates/reference.md#resource-fields-you-can-use-as-columns).
 
 ## Commande {#command}
 
@@ -80,8 +82,11 @@ La ligne d’en-tête est figée et dotée de boutons de filtre.
 ## Mappages d’étiquettes et descriptions de services {#tag-mappings-and-service-descriptions}
 
 `--tag-mappings` et `--service-descriptions` ajoutent des colonnes au classeur par
-défaut. Avec `--template`, ils n’ajoutent rien ; utilisez donc `tag_columns` comme ci-dessus. Avec
-un fichier de mise en page (`--excel-template` ou `--word-template`), indiquez la colonne mappée
+défaut. Avec `--template`, ils n’ajoutent rien tant que vous ne listez pas la colonne :
+ajoutez `- field: <nom de la colonne>` sous `columns` (le nom de votre fichier de
+mappages, ou `service_description`), ou définissez `excel.include_all_fields: true`.
+`tag_columns` n’affiche que les valeurs brutes des étiquettes. InvenTag consigne
+un avertissement qui nomme les colonnes manquantes. Avec un fichier de mise en page (`--excel-template` ou `--word-template`), indiquez la colonne mappée
 sous `extra_fields`. Voir
 [Fichiers de configuration](../reference/configuration-files.md#tag-mappings).
 

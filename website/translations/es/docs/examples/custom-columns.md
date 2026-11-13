@@ -41,6 +41,8 @@ spec:
 - `raw_data.<Name>` lee un valor directamente de la respuesta de la API de AWS.
   Queda en blanco en los recursos que no lo tienen. Para averiguar los nombres,
   ejecuta una vez con `excel.include_all_fields: true`.
+- `source`, `sources` y `detail_level` indican de dónde viene cada fila. Consulta la
+  [lista de campos](../templates/reference.md#resource-fields-you-can-use-as-columns).
 
 ## Comando {#command}
 
@@ -80,8 +82,11 @@ La fila de encabezado está inmovilizada y tiene botones de filtro.
 ## Asignaciones de etiquetas y descripciones de servicios {#tag-mappings-and-service-descriptions}
 
 `--tag-mappings` y `--service-descriptions` añaden columnas al libro
-predeterminado. Con `--template` no añaden nada, así que usa `tag_columns` como se
-indica arriba. Con un archivo de diseño (`--excel-template` o `--word-template`),
+predeterminado. Con `--template` no añaden nada hasta que enumeras la columna: añade
+`- field: <nombre de la columna>` en `columns` (el nombre de tu archivo de
+asignaciones, o `service_description`), o pon `excel.include_all_fields: true`.
+`tag_columns` muestra solo los valores de etiqueta sin procesar. InvenTag registra
+una advertencia con las columnas que faltan. Con un archivo de diseño (`--excel-template` o `--word-template`),
 indica la columna asignada en `extra_fields`. Consulta
 [Archivos de configuración](../reference/configuration-files.md#tag-mappings).
 

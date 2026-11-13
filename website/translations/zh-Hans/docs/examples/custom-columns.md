@@ -38,6 +38,7 @@ spec:
   或用 `none` 表示不添加。
 - `raw_data.<Name>` 直接从 AWS API 响应中读取一个值。对于没有该值的资源，它是空白的。
   要查找名称，请先用 `excel.include_all_fields: true` 运行一次。
+- `source`、`sources` 和 `detail_level` 表示每一行来自哪里。参见[字段列表](../templates/reference.md#resource-fields-you-can-use-as-columns)。
 
 ## 命令 {#command}
 
@@ -77,8 +78,7 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ## 标签映射和服务描述 {#tag-mappings-and-service-descriptions}
 
 `--tag-mappings` 和 `--service-descriptions` 会为默认工作簿添加列。
-与 `--template` 一起使用时它们不会添加任何内容，
-所以请像上面那样使用 `tag_columns`。如果使用版式文件（`--excel-template` 或 `--word-template`），
+与 `--template` 一起使用时，在你列出这一列之前它们不会添加任何内容：把 `- field: <列名>` 加到 `columns` 下（列名取自映射文件，或用 `service_description`），或设置 `excel.include_all_fields: true`。`tag_columns` 只显示原始标签值。InvenTag 会记录一条警告，指出缺少的列。如果使用版式文件（`--excel-template` 或 `--word-template`），
 请把映射的列列在 `extra_fields` 下。参见
 [配置文件](../reference/configuration-files.md#tag-mappings)。
 

@@ -41,6 +41,8 @@ spec:
 - `raw_data.<Name>` reads a value straight from the AWS API response. It is
   blank for resources that don't have it. To find the names, run once with
   `excel.include_all_fields: true`.
+- `source`, `sources` and `detail_level` show where each row came from. See the
+  [field list](../templates/reference.md#resource-fields-you-can-use-as-columns).
 
 ## Command
 
@@ -96,8 +98,11 @@ The header row is frozen and has filter buttons.
 ## Tag mappings and service descriptions
 
 `--tag-mappings` and `--service-descriptions` add columns to the default
-workbook. With `--template` they add nothing, so use `tag_columns` as above. With
-a layout file (`--excel-template` or `--word-template`), list the mapped
+workbook. With `--template` they add nothing until you list the column: add
+`- field: <column name>` under `columns` (the name from your mapping file, or
+`service_description`), or set `excel.include_all_fields: true`. `tag_columns`
+shows raw tag values only. InvenTag logs a warning that names the missing
+columns. With a layout file (`--excel-template` or `--word-template`), list the mapped
 column under `extra_fields`. See
 [Configuration files](../reference/configuration-files.md#tag-mappings).
 
