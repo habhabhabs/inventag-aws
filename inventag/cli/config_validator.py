@@ -430,7 +430,12 @@ class ConfigValidator:
         result = ValidationResult(is_valid=True)
 
         # Check format options
-        format_options = [args.create_word, args.create_excel]
+        format_options = [
+            args.create_word,
+            args.create_excel,
+            getattr(args, "create_google_docs", False),
+            getattr(args, "create_google_sheets", False),
+        ]
         if not any(format_options):
             result.warnings.append(
                 "No output format specified. Use --create-word or --create-excel"
@@ -466,15 +471,45 @@ class ConfigValidator:
                 "S3 key prefix specified without bucket. Both --s3-bucket and --s3-key-prefix are required for S3 upload."
             )
 
-        # Validate parallel processing
-        if args.max_concurrent_accounts and args.max_concurrent_accounts < 1:
+        # Validate parallel processing (0 is not "unset": it is invalid)
+        if (
+            args.max_concurrent_accounts is not None
+            and args.max_concurrent_accounts < 1
+        ):
             result.errors.append("--max-concurrent-accounts must be a positive integer")
 
-        # Validate timeout
-        if args.account_processing_timeout and args.account_processing_timeout < 60:
+        # Validate timeouts
+        if (
+            args.account_processing_timeout is not None
+            and args.account_processing_timeout < 60
+        ):
             result.errors.append(
                 "--account-processing-timeout must be at least 60 seconds"
             )
+        credential_timeout = getattr(args, "credential_timeout", None)
+        if credential_timeout is not None and credential_timeout < 1:
+            result.errors.append("--credential-timeout must be at least 1 second")
+
+        max_age = getattr(args, "resume_max_age_hours", None)
+        if max_age is not None and not 0 < max_age <= 168:
+            result.errors.append(
+                "--resume-max-age-hours must be above 0 and at most 168"
+            )
+
+        account_tags = getattr(args, "account_tags", None)
+        if account_tags:
+            try:
+                tags = json.loads(account_tags)
+            except json.JSONDecodeError as e:
+                result.errors.append(f"--account-tags is not valid JSON: {e}")
+            else:
+                if not isinstance(tags, dict) or not all(
+                    isinstance(k, str) and isinstance(v, str) for k, v in tags.items()
+                ):
+                    result.errors.append(
+                        "--account-tags must be a JSON object of strings, for "
+                        'example {"Environment": "prod"}'
+                    )
 
         result.is_valid = len(result.errors) == 0
 

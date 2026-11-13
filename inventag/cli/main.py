@@ -50,6 +50,26 @@ from ..templating.runner import add_template_arguments, prepare_template_run
 # configuration files that are not valid).
 EXIT_INVALID_TEMPLATE = 1
 
+# Exit codes (0 success, 1 error, 2 invalid options, 3 tag policy violations,
+# 4 risk threshold): the two below are opt-in.
+EXIT_ACCOUNT_FAILED = 5  # --fail-on-account-error
+EXIT_NO_RESOURCES = 6  # --fail-if-empty
+
+
+def _limit_or_none(text: str) -> Optional[int]:
+    """argparse type: a whole number >= 0, or 'none'. 0 and 'none' mean no limit."""
+    if str(text).strip().lower() == "none":
+        return None
+    try:
+        value = int(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"expected a whole number or 'none', got {text!r}"
+        )
+    if value < 0:
+        raise argparse.ArgumentTypeError(f"must be 0 or more, got {value}")
+    return value or None
+
 
 def _validate_specific_configs(args, logger, check_credentials=True):
     """Validate only the configuration files specified in CLI arguments."""
@@ -325,7 +345,10 @@ Examples:
     s3_group.add_argument(
         "--s3-kms-key-id",
         type=str,
-        help="KMS key ID for S3 encryption (required if --s3-encryption is aws:kms)",
+        help=(
+            "KMS key for --s3-encryption aws:kms (default: the AWS managed key "
+            "aws/s3). Needs --s3-encryption aws:kms"
+        ),
     )
 
     # Account-specific configuration overrides
@@ -371,6 +394,22 @@ Examples:
         type=int,
         default=1800,
         help="Timeout in seconds for processing each account (default: 1800)",
+    )
+    parallel_group.add_argument(
+        "--resume",
+        action="store_true",
+        help=(
+            "Reuse the saved results of accounts that finished in an earlier run "
+            "of the same command that did not complete (same accounts, regions, "
+            "services and filters), and scan only the others. Off by default"
+        ),
+    )
+    parallel_group.add_argument(
+        "--resume-max-age-hours",
+        type=float,
+        default=24.0,
+        help="With --resume, reuse saved results only up to this age "
+        "(default: 24, at most 168)",
     )
     parallel_group.add_argument(
         "--disable-parallel-processing",
@@ -471,11 +510,46 @@ Examples:
         "use --no-generate-changelog to turn it off)",
     )
     output_group.add_argument(
+        "--state-retention-days",
+        type=_limit_or_none,
+        default=30,
+        metavar="N",
+        help="Delete state snapshots older than N days when a run saves a new "
+        "one (default 30). Use 0 or none to keep snapshots of any age",
+    )
+    output_group.add_argument(
+        "--state-max-snapshots",
+        type=_limit_or_none,
+        default=100,
+        metavar="N",
+        help="Keep only the newest N state snapshots (default 100). Use 0 or "
+        "none to keep every snapshot",
+    )
+    output_group.add_argument(
         "--per-account-reports",
         action="store_true",
         help=(
             "Write one report for each account (<account-id>_bom_<time>.xlsx) "
             "instead of one consolidated report"
+        ),
+    )
+
+    exit_group = parser.add_argument_group("Exit Codes (opt-in)")
+    exit_group.add_argument(
+        "--fail-on-account-error",
+        action="store_true",
+        help=(
+            f"Exit with code {EXIT_ACCOUNT_FAILED} when any account could not be "
+            "scanned (the reports are still written). Without it, such a run "
+            "exits with 0 unless every account failed"
+        ),
+    )
+    exit_group.add_argument(
+        "--fail-if-empty",
+        action="store_true",
+        help=(
+            f"Exit with code {EXIT_NO_RESOURCES} when no resources were found or "
+            "the filters removed all of them. Without it, such a run exits with 0"
         ),
     )
 
@@ -691,9 +765,7 @@ def create_accounts_from_prompt() -> List[AccountCredentials]:
         ).strip()
         if regions_input:
             account.regions = [r.strip() for r in regions_input.split(",")]
-        else:
-            # Auto-discover all regions
-            account.regions = get_all_aws_regions()
+        # Empty: the scan asks the account for its own enabled regions.
 
         services_input = input(
             "Services to include (comma-separated, empty for all): "
@@ -730,7 +802,8 @@ def create_multi_account_config(args) -> MultiAccountConfig:
                 profile_name=account_data.get("profile_name"),
                 role_arn=account_data.get("role_arn"),
                 external_id=account_data.get("external_id"),
-                regions=account_data.get("regions") or get_all_aws_regions(),
+                # Empty: the scan asks each account for its own enabled regions.
+                regions=account_data.get("regions") or [],
                 services=account_data.get("services", []),
                 tags=account_data.get("tags", {}),
             )
@@ -894,6 +967,10 @@ def create_multi_account_config(args) -> MultiAccountConfig:
         word_template=getattr(args, "loaded_templates", {}).get("word"),
         excel_template=getattr(args, "loaded_templates", {}).get("excel"),
         google_options=google_options_from_args(args),
+        resume=args.resume,
+        resume_max_age_hours=args.resume_max_age_hours,
+        state_retention_days=args.state_retention_days,
+        state_max_snapshots=args.state_max_snapshots,
     )
 
     return config
@@ -977,6 +1054,33 @@ def _cross_account_role_name(args) -> str:
     return "InvenTagCrossAccountRole"
 
 
+def _conflicting_flag_errors(args) -> List[str]:
+    """Flags that cannot work together (one would be silently ignored)."""
+    errors = []
+    if args.accounts_file and args.accounts_prompt:
+        errors.append(
+            "--accounts-file and --accounts-prompt: give one of them, not both."
+        )
+    if (
+        args.cross_account_role
+        and is_role_arn(args.cross_account_role)
+        and (args.accounts_file or args.accounts_prompt)
+    ):
+        errors.append(
+            "--cross-account-role: a full role ARN names one account and cannot "
+            "be combined with --accounts-file or --accounts-prompt. Give a role "
+            "name to use in every account, or put role_arn in the accounts file."
+        )
+    if args.s3_kms_key_id and args.s3_encryption != "aws:kms":
+        errors.append("--s3-kms-key-id: needs --s3-encryption aws:kms.")
+    if args.resume and args.disable_state_management:
+        errors.append(
+            "--resume: needs state management (saved results live in the state "
+            "folder); remove --disable-state-management."
+        )
+    return errors
+
+
 def _validate_cross_account_role(args) -> Optional[str]:
     """Return an error message if --cross-account-role is malformed."""
     if not args.cross_account_role:
@@ -1039,6 +1143,30 @@ def load_report_templates(args) -> Tuple[Dict[str, Any], List[str]]:
         except TemplateValidationError as e:
             errors.extend(e.messages())
     return templates, errors
+
+
+def _opt_in_exit_code(args, results: Dict[str, Any], logger) -> int:
+    """Exit code for --fail-on-account-error / --fail-if-empty (0 = none).
+
+    An account failure (incomplete data) takes precedence over an empty
+    result, and both over tag-policy (3) and risk-threshold (4) findings.
+    """
+    if args.fail_on_account_error and results.get("failed_accounts"):
+        logger.error(
+            f"{len(results['failed_accounts'])} account(s) failed and "
+            f"--fail-on-account-error is set (exit code {EXIT_ACCOUNT_FAILED})"
+        )
+        return EXIT_ACCOUNT_FAILED
+    total = results.get("bom_generation", {}).get("total_resources")
+    if total is None:
+        total = results.get("processing_statistics", {}).get("total_resources", 0)
+    if args.fail_if_empty and not total:
+        logger.error(
+            "No resources in the report and --fail-if-empty is set "
+            f"(exit code {EXIT_NO_RESOURCES})"
+        )
+        return EXIT_NO_RESOURCES
+    return 0
 
 
 def validate_aws_credentials_early(timeout: Optional[int] = None) -> bool:
@@ -1198,6 +1326,7 @@ def main():
     role_error = _validate_cross_account_role(args)
     if role_error:
         usage_errors.append(role_error)
+    usage_errors.extend(_conflicting_flag_errors(args))
     usage_errors.extend(_template_usage_errors(args))
     usage_errors.extend(_google_usage_errors(args))
     usage_errors.extend(_risk_threshold_errors(args))
@@ -1424,10 +1553,12 @@ def _run(args, logger):
                     f"  - Processing time: {processing_stats.get('processing_time_seconds', 0):.2f}s"
                 )
 
+            opt_in_exit = _opt_in_exit_code(args, results, logger)
+
             if template_run:
                 exit_code = template_run.finish(results, logger)
                 if exit_code:
-                    sys.exit(exit_code)
+                    sys.exit(opt_in_exit or exit_code)
 
             if args.risk_threshold:
                 findings = risk_findings_at_or_above(results, args.risk_threshold)
@@ -1441,10 +1572,13 @@ def _run(args, logger):
                             f"  - {item.get('group_id', '')}: {item.get('rule', '')} "
                             f"({item.get('risk_level', '')})"
                         )
-                    sys.exit(EXIT_RISK_THRESHOLD)
+                    sys.exit(opt_in_exit or EXIT_RISK_THRESHOLD)
                 logger.info(
                     f"No security group rule at or above risk level {args.risk_threshold}"
                 )
+
+            if opt_in_exit:
+                sys.exit(opt_in_exit)
 
         else:
             logger.error("✗ BOM generation failed")
