@@ -53,34 +53,51 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 ## InvenTag 能找到什么，不能找到什么 {#what-inventag-finds-and-what-it-does-not}
 
-- **有自己发现代码的服务（24 种）：** VPC（VPC、子网、安全组、互联网网关和 NAT 网关、
-  路由表、网络 ACL、弹性 IP 地址）、EC2（实例、卷、快照、密钥对）、S3、RDS、Lambda、
-  ELB、ELBv2、IAM、CloudFront、Route 53、KMS、CloudWatch、ECS、EKS、SNS、SQS、
-  DynamoDB、API Gateway、Glue、WorkMail、CloudFormation、ACM、CloudTrail 和 EventBridge。
-- **其他一切**只有在 Resource Groups Tagging API 返回时才会出现。该 API 列出的是
-  现有标签或曾经有过标签的资源，因此其他服务中没有标签的资源会缺失。
-  在 `--fallback-display auto`（默认值）下，这类资源只会针对自己的发现代码没有结果的服务显示。
-  使用 `--fallback-display always` 可显示全部。
-- **不会收集：** 密钥、参数、对象内容或任何其他数据。只读防护会拦截这些调用。
-- **全局服务**（IAM、S3 存储桶列表、CloudFront、Route 53，以及 CloudFront 使用的 ACM 证书）
-  无论你选择哪些区域，都会针对每个账户从 `us-east-1` 读取一次。它们的区域列显示 `global`；
-  S3 存储桶则保留它自己的区域。参见[运行扫描](../guides/run-a-scan.md)。
-- **区域。** 不指定 `--account-regions` 时，InvenTag 会向 EC2 询问账户中启用的区域。
-  如果该调用失败，它会记录一条警告，并且只扫描 `us-east-1`、`us-west-2`、`eu-west-1`
-  和 `ap-southeast-1`。访问检查失败的区域会被跳过并给出警告，运行仍然成功。
+- **有自己发现代码的服务（46 个）：** VPC（VPC、子网、安全组、互联网网关和 NAT 网关、路由表、网络 ACL、
+  弹性 IP 地址）、EC2（实例、卷、快照、密钥对）、S3、RDS、Lambda、ELB、ELBv2、IAM、CloudFront、
+  Route 53、KMS、CloudWatch、ECS（集群，以及每个集群中的服务）、EKS、SNS、SQS、DynamoDB、
+  API Gateway、Glue、WorkMail、CloudFormation、ACM、CloudTrail、EventBridge、ElastiCache、
+  Redshift、Redshift Serverless、OpenSearch、EFS、ECR、Step Functions、Kinesis、Firehose、
+  Secrets Manager（仅名称）、Systems Manager 参数（仅名称）、Auto Scaling 组、Backup 保管库、
+  Cognito 用户池、CodeBuild、CodePipeline、Athena 工作组、EMR、MSK、AppSync、Elastic Beanstalk
+  和 WAF Web ACL。
+- **其他所有服务**只有在 Resource Groups Tagging API 返回时才会出现。该 API 列出有标签或曾经有过标签的资源，
+  因此其他服务中没有标签的资源会缺失。使用 `--fallback-display auto`（默认值）时，
+  这类资源只在其自身发现代码没有结果的服务中显示。使用 `--fallback-display always` 可显示全部。
+- **不收集：** 机密值、参数值、对象内容或任何其他数据。只读防护会阻止返回这些内容的调用。
+- **允许的响应中的机密值会被遮盖。** 有些读取调用会在设置旁边返回机密。常用于存放机密的字段，其值在报告、
+  JSON 输出、状态快照、续扫检查点和日志中会被替换为 `***REDACTED***`：Lambda 和 App Runner 环境变量、
+  ECS 和 CodeBuild 环境值、EC2 用户数据、CloudFormation 参数值和输出值、Glue 作业和触发器参数以及连接属性，
+  以及任何名称类似 password、secret、token、private key 或 credentials 的字段。名称会保留。
+- **其他字段中的机密不会被发现。** InvenTag 按字段名称判断，因此描述、标签或其他自由文本字段中的机密不会被遮盖。
+- **v1.2.0 之前的版本写出的报告和快照可能包含机密值。** 请删除旧的 `bom_output/` 文件夹和共享副本，或限制其访问。
+- **全局服务**（IAM、S3 存储桶列表、CloudFront、Route 53、用于 CloudFront 的 WAF Web ACL，以及
+  CloudFront 使用的 ACM 证书）每个账户只从 `us-east-1`（中国为 `cn-north-1`，GovCloud 为
+  `us-gov-west-1`）读取一次，无论你选择哪些区域。它们的区域列显示 `global`；S3 存储桶保留自己的区域。
+  参见[运行扫描](../guides/run-a-scan.md)。
+- **区域。** 没有 `--account-regions` 时，InvenTag 向 EC2 查询账户中已启用的区域。如果
+  `ec2:DescribeRegions` 失败，它会查询 `account:ListRegions`；如果这也失败，它会尝试该分区的每个区域，
+  并跳过未通过访问检查的区域。未通过访问检查的区域会被跳过并记录警告，运行仍然成功。
 
 ## 运行出错时 {#when-a-run-goes-wrong}
 
-- **一个账户失败，其他账户正常：** 运行以退出码 0 结束。运行摘要和报告会列出每个失败的账户及原因。
-  如果所有账户都失败，运行以退出码 1 结束。
-- **没有找到资源，或过滤器把它们全部去掉了：** InvenTag 不会写出报告，记录一条警告，
-  并以退出码 0 结束。请在脚本中检查文件是否存在。
-- **你缺少某个服务的权限：** InvenTag 跳过该调用，为该服务记录一条带原因的警告，然后继续。
-  如果 Resource Groups Tagging API 返回了该服务的资源，它们仍可能出现。
-- **Cost Explorer 访问被拒绝：** 运行在没有计费数据的情况下继续，并记录一条警告。
-- **被只读防护拦截的调用**会引发一个指明具体操作的错误。命令行本身不会发出这类调用。
-- **S3 上传失败**会让整个运行以退出码 1 结束，此时报告已经写入本地。
-- **某种报告格式生成失败**会让运行以退出码 1 结束。
+- **一个账户失败，其他账户正常：** 运行以退出码 0 结束；传入 `--fail-on-account-error` 时以退出码 5 结束。
+  运行摘要和报告会列出每个失败的账户及原因。如果所有账户都失败，运行以退出码 1 结束。
+- **账户超时：** 它算作失败。超时前找到的资源保留在报告中，报告会说明该账户不完整。
+- **没有找到资源，或筛选条件把它们全部去掉了：** 不使用 `--template` 时，InvenTag 不写报告，
+  记录一条警告并以退出码 0 结束。使用 `--template` 时，它会写出一份空报告。`--fail-if-empty`
+  让这两种情况都以退出码 6 结束。
+- **你没有权限的服务：** InvenTag 跳过该调用，为该服务记录一条说明原因的警告，然后继续。
+  如果 Resource Groups Tagging API 返回该服务的资源，它们仍可能出现。
+- **因其他原因失败的列出调用**（重试后仍被限流，或出现错误）会针对该服务和区域记录为警告，
+  并记录在 JSON 输出中（`metadata.coverage`）。
+- **Cost Explorer 访问被拒绝：** 运行在没有账单数据的情况下继续，并记录一条警告。
+- **被只读防护阻止的调用**会引发一个指明该操作的错误。CLI 本身不会发出这类调用。
+- **S3 上传失败**会让整个运行以退出码 1 结束，此时报告已写到本地。
+- **某个报告格式写入失败**会让运行以退出码 1 结束。
+- **有些无效值以退出码 1 而不是 2 停止，** 例如 `--max-concurrent-accounts 0` 或
+  `--account-processing-timeout 0`。
+- **账户文件 `settings` 块中的值会覆盖对应的命令行参数，** 例如 `max_concurrent_accounts`。
 
 ## 费用 {#costs}
 
@@ -95,25 +112,35 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   估算会对每种实例类型（以及其他规格或类别）分别定价。每个不同的价格查询只发出一次，之后重复使用，
   因此 Pricing 调用次数随不同资源类型和规格的数量增长，而不是随资源数量增长。
 
-其他调用是免费的，但大型账户意味着请求很多，并可能遇到限流（AWS 放慢你的请求）。
+其他调用是免费的，但大型账户意味着请求很多，并可能遇到限流（AWS 放慢你的请求）。InvenTag 会把被限流的调用
+最多重试 10 次（standard 重试模式）；`AWS_RETRY_MODE` 和 `AWS_MAX_ATTEMPTS` 可以覆盖这一设置。
 
 ## 性能与限制 {#performance-and-limits}
 
-- InvenTag 没有针对真实账户的基准数据。扫描大型账户的所有区域很慢：
-  每个服务在每个区域各有一组调用。
-- 默认同时扫描四个账户。每个账户有 1800 秒（30 分钟）。运行不会续跑；如果中途停止，请重新开始。
-- Excel 工作表名称会被截断为 31 个字符。Word 表格默认每个服务最多显示 50 条资源（`max_rows`）。
-- 运行保存快照时，InvenTag 会删除 `bom_output/state/` 中超过 30 天或超出最新 100 个的快照。
-  如果需要更长的历史，请自行保留副本。
+- InvenTag 没有针对真实账户的基准数据。扫描大型账户的每个区域很慢：每个服务在每个区域都要发出一组调用。
+- 针对 moto（在进程内运行，因此没有网络时间），`scripts/benchmark_scan.py` 在一个区域中扫描了
+  9,547 个资源，发出了 2,027 次 API 调用。对真实账户有用的是调用次数：每个区域约 60 次固定调用，
+  加上每个 S3 存储桶和每个 Lambda 函数各一次调用，再加上每 100 个带标签的资源一页 Tagging API。
+- 默认同时扫描四个账户（`--max-concurrent-accounts`）。每个账户从开始扫描起有 1800 秒
+  （`--account-processing-timeout`）。
+- 当有些账户失败时，已完成账户的结果会被保存。在 24 小时内（`--resume-max-age-hours`）用 `--resume`
+  运行同一条命令，只扫描其他账户。
+- Excel 工作表名称最多 31 个字符：更长的名称会被截断，Excel 不允许的字符会变成 `-`，重复的名称会加上
+  ` (2)`，日志会列出每个被改名的工作表。Word 表格默认每个服务最多显示 50 个资源（`max_rows`）。
+- 当运行保存快照时，InvenTag 会删除 `bom_output/state/` 中超过 30 天或超出最新 100 个的快照。
+  刚写入的快照和与之比较的快照永远不会被删除。用 `--state-retention-days` 和 `--state-max-snapshots`
+  修改这些限制，或用 `none` 保留全部。
+- 使用 `--enable-network-analysis` 或 `--enable-security-analysis` 时，分析调用在一次运行中会发出两次。
 
 ## 安全说明 {#security-notes}
 
-- **无论如何都要使用只读 IAM 身份。** 防护会拦截写入调用，而你的 IAM（身份与访问管理）策略是第二道独立的保险。
+- **仍然使用只读 IAM 身份。** 防护会阻止写入调用，而你的 IAM（身份和访问管理）策略是第二道独立的安全网。
   参见[设置只读访问](../guides/read-only-access.md)。
-- **调试日志默认经过脱敏：** 会话令牌、密钥和签名会被遮蔽。但仍应把调试日志视为敏感信息。
-- **有两个库函数在你自己的 Python 代码中调用时会写入 AWS**（命令行不会调用它们）：
-  `CredentialManager.setup_cross_account_roles()` 会创建 IAM 角色，
-  S3 辅助工具可以修改存储桶的生命周期规则（默认关闭，并且会与现有规则合并）。
+- **调试日志默认经过脱敏：** 会话令牌、密钥、签名以及上面列出的机密值都会被遮盖。仍请把调试日志当作敏感信息。
+- **两个库函数可以写入 AWS**，前提是从你自己的 Python 代码中调用（CLI 不会调用它们）：
+  `CredentialManager.setup_cross_account_roles()` 只在 `allow_iam_writes=True` 时运行，S3 生命周期辅助函数
+  只在 `allow_bucket_writes=True` 时运行。在 CLI 运行中，只读防护会阻止这两者。
+- **从你自己的 Python 代码中使用 `CloudBOMGenerator`** 不会安装只读防护。只有 `inventag` 命令会安装。
 
 ## 测试与软件物料清单 {#tests-and-the-software-bill-of-materials}
 

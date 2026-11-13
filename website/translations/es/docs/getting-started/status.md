@@ -55,47 +55,88 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 ## Qué encuentra InvenTag y qué no {#what-inventag-finds-and-what-it-does-not}
 
-- **Servicios con código de descubrimiento propio (24):** VPC (VPC, subredes,
+- **Servicios con su propio código de descubrimiento (46):** VPC (VPC, subredes,
   grupos de seguridad, gateways de internet y NAT, tablas de rutas, ACL de red,
-  direcciones IP elásticas), EC2 (instancias, volúmenes, instantáneas, pares de claves), S3,
-  RDS, Lambda, ELB, ELBv2, IAM, CloudFront, Route 53, KMS, CloudWatch, ECS,
-  EKS, SNS, SQS, DynamoDB, API Gateway, Glue, WorkMail, CloudFormation, ACM,
-  CloudTrail y EventBridge.
-- **Todo lo demás** solo puede aparecer si la API Resource Groups Tagging
-  lo devuelve. Esa API lista los recursos que tienen, o tuvieron alguna vez, etiquetas, así que
-  faltan los recursos sin etiquetar de cualquier otro servicio. Con
-  `--fallback-display auto` (el valor predeterminado), esos recursos se muestran solo para
-  los servicios que no tienen resultados de su propio código de descubrimiento. Usa
-  `--fallback-display always` para mostrarlos todos.
-- **No se recopila:** secretos, parámetros, contenido de objetos ni ningún otro dato.
-  La protección de solo lectura bloquea esas llamadas.
-- **Los servicios globales** (IAM, la lista de buckets de S3, CloudFront, Route 53 y
-  los certificados de ACM que usa CloudFront) se leen una vez por cuenta desde
-  `us-east-1`, sean cuales sean las regiones que elijas. Su columna de región dice `global`;
-  un bucket de S3 conserva su propia región. Consulta [Ejecutar un análisis](../guides/run-a-scan.md).
-- **Regiones.** Sin `--account-regions`, InvenTag pregunta a EC2 qué regiones están
-  habilitadas en la cuenta. Si esa llamada falla, registra un aviso y analiza solo
-  `us-east-1`, `us-west-2`, `eu-west-1` y `ap-southeast-1`. Una región que
-  no supera la comprobación de acceso se omite con un aviso, y la ejecución sigue teniendo éxito.
+  direcciones IP elásticas), EC2 (instancias, volúmenes, instantáneas, pares de
+  claves), S3, RDS, Lambda, ELB, ELBv2, IAM, CloudFront, Route 53, KMS,
+  CloudWatch, ECS (clústeres y los servicios de cada clúster), EKS, SNS, SQS,
+  DynamoDB, API Gateway, Glue, WorkMail, CloudFormation, ACM, CloudTrail,
+  EventBridge, ElastiCache, Redshift, Redshift Serverless, OpenSearch, EFS, ECR,
+  Step Functions, Kinesis, Firehose, Secrets Manager (solo nombres), parámetros
+  de Systems Manager (solo nombres), grupos de Auto Scaling, almacenes de Backup,
+  grupos de usuarios de Cognito, CodeBuild, CodePipeline, grupos de trabajo de
+  Athena, EMR, MSK, AppSync, Elastic Beanstalk y ACL web de WAF.
+- **Todo lo demás** solo puede aparecer si la API Resource Groups Tagging lo
+  devuelve. Esa API lista los recursos que tienen, o tuvieron, etiquetas, así que
+  faltan los recursos sin etiquetas de cualquier otro servicio. Con
+  `--fallback-display auto` (el valor predeterminado), esos recursos solo se
+  muestran para servicios que no tienen resultados de su propio código de
+  descubrimiento. Usa `--fallback-display always` para mostrarlos todos.
+- **No se recopila:** valores secretos, valores de parámetros, contenido de
+  objetos ni ningún otro dato. La protección de solo lectura bloquea las llamadas
+  que los devuelven.
+- **Los valores secretos de las respuestas permitidas se ocultan.** Algunas
+  llamadas de lectura devuelven un secreto junto a un ajuste. Los valores de los
+  campos que suelen contener secretos se sustituyen por `***REDACTED***` en los
+  informes, la salida JSON, las instantáneas de estado, los puntos de control de
+  reanudación y los registros: variables de entorno de Lambda y App Runner,
+  valores de entorno de ECS y CodeBuild, datos de usuario de EC2, valores de
+  parámetros y de salidas de CloudFormation, argumentos de trabajos y
+  desencadenadores de Glue y propiedades de conexión, y cualquier campo con un
+  nombre como password, secret, token, private key o credentials. Los nombres
+  se mantienen.
+- **Los secretos de otros campos no se detectan.** InvenTag se guía por el
+  nombre del campo, así que un secreto en una descripción, una etiqueta u otro
+  campo de texto libre no se oculta.
+- **Los informes y las instantáneas escritos por versiones anteriores a v1.2.0
+  pueden contener valores secretos.** Borra o restringe las carpetas
+  `bom_output/` antiguas y las copias compartidas.
+- **Los servicios globales** (IAM, la lista de buckets de S3, CloudFront,
+  Route 53, las ACL web de WAF para CloudFront y los certificados de ACM que usa
+  CloudFront) se leen una vez por cuenta desde `us-east-1` (`cn-north-1` en
+  China, `us-gov-west-1` en GovCloud), sean cuales sean las regiones que elijas.
+  Su columna de región dice `global`; un bucket de S3 conserva su propia región.
+  Consulta [Ejecutar un análisis](../guides/run-a-scan.md).
+- **Regiones.** Sin `--account-regions`, InvenTag pregunta a EC2 por las
+  regiones habilitadas en la cuenta. Si `ec2:DescribeRegions` falla, pregunta a
+  `account:ListRegions`; si eso también falla, prueba todas las regiones de la
+  partición y omite las que no superan la comprobación de acceso. Una región que
+  no supera su comprobación de acceso se omite con una advertencia, y la
+  ejecución sigue teniendo éxito.
 
 ## Cuando una ejecución sale mal {#when-a-run-goes-wrong}
 
-- **Una cuenta falla y las demás funcionan:** la ejecución termina con el código 0. El
-  resumen de la ejecución y el informe nombran cada cuenta que falló y el motivo.
-  Si fallan todas las cuentas, la ejecución termina con el código 1.
-- **No se encuentran recursos, o los filtros los eliminaron todos:** InvenTag no escribe
-  ningún informe, registra un aviso y termina con el código 0. Comprueba si el archivo existe
-  en tus scripts.
-- **Un servicio para el que no tienes permiso:** InvenTag omite esa llamada, registra un
-  aviso para el servicio con el motivo y continúa. Los recursos de ese
-  servicio aún pueden aparecer si la API Resource Groups Tagging los devuelve.
-- **Acceso denegado a Cost Explorer:** la ejecución continúa sin datos de facturación y
-  registra un aviso.
-- **Una llamada bloqueada por la protección de solo lectura** genera un error que nombra la
-  operación. La CLI no hace esas llamadas por sí misma.
-- **Una subida fallida a S3** hace que toda la ejecución termine con el código 1, una vez
-  escritos los informes en local.
-- **Un formato de informe que falla** hace que la ejecución termine con el código 1.
+- **Una cuenta falla y las demás funcionan:** la ejecución termina con el
+  código 0, o con el código 5 si pasas `--fail-on-account-error`. El resumen de
+  la ejecución y el informe nombran cada cuenta que falló y el motivo. Si fallan
+  todas las cuentas, la ejecución termina con el código 1.
+- **Una cuenta se queda sin tiempo:** cuenta como fallida. Los recursos
+  encontrados antes del límite se quedan en el informe, y el informe dice que la
+  cuenta está incompleta.
+- **No se encontraron recursos, o los filtros los quitaron todos:** sin
+  `--template`, InvenTag no escribe ningún informe, registra una advertencia y
+  termina con el código 0. Con `--template`, escribe un informe vacío.
+  `--fail-if-empty` hace que ambos casos terminen con el código 6.
+- **Un servicio para el que no tienes permiso:** InvenTag omite esa llamada,
+  registra una advertencia para el servicio con el motivo y continúa. Los
+  recursos de ese servicio pueden aparecer igualmente si la API Resource Groups
+  Tagging los devuelve.
+- **Un listado que falla por otro motivo** (limitado tras los reintentos, o un
+  error) se registra como advertencia para ese servicio y región, y queda
+  anotado en la salida JSON (`metadata.coverage`).
+- **Acceso denegado a Cost Explorer:** la ejecución continúa sin datos de
+  facturación y registra una advertencia.
+- **Una llamada bloqueada por la protección de solo lectura** lanza un error
+  que nombra la operación. La CLI no hace esas llamadas por sí misma.
+- **Una carga a S3 fallida** hace que toda la ejecución termine con el
+  código 1, después de escribir los informes en local.
+- **Un formato de informe que falla** hace que la ejecución termine con el
+  código 1.
+- **Algunos valores no válidos se detienen con el código de salida 1, no 2,**
+  por ejemplo `--max-concurrent-accounts 0` o `--account-processing-timeout 0`.
+- **Los valores del bloque `settings` de un archivo de cuentas sustituyen a las
+  opciones de línea de comandos correspondientes**, por ejemplo
+  `max_concurrent_accounts`.
 
 ## Costes {#costs}
 
@@ -115,31 +156,56 @@ Explorer. Consulta los
   distintos, no con el número de recursos.
 
 Las demás llamadas son gratuitas, pero las cuentas grandes implican muchas solicitudes y posible
-limitación (AWS ralentizando tus solicitudes).
+limitación (AWS ralentizando tus solicitudes). InvenTag reintenta una llamada limitada hasta 10
+veces (modo de reintento standard); `AWS_RETRY_MODE` y `AWS_MAX_ATTEMPTS` cambian este ajuste.
 
 ## Rendimiento y límites {#performance-and-limits}
 
-- InvenTag no tiene cifras de rendimiento para cuentas reales. Analizar todas las regiones
-  de una cuenta grande es lento: un conjunto de llamadas por servicio y por región.
-- Las cuentas se analizan de cuatro en cuatro por defecto. Cada cuenta dispone de 1800 segundos
-  (30 minutos). Una ejecución no se reanuda; si se detiene, vuelve a iniciarla.
-- Los nombres de hoja de Excel se recortan a 31 caracteres. Las tablas de Word muestran hasta 50
-  recursos por servicio por defecto (`max_rows`).
-- Cuando una ejecución guarda una instantánea, InvenTag elimina las instantáneas de `bom_output/state/`
-  con más de 30 días o que superen las 100 más recientes. Guarda una copia si necesitas
-  un historial más largo.
+- InvenTag no tiene cifras de rendimiento para cuentas reales. Analizar todas las
+  regiones de una cuenta grande es lento: un conjunto de llamadas por servicio y
+  por región.
+- Contra moto (dentro del proceso, así que sin tiempo de red),
+  `scripts/benchmark_scan.py` analizó 9.547 recursos en una región con 2.027
+  llamadas a la API. Para cuentas reales, la cifra útil es el número de llamadas:
+  unas 60 llamadas fijas por región, más una llamada por bucket de S3 y por
+  función Lambda, más una página de la API Tagging por cada 100 recursos
+  etiquetados.
+- De forma predeterminada se analizan cuatro cuentas a la vez
+  (`--max-concurrent-accounts`). Cada cuenta tiene 1800 segundos desde que
+  empieza su análisis (`--account-processing-timeout`).
+- Cuando algunas cuentas fallan, se guardan los resultados de las que
+  terminaron. Ejecuta el mismo comando con `--resume` en menos de 24 horas
+  (`--resume-max-age-hours`) para analizar solo las demás.
+- Los nombres de hoja de Excel tienen como máximo 31 caracteres: los nombres más
+  largos se recortan, los caracteres que Excel no permite pasan a ser `-`, un
+  nombre repetido recibe ` (2)`, y el registro nombra cada hoja cambiada. Las
+  tablas de Word muestran hasta 50 recursos por servicio de forma predeterminada
+  (`max_rows`).
+- Cuando una ejecución guarda una instantánea, InvenTag borra las instantáneas de
+  `bom_output/state/` con más de 30 días o que superan las 100 más recientes. La
+  instantánea recién escrita y la que se usa para comparar nunca se borran.
+  Cambia los límites con `--state-retention-days` y `--state-max-snapshots`, o
+  consérvalo todo con `none`.
+- Con `--enable-network-analysis` o `--enable-security-analysis`, las llamadas
+  del análisis se hacen dos veces en una misma ejecución.
 
 ## Notas de seguridad {#security-notes}
 
-- **Usa de todos modos una identidad de IAM de solo lectura.** La protección bloquea las llamadas de escritura, y
-  tu política de IAM (Identity and Access Management) es una segunda red de seguridad
-  independiente. Consulta [Configurar el acceso de solo lectura](../guides/read-only-access.md).
-- **Los registros de depuración se redactan** por defecto: los tokens de sesión, las claves y las firmas
-  se enmascaran. Aun así, trata los registros de depuración como información sensible.
-- **Dos funciones de la biblioteca escriben en AWS** cuando se llaman desde tu propio código
-  Python (la CLI no las llama): `CredentialManager.setup_cross_account_roles()`
-  crea roles de IAM, y el asistente de S3 puede cambiar las reglas de ciclo de vida de un bucket
-  (desactivado por defecto, y se combina con las reglas existentes).
+- **Usa de todos modos una identidad de IAM de solo lectura.** La protección
+  bloquea las llamadas de escritura, y tu política de IAM (Identity and Access
+  Management) es una segunda red de seguridad independiente. Consulta
+  [Configurar el acceso de solo lectura](../guides/read-only-access.md).
+- **Los registros de depuración se ocultan** de forma predeterminada: los tokens
+  de sesión, las claves, las firmas y los valores secretos indicados arriba se
+  enmascaran. Aun así, trata los registros de depuración como confidenciales.
+- **Dos funciones de la biblioteca pueden escribir en AWS** cuando se llaman
+  desde tu propio código Python (la CLI no las llama):
+  `CredentialManager.setup_cross_account_roles()` solo se ejecuta con
+  `allow_iam_writes=True`, y la función auxiliar de ciclo de vida de S3 solo con
+  `allow_bucket_writes=True`. La protección de solo lectura bloquea ambas en una
+  ejecución de la CLI.
+- **Usar `CloudBOMGenerator` desde tu propio código Python** no instala la
+  protección de solo lectura. Solo lo hace el comando `inventag`.
 
 ## Pruebas y lista de materiales de software {#tests-and-the-software-bill-of-materials}
 
