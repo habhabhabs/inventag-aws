@@ -1,6 +1,6 @@
 ---
 title: Salida a Google Sheets y Docs
-description: Escribe el inventario de InvenTag en Google Sheets y Google Docs: inicio de sesión, quién abre los archivos y qué no se ha verificado con Google real.
+description: "Escribe el inventario de InvenTag en Google Sheets y Google Docs: inicio de sesión, quién abre los archivos y qué no se ha verificado con Google real."
 sidebar_position: 9
 ---
 
