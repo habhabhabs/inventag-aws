@@ -327,7 +327,7 @@ function Capabilities(): ReactNode {
           <Translate id="home.cap.eyebrow">01 · What you get</Translate>
         </p>
         <h2 id="capabilities" className={styles.sectionTitle}>
-          <Translate id="home.cap.title">One command. A\u00a0report people can read.</Translate>
+          <Translate id="home.cap.title">One command. A report people can read.</Translate>
         </h2>
         <p className={styles.sectionLead}>
           <Translate id="home.cap.lead">
