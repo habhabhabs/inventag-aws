@@ -51,7 +51,7 @@
     "message": "已複製到剪貼簿"
   },
   "code.copyFailedCommands": {
-    "message": "複製失敗。請手動選中命令。"
+    "message": "複製失敗。請手動選取命令。"
   },
   "search.suggest.quickstart": {
     "message": "生成第一份報告"
@@ -73,7 +73,7 @@
     "message": "搜尋結果"
   },
   "search.noResults": {
-    "message": "沒有找到“{query}”的結果。請嘗試更少或不同的關鍵詞。"
+    "message": "沒有找到“{query}”的結果。請嘗試更少或不同的關鍵字。"
   },
   "search.suggested": {
     "message": "推薦"
@@ -85,7 +85,7 @@
     "message": "開啟"
   },
   "search.seeAll": {
-    "message": "檢視全部結果"
+    "message": "查看全部結果"
   },
   "code.showLess": {
     "message": "收起"
@@ -106,7 +106,7 @@
     "message": "複製程式碼到剪貼簿"
   },
   "code.copyFailed": {
-    "message": "複製失敗。請手動選中文字。"
+    "message": "複製失敗。請手動選取文字。"
   },
   "breadcrumb.home": {
     "message": "InvenTag 文件"
@@ -131,7 +131,7 @@
     "description": "The page & hero description of the blog archive page"
   },
   "theme.blog.paginator.navAriaLabel": {
-    "message": "博文列表分頁導航",
+    "message": "博文列表分頁導覽",
     "description": "The ARIA label for the blog pagination"
   },
   "theme.blog.paginator.newerEntries": {
@@ -143,7 +143,7 @@
     "description": "The label used to navigate to the older blog posts page (next page)"
   },
   "theme.blog.post.paginator.navAriaLabel": {
-    "message": "博文分頁導航",
+    "message": "博文分頁導覽",
     "description": "The ARIA label for the blog posts pagination"
   },
   "theme.blog.post.paginator.newerPost": {
@@ -155,7 +155,7 @@
     "description": "The blog post button label to navigate to the older/next post"
   },
   "theme.tags.tagsPageLink": {
-    "message": "檢視所有標籤",
+    "message": "查看所有標籤",
     "description": "The label of the link targeting the tag list page"
   },
   "theme.colorToggle.ariaLabel.mode.system": {
@@ -171,7 +171,7 @@
     "description": "The name for the dark color mode"
   },
   "theme.colorToggle.ariaLabel": {
-    "message": "切換淺色/暗黑模式（當前為{mode}）",
+    "message": "切換淺色/暗黑模式（目前為{mode}）",
     "description": "The ARIA label for the color mode toggle"
   },
   "theme.docs.breadcrumbs.navAriaLabel": {
@@ -278,7 +278,7 @@
     "description": "The ARIA label for close button of announcement bar"
   },
   "theme.blog.sidebar.navAriaLabel": {
-    "message": "最近博文導航",
+    "message": "最近博文導覽",
     "description": "The ARIA label for recent posts in the blog sidebar"
   },
   "theme.DocSidebarItem.expandCategoryAriaLabel": {
@@ -294,7 +294,7 @@
     "description": "The ARIA label for the external link icon"
   },
   "theme.NavBar.navAriaLabel": {
-    "message": "主導航",
+    "message": "主導覽",
     "description": "The ARIA label for the main navigation"
   },
   "theme.NotFound.p1": {
@@ -358,7 +358,7 @@
     "description": "The ARIA label for the sidebar navigation"
   },
   "theme.docs.sidebar.closeSidebarButtonAriaLabel": {
-    "message": "關閉導航欄",
+    "message": "關閉導覽欄",
     "description": "The ARIA label for close button of mobile sidebar"
   },
   "theme.navbar.mobileSidebarSecondaryMenu.backButtonLabel": {
@@ -366,7 +366,7 @@
     "description": "The label of the back button to return to main menu, inside the mobile navbar sidebar secondary menu (notably used to display the docs sidebar)"
   },
   "theme.docs.sidebar.toggleSidebarButtonAriaLabel": {
-    "message": "切換導航欄",
+    "message": "切換導覽欄",
     "description": "The ARIA label for hamburger menu button of mobile navigation"
   },
   "theme.navbar.mobileDropdown.collapseButton.expandAriaLabel": {
@@ -389,13 +389,13 @@
     "message": "沒有找到任何文件"
   },
   "theme.SearchBar.seeAllOutsideContext": {
-    "message": "檢視“{context}”以外的全部結果"
+    "message": "查看“{context}”以外的全部結果"
   },
   "theme.SearchBar.searchInContext": {
-    "message": "檢視“{context}”以內的全部結果"
+    "message": "查看“{context}”以內的全部結果"
   },
   "theme.SearchBar.seeAll": {
-    "message": "檢視全部結果"
+    "message": "查看全部結果"
   },
   "theme.SearchPage.existingResultsTitle": {
     "message": "“{query}”的搜尋結果",
@@ -433,7 +433,7 @@
     "description": "The title of the authors page"
   },
   "theme.blog.authorsList.viewAll": {
-    "message": "檢視所有作者",
+    "message": "查看所有作者",
     "description": "The label of the link targeting the blog authors page"
   },
   "theme.blog.author.noPosts": {
@@ -445,7 +445,7 @@
     "description": "The unlisted content banner title"
   },
   "theme.contentVisibility.unlistedBanner.message": {
-    "message": "此頁面未列出。搜尋引擎不會對其索引，只有擁有直接連結的使用者才能訪問。",
+    "message": "此頁面未列出。搜尋引擎不會對其索引，只有擁有直接連結的使用者才能存取。",
     "description": "The unlisted content banner message"
   },
   "theme.contentVisibility.draftBanner.title": {
@@ -476,22 +476,22 @@
     "message": "AWS 資源清單、標籤檢查與 BOM 報告"
   },
   "home.pageDescription": {
-    "message": "InvenTag 是一款開源的 Python 命令列工具。它列出你的 AWS 賬戶中的資源，顯示每個資源的標籤情況，並生成 Excel 或 Word 物料清單。"
+    "message": "InvenTag 是一款開源的 Python 命令列工具。它列出你的 AWS 帳戶中的資源，顯示每個資源的標籤情況，並生成 Excel 或 Word 物料清單。"
   },
   "home.kicker": {
     "message": "面向 AWS 的開源命令列工具"
   },
   "home.releaseNotes": {
-    "message": "釋出說明"
+    "message": "發行說明"
   },
   "home.heroTitle": {
-    "message": "看清你的 AWS 賬戶裡在執行什麼。{emphasis}"
+    "message": "看清你的 AWS 帳戶裡在執行什麼。{emphasis}"
   },
   "home.heroTitleEm": {
     "message": "然後把報告交出去。"
   },
   "home.heroLead": {
-    "message": "InvenTag 可以掃描一個或多個 AWS 賬戶，列出找到的資源及每個資源上的標籤，然後生成任何人都能讀懂的 Excel 或 Word 報告，也就是物料清單。"
+    "message": "InvenTag 可以掃描一個或多個 AWS 帳戶，列出找到的資源及每個資源上的標籤，然後生成任何人都能讀懂的 Excel 或 Word 報告，也就是物料清單。"
   },
   "home.runQuickStart": {
     "message": "執行快速開始"
@@ -500,28 +500,28 @@
     "message": "工作原理"
   },
   "home.heroNote": {
-    "message": "內建的防護只放行 {list}、{describe} 和 {get} 這類讀取呼叫。也請同時使用只讀的 IAM 角色：{link}。"
+    "message": "內建的防護只放行 {list}、{describe} 和 {get} 這類讀取呼叫。也請同時使用唯讀的 IAM 角色：{link}。"
   },
   "home.heroNoteLink": {
-    "message": "檢視它需要哪些許可權"
+    "message": "查看它需要哪些權限"
   },
   "home.quickStartTitle": {
     "message": "快速開始"
   },
   "home.snippetFootnote": {
-    "message": "用 pip 從 PyPI 安裝 {pkg}。使用你當前的 AWS 憑證。寫出 {file}。Cost Explorer 請求由 AWS 計費。"
+    "message": "用 pip 從 PyPI 安裝 {pkg}。使用你目前的 AWS 憑證。寫入 {file}。Cost Explorer 請求由 AWS 計費。"
   },
   "home.sheetCaption": {
-    "message": "示例 Summary 工作表"
+    "message": "範例 Summary 工作表"
   },
   "home.sheetTabs": {
     "message": "工作簿中的工作表"
   },
   "home.sampleData": {
-    "message": "示例資料"
+    "message": "範例資料"
   },
   "home.sheetNote": {
-    "message": "{flag} 生成的 Summary 工作表版式。之後每個服務各有一個工作表，每個資源一行。"
+    "message": "{flag} 生成的 Summary 工作表版面設定。之後每個服務各有一個工作表，每個資源一行。"
   },
   "home.cap.eyebrow": {
     "message": "01 · 你能得到什麼"
@@ -536,16 +536,16 @@
     "message": "Excel 和 Word 報告"
   },
   "home.c1.link": {
-    "message": "檢視所有報告選項"
+    "message": "查看所有報告選項"
   },
   "home.c1.body": {
     "message": "先是一張摘要工作表，然後每個服務一張工作表。想要文件形式的人，可以再加一份 Word 版本。檔案儲存在 {dir}。"
   },
   "home.c2.title": {
-    "message": "只讀發現"
+    "message": "唯讀發現"
   },
   "home.c2.link": {
-    "message": "許可權與安全"
+    "message": "權限與安全"
   },
   "home.c2.caption": {
     "message": "{dir} 中的部分 boto3 呼叫。"
@@ -554,22 +554,22 @@
     "message": "透過 Resource Groups Tagging API、各服務自己的 list 和 describe 呼叫以及 Cost Explorer 來查詢資源。防護機制會攔截任何可能改動內容的 AWS 呼叫。加上 {flag} 可儲存每次呼叫的記錄。"
   },
   "home.c3.title": {
-    "message": "一個賬戶或多個賬戶"
+    "message": "一個帳戶或多個帳戶"
   },
   "home.c3.link": {
-    "message": "設定多個賬戶"
+    "message": "設定多個帳戶"
   },
   "home.c3.body": {
-    "message": "可使用 AWS 配置檔案、訪問金鑰或要代入的角色。賬戶並行掃描，預設同時掃描四個。"
+    "message": "可使用 AWS 設定檔、存取金鑰或要擔任的角色。帳戶平行掃描，預設同時掃描四個。"
   },
   "home.c4.title": {
-    "message": "你的標籤，你的列"
+    "message": "你的標籤，你的欄位"
   },
   "home.c4.link": {
-    "message": "把標籤對映為列"
+    "message": "把標籤對應為欄"
   },
   "home.c4.body": {
-    "message": "把團隊約定好的標籤變成預設報告中有名稱的列，還可以新增你自己的服務描述。"
+    "message": "把團隊約定好的標籤變成預設報告中有名稱的欄，還可以新增你自己的服務描述。"
   },
   "home.c5.title": {
     "message": "與上次相比有什麼變化"
@@ -581,16 +581,16 @@
     "message": "每次執行都會儲存快照。下一次執行會告訴你新增、移除或變化了什麼。"
   },
   "home.c6.title": {
-    "message": "可複用的模板"
+    "message": "可重複使用的範本"
   },
   "home.c6.link": {
-    "message": "瀏覽模板"
+    "message": "瀏覽範本"
   },
   "home.c6.list": {
     "message": "內建模板"
   },
   "home.c6.layouts": {
-    "message": "報告版式"
+    "message": "報告版面設定"
   },
   "home.c6.policies": {
     "message": "標籤策略"
@@ -599,7 +599,7 @@
     "message": "執行設定"
   },
   "home.c6.body": {
-    "message": "從八個內建模板起步：報告版式、標籤策略和執行設定。用 {cmd} 列出它們，把其中一個複製到你的專案裡，只改你需要改的部分。"
+    "message": "從八個內建範本起步：報告版面設定、標籤策略和執行設定。用 {cmd} 列出它們，把其中一個複製到你的專案裡，只改你需要改的部分。"
   },
   "home.c7.title": {
     "message": "網路與安全工作表"
@@ -617,25 +617,25 @@
     "message": "標籤合規"
   },
   "home.c8.body": {
-    "message": "用標籤策略模板檢查必填標籤和允許的取值。結果會寫入一張工作表、Word 中的一節和一個 JSON 檔案。"
+    "message": "用標籤策略範本檢查必填標籤和允許的取值。結果會寫入一張工作表、Word 中的一節和一個 JSON 檔案。"
   },
   "home.s1.title": {
     "message": "憑證"
   },
   "home.s1.body": {
-    "message": "你的預設 AWS 憑證、命名的配置檔案、賬戶檔案中的金鑰，或代入的角色。"
+    "message": "你的預設 AWS 憑證、命名的設定檔、帳戶檔案中的金鑰，或擔任的角色。"
   },
   "home.s2.title": {
     "message": "發現"
   },
   "home.s2.body": {
-    "message": "針對每個賬戶和區域：Tagging API、各服務的讀取呼叫和 Cost Explorer。"
+    "message": "針對每個帳戶和區域：Tagging API、各服務的讀取呼叫和 Cost Explorer。"
   },
   "home.s3.title": {
     "message": "豐富資訊"
   },
   "home.s3.body": {
-    "message": "服務屬性、你的標籤列和描述，以及可選的網路與安全分析。"
+    "message": "服務屬性、你的標籤欄和描述，以及可選的網路與安全分析。"
   },
   "home.s4.title": {
     "message": "輸出"
@@ -659,22 +659,22 @@
     "message": "有些選項尚未實現。如果你用到了，執行會以明確的“尚未實現”提示停止，而不是悄悄忽略。{link}列出了目前可用的功能。"
   },
   "home.honest.1.link": {
-    "message": "當前狀態頁面"
+    "message": "目前狀態頁面"
   },
   "home.honest.2": {
-    "message": "預設情況下，發現過程會呼叫 Cost Explorer，而 AWS 會對每次 Cost Explorer 請求收費。掃描多個賬戶之前，請先閱讀{link}。"
+    "message": "預設情況下，發現過程會呼叫 Cost Explorer，而 AWS 會對每次 Cost Explorer 請求收費。掃描多個帳戶之前，請先閱讀{link}。"
   },
   "home.honest.2.link": {
     "message": "費用說明"
   },
   "home.honest.3": {
-    "message": "InvenTag 自帶 24 種 AWS 服務的發現程式碼，目前只在模擬的 AWS 上測試過，沒有在真實賬戶上測試。"
+    "message": "InvenTag 自帶 24 種 AWS 服務的發現程式碼，目前只在模擬的 AWS 上測試過，沒有在真實帳戶上測試。"
   },
   "home.honest.4": {
     "message": "它收集的是證據，例如資源清單和標籤規範程度。它不會證明你符合任何合規標準。"
   },
   "home.closing.title": {
-    "message": "從一個賬戶開始。大約十分鐘。"
+    "message": "從一個帳戶開始。大約十分鐘。"
   },
   "home.sourceOnGitHub": {
     "message": "GitHub 原始碼"
