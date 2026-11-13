@@ -110,11 +110,11 @@ def safe_sheet_name(name: Any, taken: Set[str]) -> str:
 
     ``taken`` holds lower-case names already used (Excel compares names without
     regard to case). The caller adds the result to it. Characters Excel
-    forbids (``[ ] : * ? / \\``) become ``_``; a name longer than 31 characters
+    forbids (``[ ] : * ? / \\``) become ``-`` (as in the other writers); a name longer than 31 characters
     is cut, and a name that is already used gets `` (2)``, `` (3)`` ... inside
     the 31 characters.
     """
-    text = _INVALID_SHEET_CHARS.sub("_", "" if name is None else str(name))
+    text = _INVALID_SHEET_CHARS.sub("-", "" if name is None else str(name))
     text = text.strip().strip("'").strip() or "Sheet"
     base = text[:MAX_SHEET_NAME_CHARS]
     candidate = base

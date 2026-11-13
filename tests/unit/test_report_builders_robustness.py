@@ -69,7 +69,7 @@ def test_safe_sheet_name_rules():
     long_b = safe_sheet_name("A" * 40 + "2", taken)
     assert len(long_a) == len(long_b) == 31
     assert long_a != long_b and long_b.endswith(" (2)")
-    assert safe_sheet_name("a/b:c?*[x]\\", taken) == "a_b_c___x__"
+    assert safe_sheet_name("a/b:c?*[x]\\", taken) == "a-b-c---x--"
     # Excel compares sheet names without regard to case
     assert safe_sheet_name("ec2", taken) == "ec2"
     assert safe_sheet_name("EC2", taken) == "EC2 (2)"
