@@ -35,18 +35,6 @@ def test_every_page_of_a_paginated_list_call_is_read(estate, run_cli):
     assert "paged-104" in tables and "paged-000" in tables
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "DEFECT (P1, inventag/discovery/comprehensive_discovery.py, list_queues "
-        "operation at about line 266): SQS ListQueues returns at most 1000 queues "
-        "and gives a NextToken only when MaxResults is sent. The scan uses the "
-        "paginator without PageSize, so queue 1001 and later are missing from "
-        "the report with no warning. Fix: paginate with PaginationConfig="
-        "{'PageSize': 1000} (or MaxResults=1000). Found by scripts/benchmark_scan.py "
-        "--scale 60 (1000 of 2400 queues)."
-    ),
-)
 def test_more_than_1000_sqs_queues_in_one_region_are_all_reported(estate, run_cli):
     sqs = boto3.client("sqs", region_name="us-east-1")
     for i in range(1005):

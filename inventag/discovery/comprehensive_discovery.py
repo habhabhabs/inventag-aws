@@ -1098,6 +1098,20 @@ class ComprehensiveAWSDiscovery:
         ("Marker", "Marker"),
     )
 
+    # Operations that return a continuation token only when the request sets a
+    # page size (checked against every listing operation of the service
+    # table in the botocore models): without it the first page is all you get.
+    # SQS ListQueues: "You must set MaxResults to receive a value for
+    # NextToken"; at most 1,000 queues otherwise.
+    _REQUIRED_PAGE_SIZE = {("sqs", "list_queues"): 1000}
+
+    @staticmethod
+    def _service_name_of(client) -> str:
+        try:
+            return client.meta.service_model.service_name
+        except Exception:
+            return ""
+
     def _pages(self, client, operation_name: str, params: Dict[str, Any]):
         """Every page of a list/describe call.
 
@@ -1107,7 +1121,13 @@ class ComprehensiveAWSDiscovery:
         """
         can_paginate = getattr(client, "can_paginate", None)
         if can_paginate is None or can_paginate(operation_name):
-            yield from client.get_paginator(operation_name).paginate(**params)
+            kwargs = dict(params)
+            page_size = self._REQUIRED_PAGE_SIZE.get(
+                (self._service_name_of(client), operation_name)
+            )
+            if page_size and "PaginationConfig" not in kwargs:
+                kwargs["PaginationConfig"] = {"PageSize": page_size}
+            yield from client.get_paginator(operation_name).paginate(**kwargs)
             return
         operation = getattr(client, operation_name)
         meta = getattr(client, "meta", None)

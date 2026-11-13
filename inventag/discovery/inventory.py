@@ -1190,6 +1190,12 @@ class AWSResourceInventory:
                 resource["service_monthly_spend"] = self.billing_spend_by_service[
                     service
                 ]
+                # Both columns hold the service's spend. Comprehensive
+                # discovery fills monthly_spend from its own Cost Explorer
+                # answer, which can be empty; never leave 0.0 next to a
+                # billed amount.
+                if not resource.get("monthly_spend"):
+                    resource["monthly_spend"] = resource["service_monthly_spend"]
             else:
                 resource["billing_validated"] = False
                 resource["service_monthly_spend"] = 0.0

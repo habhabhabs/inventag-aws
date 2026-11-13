@@ -85,17 +85,6 @@ class TestBillingValidation:
         assert kinesis[0]["billing_validated"] == "True"
         assert not [r for r in rows if r["service"] == "TAX"]
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "DEFECT (P2): the report has two spend columns. service_monthly_spend "
-            "(inventory.py:1236) carries the billed amount; monthly_spend "
-            "(comprehensive_discovery.py:1310) is 0.0 for every row because it "
-            "reads self.billing_spend, which is empty when the Cost Explorer "
-            "query runs in AWSResourceInventory instead. A user who reads "
-            "monthly_spend sees $0 for a billed service."
-        ),
-    )
     def test_monthly_spend_column_matches_the_billed_amount(self, estate, run_cli):
         queue_cost_explorer_answer(("Amazon Simple Storage Service", 1.5))
         result = run_cli("--billing-validation", *ONE_REGION, fast=False)
