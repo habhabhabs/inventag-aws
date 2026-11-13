@@ -26,7 +26,7 @@ sidebar_position: 9
 pip install "inventag-aws[google]"
 ```
 
-可以把它理解為“安裝 InvenTag，外加它的 Google 附加包”。方括號裡的部分是附加包的名稱，
+可以把它理解為「安裝 InvenTag，外加它的 Google 附加包」。方括號裡的部分是附加包的名稱，
 不是佔位符，所以請按原樣輸入，包括引號（macOS 預設的 shell zsh 需要引號）。
 
 - **你已經安裝了 InvenTag。** 執行同一條命令。pip 會保留你現有的 InvenTag，只新增 Google 包。

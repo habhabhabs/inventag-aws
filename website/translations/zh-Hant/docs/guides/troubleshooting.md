@@ -12,7 +12,7 @@ sidebar_position: 8
 
 下面的訊息是 InvenTag 離線執行的真實輸出（範例資料）。
 對於離線無法產生的 AWS 錯誤，例如權杖過期，我們模擬了確切的 AWS 錯誤回應，並記錄了 InvenTag 如何報告它。
-這些程式碼塊標註為“simulated AWS error response”。
+這些程式碼塊標註為「simulated AWS error response」。
 
 加上 `--verbose` 可以看到每一步，加上 `--debug` 可以看到每個 AWS 呼叫。除錯日誌會遮蔽金鑰，但仍應把它當作敏感資訊對待。
 
