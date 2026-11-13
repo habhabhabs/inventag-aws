@@ -141,8 +141,8 @@ What you will notice after `pip install --upgrade inventag-aws`:
 - **New columns.** Every service sheet has `source`, `sources` and
   `detail_level` columns. See [Output files](../reference/outputs.md).
 - **More services and more API calls.** InvenTag lists 22 more services,
-  which adds sheets, rows and calls. The repository policy has 17 more read
-  actions; without them, those services are skipped with a warning. See
+  which adds sheets, rows and calls. The repository policy has 17 new read
+  actions (and no longer lists `cloudtrail:LookupEvents`); without them, those services are skipped with a warning. See
   [IAM permissions](../reference/iam-permissions.md).
 - **Stricter files.** An empty settings file, a key written twice or a
   `--bom-config` value of the wrong type stops the run with exit code 1.

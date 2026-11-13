@@ -44,7 +44,7 @@ AWS when called from your own Python code (the CLI does not call them); see
 ## The policy in the repository
 
 `config/defaults/iam-policy-read-only.json` is generated from an explicit list
-of 123 read actions in the code (`inventag/security/iam_policy.py`), so it
+of 122 read actions in the code (`inventag/security/iam_policy.py`), so it
 matches what InvenTag calls. It includes `tag:GetResources`,
 `ce:GetCostAndUsage`, `pricing:GetProducts` and
 `lambda:GetFunctionConfiguration`. A second statement allows `apigateway:GET`
@@ -52,7 +52,8 @@ only on `/restapis`, `/domainnames` and `/usageplans`, so API key values
 cannot be read.
 
 v1.2.0 added these 17 actions for the new services and the region fallback:
-`account:ListRegions`, `appsync:ListGraphqlApis`, `athena:ListWorkGroups`, `autoscaling:DescribeAutoScalingGroups`, `backup:ListBackupVaults`, `cognito-idp:ListUserPools`, `ec2:DescribeNetworkInterfaces`, `ecr:DescribeRepositories`, `elasticbeanstalk:DescribeApplications`, `elasticbeanstalk:DescribeEnvironments`, `elasticfilesystem:DescribeFileSystems`, `elasticmapreduce:ListClusters`, `es:ListDomainNames`, `firehose:ListDeliveryStreams`, `kafka:ListClustersV2`, `redshift-serverless:ListNamespaces`, `redshift-serverless:ListWorkgroups`.
+`account:ListRegions`, `appsync:ListGraphqlApis`, `athena:ListWorkGroups`, `autoscaling:DescribeAutoScalingGroups`, `backup:ListBackupVaults`, `cognito-idp:ListUserPools`, `ec2:DescribeNetworkInterfaces`, `ecr:DescribeRepositories`, `elasticbeanstalk:DescribeApplications`, `elasticbeanstalk:DescribeEnvironments`, `elasticfilesystem:DescribeFileSystems`, `elasticmapreduce:ListClusters`, `es:ListDomainNames`, `firehose:ListDeliveryStreams`, `kafka:ListClustersV2`, `redshift-serverless:ListNamespaces`, `redshift-serverless:ListWorkgroups`. It also
+removed `cloudtrail:LookupEvents`, which the `inventag` command does not call.
 
 Its `OptionalS3ReportUpload` statement allows `s3:PutObject`, but only with
 server-side encryption. Put your bucket name in place of

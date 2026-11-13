@@ -44,7 +44,7 @@ AWS cuando se llaman desde tu propio código Python (la CLI no las llama); consu
 ## La política del repositorio {#the-policy-in-the-repository}
 
 `config/defaults/iam-policy-read-only.json` se genera a partir de una lista explícita
-de 123 acciones de lectura del código (`inventag/security/iam_policy.py`), así que
+de 122 acciones de lectura del código (`inventag/security/iam_policy.py`), así que
 coincide con lo que InvenTag llama. Incluye `tag:GetResources`,
 `ce:GetCostAndUsage`, `pricing:GetProducts` y
 `lambda:GetFunctionConfiguration`. Una segunda instrucción permite `apigateway:GET`
@@ -52,7 +52,8 @@ solo en `/restapis`, `/domainnames` y `/usageplans`, así que no se pueden leer 
 valores de las claves de API.
 
 v1.2.0 añadió estas 17 acciones para los servicios nuevos y la alternativa de regiones:
-`account:ListRegions`, `appsync:ListGraphqlApis`, `athena:ListWorkGroups`, `autoscaling:DescribeAutoScalingGroups`, `backup:ListBackupVaults`, `cognito-idp:ListUserPools`, `ec2:DescribeNetworkInterfaces`, `ecr:DescribeRepositories`, `elasticbeanstalk:DescribeApplications`, `elasticbeanstalk:DescribeEnvironments`, `elasticfilesystem:DescribeFileSystems`, `elasticmapreduce:ListClusters`, `es:ListDomainNames`, `firehose:ListDeliveryStreams`, `kafka:ListClustersV2`, `redshift-serverless:ListNamespaces`, `redshift-serverless:ListWorkgroups`.
+`account:ListRegions`, `appsync:ListGraphqlApis`, `athena:ListWorkGroups`, `autoscaling:DescribeAutoScalingGroups`, `backup:ListBackupVaults`, `cognito-idp:ListUserPools`, `ec2:DescribeNetworkInterfaces`, `ecr:DescribeRepositories`, `elasticbeanstalk:DescribeApplications`, `elasticbeanstalk:DescribeEnvironments`, `elasticfilesystem:DescribeFileSystems`, `elasticmapreduce:ListClusters`, `es:ListDomainNames`, `firehose:ListDeliveryStreams`, `kafka:ListClustersV2`, `redshift-serverless:ListNamespaces`, `redshift-serverless:ListWorkgroups`. También
+quitó `cloudtrail:LookupEvents`, que el comando `inventag` no llama.
 
 Su instrucción `OptionalS3ReportUpload` permite `s3:PutObject`, pero solo con
 cifrado del lado del servidor. Pon el nombre de tu bucket en lugar de

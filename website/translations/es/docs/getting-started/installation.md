@@ -139,7 +139,7 @@ Lo que notarás después de `pip install --upgrade inventag-aws`:
   `sources` y `detail_level`. Consulta [Archivos de salida](../reference/outputs.md).
 - **Más servicios y más llamadas a la API.** InvenTag lista 22 servicios más,
   lo que añade hojas, filas y llamadas. La política del repositorio tiene 17
-  acciones de lectura más; sin ellas, esos servicios se omiten con una
+  acciones de lectura nuevas (y ya no incluye `cloudtrail:LookupEvents`); sin ellas, esos servicios se omiten con una
   advertencia. Consulta [Permisos de IAM](../reference/iam-permissions.md).
 - **Archivos más estrictos.** Un archivo de ajustes vacío, una clave escrita dos
   veces o un valor de `--bom-config` de tipo incorrecto detienen la ejecución

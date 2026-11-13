@@ -57,7 +57,7 @@ InvenTag 还会调用 `account:ListRegions`，但仅在 `ec2:DescribeRegions` �
 
 ## 方案 2：仓库中范围更窄的策略 {#option-2-the-narrower-policy-in-the-repository}
 
-`config/defaults/iam-policy-read-only.json` 列出了 123 个具体的读取操作，
+`config/defaults/iam-policy-read-only.json` 列出了 122 个具体的读取操作，
 包括 `tag:GetResources`、`ce:GetCostAndUsage` 和 `pricing:GetProducts`，
 另有只用于 API 元数据（不含 API 密钥）的 `apigateway:GET`。它由代码所用的同一份清单生成，因此与 InvenTag 实际发出的调用一致。
 它包含 InvenTag 用自己的调用列举的各项服务所需的操作，以及

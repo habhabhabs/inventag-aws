@@ -128,7 +128,7 @@ $ echo $?
   请删除它们或限制其访问。
 - **新列。** 每个服务工作表都有 `source`、`sources` 和 `detail_level` 列。参见[输出文件](../reference/outputs.md)。
 - **更多服务和更多 API 调用。** InvenTag 多列出 22 个服务，因此会增加工作表、行和调用。
-  仓库中的策略多了 17 个读取操作；没有这些权限时，这些服务会被跳过并给出警告。
+  仓库中的策略新增了 17 个读取操作（并且不再列出 `cloudtrail:LookupEvents`）；没有这些权限时，这些服务会被跳过并给出警告。
   参见 [IAM 权限](../reference/iam-permissions.md)。
 - **更严格的文件检查。** 空的设置文件、写了两次的键，或类型错误的 `--bom-config` 值，都会以退出码 1 停止运行。
 - **相互冲突的选项会以退出码 2 停止**，例如同时使用 `--accounts-file` 和 `--accounts-prompt`，

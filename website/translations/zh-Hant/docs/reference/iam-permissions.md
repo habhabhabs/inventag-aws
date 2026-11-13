@@ -39,7 +39,7 @@ sidebar_position: 3
 
 ## 儲存庫中的策略 {#the-policy-in-the-repository}
 
-`config/defaults/iam-policy-read-only.json` 由程式碼中明確列出的 123 個讀取操作
+`config/defaults/iam-policy-read-only.json` 由程式碼中明確列出的 122 個讀取操作
 （`inventag/security/iam_policy.py`）生成，因此它與 InvenTag 的呼叫一致。
 它包含 `tag:GetResources`、`ce:GetCostAndUsage`、`pricing:GetProducts` 和
 `lambda:GetFunctionConfiguration`。第二條語句只允許對 `/restapis`、`/domainnames` 和
@@ -47,6 +47,7 @@ sidebar_position: 3
 
 v1.2.0 為新服務和區域回退新增了以下 17 個操作：
 `account:ListRegions`, `appsync:ListGraphqlApis`, `athena:ListWorkGroups`, `autoscaling:DescribeAutoScalingGroups`, `backup:ListBackupVaults`, `cognito-idp:ListUserPools`, `ec2:DescribeNetworkInterfaces`, `ecr:DescribeRepositories`, `elasticbeanstalk:DescribeApplications`, `elasticbeanstalk:DescribeEnvironments`, `elasticfilesystem:DescribeFileSystems`, `elasticmapreduce:ListClusters`, `es:ListDomainNames`, `firehose:ListDeliveryStreams`, `kafka:ListClustersV2`, `redshift-serverless:ListNamespaces`, `redshift-serverless:ListWorkgroups`。
+它還刪除了 `cloudtrail:LookupEvents`，`inventag` 命令不會呼叫它。
 
 它的 `OptionalS3ReportUpload` 語句允許 `s3:PutObject`，但僅限使用伺服器端加密時。
 請把你的儲存貯體名稱填在 `YOUR-REPORTS-BUCKET-NAME` 的位置；如果你不使用 `--s3-bucket`，就刪除這條語句。

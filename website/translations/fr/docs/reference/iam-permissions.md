@@ -44,7 +44,7 @@ AWS lorsqu’elles sont appelées depuis votre propre code Python (la CLI ne les
 ## La politique du dépôt {#the-policy-in-the-repository}
 
 `config/defaults/iam-policy-read-only.json` est générée à partir d’une liste explicite
-de 123 actions de lecture dans le code (`inventag/security/iam_policy.py`), si bien qu’elle
+de 122 actions de lecture dans le code (`inventag/security/iam_policy.py`), si bien qu’elle
 correspond à ce qu’InvenTag appelle. Elle inclut `tag:GetResources`,
 `ce:GetCostAndUsage`, `pricing:GetProducts` et
 `lambda:GetFunctionConfiguration`. Une seconde instruction n’autorise `apigateway:GET`
@@ -52,7 +52,8 @@ que sur `/restapis`, `/domainnames` et `/usageplans`, si bien que les valeurs de
 d’API ne peuvent pas être lues.
 
 v1.2.0 a ajouté ces 17 actions pour les nouveaux services et le repli des régions :
-`account:ListRegions`, `appsync:ListGraphqlApis`, `athena:ListWorkGroups`, `autoscaling:DescribeAutoScalingGroups`, `backup:ListBackupVaults`, `cognito-idp:ListUserPools`, `ec2:DescribeNetworkInterfaces`, `ecr:DescribeRepositories`, `elasticbeanstalk:DescribeApplications`, `elasticbeanstalk:DescribeEnvironments`, `elasticfilesystem:DescribeFileSystems`, `elasticmapreduce:ListClusters`, `es:ListDomainNames`, `firehose:ListDeliveryStreams`, `kafka:ListClustersV2`, `redshift-serverless:ListNamespaces`, `redshift-serverless:ListWorkgroups`.
+`account:ListRegions`, `appsync:ListGraphqlApis`, `athena:ListWorkGroups`, `autoscaling:DescribeAutoScalingGroups`, `backup:ListBackupVaults`, `cognito-idp:ListUserPools`, `ec2:DescribeNetworkInterfaces`, `ecr:DescribeRepositories`, `elasticbeanstalk:DescribeApplications`, `elasticbeanstalk:DescribeEnvironments`, `elasticfilesystem:DescribeFileSystems`, `elasticmapreduce:ListClusters`, `es:ListDomainNames`, `firehose:ListDeliveryStreams`, `kafka:ListClustersV2`, `redshift-serverless:ListNamespaces`, `redshift-serverless:ListWorkgroups`. Elle a
+aussi retiré `cloudtrail:LookupEvents`, que la commande `inventag` n’appelle pas.
 
 Son instruction `OptionalS3ReportUpload` autorise `s3:PutObject`, mais uniquement avec
 un chiffrement côté serveur. Remplacez `YOUR-REPORTS-BUCKET-NAME` par le nom de votre bucket,

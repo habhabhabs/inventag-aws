@@ -64,7 +64,7 @@ para tu organización, usa la opción 2.
 
 ## Opción 2: la política más acotada del repositorio {#option-2-the-narrower-policy-in-the-repository}
 
-`config/defaults/iam-policy-read-only.json` lista 123 acciones de lectura
+`config/defaults/iam-policy-read-only.json` lista 122 acciones de lectura
 concretas, entre ellas `tag:GetResources`, `ce:GetCostAndUsage` y
 `pricing:GetProducts`, y `apigateway:GET` solo para metadatos de API (no claves de API). Se genera a partir de la misma lista que usa el código,
 así que coincide con lo que InvenTag llama. Incluye las acciones de los servicios que InvenTag lista con sus propias llamadas,
