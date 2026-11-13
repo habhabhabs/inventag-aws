@@ -14,6 +14,11 @@ BUILTINS = sorted(p.stem for p in BUILTIN_DIR.glob("*.yaml"))
 def test_catalogue_is_what_the_docs_promise():
     assert BUILTINS == [
         "ci-pipeline",
+        "evidence-gdpr",
+        "evidence-hipaa",
+        "evidence-pci-dss",
+        "evidence-pdpa",
+        "evidence-soc2",
         "executive-summary",
         "finops-cost-allocation",
         "finops-cost-report",
