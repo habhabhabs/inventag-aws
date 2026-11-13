@@ -1,9 +1,9 @@
 {
-  "version": "1.1.1",
-  "release_notes": "Release 1.1.1 - 2026-11-13\\🐛 Bug Fixes:\\  • fix: type-check the search palette; archive docs from an empty folder so renamed files are not duplicated [skip release]\\📚 Documentation:\\  • docs: archive documentation for release v1.1.0 (N-1 strategy)\\  • docs: regenerate sample downloads with real ARNs and corrected tag matching [skip release]\\  • docs: phone menu is a full-screen sheet; nothing from the page navbar shows beside it [skip release]\\📊 Summary: 4 commits in this release",
-  "release_date": "2026-11-13T06:44:10.006479",
-  "previous_version": "1.1.0",
+  "version": "1.1.2",
+  "release_notes": "Release 1.1.2 - 2026-11-13\\🐛 Bug Fixes:\\  • fix: repair docs versions (add 1.0.2 snapshot, drop stray docs/index.md); archive the right previous release [skip release]\\📚 Documentation:\\  • docs: desktop sidebar uses the same two-level menu as the phone; menu button replaces the collapse arrow\\📊 Summary: 2 commits in this release",
+  "release_date": "2026-11-13T07:00:33.686627",
+  "previous_version": "1.1.1",
   "version_bump_type": "patch",
-  "git_tag": "v1.1.1",
-  "github_release_url": "https://github.com/habhabhabs/inventag-aws/releases/tag/v1.1.1"
+  "git_tag": "v1.1.2",
+  "github_release_url": "https://github.com/habhabhabs/inventag-aws/releases/tag/v1.1.2"
 }
