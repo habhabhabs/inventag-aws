@@ -468,3 +468,27 @@ def uninstall_global_guard() -> None:
 
 def get_installed_guard() -> Optional[ReadOnlyGuard]:
     return _installed_guard
+
+
+def check_client_call(client, method_name: str) -> Tuple[bool, str]:
+    """Would the guard allow ``client.<method_name>(...)``?
+
+    For code that picks operations by name at run time (enrichment, dynamic
+    discovery): call this first, so the read-only policy applies also when the
+    global guard is not installed (InvenTag used as a library). Parameter
+    rules are not checked here; the installed guard still checks them.
+    """
+    meta = getattr(client, "meta", None)
+    try:
+        service = meta.service_model.service_name
+    except AttributeError:
+        return False, "not an AWS client"
+    mapping = getattr(meta, "method_to_api_mapping", {}) or {}
+    operation = mapping.get(method_name)
+    if operation is None:
+        return False, f"{method_name} is not an operation of {service}"
+    guard = _installed_guard or ReadOnlyGuard()
+    extra = getattr(client, "_inventag_read_only_extra", frozenset())
+    config = getattr(meta, "config", None)
+    unsigned = getattr(config, "signature_version", None) is botocore.UNSIGNED
+    return guard.evaluate(service, operation, extra, unsigned=unsigned)

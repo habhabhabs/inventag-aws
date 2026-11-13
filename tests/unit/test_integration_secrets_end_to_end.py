@@ -241,13 +241,15 @@ def test_no_planted_secret_in_any_artifact_of_a_full_run(
     assert any(p.name.startswith("tag_compliance_") for p in written), "no JSON"
 
     leaks = []
+    # The credentials of the run itself (environment variables) too.
+    checked = {**SECRETS, "env_secret_key": "fake-secret-for-moto-only"}
     for path in written:
         data = _blob(path)
-        for where, secret in SECRETS.items():
+        for where, secret in checked.items():
             if secret.encode() in data:
                 leaks.append(f"{where} in {path.relative_to(tmp_path)}")
     for stream in (console.out, console.err, caplog.text):
-        for where, secret in SECRETS.items():
+        for where, secret in checked.items():
             if secret in stream:
                 leaks.append(f"{where} in console/log records")
     assert not leaks, leaks
