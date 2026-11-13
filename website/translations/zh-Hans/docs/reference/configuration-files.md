@@ -23,6 +23,9 @@ inventag --accounts-file accounts.yaml --tag-mappings tags.yaml \
 
 这条命令只读取文件，不调用 AWS。
 
+InvenTag 以 UTF-8 读取这些文件，带不带字节顺序标记（BOM）都可以。空文件、写了两次的键，
+或顶层不是映射的文件，都会以退出码 1 停止运行，并给出指明该文件的消息。
+
 ## 账户文件 {#accounts-file}
 
 与 `--accounts-file` 一起使用。
@@ -50,7 +53,7 @@ settings:                              # optional
 |---|---|
 | `profile_name` | 一个 AWS CLI 配置文件，例如 IAM Identity Center 配置文件。 |
 | `role_arn` | InvenTag 使用你当前的凭证代入的角色。 |
-| `access_key_id` 和 `secret_access_key`（以及可选的 `session_token`） | 写在文件中的密钥。应避免使用：任何能读取该文件的人都拿到了密钥。 |
+| `access_key_id` 和 `secret_access_key`（以及可选的 `session_token`） | 写在文件中的密钥。应避免使用：任何能读取该文件的人都拿到了密钥。其他用户能读取这样的文件时，InvenTag 会发出警告。 |
 
 `settings` 中的值会覆盖对应的命令行参数。
 
@@ -88,7 +91,7 @@ tag_mappings:
     case_sensitive: false
 ```
 
-该列出现在默认工作簿中（不使用 `--template` 时）。使用 `--template` 时它不会出现：请改用报告模板中的 `tag_columns`。
+该列出现在默认工作簿中（不使用 `--template` 时）。使用 `--template` 时它不会出现，并会给出警告：请改用报告模板中的 `tag_columns`。
 使用版式文件（`--excel-template`、`--word-template`）时，把列名添加到 `extra_fields`。
 
 请使用顶层键 `tag_mappings`，其值是条目的**列表**。InvenTag 也接受较早的写法，即把每个标签键作为顶层键，并给出 `column_name` 值。
@@ -114,7 +117,7 @@ service_descriptions:
   EC2:
     Volume:
       description: Block storage
-      template: volume_text       # needed for EC2, S3, RDS, Lambda and VPC
+      template: volume_text       # optional: a text with variables
 templates:
   volume_text:
     template: "Disk {resource_id} in {region}"
@@ -122,11 +125,10 @@ templates:
 
 顶层键 `service_descriptions` 是必需的。在每个服务之下，每种资源类型（或 `default`）都需要一个 `description`。
 
-**对某些服务，内置描述优先。** InvenTag 为 S3、EC2、RDS、Lambda 和 VPC 内置了描述模板。
-对这些服务，单独写一个自定义 `description` 会被忽略，使用的仍是内置文本。
-要替换它，请给条目加上 `template`，并在 `templates` 下定义该模板。
+**你的条目会替换内置描述**，对所有服务都是如此。带 `template` 的条目使用在 `templates` 下定义的该模板；
+不带 `template` 的条目按原样使用其 `description`（示例中 DynamoDB 表使用的是 `Application data table`）。
 模板可以使用 `{resource_id}`、`{resource_type}`、`{service}`、`{region}` 和 `{account_id}`。
-对其他所有服务，普通的 `description` 会按原样使用（示例中 DynamoDB 表使用的是 `Application data table`）。
+你的文件中没有条目的服务保留内置文本。
 
 如果模板无法填充，InvenTag 会记录一条警告，例如
 `Failed to render template vpc_vpc: 'cidr_block'`，并使用备用文本。
@@ -141,7 +143,7 @@ enable_parallel_processing: true
 max_worker_threads: 4
 ```
 
-未知的键会被忽略，并记录一条列出这些键的警告，所以请在日志中查找拼错的键。
+未知的键会被忽略，并记录一条列出这些键的警告，所以请在日志中查找拼错的键。类型错误的值会以退出码 1 停止运行，并指明该键。
 例如，`enable_network_analysis: true` 添加的工作表与 `--enable-network-analysis` 相同。
 这个文件用于高级调优；大多数人从来不需要它。
 

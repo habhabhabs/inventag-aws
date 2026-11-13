@@ -23,6 +23,9 @@ inventag --accounts-file accounts.yaml --tag-mappings tags.yaml \
 
 這條命令唯讀取檔案，不呼叫 AWS。
 
+InvenTag 以 UTF-8 讀取這些檔案，帶不帶位元組順序標記（BOM）都可以。空檔案、寫了兩次的鍵，
+或頂層不是對應的檔案，都會以結束代碼 1 停止執行，並給出指明該檔案的訊息。
+
 ## 帳戶檔案 {#accounts-file}
 
 與 `--accounts-file` 一起使用。
@@ -50,7 +53,7 @@ settings:                              # optional
 |---|---|
 | `profile_name` | 一個 AWS CLI 設定檔，例如 IAM Identity Center 設定檔。 |
 | `role_arn` | InvenTag 使用你目前的憑證擔任的角色。 |
-| `access_key_id` 和 `secret_access_key`（以及可選的 `session_token`） | 寫在檔案中的金鑰。應避免使用：任何能讀取該檔案的人都拿到了金鑰。 |
+| `access_key_id` 和 `secret_access_key`（以及可選的 `session_token`） | 寫在檔案中的金鑰。應避免使用：任何能讀取該檔案的人都拿到了金鑰。其他使用者能讀取這樣的檔案時，InvenTag 會發出警告。 |
 
 `settings` 中的值會覆蓋對應的命令列引數。
 
@@ -88,7 +91,7 @@ tag_mappings:
     case_sensitive: false
 ```
 
-該列出現在預設工作簿中（不使用 `--template` 時）。使用 `--template` 時它不會出現：請改用報告範本中的 `tag_columns`。
+該列出現在預設工作簿中（不使用 `--template` 時）。使用 `--template` 時它不會出現，並會給出警告：請改用報告範本中的 `tag_columns`。
 使用版面配置檔案（`--excel-template`、`--word-template`）時，把欄名新增到 `extra_fields`。
 
 請使用頂層鍵 `tag_mappings`，其值是條目的**列表**。InvenTag 也接受較早的寫法，即把每個標籤鍵作為頂層鍵，並給出 `column_name` 值。
@@ -114,7 +117,7 @@ service_descriptions:
   EC2:
     Volume:
       description: Block storage
-      template: volume_text       # needed for EC2, S3, RDS, Lambda and VPC
+      template: volume_text       # optional: a text with variables
 templates:
   volume_text:
     template: "Disk {resource_id} in {region}"
@@ -122,11 +125,10 @@ templates:
 
 頂層鍵 `service_descriptions` 是必需的。在每個服務之下，每種資源型別（或 `default`）都需要一個 `description`。
 
-**對某些服務，內建描述優先。** InvenTag 為 S3、EC2、RDS、Lambda 和 VPC 內建了描述範本。
-對這些服務，單獨寫一個自定義 `description` 會被忽略，使用的仍是內建文字。
-要替換它，請給條目加上 `template`，並在 `templates` 下定義該範本。
+**你的條目會替換內建描述**，對所有服務都是如此。帶 `template` 的條目使用在 `templates` 下定義的該範本；
+不帶 `template` 的條目按原樣使用其 `description`（範例中 DynamoDB 表使用的是 `Application data table`）。
 範本可以使用 `{resource_id}`、`{resource_type}`、`{service}`、`{region}` 和 `{account_id}`。
-對其他所有服務，普通的 `description` 會按原樣使用（範例中 DynamoDB 表使用的是 `Application data table`）。
+你的檔案中沒有條目的服務保留內建文字。
 
 如果範本無法填充，InvenTag 會記錄一條警告，例如
 `Failed to render template vpc_vpc: 'cidr_block'`，並使用備用文字。
@@ -141,7 +143,7 @@ enable_parallel_processing: true
 max_worker_threads: 4
 ```
 
-未知的鍵會被忽略，並記錄一條列出這些鍵的警告，所以請在日誌中查詢拼錯的鍵。
+未知的鍵會被忽略，並記錄一條列出這些鍵的警告，所以請在日誌中查詢拼錯的鍵。型別錯誤的值會以結束代碼 1 停止執行，並指明該鍵。
 例如，`enable_network_analysis: true` 新增的工作表與 `--enable-network-analysis` 相同。
 這個檔案用於高階調優；大多數人從來不需要它。
 

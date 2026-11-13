@@ -27,6 +27,10 @@ inventag --accounts-file accounts.yaml --tag-mappings tags.yaml \
 
 Cette commande lit les fichiers et n’effectue aucun appel à AWS.
 
+InvenTag lit ces fichiers en UTF-8, avec ou sans marque d’ordre des octets. Un
+fichier vide, une clé écrite deux fois ou un niveau supérieur qui n’est pas un
+dictionnaire arrêtent l’exécution avec le code de sortie 1 et un message qui nomme le fichier.
+
 ## Fichier de comptes {#accounts-file}
 
 Utilisé avec `--accounts-file`.
@@ -54,7 +58,7 @@ Chaque compte a besoin d’**une** façon d’obtenir des identifiants :
 |---|---|
 | `profile_name` | Un profil AWS CLI, par exemple un profil IAM Identity Center. |
 | `role_arn` | Un rôle qu’InvenTag assume à partir de vos identifiants actuels. |
-| `access_key_id` et `secret_access_key` (et `session_token` en option) | Des clés écrites dans le fichier. À éviter : toute personne qui peut lire le fichier possède les clés. |
+| `access_key_id` et `secret_access_key` (et `session_token` en option) | Des clés écrites dans le fichier. À éviter : toute personne qui peut lire le fichier possède les clés. InvenTag avertit quand d’autres utilisateurs peuvent lire un tel fichier. |
 
 Les valeurs de `settings` remplacent les options de ligne de commande correspondantes.
 
@@ -95,7 +99,7 @@ tag_mappings:
 ```
 
 La colonne apparaît dans le classeur par défaut (sans `--template`). Avec
-`--template`, elle n’apparaît pas : utilisez plutôt `tag_columns` dans le modèle de
+`--template`, elle n’apparaît pas, et un avertissement le signale : utilisez plutôt `tag_columns` dans le modèle de
 rapport. Avec un fichier de mise en page (`--excel-template`, `--word-template`), ajoutez le
 nom de la colonne à `extra_fields`.
 
@@ -124,7 +128,7 @@ service_descriptions:
   EC2:
     Volume:
       description: Block storage
-      template: volume_text       # needed for EC2, S3, RDS, Lambda and VPC
+      template: volume_text       # optional: a text with variables
 templates:
   volume_text:
     template: "Disk {resource_id} in {region}"
@@ -133,13 +137,12 @@ templates:
 La clé de premier niveau `service_descriptions` est obligatoire. Sous chaque service,
 chaque type de ressource (ou `default`) a besoin d’une `description`.
 
-**Une description intégrée l’emporte pour certains services.** InvenTag possède des modèles de
-description intégrés pour S3, EC2, RDS, Lambda et VPC. Pour ces services, une
-`description` personnalisée seule est ignorée, et le texte intégré est utilisé. Pour
-le remplacer, donnez à l’entrée un `template` et définissez ce modèle sous `templates`. Un modèle peut utiliser `{resource_id}`, `{resource_type}`, `{service}`,
-`{region}` et `{account_id}`. Pour tous les autres services, une simple `description`
-est utilisée telle quelle (dans l’exemple, `Application data table` pour les tables
-DynamoDB).
+**Votre entrée remplace la description intégrée**, pour tous les services. Une
+entrée avec un `template` utilise ce modèle, défini sous `templates` ; une entrée
+sans modèle utilise sa `description` telle quelle (dans l’exemple,
+`Application data table` pour les tables DynamoDB). Un modèle peut utiliser
+`{resource_id}`, `{resource_type}`, `{service}`, `{region}` et `{account_id}`.
+Les services sans entrée dans votre fichier gardent le texte intégré.
 
 Si un modèle ne peut pas être rempli, InvenTag consigne un avertissement tel que
 `Failed to render template vpc_vpc: 'cidr_block'` et utilise le texte de repli.
@@ -156,7 +159,8 @@ max_worker_threads: 4
 ```
 
 Les clés inconnues sont ignorées avec un avertissement qui les nomme ; vérifiez donc le journal
-pour repérer une clé mal orthographiée.
+pour repérer une clé mal orthographiée. Une valeur du mauvais type arrête l’exécution avec le
+code de sortie 1 et nomme la clé.
 Par exemple, `enable_network_analysis: true` ajoute la même feuille que
 `--enable-network-analysis`. Ce fichier sert au réglage avancé ; la plupart des gens n’en
 ont jamais besoin.

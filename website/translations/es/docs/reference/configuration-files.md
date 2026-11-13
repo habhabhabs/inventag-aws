@@ -27,6 +27,10 @@ inventag --accounts-file accounts.yaml --tag-mappings tags.yaml \
 
 Esto lee los archivos y no hace ninguna llamada a AWS.
 
+InvenTag lee estos archivos como UTF-8, con o sin marca de orden de bytes. Un
+archivo vacío, una clave escrita dos veces o un nivel superior que no es un
+mapeo detienen la ejecución con el código de salida 1 y un mensaje que nombra el archivo.
+
 ## Archivo de cuentas {#accounts-file}
 
 Se usa con `--accounts-file`.
@@ -54,7 +58,7 @@ Cada cuenta necesita **una** forma de obtener credenciales:
 |---|---|
 | `profile_name` | Un perfil de la AWS CLI, por ejemplo un perfil de IAM Identity Center. |
 | `role_arn` | Un rol que InvenTag asume a partir de tus credenciales actuales. |
-| `access_key_id` y `secret_access_key` (y `session_token` opcional) | Claves escritas en el archivo. Evítalo: cualquiera que pueda leer el archivo tiene las claves. |
+| `access_key_id` y `secret_access_key` (y `session_token` opcional) | Claves escritas en el archivo. Evítalo: cualquiera que pueda leer el archivo tiene las claves. InvenTag avisa cuando otros usuarios pueden leer un archivo así. |
 
 Los valores de `settings` sustituyen a las opciones equivalentes de la línea de comandos.
 
@@ -95,7 +99,7 @@ tag_mappings:
 ```
 
 La columna aparece en el libro predeterminado (sin `--template`). Con
-`--template` no aparece: usa `tag_columns` en la plantilla de informe en su lugar. Con
+`--template` no aparece, y una advertencia lo indica: usa `tag_columns` en la plantilla de informe en su lugar. Con
 un archivo de diseño (`--excel-template`, `--word-template`), añade el nombre de la
 columna a `extra_fields`.
 
@@ -124,7 +128,7 @@ service_descriptions:
   EC2:
     Volume:
       description: Block storage
-      template: volume_text       # needed for EC2, S3, RDS, Lambda and VPC
+      template: volume_text       # optional: a text with variables
 templates:
   volume_text:
     template: "Disk {resource_id} in {region}"
@@ -133,13 +137,12 @@ templates:
 La clave de nivel superior `service_descriptions` es obligatoria. Bajo cada servicio,
 cada tipo de recurso (o `default`) necesita una `description`.
 
-**Una descripción integrada prevalece en algunos servicios.** InvenTag tiene plantillas de
-descripción integradas para S3, EC2, RDS, Lambda y VPC. Para esos servicios, una
-`description` personalizada por sí sola se ignora y se usa el texto integrado. Para
-sustituirlo, da a la entrada un `template` y define esa plantilla en `templates`. Una plantilla puede usar `{resource_id}`, `{resource_type}`, `{service}`,
-`{region}` y `{account_id}`. Para cualquier otro servicio, una `description` simple
-se usa tal cual (en el ejemplo, `Application data table` para las tablas
-de DynamoDB).
+**Tu entrada sustituye a la descripción integrada**, en todos los servicios. Una
+entrada con `template` usa esa plantilla, definida en `templates`; una entrada sin
+ella usa su `description` tal cual (en el ejemplo, `Application data table` para
+las tablas de DynamoDB). Una plantilla puede usar `{resource_id}`,
+`{resource_type}`, `{service}`, `{region}` y `{account_id}`. Los servicios sin
+entrada en tu archivo conservan el texto integrado.
 
 Si una plantilla no se puede rellenar, InvenTag registra una advertencia como
 `Failed to render template vpc_vpc: 'cidr_block'` y usa el texto de respaldo.
@@ -156,7 +159,8 @@ max_worker_threads: 4
 ```
 
 Las claves desconocidas se ignoran con una advertencia que las nombra, así que revisa el registro
-por si hay una clave mal escrita.
+por si hay una clave mal escrita. Un valor de tipo incorrecto detiene la ejecución con el
+código de salida 1 y nombra la clave.
 Por ejemplo, `enable_network_analysis: true` añade la misma hoja que
 `--enable-network-analysis`. Este archivo es para ajustes avanzados; la mayoría de la gente nunca
 lo necesita.

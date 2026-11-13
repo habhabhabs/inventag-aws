@@ -27,6 +27,10 @@ inventag --accounts-file accounts.yaml --tag-mappings tags.yaml \
 
 This reads the files and makes no AWS call.
 
+InvenTag reads these files as UTF-8, with or without a byte order mark. An
+empty file, a key written twice or a top level that is not a mapping stops the
+run with exit code 1 and a message that names the file.
+
 ## Accounts file
 
 Used with `--accounts-file`.
@@ -54,7 +58,7 @@ Each account needs **one** way to get credentials:
 |---|---|
 | `profile_name` | An AWS CLI profile, for example an IAM Identity Center profile. |
 | `role_arn` | A role InvenTag assumes from your current credentials. |
-| `access_key_id` and `secret_access_key` (and optional `session_token`) | Keys written in the file. Avoid: anyone who can read the file has the keys. |
+| `access_key_id` and `secret_access_key` (and optional `session_token`) | Keys written in the file. Avoid: anyone who can read the file has the keys. InvenTag warns when other users can read such a file. |
 
 Values in `settings` override the matching command-line flags.
 
@@ -99,8 +103,8 @@ tag_mappings:
 ```
 
 The column appears in the default workbook (no `--template`). With
-`--template` it does not appear: use `tag_columns` in the report template
-instead. With a layout file (`--excel-template`, `--word-template`), add the
+`--template` it does not appear, and a warning says so: use `tag_columns` in
+the report template instead. With a layout file (`--excel-template`, `--word-template`), add the
 column name to `extra_fields`.
 
 Use the top-level key `tag_mappings` with a **list** of entries. InvenTag also
@@ -128,7 +132,7 @@ service_descriptions:
   EC2:
     Volume:
       description: Block storage
-      template: volume_text       # needed for EC2, S3, RDS, Lambda and VPC
+      template: volume_text       # optional: a text with variables
 templates:
   volume_text:
     template: "Disk {resource_id} in {region}"
@@ -137,14 +141,12 @@ templates:
 The top-level key `service_descriptions` is required. Under each service,
 each resource type (or `default`) needs a `description`.
 
-**A built-in description wins for some services.** InvenTag has built-in
-description templates for S3, EC2, RDS, Lambda and VPC. For those services, a
-custom `description` alone is ignored, and the built-in text is used. To
-replace it, give the entry a `template` and define that template under
-`templates`. A template can use `{resource_id}`, `{resource_type}`, `{service}`,
-`{region}` and `{account_id}`. For every other service, a plain `description`
-is used as written (in the example, `Application data table` for DynamoDB
-tables).
+**Your entry replaces the built-in description**, for every service. An
+entry with a `template` uses that template, defined under `templates`; an
+entry without one uses its `description` as written (in the example,
+`Application data table` for DynamoDB tables). A template can use
+`{resource_id}`, `{resource_type}`, `{service}`, `{region}` and
+`{account_id}`. Services with no entry in your file keep the built-in text.
 
 If a template cannot be filled in, InvenTag logs a warning such as
 `Failed to render template vpc_vpc: 'cidr_block'` and uses the fallback text.
@@ -161,7 +163,8 @@ max_worker_threads: 4
 ```
 
 Unknown keys are ignored with a warning that names them, so check the log for a
-mistyped key.
+mistyped key. A value of the wrong type stops the run with exit code 1 and
+names the key.
 For example, `enable_network_analysis: true` adds the same sheet as
 `--enable-network-analysis`. This file is for advanced tuning; most people never
 need it.
