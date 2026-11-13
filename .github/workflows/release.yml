@@ -358,268 +358,61 @@ jobs:
 
     - name: Generate release notes
       id: release_notes
+      env:
+        NEW_VERSION: ${{ steps.version.outputs.new_version }}
+        TAG_NAME: ${{ steps.version.outputs.tag_name }}
+        PR_NUMBER: ${{ needs.check-for-release.outputs.pr_number }}
+        REPO: ${{ github.repository }}
+        PYPI_PUBLISH: ${{ vars.PYPI_PUBLISH }}
       run: |
-        # Get commits since last tag
+        # Only facts the workflow can check: the commits, the PR, the version and links.
         LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-        
         if [ -z "$LAST_TAG" ]; then
-          echo "No previous tags found, generating notes from first commit"
           COMMIT_RANGE="$(git rev-list --max-parents=0 HEAD)..HEAD"
         else
-          echo "Last tag: $LAST_TAG"
           COMMIT_RANGE="$LAST_TAG..HEAD"
         fi
-        
         echo "Generating release notes for commits: $COMMIT_RANGE"
-        
-        # Generate comprehensive release notes
-        cat > release_notes.md << 'EOF'
-        # 🏷️ InvenTag Release ${{ steps.version.outputs.new_version }}
-        
-        > **Comprehensive AWS™ Cloud Governance Platform - Professional resource inventory, compliance checking, and BOM generation**
-        
-        ## 🚀 What's New in This Release
-        
-        EOF
-        
-        # Add commit messages (exclude merge commits)
-        git log $COMMIT_RANGE --pretty=format:"- %s" --no-merges >> release_notes.md
-        
-        # Add PR info if available
-        if [ -n "${{ needs.check-for-release.outputs.pr_number }}" ]; then
-          echo "" >> release_notes.md
-          echo "**🔄 Triggered by PR #${{ needs.check-for-release.outputs.pr_number }}**" >> release_notes.md
-        fi
-        
-        # Add changelog sections based on commit types
-        echo "" >> release_notes.md
-        echo "## 📋 Changes by Category" >> release_notes.md
-        echo "" >> release_notes.md
-        
-        # Features
-        FEATURES=$(git log $COMMIT_RANGE --pretty=format:"- %s" --no-merges | grep -i "^- feat" || true)
-        if [ -n "$FEATURES" ]; then
-          echo "### ✨ New Features" >> release_notes.md
-          echo "$FEATURES" >> release_notes.md
-          echo "" >> release_notes.md
-        fi
-        
-        # Production Safety & Security
-        SECURITY=$(git log $COMMIT_RANGE --pretty=format:"- %s" --no-merges | grep -iE "^- (security|safety|compliance|audit)" || true)
-        if [ -n "$SECURITY" ]; then
-          echo "### 🛡️ Production Safety & Security" >> release_notes.md
-          echo "$SECURITY" >> release_notes.md
-          echo "" >> release_notes.md
-        fi
-        
-        # Bug fixes
-        FIXES=$(git log $COMMIT_RANGE --pretty=format:"- %s" --no-merges | grep -i "^- fix" || true)
-        if [ -n "$FIXES" ]; then
-          echo "### 🐛 Bug Fixes" >> release_notes.md
-          echo "$FIXES" >> release_notes.md
-          echo "" >> release_notes.md
-        fi
-        
-        # Performance improvements
-        PERF=$(git log $COMMIT_RANGE --pretty=format:"- %s" --no-merges | grep -iE "^- (perf|performance|optimize)" || true)
-        if [ -n "$PERF" ]; then
-          echo "### ⚡ Performance Improvements" >> release_notes.md
-          echo "$PERF" >> release_notes.md
-          echo "" >> release_notes.md
-        fi
-        
-        # Documentation
-        DOCS=$(git log $COMMIT_RANGE --pretty=format:"- %s" --no-merges | grep -i "^- docs" || true)
-        if [ -n "$DOCS" ]; then
-          echo "### 📚 Documentation" >> release_notes.md
-          echo "$DOCS" >> release_notes.md
-          echo "" >> release_notes.md
-        fi
-        
-        # Other changes
-        OTHER=$(git log $COMMIT_RANGE --pretty=format:"- %s" --no-merges | grep -v -iE "^- (feat|fix|docs|perf|performance|optimize|security|safety|compliance|audit)" || true)
-        if [ -n "$OTHER" ]; then
-          echo "### 🔧 Other Changes" >> release_notes.md
-          echo "$OTHER" >> release_notes.md
-          echo "" >> release_notes.md
-        fi
-        
-        # Add comprehensive feature overview and usage
-        cat >> release_notes.md << 'EOF'
-        
-        ## 🎯 InvenTag Features Overview
-        
-        ### 🛡️ **Production Safety & Security (NEW!)**
-        - Enterprise-grade security validation with read-only enforcement
-        - Built-in compliance standards: SOC 2, PCI, HIPAA, GDPR
-        - Comprehensive audit logging and risk assessment
-        - Real-time production monitoring and operation validation
-        
-        ### 📊 **Professional BOM Generation**
-        - Excel/Word/CSV reports with logical column ordering
-        - Service-specific sheets with comprehensive analysis
-        - Multi-account consolidation and reporting
-        - Advanced template framework with professional branding
-        
-        ### 🔍 **Comprehensive Discovery & Analysis**
-        - Multi-method resource discovery (ResourceGroupsTagging, Config, APIs)
-        - Network analysis with VPC/subnet utilization tracking
-        - Security posture assessment with vulnerability detection
-        - Cost analysis with optimization recommendations
-        
-        ### 🚀 **Enterprise & CI/CD Ready**
-        - Unified CLI interface with comprehensive options
-        - Multi-account support with cross-account role assumption
-        - State management with delta detection and changelog generation
-        - S3 upload integration and GitHub Actions support
-        
-        ## 🚀 Quick Start & Installation
-        
-        ### Using the Unified CLI (Recommended)
-        ```bash
-        # Clone the repository
-        git clone https://github.com/${{ github.repository }}.git
-        cd inventag-aws
-        
-        # Install dependencies
-        pip install -r requirements.txt
-        
-        # Run AWS resource inventory (if available)
-        if [ -f "scripts/legacy/aws_resource_inventory.py" ]; then
-          python scripts/legacy/aws_resource_inventory.py --output inventory
-        fi
-        
-        # Convert to Excel/CSV format
-        python scripts/legacy/bom_converter.py --input sample.json --output report.xlsx
-        
-        # Check tag compliance
-        python scripts/legacy/tag_compliance_checker.py --config tag_policy.yaml --input sample.json --output compliance_report
-        
-        # Test CI/CD BOM generation
-        python scripts/development/cicd_bom_generation.py --help
-        ```
-        
-        ### Docker Usage
-        ```bash
-        # Build and run with AWS credentials
-        docker build -t inventag-aws:${{ steps.version.outputs.new_version }} .
-        docker run --rm -v ~/.aws:/root/.aws \
-          inventag-aws:${{ steps.version.outputs.new_version }} \
-          python -m inventag.cli.main --create-excel --enable-production-safety
-        ```
-        
-        ## 📋 Configuration Files
-        
-        ### Multi-Account Configuration
-        - `examples/accounts_basic.json` - Basic multi-account setup
-        - `examples/accounts_with_profiles.json` - AWS profile authentication
-        - `examples/accounts_cross_account_roles.json` - Cross-account roles
-        - `examples/accounts_cicd_environment.json` - CI/CD optimized setup
-        
-        ### Service & Analysis Configuration
-        - `config/defaults/services/service_descriptions_example.yaml` - Custom service descriptions
-        - `config/defaults/mappings/tag_to_column_mappings_example.yaml` - Tag attribute mappings
-        - `config/defaults/complete_configuration_example.yaml` - Comprehensive BOM config
-        
-        ## 🛡️ Production Safety Features
-        
-        ### Security Validation
-        - ✅ Read-only operation enforcement
-        - ✅ AWS operation risk assessment
-        - ✅ Compliance standard validation (SOC 2, PCI, HIPAA, GDPR)
-        - ✅ Comprehensive audit logging
-        - ✅ Real-time security monitoring
-        
-        ### Production Monitoring
-        - ✅ Operation validation and blocking
-        - ✅ Risk threshold enforcement
-        - ✅ Automated compliance reporting
-        - ✅ Security audit trail generation
-        - ✅ Performance monitoring and metrics
-        
-        ## 📊 Analysis Capabilities
-        
-        ### Network Analysis
-        - VPC and subnet utilization tracking
-        - IP capacity planning and recommendations
-        - Network security posture assessment
-        - CIDR block analysis and optimization
-        
-        ### Security Analysis
-        - Security group rule analysis
-        - Overly permissive rule detection
-        - NACL optimization recommendations
-        - Security dependency mapping
-        
-        ### Cost Analysis
-        - Resource cost estimation
-        - Forgotten resource detection
-        - Cost optimization recommendations
-        - Usage trend analysis
-        
-        ## 🔗 Enterprise Integration
-        
-        ### CI/CD Pipeline Integration
-        - GitHub Actions workflows included
-        - Jenkins pipeline examples provided
-        - AWS CodeBuild integration templates
-        - Docker containerization support
-        
-        ### Multi-Account Management
-        - Cross-account role assumption
-        - Centralized credential management
-        - Account consolidation and reporting
-        - Parallel processing optimization
-        
-        ## 📚 Documentation
-        
-        ### Complete Documentation Available
-        - **[CLI User Guide](docs/user-guides/CLI_USER_GUIDE.md)** - Comprehensive CLI reference
-        - **[Production Safety Guide](docs/user-guides/PRODUCTION_SAFETY.md)** - Security and compliance
-        - **[Configuration Examples](docs/user-guides/CONFIGURATION_EXAMPLES.md)** - Setup guidance
-        - **[Troubleshooting Guide](docs/user-guides/TROUBLESHOOTING_GUIDE.md)** - Common issues
-        - **[Complete CLI Usage](docs/user-guides/CLI_USER_GUIDE.md)** - All commands and examples
-        
-        ## 🏢 Enterprise Support
-        
-        ### Compliance Standards
-        - **SOC 2** - System and Organization Controls
-        - **PCI DSS** - Payment Card Industry Data Security Standard
-        - **HIPAA** - Health Insurance Portability and Accountability Act
-        - **GDPR** - General Data Protection Regulation
-        - **General** - Basic security and governance compliance
-        
-        ### Professional Features
-        - Advanced Excel template system with branding
-        - Professional Word document generation
-        - Executive dashboard and summary reports
-        - Comprehensive audit trails and compliance documentation
-        
-        ---
-        
-        ## 🔗 Links & Resources
-        
-        - **📖 Full Documentation**: [Repository Wiki](https://github.com/${{ github.repository }}/wiki)
-        - **🚀 Quick Start Guide**: [Getting Started](https://github.com/${{ github.repository }}#quick-start)
-        - **💼 Enterprise Examples**: [Configuration Templates](https://github.com/${{ github.repository }}/tree/main/examples)
-        - **🛠️ Troubleshooting**: [Common Issues](https://github.com/${{ github.repository }}/tree/main/docs)
-        - **📋 CLI Reference**: [Complete Command Guide](https://github.com/${{ github.repository }}/blob/main/docs/user-guides/CLI_USER_GUIDE.md)
-        
-        ---
-        
-        > **🏷️ InvenTag** - Professional AWS™ cloud governance made simple
-        > 
-        > *AWS™ is a trademark of Amazon Web Services, Inc. InvenTag is an independent tool and is not affiliated with, endorsed by, or sponsored by Amazon Web Services, Inc.*
-        EOF
-        
-        # Outside the quoted heredoc so that $LAST_TAG is expanded
-        if [ -n "$LAST_TAG" ]; then
-          printf '\n## 📈 Full Changelog\n**Full Changelog**: https://github.com/%s/compare/%s...%s\n' \
-            "${{ github.repository }}" "$LAST_TAG" "${{ steps.version.outputs.tag_name }}" >> release_notes.md
-        fi
-        
-        echo "Comprehensive release notes generated:"
-        echo "Length: $(wc -l < release_notes.md) lines"
+
+        {
+          echo "# InvenTag $NEW_VERSION"
+          echo
+          echo "## Changes"
+          echo
+          git log "$COMMIT_RANGE" --pretty=format:"- %s" --no-merges
+          echo
+          if [ -n "$PR_NUMBER" ]; then
+            echo
+            echo "Released from pull request #$PR_NUMBER."
+          fi
+          echo
+          echo "## Install"
+          echo
+          if [ "$PYPI_PUBLISH" = "true" ]; then
+            echo '```bash'
+            echo "pip install inventag-aws==$NEW_VERSION"
+            echo '```'
+            echo
+            echo "PyPI: https://pypi.org/project/inventag-aws/$NEW_VERSION/"
+          else
+            echo "Download the source archive attached to this release."
+          fi
+          echo
+          echo "## Links"
+          echo
+          echo "- Documentation: https://habhabhabs.github.io/inventag-aws/docs/"
+          echo "- Installation: https://habhabhabs.github.io/inventag-aws/docs/getting-started/installation"
+          if [ -n "$LAST_TAG" ]; then
+            echo "- Full changelog: https://github.com/$REPO/compare/$LAST_TAG...$TAG_NAME"
+          fi
+          echo
+          echo "---"
+          echo
+          echo "AWS is a trademark of Amazon Web Services, Inc. InvenTag is an independent tool and is not affiliated with, endorsed by, or sponsored by Amazon Web Services, Inc."
+        } > release_notes.md
+
+        echo "Release notes: $(wc -l < release_notes.md) lines"
+        cat release_notes.md
 
     - name: Update version.json with new version
       run: |
