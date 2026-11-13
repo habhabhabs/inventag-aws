@@ -20,6 +20,14 @@ Empty values, ``None`` and booleans are left as they are (``AuthTokenEnabled:
 true`` is a setting, not a secret). Tags are never changed: users choose
 their keys and tag policies read them.
 
+JSON kept as text (a policy, an input document) is read and the same rules
+are applied inside it; the text is rewritten only if something was hidden.
+
+Keys the list does not know are kept as they are (pass-unknown). Hiding every
+unknown field would hide the inventory itself (IDs, ARNs, settings), so the
+list names the fields AWS uses for secret values instead; a nesting deeper
+than any AWS response is hidden whole (fail closed).
+
 The rules go by field name, not by value. InvenTag cannot recognise a secret
 by looking at it, so a secret kept in a field that is not on this list (a
 description, a tag, a free-text field) is not found.
@@ -40,6 +48,11 @@ Field                                     Where it comes from
                                           entries hold a reference, kept)
 ``UserData`` (and ``UserData.Value``)     EC2 instances and launch templates
 ``ParameterValue``, ``ResolvedValue``     CloudFormation stack parameters
+``OutputValue``                           CloudFormation stack outputs (a NoEcho
+                                          parameter or an access key can be
+                                          passed out through an output)
+``Arguments.*``                           Glue trigger actions and job runs
+``TemplateBody``                          CloudFormation stack sets (template text)
 ``DefaultArguments.*``,                   Glue jobs
 ``NonOverridableArguments.*``
 ``ConnectionProperties.*``                Glue connections
@@ -51,13 +64,15 @@ names ending in password, passwd,         RDS/Redshift/DocumentDB master passwor
 secret string/binary, secret access key,  Cognito client secrets, FSx, MSK, Storage
 client/shared secret, private key,        Gateway CHAP secrets, Amplify basic auth,
 api key, auth/session/security/bearer     ElastiCache auth tokens, credentials
-token, credential(s); and the fixed       blocks
-names in :data:`SECRET_VALUE_KEYS`
+token, connection string, credential(s);  blocks, database connection strings
+and the fixed names in
+:data:`SECRET_VALUE_KEYS`
 ========================================  ==========================================
 """
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any, Dict, Iterable, List, Tuple
 
@@ -88,13 +103,15 @@ SECRET_VALUE_KEYS = frozenset(
         "privatekey",
         "parametervalue",
         "resolvedvalue",
+        "outputvalue",
+        "templatebody",
     }
 )
 # Normalised names that END like this are secret too (DbPassword, api_key...).
 _SECRET_SUFFIX = re.compile(
     r"(password|passwd|secretstring|secretbinary|secretaccesskey|clientsecret|"
     r"sharedsecret|privatekey|apikey|authtoken|sessiontoken|securitytoken|"
-    r"bearertoken|credentials?)$"
+    r"bearertoken|connectionstring|credentials?)$"
 )
 # Mappings of name -> value whose names stay and whose values go.
 SECRET_MAPPING_KEYS = frozenset(
@@ -105,6 +122,7 @@ SECRET_MAPPING_KEYS = frozenset(
         "defaultarguments",
         "nonoverridablearguments",
         "connectionproperties",
+        "arguments",
     }
 )
 # Lists of {"name": ..., "value": ...} items.
@@ -114,6 +132,8 @@ SKIPPED_KEYS = frozenset({"tags", "tagset", "taglist"})
 
 _NON_ALNUM = re.compile(r"[^a-z0-9]")
 _MAX_DEPTH = 200
+# JSON kept as text (policies, definitions, inputs) is parsed up to this size.
+_MAX_JSON_TEXT = 1_000_000
 _REFERENCE_TYPES = frozenset({"PARAMETER_STORE", "SECRETS_MANAGER"})
 
 
@@ -195,6 +215,22 @@ def _mask_field(key: Any, value: Any, depth: int) -> Tuple[Any, int]:
     return _walk(value, depth + 1)
 
 
+def _walk_json_text(value: str, depth: int) -> Tuple[Any, int]:
+    """Mask a JSON object or array kept as text (``"{\"Password\": ...}"``)."""
+    if len(value) > _MAX_JSON_TEXT or value[:1] not in ("{", "["):
+        return value, 0
+    try:
+        parsed = json.loads(value)
+    except ValueError:
+        return value, 0
+    if not isinstance(parsed, (dict, list)):
+        return value, 0
+    new, count = _walk(parsed, depth + 1)
+    if not count:
+        return value, 0
+    return json.dumps(new), count
+
+
 def _walk(value: Any, depth: int) -> Tuple[Any, int]:
     """Return ``(new_value, hidden_count)``; unchanged containers are reused."""
     if depth > _MAX_DEPTH:
@@ -222,6 +258,9 @@ def _walk(value: Any, depth: int) -> Tuple[Any, int]:
         if not total:
             return value, 0
         return (tuple(items) if isinstance(value, tuple) else items), total
+    if isinstance(value, str) and value.lstrip()[:1] in ("{", "["):
+        new, count = _walk_json_text(value.strip(), depth)
+        return (new, count) if count else (value, 0)
     return value, 0
 
 

@@ -140,7 +140,8 @@ _PATTERNS = [
     (
         re.compile(
             r"""(["'])(Variables|RuntimeEnvironmentVariables|EnvironmentVariables|"""
-            r"""DefaultArguments|NonOverridableArguments|ConnectionProperties)"""
+            r"""DefaultArguments|NonOverridableArguments|Arguments|"""
+            r"""ConnectionProperties)"""
             r"""\1(\s*:\s*)"""
             r"""\{(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^{}"'])*\}"""
         ),
@@ -187,6 +188,31 @@ _PATTERNS = [
                 m.group(5),
             )
             if is_secret_key(m.group(2)) and m.group(6) not in ("", REDACTED)
+            else m.group(0)
+        ),
+    ),
+    # ... and JSON kept as text inside a JSON string, where the quotes are
+    # escaped: "Input": "{\"Password\": \"...\"}".
+    (
+        re.compile(
+            r"""(\\+)(["'])([A-Za-z_][A-Za-z0-9_\-]*)\1\2(\s*:\s*)\1\2"""
+            r"""((?:(?!\1\2).)*)\1\2"""
+        ),
+        lambda m: (
+            "%s%s%s%s%s%s%s%s%s%s"
+            % (
+                m.group(1),
+                m.group(2),
+                m.group(3),
+                m.group(1),
+                m.group(2),
+                m.group(4),
+                m.group(1),
+                m.group(2),
+                REDACTED,
+                m.group(1) + m.group(2),
+            )
+            if is_secret_key(m.group(3)) and m.group(5) not in ("", REDACTED)
             else m.group(0)
         ),
     ),

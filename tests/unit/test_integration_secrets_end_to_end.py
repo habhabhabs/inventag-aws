@@ -34,12 +34,20 @@ SECRETS = {
     "cfn": "planted-cfn-param-71fa",
     "glue_conn": "planted-glue-conn-e04b",
     "glue_job": "planted-glue-job-arg-88d2",
+    "glue_trigger": "planted-glue-trigger-arg-4c19",
+    "cfn_output": "planted-cfn-output-d6a0",
+    "json_text": "planted-json-in-text-0b7e",
 }
 
 TEMPLATE = {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Parameters": {"DbPassword": {"Type": "String"}},
+    "Parameters": {
+        "DbPassword": {"Type": "String"},
+        # A NoEcho value passed out through an output (OutputValue).
+        "Conn": {"Type": "String", "NoEcho": True},
+    },
     "Resources": {"Q": {"Type": "AWS::SQS::Queue"}},
+    "Outputs": {"ConnOut": {"Value": {"Ref": "Conn"}}},
 }
 
 
@@ -111,7 +119,10 @@ def _plant():
     boto3.client("cloudformation").create_stack(
         StackName="stack-secret",
         TemplateBody=json.dumps(TEMPLATE),
-        Parameters=[{"ParameterKey": "DbPassword", "ParameterValue": SECRETS["cfn"]}],
+        Parameters=[
+            {"ParameterKey": "DbPassword", "ParameterValue": SECRETS["cfn"]},
+            {"ParameterKey": "Conn", "ParameterValue": SECRETS["cfn_output"]},
+        ],
     )
     glue = boto3.client("glue")
     glue.create_connection(
@@ -130,6 +141,33 @@ def _plant():
         Role=role,
         Command={"Name": "glueetl", "ScriptLocation": "s3://b/s.py"},
         DefaultArguments={"--db-password": SECRETS["glue_job"]},
+    )
+    # Trigger arguments override job arguments; the name is not secret-like.
+    glue.create_trigger(
+        Name="trigger-secret",
+        Type="ON_DEMAND",
+        Actions=[
+            {
+                "JobName": "job-secret",
+                "Arguments": {"--jdbc_url": f"jdbc:x://u:{SECRETS['glue_trigger']}@h"},
+            }
+        ],
+    )
+    # JSON kept as text (a Step Functions-like input) with a secret field.
+    boto3.client("events").put_rule(
+        Name="rule-secret",
+        ScheduleExpression="rate(1 day)",
+        Description="plain",
+    )
+    boto3.client("events").put_targets(
+        Rule="rule-secret",
+        Targets=[
+            {
+                "Id": "t",
+                "Arn": role,
+                "Input": json.dumps({"ApiPassword": SECRETS["json_text"]}),
+            }
+        ],
     )
 
 
@@ -219,3 +257,49 @@ def test_no_planted_secret_in_any_artifact_of_a_full_run(
     data = _blob(report)
     assert b"fn-secret" in data and b"stack-secret" in data
     assert b"DB_PASSWORD" in data
+
+
+def test_no_planted_secret_in_json_csv_output_or_resume_checkpoint(estate, tmp_path):
+    """Library run: JSON and CSV output, snapshot, and the resume checkpoint.
+
+    A second account that cannot sign in fails, so the finished account's
+    checkpoint under ``state/partial/`` is kept and can be inspected.
+    """
+    from inventag.core.cloud_bom_generator import (
+        AccountCredentials,
+        CloudBOMGenerator,
+        MultiAccountConfig,
+    )
+
+    out = tmp_path / "lib"
+    config = MultiAccountConfig(
+        accounts=[
+            AccountCredentials(account_id="123456789012", regions=["us-east-1"]),
+            AccountCredentials(
+                account_id="999999999999",
+                profile_name="inventag-test-profile-that-does-not-exist",
+                regions=["us-east-1"],
+            ),
+        ],
+        output_directory=str(out),
+        enable_billing_validation=False,
+        parallel_account_processing=False,
+    )
+    result = CloudBOMGenerator(config).generate_multi_account_bom(
+        output_formats=["json", "csv"]
+    )
+    written = [p for p in out.rglob("*") if p.is_file()]
+    suffixes = {p.suffix for p in written}
+    assert {".json", ".csv"} <= suffixes, (result, written)
+    checkpoints = [p for p in written if "partial" in p.parts]
+    assert checkpoints, "no resume checkpoint was kept"
+    leaks = [
+        f"{where} in {path.relative_to(out)}"
+        for path in written
+        for where, secret in SECRETS.items()
+        if secret.encode() in path.read_bytes()
+    ]
+    assert not leaks, leaks
+    report = next(p for p in written if p.suffix == ".json" and "state" not in p.parts)
+    assert b"trigger-secret" in report.read_bytes()
+    assert b"--jdbc_url" in report.read_bytes()
