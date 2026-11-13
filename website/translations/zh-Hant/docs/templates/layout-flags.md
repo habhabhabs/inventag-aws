@@ -66,7 +66,7 @@ CLI 接受 `.yaml`、`.yml` 和 `.json` 這幾種副檔名，兩種格式均適�
 | 引數 | 功能 |
 |---|---|
 | `--word-template PATH` | Word 報告的模板。此引數需要 `--create-word`。 |
-| `--excel-template PATH` | Excel 報告的模板。如果使用 `--create-word` 而不使用 `--create-excel`，CLI 會以退出碼 `2` 停止。 |
+| `--excel-template PATH` | Excel 報告的模板。此標誌需要 `--create-excel`。沒有它，CLI 會以退出碼 `2` 停止。 |
 | `--print-default-template word` 或 `--print-default-template excel` | 列印預設模板並以退出碼 `0` 結束。 |
 | `--validate-templates` | 驗證 `--word-template` 和 `--excel-template` 指定的檔案，然後結束。不發出 AWS 呼叫。 |
 

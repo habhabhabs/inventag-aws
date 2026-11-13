@@ -80,8 +80,7 @@ La ligne d’en-tête est figée et dotée de boutons de filtre.
 ## Mappages d’étiquettes et descriptions de services {#tag-mappings-and-service-descriptions}
 
 `--tag-mappings` et `--service-descriptions` ajoutent des colonnes au classeur par
-défaut. Avec `--template`, ils n’ajoutent rien (nous l’avons vérifié avec
-`--template standard-bom --tag-mappings`) ; utilisez donc `tag_columns` comme ci-dessus. Avec
+défaut. Avec `--template`, ils n’ajoutent rien ; utilisez donc `tag_columns` comme ci-dessus. Avec
 un fichier de mise en page (`--excel-template` ou `--word-template`), indiquez la colonne mappée
 sous `extra_fields`. Voir
 [Fichiers de configuration](../reference/configuration-files.md#tag-mappings).

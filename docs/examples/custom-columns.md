@@ -96,8 +96,7 @@ The header row is frozen and has filter buttons.
 ## Tag mappings and service descriptions
 
 `--tag-mappings` and `--service-descriptions` add columns to the default
-workbook. With `--template` they add nothing (we checked with
-`--template standard-bom --tag-mappings`), so use `tag_columns` as above. With
+workbook. With `--template` they add nothing, so use `tag_columns` as above. With
 a layout file (`--excel-template` or `--word-template`), list the mapped
 column under `extra_fields`. See
 [Configuration files](../reference/configuration-files.md#tag-mappings).

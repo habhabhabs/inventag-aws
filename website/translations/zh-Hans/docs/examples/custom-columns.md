@@ -77,7 +77,7 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ## 标签映射和服务描述 {#tag-mappings-and-service-descriptions}
 
 `--tag-mappings` 和 `--service-descriptions` 会为默认工作簿添加列。
-与 `--template` 一起使用时它们不会添加任何内容（我们用 `--template standard-bom --tag-mappings` 检查过），
+与 `--template` 一起使用时它们不会添加任何内容，
 所以请像上面那样使用 `tag_columns`。如果使用版式文件（`--excel-template` 或 `--word-template`），
 请把映射的列列在 `extra_fields` 下。参见
 [配置文件](../reference/configuration-files.md#tag-mappings)。

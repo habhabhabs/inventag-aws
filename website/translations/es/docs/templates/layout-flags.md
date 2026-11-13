@@ -73,7 +73,7 @@ en el repositorio: `templates/default_word_template.yaml` y
 | Opción | Función |
 |---|---|
 | `--word-template PATH` | Plantilla del informe de Word. Esta opción necesita `--create-word`. |
-| `--excel-template PATH` | Plantilla del informe de Excel. Si usas `--create-word` sin `--create-excel`, la CLI termina con el código de salida `2`. |
+| `--excel-template PATH` | Plantilla del informe de Excel. Esta opción necesita `--create-excel`. Sin ella, la CLI termina con el código de salida `2`. |
 | `--print-default-template word` o `--print-default-template excel` | Imprime la plantilla predeterminada y termina con el código de salida `0`. |
 | `--validate-templates` | Valida los archivos de `--word-template` y `--excel-template` y termina. Sin llamadas a AWS. |
 

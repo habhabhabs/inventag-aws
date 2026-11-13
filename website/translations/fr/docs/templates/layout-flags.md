@@ -71,7 +71,7 @@ deux formats. Les fichiers de modèle par défaut se trouvent aussi dans le dép
 | Option | Fonction |
 |---|---|
 | `--word-template PATH` | Modèle du rapport Word. Cette option nécessite `--create-word`. |
-| `--excel-template PATH` | Modèle du rapport Excel. Si vous utilisez `--create-word` sans `--create-excel`, la CLI s’arrête avec le code de sortie `2`. |
+| `--excel-template PATH` | Modèle du rapport Excel. Cette option nécessite `--create-excel`. Sans elle, la CLI s’arrête avec le code de sortie `2`. |
 | `--print-default-template word` ou `--print-default-template excel` | Affiche le modèle par défaut et s’arrête avec le code de sortie `0`. |
 | `--validate-templates` | Valide les fichiers de `--word-template` et `--excel-template`, puis s’arrête. Aucun appel AWS. |
 

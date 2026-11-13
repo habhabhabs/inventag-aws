@@ -71,7 +71,7 @@ two formats. The default template files are also in the repository:
 | Flag | Function |
 |---|---|
 | `--word-template PATH` | Template for the Word report. This flag needs `--create-word`. |
-| `--excel-template PATH` | Template for the Excel report. If you use `--create-word` without `--create-excel`, the CLI stops with exit code `2`. |
+| `--excel-template PATH` | Template for the Excel report. This flag needs `--create-excel`. Without it, the CLI stops with exit code `2`. |
 | `--print-default-template word` or `--print-default-template excel` | Prints the default template and stops with exit code `0`. |
 | `--validate-templates` | Validates the files from `--word-template` and `--excel-template`, then stops. No AWS call. |
 
