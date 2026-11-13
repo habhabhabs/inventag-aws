@@ -21,11 +21,13 @@ name: Documentation Deployment
 permissions:
   contents: read
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+# Main and manual runs share the "pages" group: one deploy at a time, a running
+# deploy is never cancelled, and only the newest queued deploy is kept.
+# Pull request builds get their own group per PR, so they can never replace a
+# queued production deploy; a newer push to the same PR cancels the older build.
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'pull_request' && format('docs-pr-{0}', github.event.pull_request.number) || 'pages' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # Build job
@@ -782,6 +784,16 @@ jobs:
               exit 1
             fi
           fi
+
+      # Fast checks before the long build. check:links needs no step of its own:
+      # it runs at the end of every `npm run build` (postBuild hook in docusaurus.config.ts).
+      - name: Type-check the site
+        working-directory: ./website
+        run: npm run typecheck
+
+      - name: Check translation structure
+        working-directory: ./website
+        run: npm run check:i18n -- --strict
 
       - name: Build documentation site with fallback
         working-directory: ./website

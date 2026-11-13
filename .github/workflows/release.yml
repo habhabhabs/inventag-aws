@@ -586,9 +586,6 @@ jobs:
         - **🛠️ Troubleshooting**: [Common Issues](https://github.com/${{ github.repository }}/tree/main/docs)
         - **📋 CLI Reference**: [Complete Command Guide](https://github.com/${{ github.repository }}/blob/main/docs/user-guides/CLI_USER_GUIDE.md)
         
-        ## 📈 Full Changelog
-        **Full Changelog**: https://github.com/${{ github.repository }}/compare/$LAST_TAG...${{ steps.version.outputs.tag_name }}
-        
         ---
         
         > **🏷️ InvenTag** - Professional AWS™ cloud governance made simple
@@ -596,14 +593,17 @@ jobs:
         > *AWS™ is a trademark of Amazon Web Services, Inc. InvenTag is an independent tool and is not affiliated with, endorsed by, or sponsored by Amazon Web Services, Inc.*
         EOF
         
+        # Outside the quoted heredoc so that $LAST_TAG is expanded
+        if [ -n "$LAST_TAG" ]; then
+          printf '\n## 📈 Full Changelog\n**Full Changelog**: https://github.com/%s/compare/%s...%s\n' \
+            "${{ github.repository }}" "$LAST_TAG" "${{ steps.version.outputs.tag_name }}" >> release_notes.md
+        fi
+        
         echo "Comprehensive release notes generated:"
         echo "Length: $(wc -l < release_notes.md) lines"
 
     - name: Update version.json with new version
       run: |
-        # Read version release notes from file
-        VERSION_NOTES=$(cat version_release_notes.txt | sed 's/"/\\"/g' | tr '\n' '\\n')
-        
         # Update version.json with comprehensive information
         python -c "
         import json
@@ -623,7 +623,9 @@ jobs:
         version_data['version'] = '${{ steps.version.outputs.new_version }}'
         version_data['release_date'] = datetime.now().isoformat()
         version_data['version_bump_type'] = '${{ needs.check-for-release.outputs.version_bump }}'
-        version_data['release_notes'] = '''$VERSION_NOTES'''
+        # Read the notes from the file: commit subjects must never become Python source.
+        with open('version_release_notes.txt', encoding='utf-8') as notes:
+            version_data['release_notes'] = notes.read()
         
         # Add additional metadata
         version_data['git_tag'] = '${{ steps.version.outputs.tag_name }}'

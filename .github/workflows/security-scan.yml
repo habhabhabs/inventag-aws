@@ -10,9 +10,9 @@ on:
     - cron: '0 2 * * 0'
   workflow_dispatch:
 
+# Nothing here uploads SARIF, so no security-events permission is needed.
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   security-scan:
@@ -59,8 +59,8 @@ jobs:
           # Safety for known vulnerabilities
           safety check -r requirements.txt || echo "⚠️ Some dependencies may have known vulnerabilities"
           
-          # pip-audit for comprehensive dependency checking
-          pip-audit --desc || echo "⚠️ Some dependencies may need updates"
+          # pip-audit on the project's requirements (without -r it audits the runner's own tools)
+          pip-audit -r requirements.txt --desc || echo "⚠️ Some dependencies may need updates"
         else
           echo "ℹ️ No requirements.txt found, skipping Python dependency checks"
         fi
@@ -150,7 +150,8 @@ jobs:
         fi
         
         if [ -f "security-results/secrets.baseline" ]; then
-          SECRETS_ISSUES=$(jq '. | length' security-results/secrets.baseline 2>/dev/null || echo "0")
+          # Count the findings, not the baseline's top-level keys
+          SECRETS_ISSUES=$(jq '[.results[] | length] | add // 0' security-results/secrets.baseline 2>/dev/null || echo "0")
         fi
         
         TOTAL_ISSUES=$((BANDIT_ISSUES + NPM_ISSUES + SECRETS_ISSUES))
