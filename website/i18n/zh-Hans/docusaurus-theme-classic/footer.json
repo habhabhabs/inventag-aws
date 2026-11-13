@@ -35,9 +35,9 @@
     "message": "账户设置",
     "description": "The label of footer link with label=Account setup linking to /docs/examples/accounts-setup"
   },
-  "link.item.label.Configuration examples": {
-    "message": "配置示例",
-    "description": "The label of footer link with label=Configuration examples linking to /docs/templates/"
+  "link.item.label.Configuration files": {
+    "message": "配置文件",
+    "description": "The label of footer link with label=Configuration files linking to /docs/user-guides/configuration-examples"
   },
   "link.item.label.Permissions and safety": {
     "message": "权限与安全",

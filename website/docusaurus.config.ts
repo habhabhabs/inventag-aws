@@ -339,7 +339,8 @@ const config: Config = {
           items: [
             {label: 'CLI reference', to: '/docs/reference/cli'},
             {label: 'Account setup', to: '/docs/examples/accounts-setup'},
-            {label: 'Configuration examples', to: '/docs/templates/'},
+            // the page docs/reference/configuration-files.md is served at this slug
+            {label: 'Configuration files', to: '/docs/user-guides/configuration-examples'},
             {label: 'Permissions and safety', to: '/docs/user-guides/production-safety'},
           ],
         },

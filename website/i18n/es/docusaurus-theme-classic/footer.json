@@ -35,9 +35,9 @@
     "message": "Configuración de cuentas",
     "description": "The label of footer link with label=Account setup linking to /docs/examples/accounts-setup"
   },
-  "link.item.label.Configuration examples": {
-    "message": "Ejemplos de configuración",
-    "description": "The label of footer link with label=Configuration examples linking to /docs/templates/"
+  "link.item.label.Configuration files": {
+    "message": "Archivos de configuración",
+    "description": "The label of footer link with label=Configuration files linking to /docs/user-guides/configuration-examples"
   },
   "link.item.label.Permissions and safety": {
     "message": "Permisos y seguridad",
