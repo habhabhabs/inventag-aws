@@ -194,6 +194,70 @@ def seed_account(session) -> None:
     )
 
 
+def seed_evidence_account(session) -> None:
+    """A second, separate estate for the SOC 2 tag-evidence example.
+
+    Own mock session: the tags below must not change the other examples.
+    """
+    random.seed(4321)
+    from moto.moto_api._internal import mock_random
+
+    mock_random.seed(4321)
+    base = {"Owner": "platform", "Environment": "prod"}
+    evidence = {
+        "Soc2Scope": "in-scope",
+        "SystemName": "storefront",
+        "ManagedBy": "terraform",
+        "Criticality": "high",
+    }
+    buckets = {
+        # every tag, valid values
+        "acme-app-logs": {**base, "DataClassification": "internal", **evidence},
+        # no Criticality
+        "acme-data-lake": {
+            **base,
+            "DataClassification": "confidential",
+            "Soc2Scope": "in-scope",
+            "SystemName": "analytics",
+            "ManagedBy": "cloudformation",
+        },
+        # a value outside the list
+        "acme-reports": {
+            **base,
+            "DataClassification": "internal",
+            **{**evidence, "Soc2Scope": "yes", "SystemName": "reporting"},
+        },
+        "acme-scratch": {},
+    }
+    s3 = session.client("s3", region_name="us-east-1")
+    for name, tags in buckets.items():
+        s3.create_bucket(Bucket=name)
+        if tags:
+            s3.put_bucket_tagging(
+                Bucket=name,
+                Tagging={"TagSet": [{"Key": k, "Value": v} for k, v in tags.items()]},
+            )
+    # The owner marked this one out of scope; it still needs every tag.
+    session.client("dynamodb", region_name="us-east-1").create_table(
+        TableName="acme-orders",
+        KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
+        AttributeDefinitions=[{"AttributeName": "id", "AttributeType": "S"}],
+        BillingMode="PAY_PER_REQUEST",
+        Tags=[
+            {"Key": k, "Value": v}
+            for k, v in {
+                **base,
+                "DataClassification": "confidential",
+                **{**evidence, "Soc2Scope": "out-of-scope", "SystemName": "orders"},
+            }.items()
+        ],
+    )
+    session.client("sqs", region_name="us-east-1").create_queue(
+        QueueName="acme-jobs",
+        tags={**base, "ManagedBy": "manual"},
+    )
+
+
 def seed_org_account(session, account_name: str) -> None:
     random.seed(sum(map(ord, account_name)))
     from moto.moto_api._internal import mock_random
@@ -1593,10 +1657,56 @@ def collect(images: bool) -> Dict[str, str]:
                     r.files["xlsx:multi"], "Security Analysis", rows=1, max_cols=9
                 ),
             )
+        collect_evidence(blocks, base)
     finally:
         drop_guard()
         shutil.rmtree(base, ignore_errors=True)
     return {name: normalise(body) for name, body in blocks.items()}
+
+
+def collect_evidence(blocks: Dict[str, str], base: Path) -> None:
+    """The SOC 2 tag-evidence example, on its own small estate."""
+    import boto3
+    import moto
+
+    with moto.mock_aws():
+        drop_guard()
+        seed_evidence_account(boto3.Session())
+        w = base / "evidence-soc2"
+        w.mkdir()
+        prepare_project(w)
+        os.environ["XDG_CONFIG_HOME"] = str(w / "xdg")
+        r = run_cli(
+            "evidence-soc2",
+            [
+                "--template",
+                "evidence-soc2",
+                "--create-excel",
+                "--account-regions",
+                "us-east-1",
+            ],
+            w,
+        )
+        blocks["evidence-soc2-console"] = code(r.console, title="Output")
+        blocks["evidence-soc2-excel"] = excel_preview(
+            r.files["xlsx:multi"],
+            "Tag Compliance",
+            rows=6,
+            max_cols=9,
+            row_filter=lambda row: str(row.get("Resource", "")).startswith("acme-"),
+        )
+        report = json.loads(r.files["json:tag"].read_text())
+        blocks["evidence-soc2-json"] = code(
+            json.dumps(
+                {
+                    "missing_by_key": report["summary"]["missing_by_key"],
+                    "invalid_by_key": report["summary"]["invalid_by_key"],
+                },
+                indent=2,
+            ),
+            "json",
+            "tag_compliance_" + FIXED_STAMP + ".json (summary, two fields)",
+        )
 
 
 BEGIN = "<!-- BEGIN EXAMPLE OUTPUT: {name} -->"
