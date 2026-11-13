@@ -419,7 +419,7 @@ Otros límites:
   `default_template` de los ejemplos de configuración antiguos no tienen
   efecto. Solo `--word-template` y `--excel-template` seleccionan una plantilla.
 - Los archivos de plantilla con `template_version: "1.0"` no son válidos. Las
-  versiones hasta la v4.2.27 incluían esos archivos, pero la CLI no los leía.
+  alpha builds anteriores a la 1.0.0 incluían esos archivos, pero la CLI no los leía.
 
 ## Seguridad de los archivos de plantilla {#safety-of-template-files}
 
