@@ -14,6 +14,11 @@ on:
           - patch
           - minor
           - major
+      publish_existing_tag:
+        description: 'Only publish this existing release tag to PyPI (e.g. v5.0.0). Leave empty for a normal release. Ignores "Version bump type".'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -44,6 +49,12 @@ jobs:
         echo "version_bump=patch" >> $GITHUB_OUTPUT
         echo "pr_number=" >> $GITHUB_OUTPUT
         
+        # Publish-only run: no new release, the publish-pypi job handles it
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$INPUT_PUBLISH_TAG" ]; then
+          echo "Publish-only run for $INPUT_PUBLISH_TAG: no release will be created"
+          exit 0
+        fi
+
         # Check if manual dispatch with version bump
         if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
           case "$INPUT_VERSION_BUMP" in patch|minor|major) ;; *) echo "invalid bump"; exit 1;; esac
@@ -101,6 +112,7 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         INPUT_VERSION_BUMP: ${{ github.event.inputs.version_bump }}
+        INPUT_PUBLISH_TAG: ${{ github.event.inputs.publish_existing_tag }}
 
   release:
     name: Create Release
@@ -746,7 +758,12 @@ jobs:
     name: Publish to PyPI
     runs-on: ubuntu-latest
     needs: [check-for-release, release]
-    if: needs.check-for-release.outputs.should_release == 'true' && vars.PYPI_PUBLISH == 'true'
+    # Runs after a successful release, or alone when "publish_existing_tag" is given.
+    if: >-
+      always() && vars.PYPI_PUBLISH == 'true' && (
+        (needs.check-for-release.outputs.should_release == 'true' && needs.release.result == 'success') ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_existing_tag != '')
+      )
     # PyPI Trusted Publishing (OIDC): no API token is stored in GitHub.
     # One-time setup on pypi.org: add a trusted publisher for this repository,
     # workflow "release.yml", environment "pypi". Then set the repository
@@ -762,7 +779,7 @@ jobs:
     - name: Checkout the released commit
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
-        ref: v${{ needs.release.outputs.new_version }}
+        ref: ${{ github.event.inputs.publish_existing_tag || format('v{0}', needs.release.outputs.new_version) }}
 
     - name: Set up Python
       uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -771,8 +788,11 @@ jobs:
 
     - name: Build the sdist and the wheel
       env:
-        NEW_VERSION: ${{ needs.release.outputs.new_version }}
+        PUBLISH_TAG: ${{ github.event.inputs.publish_existing_tag }}
+        RELEASED_VERSION: ${{ needs.release.outputs.new_version }}
       run: |
+        NEW_VERSION="${RELEASED_VERSION:-${PUBLISH_TAG#v}}"
+        case "$NEW_VERSION" in [0-9]*.[0-9]*.[0-9]*) ;; *) echo "bad version: $NEW_VERSION"; exit 1;; esac
         python -m pip install --upgrade pip build twine
         python -m build
         twine check --strict dist/*
