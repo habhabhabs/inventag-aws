@@ -1,0 +1,45 @@
+{
+  "template_version": "2.0",
+  "format_type": "excel",
+  "name": "Default Excel BOM template",
+  "description": "The workbook structure that InvenTag writes if you give no --excel-template.",
+  "document": {
+    "title": "",
+    "subtitle": ""
+  },
+  "branding": {
+    "company_name": "",
+    "header_color": "366092"
+  },
+  "header_footer": {
+    "header_text": "",
+    "footer_text": ""
+  },
+  "sections": [
+    {
+      "id": "summary",
+      "content_type": "service_summary",
+      "sheet_name": "Summary",
+      "show_title": false,
+      "columns": [
+        {"field": "service", "heading": "Service"},
+        {"field": "resource_count", "heading": "Resource Count"},
+        {"field": "percentage", "heading": "Percentage"}
+      ]
+    },
+    {
+      "id": "service_sheets",
+      "content_type": "resources",
+      "group_by_service": true,
+      "columns": "auto"
+    },
+    {
+      "id": "network_analysis",
+      "content_type": "network_analysis"
+    },
+    {
+      "id": "security_analysis",
+      "content_type": "security_analysis"
+    }
+  ]
+}

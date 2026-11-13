@@ -8,6 +8,12 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- The documentation site has a version dropdown. It lists the current version
+  and the archived v1.0.1 and v1.0.0 docs. A new minor or major release
+  archives the previous release's docs from its git tag.
+
 ### Changed
 
 - Every push to `main` is released as a patch version automatically. Use

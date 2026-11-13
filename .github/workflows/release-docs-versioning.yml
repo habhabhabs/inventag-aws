@@ -62,7 +62,7 @@ jobs:
         VERSION="${{ steps.version.outputs.version }}"
         
         if [ -f "website/versions.json" ]; then
-          if jq -e --arg v "$VERSION" 'index($v) != null' website/versions.json > /dev/null; then
+          if jq -e --arg v "${VERSION#v}" 'index($v) != null' website/versions.json > /dev/null; then
             echo "ℹ️ Version $VERSION already exists in documentation, skipping creation"
             echo "skip_creation=true" >> $GITHUB_ENV
           else
@@ -72,6 +72,16 @@ jobs:
         else
           echo "✅ No versions.json found, this will be the first version"
           echo "skip_creation=false" >> $GITHUB_ENV
+        fi
+
+    - name: Only archive docs for a new minor or major release
+      run: |
+        # Every push to main is a patch release, so archiving on each one would
+        # fill the version dropdown with near-identical copies. The dropdown
+        # lists one archived snapshot per minor/major release line.
+        if [[ ! "${{ steps.version.outputs.version }}" =~ \.0$ ]]; then
+          echo "Patch release: no new documentation version"
+          echo "skip_creation=true" >> $GITHUB_ENV
         fi
 
     - name: Install dependencies
@@ -101,7 +111,7 @@ jobs:
         PREVIOUS_RELEASE=$(git tag --sort=-version:refname | grep "^v[0-9]" | head -2 | tail -1)
         
         if [ ! -z "$PREVIOUS_RELEASE" ] && [ "$PREVIOUS_RELEASE" != "$VERSION" ]; then
-          ARCHIVE_VERSION="$PREVIOUS_RELEASE"
+          ARCHIVE_VERSION="${PREVIOUS_RELEASE#v}"   # versions.json and versioned_docs use the number without "v"
           echo "Previous version to archive as N-1: $ARCHIVE_VERSION"
           echo "Current/new version will be: $VERSION (served from docs/ folder)"
         else
@@ -123,7 +133,7 @@ jobs:
         fi
         
         # Create N-1 version from current docs (if we have a version to archive)
-        if [ ! -z "$ARCHIVE_VERSION" ] && [ "$ARCHIVE_VERSION" != "$VERSION" ]; then
+        if [ ! -z "$ARCHIVE_VERSION" ] && [ "v$ARCHIVE_VERSION" != "$VERSION" ]; then
           echo "📚 Archiving CURRENT version as N-1: $ARCHIVE_VERSION"
           echo "🆕 NEW version $VERSION will be served from docs/ folder (not versioned)"
           
@@ -131,8 +141,13 @@ jobs:
           if [ -d "versioned_docs/version-$ARCHIVE_VERSION" ]; then
             echo "⚠️ Version $ARCHIVE_VERSION already exists, skipping creation"
           else
-            # Create the version using Docusaurus CLI (this snapshots current docs/)
+            # Snapshot the docs as they were at that release's tag (docs/ now holds the
+            # new release), then put the new release's docs back.
+            if git rev-parse -q --verify "refs/tags/v$ARCHIVE_VERSION" >/dev/null; then
+              git checkout "v$ARCHIVE_VERSION" -- ../docs sidebars.ts sidebars.js
+            fi
             npm run docusaurus -- docs:version "$ARCHIVE_VERSION"
+            git checkout HEAD -- ../docs sidebars.ts sidebars.js
             
             # Verify the version was created
             if [ ! -d "versioned_docs/version-$ARCHIVE_VERSION" ]; then
@@ -177,7 +192,7 @@ jobs:
         
         echo "📋 Final versioning state:"
         echo "- Current version: $VERSION (from docs/ folder)"
-        if [ ! -z "$ARCHIVE_VERSION" ] && [ "$ARCHIVE_VERSION" != "$VERSION" ]; then
+        if [ ! -z "$ARCHIVE_VERSION" ] && [ "v$ARCHIVE_VERSION" != "$VERSION" ]; then
           echo "- N-1 version: $ARCHIVE_VERSION (in versioned_docs/)"
         else
           echo "- N-1 version: None"
@@ -223,7 +238,7 @@ jobs:
         PREVIOUS_RELEASE=$(git tag --sort=-version:refname | grep "^v[0-9]" | head -2 | tail -1)
         
         if [ ! -z "$PREVIOUS_RELEASE" ] && [ "$PREVIOUS_RELEASE" != "$VERSION" ]; then
-          EXPECTED_N1_VERSION="$PREVIOUS_RELEASE"
+          EXPECTED_N1_VERSION="${PREVIOUS_RELEASE#v}"
           echo "Expected N-1 version in versions.json: $EXPECTED_N1_VERSION"
           
           # Verify the correct N-1 version is in versions.json (not the new version)
