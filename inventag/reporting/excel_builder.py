@@ -77,6 +77,17 @@ class ExcelWorkbookBuilder(DocumentBuilder):
         # Excel styling configuration
         self.styles = self._initialize_styles()
 
+    @property
+    def _used_sheet_names(self) -> Set[str]:
+        """Lower-case sheet names taken in the workbook this thread is building."""
+        if not hasattr(self._call_state, "sheet_names"):
+            self._call_state.sheet_names = {n.lower() for n in FIXED_SHEET_NAMES}
+        return self._call_state.sheet_names
+
+    @_used_sheet_names.setter
+    def _used_sheet_names(self, value: Set[str]) -> None:
+        self._call_state.sheet_names = value
+
     def _ensure_argb_color(self, color: str) -> str:
         """Ensure color is in ARGB format for openpyxl."""
         if not color:
@@ -304,15 +315,11 @@ class ExcelWorkbookBuilder(DocumentBuilder):
         # Excel sheet names: at most 31 characters, none of [ ] : * ? / \,
         # and unique without regard to case. The full service name is on the
         # sheet itself (title row and "Service:" line).
-        used = getattr(self, "_used_sheet_names", None)
-        if used is None:
-            used = self._used_sheet_names = {n.lower() for n in FIXED_SHEET_NAMES}
-        sheet_name = safe_sheet_name(service, used)
+        sheet_name = safe_sheet_name(service, self._used_sheet_names)
         if sheet_name != service:
             warning = f"Service '{service}' is on sheet '{sheet_name}' (Excel sheet names are limited)."
             self.logger.warning(warning)
-            if hasattr(self, "_warnings"):
-                self._warnings.append(warning)
+            self._warnings.append(warning)
         ws = wb.create_sheet(sheet_name)
 
         # Sheet title
@@ -654,8 +661,7 @@ class ExcelWorkbookBuilder(DocumentBuilder):
                 f"sheet ({MAX_EXCEL_COLUMNS} columns at most) and were left out."
             )
             self.logger.warning(warning)
-            if hasattr(self, "_warnings"):
-                self._warnings.append(warning)
+            self._warnings.append(warning)
             ws["A2"] = limit_text(warning)
 
         # Write headers

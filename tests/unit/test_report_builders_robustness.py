@@ -348,3 +348,33 @@ def test_word_service_headings_survive_odd_service_names(tmp_path):
     _, doc = build_word(tmp_path, resources)
     headings = [p.text for p in doc.paragraphs if p.style.name == "Heading 2"]
     assert "Unknown Resources" in headings and "a/b�c Resources" in headings
+
+
+def test_one_builder_can_build_two_workbooks_at_once(tmp_path):
+    import threading
+
+    builder = ExcelWorkbookBuilder(DocumentConfig())
+    results, errors = {}, []
+
+    def run(name):
+        try:
+            path = str(tmp_path / f"{name}.xlsx")
+            results[name] = (
+                builder.generate_document(
+                    make_bom([dict(BASE, service="EC2"), dict(BASE, service="S3")]),
+                    path,
+                ),
+                load_workbook(path).sheetnames,
+            )
+        except Exception as e:  # pragma: no cover - failure path
+            errors.append(e)
+
+    threads = [threading.Thread(target=run, args=(n,)) for n in ("a", "b")]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert not errors
+    for name in ("a", "b"):
+        assert results[name][0].success
+        assert "EC2" in results[name][1] and "EC2 (2)" not in results[name][1]

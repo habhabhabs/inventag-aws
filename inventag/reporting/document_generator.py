@@ -249,6 +249,21 @@ class DocumentBuilder(ABC):
     def __init__(self, config: DocumentConfig):
         self.config = config
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        # State of the document being built. DocumentGenerator builds formats in
+        # threads, and one builder may be asked for two documents at once, so
+        # this is kept per thread.
+        self._call_state = threading.local()
+
+    @property
+    def _warnings(self) -> List[str]:
+        """Warnings for the document this thread is building."""
+        if not hasattr(self._call_state, "warnings"):
+            self._call_state.warnings = []
+        return self._call_state.warnings
+
+    @_warnings.setter
+    def _warnings(self, value: List[str]) -> None:
+        self._call_state.warnings = value
 
     @abstractmethod
     def can_handle_format(self, format_type: str) -> bool:
