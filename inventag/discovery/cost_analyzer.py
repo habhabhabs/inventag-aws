@@ -276,6 +276,34 @@ class CostAnalyzer:
             )
             return None
 
+    _DENIED = {
+        "AccessDenied",
+        "AccessDeniedException",
+        "UnauthorizedOperation",
+        "UnauthorizedAccess",
+        "OptInRequired",
+    }
+
+    def _log_aws_failure(self, api: str, message: str, error: Exception) -> None:
+        """Log a denied permission once per API at WARNING, other errors at DEBUG.
+
+        Without this a missing permission looked like "no data".
+        """
+        code = ""
+        response = getattr(error, "response", None)
+        if isinstance(response, dict):
+            code = response.get("Error", {}).get("Code", "")
+        if code in self._DENIED:
+            warned = self.__dict__.setdefault("_warned_apis", set())
+            if api not in warned:
+                warned.add(api)
+                self.logger.warning(
+                    f"Cost analysis: access to the {api} API was denied ({code}). "
+                    "Cost and activity data from it will be missing."
+                )
+                return
+        self.logger.debug(f"{message}: {error}")
+
     def _get_pricing_info(
         self, service: str, resource_type: str, region: str, resource: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
@@ -312,8 +340,8 @@ class CostAnalyzer:
             return pricing_info
 
         except Exception as e:
-            self.logger.debug(
-                f"Pricing API query failed for {service}:{resource_type}: {e}"
+            self._log_aws_failure(
+                "pricing", f"Pricing API query failed for {service}:{resource_type}", e
             )
             return None
 
@@ -791,7 +819,9 @@ class CostAnalyzer:
                     activity_indicators["s3_requests"] = []
 
         except Exception as e:
-            self.logger.debug(f"Failed to get activity metrics for {resource_id}: {e}")
+            self._log_aws_failure(
+                "cloudwatch", f"Failed to get activity metrics for {resource_id}", e
+            )
 
         return activity_indicators
 
@@ -1040,7 +1070,9 @@ class CostAnalyzer:
                 return trend_analyses
 
         except Exception as e:
-            self.logger.debug(f"Service cost trend analysis failed for {service}: {e}")
+            self._log_aws_failure(
+                "cost-explorer", f"Service cost trend analysis failed for {service}", e
+            )
 
         return []
 

@@ -1357,7 +1357,7 @@ def collect(images: bool) -> Dict[str, str]:
             )
             for flag in (
                 ["--create-google-docs"],
-                ["--per-account-reports"],
+                ["--risk-threshold", "HIGH"],
                 ["--compliance-standard", "soc2"],
                 ["--disable-production-safety"],
             ):

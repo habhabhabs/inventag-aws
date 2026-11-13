@@ -69,12 +69,11 @@ def run_cli(*args):
 @pytest.mark.parametrize(
     "flag",
     [
-        ["--create-google-docs"],
-        ["--per-account-reports"],
         ["--compliance-standard", "soc2"],
         ["--compliance-standard", "general"],
-        ["--risk-threshold", "HIGH"],
+        ["--risk-threshold", "HIGH"],  # needs --enable-security-analysis
         ["--disable-production-safety"],
+        ["--google-share-with", "a@example.com"],  # without a Google output flag
         ["--cross-account-role", "bad role name!"],
         ["--cross-account-role", "arn:aws:iam::cross-account:role/X"],
     ],

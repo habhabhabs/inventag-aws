@@ -49,7 +49,7 @@ The `inventag` command works the same on Linux, macOS and Windows.
 | Flag | Default | Status | What it does |
 |---|---|---|---|
 | `--accounts-file FILE` | none | Works | Read accounts from a JSON or YAML file. See [Configuration files](./configuration-files.md#accounts-file). |
-| `--accounts-prompt` | off | Not re-tested | Ask for accounts and credentials interactively. |
+| `--accounts-prompt` | off | Works | Ask for accounts and credentials interactively. |
 | `--cross-account-role ARN\|NAME` | none | Works | A full role ARN is assumed directly. A role name is combined with each account ID in `--accounts-file`. A name without `--accounts-file` stops with exit code 2. |
 
 ## Output
@@ -58,15 +58,23 @@ The `inventag` command works the same on Linux, macOS and Windows.
 |---|---|---|---|
 | `--create-excel` | on if no other output flag | Works | Write `multi_account_bom_<timestamp>.xlsx`. |
 | `--create-word` | off | Works | Write `multi_account_bom_<timestamp>.docx`. |
-| `--create-google-docs` | off | Stops with exit code 2 | Not implemented. |
+| `--create-google-docs` | off | Works (mocked clients only) | Create the Word report as a Google Doc. Needs `inventag-aws[google]`. See [Google Sheets and Docs](../guides/google-sheets-and-docs.md). |
+| `--create-google-sheets` | off | Works (mocked clients only) | Create the Excel report as a Google Sheets spreadsheet. |
+| `--google-credentials FILE` | none | Works (mocked clients only) | Service account key file. |
+| `--google-oauth-client FILE` | none | Works (mocked clients only) | OAuth client file; you sign in in the browser. |
+| `--google-folder-id ID` | none | Works (mocked clients only) | Drive folder for the files. |
+| `--google-share-with EMAIL` | none | Works (mocked clients only) | Share with this address. Repeat for more. |
+| `--google-share-role ROLE` | `reader` | Works (mocked clients only) | `reader`, `commenter` or `writer`. |
+| `--google-share-anyone` | off | Works (mocked clients only) | Anyone with the link can read. Files are private without it. |
+| `--google-title TITLE` | dated name | Works (mocked clients only) | Title of the Google files. |
 | `--output-directory DIR` | `bom_output` | Works | Folder for all output files. |
-| `--per-account-reports` | off | Stops with exit code 2 | Not implemented. |
+| `--per-account-reports` | off | Works | One `<account-id>_bom_<timestamp>` file per account instead of one consolidated report. |
 
 ## What to scan
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--account-regions LIST` | every enabled region | Works | Comma-separated region codes, for example `us-east-1,eu-west-1`. Include `us-east-1`: S3, IAM, CloudFront and Route 53 are scanned only from there. |
+| `--account-regions LIST` | every enabled region | Works | Comma-separated region codes, for example `us-east-1,eu-west-1`. IAM, the S3 bucket list, CloudFront and Route 53 are always read once from `us-east-1`, so you need not list it. |
 | `--account-services LIST` | all | Works | Comma-separated service names that are kept in the report, matched against the Service column, for example `EC2,S3`. |
 | `--account-tags JSON` | none | Works | Tag filter, for example `'{"Environment":"prod"}'`. Only resources with those tags are kept. |
 | `--fallback-display auto\|always\|never` | `auto` | Works | Whether to show resources found only through the Resource Groups Tagging API. `auto` shows them only for services with no results from their own discovery code. |
@@ -78,7 +86,7 @@ The `inventag` command works the same on Linux, macOS and Windows.
 |---|---|---|---|
 | `--enable-network-analysis` | off | Works | Adds a `Network Analysis` sheet to the Excel report when VPCs are found. Adds nothing with `--template`. See [Network and security analysis](../guides/network-and-security-analysis.md). |
 | `--enable-security-analysis` | off | Works | Adds a `Security Analysis` sheet to the Excel report when security groups are found. Adds nothing with `--template`. |
-| `--enable-cost-analysis` | off | Partial | Adds four `forgotten_analysis.*` columns to the default workbook. Makes extra Cost Explorer, Pricing and CloudWatch calls, also with `--no-billing-validation`. Needs `pricing:GetProducts`. |
+| `--enable-cost-analysis` | off | Works | Adds a Cost Analysis sheet (and the four `forgotten_analysis.*` columns) to the default workbook. Makes extra Cost Explorer, Pricing and CloudWatch calls, also with `--no-billing-validation`. Needs `pricing:GetProducts`. |
 | `--billing-validation`, `--no-billing-validation` | on | Works | Use Cost Explorer during discovery to find services with spend. AWS charges for each Cost Explorer request. `--no-billing-validation` stops those calls. |
 
 ## Configuration files
@@ -87,9 +95,9 @@ The `inventag` command works the same on Linux, macOS and Windows.
 |---|---|---|---|
 | `--tag-mappings FILE` | none | Works | Adds one named column per mapping. See [Configuration files](./configuration-files.md#tag-mappings). |
 | `--service-descriptions FILE` | none | Partial | Adds a `service_description` column. A built-in description wins for S3, EC2, RDS, Lambda and VPC unless the entry names a `template`. See [Configuration files](./configuration-files.md#service-descriptions). |
-| `--bom-config FILE` | none | Partial | Sets fields of the BOM processing configuration from a YAML or JSON file. Other keys are ignored without a message. |
+| `--bom-config FILE` | none | Works | Sets fields of the BOM processing configuration from a YAML or JSON file. Other keys are ignored with a warning that names them. |
 | `--validate-config` | off | Works | Load and check the configuration, then exit. |
-| `--validate-config-only` | off | Works | Check only the files you name, then exit. Add `--skip-credential-validation` to skip the credential check. It still makes one `ec2:DescribeRegions` call. |
+| `--validate-config-only` | off | Works | Check only the files you name, then exit. It makes no AWS call. |
 
 ## Parallel processing
 
@@ -115,14 +123,14 @@ The `inventag` command works the same on Linux, macOS and Windows.
 | `--verbose`, `-v` | off | Works | Show each step. |
 | `--debug`, `-d` | off | Works | Show every AWS request. Secrets are masked. |
 | `--log-file FILE` | none | Works | Also write a detailed log to this file. |
-| `--disable-account-logging` | off | Not re-tested | Don't prefix log lines with the account. |
+| `--disable-account-logging` | off | Works | Don't prefix log lines with the account. |
 
 ## Credentials
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
 | `--validate-credentials` | off | Works | Check every account's credentials, then exit (0 if all work, 1 if not). |
-| `--credential-timeout SECONDS` | `30` | Not re-tested | Timeout for each credential check. |
+| `--credential-timeout SECONDS` | `30` | Works | Timeout for each credential check. |
 | `--skip-credential-validation` | off | Works | Skip the credential check at the start of a run. |
 
 ## Read-only guard and audit
@@ -136,8 +144,8 @@ read, and reads that return secrets or data.
 | `--validate-operations SERVICE:OPERATION ...` | none | Works | Check operations against the guard, then exit (0 if all allowed, 1 if not). |
 | `--enforce-read-only`, `--security-validation`, `--enable-production-safety` | on | No effect | Kept so old commands still run. The guard is always on. |
 | `--disable-production-safety` | off | Stops with exit code 2 | The guard cannot be turned off. |
-| `--compliance-standard ...` | none | Stops with exit code 2 | Not implemented. Use a tag-policy template. |
-| `--risk-threshold ...` | none | Stops with exit code 2 | Not implemented. |
+| `--compliance-standard ...` | none | Stops with exit code 2 | Not implemented: a standard cannot be checked from an inventory. Use a tag-policy template. |
+| `--risk-threshold LEVEL` | none | Works | With `--enable-security-analysis`: exit code 4 if a security group rule is at or above `LOW`, `MEDIUM`, `HIGH` or `CRITICAL`. Without `--enable-security-analysis`: exit code 2. |
 
 <!-- BEGIN EXAMPLE OUTPUT: validate-operations -->
 
@@ -152,17 +160,19 @@ $ echo $?
 
 <!-- END EXAMPLE OUTPUT: validate-operations -->
 
-What the flags that stop with exit code 2 print:
+What flags that stop with exit code 2 print:
 
 <!-- BEGIN EXAMPLE OUTPUT: failing-flags -->
 
 ```text title="Terminal"
 $ inventag --create-google-docs
-inventag: error: --create-google-docs: Google Docs/Sheets output is not implemented yet (InvenTag has no Google API integration). Use --create-excel or --create-word.
+inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
+inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+inventag: error: Google: Google output needs libraries that are not installed (google.auth). Install the Google libraries with: pip install "inventag-aws[google]"
 (exit code 2)
 
-$ inventag --per-account-reports
-inventag: error: --per-account-reports: Per-account reports are not implemented yet; InvenTag writes one consolidated report. Run once per account to get separate reports.
+$ inventag --risk-threshold HIGH
+inventag: error: --risk-threshold: needs --enable-security-analysis, which produces the risk levels it checks.
 (exit code 2)
 
 $ inventag --compliance-standard soc2
@@ -193,5 +203,6 @@ See [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
 |---|---|
 | 0 | Success. Also 0 when some accounts failed but others worked, and when no resources were found (no report is written). See [Feature status](../getting-started/status.md#when-a-run-goes-wrong). |
 | 1 | An error: invalid arguments, configuration or template, failed credentials, every account failed, a failed S3 upload, or a report format that could not be written |
-| 2 | Invalid command line: unknown or badly formed options, flags that are not implemented, or a role name without `--accounts-file` |
+| 2 | Invalid command line: unknown or badly formed options, flags that are not implemented, bad Google options, or a role name without `--accounts-file` |
 | 3 | Reports written, but a config template with `fail_on_tag_violations: true` found tag policy violations |
+| 4 | Reports written, but `--risk-threshold` found a security group rule at or above that level |

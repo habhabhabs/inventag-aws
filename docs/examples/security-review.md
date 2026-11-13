@@ -53,10 +53,10 @@ Tag policy 'security-baseline': 1 of 22 resources compliant (4.5%), 21 non-compl
 
 | Account | Region | Service | Type | Resource | ARN | Status | Missing tags | Problems |
 |---|---|---|---|---|---|---|---|---|
-| 123456789012 | us-east-1 | DYNAMODB | Table | acme-orders | acme-orders | Non-compliant | Owner, Environment, DataClassification |  |
+| 123456789012 | us-east-1 | DYNAMODB | Table | acme-orders | arn:aws:dynamodb:us-east-1:123456789012:table... | Non-compliant | DataClassification |  |
 | 123456789012 | us-east-1 | EC2 | Instance | acme-web-1 | arn:aws:ec2:us-east-1:123456789012:instance/i... | Non-compliant | DataClassification |  |
 | 123456789012 | us-east-1 | EC2 | Volume | acme-build-cache | arn:aws:ec2:us-east-1:123456789012:volume/vol... | Non-compliant | Owner, Environment, DataClassification |  |
-| 123456789012 | us-east-1 | IAM | Role | acme-orders-api-role | arn:aws:iam::123456789012:role/acme-orders-ap... | Non-compliant | Owner, Environment, DataClassification |  |
+| 123456789012 | global | IAM | Role | acme-orders-api-role | arn:aws:iam::123456789012:role/acme-orders-ap... | Non-compliant | Owner, Environment, DataClassification |  |
 
 <!-- END EXAMPLE OUTPUT: security-excel-compliance -->
 

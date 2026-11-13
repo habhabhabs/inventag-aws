@@ -429,9 +429,19 @@ class OptimizedDynamicDiscovery:
 
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "")
-            if error_code in ["AccessDenied", "UnauthorizedOperation"]:
-                # Expected for some operations, don't log as error
-                pass
+            if error_code in [
+                "AccessDenied",
+                "AccessDeniedException",
+                "UnauthorizedOperation",
+            ]:
+                # Say so once per service: silence looked like "no resources"
+                warned = self.__dict__.setdefault("_warned_denied", set())
+                if service_name not in warned:
+                    warned.add(service_name)
+                    self.logger.warning(
+                        f"No permission for {service_name} ({operation_name} in "
+                        f"{region}: {error_code}). Resources of this service are skipped."
+                    )
             else:
                 self.logger.debug(f"Client error in {operation_name}: {e}")
             return []

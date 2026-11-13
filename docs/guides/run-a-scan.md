@@ -36,10 +36,23 @@ the account and scans all of them. That is thorough but slow. If that lookup
 fails, InvenTag logs a warning and scans only `us-east-1`, `us-west-2`,
 `eu-west-1` and `ap-southeast-1`.
 
-**Keep `us-east-1` in the list.** S3, IAM, CloudFront and Route 53 are
-global, and InvenTag scans them only from `us-east-1`. In our offline test,
-`--account-regions eu-west-1` alone returned no IAM resources. A region that
-fails its access check is skipped with a warning.
+A region that fails its access check is skipped with a warning.
+
+### Global services
+
+You do not need to add `us-east-1` to the list. For any region choice,
+InvenTag reads the global services once for each account, from `us-east-1`:
+IAM, the S3 bucket list, CloudFront, Route 53 and the ACM certificates that
+CloudFront uses. If `us-east-1` is in your list, they are not read twice.
+
+- `--account-services` and `--account-tags` apply to them like to any other
+  resource. With `--account-services ec2`, no IAM resource is read.
+- IAM, CloudFront and Route 53 resources show `global` in the region column.
+  An S3 bucket shows its own region, for example `eu-west-1`.
+- Their tags come from the Resource Groups Tagging API in `us-east-1`, where
+  AWS keeps the tags of global resources.
+- Offline tests cover `eu-west-1` alone, all regions, and a list that includes
+  `us-east-1`. How real AWS answers is not tested.
 
 ## Choose the output files
 
@@ -107,8 +120,9 @@ carries on. A broken accounts file looks like this (sample data):
 
 ```text title="Terminal"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
-inventag.cli.main - ERROR - Invalid accounts configuration:
-inventag.cli.main - ERROR -   - Account 1: 'account_id' must be a non-empty string
+inventag - ERROR - ❌ Accounts configuration is invalid:
+inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
+inventag - ERROR - ❌ Some configuration files have validation errors
 $ echo $?
 1
 ```

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 from datetime import datetime
 
+from ..core.log_context import current_account
 from ..security.redaction import RedactingFormatter, install_log_record_redaction
 from ..security.safe_output import ensure_private_dir, open_private
 
@@ -34,10 +35,11 @@ class AccountSpecificFormatter(logging.Formatter):
         self.account_context = {}
 
     def format(self, record):
-        # Add account context to the record if available
-        if self.account_context:
-            account_info = f"[{self.account_context['account_name']}]"
-            record.account_prefix = account_info
+        # Add account context to the record if available: the account of the
+        # running worker first, then one set on the formatter.
+        context = current_account() or self.account_context
+        if context:
+            record.account_prefix = f"[{context['account_name']}] "
         else:
             record.account_prefix = ""
 

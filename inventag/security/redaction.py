@@ -45,6 +45,13 @@ _SECRET_FIELD_NAMES = (
     "sessionToken",
     "accessToken",
     "password",
+    # Google service-account keys and OAuth tokens
+    "private_key",
+    "private_key_id",
+    "client_secret",
+    "refresh_token",
+    "access_token",
+    "id_token",
 )
 
 _FIELDS = "|".join(re.escape(f) for f in _SECRET_FIELD_NAMES)
@@ -107,6 +114,28 @@ _PATTERNS = [
             r"Signature|AWSAccessKeyId|x-amz-security-token)=)[^&\s'\"<>]+",
             re.IGNORECASE,
         ),
+        lambda m: m.group(1) + REDACTED,
+    ),
+    # PEM private keys (a Google service-account key as it appears in a log)
+    (
+        re.compile(
+            r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)",
+            re.DOTALL,
+        ),
+        lambda m: REDACTED,
+    ),
+    # Google OAuth access tokens (ya29.*) and refresh tokens (1//*)
+    (
+        re.compile(r"\bya29\.[A-Za-z0-9_\-.]{20,}"),
+        lambda m: REDACTED,
+    ),
+    (
+        re.compile(r"\b1//[A-Za-z0-9_\-]{20,}"),
+        lambda m: REDACTED,
+    ),
+    # Bearer tokens in an Authorization-style string
+    (
+        re.compile(r"(?i)\b(Bearer\s+)[A-Za-z0-9._~+/=-]{16,}"),
         lambda m: m.group(1) + REDACTED,
     ),
     # Slack incoming-webhook and Teams/Office webhook URLs carry their secret in the path

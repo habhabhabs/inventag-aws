@@ -63,12 +63,13 @@ before.
 These are tracked on [Feature status](../getting-started/status.md) and in the
 "Open work" list of `CHANGELOG.md`. Each is a good first contribution:
 
-- `discovery/comprehensive_discovery.py` builds an ARN for resources whose list
-  call returns none (`_construct_arn`), and matches tags from the Resource
-  Groups Tagging API by ARN. For Lambda, RDS, DynamoDB, SQS, SNS and VPC
-  resources the built ARN differs from the real one, so their tags are lost.
-- Global services (S3, IAM, CloudFront, Route 53) are scanned only if
-  `us-east-1` is in the region list.
+- `discovery/arn_utils.py` is the single place that builds and compares ARNs
+  (`build_arn`, `normalize_arn`, `ResourceArnIndex`). `inventory.py` and
+  `comprehensive_discovery.py` both use it. Tags from the Resource Groups
+  Tagging API match by normalised ARN, then by service, region and ID.
+- Global services (IAM, S3 list, CloudFront, Route 53, CloudFront's ACM
+  certificates) run once per account from `us-east-1` and carry the region
+  `global`.
 - The region lookup in `cloud_bom_generator.py` falls back to four regions when
   `DescribeRegions` fails. `discovery/inventory.py` has a different fallback
   list of fourteen.

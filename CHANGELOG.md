@@ -8,6 +8,51 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Google Sheets and Google Docs output: `--create-google-sheets` and
+  `--create-google-docs` write the Excel and Word reports as Google files.
+  Install with `pip install "inventag-aws[google]"`. New flags:
+  `--google-credentials`, `--google-oauth-client`, `--google-folder-id`,
+  `--google-share-with` (repeatable), `--google-share-role`,
+  `--google-share-anyone` and `--google-title`. Files are private unless you
+  share them, and Google credentials are masked in logs. Tested only with
+  mocked Google clients. See `docs/guides/google-sheets-and-docs.md`.
+- `--per-account-reports` writes one workbook or document for each account.
+- `--risk-threshold LEVEL` (with `--enable-security-analysis`) exits with code
+  4 when a security group rule is at or above that level.
+- `--enable-cost-analysis` adds a Cost Analysis sheet.
+- The report and the run summary name each account that failed, with the
+  reason.
+- Global services (IAM, S3 bucket list, CloudFront, Route 53, ACM certificates
+  of CloudFront) are read once per account from `us-east-1` for any region
+  choice. Their region column says `global`; S3 buckets keep their region.
+
+### Fixed
+
+- ARNs are the real AWS ARNs for Lambda, RDS, DynamoDB, SQS, SNS, the VPC
+  family (`arn:aws:ec2`), EC2 snapshots, NAT gateways, Elastic IPs, key pairs,
+  load balancers, EKS, Glue, API Gateway, Route 53 and KMS aliases. Tags from
+  the Resource Groups Tagging API now reach these resources, and
+  `--fallback-display always` no longer lists a resource twice.
+- Resources were missed or mis-read for Glue crawlers, RDS clusters, snapshots,
+  subnet groups and parameter groups, application load balancers, target
+  groups, Elastic IPs and organizations.
+- Permission-denied and Cost Explorer-denied reasons are logged once per
+  service at WARNING level.
+- `--bom-config` warns about keys it ignores.
+- `--validate-config-only` makes no AWS call.
+- `--accounts-prompt`, `--credential-timeout` and `--disable-account-logging`
+  work and are tested.
+- No empty `bom_output/changelogs/` folder is created.
+- Google secrets are masked in logs.
+
+### Changed
+
+- `--compliance-standard` and `--disable-production-safety` still stop with
+  exit code 2. The status page no longer carries a feature table; the test list
+  is in `docs/security/tests.md`.
+
 ### Changed (documentation site)
 
 - New look for the docs: numbered step badges, callout cards, "Where to next"

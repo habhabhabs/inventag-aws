@@ -7,6 +7,7 @@ compliance checking, and advanced reporting capabilities.
 """
 
 import argparse
+import dataclasses
 import getpass
 import sys
 import json
@@ -49,7 +50,7 @@ from ..templating.runner import add_template_arguments, prepare_template_run
 EXIT_INVALID_TEMPLATE = 1
 
 
-def _validate_specific_configs(args, logger):
+def _validate_specific_configs(args, logger, check_credentials=True):
     """Validate only the configuration files specified in CLI arguments."""
     validator = ConfigValidator()
     all_valid = True
@@ -94,9 +95,9 @@ def _validate_specific_configs(args, logger):
         logger.info("🎉 All specified configuration files are valid!")
 
         # Also validate AWS credentials if not skipped
-        if not args.skip_credential_validation:
+        if check_credentials and not args.skip_credential_validation:
             logger.info("🔐 Also checking AWS credentials...")
-            if validate_aws_credentials_early():
+            if validate_aws_credentials_early(args.credential_timeout):
                 logger.info("🎉 AWS credentials are also valid!")
             else:
                 logger.error(
@@ -206,7 +207,60 @@ Examples:
     format_group.add_argument(
         "--create-google-docs",
         action="store_true",
-        help="Not implemented yet: exits with an error if given",
+        help=(
+            "Create the Word report as a Google Doc (needs the Google extra: "
+            'pip install "inventag-aws[google]")'
+        ),
+    )
+    format_group.add_argument(
+        "--create-google-sheets",
+        action="store_true",
+        help="Create the Excel report as a Google Sheets spreadsheet",
+    )
+
+    google_group = parser.add_argument_group("Google Sheets and Docs Options")
+    google_group.add_argument(
+        "--google-credentials",
+        type=str,
+        metavar="SERVICE_ACCOUNT.json",
+        help=(
+            "Service-account key file. Without it, Application Default "
+            "Credentials are used"
+        ),
+    )
+    google_group.add_argument(
+        "--google-oauth-client",
+        type=str,
+        metavar="CLIENT_SECRET.json",
+        help="Sign in as yourself in the browser, with this OAuth client file",
+    )
+    google_group.add_argument(
+        "--google-folder-id",
+        type=str,
+        help="Put the files in this Google Drive folder (it must be shared with the account)",
+    )
+    google_group.add_argument(
+        "--google-share-with",
+        action="append",
+        default=[],
+        metavar="EMAIL",
+        help="Share the files with this person (repeat for more people)",
+    )
+    google_group.add_argument(
+        "--google-share-role",
+        choices=["reader", "commenter", "writer"],
+        default="reader",
+        help="Access for --google-share-with (default: reader)",
+    )
+    google_group.add_argument(
+        "--google-share-anyone",
+        action="store_true",
+        help="Make the files readable by anyone with the link. Off by default",
+    )
+    google_group.add_argument(
+        "--google-title",
+        type=str,
+        help="Title of the Google files (default: InvenTag AWS inventory <date>)",
     )
 
     # Analysis options
@@ -418,7 +472,10 @@ Examples:
     output_group.add_argument(
         "--per-account-reports",
         action="store_true",
-        help="Not implemented yet: exits with an error if given",
+        help=(
+            "Write one report for each account (<account-id>_bom_<time>.xlsx) "
+            "instead of one consolidated report"
+        ),
     )
 
     # Logging and debug options
@@ -502,7 +559,10 @@ Examples:
         "--risk-threshold",
         choices=["LOW", "MEDIUM", "HIGH", "CRITICAL"],
         default=None,
-        help="Not implemented yet: exits with an error if given",
+        help=(
+            "Exit with code 4 if security analysis finds a security group rule "
+            "at or above this risk level (needs --enable-security-analysis)"
+        ),
     )
     safety_group.add_argument(
         "--audit-output",
@@ -789,9 +849,18 @@ def create_multi_account_config(args) -> MultiAccountConfig:
     if args.bom_config:
         bom_file_config = load_configuration_file(args.bom_config, "bom_config")
         # Update bom_config with file settings
+        ignored = []
         for key, value in bom_file_config.items():
             if hasattr(bom_config, key):
                 setattr(bom_config, key, value)
+            else:
+                ignored.append(str(key))
+        if ignored:
+            logger.warning(
+                f"--bom-config {args.bom_config}: ignored unknown key(s) "
+                f"{', '.join(sorted(ignored))}. Valid keys: "
+                f"{', '.join(sorted(f.name for f in dataclasses.fields(bom_config)))}"
+            )
 
     # Create multi-account config
     config = MultiAccountConfig(
@@ -816,9 +885,81 @@ def create_multi_account_config(args) -> MultiAccountConfig:
         ),
         word_template=getattr(args, "loaded_templates", {}).get("word"),
         excel_template=getattr(args, "loaded_templates", {}).get("excel"),
+        google_options=google_options_from_args(args),
     )
 
     return config
+
+
+def google_options_from_args(args):
+    """GoogleOptions from the command line, or None if no Google output is asked for."""
+    from ..reporting.google_output import GoogleOptions
+
+    if not (args.create_google_docs or args.create_google_sheets):
+        return None
+    return GoogleOptions(
+        credentials_file=args.google_credentials,
+        oauth_client_file=args.google_oauth_client,
+        folder_id=args.google_folder_id,
+        share_with=list(args.google_share_with or []),
+        share_role=args.google_share_role,
+        share_anyone=args.google_share_anyone,
+        title=args.google_title,
+        sheets=args.create_google_sheets,
+        docs=args.create_google_docs,
+    )
+
+
+def _google_usage_errors(args) -> List[str]:
+    """Google flag problems that can be found before any AWS or Google call."""
+    from ..reporting.google_output import validate_options
+
+    options = google_options_from_args(args)
+    if options is None:
+        # Share/credential flags without an output flag do nothing: say so.
+        stray = [
+            flag
+            for flag, used in (
+                ("--google-credentials", args.google_credentials),
+                ("--google-oauth-client", args.google_oauth_client),
+                ("--google-folder-id", args.google_folder_id),
+                ("--google-share-with", args.google_share_with),
+                ("--google-share-anyone", args.google_share_anyone),
+                ("--google-title", args.google_title),
+            )
+            if used
+        ]
+        if stray:
+            return [
+                f"{', '.join(stray)}: needs --create-google-sheets or "
+                "--create-google-docs"
+            ]
+        return []
+    return [f"Google: {problem}" for problem in validate_options(options)]
+
+
+RISK_ORDER = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+EXIT_RISK_THRESHOLD = 4
+
+
+def _risk_threshold_errors(args) -> List[str]:
+    if args.risk_threshold and not args.enable_security_analysis:
+        return [
+            "--risk-threshold: needs --enable-security-analysis, which produces "
+            "the risk levels it checks."
+        ]
+    return []
+
+
+def risk_findings_at_or_above(results: Dict[str, Any], threshold: str) -> List[Dict]:
+    """Security group rules at or above ``threshold`` in the run results."""
+    wanted = RISK_ORDER[threshold.lower()]
+    findings = results.get("bom_generation", {}).get("security_risk_findings", [])
+    return [
+        item
+        for item in findings
+        if RISK_ORDER.get(str(item.get("risk_level", "")).lower(), 0) >= wanted
+    ]
 
 
 def _cross_account_role_name(args) -> str:
@@ -892,7 +1033,7 @@ def load_report_templates(args) -> Tuple[Dict[str, Any], List[str]]:
     return templates, errors
 
 
-def validate_aws_credentials_early() -> bool:
+def validate_aws_credentials_early(timeout: Optional[int] = None) -> bool:
     """
     Validate AWS credentials early before any BOM processing.
     Provides clear error messages for common credential issues.
@@ -904,7 +1045,19 @@ def validate_aws_credentials_early() -> bool:
     try:
         # Test default session first
         session = boto3.Session()
-        sts = session.client("sts")
+        if timeout:
+            from botocore.config import Config
+
+            sts = session.client(
+                "sts",
+                config=Config(
+                    connect_timeout=timeout,
+                    read_timeout=timeout,
+                    retries={"max_attempts": 1},
+                ),
+            )
+        else:
+            sts = session.client("sts")
 
         # Try to get caller identity
         identity = sts.get_caller_identity()
@@ -1038,6 +1191,8 @@ def main():
     if role_error:
         usage_errors.append(role_error)
     usage_errors.extend(_template_usage_errors(args))
+    usage_errors.extend(_google_usage_errors(args))
+    usage_errors.extend(_risk_threshold_errors(args))
     if usage_errors:
         for message in usage_errors:
             print(f"inventag: error: {message}", file=sys.stderr)
@@ -1110,6 +1265,15 @@ def _run(args, logger):
         for warning in validation_result.warnings:
             logger.warning(f"  - {warning}")
 
+    if args.validate_config_only:
+        # Reads the given files only. No AWS call is made, so it works offline.
+        logger.info("Running configuration file validation only...")
+        _validate_specific_configs(args, logger, check_credentials=False)
+        logger.info(
+            "No AWS call was made. Use --validate-credentials to test the credentials."
+        )
+        sys.exit(0)
+
     try:
         # Early AWS credential validation (unless skipped or using interactive prompt)
         if (
@@ -1117,7 +1281,7 @@ def _run(args, logger):
             and not args.accounts_prompt
             and not args.accounts_file
         ):
-            if not validate_aws_credentials_early():
+            if not validate_aws_credentials_early(args.credential_timeout):
                 logger.error("❌ Cannot proceed with invalid AWS credentials")
                 logger.error(
                     "💡 Use --accounts-prompt for interactive credential setup"
@@ -1130,14 +1294,24 @@ def _run(args, logger):
         # Create multi-account configuration
         config = create_multi_account_config(args)
 
+        # Load the Google credentials now (a local step), so a wrong key file
+        # stops the run before a long AWS scan, not after it.
+        if config.google_options is not None and not (
+            args.validate_credentials or args.validate_config
+        ):
+            from ..reporting import google_output
+
+            try:
+                config.google_options.credentials = google_output.load_credentials(
+                    config.google_options
+                )
+            except google_output.GoogleOutputError as e:
+                print(f"inventag: error: Google: {e}", file=sys.stderr)
+                sys.exit(safety.EXIT_NOT_IMPLEMENTED)
+
         logger.info(f"Configured {len(config.accounts)} account(s) for processing")
 
         # Configuration validation modes
-        if args.validate_config_only:
-            logger.info("Running configuration file validation only...")
-            _validate_specific_configs(args, logger)
-            sys.exit(0)
-
         if args.validate_config:
             logger.info("Configuration validation completed successfully")
             sys.exit(0)
@@ -1153,6 +1327,8 @@ def _run(args, logger):
             output_formats.append("word")
         if args.create_excel:
             output_formats.append("excel")
+        if args.create_google_docs or args.create_google_sheets:
+            output_formats.append("google")
 
         if not output_formats:
             logger.warning("No output formats specified. Defaulting to Excel format.")
@@ -1202,6 +1378,25 @@ def _run(args, logger):
             for file_path in generated_files:
                 logger.info(f"  - {file_path}")
 
+            for item in bom_results.get("google", []):
+                prefix = f"[{item['account_id']}] " if item.get("account_id") else ""
+                if item.get("spreadsheet_url"):
+                    print(f"Google Sheet: {prefix}{item['spreadsheet_url']}")
+                if item.get("document_url"):
+                    print(f"Google Doc: {prefix}{item['document_url']}")
+
+            failed_accounts = results.get("failed_accounts", [])
+            if failed_accounts:
+                logger.warning(
+                    f"{len(failed_accounts)} account(s) were not scanned, or only "
+                    "partly. The report does not include them:"
+                )
+                for item in failed_accounts:
+                    logger.warning(
+                        f"  - {item['account_id']} ({item['account_name']}): "
+                        f"{'; '.join(item['errors'])[:300]}"
+                    )
+
             s3_uploads = bom_results.get("s3_uploads", [])
             if s3_uploads:
                 logger.info(f"S3 uploads: {len(s3_uploads)}")
@@ -1225,6 +1420,23 @@ def _run(args, logger):
                 exit_code = template_run.finish(results, logger)
                 if exit_code:
                     sys.exit(exit_code)
+
+            if args.risk_threshold:
+                findings = risk_findings_at_or_above(results, args.risk_threshold)
+                if findings:
+                    logger.error(
+                        f"{len(findings)} security group rule(s) at or above "
+                        f"risk level {args.risk_threshold}:"
+                    )
+                    for item in findings[:20]:
+                        logger.error(
+                            f"  - {item.get('group_id', '')}: {item.get('rule', '')} "
+                            f"({item.get('risk_level', '')})"
+                        )
+                    sys.exit(EXIT_RISK_THRESHOLD)
+                logger.info(
+                    f"No security group rule at or above risk level {args.risk_threshold}"
+                )
 
         else:
             logger.error("✗ BOM generation failed")

@@ -238,6 +238,7 @@ CONTENT_TYPES: Dict[str, Tuple[str, ...]] = {
         "resources",
         "network_analysis",
         "security_analysis",
+        "cost_analysis",
     ),
 }
 
@@ -252,6 +253,8 @@ CONTENT_TYPE_DESCRIPTIONS: Dict[str, str] = {
     "network analysis data exists.",
     "security_analysis": "The security analysis sheet. InvenTag writes it only if "
     "security analysis data exists.",
+    "cost_analysis": "The cost analysis sheet. InvenTag writes it only if "
+    "cost analysis data exists (--enable-cost-analysis).",
 }
 
 TOP_LEVEL_KEYS: Tuple[Key, ...] = (
@@ -600,6 +603,7 @@ DEFAULT_EXCEL_TEMPLATE: Dict[str, Any] = {
         },
         {"id": "network_analysis", "content_type": "network_analysis"},
         {"id": "security_analysis", "content_type": "security_analysis"},
+        {"id": "cost_analysis", "content_type": "cost_analysis"},
     ],
 }
 

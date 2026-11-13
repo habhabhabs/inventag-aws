@@ -941,9 +941,15 @@ class AWSResourceInventory:
 
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "")
-            if error_code == "UnauthorizedOperation":
+            if error_code in (
+                "UnauthorizedOperation",
+                "AccessDenied",
+                "AccessDeniedException",
+            ):
                 self.logger.warning(
-                    "No permission for Cost Explorer API. Skipping billing validation."
+                    "No permission for the Cost Explorer API "
+                    f"({error_code}). Skipping billing validation; add "
+                    "ce:GetCostAndUsage or use --no-billing-validation."
                 )
             elif error_code == "OptInRequired":
                 self.logger.warning(

@@ -26,6 +26,14 @@ classifiers = [
     "Topic :: System :: Systems Administration",
 ]
 
+[project.optional-dependencies]
+# Google Sheets and Google Docs output: pip install "inventag-aws[google]"
+google = [
+    "google-api-python-client>=2.100.0",
+    "google-auth>=2.23.0",
+    "google-auth-oauthlib>=1.1.0",
+]
+
 [project.urls]
 Homepage = "https://habhabhabs.github.io/inventag-aws/"
 Documentation = "https://habhabhabs.github.io/inventag-aws/docs/"

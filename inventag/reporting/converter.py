@@ -90,7 +90,11 @@ class BOMConverter:
         # Advanced analysis components
         self.network_analysis = {}
         self.security_analysis = {}
+        self.cost_analysis = {}
         self.service_attributes = {}
+        # Lines shown under the summary (for example, accounts that were not
+        # scanned). Set by the caller; empty for a normal run.
+        self.run_notes: List[str] = []
 
     def load_data(self, filename: str) -> List[Dict[str, Any]]:
         """Load data from JSON or YAML file."""
@@ -433,6 +437,16 @@ class BOMConverter:
             print("No data to export")
             return
 
+        wb = self.build_excel_workbook(template)
+
+        # Save workbook (no data value may become a live formula; owner-only file)
+        neutralize_workbook_formulas(wb)
+        precreate_private(filename)
+        wb.save(filename)
+        print(f"Data exported to {filename}")
+
+    def build_excel_workbook(self, template: Optional[ReportTemplate] = None):
+        """Build the report workbook in memory (one pipeline for Excel and Google Sheets)."""
         template = self._resolve_template(template, "excel")
         context = build_context(template, self.data)
 
@@ -478,6 +492,9 @@ class BOMConverter:
                     self.enable_advanced_analysis or self.analyze_security
                 ) and self.security_analysis:
                     self._create_security_analysis_sheet(wb)
+            elif content_type == "cost_analysis":
+                if self.cost_analysis:
+                    self._create_cost_analysis_sheet(wb)
 
         if not wb.sheetnames:
             raise ValueError(
@@ -487,12 +504,7 @@ class BOMConverter:
             )
 
         self._apply_workbook_branding(wb, template, context)
-
-        # Save workbook (no data value may become a live formula; owner-only file)
-        neutralize_workbook_formulas(wb)
-        precreate_private(filename)
-        wb.save(filename)
-        print(f"Data exported to {filename}")
+        return wb
 
     @staticmethod
     def _resolve_template(
@@ -654,6 +666,14 @@ class BOMConverter:
         # Add total row
         for col, value in enumerate(values_for("TOTAL", total_resources, "100.0%"), 1):
             ws.cell(row=row, column=col, value=value).font = Font(bold=True)
+
+        # Run notes (for example, accounts that were not scanned)
+        if self.run_notes:
+            row += 2
+            ws.cell(row=row, column=1, value="Run notes").font = Font(bold=True)
+            for note in self.run_notes:
+                row += 1
+                ws.cell(row=row, column=1, value=note)
 
         self._auto_fit_columns(
             ws, {i: c["width"] for i, c in enumerate(columns, 1) if c["width"]}
@@ -1009,6 +1029,154 @@ class BOMConverter:
             adjusted_width = min(max_length + 2, 50)
             ws.column_dimensions[column_letter].width = adjusted_width
 
+    def _create_cost_analysis_sheet(self, wb: Workbook):
+        """Create the cost sheet: summary, cost by service, costly resources,
+        forgotten resources and recommendations.
+
+        The figures are estimates from the AWS Pricing API and Cost Explorer;
+        the sheet says so in its first row.
+        """
+        ws = wb.create_sheet("Cost Analysis")
+        data = self.cost_analysis or {}
+        summary = data.get("summary", {})
+        header_fill = PatternFill(
+            start_color="366092", end_color="366092", fill_type="solid"
+        )
+        row = 1
+
+        def title(text):
+            nonlocal row
+            ws.cell(row=row, column=1, value=text).font = Font(bold=True, size=12)
+            row += 1
+
+        def table(headings, rows):
+            nonlocal row
+            for col, heading in enumerate(headings, 1):
+                cell = ws.cell(row=row, column=col, value=heading)
+                cell.font = Font(bold=True)
+                cell.fill = header_fill
+            row += 1
+            for values in rows:
+                for col, value in enumerate(values, 1):
+                    ws.cell(row=row, column=col, value=value)
+                row += 1
+            row += 1
+
+        ws.cell(
+            row=row,
+            column=1,
+            value="Estimates only: monthly cost from the AWS Pricing API, "
+            "not your invoice.",
+        )
+        row += 2
+
+        title("Summary")
+        table(
+            ["Measure", "Value"],
+            [
+                [
+                    "Estimated monthly cost (USD)",
+                    round(summary.get("total_estimated_monthly_cost", 0.0), 2),
+                ],
+                [
+                    "Potential monthly savings (USD)",
+                    round(summary.get("total_potential_savings", 0.0), 2),
+                ],
+                ["Expensive resources", summary.get("expensive_resources_count", 0)],
+                ["Forgotten resources", summary.get("forgotten_resources_count", 0)],
+                [
+                    "Optimization opportunities",
+                    summary.get("optimization_opportunities", 0),
+                ],
+            ],
+        )
+
+        by_service = summary.get("cost_by_service", {})
+        if by_service:
+            title("Estimated monthly cost by service (USD)")
+            table(
+                ["Service", "Estimated monthly cost"],
+                [
+                    [service, round(cost, 2)]
+                    for service, cost in sorted(
+                        by_service.items(), key=lambda kv: (-kv[1], kv[0])
+                    )
+                ],
+            )
+
+        estimates = data.get("cost_estimates", [])
+        if estimates:
+            title("Most expensive resources (top 50)")
+            top = sorted(
+                estimates,
+                key=lambda e: (-e["estimated_monthly_cost"], e["resource_id"]),
+            )[:50]
+            table(
+                [
+                    "Service",
+                    "Type",
+                    "Resource ID",
+                    "Region",
+                    "Monthly (USD)",
+                    "Confidence",
+                ],
+                [
+                    [
+                        e["service"],
+                        e["resource_type"],
+                        e["resource_id"],
+                        e["region"],
+                        round(e["estimated_monthly_cost"], 2),
+                        e["confidence_level"],
+                    ]
+                    for e in top
+                ],
+            )
+
+        forgotten = data.get("forgotten_resources", [])
+        if forgotten:
+            title("Possibly forgotten resources")
+            table(
+                ["Service", "Resource ID", "Days idle", "Monthly (USD)", "Risk"],
+                [
+                    [
+                        f["service"],
+                        f["resource_id"],
+                        f["days_since_last_activity"],
+                        round(f["estimated_monthly_cost"], 2),
+                        f["risk_level"],
+                    ]
+                    for f in forgotten
+                ],
+            )
+
+        recommendations = data.get("optimization_recommendations", [])
+        if recommendations:
+            title("Recommendations")
+            table(
+                [
+                    "Service",
+                    "Resource ID",
+                    "Type",
+                    "Potential savings (USD)",
+                    "Effort",
+                    "Description",
+                ],
+                [
+                    [
+                        r["service"],
+                        r["resource_id"],
+                        r["recommendation_type"],
+                        round(r["potential_monthly_savings"], 2),
+                        r["implementation_effort"],
+                        r["description"],
+                    ]
+                    for r in recommendations
+                ],
+            )
+
+        self._auto_fit_columns(ws)
+
     def _create_security_analysis_sheet(self, wb: Workbook):
         """Create a sheet with security analysis results."""
         ws = wb.create_sheet("Security Analysis")
@@ -1305,10 +1473,8 @@ class BOMConverter:
 
         return ordered_headers
 
-    def generate_excel_bom(
-        self, bom_data, filename: str, template: Optional[ReportTemplate] = None
-    ) -> str:
-        """Generate Excel BOM document with provided data."""
+    def prepare_data(self, bom_data) -> List[Dict[str, Any]]:
+        """Load the resources and analysis results of ``bom_data`` for the exporters."""
         # Handle both BOMData objects and lists
         if hasattr(bom_data, "resources"):
             # It's a BOMData object
@@ -1322,6 +1488,7 @@ class BOMConverter:
 
         # Load the data first
         self.data = resources
+        self.cost_analysis = getattr(bom_data, "cost_analysis", None) or {}
         self.headers = set()
         for item in resources:
             if isinstance(item, dict):
@@ -1334,7 +1501,13 @@ class BOMConverter:
             self._perform_network_analysis()
         if self.analyze_security and not self.security_analysis:
             self._perform_security_analysis()
+        return resources
 
+    def generate_excel_bom(
+        self, bom_data, filename: str, template: Optional[ReportTemplate] = None
+    ) -> str:
+        """Generate Excel BOM document with provided data."""
+        self.prepare_data(bom_data)
         self.export_to_excel(filename, template=template)
         return filename
 
@@ -1399,6 +1572,15 @@ class BOMConverter:
             print("No data to export")
             return
 
+        doc = self.build_word_document(template)
+
+        # Save the document (owner-only file)
+        precreate_private(filename)
+        doc.save(filename)
+        print(f"Word document saved: {filename}")
+
+    def build_word_document(self, template: Optional[ReportTemplate] = None):
+        """Build the Word document in memory (one pipeline for Word and Google Docs)."""
         template = self._resolve_template(template, "word")
         context = build_context(template, self.data)
 
@@ -1423,15 +1605,15 @@ class BOMConverter:
                     doc.add_paragraph(substitute(paragraph, context))
             elif content_type == "service_summary":
                 self._add_word_service_summary(doc, section, services, context)
+                if self.run_notes:
+                    doc.add_paragraph("Run notes", style="Heading 3")
+                    for note in self.run_notes:
+                        doc.add_paragraph(note)
             elif content_type == "resources":
                 self._add_word_resources(doc, section, services, context)
 
         self._apply_word_header_footer(doc, template, context)
-
-        # Save the document (owner-only file)
-        precreate_private(filename)
-        doc.save(filename)
-        print(f"Word document saved: {filename}")
+        return doc
 
     @staticmethod
     def _add_word_title(doc, template: ReportTemplate, context: Dict[str, str]):

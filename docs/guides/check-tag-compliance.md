@@ -62,10 +62,10 @@ The Tag Compliance sheet in the same sample:
 
 | Account | Region | Service | Type | Resource | ARN | Status | Missing tags | Problems |
 |---|---|---|---|---|---|---|---|---|
-| 123456789012 | us-east-1 | DYNAMODB | Table | acme-orders | acme-orders | Non-compliant | CostCenter, Owner, Project, Environment |  |
+| 123456789012 | us-east-1 | DYNAMODB | Table | acme-orders | arn:aws:dynamodb:us-east-1:123456789012:table... | Non-compliant | CostCenter, Project |  |
 | 123456789012 | us-east-1 | EC2 | Instance | acme-web-1 | arn:aws:ec2:us-east-1:123456789012:instance/i... | Non-compliant | CostCenter, Project |  |
 | 123456789012 | us-east-1 | EC2 | Volume | acme-build-cache | arn:aws:ec2:us-east-1:123456789012:volume/vol... | Non-compliant | CostCenter, Owner, Project, Environment |  |
-| 123456789012 | us-east-1 | IAM | Role | acme-orders-api-role | arn:aws:iam::123456789012:role/acme-orders-ap... | Non-compliant | CostCenter, Owner, Project, Environment |  |
+| 123456789012 | global | IAM | Role | acme-orders-api-role | arn:aws:iam::123456789012:role/acme-orders-ap... | Non-compliant | CostCenter, Owner, Project, Environment |  |
 
 <!-- END EXAMPLE OUTPUT: finops-excel-compliance -->
 
@@ -88,9 +88,9 @@ A table from the document:
 | Tag key | Rule | Missing | Invalid value |
 |---|---|---|---|
 | CostCenter | Matches: CC-[0-9]&#123;4&#125; | 19 | 1 |
-| Owner | Any value | 18 | 0 |
+| Owner | Any value | 16 | 0 |
 | Project | Any value | 20 | 0 |
-| Environment | One of: prod, staging, dev, test, sandbox (an... | 18 | 1 |
+| Environment | One of: prod, staging, dev, test, sandbox (an... | 16 | 1 |
 
 <!-- END EXAMPLE OUTPUT: finops-word -->
 
@@ -107,9 +107,9 @@ The `summary` part of the JSON file:
   "percent_compliant": 4.5,
   "missing_by_key": {
     "CostCenter": 19,
-    "Owner": 18,
+    "Owner": 16,
     "Project": 20,
-    "Environment": 18
+    "Environment": 16
   },
   "invalid_by_key": {
     "CostCenter": 1,
@@ -126,11 +126,11 @@ The `summary` part of the JSON file:
 excludes them, for example KMS aliases, which cannot carry tags.
 
 **Know this before you trust the numbers:** InvenTag matches tags from the
-Resource Groups Tagging API to resources by ARN. For Lambda, RDS, DynamoDB,
-SQS and SNS, the ARN InvenTag builds differs from the real one in our offline
-tests, so their tags are not matched and they are reported as missing tags
-even when they have them (in the sample above, the DynamoDB table). See
-[Tags and ARNs](../getting-started/status.md#tags-and-arns).
+Resource Groups Tagging API to resources by ARN, and falls back to the
+service, region and resource ID when the ARN differs. Offline tests with moto
+check this for every service with its own discovery code. Real AWS may answer
+differently, so compare a few rows of the ARN column with the console before
+you rely on a policy result.
 
 ## Write your own policy
 

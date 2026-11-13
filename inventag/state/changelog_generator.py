@@ -255,9 +255,6 @@ class ChangelogGenerator:
         self.include_remediation_steps = include_remediation_steps
         self.group_by_service = group_by_service
 
-        # Create output directory
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-
         # Change description templates
         self.change_templates = {
             ChangeType.ADDED: "New {resource_type} '{resource_id}' was created in {service}",
@@ -1016,6 +1013,8 @@ class ChangelogGenerator:
             output_file = self.output_dir / f"changelog_{timestamp}.{format_type.value}"
         else:
             output_file = Path(output_file)
+        # Created only when a file is written (an unused empty folder is noise)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
 
         try:
             if format_type == ChangelogFormat.MARKDOWN:

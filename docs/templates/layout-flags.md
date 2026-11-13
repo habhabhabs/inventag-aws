@@ -258,6 +258,7 @@ section shows.
 | `resources` | Word and Excel | The resource tables. Word: one table for each service. Excel: one sheet for each service, or one sheet for all resources. |
 | `network_analysis` | Excel | The network analysis sheet. InvenTag writes it only if network analysis data exists. |
 | `security_analysis` | Excel | The security analysis sheet. InvenTag writes it only if security analysis data exists. |
+| `cost_analysis` | Excel | The cost analysis sheet. InvenTag writes it only if cost analysis data exists (--enable-cost-analysis). |
 
 Section keys:
 

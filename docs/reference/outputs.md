@@ -91,9 +91,9 @@ screen readers. The logo, if any, carries alt text.
     "percent_compliant": 4.5,
     "missing_by_key": {
       "CostCenter": 19,
-      "Owner": 18,
+      "Owner": 16,
       "Project": 20,
-      "Environment": 18
+      "Environment": 16
     },
     "invalid_by_key": {
       "CostCenter": 1,
@@ -184,8 +184,8 @@ bom_output/state/state_20261112_090100.json
     "Search",
     "BatchGet"
   ],
-  "total_calls": 72,
-  "allowed_calls": 72,
+  "total_calls": 71,
+  "allowed_calls": 71,
   "blocked_calls": 0,
   "operations": [
     {

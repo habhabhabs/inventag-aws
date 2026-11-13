@@ -38,8 +38,8 @@ inventag --create-excel --create-word --account-regions us-east-1
   either, you get Excel only.
 - `--account-regions` limits the scan to the regions you list, separated by
   commas. Without it, InvenTag scans every region enabled in the account,
-  which takes longer. Keep `us-east-1` in the list: S3, IAM, CloudFront and
-  Route 53 are scanned only from there.
+  which takes longer. IAM, the S3 bucket list, CloudFront and Route 53 are
+  always read once from `us-east-1`, whichever regions you list.
 
 At the end you see where the files went:
 

@@ -24,28 +24,10 @@ EXIT_NOT_IMPLEMENTED = 2
 # flag -> (predicate on args, message)
 _NOT_IMPLEMENTED = (
     (
-        "--create-google-docs",
-        lambda a: getattr(a, "create_google_docs", False),
-        "Google Docs/Sheets output is not implemented yet (InvenTag has no "
-        "Google API integration). Use --create-excel or --create-word.",
-    ),
-    (
-        "--per-account-reports",
-        lambda a: getattr(a, "per_account_reports", False),
-        "Per-account reports are not implemented yet; InvenTag writes one "
-        "consolidated report. Run once per account to get separate reports.",
-    ),
-    (
         "--compliance-standard",
         lambda a: getattr(a, "compliance_standard", None) is not None,
         "Compliance-standard enforcement is not implemented yet; the option "
         "has never changed InvenTag's behaviour.",
-    ),
-    (
-        "--risk-threshold",
-        lambda a: getattr(a, "risk_threshold", None) is not None,
-        "Risk-threshold blocking is not implemented yet; the read-only guard "
-        "blocks every non-read operation regardless of risk.",
     ),
     (
         "--disable-production-safety",

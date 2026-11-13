@@ -30,10 +30,7 @@ Before you rely on it:
 - By default, discovery made two Cost Explorer requests for each account in our
   offline test. AWS bills each request. Add `--no-billing-validation` to make no Cost
   Explorer request.
-- `--create-google-docs`, `--per-account-reports`, `--compliance-standard`,
-  `--risk-threshold` and `--disable-production-safety` are not implemented.
+- `--compliance-standard` and `--disable-production-safety` are not implemented.
   The CLI stops with exit code `2` if you use one of them. See
   [Current status](docs/getting-started/status.md).
-- Keep `us-east-1` in `--account-regions`: S3, IAM, CloudFront and Route 53 are
-  scanned only from there.
 - The `inventag` command works the same on Linux, macOS and Windows.

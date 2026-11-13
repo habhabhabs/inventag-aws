@@ -15,8 +15,11 @@ Features:
 - Account consolidation logic for unified BOM document generation
 """
 
+import dataclasses
 import logging
+import re
 import boto3
+from botocore.config import Config as BotoConfig
 import json
 import os
 import yaml
@@ -36,6 +39,7 @@ from botocore.exceptions import (
 
 # Import InvenTag components
 from ..discovery import AWSResourceInventory
+from .log_context import account_log_context
 from ..compliance import ComprehensiveTagComplianceChecker
 from ..reporting import BOMConverter, BOMDataProcessor, BOMProcessingConfig
 from ..state import StateManager, DeltaDetector, ChangelogGenerator
@@ -119,6 +123,8 @@ class MultiAccountConfig:
     # None means the built-in default structure.
     word_template: Optional[Any] = None
     excel_template: Optional[Any] = None
+    # Google Sheets / Docs output (inventag.reporting.google_output.GoogleOptions).
+    google_options: Optional[Any] = None
 
 
 class CloudBOMGenerator:
@@ -260,10 +266,12 @@ class CloudBOMGenerator:
                         "accessible_regions": ctx.accessible_regions,
                         "discovered_services": ctx.discovered_services,
                         "error_count": len(ctx.processing_errors),
+                        "errors": list(ctx.processing_errors),
                         "warning_count": len(ctx.processing_warnings),
                     }
                     for acc_id, ctx in self.account_contexts.items()
                 },
+                "failed_accounts": self._failed_accounts(),
                 "bom_generation": bom_results,
                 "compliance_analysis": compliance_results,
                 "state_management": state_results,
@@ -365,6 +373,35 @@ class CloudBOMGenerator:
         except Exception as e:
             self.logger.error(f"S3 upload failed: {e}")
             return {"uploaded": [], "errors": [{"file": "", "error": str(e)}]}
+
+    def _failed_accounts(self) -> List[Dict[str, Any]]:
+        """Accounts that were not scanned (or only partly), with the reasons."""
+        failed = []
+        for acc_id, ctx in self.account_contexts.items():
+            if ctx.session is None or ctx.processing_errors:
+                failed.append(
+                    {
+                        "account_id": acc_id,
+                        "account_name": ctx.credentials.account_name,
+                        "errors": list(ctx.processing_errors)
+                        or ["The AWS session could not be created."],
+                    }
+                )
+        return failed
+
+    def _run_notes(self) -> List[str]:
+        """Lines for the report: which accounts are missing and why."""
+        failed = self._failed_accounts()
+        if not failed:
+            return []
+        notes = [
+            f"{len(failed)} of {len(self.account_contexts)} account(s) were not "
+            "scanned, so this report does not include them:"
+        ]
+        for item in failed:
+            reason = "; ".join(item["errors"])[:300]
+            notes.append(f"{item['account_id']} ({item['account_name']}): {reason}")
+        return notes
 
     def _establish_account_contexts(self) -> Dict[str, AccountContext]:
         """Validate credentials and establish account contexts."""
@@ -639,7 +676,17 @@ class CloudBOMGenerator:
     def _get_caller_identity(self, session: boto3.Session) -> Dict[str, Any]:
         """Get caller identity for account context detection."""
         try:
-            sts = session.client("sts")
+            # --credential-timeout bounds this call, so a wrong endpoint or a
+            # blocked network fails quickly instead of hanging.
+            timeout = self.config.credential_validation_timeout
+            sts = session.client(
+                "sts",
+                config=BotoConfig(
+                    connect_timeout=timeout,
+                    read_timeout=timeout,
+                    retries={"max_attempts": 1},
+                ),
+            )
             response = sts.get_caller_identity()
 
             return {
@@ -789,6 +836,12 @@ class CloudBOMGenerator:
         self, account_id: str, context: AccountContext
     ) -> List[Dict[str, Any]]:
         """Discover resources for a single account."""
+        with account_log_context(account_id, context.credentials.account_name):
+            return self._discover_account_resources_inner(account_id, context)
+
+    def _discover_account_resources_inner(
+        self, account_id: str, context: AccountContext
+    ) -> List[Dict[str, Any]]:
         start_time = datetime.now(timezone.utc)
 
         try:
@@ -1014,64 +1067,75 @@ class CloudBOMGenerator:
             # Generate documents in requested formats
             generated_files = []
             format_errors = []
+            google_urls: List[Dict[str, str]] = []
+            notes = self._run_notes()
+            bom_converter.run_notes = notes
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-            for format_type in output_formats:
-                try:
-                    if format_type.lower() == "excel":
-                        output_file = (
-                            self.output_dir
-                            / f"multi_account_bom_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-                        )
-                        bom_converter.generate_excel_bom(
-                            bom_data,
-                            str(output_file),
-                            template=self.config.excel_template,
-                        )
-                        generated_files.append(str(output_file))
-
-                    elif format_type.lower() == "word":
-                        output_file = (
-                            self.output_dir
-                            / f"multi_account_bom_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
-                        )
-                        bom_converter.generate_word_bom(
-                            bom_data,
-                            str(output_file),
-                            template=self.config.word_template,
-                        )
-                        generated_files.append(str(output_file))
-
-                    elif format_type.lower() == "csv":
-                        output_file = (
-                            self.output_dir
-                            / f"multi_account_bom_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-                        )
-                        bom_converter.generate_csv_bom(bom_data, str(output_file))
-                        generated_files.append(str(output_file))
-
-                    elif format_type.lower() == "json":
-                        output_file = (
-                            self.output_dir
-                            / f"multi_account_bom_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-                        )
-                        with open_private(output_file, "w") as f:
-                            json.dump(
-                                {
-                                    "resources": bom_data.resources,
-                                    "metadata": bom_data.generation_metadata,
-                                    "compliance_summary": bom_data.compliance_summary,
-                                    "network_analysis": bom_data.network_analysis,
-                                    "security_analysis": bom_data.security_analysis,
-                                },
-                                f,
-                                indent=2,
-                                default=str,
+            for prefix, label, scope_data in self._report_scopes(bom_data):
+                if label is None:
+                    converter = bom_converter
+                else:
+                    converter = BOMConverter(session=session)
+                    converter.analyze_network = bom_converter.analyze_network
+                    converter.analyze_security = bom_converter.analyze_security
+                    converter.run_notes = notes
+                for format_type in output_formats:
+                    fmt = format_type.lower()
+                    try:
+                        if fmt == "excel":
+                            output_file = self.output_dir / f"{prefix}_{stamp}.xlsx"
+                            converter.generate_excel_bom(
+                                scope_data,
+                                str(output_file),
+                                template=self.config.excel_template,
                             )
-                        generated_files.append(str(output_file))
+                            generated_files.append(str(output_file))
 
-                except Exception as e:
-                    self.logger.error(f"Failed to generate {format_type} format: {e}")
-                    format_errors.append(f"{format_type}: {e}")
+                        elif fmt == "word":
+                            output_file = self.output_dir / f"{prefix}_{stamp}.docx"
+                            converter.generate_word_bom(
+                                scope_data,
+                                str(output_file),
+                                template=self.config.word_template,
+                            )
+                            generated_files.append(str(output_file))
+
+                        elif fmt == "csv":
+                            output_file = self.output_dir / f"{prefix}_{stamp}.csv"
+                            converter.generate_csv_bom(scope_data, str(output_file))
+                            generated_files.append(str(output_file))
+
+                        elif fmt == "json":
+                            output_file = self.output_dir / f"{prefix}_{stamp}.json"
+                            with open_private(output_file, "w") as f:
+                                json.dump(
+                                    {
+                                        "resources": scope_data.resources,
+                                        "metadata": scope_data.generation_metadata,
+                                        "compliance_summary": scope_data.compliance_summary,
+                                        "network_analysis": scope_data.network_analysis,
+                                        "security_analysis": scope_data.security_analysis,
+                                    },
+                                    f,
+                                    indent=2,
+                                    default=str,
+                                )
+                            generated_files.append(str(output_file))
+
+                        elif fmt == "google":
+                            if scope_data.resources:
+                                google_urls.append(
+                                    self._publish_to_google(
+                                        converter, scope_data, label
+                                    )
+                                )
+
+                    except Exception as e:
+                        self.logger.error(
+                            f"Failed to generate {format_type} format: {e}"
+                        )
+                        format_errors.append(f"{format_type}: {e}")
 
             # Exporters write nothing when there is no data; only report files
             # that exist (the S3 upload step reads this list).
@@ -1089,13 +1153,25 @@ class CloudBOMGenerator:
                     "success": False,
                     "error": "Could not write: " + "; ".join(format_errors),
                     "generated_files": generated_files,
+                    "google": google_urls,
                     "total_resources": len(resources),
                     "generation_timestamp": datetime.now(timezone.utc).isoformat(),
                 }
 
+            security = bom_data.security_analysis or {}
             return {
                 "success": True,
                 "generated_files": generated_files,
+                "google": google_urls,
+                "security_risk_findings": [
+                    {
+                        "group_id": rule.get("group_id", ""),
+                        "rule": rule.get("rule", ""),
+                        "risk_level": rule.get("risk_level", ""),
+                    }
+                    for rule in security.get("overly_permissive_rules", [])
+                    if isinstance(rule, dict)
+                ],
                 "total_resources": len(resources),
                 "processing_statistics": bom_data.processing_statistics,
                 "generation_timestamp": datetime.now(timezone.utc).isoformat(),
@@ -1108,6 +1184,53 @@ class CloudBOMGenerator:
                 "error": str(e),
                 "generation_timestamp": datetime.now(timezone.utc).isoformat(),
             }
+
+    def _report_scopes(self, bom_data) -> List[tuple]:
+        """(file prefix, account label, data) for each report to write.
+
+        One consolidated report by default. With ``--per-account-reports``, one
+        report for each account that has resources.
+        """
+        if not self.config.generate_per_account_reports:
+            return [("multi_account_bom", None, bom_data)]
+        by_account: Dict[str, List[Dict[str, Any]]] = {}
+        for resource in bom_data.resources:
+            by_account.setdefault(
+                str(resource.get("source_account_id") or "unknown"), []
+            ).append(resource)
+        scopes = []
+        for account_id, rows in sorted(by_account.items()):
+            safe = re.sub(r"[^A-Za-z0-9_.-]", "_", account_id)
+            scopes.append(
+                (
+                    f"{safe}_bom",
+                    account_id,
+                    dataclasses.replace(bom_data, resources=rows),
+                )
+            )
+        return scopes
+
+    def _publish_to_google(self, converter, scope_data, label) -> Dict[str, str]:
+        """Create the Google Sheet and/or Doc for one report."""
+        from ..reporting import google_output
+
+        options = self.config.google_options
+        if options is None:
+            raise google_output.GoogleOutputError("No Google options were given.")
+        if label is not None:
+            options = dataclasses.replace(
+                options, title=f"{options.resolved_title()} - {label}"
+            )
+        urls = google_output.publish(
+            converter,
+            scope_data,
+            options,
+            sheets_template=self.config.excel_template,
+            docs_template=self.config.word_template,
+        )
+        if label is not None:
+            urls["account_id"] = label
+        return urls
 
     def _generate_state_artifacts(
         self, resources: List[Dict[str, Any]]

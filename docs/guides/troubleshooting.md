@@ -127,7 +127,7 @@ $ echo $?
 0
 
 $ # the same run with --debug, lines that mention AccessDeniedException
-Billing discovery failed: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
+Cost Explorer data is not available, so billing checks are skipped: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
 ```
 
 <!-- END EXAMPLE OUTPUT: error-access-denied-ce -->
@@ -228,8 +228,9 @@ templates must be in `.inventag/templates/` in the folder you run from.
 
 ```text title="Terminal"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
-inventag.cli.main - ERROR - Invalid accounts configuration:
-inventag.cli.main - ERROR -   - Account 1: 'account_id' must be a non-empty string
+inventag - ERROR - ❌ Accounts configuration is invalid:
+inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
+inventag - ERROR - ❌ Some configuration files have validation errors
 $ echo $?
 1
 ```
@@ -251,7 +252,8 @@ each account `profile_name`, `role_arn` or access keys.
 
 ## Flags that stop the run
 
-Exit code 2 with `not implemented yet` means the flag is accepted but not built. See
+Exit code 2 with `not implemented yet` means the flag is accepted but not built.
+That is now `--compliance-standard` and `--disable-production-safety`. See
 [Feature status and known limitations](../getting-started/status.md).
 
 ## Exit code 3
@@ -268,8 +270,8 @@ the JSON file to see which resources.
 | Tag mapping columns are missing | Tag mappings add columns only to the default workbook. With `--template`, use `tag_columns`. See [Configuration files](../reference/configuration-files.md#tag-mappings). |
 | A custom service description is ignored | S3, EC2, RDS, Lambda and VPC have built-in descriptions that win unless your entry names a `template`. See [Configuration files](../reference/configuration-files.md#service-descriptions). |
 | No network or security sheets | Add `--enable-network-analysis` or `--enable-security-analysis`, and make sure the scan found VPCs or security groups. The flags add nothing with `--template`. See [Network and security analysis](./network-and-security-analysis.md). |
-| IAM, S3, CloudFront or Route 53 resources are missing | `--account-regions` does not include `us-east-1`. Global services are scanned only from there. |
-| Lambda, DynamoDB, RDS, SQS or SNS resources show no tags, or appear twice | InvenTag builds an ARN that differs from the real one, so tags are not matched. See [Tags and ARNs](../getting-started/status.md#tags-and-arns). |
+| IAM, S3, CloudFront or Route 53 resources are missing | `--account-services` or `--account-tags` removed them, or the identity lacks the permission (look for one warning per service in the log). The region list does not matter: global services are always read from `us-east-1`. |
+| A resource shows no tags, or appears twice | Run with `--debug` and compare the ARN column with the ARN in the AWS console. Report a mismatch as an issue with the service and resource type. |
 | No report file, and the exit code is 0 | The scan found nothing, or `--account-services` or `--account-tags` removed everything. Check the log for `No resources to report`. |
 | An account is missing from the report | Its credentials or role failed. See [A role cannot be assumed](#a-role-cannot-be-assumed). |
 | The change report is missing | The first run writes none. It also needs state management and delta detection to be on. See [Track changes between runs](./track-changes.md). |

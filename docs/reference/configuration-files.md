@@ -69,8 +69,9 @@ unquoted account ID (sample data):
 
 ```text title="Terminal"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
-inventag.cli.main - ERROR - Invalid accounts configuration:
-inventag.cli.main - ERROR -   - Account 1: 'account_id' must be a non-empty string
+inventag - ERROR - ❌ Accounts configuration is invalid:
+inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
+inventag - ERROR - ❌ Some configuration files have validation errors
 $ echo $?
 1
 ```

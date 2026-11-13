@@ -67,6 +67,11 @@ Details:
 - **Change tracking**: each run saves a snapshot in `bom_output/state/`; from
   the second run on, InvenTag writes a change report (`changelog_<timestamp>.md`)
   of what was added, removed or changed.
+- **Google Sheets and Docs** (`--create-google-sheets`, `--create-google-docs`;
+  install `inventag-aws[google]`): the same Excel and Word reports as Google
+  files, private unless you share them.
+- **Global services** (IAM, S3 bucket list, CloudFront, Route 53) are read once
+  per account from `us-east-1`, whichever regions you choose.
 - **Upload to Amazon S3** (`--s3-bucket`) with server-side encryption.
 - **Read-only guard**: the CLI blocks each AWS API call that is not a read
   operation. `--audit-output audit.json` writes a list of the calls.
@@ -78,17 +83,15 @@ Details:
 ### Limits
 
 InvenTag has never been tested against a real AWS account; every test uses
-mocked AWS. Global services (S3, IAM, CloudFront, Route 53) are scanned only if
-`us-east-1` is among the regions. Tags on Lambda, RDS, DynamoDB, SQS and SNS
-resources are not matched to the resource in our tests. One failed account does
-not change the exit code. Read
+mocked AWS. Google Sheets and Docs output has been tested only against mocked Google
+clients. One failed account does not change the exit code, but the report
+and the run summary name it. Read
 [Current status and known limitations](https://habhabhabs.github.io/inventag-aws/docs/getting-started/status).
 
 ### Not implemented
 
 These flags stop the CLI with an error message and exit code `2`:
-`--create-google-docs`, `--per-account-reports`, `--compliance-standard`,
-`--risk-threshold` and `--disable-production-safety`. InvenTag does not certify
+`--compliance-standard` and `--disable-production-safety`. InvenTag does not certify
 compliance with SOC 2 or other standards. For the full list, see
 [Current status and known limitations](https://habhabhabs.github.io/inventag-aws/docs/getting-started/status).
 
@@ -129,6 +132,7 @@ Every flag: [Command-line reference](https://habhabhabs.github.io/inventag-aws/d
 | Command-line reference | [docs/reference/cli.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/reference/cli.md) |
 | Configuration files | [docs/reference/configuration-files.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/reference/configuration-files.md) |
 | Templates | [docs/templates/index.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/templates/index.md) |
+| Google Sheets and Docs output | [docs/guides/google-sheets-and-docs.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/guides/google-sheets-and-docs.md) |
 | Read-only access and permissions | [docs/guides/read-only-access.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/guides/read-only-access.md) |
 | Architecture | [docs/development/architecture.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/development/architecture.md) |
 | Contributing | [docs/development/CONTRIBUTING.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/development/CONTRIBUTING.md) |

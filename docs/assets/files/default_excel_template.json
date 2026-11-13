@@ -40,6 +40,10 @@
     {
       "id": "security_analysis",
       "content_type": "security_analysis"
+    },
+    {
+      "id": "cost_analysis",
+      "content_type": "cost_analysis"
     }
   ]
 }

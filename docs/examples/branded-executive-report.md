@@ -86,15 +86,15 @@ A table from the document:
 
 | Tag key | Rule | Missing | Invalid value |
 |---|---|---|---|
-| Owner | Any value | 18 | 0 |
-| Environment | One of: prod, staging, dev, test, sandbox (an... | 18 | 1 |
+| Owner | Any value | 16 | 0 |
+| Environment | One of: prod, staging, dev, test, sandbox (an... | 16 | 1 |
 | DataClassification | One of: public, internal, confidential, restr... | 21 | 0 |
 
 <!-- END EXAMPLE OUTPUT: board-word -->
 
 <!-- BEGIN EXAMPLE OUTPUT: board-image -->
 
-![First page of the branded landscape Word report: a purple square logo, the title Cloud Estate Summary, Quarterly review, Prepared for Acme Ltd and the summary list (sample data)](../assets/examples/img/board-report-word-page1.png)
+<img src={require("../assets/examples/img/board-report-word-page1.png").default} alt="First page of the branded landscape Word report: a purple square logo, the title Cloud Estate Summary, Quarterly review, Prepared for Acme Ltd and the summary list (sample data)" width="977" height="736" loading="lazy" />
 
 <!-- END EXAMPLE OUTPUT: board-image -->
 
