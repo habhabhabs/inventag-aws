@@ -1133,9 +1133,7 @@ def collect(images: bool) -> Dict[str, str]:
             w = workdir("columns")
             add(
                 "columns-validate",
-                code(
-                    run_templates_cli(["validate", "team-sheet"], w), title="Output"
-                ),
+                code(run_templates_cli(["validate", "team-sheet"], w), title="Output"),
             )
             r = run_cli(
                 "columns", ["--template", "team-sheet", "--create-excel", *regions], w
