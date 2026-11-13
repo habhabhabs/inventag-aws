@@ -587,8 +587,33 @@ jobs:
         echo "version=$VERSION" >> "$GITHUB_OUTPUT"
         echo "Version in this commit: $VERSION"
 
+    # Never publish a version without its tag and GitHub release. This matters for
+    # case 2: if the release run pushed the bump commit but failed to tag it or to
+    # create the release, the bump commit's run must not upload that version.
+    - name: Tag and release exist?
+      id: tagged
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+        GH_TOKEN: ${{ github.token }}
+        EVENT_NAME: ${{ github.event_name }}
+      run: |
+        HEAD_SHA=$(git rev-parse HEAD)
+        # Peeled (^{}) entry for an annotated tag, plain entry for a lightweight one
+        TAG_SHA=$(git ls-remote --tags origin | awk -v t="refs/tags/v$VERSION" '$2 == t "^{}" {p = $1} $2 == t {l = $1} END {print (p != "" ? p : l)}')
+        if [ "$TAG_SHA" = "$HEAD_SHA" ] && gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null; then
+          echo "Tag v$VERSION and its release exist for $HEAD_SHA"
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+        elif [ "$EVENT_NAME" = "push" ]; then
+          echo "::notice::v$VERSION has no tag on $HEAD_SHA (tag: ${TAG_SHA:-none}) or no GitHub release: nothing published. Finish the release, then run Automated Release with publish_existing_tag."
+          echo "ok=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "::error::v$VERSION has no tag on $HEAD_SHA (tag: ${TAG_SHA:-none}) or no GitHub release: refusing to publish."
+          exit 1
+        fi
+
     - name: Already on PyPI?
       id: exists
+      if: steps.tagged.outputs.ok == 'true'
       env:
         VERSION: ${{ steps.version.outputs.version }}
       run: |
@@ -602,13 +627,13 @@ jobs:
         fi
 
     - name: Set up Python
-      if: steps.exists.outputs.published != 'true'
+      if: steps.exists.outputs.published == 'false'
       uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
       with:
         python-version: '3.13'
 
     - name: Build the sdist and the wheel
-      if: steps.exists.outputs.published != 'true'
+      if: steps.exists.outputs.published == 'false'
       env:
         VERSION: ${{ steps.version.outputs.version }}
       run: |
@@ -619,7 +644,7 @@ jobs:
         ls dist/inventag_aws-"$VERSION"-py3-none-any.whl
 
     - name: Publish to PyPI
-      if: steps.exists.outputs.published != 'true'
+      if: steps.exists.outputs.published == 'false'
       uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
       with:
         skip-existing: true
