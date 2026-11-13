@@ -570,3 +570,39 @@ a.it-search__hit:hover .it-search__hit-go {
   font-weight: 600;
   color: var(--it-ink-2);
 }
+
+/* Phone drawer: a full-screen sheet. Nothing from the page navbar (theme
+   button, search) can show beside or through it, on any browser. */
+@media (max-width: 996px) {
+  :root {
+    --ifm-navbar-sidebar-width: 100vw;
+  }
+  .navbar-sidebar {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    background: var(--it-bg);
+    border-right: 0;
+    z-index: 200;
+  }
+  .navbar-sidebar__items {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+  }
+  .navbar-sidebar__item {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  .navbar-sidebar__backdrop {
+    display: none;
+  }
+  .navbar-sidebar--show .navbar__items--right,
+  .navbar-sidebar--show .navbar__toggle {
+    visibility: hidden;
+  }
+}
