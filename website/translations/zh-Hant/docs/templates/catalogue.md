@@ -84,7 +84,7 @@ Search order (first match wins):
 
 該工作表有 12 欄；此處顯示前 11 欄。
 
-<img src={require("../assets/examples/img/standard-bom-s3-sheet.png").default} alt="standard-bom 範本生成的 Excel S3 工作表：深藍色表頭列包含 Account、Region、Service、Type、Name、ID、ARN 以及每個標籤一欄，其後是四列儲存貯體資料（範例資料）" width="1075" height="108" loading="lazy" />
+![standard-bom 範本生成的 Excel S3 工作表：深藍色表頭列包含 Account、Region、Service、Type、Name、ID、ARN 以及每個標籤一欄，其後是四列儲存貯體資料（範例資料）](../assets/examples/img/standard-bom-s3-sheet.png)
 
 **文件大綱：**
 
@@ -116,7 +116,7 @@ Search order (first match wins):
 | VPC | 10 | 27.8% |
 | Total | 36 | 100.0% |
 
-<img src={require("../assets/examples/img/standard-bom-word-page1.png").default} alt="standard-bom 範本生成的 Word 報告第一頁：標題、生成日期、摘要專案符號列表，以及按服務列出的資源表（範例資料）" width="702" height="900" loading="lazy" />
+![standard-bom 範本生成的 Word 報告第一頁：標題、生成日期、摘要專案符號列表，以及按服務列出的資源表（範例資料）](../assets/examples/img/standard-bom-word-page1.png)
 
 [下載範例工作簿](pathname:///inventag-aws/downloads/standard-bom-sample.xlsx)（13 KB，範例資料）和[範例 Word 報告](pathname:///inventag-aws/downloads/standard-bom-sample.docx)（37 KB，範例資料）
 

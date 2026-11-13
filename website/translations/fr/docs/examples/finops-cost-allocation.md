@@ -70,7 +70,7 @@ Feuille `Tag Compliance`, premières lignes :
 | 123456789012 | us-east-1 | EC2 | Volume | acme-build-cache | arn:aws:ec2:us-east-1:123456789012:volume/vol... | Non-compliant | CostCenter, Owner, Project, Environment |  |
 | 123456789012 | global | IAM | Role | acme-orders-api-role | arn:aws:iam::123456789012:role/acme-orders-ap... | Non-compliant | CostCenter, Owner, Project, Environment |  |
 
-<img src={require("../assets/examples/img/finops-tag-compliance-sheet.png").default} alt="Feuille Tag Compliance : une ligne par ressource avec compte, région, service, type, ressource, ARN, statut, étiquettes manquantes et problèmes, suivie du tableau des règles de la politique (données d’exemple)" width="1074" height="295" loading="lazy" />
+![Feuille Tag Compliance : une ligne par ressource avec compte, région, service, type, ressource, ARN, statut, étiquettes manquantes et problèmes, suivie du tableau des règles de la politique (données d’exemple)](../assets/examples/img/finops-tag-compliance-sheet.png)
 
 La section Tag compliance du document Word :
 

@@ -70,7 +70,7 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 | 123456789012 | S3 | Bucket | acme-reports | us-east-1 |  | finance | 1234 | Production |
 | 123456789012 | S3 | Bucket | acme-scratch | us-east-1 |  |  |  |  |
 
-<img src={require("../assets/examples/img/team-sheet-inventory.png").default} alt="使用 team-sheet 範本所選欄的 Inventory 工作表：Account、Service、Type、Name、Region、Volume type 和三個標籤欄（範例資料）" width="1075" height="600" loading="lazy" />
+![使用 team-sheet 範本所選欄的 Inventory 工作表：Account、Service、Type、Name、Region、Volume type 和三個標籤欄（範例資料）](../assets/examples/img/team-sheet-inventory.png)
 
 表頭列已凍結，並帶有篩選按鈕。
 

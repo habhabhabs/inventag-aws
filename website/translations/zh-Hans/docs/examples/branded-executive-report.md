@@ -80,7 +80,7 @@ Tag policy 'security-baseline': 1 of 22 resources compliant (4.5%), 21 non-compl
 | Environment | One of: prod, staging, dev, test, sandbox (an... | 16 | 1 |
 | DataClassification | One of: public, internal, confidential, restr... | 21 | 0 |
 
-<img src={require("../assets/examples/img/board-report-word-page1.png").default} alt="带品牌标识的横向 Word 报告第一页：紫色方形徽标、标题 Cloud Estate Summary、Quarterly review、Prepared for Acme Ltd，以及摘要列表（示例数据）" width="977" height="736" loading="lazy" />
+![带品牌标识的横向 Word 报告第一页：紫色方形徽标、标题 Cloud Estate Summary、Quarterly review、Prepared for Acme Ltd，以及摘要列表（示例数据）](../assets/examples/img/board-report-word-page1.png)
 
 [下载示例 Word 报告](pathname:///inventag-aws/downloads/board-report-sample.docx)（38 KB，示例数据）
 

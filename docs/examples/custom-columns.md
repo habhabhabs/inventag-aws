@@ -87,7 +87,7 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 
 <!-- BEGIN EXAMPLE OUTPUT: columns-image -->
 
-<img src={require("../assets/examples/img/team-sheet-inventory.png").default} alt="Inventory sheet with the columns chosen in the team-sheet template: Account, Service, Type, Name, Region, Volume type and three tag columns (sample data)" width="1075" height="600" loading="lazy" />
+![Inventory sheet with the columns chosen in the team-sheet template: Account, Service, Type, Name, Region, Volume type and three tag columns (sample data)](../assets/examples/img/team-sheet-inventory.png)
 
 <!-- END EXAMPLE OUTPUT: columns-image -->
 

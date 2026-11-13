@@ -87,7 +87,7 @@ Hoja `S3`, primeras filas:
 
 La hoja tiene 12 columnas; se muestran las 11 primeras.
 
-<img src={require("../assets/examples/img/standard-bom-s3-sheet.png").default} alt="Hoja S3 de Excel de la plantilla standard-bom: una fila de encabezado azul oscuro con Account, Region, Service, Type, Name, ID, ARN y una columna por etiqueta, seguida de cuatro filas de buckets (datos de ejemplo)" width="1075" height="108" loading="lazy" />
+![Hoja S3 de Excel de la plantilla standard-bom: una fila de encabezado azul oscuro con Account, Region, Service, Type, Name, ID, ARN y una columna por etiqueta, seguida de cuatro filas de buckets (datos de ejemplo)](../assets/examples/img/standard-bom-s3-sheet.png)
 
 **Esquema del documento:**
 
@@ -119,7 +119,7 @@ Una tabla del documento:
 | VPC | 10 | 27.8% |
 | Total | 36 | 100.0% |
 
-<img src={require("../assets/examples/img/standard-bom-word-page1.png").default} alt="Primera página del informe de Word de la plantilla standard-bom: título, fecha de generación, lista con viñetas del resumen y la tabla de recursos por servicio (datos de ejemplo)" width="702" height="900" loading="lazy" />
+![Primera página del informe de Word de la plantilla standard-bom: título, fecha de generación, lista con viñetas del resumen y la tabla de recursos por servicio (datos de ejemplo)](../assets/examples/img/standard-bom-word-page1.png)
 
 [Descarga el libro de ejemplo](pathname:///inventag-aws/downloads/standard-bom-sample.xlsx) (13 KB, datos de ejemplo) y [el informe de Word de ejemplo](pathname:///inventag-aws/downloads/standard-bom-sample.docx) (37 KB, datos de ejemplo)
 

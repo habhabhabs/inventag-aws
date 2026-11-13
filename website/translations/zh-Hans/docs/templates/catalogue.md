@@ -84,7 +84,7 @@ Search order (first match wins):
 
 该工作表有 12 列；此处显示前 11 列。
 
-<img src={require("../assets/examples/img/standard-bom-s3-sheet.png").default} alt="standard-bom 模板生成的 Excel S3 工作表：深蓝色表头行包含 Account、Region、Service、Type、Name、ID、ARN 以及每个标签一列，其后是四行存储桶数据（示例数据）" width="1075" height="108" loading="lazy" />
+![standard-bom 模板生成的 Excel S3 工作表：深蓝色表头行包含 Account、Region、Service、Type、Name、ID、ARN 以及每个标签一列，其后是四行存储桶数据（示例数据）](../assets/examples/img/standard-bom-s3-sheet.png)
 
 **文档大纲：**
 
@@ -116,7 +116,7 @@ Search order (first match wins):
 | VPC | 10 | 27.8% |
 | Total | 36 | 100.0% |
 
-<img src={require("../assets/examples/img/standard-bom-word-page1.png").default} alt="standard-bom 模板生成的 Word 报告第一页：标题、生成日期、摘要项目符号列表，以及按服务列出的资源表（示例数据）" width="702" height="900" loading="lazy" />
+![standard-bom 模板生成的 Word 报告第一页：标题、生成日期、摘要项目符号列表，以及按服务列出的资源表（示例数据）](../assets/examples/img/standard-bom-word-page1.png)
 
 [下载示例工作簿](pathname:///inventag-aws/downloads/standard-bom-sample.xlsx)（13 KB，示例数据）和[示例 Word 报告](pathname:///inventag-aws/downloads/standard-bom-sample.docx)（37 KB，示例数据）
 

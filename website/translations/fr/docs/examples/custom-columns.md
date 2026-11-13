@@ -73,7 +73,7 @@ Feuille `Inventory`, premières lignes :
 | 123456789012 | S3 | Bucket | acme-reports | us-east-1 |  | finance | 1234 | Production |
 | 123456789012 | S3 | Bucket | acme-scratch | us-east-1 |  |  |  |  |
 
-<img src={require("../assets/examples/img/team-sheet-inventory.png").default} alt="Feuille Inventory avec les colonnes choisies dans le modèle team-sheet : Account, Service, Type, Name, Region, Volume type et trois colonnes d’étiquettes (données d’exemple)" width="1075" height="600" loading="lazy" />
+![Feuille Inventory avec les colonnes choisies dans le modèle team-sheet : Account, Service, Type, Name, Region, Volume type et trois colonnes d’étiquettes (données d’exemple)](../assets/examples/img/team-sheet-inventory.png)
 
 La ligne d’en-tête est figée et dotée de boutons de filtre.
 

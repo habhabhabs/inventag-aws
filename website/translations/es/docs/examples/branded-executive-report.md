@@ -81,7 +81,7 @@ Una tabla del documento:
 | Environment | One of: prod, staging, dev, test, sandbox (an... | 16 | 1 |
 | DataClassification | One of: public, internal, confidential, restr... | 21 | 0 |
 
-<img src={require("../assets/examples/img/board-report-word-page1.png").default} alt="Primera página del informe de Word en horizontal con marca: un logotipo cuadrado morado, el título Cloud Estate Summary, Quarterly review, Prepared for Acme Ltd y la lista de resumen (datos de ejemplo)" width="977" height="736" loading="lazy" />
+![Primera página del informe de Word en horizontal con marca: un logotipo cuadrado morado, el título Cloud Estate Summary, Quarterly review, Prepared for Acme Ltd y la lista de resumen (datos de ejemplo)](../assets/examples/img/board-report-word-page1.png)
 
 [Descargar el informe de Word de ejemplo](pathname:///inventag-aws/downloads/board-report-sample.docx) (38 KB, datos de ejemplo)
 

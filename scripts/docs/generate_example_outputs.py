@@ -725,12 +725,10 @@ def render_png(
 def image_md(png: Optional[Path], alt: str, page: Path) -> str:
     if png is None:
         return ""
-    from PIL import Image
-
-    with Image.open(png) as img:
-        width, height = img.size
     rel = os.path.relpath(png, page.parent).replace(os.sep, "/")
-    return f'<img src={{require("{rel}").default}} alt="{alt}" width="{width}" height="{height}" loading="lazy" />'
+    # Plain Markdown: JSX such as require() does not work in .md pages.
+    safe_alt = alt.replace("[", "(").replace("]", ")").replace("\n", " ")
+    return f"![{safe_alt}]({rel})"
 
 
 def download_md(path: Path, label: str, page: Path) -> str:

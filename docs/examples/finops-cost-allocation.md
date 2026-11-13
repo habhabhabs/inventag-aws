@@ -80,7 +80,7 @@ Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-
 
 <!-- BEGIN EXAMPLE OUTPUT: finops-compliance-image -->
 
-<img src={require("../assets/examples/img/finops-tag-compliance-sheet.png").default} alt="Tag Compliance sheet: one row per resource with account, region, service, type, resource, ARN, status, missing tags and problems, followed by the policy rules table (sample data)" width="1074" height="295" loading="lazy" />
+![Tag Compliance sheet: one row per resource with account, region, service, type, resource, ARN, status, missing tags and problems, followed by the policy rules table (sample data)](../assets/examples/img/finops-tag-compliance-sheet.png)
 
 <!-- END EXAMPLE OUTPUT: finops-compliance-image -->
 

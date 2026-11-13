@@ -73,7 +73,7 @@ Hoja `Inventory`, primeras filas:
 | 123456789012 | S3 | Bucket | acme-reports | us-east-1 |  | finance | 1234 | Production |
 | 123456789012 | S3 | Bucket | acme-scratch | us-east-1 |  |  |  |  |
 
-<img src={require("../assets/examples/img/team-sheet-inventory.png").default} alt="Hoja Inventory con las columnas elegidas en la plantilla team-sheet: Account, Service, Type, Name, Region, Volume type y tres columnas de etiquetas (datos de ejemplo)" width="1075" height="600" loading="lazy" />
+![Hoja Inventory con las columnas elegidas en la plantilla team-sheet: Account, Service, Type, Name, Region, Volume type y tres columnas de etiquetas (datos de ejemplo)](../assets/examples/img/team-sheet-inventory.png)
 
 La fila de encabezado está inmovilizada y tiene botones de filtro.
 

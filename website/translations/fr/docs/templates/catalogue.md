@@ -87,7 +87,7 @@ Feuille `S3`, premières lignes :
 
 La feuille compte 12 colonnes ; les 11 premières sont affichées.
 
-<img src={require("../assets/examples/img/standard-bom-s3-sheet.png").default} alt="Feuille S3 d’Excel produite par le modèle standard-bom : une ligne d’en-tête bleu foncé avec Account, Region, Service, Type, Name, ID, ARN et une colonne par étiquette, suivie de quatre lignes de buckets (données d’exemple)" width="1075" height="108" loading="lazy" />
+![Feuille S3 d’Excel produite par le modèle standard-bom : une ligne d’en-tête bleu foncé avec Account, Region, Service, Type, Name, ID, ARN et une colonne par étiquette, suivie de quatre lignes de buckets (données d’exemple)](../assets/examples/img/standard-bom-s3-sheet.png)
 
 **Plan du document :**
 
@@ -119,7 +119,7 @@ Un tableau du document :
 | VPC | 10 | 27.8% |
 | Total | 36 | 100.0% |
 
-<img src={require("../assets/examples/img/standard-bom-word-page1.png").default} alt="Première page du rapport Word produit par le modèle standard-bom : titre, date de génération, liste à puces du résumé et tableau des ressources par service (données d’exemple)" width="702" height="900" loading="lazy" />
+![Première page du rapport Word produit par le modèle standard-bom : titre, date de génération, liste à puces du résumé et tableau des ressources par service (données d’exemple)](../assets/examples/img/standard-bom-word-page1.png)
 
 [Télécharger le classeur d’exemple](pathname:///inventag-aws/downloads/standard-bom-sample.xlsx) (13 Ko, données d’exemple) et [le rapport Word d’exemple](pathname:///inventag-aws/downloads/standard-bom-sample.docx) (37 Ko, données d’exemple)
 

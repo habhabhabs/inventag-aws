@@ -66,7 +66,7 @@ Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-
 | 123456789012 | us-east-1 | EC2 | Volume | acme-build-cache | arn:aws:ec2:us-east-1:123456789012:volume/vol... | Non-compliant | CostCenter, Owner, Project, Environment |  |
 | 123456789012 | global | IAM | Role | acme-orders-api-role | arn:aws:iam::123456789012:role/acme-orders-ap... | Non-compliant | CostCenter, Owner, Project, Environment |  |
 
-<img src={require("../assets/examples/img/finops-tag-compliance-sheet.png").default} alt="Tag Compliance 工作表：每個資源一列，包含帳戶、區域、服務、型別、資源、ARN、狀態、缺少的標籤和問題，其後是策略規則表（範例資料）" width="1074" height="295" loading="lazy" />
+![Tag Compliance 工作表：每個資源一列，包含帳戶、區域、服務、型別、資源、ARN、狀態、缺少的標籤和問題，其後是策略規則表（範例資料）](../assets/examples/img/finops-tag-compliance-sheet.png)
 
 Word 文件的 Tag compliance 章節：
 

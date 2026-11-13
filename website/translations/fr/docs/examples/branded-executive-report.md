@@ -80,7 +80,7 @@ Un tableau du document :
 | Environment | One of: prod, staging, dev, test, sandbox (an... | 16 | 1 |
 | DataClassification | One of: public, internal, confidential, restr... | 21 | 0 |
 
-<img src={require("../assets/examples/img/board-report-word-page1.png").default} alt="Première page du rapport Word en paysage à votre image : un logo carré violet, le titre Cloud Estate Summary, Quarterly review, Prepared for Acme Ltd et la liste de synthèse (données d’exemple)" width="977" height="736" loading="lazy" />
+![Première page du rapport Word en paysage à votre image : un logo carré violet, le titre Cloud Estate Summary, Quarterly review, Prepared for Acme Ltd et la liste de synthèse (données d’exemple)](../assets/examples/img/board-report-word-page1.png)
 
 [Télécharger l’exemple de rapport Word](pathname:///inventag-aws/downloads/board-report-sample.docx) (38 Ko, données d’exemple)
 
