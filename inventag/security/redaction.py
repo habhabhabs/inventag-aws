@@ -27,6 +27,8 @@ import re
 import threading
 from typing import Iterable, Optional
 
+from .secret_values import is_secret_key
+
 REDACTED = "***REDACTED***"
 
 # Field names whose values are secret, as they appear in AWS XML/JSON bodies,
@@ -132,11 +134,14 @@ _PATTERNS = [
         re.compile(r"((?:^|[&?\s'\"])(?:WebIdentityToken|SAMLAssertion)=)[^&\s'\"]+"),
         lambda m: m.group(1) + REDACTED,
     ),
-    # Lambda environment variables in a raw response body or a dict repr:
-    # "Variables": {"DB_PASSWORD": "..."} keeps the names, drops the values.
+    # Name -> value maps of the shared deny-list (Lambda and App Runner
+    # environment, Glue job arguments and connection properties) in a raw
+    # response body or a dict repr: the names stay, the values go.
     (
         re.compile(
-            r"""(["'])(Variables|RuntimeEnvironmentVariables)\1(\s*:\s*)"""
+            r"""(["'])(Variables|RuntimeEnvironmentVariables|EnvironmentVariables|"""
+            r"""DefaultArguments|NonOverridableArguments|ConnectionProperties)"""
+            r"""\1(\s*:\s*)"""
             r"""\{(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^{}"'])*\}"""
         ),
         lambda m: m.group(1)
@@ -144,6 +149,46 @@ _PATTERNS = [
         + m.group(1)
         + m.group(3)
         + _redact_flat_mapping_values(m.group(0)[m.group(0).index("{") :]),
+    ),
+    # [{"name": "X", "value": "..."}] environment lists (ECS, CodeBuild)
+    (
+        re.compile(
+            r"""(?i)((["'])name\2\s*:\s*(["'])(?:\\.|(?!\3).)*\3\s*,\s*"""
+            r"""(["'])value\4\s*:\s*)(["'])(?:\\.|(?!\5).)*\5"""
+        ),
+        lambda m: m.group(1) + m.group(5) + REDACTED + m.group(5),
+    ),
+    # Any other field the shared deny-list (inventag.security.secret_values)
+    # treats as secret, in XML (<ParameterValue>...</ParameterValue>) ...
+    (
+        re.compile(r"<([A-Za-z][A-Za-z0-9_]*)>([^<]+)</\1>"),
+        lambda m: (
+            "<%s>%s</%s>" % (m.group(1), REDACTED, m.group(1))
+            if is_secret_key(m.group(1)) and m.group(2) != REDACTED
+            else m.group(0)
+        ),
+    ),
+    # ... and in JSON or a Python repr ("ParameterValue": "...").
+    (
+        re.compile(
+            r"""(["'])([A-Za-z_][A-Za-z0-9_\-]*)\1(\s*:\s*)(b?)(["'])"""
+            r"""((?:\\.|(?!\5).)*)\5"""
+        ),
+        lambda m: (
+            "%s%s%s%s%s%s%s%s"
+            % (
+                m.group(1),
+                m.group(2),
+                m.group(1),
+                m.group(3),
+                m.group(4),
+                m.group(5),
+                REDACTED,
+                m.group(5),
+            )
+            if is_secret_key(m.group(2)) and m.group(6) not in ("", REDACTED)
+            else m.group(0)
+        ),
     ),
     # PEM private keys (a Google service-account key as it appears in a log)
     (
