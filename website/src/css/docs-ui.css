@@ -689,9 +689,10 @@ a.it-search__hit:hover .it-search__hit-go {
     margin-inline: auto;
   }
   .it-menubtn--rail {
-    position: fixed;
-    top: calc(var(--ifm-navbar-height) + 0.75rem);
-    left: max(1rem, calc((100vw - var(--it-grid-max)) / 2 + 1rem));
+    position: absolute;
+    top: 0.9rem;
+    /* same left edge as the page content */
+    left: 2rem;
     width: auto;
     height: 2.25rem;
     padding: 0 0.8rem 0 0.65rem;
@@ -700,8 +701,15 @@ a.it-search__hit:hover .it-search__hit-go {
     font: inherit;
     font-size: 0.85rem;
     font-weight: 600;
-    box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
-    z-index: 20;
+    z-index: 2;
+  }
+  /* not sticky when hidden, so the button scrolls away with the page and positions against the docs column */
+  aside.theme-doc-sidebar-container[class*='docSidebarContainerHidden'] > div[class*='sidebarViewport'] {
+    position: static;
+  }
+  /* the row above the breadcrumbs belongs to the button */
+  main[class*='docMainContainerEnhanced'] {
+    padding-top: 2.75rem;
   }
 }
 
@@ -773,6 +781,7 @@ a.it-search__hit:hover .it-search__hit-go {
 /* Docs layout shares the navbar's and footer's column, so all three line up */
 @media (min-width: 997px) {
   div[class*='docRoot_'] {
+    position: relative;
     width: 100%;
     max-width: var(--it-grid-max);
     margin-inline: auto;
@@ -782,5 +791,5 @@ a.it-search__hit:hover .it-search__hit-go {
 
 /* Page content must not show through the navbar while scrolling */
 .navbar {
-  background: color-mix(in srgb, var(--it-bg) 96%, transparent);
+  background: var(--it-bg);
 }
