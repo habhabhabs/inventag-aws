@@ -961,16 +961,71 @@ pre code,
 }
 
 /* Tables: full hairline grid, mono header, horizontal scroll inside the table */
-.table-scroll {
+.table-frame {
+  position: relative;
   max-width: 100%;
-  overflow-x: auto;
   margin-bottom: 1.5rem;
   border: 1px solid var(--it-line);
   border-radius: var(--it-radius);
   background: var(--it-surface);
 }
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: inherit;
+}
 .table-scroll:focus-visible {
-  outline-offset: 2px;
+  outline-offset: -2px;
+}
+/* Edge tab: shown only on a side that still has columns to reveal */
+.table-frame__edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  background: var(--it-surface);
+  color: var(--it-ink-2);
+  font-size: 1.1rem;
+  line-height: 1;
+  pointer-events: none;
+}
+.table-frame__edge--end {
+  right: 0;
+  border-left: 1px solid var(--it-line-strong);
+  border-radius: 0 var(--it-radius) var(--it-radius) 0;
+}
+.table-frame__edge--start {
+  left: 0;
+  border-right: 1px solid var(--it-line-strong);
+  border-radius: var(--it-radius) 0 0 var(--it-radius);
+}
+/* The row label (first column) stays in view while the rest scrolls */
+.table-frame[data-scrollable] .table-scroll th:first-child,
+.table-frame[data-scrollable] .table-scroll td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--it-surface);
+  box-shadow: 1px 0 0 var(--it-line-strong);
+}
+.table-frame[data-scrollable] .table-scroll thead th:first-child {
+  background: var(--it-code-bg);
+}
+@media (max-width: 576px) {
+  .table-frame[data-scrollable] .table-scroll th:first-child,
+  .table-frame[data-scrollable] .table-scroll td:first-child,
+  .table-frame[data-scrollable] .table-scroll td:first-child code {
+    max-width: 42vw;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .table-frame[data-wide] .table-scroll td:last-child {
+    min-width: 15rem;
+  }
 }
 .markdown .table-scroll table {
   display: table;

@@ -751,5 +751,8 @@
   },
   "search.close": {
     "message": "Fermer"
+  },
+  "table.scrollHint": {
+    "message": "Tableau. Faites défiler latéralement pour voir toutes les colonnes."
   }
 }

@@ -751,5 +751,8 @@
   },
   "search.close": {
     "message": "關閉"
+  },
+  "table.scrollHint": {
+    "message": "表格。左右捲動可查看所有欄。"
   }
 }
