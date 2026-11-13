@@ -385,7 +385,7 @@ jobs:
           fi
           
           # Create commit with N-1 strategy context
-          git commit -m "docs: archive documentation for release $VERSION (N-1 strategy)
+          git commit -m "docs: archive documentation for release $VERSION (N-1 strategy) [skip release]
 
           - Archive previous version as N-1: $VERSION_MESSAGE
           - Generated from release ${{ github.event.release.tag_name || 'manual trigger' }}
