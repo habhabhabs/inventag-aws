@@ -192,3 +192,5 @@ $ echo $?
 | `templates init` | 2 | 输出名称或扩展名不被允许 |
 | `inventag --template ...` | 1 | 模板无效，或运行失败 |
 | `inventag --template ...` | 3 | 报告已写出，但资源违反标签策略，且 `fail_on_tag_violations` 为 `true` |
+| `inventag --template ...` | 5 | 报告已写出，但有账户失败或只扫描了一部分，且你传入了 `--fail-on-account-error` |
+| `inventag --template ...` | 6 | 没有找到任何资源，且你传入了 `--fail-if-empty` |
