@@ -53,6 +53,12 @@ Quelques règles déterminent ce qui l’emporte lorsque des paramètres se chev
 
 Les exécutions sans `--template` utilisent la mise en page d’origine du rapport.
 
+`--tag-mappings` et `--service-descriptions` ajoutent des colonnes à cette mise
+en page d’origine. Avec `--template`, un rapport n’affiche que les colonnes qu’il
+liste ; ces colonnes n’apparaissent donc pas tant que vous ne les indiquez pas
+sous `columns`, par exemple `- field: service_description`. InvenTag consigne un
+avertissement qui nomme les colonnes manquantes. Voir la [liste des champs](./reference.md#resource-fields-you-can-use-as-columns).
+
 ## Ce qu’une politique d’étiquetage ajoute à vos rapports {#what-a-tag-policy-adds-to-your-reports}
 
 Lorsqu’une politique d’étiquetage est active, InvenTag vérifie chaque ressource concernée et
@@ -78,6 +84,11 @@ Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-
 Un modèle de configuration peut définir `fail_on_tag_violations: true` pour qu’InvenTag se
 termine avec le code 3 lorsqu’une ressource enfreint la politique. Le modèle intégré
 `ci-pipeline` le fait.
+
+Deux options facultatives ont leurs propres codes de sortie :
+`--fail-on-account-error` se termine avec le code 5 quand un compte n’a pas pu
+être analysé, et `--fail-if-empty` avec le code 6 quand aucune ressource n’a été
+trouvée. Les deux l’emportent sur le code 3. Les rapports sont tout de même écrits.
 
 ## Où InvenTag cherche les modèles {#where-inventag-looks-for-templates}
 

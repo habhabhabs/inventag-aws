@@ -55,6 +55,12 @@ Unas pocas reglas deciden qué prevalece cuando los ajustes se solapan:
 
 Las ejecuciones sin `--template` usan el diseño de informe original.
 
+`--tag-mappings` y `--service-descriptions` añaden columnas a ese diseño
+original. Con `--template`, un informe muestra solo las columnas que enumera,
+así que esas columnas no aparecen hasta que las indicas en `columns`, por
+ejemplo `- field: service_description`. InvenTag registra una advertencia con
+las columnas que faltan. Consulta la [lista de campos](./reference.md#resource-fields-you-can-use-as-columns).
+
 ## Qué añade una política de etiquetas a tus informes {#what-a-tag-policy-adds-to-your-reports}
 
 Cuando hay una política de etiquetas activa, InvenTag revisa cada recurso dentro
@@ -80,6 +86,11 @@ Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-
 Una plantilla de configuración puede establecer `fail_on_tag_violations: true`
 para que InvenTag termine con el código 3 cuando algo incumpla la política. La
 plantilla integrada `ci-pipeline` lo hace.
+
+Dos opciones opcionales tienen sus propios códigos de salida:
+`--fail-on-account-error` termina con el código 5 cuando no se pudo analizar una
+cuenta, y `--fail-if-empty` termina con el código 6 cuando no se encontró ningún
+recurso. Ambos tienen prioridad sobre el código 3. Los informes se escriben igualmente.
 
 ## Dónde busca InvenTag las plantillas {#where-inventag-looks-for-templates}
 

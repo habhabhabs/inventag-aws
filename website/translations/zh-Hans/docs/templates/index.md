@@ -47,6 +47,8 @@ inventag --template standard-bom --template security-baseline --create-excel
 
 不带 `--template` 的运行使用原来的报告版式。
 
+`--tag-mappings` 和 `--service-descriptions` 会为原来的版式添加列。使用 `--template` 时，报告只显示它列出的列，所以这些列在你把它们写进 `columns`（例如 `- field: service_description`）之前不会出现。InvenTag 会记录一条警告，指出缺少的列。参见[字段列表](./reference.md#resource-fields-you-can-use-as-columns)。
+
 ## 标签策略为报告增加什么 {#what-a-tag-policy-adds-to-your-reports}
 
 启用标签策略后，InvenTag 会检查范围内的每个资源，并添加：
@@ -68,6 +70,8 @@ Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-
 
 config 模板可以设置 `fail_on_tag_violations: true`，让 InvenTag 在有资源违反策略时以退出码 3 结束。
 内置的 `ci-pipeline` 模板就是这样做的。
+
+有两个可选标志使用各自的退出码：`--fail-on-account-error` 在有账户无法扫描时以退出码 5 结束，`--fail-if-empty` 在没有找到任何资源时以退出码 6 结束。两者都优先于退出码 3。报告仍然会写出。
 
 ## InvenTag 在哪里查找模板 {#where-inventag-looks-for-templates}
 

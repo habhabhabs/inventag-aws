@@ -52,6 +52,12 @@ A few rules decide what wins when settings overlap:
 
 Runs without `--template` use the original report layout.
 
+`--tag-mappings` and `--service-descriptions` add columns to that original
+layout. With `--template`, a report shows only the columns it lists, so those
+columns stay out until you list them under `columns`, for example
+`- field: service_description`. InvenTag logs a warning that names the missing
+columns. See the [field list](./reference.md#resource-fields-you-can-use-as-columns).
+
 ## What a tag policy adds to your reports
 
 When a tag policy is active, InvenTag checks every resource in scope and
@@ -81,6 +87,11 @@ Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-
 A config template can set `fail_on_tag_violations: true` to make InvenTag exit
 with code 3 when something breaks the policy. The built-in `ci-pipeline`
 template does this.
+
+Two opt-in flags have their own exit codes: `--fail-on-account-error` exits
+with code 5 when an account could not be scanned, and `--fail-if-empty` exits
+with code 6 when no resources were found. Both win over code 3. The reports
+are still written.
 
 ## Where InvenTag looks for templates
 
