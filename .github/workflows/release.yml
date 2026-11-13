@@ -70,10 +70,14 @@ jobs:
           COMMIT_MSG=$(git log --format=%B -n 1 ${{ github.sha }})
           echo "Commit message: $COMMIT_MSG"
           
+          # [skip release] wins over everything else, merge commits included
+          # (their message carries the PR title).
+          if echo "$COMMIT_MSG" | grep -qiE "\[skip (release|ci)\]"; then
+            echo "Commit asks to skip the release - no release triggered"
           # Check if this is a merge commit from a PR
-          if echo "$COMMIT_MSG" | grep -q "Merge pull request #"; then
-            # Extract PR number
-            PR_NUM=$(echo "$COMMIT_MSG" | grep -o "#[0-9]\+" | sed 's/#//')
+          elif echo "$COMMIT_MSG" | head -n 1 | grep -q "^Merge pull request #"; then
+            # PR number from the first line only: the body may mention other #numbers
+            PR_NUM=$(echo "$COMMIT_MSG" | head -n 1 | grep -o "#[0-9]\+" | head -n 1 | tr -d '#')
             echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
             
             # Get PR labels to determine version bump
@@ -102,8 +106,6 @@ jobs:
           elif echo "$COMMIT_MSG" | head -n 1 | grep -q "^chore: bump version to "; then
             # The release job's own version commit: never release it again.
             echo "Automated version bump commit - no release triggered"
-          elif echo "$COMMIT_MSG" | grep -qiE "\[skip (release|ci)\]"; then
-            echo "Commit asks to skip the release - no release triggered"
           else
             # Every other push to main is a patch release, unless the commit
             # message has a "Release-As: minor|major" (or patch) line.
