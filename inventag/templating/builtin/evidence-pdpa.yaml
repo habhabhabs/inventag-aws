@@ -1,0 +1,27 @@
+# Tag evidence for resources that may hold personal data under Singapore's
+# PDPA. It checks tag evidence only. It does not assess how personal data is
+# handled and certifies nothing. Tag values are stated by the resource owner
+# and InvenTag cannot verify them.
+format_version: 1
+kind: tag-policy
+name: evidence-pdpa
+description: >-
+  Tag evidence for resources that may hold personal data: personal-data flag,
+  purpose, retention, location. Checks tag evidence only; certifies nothing.
+extends: security-baseline
+spec:
+  required_tags:
+    - key: PersonalData
+      description: Does the owner say the resource holds no personal data, personal data, or special-category personal data? Same values as the GDPR template.
+      allowed_values: [none, personal, "special-category"]
+    - key: Purpose
+      description: Why the data is kept, in the owner's words (free text, not empty).
+      pattern: '\S(.*\S)?'
+    - key: RetentionPeriod
+      description: How long the owner keeps the data, such as 30d, 7y or indefinite.
+      pattern: '([0-9]+(d|y)|indefinite)'
+    - key: DataLocation
+      description: Is the data kept in Singapore (sg) or overseas?
+      allowed_values: [sg, overseas]
+  scope:
+    resource_types: [Bucket, DBInstance, DBCluster, Table, Volume, Snapshot, Queue, Topic, Stream]

@@ -1,0 +1,26 @@
+# Tag evidence for a SOC 2 scoping conversation. It checks that resources carry
+# tags that record who owns them, which system they belong to, how they were
+# provisioned and how critical they are. It checks tag evidence only. It does
+# not assess controls and certifies nothing. Tag values are stated by the
+# resource owner and InvenTag cannot verify them.
+format_version: 1
+kind: tag-policy
+name: evidence-soc2
+description: >-
+  Tag evidence for SOC 2 scoping conversations: scope, system, provisioning
+  method, criticality. Checks tag evidence only; certifies nothing.
+extends: security-baseline
+spec:
+  required_tags:
+    - key: Soc2Scope
+      description: Does the owner treat this resource as inside the system you describe in a SOC 2 report?
+      allowed_values: ["in-scope", "out-of-scope"]
+    - key: SystemName
+      description: Name of the system or service this resource belongs to (free text, not empty).
+      pattern: '\S(.*\S)?'
+    - key: ManagedBy
+      description: How the resource was created and is changed, as stated by its owner. Use other for any method not listed.
+      allowed_values: [terraform, cloudformation, cdk, manual, other]
+    - key: Criticality
+      description: How important the owner says the resource is to the service.
+      allowed_values: [high, medium, low]

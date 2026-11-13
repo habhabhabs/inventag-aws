@@ -1,0 +1,27 @@
+# Tag evidence for resources that may hold personal data. It checks tag evidence
+# only. It does not assess lawfulness of processing and certifies nothing. Tag
+# values are stated by the resource owner and InvenTag cannot verify them.
+format_version: 1
+kind: tag-policy
+name: evidence-gdpr
+description: >-
+  Tag evidence for resources that may hold personal data: personal-data type,
+  processing-record reference, data residency, retention. Checks tag evidence
+  only; certifies nothing.
+extends: security-baseline
+spec:
+  required_tags:
+    - key: PersonalData
+      description: Does the owner say the resource holds no personal data, personal data, or special-category personal data?
+      allowed_values: [none, personal, "special-category"]
+    - key: ProcessingRecord
+      description: ID of the entry in your own record of processing activities that covers this resource. Use none if PersonalData is none. The pattern only checks the ID shape; change it to your format.
+      pattern: '[A-Za-z0-9._-]{1,64}'
+    - key: DataResidency
+      description: Where the owner says the data is kept.
+      allowed_values: [eu, uk, other]
+    - key: RetentionPeriod
+      description: How long the owner keeps the data, such as 30d, 7y or indefinite.
+      pattern: '([0-9]+(d|y)|indefinite)'
+  scope:
+    resource_types: [Bucket, DBInstance, DBCluster, Table, Volume, Snapshot, Queue, Topic, Stream]
