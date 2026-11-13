@@ -14,6 +14,9 @@ import boto3
 import pytest
 from moto import mock_aws
 
+from inventag.security import redaction
+from inventag.security.read_only_guard import uninstall_global_guard
+
 SCRIPT = (
     Path(__file__).resolve().parents[2]
     / "scripts"
@@ -72,6 +75,11 @@ def test_s3_bucket_option_uploads_the_results(tmp_path, monkeypatch, aws_env):
             runpy.run_path(str(SCRIPT), run_name="__main__")
         except SystemExit as exc:  # the script may exit 0 at the end
             assert exc.code in (0, None)
+        finally:
+            # The script installs the read-only guard for the process; remove
+            # it so this test can read the object back (GetObject is denied).
+            uninstall_global_guard()
+            redaction.uninstall_log_record_redaction()
         body = (
             boto3.client("s3", region_name="us-east-1")
             .get_object(Bucket="reports", Key="out/compliance.json")["Body"]

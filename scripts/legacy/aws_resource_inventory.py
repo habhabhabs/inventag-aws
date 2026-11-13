@@ -13,6 +13,7 @@ import sys
 import os
 import logging
 import shutil
+import subprocess
 from datetime import datetime, timezone
 from botocore.exceptions import NoCredentialsError
 
@@ -35,6 +36,29 @@ def get_python_command():
         return "python"
     else:
         raise RuntimeError("Neither 'python' nor 'python3' command found in PATH")
+
+
+def _upload_report(session, filename, bucket, key):
+    """Upload the saved report (``--s3-bucket``, the user's explicit request).
+
+    Only this one S3 client may call ``PutObject``; the object is encrypted
+    (SSE-S3) and the bucket name is checked. Every other write stays blocked.
+    """
+    from inventag.core.s3_upload import validate_bucket_name
+    from inventag.security.read_only_guard import ReadOnlyGuard
+
+    validate_bucket_name(bucket)
+    s3 = session.client("s3")
+    ReadOnlyGuard.allow_on_client(s3, {"PutObject"})
+    content_type = "text/yaml" if filename.endswith(".yaml") else "application/json"
+    with open(filename, "rb") as body:
+        s3.put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=body,
+            ContentType=content_type,
+            ServerSideEncryption="AES256",
+        )
 
 
 def main():
@@ -65,6 +89,13 @@ def main():
 
     args = parser.parse_args()
 
+    # Same safety as the inventag CLI: owner-only files, redacted logs, and
+    # the read-only guard on every AWS client this script creates.
+    from inventag.cli.safety import enable_read_only_guard, harden_process
+
+    harden_process()
+    enable_read_only_guard()
+
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
@@ -91,7 +122,7 @@ def main():
         # Upload to S3 if requested
         if args.s3_bucket:
             s3_key = args.s3_key or f"aws-inventory/{filename}"
-            inventory.upload_to_s3(args.s3_bucket, s3_key, args.format)
+            _upload_report(inventory.session, filename, args.s3_bucket, s3_key)
             print(f"Inventory uploaded to s3://{args.s3_bucket}/{s3_key}")
 
         # Export to Excel/CSV if requested
@@ -104,10 +135,20 @@ def main():
             script_dir = os.path.dirname(os.path.abspath(__file__))
             bom_converter_path = os.path.join(script_dir, "bom_converter.py")
 
-            # Execute the conversion command with proper path quoting
-            exit_code = os.system(
-                f'"{python_cmd}" "{bom_converter_path}" --input "{filename}" --output "{excel_filename}" --format excel'
-            )
+            # Run the converter without a shell (names cannot inject commands)
+            exit_code = subprocess.run(
+                [
+                    python_cmd,
+                    bom_converter_path,
+                    "--input",
+                    filename,
+                    "--output",
+                    excel_filename,
+                    "--format",
+                    "excel",
+                ],
+                check=False,
+            ).returncode
 
             if exit_code == 0:
                 print(f"Excel export saved to {excel_filename}")

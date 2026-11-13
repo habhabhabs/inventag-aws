@@ -102,6 +102,13 @@ Examples:
 
     args = parser.parse_args()
 
+    # Same safety as the inventag CLI: owner-only files, redacted logs, and
+    # the read-only guard on every AWS client this script creates.
+    from inventag.cli.safety import enable_read_only_guard, harden_process
+
+    harden_process()
+    enable_read_only_guard()
+
     try:
         # Initialize BOM converter
         enrich_vpc = not args.no_vpc_enrichment
