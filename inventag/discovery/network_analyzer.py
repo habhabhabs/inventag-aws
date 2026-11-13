@@ -16,6 +16,26 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# NAT gateway and peering states that mean the resource is gone or never worked.
+_DEAD_NAT_STATES = {"deleted", "deleting", "failed"}
+_DEAD_PEERING_STATES = {"deleted", "deleting", "rejected", "failed", "expired"}
+_DEAD_TGW_STATES = {"deleted", "deleting", "failed", "rejected", "rejecting"}
+
+
+def _collect(client, operation: str, key: str, **kwargs) -> List[Dict[str, Any]]:
+    """All items of a List/Describe call, following ``NextToken`` to the end."""
+    items: List[Dict[str, Any]] = []
+    token = None
+    while True:
+        params = dict(kwargs)
+        if token:
+            params["NextToken"] = token
+        response = getattr(client, operation)(**params)
+        items.extend(response[key])
+        token = response.get("NextToken")
+        if not isinstance(token, str) or not token:
+            return items
+
 
 @dataclass
 class SubnetAnalysis:
@@ -54,6 +74,11 @@ class VPCAnalysis:
     peering_connections: List[str] = field(default_factory=list)
     transit_gateway_attachments: List[str] = field(default_factory=list)
     tags: Dict[str, str] = field(default_factory=dict)
+    # Elastic network interfaces in the VPC; None when they could not be read.
+    region: str = ""
+    network_interface_count: Optional[int] = None
+    # Route tables as returned by DescribeRouteTables; None when not read.
+    route_tables: Optional[List[Dict[str, Any]]] = None
 
 
 @dataclass
@@ -293,14 +318,12 @@ class NetworkAnalyzer:
     def _cache_vpc_info(self, ec2_client, region: str):
         """Cache VPC information."""
         try:
-            vpcs_response = ec2_client.describe_vpcs()
-
-            for vpc in vpcs_response["Vpcs"]:
+            for vpc in _collect(ec2_client, "describe_vpcs", "Vpcs"):
                 vpc_id = vpc["VpcId"]
                 vpc_name = self._get_tag_value(vpc.get("Tags", []), "Name") or vpc_id
 
                 # Handle multiple CIDR blocks
-                cidr_blocks = [vpc["CidrBlock"]]
+                cidr_blocks = [vpc["CidrBlock"]] if vpc.get("CidrBlock") else []
                 if "CidrBlockAssociationSet" in vpc:
                     for cidr_assoc in vpc["CidrBlockAssociationSet"]:
                         if cidr_assoc["CidrBlockState"]["State"] == "associated":
@@ -317,10 +340,11 @@ class NetworkAnalyzer:
                 vpc_analysis = VPCAnalysis(
                     vpc_id=vpc_id,
                     vpc_name=vpc_name,
-                    cidr_block=vpc["CidrBlock"],  # Primary CIDR
+                    cidr_block=vpc.get("CidrBlock", ""),  # Primary CIDR
                     cidr_blocks=cidr_blocks,
                     total_ips=total_ips,
                     tags=tags,
+                    region=region,
                 )
 
                 self.vpc_cache[vpc_id] = vpc_analysis
@@ -331,18 +355,18 @@ class NetworkAnalyzer:
     def _cache_subnet_info(self, ec2_client, region: str):
         """Cache subnet information."""
         try:
-            subnets_response = ec2_client.describe_subnets()
-
-            for subnet in subnets_response["Subnets"]:
+            for subnet in _collect(ec2_client, "describe_subnets", "Subnets"):
                 subnet_id = subnet["SubnetId"]
                 subnet_name = (
                     self._get_tag_value(subnet.get("Tags", []), "Name") or subnet_id
                 )
                 vpc_id = subnet["VpcId"]
 
-                # Calculate IP utilization
-                total_ips = self._calculate_cidr_ips(subnet["CidrBlock"])
-                available_ips = subnet["AvailableIpAddressCount"]
+                # Calculate IP utilization. An IPv6-only subnet has no IPv4 CIDR
+                # and no IPv4 addresses to count.
+                cidr_block = subnet.get("CidrBlock", "")
+                total_ips = self._calculate_cidr_ips(cidr_block) if cidr_block else 0
+                available_ips = subnet.get("AvailableIpAddressCount", 0)
                 utilization_percentage = (
                     ((total_ips - available_ips) / total_ips * 100)
                     if total_ips > 0
@@ -355,7 +379,7 @@ class NetworkAnalyzer:
                 subnet_analysis = SubnetAnalysis(
                     subnet_id=subnet_id,
                     subnet_name=subnet_name,
-                    cidr_block=subnet["CidrBlock"],
+                    cidr_block=cidr_block,
                     availability_zone=subnet["AvailabilityZone"],
                     vpc_id=vpc_id,
                     total_ips=total_ips,
@@ -377,8 +401,9 @@ class NetworkAnalyzer:
         """Cache additional network components like IGW, NAT, VPC endpoints."""
         try:
             # Internet Gateways
-            igw_response = ec2_client.describe_internet_gateways()
-            for igw in igw_response["InternetGateways"]:
+            for igw in _collect(
+                ec2_client, "describe_internet_gateways", "InternetGateways"
+            ):
                 for attachment in igw.get("Attachments", []):
                     vpc_id = attachment.get("VpcId")
                     if vpc_id and vpc_id in self.vpc_cache:
@@ -386,41 +411,49 @@ class NetworkAnalyzer:
                             "InternetGatewayId"
                         ]
 
-            # NAT Gateways
-            nat_response = ec2_client.describe_nat_gateways()
-            for nat in nat_response["NatGateways"]:
+            # NAT Gateways (deleted ones stay listed for about an hour)
+            for nat in _collect(ec2_client, "describe_nat_gateways", "NatGateways"):
+                if nat.get("State") in _DEAD_NAT_STATES:
+                    continue
                 vpc_id = nat.get("VpcId")
                 if vpc_id and vpc_id in self.vpc_cache:
                     self.vpc_cache[vpc_id].nat_gateways.append(nat["NatGatewayId"])
 
             # VPC Endpoints
-            endpoint_response = ec2_client.describe_vpc_endpoints()
-            for endpoint in endpoint_response["VpcEndpoints"]:
+            for endpoint in _collect(
+                ec2_client, "describe_vpc_endpoints", "VpcEndpoints"
+            ):
                 vpc_id = endpoint.get("VpcId")
                 if vpc_id and vpc_id in self.vpc_cache:
                     self.vpc_cache[vpc_id].vpc_endpoints.append(
                         endpoint["VpcEndpointId"]
                     )
 
-            # VPC Peering Connections
-            peering_response = ec2_client.describe_vpc_peering_connections()
-            for peering in peering_response["VpcPeeringConnections"]:
-                accepter_vpc = peering.get("AccepterVpcInfo", {}).get("VpcId")
-                requester_vpc = peering.get("RequesterVpcInfo", {}).get("VpcId")
-
-                if accepter_vpc and accepter_vpc in self.vpc_cache:
-                    self.vpc_cache[accepter_vpc].peering_connections.append(
-                        peering["VpcPeeringConnectionId"]
-                    )
-                if requester_vpc and requester_vpc in self.vpc_cache:
-                    self.vpc_cache[requester_vpc].peering_connections.append(
-                        peering["VpcPeeringConnectionId"]
-                    )
+            # VPC Peering Connections. A cross-region connection is listed in
+            # both regions, so add each one to a VPC only once.
+            for peering in _collect(
+                ec2_client, "describe_vpc_peering_connections", "VpcPeeringConnections"
+            ):
+                state = peering.get("Status", {}).get("Code")
+                if state in _DEAD_PEERING_STATES:
+                    continue
+                pcx_id = peering["VpcPeeringConnectionId"]
+                for side in ("AccepterVpcInfo", "RequesterVpcInfo"):
+                    vpc_id = peering.get(side, {}).get("VpcId")
+                    if vpc_id and vpc_id in self.vpc_cache:
+                        connections = self.vpc_cache[vpc_id].peering_connections
+                        if pcx_id not in connections:
+                            connections.append(pcx_id)
 
             # Transit Gateway Attachments
             try:
-                tgw_response = ec2_client.describe_transit_gateway_attachments()
-                for attachment in tgw_response["TransitGatewayAttachments"]:
+                for attachment in _collect(
+                    ec2_client,
+                    "describe_transit_gateway_attachments",
+                    "TransitGatewayAttachments",
+                ):
+                    if attachment.get("State") in _DEAD_TGW_STATES:
+                        continue
                     if attachment.get("ResourceType") == "vpc":
                         vpc_id = attachment.get("ResourceId")
                         if vpc_id and vpc_id in self.vpc_cache:
@@ -434,12 +467,53 @@ class NetworkAnalyzer:
         except Exception as e:
             logger.warning(f"Could not cache network components for {region}: {e}")
 
+        self._cache_route_tables(ec2_client, region)
+        self._cache_network_interface_counts(ec2_client, region)
+
+    def _cache_route_tables(self, ec2_client, region: str):
+        """Read the route tables of every cached VPC (needed to tell public subnets)."""
+        try:
+            tables = _collect(ec2_client, "describe_route_tables", "RouteTables")
+        except Exception as e:
+            logger.warning(
+                f"Could not read route tables for {region}: {e}. "
+                "Subnets are reported as not public."
+            )
+            return
+        by_vpc: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for table in tables:
+            by_vpc[table.get("VpcId", "")].append(table)
+        for vpc_id, vpc in self.vpc_cache.items():
+            if vpc.region == region:
+                vpc.route_tables = by_vpc.get(vpc_id, [])
+
+    def _cache_network_interface_counts(self, ec2_client, region: str):
+        """Count the network interfaces in each cached VPC of a region."""
+        try:
+            interfaces = _collect(
+                ec2_client, "describe_network_interfaces", "NetworkInterfaces"
+            )
+        except Exception as e:
+            logger.warning(
+                f"Could not read network interfaces for {region}: {e}. "
+                "Empty VPCs are not reported."
+            )
+            return
+        counts: Dict[str, int] = defaultdict(int)
+        for interface in interfaces:
+            counts[interface.get("VpcId", "")] += 1
+        for vpc_id, vpc in self.vpc_cache.items():
+            if vpc.region == region:
+                vpc.network_interface_count = counts.get(vpc_id, 0)
+
     def _map_resources_to_network(self, resources: List[Dict[str, Any]]):
         """Map resources to their VPC and subnet context."""
         for resource in resources:
             vpc_id = self._extract_vpc_id(resource)
             subnet_id = self._extract_subnet_id(resource)
             resource_id = resource.get("id", "unknown")
+            if resource_id in self.vpc_cache or resource_id in self.subnet_cache:
+                continue  # a VPC or subnet is not a resource inside itself
 
             # Add resource to VPC
             if vpc_id and vpc_id in self.vpc_cache:
@@ -476,14 +550,50 @@ class NetworkAnalyzer:
                 # Determine if subnets are public (have route to IGW)
                 self._determine_subnet_publicity(vpc_analysis)
 
+    @staticmethod
+    def _has_internet_route(route_table: Dict[str, Any]) -> bool:
+        """True if the table has an active default route to an internet gateway."""
+        for route in route_table.get("Routes", []):
+            default = (
+                route.get("DestinationCidrBlock") == "0.0.0.0/0"
+                or route.get("DestinationIpv6CidrBlock") == "::/0"
+            )
+            gateway = route.get("GatewayId") or ""
+            if (
+                default
+                and gateway.startswith("igw-")
+                and route.get("State", "active") == "active"
+            ):
+                return True
+        return False
+
     def _determine_subnet_publicity(self, vpc_analysis: VPCAnalysis):
-        """Determine if subnets are public based on route tables."""
-        # This is a simplified implementation
-        # In a full implementation, we would check route tables
+        """Mark subnets whose route table has a default route to an internet gateway.
+
+        A subnet uses the route table it is associated with, or the VPC's main
+        route table if it has no association of its own. A subnet is public
+        only if that table routes 0.0.0.0/0 or ::/0 to an ``igw-`` gateway. A
+        VPC that has an internet gateway but no such route does not make its
+        subnets public. If the route tables could not be read, every subnet is
+        left as not public.
+        """
+        tables = vpc_analysis.route_tables
+        if not tables:
+            return
+        main_table = None
+        explicit: Dict[str, Dict[str, Any]] = {}
+        for table in tables:
+            for assoc in table.get("Associations", []):
+                if assoc.get("Main"):
+                    main_table = table
+                elif assoc.get("SubnetId"):
+                    explicit[assoc["SubnetId"]] = table
         for subnet in vpc_analysis.subnets:
-            # If VPC has an internet gateway, assume subnets might be public
-            # This would need route table analysis for accuracy
-            subnet.is_public = bool(vpc_analysis.internet_gateway_id)
+            table = explicit.get(subnet.subnet_id, main_table)
+            if table is None:
+                continue
+            subnet.route_table_id = table.get("RouteTableId")
+            subnet.is_public = self._has_internet_route(table)
 
     def _extract_vpc_id(self, resource: Dict[str, Any]) -> Optional[str]:
         """Extract VPC ID from resource."""
@@ -570,8 +680,10 @@ class NetworkAnalyzer:
         recommendations = []
 
         for vpc in vpc_analysis.values():
-            # Check for unused VPCs
-            if not vpc.associated_resources:
+            # A VPC is unused when nothing in the inventory points at it and it
+            # has no network interface. If the interfaces could not be read,
+            # the VPC is not reported.
+            if not vpc.associated_resources and vpc.network_interface_count == 0:
                 recommendations.append(
                     f"VPC {vpc.vpc_name} ({vpc.vpc_id}) has no associated resources - consider removal"
                 )
@@ -589,10 +701,12 @@ class NetworkAnalyzer:
                     "consider consolidation"
                 )
 
-            # Check for missing NAT gateways in private subnets
-            if not vpc.nat_gateways and len(vpc.subnets) > 1:
+            # Private subnets reach the internet only through a NAT gateway
+            private_subnets = [subnet for subnet in vpc.subnets if not subnet.is_public]
+            if private_subnets and not vpc.nat_gateways:
                 recommendations.append(
-                    f"VPC {vpc.vpc_name} may benefit from NAT gateways for private subnet internet access"
+                    f"VPC {vpc.vpc_name} has {len(private_subnets)} private subnet(s) and no NAT gateway - "
+                    "resources there may benefit from NAT gateways for internet access"
                 )
 
         return recommendations

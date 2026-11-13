@@ -332,6 +332,7 @@ class TestNetworkAnalyzer(unittest.TestCase):
             vpc_name="unused-vpc",
             cidr_block="10.0.0.0/16",
             associated_resources=[],  # No resources
+            network_interface_count=0,  # and no network interfaces
         )
 
         # Create VPC with underutilized subnets
@@ -353,6 +354,7 @@ class TestNetworkAnalyzer(unittest.TestCase):
             available_ips=240,
             utilization_percentage=4.4,  # Very low utilization
             associated_resources=["i-12345"],
+            is_public=True,  # a public subnet needs no NAT gateway
         )
         underutil_vpc.subnets = [underutil_subnet]
 
