@@ -13,10 +13,10 @@ sidebar_position: 1
 
 ## 三個問題，一份報告 {#three-questions-one-report}
 
-InvenTag 回答關於你的 AWS 賬戶的三個問題：
+InvenTag 回答關於你的 AWS 帳戶的三個問題：
 
-1. **有什麼？** 跨賬戶、跨區域的資源清單。
-2. **標籤規範嗎？** 報告中的標籤列；配合[標籤策略模板](../templates/index.md)，
+1. **有什麼？** 跨帳戶、跨區域的資源清單。
+2. **標籤規範嗎？** 報告中的標籤欄；配合[標籤策略範本](../templates/index.md)，
    還能檢查必填標籤和允許的取值。
 3. **和上次相比有什麼變化？** 每次執行都會儲存快照，以便比較。
    參見[追蹤兩次執行之間的變化](../guides/track-changes.md)。
@@ -41,9 +41,9 @@ your AWS credentials
   4. write files      --> bom_output/*.xlsx, *.docx, state/ snapshot
 ```
 
-1. **憑證。** InvenTag 使用標準的 AWS 憑證鏈：配置檔案、環境變數、
-   IAM Identity Center（SSO）會話或 IAM 角色。它也可以在其他賬戶中代入角色。
-2. **發現。** 對每個賬戶和區域，它呼叫只讀的 AWS 應用程式程式設計介面（API）。
+1. **憑證。** InvenTag 使用標準的 AWS 憑證鏈：設定檔、環境變數、
+   IAM Identity Center（SSO）會話或 IAM 角色。它也可以在其他帳戶中擔任角色。
+2. **發現。** 對每個帳戶和區域，它呼叫唯讀的 AWS 應用程式程式設計介面（API）。
    預設情況下，它還會呼叫 Cost Explorer 的 `GetCostAndUsage`，找出產生費用的服務。
    AWS 會對 Cost Explorer API 請求收費；`--no-billing-validation` 可關閉這些呼叫。
 3. **處理。** 它統一服務名稱和 ID，並收集標籤。
@@ -52,25 +52,25 @@ your AWS credentials
 
 ## 它會改動什麼 {#what-it-changes}
 
-只有你磁碟上的檔案。InvenTag 讀取你的 AWS 賬戶，絕不會修改它們。
+只有你磁碟上的檔案。InvenTag 讀取你的 AWS 帳戶，絕不會修改它們。
 
-**只讀防護**會在每次 AWS 呼叫發出前進行檢查。不屬於讀取的呼叫
+**唯讀防護**會在每次 AWS 呼叫發出前進行檢查。不屬於讀取的呼叫
 （`List`、`Describe`、`Get` 等以外的呼叫）會被攔截，會返回金鑰或檔案內容的讀取
 （例如讀取金鑰值或下載 S3 物件）也會被攔截。你無法關閉這道防護。
 
-仍然請給 InvenTag 使用只讀的 IAM 身份。兩道相互獨立的保險勝過一道：
-[設定只讀訪問](../guides/read-only-access.md)。
+仍然請給 InvenTag 使用唯讀的 IAM 身份。兩道相互獨立的保險勝過一道：
+[設定唯讀存取](../guides/read-only-access.md)。
 
 ## 它不是什麼 {#what-it-is-not}
 
 - **不是合規工具。** InvenTag 可以收集證據，例如資源清單和標籤覆蓋率。
   它不評估也不認證對 SOC 2、PCI DSS、HIPAA、GDPR 或任何其他框架的合規性。
-- **不是成本管理工具。** 它列出資源和標籤，不跟蹤你的賬單。可選的 `--enable-cost-analysis`
+- **不是成本管理工具。** 它列出資源和標籤，不跟蹤你的帳單。可選的 `--enable-cost-analysis`
   引數會新增一個 Cost Analysis 工作表，其中是根據 AWS Pricing API 估算的每月費用。
-  這些只是估算值，不是你的賬單。
+  這些只是估算值，不是你的帳單。
 - **與 AWS 無關聯。**
 - **並不完整。** 它自帶 24 種 AWS 服務的發現程式碼，並非所有服務，
-  而且從未在真實的 AWS 賬戶上測試過。
+  而且從未在真實的 AWS 帳戶上測試過。
   [功能狀態與已知限制](./status.md)列出了這些限制。
 
 ## 下一步 {#next-steps}

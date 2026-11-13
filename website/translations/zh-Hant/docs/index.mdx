@@ -1,6 +1,6 @@
 ---
 title: InvenTag 文件
-description: InvenTag 是一款開源的 Python 命令列工具，可列出你的 AWS 賬戶中的資源、檢查標籤，並生成 Excel 和 Word 報告。
+description: InvenTag 是一款開源的 Python 命令列工具，可列出你的 AWS 帳戶中的資源、檢查標籤，並生成 Excel 和 Word 報告。
 sidebar_position: 1
 slug: /
 ---
@@ -8,7 +8,7 @@ slug: /
 # InvenTag 文件
 
 InvenTag 是一款免費、開源（MIT）的 Python 命令列工具。
-你讓它指向一個或多個 AWS 賬戶，它會列出找到的資源、檢查它們的標籤，
+你讓它指向一個或多個 AWS 帳戶，它會列出找到的資源、檢查它們的標籤，
 並把結果寫成 Excel 工作簿和 Word 文件，交給從不開啟 AWS 控制檯的人也能看懂。
 
 我們把這份清單稱為**物料清單（BOM）**：你執行了什麼、執行在哪裡、
@@ -20,7 +20,7 @@ InvenTag 是一款免費、開源（MIT）的 Python 命令列工具。
 
 <CardGroup cols={2}>
   <Card title="生成第一份報告" icon="rocket" href="/docs/getting-started/quick-start">
-    掃描一個賬戶，大約十分鐘內開啟 Excel 和 Word 報告。
+    掃描一個帳戶，大約十分鐘內開啟 Excel 和 Word 報告。
   </Card>
   <Card title="安裝 InvenTag" icon="download" href="/docs/getting-started/installation">
     用 pip 或 pipx 安裝，並連線你的 AWS 憑證。
@@ -31,14 +31,14 @@ InvenTag 是一款免費、開源（MIT）的 Python 命令列工具。
   <Card title="功能狀態" icon="check" href="/docs/getting-started/status">
     哪些功能目前可用，以及已知限制。
   </Card>
-  <Card title="模板" icon="layers" href="/docs/templates">
-    用一個小小的 YAML 檔案複用報告版式或標籤策略。
+  <Card title="範本" icon="layers" href="/docs/templates">
+    用一個小小的 YAML 檔案複用報告版面配置或標籤策略。
   </Card>
-  <Card title="示例" icon="terminal" href="/docs/examples">
+  <Card title="範例" icon="terminal" href="/docs/examples">
     常見任務的可複製貼上方案。
   </Card>
   <Card title="命令列參考" icon="book" href="/docs/reference/cli">
-    所有引數、檔案格式和 IAM 許可權。
+    所有引數、檔案格式和 IAM 權限。
   </Card>
   <Card title="術語表" icon="help" href="/docs/reference/glossary">
     本文件所用術語的通俗解釋。
@@ -53,12 +53,12 @@ pip install inventag-aws
 inventag --template standard-bom --create-excel --account-regions us-east-1
 ```
 
-InvenTag 釋出在 [PyPI](https://pypi.org/project/inventag-aws/) 上。若要從原始碼執行，
+InvenTag 發佈在 [PyPI](https://pypi.org/project/inventag-aws/) 上。若要從原始碼執行，
 請參閱[安裝](./getting-started/installation.md)。
 
-InvenTag 使用你當前的 AWS 憑證，並把工作簿寫入 `bom_output/`。
-請為它使用只讀身份：
-[設定只讀訪問](./guides/read-only-access.md)。
+InvenTag 使用你目前的 AWS 憑證，並把工作簿寫入 `bom_output/`。
+請為它使用唯讀身份：
+[設定唯讀存取](./guides/read-only-access.md)。
 
 ## 獲取幫助 {/* #get-help */}
 
@@ -69,7 +69,7 @@ InvenTag 使用你當前的 AWS 憑證，並把工作簿寫入 `bom_output/`。
 - 安全問題請按[安全](./security/index.md)頁面所述方式報告。
 
 InvenTag 以
-[MIT 許可證](https://github.com/habhabhabs/inventag-aws/blob/main/LICENSE)釋出。
+[MIT 授權](https://github.com/habhabhabs/inventag-aws/blob/main/LICENSE)發佈。
 
 ---
 

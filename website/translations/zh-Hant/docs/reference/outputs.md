@@ -10,12 +10,12 @@ sidebar_position: 4
 
 **讀完後你會知道：** InvenTag 寫出的每個檔案的名稱、位置和內容。
 
-所有檔案都寫入輸出資料夾：預設是 `bom_output/`，除非你設定了 `--output-directory`，或在配置模板中設定了 `output_directory`。
-InvenTag 寫入的其他位置只有你指定的檔案（`--log-file`、`--audit-output`），以及使用 `--s3-bucket` 時的 S3 儲存桶。
+所有檔案都寫入輸出資料夾：預設是 `bom_output/`，除非你設定了 `--output-directory`，或在設定範本中設定了 `output_directory`。
+InvenTag 寫入的其他位置只有你指定的檔案（`--log-file`、`--audit-output`），以及使用 `--s3-bucket` 時的 S3 儲存貯體。
 
 輸出檔案建立後只有你的使用者可以讀寫，新建的輸出資料夾同樣只對你的使用者私有。
 
-本頁的示例來自針對模擬 AWS 的離線執行（示例資料）。
+本頁的範例來自針對模擬 AWS 的離線執行（範例資料）。
 
 ## 檔案列表 {#file-list}
 
@@ -23,10 +23,10 @@ InvenTag 寫入的其他位置只有你指定的檔案（`--log-file`、`--audit
 |---|---|---|
 | `multi_account_bom_<timestamp>.xlsx` | `--create-excel`，或沒有指定任何輸出引數 | Excel 報告 |
 | `multi_account_bom_<timestamp>.docx` | `--create-word` | Word 報告 |
-| `<account-id>_bom_<timestamp>.xlsx` 和 `.docx` | `--per-account-reports`，代替 `multi_account_bom_*` 檔案 | 每個有資源的賬戶一份報告 |
+| `<account-id>_bom_<timestamp>.xlsx` 和 `.docx` | `--per-account-reports`，代替 `multi_account_bom_*` 檔案 | 每個有資源的帳戶一份報告 |
 | `tag_compliance_<timestamp>.json` | 啟用了標籤策略 | 標籤檢查結果 |
 | `state/state_<timestamp>.json` | 每次執行，除非使用 `--disable-state-management` | 所發現的每個資源的快照。超過 30 天的快照，或最新 100 份之外的快照會被刪除。 |
-| `state/metadata.json` | 有快照時 | 快照索引：時間、賬戶、區域、資源數量、校驗和 |
+| `state/metadata.json` | 有快照時 | 快照索引：時間、帳戶、區域、資源數量、校驗和 |
 | `changelog_<timestamp>.md` | 第二次及之後的執行，除非使用 `--no-generate-changelog` 或 `--disable-delta-detection` | 自上一份快照以來新增、刪除或變更了什麼。見[跟蹤變更](../guides/track-changes.md)。 |
 | 你用 `--audit-output` 指定的檔案 | 你要求時 | 本次執行呼叫的每個 AWS 操作 |
 
@@ -34,33 +34,33 @@ InvenTag 寫入的其他位置只有你指定的檔案（`--log-file`、`--audit
 
 ## Excel 報告 {#excel-report}
 
-**不使用模板時**，工作簿包含：
+**不使用範本時**，工作簿包含：
 
 - **Summary：** Service、Resource Count、Percentage，以及合計。
 - **每個服務一個工作表**（例如 `EC2`、`S3`、`VPC`），按服務名稱排序，包含其資源上發現的所有欄位，
-  包括展平後的 `raw_data.*` 和 `tags.*` 列。行按型別、名稱和 ID 排序。
+  包括展平後的 `raw_data.*` 和 `tags.*` 欄。列按型別、名稱和 ID 排序。
 - **Network Analysis** 和 **Security Analysis** 工作表，僅在使用 `--enable-network-analysis` 或 `--enable-security-analysis` 時出現。
-- **Cost Analysis** 工作表，僅在使用 `--enable-cost-analysis` 時出現：根據 AWS Pricing API 估算的每月費用，不是你的賬單。
+- **Cost Analysis** 工作表，僅在使用 `--enable-cost-analysis` 時出現：根據 AWS Pricing API 估算的每月費用，不是你的帳單。
 
-**使用報告模板時**，版式遵循模板：
+**使用報告範本時**，版面配置遵循範本：
 
-- **Summary：** 標題、生成時間、賬戶和區域數量、一張 Service / Resources / Share 表，
+- **Summary：** 標題、生成時間、帳戶和區域數量、一張 Service / Resources / Share 表，
   以及（有標籤策略時）合規計數。
 - **資源工作表：** 每個服務一個，或使用 `layout:
-  single-sheet` 時只有一個工作表。表頭行預設帶樣式、已凍結並可篩選。
-- **Tag Compliance**（有標籤策略時）：範圍內每個資源一行，之後是一張規則表，列出缺失和無效的計數。
+  single-sheet` 時只有一個工作表。表頭列預設帶樣式、已凍結並可篩選。
+- **Tag Compliance**（有標籤策略時）：範圍內每個資源一列，之後是一張規則表，列出缺失和無效的計數。
 
 工作表名稱遵循 Excel 的規則：最多 31 個字元，且不含 `[ ] : * ? / \`。
 重名的工作表會加上編號。以 `=` 開頭的單元格值會按文字儲存，絕不會作為公式。
-行按服務、型別、名稱和 ID 排序。
+列按服務、型別、名稱和 ID 排序。
 
-每種版式的預覽由真實檔案製作，見[內建模板](../templates/catalogue.md)。
+每種版面配置的預覽由真實檔案製作，見[內建範本](../templates/catalogue.md)。
 
 ## Word 報告 {#word-report}
 
-**不使用模板時：** 一個標題、一份執行摘要、一張服務表，以及每個服務最多 50 個資源，共六列。
+**不使用範本時：** 一個標題、一份執行摘要、一張服務表，以及每個服務最多 50 個資源，共六欄。
 
-**使用報告模板時：** 即 `word.sections` 中列出的各節。表格的表頭行會在每頁重複，併為螢幕閱讀器標記為表頭。
+**使用報告範本時：** 即 `word.sections` 中列出的各節。表格的表頭列會在每頁重複，併為螢幕閱讀器標記為表頭。
 徽標（如果有）帶有替代文字。
 
 ## 標籤合規 JSON {#tag-compliance-json}
@@ -215,8 +215,8 @@ inventag/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ## 終端輸出 {#terminal-output}
 
 不使用 `--verbose` 時，執行會列印警告、錯誤和已寫出的檔案。
-使用模板時，每個檔案會列印為 `Wrote <path>`，如果啟用了標籤策略，隨後還有一行標籤策略摘要。
+使用範本時，每個檔案會列印為 `Wrote <path>`，如果啟用了標籤策略，隨後還有一行標籤策略摘要。
 
-## 退出碼 {#exit-codes}
+## 結束代碼 {#exit-codes}
 
 見[命令列參考](./cli.md#exit-codes)。

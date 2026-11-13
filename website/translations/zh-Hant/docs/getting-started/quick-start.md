@@ -1,6 +1,6 @@
 ---
 title: 生成第一份報告
-description: 用 InvenTag 掃描一個 AWS 賬戶和區域，並在大約十分鐘內開啟它生成的 Excel 和 Word 物料清單報告。
+description: 用 InvenTag 掃描一個 AWS 帳戶和區域，並在大約十分鐘內開啟它生成的 Excel 和 Word 物料清單報告。
 sidebar_position: 3
 ---
 
@@ -8,18 +8,18 @@ sidebar_position: 3
 
 **適合誰閱讀：** 你已經[安裝了 InvenTag](./installation.md)，並且有隻讀的 AWS 憑證。
 
-**讀完後你可以：** 掃描一個賬戶、開啟 Excel 和 Word 報告，並用模板選擇更清晰的版式。
+**讀完後你可以：** 掃描一個帳戶、開啟 Excel 和 Word 報告，並用範本選擇更清晰的版面配置。
 
-本頁所有示例輸出都來自針對模擬 AWS 的離線執行（示例資料）。
-賬戶 `123456789012` 和 `acme-*` 資源都是虛構的。
+本頁所有範例輸出都來自針對模擬 AWS 的離線執行（範例資料）。
+帳戶 `123456789012` 和 `acme-*` 資源都是虛構的。
 
-## 1. 確認你在哪個賬戶 {#1-check-which-account-you-are-in}
+## 1. 確認你在哪個帳戶 {#1-check-which-account-you-are-in}
 
 ```bash title="Terminal"
 aws sts get-caller-identity
 ```
 
-InvenTag 掃描這組憑證所屬的賬戶。
+InvenTag 掃描這組憑證所屬的帳戶。
 
 ## 2. 掃描一個區域 {#2-scan-one-region}
 
@@ -31,8 +31,8 @@ inventag --create-excel --create-word --account-regions us-east-1
 
 - `--create-excel` 和 `--create-word` 用來選擇要寫出的檔案。兩者都不指定時，只生成 Excel。
 - `--account-regions` 把掃描限制在你列出的區域內，用逗號分隔。不指定時，
-  InvenTag 會掃描賬戶中啟用的所有區域，耗時更長。無論你列出哪些區域，
-  IAM、S3 儲存桶列表、CloudFront 和 Route 53 都只會從 `us-east-1` 讀取一次。
+  InvenTag 會掃描帳戶中啟用的所有區域，耗時更長。無論你列出哪些區域，
+  IAM、S3 儲存貯體列表、CloudFront 和 Route 53 都只會從 `us-east-1` 讀取一次。
 
 結束時你會看到檔案寫到了哪裡：
 
@@ -42,17 +42,17 @@ Word document saved: bom_output/multi_account_bom_20261112_090000.docx
 Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
 ```
 
-這條警告只是說明你沒有指定賬戶，所以 InvenTag 使用了你當前的憑證。
+這條警告只是說明你沒有指定帳戶，所以 InvenTag 使用了你目前的憑證。
 加上 `--verbose` 可以看到每一步。
 
 ## 3. 開啟報告 {#3-open-the-reports}
 
 Excel 工作簿有一個 **Summary** 工作表，每個服務一個工作表。
-不使用模板時，每個服務工作表會列出 InvenTag 找到的所有欄位，因此工作表很寬：
+不使用範本時，每個服務工作表會列出 InvenTag 找到的所有欄位，因此工作表很寬：
 
 **工作表：** `Summary`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`
 
-`S3` 工作表的前幾行：
+`S3` 工作表的前幾列：
 
 | service | type | id | name | arn | account_id | source_account_id | source_account_name | ... |
 |---|---|---|---|---|---|---|---|---|
@@ -60,7 +60,7 @@ Excel 工作簿有一個 **Summary** 工作表，每個服務一個工作表。
 | S3 | Bucket | acme-data-lake | acme-data-lake | arn:aws:s3:::acme-data-lake |  | 123456789012 | AWS Account 123456789012 (moto) | ... |
 | S3 | Bucket | acme-reports | acme-reports | arn:aws:s3:::acme-reports |  | 123456789012 | AWS Account 123456789012 (moto) | ... |
 
-該工作表共有 30 列；此處顯示前 8 列。
+該工作表共有 30 欄；此處顯示前 8 欄。
 
 Word 文件包含摘要、服務表格，以及每個服務最多 50 條資源：
 
@@ -89,13 +89,13 @@ Word 文件包含摘要、服務表格，以及每個服務最多 50 條資源�
 | EVENTS | 1 | 2.8% |
 | IAM | 1 | 2.8% |
 
-（共 8 行；顯示 4 行。）
+（共 8 列；顯示 4 行。）
 
 InvenTag 還會把本次執行的快照儲存到 `bom_output/state/`。
 
-## 4. 用模板選擇版式 {#4-choose-a-layout-with-a-template}
+## 4. 用範本選擇版面配置 {#4-choose-a-layout-with-a-template}
 
-[報告模板](../templates/index.md)能提供易讀的列名、每個標籤一列、凍結的表頭行和篩選按鈕：
+[報告範本](../templates/index.md)能提供易讀的欄名、每個標籤一欄、凍結的表頭列和篩選按鈕：
 
 ```bash title="Terminal"
 inventag --template standard-bom --create-excel --create-word --account-regions us-east-1
@@ -107,7 +107,7 @@ Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```
 
-效果請見[內建模板](../templates/catalogue.md#standard-bom)。
+效果請見[內建範本](../templates/catalogue.md#standard-bom)。
 
 ## 5. 檢查你的標籤 {#5-check-your-tags}
 
@@ -130,8 +130,8 @@ Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-
 
 ## 一次執行的費用 {#what-a-run-costs}
 
-InvenTag 發出的只讀呼叫是免費的，但 Cost Explorer 的 `GetCostAndUsage`
-呼叫不是：AWS 按請求收費，在我們的離線測試中，預設執行會為每個賬戶發出兩次。
+InvenTag 發出的唯讀呼叫是免費的，但 Cost Explorer 的 `GetCostAndUsage`
+呼叫不是：AWS 按請求收費，在我們的離線測試中，預設執行會為每個帳戶發出兩次。
 請參閱最新的
 [Cost Explorer 定價](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。
 加上 `--no-billing-validation` 就不會發出任何 Cost Explorer 呼叫。
@@ -140,4 +140,4 @@ InvenTag 發出的只讀呼叫是免費的，但 Cost Explorer 的 `GetCostAndUs
 
 - [功能狀態與已知限制](./status.md)：依賴某個引數之前請先閱讀。
 - [選擇要掃描什麼、生成什麼](../guides/run-a-scan.md)
-- [示例](../examples/index.md)：可複製貼上的方案。
+- [範例](../examples/index.md)：可複製貼上的方案。

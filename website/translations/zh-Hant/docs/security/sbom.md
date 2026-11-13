@@ -10,22 +10,22 @@ sidebar_position: 3
 
 **讀完後你會了解：** 有哪些 SBOM 檔案、它們如何生成，以及如何為你自己的安裝生成一份。
 
-## 文件構建會生成什麼 {#what-the-documentation-build-generates}
+## 文件建置會生成什麼 {#what-the-documentation-build-generates}
 
-每次部署文件網站時，構建都會為倉庫及其依賴項生成 SBOM 檔案，並隨網站一起釋出：
+每次部署文件網站時，建置都會為儲存庫及其依賴項生成 SBOM 檔案，並隨網站一起發佈：
 
 | 檔案 | 列出什麼 | 格式 |
 |---|---|---|
-| 倉庫 SBOM | Syft 在倉庫中發現的所有內容 | Syft JSON、CycloneDX JSON 和 SPDX JSON |
+| 儲存庫 SBOM | Syft 在儲存庫中發現的所有內容 | Syft JSON、CycloneDX JSON 和 SPDX JSON |
 | Python，來自 `requirements.txt` | InvenTag 宣告的最低版本 | CycloneDX JSON 和 XML |
 | Python，來自全新安裝 | 實際安裝的版本 | CycloneDX JSON 和 `pip freeze` 列表 |
-| 文件網站 | 構建本網站所用的 Node.js 包 | CycloneDX JSON |
+| 文件網站 | 建置本網站所用的 Node.js 包 | CycloneDX JSON |
 
-同一次構建還會向本節新增一個摘要頁面，**Software Bill of Materials (SBOM)**，
-因此它出現線上上網站中，但不會出現在本地構建中。
+同一次建置還會向本節新增一個摘要頁面，**Software Bill of Materials (SBOM)**，
+因此它出現線上上網站中，但不會出現在本地建置中。
 
 Python 依賴項宣告的是最低版本，而不是精確固定，所以“已安裝版本”的檔案才能顯示，
-在構建當天一次真實安裝會得到什麼。
+在建置當天一次真實安裝會得到什麼。
 
 ## 為你自己的安裝生成 SBOM {#produce-an-sbom-for-your-own-installation}
 
@@ -38,6 +38,6 @@ cyclonedx-py environment --output-format json --output-file inventag-sbom.json
 
 ## 留意漏洞 {#keep-an-eye-on-vulnerabilities}
 
-有一個定時工作流會掃描依賴項中的已知漏洞。執行了什麼、什麼會讓構建失敗，
+有一個定時工作流會掃描依賴項中的已知漏洞。執行了什麼、什麼會讓建置失敗，
 請閱讀[依賴項如何檢查](./index.md#how-dependencies-are-checked)；
 如果你認為有東西被入侵了，請閱讀[供應鏈事件之後](./index.md#after-a-supply-chain-incident)。

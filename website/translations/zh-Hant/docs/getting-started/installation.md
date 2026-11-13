@@ -8,21 +8,21 @@ sidebar_position: 2
 
 **適合誰閱讀：** 在膝上型電腦、伺服器或 CI 執行器上安裝 InvenTag 的人。
 
-**讀完後你可以：** 執行 `inventag --help`，並確認 InvenTag 能連上你的 AWS 賬戶。
+**讀完後你可以：** 執行 `inventag --help`，並確認 InvenTag 能連上你的 AWS 帳戶。
 
 ## 你需要準備 {#what-you-need}
 
 - **Python 3.11 或更高版本。** Python 3.10 自 2026 年 10 月起不再獲得安全修復。
   用 `python3 --version` 檢視你的版本。
 - **pip**，隨 Python 一同提供。（只有從原始碼安裝時才需要 Git。）
-- 只讀身份的 **AWS 憑證**。
+- 唯讀身份的 **AWS 憑證**。
   [AWS 命令列介面（AWS CLI）](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-  是可選的，但它是最簡單的配置方式。
+  是可選的，但它是最簡單的設定方式。
 
 ## 用 pip 安裝（推薦） {#install-with-pip-recommended}
 
 InvenTag 以
-[`inventag-aws`](https://pypi.org/project/inventag-aws/) 之名釋出在 Python 包索引上。
+[`inventag-aws`](https://pypi.org/project/inventag-aws/) 之名發佈在 Python 包索引上。
 用虛擬環境安裝最整潔，但 InvenTag 並不要求使用虛擬環境，它就是一個普通的 Python 包。
 虛擬環境能讓它的依賴（boto3、openpyxl 等）與你其他的 Python 工具互不干擾；
 而且許多較新的系統（Debian、Ubuntu、Homebrew 的 Python）會拒絕向系統 Python 執行
@@ -38,7 +38,7 @@ inventag --help
 ```
 
 這樣你就有了本文件所用的 `inventag` 命令。
-報告模板已包含在軟體包中。
+報告範本已包含在軟體包中。
 
 升級請執行 `pip install --upgrade inventag-aws`。安裝指定版本請固定版本號，例如
 `pip install inventag-aws==1.1.3`。想讓它遠離你的專案環境？
@@ -48,7 +48,7 @@ PATH 中，你無需啟用任何環境。如果你的系統允許，直接把 `p
 
 ## 從原始碼安裝 {#install-from-source}
 
-如果你想用最新的未釋出程式碼，或打算修改 InvenTag，請用這種方式。
+如果你想用最新的未發佈程式碼，或打算修改 InvenTag，請用這種方式。
 
 ```bash title="Terminal"
 git clone https://github.com/habhabhabs/inventag-aws.git
@@ -64,9 +64,9 @@ inventag --help
 `inventag` 命令，因此程式碼改動無需重新安裝即可生效。你也可以在
 `pip install -r requirements.txt` 之後直接執行 `python inventag_cli.py --help`。
 
-若要從原始碼使用固定的釋出版本，而不是最新程式碼，請檢出它的標籤，例如
+若要從原始碼使用固定的發佈版本，而不是最新程式碼，請檢出它的標籤，例如
 `git checkout v1.1.3`。
-[釋出頁面](https://github.com/habhabhabs/inventag-aws/releases)列出了所有版本。
+[發佈頁面](https://github.com/habhabhabs/inventag-aws/releases)列出了所有版本。
 
 ## 連線你的 AWS 憑證 {#connect-your-aws-credentials}
 
@@ -79,8 +79,8 @@ export AWS_PROFILE=my-readonly
 aws configure                           # long-lived access keys (avoid if you can)
 ```
 
-請優先使用短期憑證，例如 IAM Identity Center 或代入的角色，
-而不是存放在磁碟上的訪問金鑰。
+請優先使用短期憑證，例如 IAM Identity Center 或擔任的角色，
+而不是存放在磁碟上的存取金鑰。
 
 ## 檢查是否可用 {#check-that-it-works}
 
@@ -88,8 +88,8 @@ aws configure                           # long-lived access keys (avoid if you c
 inventag --validate-credentials --verbose
 ```
 
-退出碼為 0 表示 InvenTag 能夠登入。加上 `--verbose` 還能看到各個步驟。
-下面是針對模擬 AWS 離線執行得到的示例輸出（示例資料）：
+結束代碼為 0 表示 InvenTag 能夠登入。加上 `--verbose` 還能看到各個步驟。
+下面是針對模擬 AWS 離線執行得到的範例輸出（範例資料）：
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
@@ -108,10 +108,10 @@ $ echo $?
 如果憑證不可用，InvenTag 會說明原因並給出修復建議。
 參見[解決常見問題](../guides/troubleshooting.md#credentials)。
 
-## 授予 InvenTag 只讀許可權 {#give-inventag-read-only-permissions}
+## 授予 InvenTag 唯讀權限 {#give-inventag-read-only-permissions}
 
-在第一次真正掃描之前，請給該身份配置只讀策略：
-[設定只讀訪問](../guides/read-only-access.md)。
+在第一次真正掃描之前，請給該身份設定唯讀策略：
+[設定唯讀存取](../guides/read-only-access.md)。
 
 ## 為開發而安裝 {#install-for-development}
 
