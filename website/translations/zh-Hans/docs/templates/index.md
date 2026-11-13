@@ -60,10 +60,11 @@ inventag --template standard-bom --template security-baseline --create-excel
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+redshift-serverless list_workgroups in us-east-1 failed (404); its resources there may be incomplete.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
-Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-compliant, 14 out of scope.
+Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-compliant, 14 out of scope.
 ```
 
 config 模板可以设置 `fail_on_tag_violations: true`，让 InvenTag 在有资源违反策略时以退出码 3 结束。

@@ -57,9 +57,10 @@ OK    ~/acme-infra/.inventag/templates/board-report.yaml (report 'board-report')
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+redshift-serverless list_workgroups in us-east-1 failed (404); its resources there may be incomplete.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
-Tag policy 'security-baseline': 1 of 22 resources compliant (4.5%), 21 non-compliant, 14 out of scope.
+Tag policy 'security-baseline': 1 of 23 resources compliant (4.3%), 22 non-compliant, 14 out of scope.
 ```
 
 **Plan du document :**
@@ -76,9 +77,9 @@ Un tableau du document :
 
 | Tag key | Rule | Missing | Invalid value |
 |---|---|---|---|
-| Owner | Any value | 16 | 0 |
-| Environment | One of: prod, staging, dev, test, sandbox (an... | 16 | 1 |
-| DataClassification | One of: public, internal, confidential, restr... | 21 | 0 |
+| Owner | Any value | 17 | 0 |
+| Environment | One of: prod, staging, dev, test, sandbox (an... | 17 | 1 |
+| DataClassification | One of: public, internal, confidential, restr... | 22 | 0 |
 
 ![Première page du rapport Word en paysage à votre image : un logo carré violet, le titre Cloud Estate Summary, Quarterly review, Prepared for Acme Ltd et la liste de synthèse (données d’exemple)](../assets/examples/img/board-report-word-page1.png)
 

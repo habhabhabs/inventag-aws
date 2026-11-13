@@ -55,7 +55,7 @@ El libro de Excel tiene una hoja **Summary** y una hoja por servicio. Sin
 plantilla, cada hoja de servicio lista todos los campos que InvenTag encontró, por lo que las
 hojas son anchas:
 
-**Hojas:** `Summary`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`
+**Hojas:** `Summary`, `ATHENA`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`
 
 Hoja `S3`, primeras filas:
 
@@ -65,7 +65,7 @@ Hoja `S3`, primeras filas:
 | S3 | Bucket | acme-data-lake | acme-data-lake | arn:aws:s3:::acme-data-lake |  | 123456789012 | AWS Account 123456789012 (moto) | ... |
 | S3 | Bucket | acme-reports | acme-reports | arn:aws:s3:::acme-reports |  | 123456789012 | AWS Account 123456789012 (moto) | ... |
 
-La hoja tiene 30 columnas; se muestran las 8 primeras.
+La hoja tiene 33 columnas; se muestran las 8 primeras.
 
 El documento de Word tiene un resumen, una tabla de servicios y hasta 50 recursos
 por servicio:
@@ -76,6 +76,7 @@ por servicio:
 - Executive Summary
   - Service Summary
 - Detailed Resource Inventory
+  - ATHENA Resources (1)
   - DYNAMODB Resources (1)
   - EC2 Resources (4)
   - EVENTS Resources (1)
@@ -90,12 +91,12 @@ Una tabla del documento:
 
 | Service | Resource Count | Percentage |
 |---|---|---|
-| DYNAMODB | 1 | 2.8% |
-| EC2 | 4 | 11.1% |
-| EVENTS | 1 | 2.8% |
-| IAM | 1 | 2.8% |
+| ATHENA | 1 | 2.7% |
+| DYNAMODB | 1 | 2.7% |
+| EC2 | 4 | 10.8% |
+| EVENTS | 1 | 2.7% |
 
-(8 filas en total; se muestran 4.)
+(9 filas en total; se muestran 4.)
 
 InvenTag también guarda una instantánea de la ejecución en `bom_output/state/`.
 
@@ -110,6 +111,7 @@ inventag --template standard-bom --create-excel --create-word --account-regions 
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+redshift-serverless list_workgroups in us-east-1 failed (404); its resources there may be incomplete.
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```
@@ -127,10 +129,11 @@ inventag --template finops-cost-report --create-excel --create-word --account-re
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+redshift-serverless list_workgroups in us-east-1 failed (404); its resources there may be incomplete.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
-Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-compliant, 14 out of scope.
+Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-compliant, 14 out of scope.
 ```
 
 El libro ahora tiene una hoja **Tag Compliance** que lista lo que falta en

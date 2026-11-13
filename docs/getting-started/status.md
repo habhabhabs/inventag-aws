@@ -38,7 +38,6 @@ and what each one checks is on the [Tests](../security/tests.md) page.
 
 ```text title="Terminal"
 $ inventag --create-google-docs
-inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 inventag: error: Google: Google output needs libraries that are not installed (google.auth). Install the Google libraries with: pip install "inventag-aws[google]"
 (exit code 2)

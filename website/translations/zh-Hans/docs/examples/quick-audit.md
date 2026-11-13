@@ -45,11 +45,12 @@ inventag --template audit
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+redshift-serverless list_workgroups in us-east-1 failed (404); its resources there may be incomplete.
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```
 
-**工作表：** `Summary`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`
+**工作表：** `Summary`、`ATHENA`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`
 
 `Summary` 工作表：
 
@@ -60,17 +61,18 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 
 | Service | Resources | Share |
 |---|---|---|
-| DYNAMODB | 1 | 2.8% |
-| EC2 | 4 | 11.1% |
-| EVENTS | 1 | 2.8% |
-| IAM | 1 | 2.8% |
-| KMS | 14 | 38.9% |
-| LAMBDA | 1 | 2.8% |
-| S3 | 4 | 11.1% |
-| VPC | 10 | 27.8% |
-| Total | 36 | 100.0% |
+| ATHENA | 1 | 2.7% |
+| DYNAMODB | 1 | 2.7% |
+| EC2 | 4 | 10.8% |
+| EVENTS | 1 | 2.7% |
+| IAM | 1 | 2.7% |
+| KMS | 14 | 37.8% |
+| LAMBDA | 1 | 2.7% |
+| S3 | 4 | 10.8% |
+| VPC | 10 | 27.0% |
+| Total | 37 | 100.0% |
 
-**工作表：** `Summary`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`
+**工作表：** `Summary`、`ATHENA`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`
 
 `S3` 工作表的前几行：
 

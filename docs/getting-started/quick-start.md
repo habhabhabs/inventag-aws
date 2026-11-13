@@ -61,7 +61,7 @@ sheets are wide:
 
 <!-- BEGIN EXAMPLE OUTPUT: quick-default-excel -->
 
-**Sheets:** `Summary`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`
+**Sheets:** `Summary`, `ATHENA`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`
 
 `S3` sheet, first rows:
 
@@ -71,7 +71,7 @@ sheets are wide:
 | S3 | Bucket | acme-data-lake | acme-data-lake | arn:aws:s3:::acme-data-lake |  | 123456789012 | AWS Account 123456789012 (moto) | ... |
 | S3 | Bucket | acme-reports | acme-reports | arn:aws:s3:::acme-reports |  | 123456789012 | AWS Account 123456789012 (moto) | ... |
 
-The sheet has 30 columns; the first 8 are shown.
+The sheet has 33 columns; the first 8 are shown.
 
 <!-- END EXAMPLE OUTPUT: quick-default-excel -->
 
@@ -86,6 +86,7 @@ per service:
 - Executive Summary
   - Service Summary
 - Detailed Resource Inventory
+  - ATHENA Resources (1)
   - DYNAMODB Resources (1)
   - EC2 Resources (4)
   - EVENTS Resources (1)
@@ -100,12 +101,12 @@ A table from the document:
 
 | Service | Resource Count | Percentage |
 |---|---|---|
-| DYNAMODB | 1 | 2.8% |
-| EC2 | 4 | 11.1% |
-| EVENTS | 1 | 2.8% |
-| IAM | 1 | 2.8% |
+| ATHENA | 1 | 2.7% |
+| DYNAMODB | 1 | 2.7% |
+| EC2 | 4 | 10.8% |
+| EVENTS | 1 | 2.7% |
 
-(8 rows in total; 4 shown.)
+(9 rows in total; 4 shown.)
 
 <!-- END EXAMPLE OUTPUT: quick-default-word -->
 
@@ -124,6 +125,7 @@ inventag --template standard-bom --create-excel --create-word --account-regions 
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+redshift-serverless list_workgroups in us-east-1 failed (404); its resources there may be incomplete.
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```
@@ -145,10 +147,11 @@ inventag --template finops-cost-report --create-excel --create-word --account-re
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+redshift-serverless list_workgroups in us-east-1 failed (404); its resources there may be incomplete.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
-Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-compliant, 14 out of scope.
+Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-compliant, 14 out of scope.
 ```
 
 <!-- END EXAMPLE OUTPUT: finops-console -->

@@ -70,16 +70,16 @@ InvenTag 寫入的其他位置只有你指定的檔案（`--log-file`、`--audit
   "policy": "finops-cost-allocation",
   "description": "Requires CostCenter, Owner, Project and Environment so spend can be allocated.",
   "summary": {
-    "checked": 22,
+    "checked": 23,
     "compliant": 1,
-    "non_compliant": 21,
+    "non_compliant": 22,
     "out_of_scope": 14,
-    "percent_compliant": 4.5,
+    "percent_compliant": 4.3,
     "missing_by_key": {
-      "CostCenter": 19,
-      "Owner": 16,
-      "Project": 20,
-      "Environment": 16
+      "CostCenter": 20,
+      "Owner": 17,
+      "Project": 21,
+      "Environment": 17
     },
     "invalid_by_key": {
       "CostCenter": 1,
@@ -158,8 +158,8 @@ bom_output/state/state_20261112_090100.json
     "Search",
     "BatchGet"
   ],
-  "total_calls": 71,
-  "allowed_calls": 71,
+  "total_calls": 96,
+  "allowed_calls": 96,
   "blocked_calls": 0,
   "operations": [
     {
@@ -175,26 +175,26 @@ bom_output/state/state_20261112_090100.json
       "count": 1
     },
     {
-      "service": "ce",
-      "operation": "GetCostAndUsage",
-      "allowed": true,
-      "count": 2
-    },
-    {
-      "service": "cloudformation",
-      "operation": "DescribeStacks",
+      "service": "appsync",
+      "operation": "ListGraphqlApis",
       "allowed": true,
       "count": 1
     },
     {
-      "service": "cloudformation",
-      "operation": "ListStackSets",
+      "service": "athena",
+      "operation": "ListWorkGroups",
       "allowed": true,
       "count": 1
     },
     {
-      "service": "cloudfront",
-      "operation": "ListDistributions",
+      "service": "autoscaling",
+      "operation": "DescribeAutoScalingGroups",
+      "allowed": true,
+      "count": 1
+    },
+    {
+      "service": "backup",
+      "operation": "ListBackupVaults",
       "allowed": true,
       "count": 1
     },

@@ -164,8 +164,8 @@ extracto de una ejecución sin conexión (datos de ejemplo):
     "Search",
     "BatchGet"
   ],
-  "total_calls": 73,
-  "allowed_calls": 73,
+  "total_calls": 96,
+  "allowed_calls": 96,
   "blocked_calls": 0,
   "operations": [
     {
@@ -181,26 +181,26 @@ extracto de una ejecución sin conexión (datos de ejemplo):
       "count": 1
     },
     {
-      "service": "ce",
-      "operation": "GetCostAndUsage",
-      "allowed": true,
-      "count": 2
-    },
-    {
-      "service": "cloudformation",
-      "operation": "DescribeStacks",
+      "service": "appsync",
+      "operation": "ListGraphqlApis",
       "allowed": true,
       "count": 1
     },
     {
-      "service": "cloudformation",
-      "operation": "ListStackSets",
+      "service": "athena",
+      "operation": "ListWorkGroups",
       "allowed": true,
       "count": 1
     },
     {
-      "service": "cloudfront",
-      "operation": "ListDistributions",
+      "service": "autoscaling",
+      "operation": "DescribeAutoScalingGroups",
+      "allowed": true,
+      "count": 1
+    },
+    {
+      "service": "backup",
+      "operation": "ListBackupVaults",
       "allowed": true,
       "count": 1
     },

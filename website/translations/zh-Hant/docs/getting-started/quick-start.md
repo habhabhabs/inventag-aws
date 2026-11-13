@@ -50,7 +50,7 @@ Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
 Excel 工作簿有一個 **Summary** 工作表，每個服務一個工作表。
 不使用範本時，每個服務工作表會列出 InvenTag 找到的所有欄位，因此工作表很寬：
 
-**工作表：** `Summary`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`
+**工作表：** `Summary`、`ATHENA`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`
 
 `S3` 工作表的前幾列：
 
@@ -60,7 +60,7 @@ Excel 工作簿有一個 **Summary** 工作表，每個服務一個工作表。
 | S3 | Bucket | acme-data-lake | acme-data-lake | arn:aws:s3:::acme-data-lake |  | 123456789012 | AWS Account 123456789012 (moto) | ... |
 | S3 | Bucket | acme-reports | acme-reports | arn:aws:s3:::acme-reports |  | 123456789012 | AWS Account 123456789012 (moto) | ... |
 
-該工作表共有 30 欄；此處顯示前 8 欄。
+該工作表共有 33 欄；此處顯示前 8 欄。
 
 Word 文件包含摘要、服務表格，以及每個服務最多 50 條資源：
 
@@ -70,6 +70,7 @@ Word 文件包含摘要、服務表格，以及每個服務最多 50 條資源�
 - Executive Summary
   - Service Summary
 - Detailed Resource Inventory
+  - ATHENA Resources (1)
   - DYNAMODB Resources (1)
   - EC2 Resources (4)
   - EVENTS Resources (1)
@@ -84,12 +85,12 @@ Word 文件包含摘要、服務表格，以及每個服務最多 50 條資源�
 
 | Service | Resource Count | Percentage |
 |---|---|---|
-| DYNAMODB | 1 | 2.8% |
-| EC2 | 4 | 11.1% |
-| EVENTS | 1 | 2.8% |
-| IAM | 1 | 2.8% |
+| ATHENA | 1 | 2.7% |
+| DYNAMODB | 1 | 2.7% |
+| EC2 | 4 | 10.8% |
+| EVENTS | 1 | 2.7% |
 
-（共 8 列；顯示 4 行。）
+（共 9 列；顯示 4 行。）
 
 InvenTag 還會把本次執行的快照儲存到 `bom_output/state/`。
 
@@ -103,6 +104,7 @@ inventag --template standard-bom --create-excel --create-word --account-regions 
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+redshift-serverless list_workgroups in us-east-1 failed (404); its resources there may be incomplete.
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```
@@ -119,10 +121,11 @@ inventag --template finops-cost-report --create-excel --create-word --account-re
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+redshift-serverless list_workgroups in us-east-1 failed (404); its resources there may be incomplete.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
-Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-compliant, 14 out of scope.
+Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-compliant, 14 out of scope.
 ```
 
 工作簿裡現在有一個 **Tag Compliance** 工作表，列出每個資源缺少什麼。

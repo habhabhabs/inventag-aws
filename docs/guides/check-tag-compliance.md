@@ -28,10 +28,11 @@ from an offline run with `--template finops-cost-report` (sample data):
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+redshift-serverless list_workgroups in us-east-1 failed (404); its resources there may be incomplete.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
-Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-compliant, 14 out of scope.
+Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-compliant, 14 out of scope.
 ```
 
 <!-- END EXAMPLE OUTPUT: finops-console -->
@@ -56,7 +57,7 @@ The Tag Compliance sheet in the same sample:
 
 <!-- BEGIN EXAMPLE OUTPUT: finops-excel-compliance -->
 
-**Sheets:** `Summary`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`, `Tag Compliance`
+**Sheets:** `Summary`, `ATHENA`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`, `Tag Compliance`
 
 `Tag Compliance` sheet, first rows:
 
@@ -87,10 +88,10 @@ A table from the document:
 
 | Tag key | Rule | Missing | Invalid value |
 |---|---|---|---|
-| CostCenter | Matches: CC-[0-9]&#123;4&#125; | 19 | 1 |
-| Owner | Any value | 16 | 0 |
-| Project | Any value | 20 | 0 |
-| Environment | One of: prod, staging, dev, test, sandbox (an... | 16 | 1 |
+| CostCenter | Matches: CC-[0-9]&#123;4&#125; | 20 | 1 |
+| Owner | Any value | 17 | 0 |
+| Project | Any value | 21 | 0 |
+| Environment | One of: prod, staging, dev, test, sandbox (an... | 17 | 1 |
 
 <!-- END EXAMPLE OUTPUT: finops-word -->
 
@@ -100,16 +101,16 @@ The `summary` part of the JSON file:
 
 ```json title="summary"
 {
-  "checked": 22,
+  "checked": 23,
   "compliant": 1,
-  "non_compliant": 21,
+  "non_compliant": 22,
   "out_of_scope": 14,
-  "percent_compliant": 4.5,
+  "percent_compliant": 4.3,
   "missing_by_key": {
-    "CostCenter": 19,
-    "Owner": 16,
-    "Project": 20,
-    "Environment": 16
+    "CostCenter": 20,
+    "Owner": 17,
+    "Project": 21,
+    "Environment": 17
   },
   "invalid_by_key": {
     "CostCenter": 1,

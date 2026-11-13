@@ -39,6 +39,7 @@ inventag --template standard-bom --create-excel --account-regions us-east-1 \
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+workmail list_organizations in us-east-1 failed (404); its resources there may be incomplete.
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```
 
@@ -64,8 +65,8 @@ inventag/20261112_090000/multi_account_bom_20261112_090100.xlsx
     "Search",
     "BatchGet"
   ],
-  "total_calls": 73,
-  "allowed_calls": 73,
+  "total_calls": 96,
+  "allowed_calls": 96,
   "blocked_calls": 0,
   "operations": [
     {
@@ -81,26 +82,26 @@ inventag/20261112_090000/multi_account_bom_20261112_090100.xlsx
       "count": 1
     },
     {
-      "service": "ce",
-      "operation": "GetCostAndUsage",
-      "allowed": true,
-      "count": 2
-    },
-    {
-      "service": "cloudformation",
-      "operation": "DescribeStacks",
+      "service": "appsync",
+      "operation": "ListGraphqlApis",
       "allowed": true,
       "count": 1
     },
     {
-      "service": "cloudformation",
-      "operation": "ListStackSets",
+      "service": "athena",
+      "operation": "ListWorkGroups",
       "allowed": true,
       "count": 1
     },
     {
-      "service": "cloudfront",
-      "operation": "ListDistributions",
+      "service": "autoscaling",
+      "operation": "DescribeAutoScalingGroups",
+      "allowed": true,
+      "count": 1
+    },
+    {
+      "service": "backup",
+      "operation": "ListBackupVaults",
       "allowed": true,
       "count": 1
     },

@@ -56,7 +56,7 @@ Security analysis completed for 1 security groups
 Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
 ```
 
-**Feuilles :** `Summary`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`, `Network Analysis`, `Security Analysis`
+**Feuilles :** `Summary`, `ATHENA`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`, `Network Analysis`, `Security Analysis`
 
 Feuille `Network Analysis`, premières lignes :
 
@@ -64,13 +64,13 @@ Feuille `Network Analysis`, premières lignes :
 |---|---|---|---|---|---|---|---|
 | vpc-b790a8316b5a9b85e | vpc-b790a8316b5a9b85e | 172.31.0.0/16 | 65531 | 24545 | 0.0% | 6 | 1 |
 
-**Feuilles :** `Summary`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`, `Network Analysis`, `Security Analysis`
+**Feuilles :** `Summary`, `ATHENA`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`, `Network Analysis`, `Security Analysis`
 
 Feuille `Security Analysis`, premières lignes :
 
 | Security Group ID | Group Name | VPC ID | Risk Level | Inbound Rules | Outbound Rules | Associated Resources | Has Permissive Rules | Permissive Rule Details |
 |---|---|---|---|---|---|---|---|---|
-| sg-46eeda8dc8fa7955d | default | vpc-b790a8316b5a9b85e | medium | 0 | 1 | 0 | No |  |
+| sg-46eeda8dc8fa7955d | default | vpc-b790a8316b5a9b85e | low | 0 | 1 | 1 | No |  |
 
 ## Plus de détails sur les ressources réseau {#more-detail-on-network-resources}
 
@@ -100,7 +100,7 @@ inventag --template network-review --create-excel --account-regions us-east-1
 La feuille VPC a alors une colonne pour chaque champ renvoyé par l’API AWS. Ces colonnes sont
 détaillées mais pas résumées. Dans une exécution hors ligne (données d’exemple) :
 
-La feuille VPC compte 54 colonnes. Les colonnes `raw_data.*` de cet exemple sont :
+La feuille VPC compte 57 colonnes. Les colonnes `raw_data.*` de cet exemple sont :
 
 ```text
 raw_data.AssignIpv6AddressOnCreation, raw_data.Associations, raw_data.AvailabilityZone, raw_data.AvailabilityZoneId, raw_data.AvailableIpAddressCount, raw_data.CidrBlock, raw_data.CidrBlockAssociationSet, raw_data.DefaultForAz, raw_data.Description, raw_data.DhcpOptionsId, raw_data.Entries, raw_data.GroupId, raw_data.GroupName, raw_data.InstanceTenancy, raw_data.IpPermissions, raw_data.IpPermissionsEgress, raw_data.Ipv6CidrBlockAssociationSet, raw_data.Ipv6Native, raw_data.IsDefault, raw_data.MapPublicIpOnLaunch, raw_data.NetworkAclId, raw_data.OwnerId, raw_data.PrivateDnsNameOptionsOnLaunch.EnableResourceNameDnsAAAARecord, raw_data.PrivateDnsNameOptionsOnLaunch.EnableResourceNameDnsARecord, raw_data.PrivateDnsNameOptionsOnLaunch.HostnameType, raw_data.Routes, raw_data.RouteTableId, raw_data.SecurityGroupArn, raw_data.State, raw_data.SubnetArn, raw_data.SubnetId, raw_data.Tags, raw_data.VpcId

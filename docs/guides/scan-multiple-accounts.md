@@ -86,14 +86,14 @@ A run across the three sample accounts:
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
-Tag policy 'finops-cost-allocation': 0 of 36 resources compliant (0.0%), 36 non-compliant, 42 out of scope.
+Tag policy 'finops-cost-allocation': 0 of 39 resources compliant (0.0%), 39 non-compliant, 42 out of scope.
 ```
 
 <!-- END EXAMPLE OUTPUT: org-console -->
 
 <!-- BEGIN EXAMPLE OUTPUT: org-excel-summary -->
 
-**Sheets:** `Summary`, `EVENTS`, `KMS`, `S3`, `VPC`, `Tag Compliance`
+**Sheets:** `Summary`, `ATHENA`, `EVENTS`, `KMS`, `S3`, `VPC`, `Tag Compliance`
 
 `Summary` sheet:
 
@@ -104,11 +104,12 @@ Tag policy 'finops-cost-allocation': 0 of 36 resources compliant (0.0%), 36 non-
 
 | Service | Resources | Share |
 |---|---|---|
-| EVENTS | 3 | 3.8% |
-| KMS | 42 | 53.8% |
-| S3 | 3 | 3.8% |
-| VPC | 30 | 38.5% |
-| Total | 78 | 100.0% |
+| ATHENA | 3 | 3.7% |
+| EVENTS | 3 | 3.7% |
+| KMS | 42 | 51.9% |
+| S3 | 3 | 3.7% |
+| VPC | 30 | 37.0% |
+| Total | 81 | 100.0% |
 
 <!-- END EXAMPLE OUTPUT: org-excel-summary -->
 

@@ -2,16 +2,16 @@
   "policy": "finops-cost-allocation",
   "description": "Requires CostCenter, Owner, Project and Environment so spend can be allocated.",
   "summary": {
-    "checked": 22,
+    "checked": 23,
     "compliant": 1,
-    "non_compliant": 21,
+    "non_compliant": 22,
     "out_of_scope": 14,
-    "percent_compliant": 4.5,
+    "percent_compliant": 4.3,
     "missing_by_key": {
-      "CostCenter": 19,
-      "Owner": 16,
-      "Project": 20,
-      "Environment": 16
+      "CostCenter": 20,
+      "Owner": 17,
+      "Project": 21,
+      "Environment": 17
     },
     "invalid_by_key": {
       "CostCenter": 1,
@@ -21,6 +21,21 @@
     }
   },
   "non_compliant_resources": [
+    {
+      "account": "123456789012",
+      "service": "ATHENA",
+      "resource_type": "WorkGroup",
+      "resource_id": "primary",
+      "arn": "arn:aws:athena:us-east-1:123456789012:workgroup/primary",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
     {
       "account": "123456789012",
       "service": "DYNAMODB",

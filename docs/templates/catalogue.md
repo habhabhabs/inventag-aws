@@ -59,7 +59,7 @@ Command: `inventag --template standard-bom --create-excel --create-word --accoun
 
 <!-- BEGIN EXAMPLE OUTPUT: standard-excel-summary -->
 
-**Sheets:** `Summary`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`
+**Sheets:** `Summary`, `ATHENA`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`
 
 `Summary` sheet:
 
@@ -70,21 +70,22 @@ Command: `inventag --template standard-bom --create-excel --create-word --accoun
 
 | Service | Resources | Share |
 |---|---|---|
-| DYNAMODB | 1 | 2.8% |
-| EC2 | 4 | 11.1% |
-| EVENTS | 1 | 2.8% |
-| IAM | 1 | 2.8% |
-| KMS | 14 | 38.9% |
-| LAMBDA | 1 | 2.8% |
-| S3 | 4 | 11.1% |
-| VPC | 10 | 27.8% |
-| Total | 36 | 100.0% |
+| ATHENA | 1 | 2.7% |
+| DYNAMODB | 1 | 2.7% |
+| EC2 | 4 | 10.8% |
+| EVENTS | 1 | 2.7% |
+| IAM | 1 | 2.7% |
+| KMS | 14 | 37.8% |
+| LAMBDA | 1 | 2.7% |
+| S3 | 4 | 10.8% |
+| VPC | 10 | 27.0% |
+| Total | 37 | 100.0% |
 
 <!-- END EXAMPLE OUTPUT: standard-excel-summary -->
 
 <!-- BEGIN EXAMPLE OUTPUT: standard-excel-s3 -->
 
-**Sheets:** `Summary`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`
+**Sheets:** `Summary`, `ATHENA`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`
 
 `S3` sheet, first rows:
 
@@ -113,6 +114,7 @@ The sheet has 12 columns; the first 11 are shown.
 - Summary
 - Resources by service
 - Resource details
+  - ATHENA (1)
   - DYNAMODB (1)
   - EC2 (4)
   - EVENTS (1)
@@ -127,15 +129,16 @@ A table from the document:
 
 | Service | Resources | Share |
 |---|---|---|
-| DYNAMODB | 1 | 2.8% |
-| EC2 | 4 | 11.1% |
-| EVENTS | 1 | 2.8% |
-| IAM | 1 | 2.8% |
-| KMS | 14 | 38.9% |
-| LAMBDA | 1 | 2.8% |
-| S3 | 4 | 11.1% |
-| VPC | 10 | 27.8% |
-| Total | 36 | 100.0% |
+| ATHENA | 1 | 2.7% |
+| DYNAMODB | 1 | 2.7% |
+| EC2 | 4 | 10.8% |
+| EVENTS | 1 | 2.7% |
+| IAM | 1 | 2.7% |
+| KMS | 14 | 37.8% |
+| LAMBDA | 1 | 2.7% |
+| S3 | 4 | 10.8% |
+| VPC | 10 | 27.0% |
+| Total | 37 | 100.0% |
 
 <!-- END EXAMPLE OUTPUT: standard-word -->
 
@@ -147,7 +150,7 @@ A table from the document:
 
 <!-- BEGIN EXAMPLE OUTPUT: standard-downloads -->
 
-[Download the sample workbook](pathname:///inventag-aws/downloads/standard-bom-sample.xlsx) (13 KB, sample data) and [the sample Word report](pathname:///inventag-aws/downloads/standard-bom-sample.docx) (37 KB, sample data)
+[Download the sample workbook](pathname:///inventag-aws/downloads/standard-bom-sample.xlsx) (14 KB, sample data) and [the sample Word report](pathname:///inventag-aws/downloads/standard-bom-sample.docx) (37 KB, sample data)
 
 <!-- END EXAMPLE OUTPUT: standard-downloads -->
 
@@ -163,10 +166,10 @@ Command: `inventag --template executive-summary --create-excel --create-word --a
 
 | Account | Region | Service | Type | Name | ID | ARN |
 |---|---|---|---|---|---|---|
+| 123456789012 | us-east-1 | ATHENA | WorkGroup | primary | primary | arn:aws:athena:us-east-1:123456789012:workgro... |
 | 123456789012 | us-east-1 | DYNAMODB | Table | acme-orders | acme-orders | arn:aws:dynamodb:us-east-1:123456789012:table... |
 | 123456789012 | us-east-1 | EC2 | Instance | acme-web-1 | i-855a01aabe3d29d3a | arn:aws:ec2:us-east-1:123456789012:instance/i... |
 | 123456789012 | us-east-1 | EC2 | Snapshot |  | snap-3585ce88e25ef1196 | arn:aws:ec2:us-east-1::snapshot/snap-3585ce88... |
-| 123456789012 | us-east-1 | EC2 | Volume |  | vol-680d0e08d01dd52e7 | arn:aws:ec2:us-east-1:123456789012:volume/vol... |
 
 <!-- END EXAMPLE OUTPUT: exec-excel -->
 
@@ -183,15 +186,16 @@ A table from the document:
 
 | Service | Resources | Share |
 |---|---|---|
-| DYNAMODB | 1 | 2.8% |
-| EC2 | 4 | 11.1% |
-| EVENTS | 1 | 2.8% |
-| IAM | 1 | 2.8% |
-| KMS | 14 | 38.9% |
-| LAMBDA | 1 | 2.8% |
-| S3 | 4 | 11.1% |
-| VPC | 10 | 27.8% |
-| Total | 36 | 100.0% |
+| ATHENA | 1 | 2.7% |
+| DYNAMODB | 1 | 2.7% |
+| EC2 | 4 | 10.8% |
+| EVENTS | 1 | 2.7% |
+| IAM | 1 | 2.7% |
+| KMS | 14 | 37.8% |
+| LAMBDA | 1 | 2.7% |
+| S3 | 4 | 10.8% |
+| VPC | 10 | 27.0% |
+| Total | 37 | 100.0% |
 
 <!-- END EXAMPLE OUTPUT: exec-word -->
 
@@ -201,7 +205,7 @@ Command: `inventag --template finops-cost-report --create-excel --create-word --
 
 <!-- BEGIN EXAMPLE OUTPUT: finops-excel-s3 -->
 
-**Sheets:** `Summary`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`, `Tag Compliance`
+**Sheets:** `Summary`, `ATHENA`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`, `Tag Compliance`
 
 `S3` sheet, first rows:
 

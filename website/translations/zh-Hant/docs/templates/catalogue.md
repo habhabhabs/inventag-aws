@@ -50,7 +50,7 @@ Search order (first match wins):
 
 命令：`inventag --template standard-bom --create-excel --create-word --account-regions us-east-1`
 
-**工作表：** `Summary`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`
+**工作表：** `Summary`、`ATHENA`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`
 
 `Summary` 工作表：
 
@@ -61,17 +61,18 @@ Search order (first match wins):
 
 | Service | Resources | Share |
 |---|---|---|
-| DYNAMODB | 1 | 2.8% |
-| EC2 | 4 | 11.1% |
-| EVENTS | 1 | 2.8% |
-| IAM | 1 | 2.8% |
-| KMS | 14 | 38.9% |
-| LAMBDA | 1 | 2.8% |
-| S3 | 4 | 11.1% |
-| VPC | 10 | 27.8% |
-| Total | 36 | 100.0% |
+| ATHENA | 1 | 2.7% |
+| DYNAMODB | 1 | 2.7% |
+| EC2 | 4 | 10.8% |
+| EVENTS | 1 | 2.7% |
+| IAM | 1 | 2.7% |
+| KMS | 14 | 37.8% |
+| LAMBDA | 1 | 2.7% |
+| S3 | 4 | 10.8% |
+| VPC | 10 | 27.0% |
+| Total | 37 | 100.0% |
 
-**工作表：** `Summary`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`
+**工作表：** `Summary`、`ATHENA`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`
 
 `S3` 工作表的前幾列：
 
@@ -92,6 +93,7 @@ Search order (first match wins):
 - Summary
 - Resources by service
 - Resource details
+  - ATHENA (1)
   - DYNAMODB (1)
   - EC2 (4)
   - EVENTS (1)
@@ -106,19 +108,20 @@ Search order (first match wins):
 
 | Service | Resources | Share |
 |---|---|---|
-| DYNAMODB | 1 | 2.8% |
-| EC2 | 4 | 11.1% |
-| EVENTS | 1 | 2.8% |
-| IAM | 1 | 2.8% |
-| KMS | 14 | 38.9% |
-| LAMBDA | 1 | 2.8% |
-| S3 | 4 | 11.1% |
-| VPC | 10 | 27.8% |
-| Total | 36 | 100.0% |
+| ATHENA | 1 | 2.7% |
+| DYNAMODB | 1 | 2.7% |
+| EC2 | 4 | 10.8% |
+| EVENTS | 1 | 2.7% |
+| IAM | 1 | 2.7% |
+| KMS | 14 | 37.8% |
+| LAMBDA | 1 | 2.7% |
+| S3 | 4 | 10.8% |
+| VPC | 10 | 27.0% |
+| Total | 37 | 100.0% |
 
 ![standard-bom 範本生成的 Word 報告第一頁：標題、生成日期、摘要專案符號列表，以及按服務列出的資源表（範例資料）](../assets/examples/img/standard-bom-word-page1.png)
 
-[下載範例工作簿](pathname:///inventag-aws/downloads/standard-bom-sample.xlsx)（13 KB，範例資料）和[範例 Word 報告](pathname:///inventag-aws/downloads/standard-bom-sample.docx)（37 KB，範例資料）
+[下載範例工作簿](pathname:///inventag-aws/downloads/standard-bom-sample.xlsx)（14 KB，範例資料）和[範例 Word 報告](pathname:///inventag-aws/downloads/standard-bom-sample.docx)（37 KB，範例資料）
 
 ### executive-summary {#executive-summary}
 
@@ -130,10 +133,10 @@ Search order (first match wins):
 
 | Account | Region | Service | Type | Name | ID | ARN |
 |---|---|---|---|---|---|---|
+| 123456789012 | us-east-1 | ATHENA | WorkGroup | primary | primary | arn:aws:athena:us-east-1:123456789012:workgro... |
 | 123456789012 | us-east-1 | DYNAMODB | Table | acme-orders | acme-orders | arn:aws:dynamodb:us-east-1:123456789012:table... |
 | 123456789012 | us-east-1 | EC2 | Instance | acme-web-1 | i-855a01aabe3d29d3a | arn:aws:ec2:us-east-1:123456789012:instance/i... |
 | 123456789012 | us-east-1 | EC2 | Snapshot |  | snap-3585ce88e25ef1196 | arn:aws:ec2:us-east-1::snapshot/snap-3585ce88... |
-| 123456789012 | us-east-1 | EC2 | Volume |  | vol-680d0e08d01dd52e7 | arn:aws:ec2:us-east-1:123456789012:volume/vol... |
 
 **文件大綱：**
 
@@ -146,21 +149,22 @@ Search order (first match wins):
 
 | Service | Resources | Share |
 |---|---|---|
-| DYNAMODB | 1 | 2.8% |
-| EC2 | 4 | 11.1% |
-| EVENTS | 1 | 2.8% |
-| IAM | 1 | 2.8% |
-| KMS | 14 | 38.9% |
-| LAMBDA | 1 | 2.8% |
-| S3 | 4 | 11.1% |
-| VPC | 10 | 27.8% |
-| Total | 36 | 100.0% |
+| ATHENA | 1 | 2.7% |
+| DYNAMODB | 1 | 2.7% |
+| EC2 | 4 | 10.8% |
+| EVENTS | 1 | 2.7% |
+| IAM | 1 | 2.7% |
+| KMS | 14 | 37.8% |
+| LAMBDA | 1 | 2.7% |
+| S3 | 4 | 10.8% |
+| VPC | 10 | 27.0% |
+| Total | 37 | 100.0% |
 
 ### finops-cost-report {#finops-cost-report}
 
 命令：`inventag --template finops-cost-report --create-excel --create-word --account-regions us-east-1`
 
-**工作表：** `Summary`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`、`Tag Compliance`
+**工作表：** `Summary`、`ATHENA`、`DYNAMODB`、`EC2`、`EVENTS`、`IAM`、`KMS`、`LAMBDA`、`S3`、`VPC`、`Tag Compliance`
 
 `S3` 工作表的前幾列：
 

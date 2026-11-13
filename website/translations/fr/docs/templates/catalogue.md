@@ -53,7 +53,7 @@ La couleur d’en-tête des trois modèles est un bleu foncé (`1F3A5F`) avec du
 
 Commande : `inventag --template standard-bom --create-excel --create-word --account-regions us-east-1`
 
-**Feuilles :** `Summary`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`
+**Feuilles :** `Summary`, `ATHENA`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`
 
 Feuille `Summary` :
 
@@ -64,17 +64,18 @@ Feuille `Summary` :
 
 | Service | Resources | Share |
 |---|---|---|
-| DYNAMODB | 1 | 2.8% |
-| EC2 | 4 | 11.1% |
-| EVENTS | 1 | 2.8% |
-| IAM | 1 | 2.8% |
-| KMS | 14 | 38.9% |
-| LAMBDA | 1 | 2.8% |
-| S3 | 4 | 11.1% |
-| VPC | 10 | 27.8% |
-| Total | 36 | 100.0% |
+| ATHENA | 1 | 2.7% |
+| DYNAMODB | 1 | 2.7% |
+| EC2 | 4 | 10.8% |
+| EVENTS | 1 | 2.7% |
+| IAM | 1 | 2.7% |
+| KMS | 14 | 37.8% |
+| LAMBDA | 1 | 2.7% |
+| S3 | 4 | 10.8% |
+| VPC | 10 | 27.0% |
+| Total | 37 | 100.0% |
 
-**Feuilles :** `Summary`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`
+**Feuilles :** `Summary`, `ATHENA`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`
 
 Feuille `S3`, premières lignes :
 
@@ -95,6 +96,7 @@ La feuille compte 12 colonnes ; les 11 premières sont affichées.
 - Summary
 - Resources by service
 - Resource details
+  - ATHENA (1)
   - DYNAMODB (1)
   - EC2 (4)
   - EVENTS (1)
@@ -109,19 +111,20 @@ Un tableau du document :
 
 | Service | Resources | Share |
 |---|---|---|
-| DYNAMODB | 1 | 2.8% |
-| EC2 | 4 | 11.1% |
-| EVENTS | 1 | 2.8% |
-| IAM | 1 | 2.8% |
-| KMS | 14 | 38.9% |
-| LAMBDA | 1 | 2.8% |
-| S3 | 4 | 11.1% |
-| VPC | 10 | 27.8% |
-| Total | 36 | 100.0% |
+| ATHENA | 1 | 2.7% |
+| DYNAMODB | 1 | 2.7% |
+| EC2 | 4 | 10.8% |
+| EVENTS | 1 | 2.7% |
+| IAM | 1 | 2.7% |
+| KMS | 14 | 37.8% |
+| LAMBDA | 1 | 2.7% |
+| S3 | 4 | 10.8% |
+| VPC | 10 | 27.0% |
+| Total | 37 | 100.0% |
 
 ![Première page du rapport Word produit par le modèle standard-bom : titre, date de génération, liste à puces du résumé et tableau des ressources par service (données d’exemple)](../assets/examples/img/standard-bom-word-page1.png)
 
-[Télécharger le classeur d’exemple](pathname:///inventag-aws/downloads/standard-bom-sample.xlsx) (13 Ko, données d’exemple) et [le rapport Word d’exemple](pathname:///inventag-aws/downloads/standard-bom-sample.docx) (37 Ko, données d’exemple)
+[Télécharger le classeur d’exemple](pathname:///inventag-aws/downloads/standard-bom-sample.xlsx) (14 Ko, données d’exemple) et [le rapport Word d’exemple](pathname:///inventag-aws/downloads/standard-bom-sample.docx) (37 Ko, données d’exemple)
 
 ### executive-summary {#executive-summary}
 
@@ -133,10 +136,10 @@ Feuille `Resources`, premières lignes :
 
 | Account | Region | Service | Type | Name | ID | ARN |
 |---|---|---|---|---|---|---|
+| 123456789012 | us-east-1 | ATHENA | WorkGroup | primary | primary | arn:aws:athena:us-east-1:123456789012:workgro... |
 | 123456789012 | us-east-1 | DYNAMODB | Table | acme-orders | acme-orders | arn:aws:dynamodb:us-east-1:123456789012:table... |
 | 123456789012 | us-east-1 | EC2 | Instance | acme-web-1 | i-855a01aabe3d29d3a | arn:aws:ec2:us-east-1:123456789012:instance/i... |
 | 123456789012 | us-east-1 | EC2 | Snapshot |  | snap-3585ce88e25ef1196 | arn:aws:ec2:us-east-1::snapshot/snap-3585ce88... |
-| 123456789012 | us-east-1 | EC2 | Volume |  | vol-680d0e08d01dd52e7 | arn:aws:ec2:us-east-1:123456789012:volume/vol... |
 
 **Plan du document :**
 
@@ -149,21 +152,22 @@ Un tableau du document :
 
 | Service | Resources | Share |
 |---|---|---|
-| DYNAMODB | 1 | 2.8% |
-| EC2 | 4 | 11.1% |
-| EVENTS | 1 | 2.8% |
-| IAM | 1 | 2.8% |
-| KMS | 14 | 38.9% |
-| LAMBDA | 1 | 2.8% |
-| S3 | 4 | 11.1% |
-| VPC | 10 | 27.8% |
-| Total | 36 | 100.0% |
+| ATHENA | 1 | 2.7% |
+| DYNAMODB | 1 | 2.7% |
+| EC2 | 4 | 10.8% |
+| EVENTS | 1 | 2.7% |
+| IAM | 1 | 2.7% |
+| KMS | 14 | 37.8% |
+| LAMBDA | 1 | 2.7% |
+| S3 | 4 | 10.8% |
+| VPC | 10 | 27.0% |
+| Total | 37 | 100.0% |
 
 ### finops-cost-report {#finops-cost-report}
 
 Commande : `inventag --template finops-cost-report --create-excel --create-word --account-regions us-east-1`
 
-**Feuilles :** `Summary`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`, `Tag Compliance`
+**Feuilles :** `Summary`, `ATHENA`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`, `Tag Compliance`
 
 Feuille `S3`, premières lignes :
 

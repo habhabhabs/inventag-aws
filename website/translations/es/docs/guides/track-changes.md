@@ -86,7 +86,7 @@ cambios lo lista:
 
 | Metric | Count |
 |--------|-------|
-| Total Changes | 1 |
+| Total Changes | 2 |
 | Critical Changes | 0 |
 | High Severity | 0 |
 | Security Changes | 0 |
@@ -95,13 +95,13 @@ cambios lo lista:
 
 **Most Impacted Services:**
 - S3: 1 changes
+- ATHENA: 1 changes
 
 ## S3 Service Changes
 
 Changes detected in S3 service resources
 
 ### New Bucket 'acme-new-bucket' was created in S3
-- **Type:** added
 ```
 
 </details>
