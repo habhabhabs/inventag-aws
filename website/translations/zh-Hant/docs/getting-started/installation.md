@@ -72,11 +72,17 @@ inventag --help
 
 InvenTag 使用標準的 AWS 憑證鏈，因此以下任一方式都可以：
 
-```bash title="Terminal"
-aws sso login --profile my-readonly     # IAM Identity Center (recommended)
-export AWS_PROFILE=my-readonly
+使用 IAM Identity Center（推薦）：
 
-aws configure                           # long-lived access keys (avoid if you can)
+```bash title="Terminal"
+aws sso login --profile my-readonly
+export AWS_PROFILE=my-readonly
+```
+
+使用長期存取金鑰（儘量避免）：
+
+```bash title="Terminal"
+aws configure
 ```
 
 請優先使用短期憑證，例如 IAM Identity Center 或擔任的角色，
@@ -112,6 +118,25 @@ $ echo $?
 
 在第一次真正掃描之前，請給該身份設定唯讀策略：
 [設定唯讀存取](../guides/read-only-access.md)。
+
+## 從 v1.1.x 升級 {#upgrade-from-v11x}
+
+執行 `pip install --upgrade inventag-aws` 之後你會注意到：
+
+- **機密值會被遮蓋。** 常用於存放機密的欄位（例如 Lambda 環境變數）的值，在報告、快照和日誌中會變成
+  `***REDACTED***`。升級後的第一次執行會把這些資源報告為已更改一次。早期版本寫出的報告和快照可能仍包含這些值：
+  請刪除它們或限制其存取。
+- **新欄。** 每個服務工作表都有 `source`、`sources` 和 `detail_level` 欄。參見[輸出檔案](../reference/outputs.md)。
+- **更多服務和更多 API 呼叫。** InvenTag 多列出 22 個服務，因此會增加工作表、行和呼叫。
+  儲存庫中的策略多了 17 個讀取操作；沒有這些權限時，這些服務會被跳過並給出警告。
+  參見 [IAM 權限](../reference/iam-permissions.md)。
+- **更嚴格的檔案檢查。** 空的設定檔案、寫了兩次的鍵，或型別錯誤的 `--bom-config` 值，都會以結束代碼 1 停止執行。
+- **相互衝突的選項會以結束代碼 2 停止**，例如同時使用 `--accounts-file` 和 `--accounts-prompt`，
+  或給了 `--s3-kms-key-id` 但沒有 `--s3-encryption aws:kms`。
+- **時間限制按帳戶計算**，從該帳戶開始掃描時算起。超時的帳戶保留已找到的資源，並算作失敗。
+- **預設結束代碼不變。** 結束代碼 5 和 6 是新增的，只在使用 `--fail-on-account-error` 和 `--fail-if-empty` 時出現。
+
+完整列表見[更新日誌](https://github.com/habhabhabs/inventag-aws/blob/main/CHANGELOG.md)。
 
 ## 為開發而安裝 {#install-for-development}
 

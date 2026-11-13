@@ -72,11 +72,17 @@ inventag --help
 
 InvenTag 使用标准的 AWS 凭证链，因此以下任一方式都可以：
 
-```bash title="Terminal"
-aws sso login --profile my-readonly     # IAM Identity Center (recommended)
-export AWS_PROFILE=my-readonly
+使用 IAM Identity Center（推荐）：
 
-aws configure                           # long-lived access keys (avoid if you can)
+```bash title="Terminal"
+aws sso login --profile my-readonly
+export AWS_PROFILE=my-readonly
+```
+
+使用长期访问密钥（尽量避免）：
+
+```bash title="Terminal"
+aws configure
 ```
 
 请优先使用短期凭证，例如 IAM Identity Center 或代入的角色，
@@ -112,6 +118,25 @@ $ echo $?
 
 在第一次真正扫描之前，请给该身份配置只读策略：
 [设置只读访问](../guides/read-only-access.md)。
+
+## 从 v1.1.x 升级 {#upgrade-from-v11x}
+
+运行 `pip install --upgrade inventag-aws` 之后你会注意到：
+
+- **机密值会被遮盖。** 常用于存放机密的字段（例如 Lambda 环境变量）的值，在报告、快照和日志中会变成
+  `***REDACTED***`。升级后的第一次运行会把这些资源报告为已更改一次。早期版本写出的报告和快照可能仍包含这些值：
+  请删除它们或限制其访问。
+- **新列。** 每个服务工作表都有 `source`、`sources` 和 `detail_level` 列。参见[输出文件](../reference/outputs.md)。
+- **更多服务和更多 API 调用。** InvenTag 多列出 22 个服务，因此会增加工作表、行和调用。
+  仓库中的策略多了 17 个读取操作；没有这些权限时，这些服务会被跳过并给出警告。
+  参见 [IAM 权限](../reference/iam-permissions.md)。
+- **更严格的文件检查。** 空的设置文件、写了两次的键，或类型错误的 `--bom-config` 值，都会以退出码 1 停止运行。
+- **相互冲突的选项会以退出码 2 停止**，例如同时使用 `--accounts-file` 和 `--accounts-prompt`，
+  或给了 `--s3-kms-key-id` 但没有 `--s3-encryption aws:kms`。
+- **时间限制按账户计算**，从该账户开始扫描时算起。超时的账户保留已找到的资源，并算作失败。
+- **默认退出码不变。** 退出码 5 和 6 是新增的，只在使用 `--fail-on-account-error` 和 `--fail-if-empty` 时出现。
+
+完整列表见[更新日志](https://github.com/habhabhabs/inventag-aws/blob/main/CHANGELOG.md)。
 
 ## 为开发而安装 {#install-for-development}
 

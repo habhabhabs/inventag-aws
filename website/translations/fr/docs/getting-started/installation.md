@@ -78,11 +78,17 @@ toutes les versions.
 
 InvenTag utilise la chaîne standard d’identifiants AWS ; n’importe laquelle de ces méthodes convient :
 
-```bash title="Terminal"
-aws sso login --profile my-readonly     # IAM Identity Center (recommended)
-export AWS_PROFILE=my-readonly
+Avec IAM Identity Center (recommandé) :
 
-aws configure                           # long-lived access keys (avoid if you can)
+```bash title="Terminal"
+aws sso login --profile my-readonly
+export AWS_PROFILE=my-readonly
+```
+
+Avec des clés d’accès de longue durée (à éviter si possible) :
+
+```bash title="Terminal"
+aws configure
 ```
 
 Préférez des identifiants de courte durée, comme IAM Identity Center ou un rôle
@@ -118,6 +124,37 @@ Si les identifiants ne fonctionnent pas, InvenTag explique pourquoi et suggère 
 
 Avant votre première vraie analyse, donnez à l’identité une politique en lecture seule :
 [Configurer l’accès en lecture seule](../guides/read-only-access.md).
+
+## Mettre à jour depuis v1.1.x {#upgrade-from-v11x}
+
+Ce que vous remarquerez après `pip install --upgrade inventag-aws` :
+
+- **Les valeurs secrètes sont masquées.** Les valeurs des champs qui contiennent
+  souvent des secrets, comme les variables d’environnement Lambda, deviennent
+  `***REDACTED***` dans les rapports, les instantanés et les journaux. La première
+  exécution après la mise à jour signale une fois ces ressources comme modifiées.
+  Les rapports et instantanés des versions précédentes peuvent encore contenir
+  ces valeurs : supprimez-les ou restreignez leur accès.
+- **Nouvelles colonnes.** Chaque feuille de service a les colonnes `source`,
+  `sources` et `detail_level`. Voir [Fichiers de sortie](../reference/outputs.md).
+- **Plus de services et plus d’appels d’API.** InvenTag liste 22 services de
+  plus, ce qui ajoute des feuilles, des lignes et des appels. La politique du
+  dépôt compte 17 actions de lecture de plus ; sans elles, ces services sont
+  ignorés avec un avertissement. Voir [Permissions IAM](../reference/iam-permissions.md).
+- **Des fichiers vérifiés plus strictement.** Un fichier de réglages vide, une
+  clé écrite deux fois ou une valeur `--bom-config` du mauvais type arrêtent
+  l’exécution avec le code de sortie 1.
+- **Les options incompatibles s’arrêtent avec le code de sortie 2**, par exemple
+  `--accounts-file` avec `--accounts-prompt`, ou `--s3-kms-key-id` sans
+  `--s3-encryption aws:kms`.
+- **La limite de temps est par compte**, comptée à partir du début de son
+  analyse. Un compte qui dépasse son temps garde les ressources trouvées et
+  compte comme en échec.
+- **Les codes de sortie par défaut ne changent pas.** Les codes 5 et 6 sont
+  nouveaux et n’apparaissent qu’avec `--fail-on-account-error` et `--fail-if-empty`.
+
+La liste complète figure dans le
+[journal des modifications](https://github.com/habhabhabs/inventag-aws/blob/main/CHANGELOG.md).
 
 ## Installer pour le développement {#install-for-development}
 

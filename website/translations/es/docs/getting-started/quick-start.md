@@ -27,6 +27,11 @@ InvenTag analiza la cuenta a la que pertenecen estas credenciales.
 
 Empieza con poco. Una región es rápida y barata.
 
+Este comando solo lee. Una protección integrada bloquea las llamadas que podrían
+cambiar tu cuenta ([configurar el acceso de solo lectura](../guides/read-only-access.md)).
+De forma predeterminada también envía solicitudes a Cost Explorer, que AWS cobra;
+añade `--no-billing-validation` para omitirlas ([cuánto cuesta una ejecución](#what-a-run-costs)).
+
 ```bash title="Terminal"
 inventag --create-excel --create-word --account-regions us-east-1
 ```

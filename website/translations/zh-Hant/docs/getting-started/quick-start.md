@@ -25,6 +25,10 @@ InvenTag 掃描這組憑證所屬的帳戶。
 
 先從小處著手。一個區域既快又省錢。
 
+這條命令唯讀取。內建防護會攔截可能改變你帳戶的呼叫（[設定唯讀存取](../guides/read-only-access.md)）。
+預設情況下，它還會傳送 AWS 按次收費的 Cost Explorer 請求；加上 `--no-billing-validation`
+可以跳過它們（[一次執行的費用](#what-a-run-costs)）。
+
 ```bash title="Terminal"
 inventag --create-excel --create-word --account-regions us-east-1
 ```

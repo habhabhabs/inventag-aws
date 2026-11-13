@@ -78,11 +78,17 @@ every release.
 
 InvenTag uses the standard AWS credential chain, so any of these work:
 
-```bash title="Terminal"
-aws sso login --profile my-readonly     # IAM Identity Center (recommended)
-export AWS_PROFILE=my-readonly
+With IAM Identity Center (recommended):
 
-aws configure                           # long-lived access keys (avoid if you can)
+```bash title="Terminal"
+aws sso login --profile my-readonly
+export AWS_PROFILE=my-readonly
+```
+
+With long-lived access keys (avoid if you can):
+
+```bash title="Terminal"
+aws configure
 ```
 
 Prefer short-lived credentials, such as IAM Identity Center or an assumed
@@ -122,6 +128,35 @@ If the credentials don't work, InvenTag says why and suggests a fix. See
 
 Before your first real scan, give the identity a read-only policy:
 [Set up read-only access](../guides/read-only-access.md).
+
+## Upgrade from v1.1.x
+
+What you will notice after `pip install --upgrade inventag-aws`:
+
+- **Secret values are masked.** Values of fields that often hold secrets,
+  such as Lambda environment variables, become `***REDACTED***` in reports,
+  snapshots and logs. The first run after the upgrade reports those resources
+  as changed once. Reports and snapshots from earlier versions may still hold
+  such values: delete or restrict them.
+- **New columns.** Every service sheet has `source`, `sources` and
+  `detail_level` columns. See [Output files](../reference/outputs.md).
+- **More services and more API calls.** InvenTag lists 22 more services,
+  which adds sheets, rows and calls. The repository policy has 17 more read
+  actions; without them, those services are skipped with a warning. See
+  [IAM permissions](../reference/iam-permissions.md).
+- **Stricter files.** An empty settings file, a key written twice or a
+  `--bom-config` value of the wrong type stops the run with exit code 1.
+- **Conflicting options stop with exit code 2**, for example `--accounts-file`
+  with `--accounts-prompt`, or `--s3-kms-key-id` without
+  `--s3-encryption aws:kms`.
+- **The time limit is per account**, counted from when its scan starts. An
+  account that runs out of time keeps the resources it found and counts as
+  failed.
+- **The default exit codes are the same.** Codes 5 and 6 are new and only
+  with `--fail-on-account-error` and `--fail-if-empty`.
+
+The full list is in the
+[changelog](https://github.com/habhabhabs/inventag-aws/blob/main/CHANGELOG.md).
 
 ## Install for development
 

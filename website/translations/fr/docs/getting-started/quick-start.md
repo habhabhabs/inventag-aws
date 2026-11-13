@@ -27,6 +27,11 @@ InvenTag analyse le compte auquel appartiennent ces identifiants.
 
 Commencez petit. Une région, c’est rapide et peu coûteux.
 
+Cette commande ne fait que lire. Une protection intégrée bloque les appels qui
+pourraient modifier votre compte ([configurer un accès en lecture seule](../guides/read-only-access.md)).
+Par défaut, elle envoie aussi des requêtes Cost Explorer, qu’AWS facture ; ajoutez
+`--no-billing-validation` pour les éviter ([ce que coûte une exécution](#what-a-run-costs)).
+
 ```bash title="Terminal"
 inventag --create-excel --create-word --account-regions us-east-1
 ```
