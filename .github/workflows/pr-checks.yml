@@ -74,7 +74,7 @@ jobs:
             # For major releases, require additional confirmation
             if echo "$RELEASE_LABELS" | grep "release:major" > /dev/null; then
               echo "⚠️ MAJOR RELEASE DETECTED"
-              echo "This will increment the major version (e.g., 1.0.0 → 2.0.0)"
+              echo "This will increment the major version (e.g., v1.0.0 → v2.0.0)"
               echo "Please ensure this PR contains breaking changes that warrant a major release"
             fi
           else
