@@ -27,7 +27,6 @@ et ce que chacun vérifie se trouvent sur la page [Tests](../security/tests.md).
 
 | Option | Ce qui se passe réellement |
 |---|---|
-| `--service-descriptions` | Les descriptions personnalisées fonctionnent pour les services pour lesquels InvenTag n’a pas de description intégrée. Pour les ressources S3, EC2, RDS, Lambda et VPC, la description intégrée l’emporte, sauf si votre entrée indique aussi un `template`. Voir [Fichiers de configuration](../reference/configuration-files.md#service-descriptions). |
 | `--enable-cost-analysis` | Ajoute une feuille Cost Analysis et les quatre colonnes `forgotten_analysis.*`. Les coûts sont des estimations de l’API AWS Pricing, pas votre facture. Elle effectue des appels supplémentaires à Cost Explorer, Pricing et CloudWatch. Voir [Coûts](#costs). |
 | `--compliance-standard` | S’arrête avec le code de sortie 2. Une norme telle que SOC 2 ne peut pas être vérifiée à partir d’un inventaire, et une option qui n’afficherait qu’une étiquette vous induirait en erreur. Utilisez un modèle de politique d’étiquetage. |
 | `--create-google-docs`, `--create-google-sheets` | Ne fonctionnent qu’avec des clients Google simulés. Voir [Google Sheets et Docs](../guides/google-sheets-and-docs.md#what-is-not-verified). |

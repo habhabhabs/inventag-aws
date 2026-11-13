@@ -22,6 +22,7 @@ se trouvent sur la page [État des fonctionnalités](../getting-started/status.m
 
 ```text
 inventag [flags]                       run a scan and write reports
+inventag --version                     print the version and exit
 inventag templates list [--kind K] [--all]
 inventag templates show NAME|PATH [--resolved]
 inventag templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] [--force]
@@ -50,9 +51,9 @@ La commande `inventag` fonctionne de la même façon sous Linux, macOS et Window
 
 | Option | Par défaut | État | Ce qu’elle fait |
 |---|---|---|---|
-| `--accounts-file FILE` | aucun | Fonctionne | Lit les comptes depuis un fichier JSON ou YAML. Voir [Fichiers de configuration](./configuration-files.md#accounts-file). |
+| `--accounts-file FILE` | aucun | Fonctionne | Lit les comptes depuis un fichier JSON ou YAML. Voir [Fichiers de configuration](./configuration-files.md#accounts-file). Donnez `--accounts-file` ou `--accounts-prompt`, pas les deux (code de sortie 2). |
 | `--accounts-prompt` | désactivé | Fonctionne | Demande les comptes et les identifiants de manière interactive. |
-| `--cross-account-role ARN\|NAME` | aucun | Fonctionne | Un ARN de rôle complet est assumé directement. Un nom de rôle est combiné avec chaque ID de compte de `--accounts-file`. Un nom sans `--accounts-file` s’arrête avec le code de sortie 2. |
+| `--cross-account-role ARN\|NAME` | aucun | Fonctionne | Un ARN de rôle complet est assumé directement ; avec `--accounts-file` ou `--accounts-prompt`, il s’arrête avec le code de sortie 2. Un nom de rôle est combiné avec chaque ID de compte de `--accounts-file`. Un nom sans `--accounts-file` s’arrête avec le code de sortie 2. |
 
 ## Sortie {#output}
 
@@ -96,8 +97,8 @@ La commande `inventag` fonctionne de la même façon sous Linux, macOS et Window
 | Option | Par défaut | État | Ce qu’elle fait |
 |---|---|---|---|
 | `--tag-mappings FILE` | aucun | Fonctionne | Ajoute une colonne nommée par correspondance. Voir [Fichiers de configuration](./configuration-files.md#tag-mappings). |
-| `--service-descriptions FILE` | aucun | Partiel | Ajoute une colonne `service_description`. Une description intégrée l’emporte pour S3, EC2, RDS, Lambda et VPC, sauf si l’entrée indique un `template`. Voir [Fichiers de configuration](./configuration-files.md#service-descriptions). |
-| `--bom-config FILE` | aucun | Fonctionne | Définit des champs de la configuration de traitement de la nomenclature (BOM) à partir d’un fichier YAML ou JSON. Les autres clés sont ignorées, avec un avertissement qui les nomme. |
+| `--service-descriptions FILE` | aucun | Fonctionne | Ajoute une colonne `service_description`. Votre entrée remplace la description intégrée. Voir [Fichiers de configuration](./configuration-files.md#service-descriptions). |
+| `--bom-config FILE` | aucun | Fonctionne | Définit des champs de la configuration de traitement de la nomenclature (BOM) à partir d’un fichier YAML ou JSON. Les autres clés sont ignorées, avec un avertissement qui les nomme. Une valeur du mauvais type s’arrête avec le code de sortie 1 et nomme la clé. |
 | `--validate-config` | désactivé | Fonctionne | Charge et vérifie la configuration, puis s’arrête. |
 | `--validate-config-only` | désactivé | Fonctionne | Vérifie uniquement les fichiers que vous indiquez, puis s’arrête. N’effectue aucun appel AWS. |
 
@@ -117,9 +118,11 @@ un fichier YAML ou JSON. Voir [Fichiers de mise en page pour un rapport](../temp
 
 | Option | Par défaut | État | Ce qu’elle fait |
 |---|---|---|---|
-| `--max-concurrent-accounts N` | `4` | Fonctionne | Nombre de comptes analysés en même temps. |
-| `--account-processing-timeout SECONDS` | `1800` | Fonctionne | Durée accordée par compte (au moins 60). |
+| `--max-concurrent-accounts N` | `4` | Fonctionne | Nombre de comptes analysés en même temps (au moins 1). |
+| `--account-processing-timeout SECONDS` | `1800` | Fonctionne | Durée accordée par compte, comptée à partir du début de son analyse (au moins 60). Un compte qui dépasse son temps compte comme en échec ; les ressources trouvées restent dans le rapport. |
 | `--disable-parallel-processing` | désactivé | Fonctionne | Analyse un compte à la fois. |
+| `--resume` | désactivé | Fonctionne | Réutilise les résultats enregistrés des comptes terminés lors d’une exécution précédente de la même commande qui ne s’est pas achevée (mêmes comptes, régions, services et filtres), et n’analyse que les autres. Avec `--disable-state-management` : code de sortie 2. |
+| `--resume-max-age-hours HOURS` | `24` | Fonctionne | Avec `--resume`, ne réutilise les résultats enregistrés que jusqu’à cet âge (168 au plus). |
 
 ## État et suivi des changements {#state-and-change-tracking}
 
@@ -129,6 +132,17 @@ un fichier YAML ou JSON. Voir [Fichiers de mise en page pour un rapport](../temp
 | `--disable-state-management` | désactivé | Fonctionne | N’enregistre ni instantanés ni journaux des changements. |
 | `--enable-delta-detection` / `--disable-delta-detection` | activé | Fonctionne | Compare le nouvel instantané au précédent. `--disable-delta-detection` n’écrit aucun rapport des changements. |
 | `--generate-changelog`, `--no-generate-changelog` | activé | Fonctionne | Écrit `changelog_<timestamp>.md` à partir de la deuxième exécution. `--no-generate-changelog` l’en empêche. |
+| `--state-retention-days N` | `30` | Fonctionne | Supprime les instantanés d’état de plus de N jours quand une exécution en enregistre un nouveau. `0` ou `none` garde les instantanés de tout âge. |
+| `--state-max-snapshots N` | `100` | Fonctionne | Ne garde que les N instantanés d’état les plus récents. `0` ou `none` les garde tous. |
+
+## Codes de sortie facultatifs {#opt-in-exit-codes}
+
+| Option | Par défaut | État | Ce qu’elle fait |
+|---|---|---|---|
+| `--fail-on-account-error` | désactivé | Fonctionne | Se termine avec le code 5 quand un compte n’a pas pu être analysé entièrement. Les rapports sont quand même écrits. |
+| `--fail-if-empty` | désactivé | Fonctionne | Se termine avec le code 6 quand aucune ressource n’a été trouvée ou que les filtres les ont toutes retirées. |
+
+Les codes 5 et 6 ont la priorité sur 3 et 4.
 
 ## Journalisation {#logging}
 
@@ -144,7 +158,7 @@ un fichier YAML ou JSON. Voir [Fichiers de mise en page pour un rapport](../temp
 | Option | Par défaut | État | Ce qu’elle fait |
 |---|---|---|---|
 | `--validate-credentials` | désactivé | Fonctionne | Vérifie les identifiants de chaque compte, puis s’arrête (0 si tous fonctionnent, 1 sinon). |
-| `--credential-timeout SECONDS` | `30` | Fonctionne | Délai d’attente de chaque vérification d’identifiants. |
+| `--credential-timeout SECONDS` | `30` | Fonctionne | Délai d’attente de la connexion et des vérifications d’identifiants, AssumeRole compris. |
 | `--skip-credential-validation` | désactivé | Fonctionne | Ignore la vérification des identifiants au début d’une exécution. |
 
 ## Protection en lecture seule et audit {#read-only-guard-and-audit}
@@ -198,7 +212,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 | `--s3-bucket BUCKET` | aucun | Fonctionne | Téléverse dans ce bucket chaque fichier écrit pendant l’exécution (Excel, Word et JSON de conformité des étiquettes). L’exécution se termine avec le code 1 si un téléversement échoue. Nécessite `s3:PutObject`. |
 | `--s3-key-prefix PREFIX` | `bom-reports/` | Fonctionne | Dossier (préfixe de clé) dans le bucket. Les fichiers sont placés sous `<prefix><UTC timestamp>/`. |
 | `--s3-encryption AES256\|aws:kms` | `AES256` | Fonctionne | Chiffrement côté serveur des fichiers téléversés. |
-| `--s3-kms-key-id KEY` | aucun | Fonctionne | Clé KMS pour `aws:kms`. |
+| `--s3-kms-key-id KEY` | aucun | Fonctionne | Clé KMS pour `aws:kms`. Sans elle, S3 utilise la clé gérée par AWS `aws/s3`. Nécessite `--s3-encryption aws:kms`, sinon code de sortie 2. |
 
 Voir [Téléverser des rapports vers S3 selon un calendrier](../examples/scheduled-s3-upload.md).
 
@@ -206,8 +220,10 @@ Voir [Téléverser des rapports vers S3 selon un calendrier](../examples/schedul
 
 | Code | Signification |
 |---|---|
-| 0 | Succès. Vaut aussi 0 lorsque certains comptes ont échoué mais que d’autres ont fonctionné, et lorsqu’aucune ressource n’a été trouvée (aucun rapport n’est écrit). Voir [État des fonctionnalités](../getting-started/status.md#when-a-run-goes-wrong). |
-| 1 | Une erreur : arguments, configuration ou modèle non valides, échec des identifiants, échec de tous les comptes, échec d’un téléversement S3, ou format de rapport impossible à écrire |
-| 2 | Ligne de commande non valide : options inconnues ou mal formées, options non implémentées, options Google incorrectes, option de fichier de mise en page sans le rapport dont elle a besoin, ou nom de rôle sans `--accounts-file` |
+| 0 | Succès. Vaut aussi 0 lorsque certains comptes ont échoué mais que d’autres ont fonctionné, et lorsqu’aucune ressource n’a été trouvée, sauf si vous passez `--fail-on-account-error` ou `--fail-if-empty`. Voir [État des fonctionnalités](../getting-started/status.md#when-a-run-goes-wrong). |
+| 1 | Une erreur : arguments, configuration ou modèle non valides, échec des identifiants, échec de tous les comptes (y compris quand certains n’ont été analysés qu’en partie), échec d’un téléversement S3, ou format de rapport impossible à écrire |
+| 2 | Ligne de commande non valide : options inconnues, mal formées ou incompatibles, options non implémentées, options Google incorrectes, option de fichier de mise en page sans le rapport dont elle a besoin, ou nom de rôle sans `--accounts-file` |
 | 3 | Rapports écrits, mais un modèle de configuration avec `fail_on_tag_violations: true` a trouvé des violations de la politique d’étiquetage |
 | 4 | Rapports écrits, mais `--risk-threshold` a trouvé une règle de groupe de sécurité égale ou supérieure à ce niveau |
+| 5 | Rapports écrits, mais un compte n’a pas pu être analysé entièrement, et vous avez passé `--fail-on-account-error` |
+| 6 | Aucune ressource à signaler, et vous avez passé `--fail-if-empty` |

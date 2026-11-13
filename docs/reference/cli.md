@@ -22,6 +22,7 @@ re-tested" means we did not run it for this page. Details are on
 
 ```text
 inventag [flags]                       run a scan and write reports
+inventag --version                     print the version and exit
 inventag templates list [--kind K] [--all]
 inventag templates show NAME|PATH [--resolved]
 inventag templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] [--force]
@@ -50,9 +51,9 @@ The `inventag` command works the same on Linux, macOS and Windows.
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--accounts-file FILE` | none | Works | Read accounts from a JSON or YAML file. See [Configuration files](./configuration-files.md#accounts-file). |
+| `--accounts-file FILE` | none | Works | Read accounts from a JSON or YAML file. See [Configuration files](./configuration-files.md#accounts-file). Give `--accounts-file` or `--accounts-prompt`, not both (exit code 2). |
 | `--accounts-prompt` | off | Works | Ask for accounts and credentials interactively. |
-| `--cross-account-role ARN\|NAME` | none | Works | A full role ARN is assumed directly. A role name is combined with each account ID in `--accounts-file`. A name without `--accounts-file` stops with exit code 2. |
+| `--cross-account-role ARN\|NAME` | none | Works | A full role ARN is assumed directly; with `--accounts-file` or `--accounts-prompt` it stops with exit code 2. A role name is combined with each account ID in `--accounts-file`. A name without `--accounts-file` stops with exit code 2. |
 
 ## Output
 
@@ -96,8 +97,8 @@ The `inventag` command works the same on Linux, macOS and Windows.
 | Flag | Default | Status | What it does |
 |---|---|---|---|
 | `--tag-mappings FILE` | none | Works | Adds one named column per mapping. See [Configuration files](./configuration-files.md#tag-mappings). |
-| `--service-descriptions FILE` | none | Partial | Adds a `service_description` column. A built-in description wins for S3, EC2, RDS, Lambda and VPC unless the entry names a `template`. See [Configuration files](./configuration-files.md#service-descriptions). |
-| `--bom-config FILE` | none | Works | Sets fields of the BOM processing configuration from a YAML or JSON file. Other keys are ignored with a warning that names them. |
+| `--service-descriptions FILE` | none | Works | Adds a `service_description` column. Your entry replaces the built-in description. See [Configuration files](./configuration-files.md#service-descriptions). |
+| `--bom-config FILE` | none | Works | Sets fields of the BOM processing configuration from a YAML or JSON file. Other keys are ignored with a warning that names them. A value of the wrong type stops with exit code 1 and names the key. |
 | `--validate-config` | off | Works | Load and check the configuration, then exit. |
 | `--validate-config-only` | off | Works | Check only the files you name, then exit. It makes no AWS call. |
 
@@ -117,9 +118,11 @@ YAML or JSON file. See [Layout files for one report](../templates/layout-flags.m
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--max-concurrent-accounts N` | `4` | Works | Accounts scanned at the same time. |
-| `--account-processing-timeout SECONDS` | `1800` | Works | Time allowed per account (at least 60). |
+| `--max-concurrent-accounts N` | `4` | Works | Accounts scanned at the same time (at least 1). |
+| `--account-processing-timeout SECONDS` | `1800` | Works | Time allowed per account, counted from when its scan starts (at least 60). An account that runs out of time counts as failed; the resources it found stay in the report. |
 | `--disable-parallel-processing` | off | Works | Scan one account at a time. |
+| `--resume` | off | Works | Reuse the saved results of accounts that finished in an earlier run of the same command that did not complete (same accounts, regions, services and filters), and scan only the others. With `--disable-state-management`: exit code 2. |
+| `--resume-max-age-hours HOURS` | `24` | Works | With `--resume`, reuse saved results only up to this age (at most 168). |
 
 ## State and change tracking
 
@@ -129,6 +132,17 @@ YAML or JSON file. See [Layout files for one report](../templates/layout-flags.m
 | `--disable-state-management` | off | Works | Don't save snapshots or changelogs. |
 | `--enable-delta-detection` / `--disable-delta-detection` | on | Works | Compare the new snapshot with the previous one. `--disable-delta-detection` writes no change report. |
 | `--generate-changelog`, `--no-generate-changelog` | on | Works | Write `changelog_<timestamp>.md` from the second run on. `--no-generate-changelog` stops it. |
+| `--state-retention-days N` | `30` | Works | Delete state snapshots older than N days when a run saves a new one. `0` or `none` keeps snapshots of any age. |
+| `--state-max-snapshots N` | `100` | Works | Keep only the newest N state snapshots. `0` or `none` keeps every snapshot. |
+
+## Opt-in exit codes
+
+| Flag | Default | Status | What it does |
+|---|---|---|---|
+| `--fail-on-account-error` | off | Works | Exit with code 5 when an account could not be scanned completely. The reports are still written. |
+| `--fail-if-empty` | off | Works | Exit with code 6 when no resources were found or the filters removed all of them. |
+
+Codes 5 and 6 take precedence over 3 and 4.
 
 ## Logging
 
@@ -144,7 +158,7 @@ YAML or JSON file. See [Layout files for one report](../templates/layout-flags.m
 | Flag | Default | Status | What it does |
 |---|---|---|---|
 | `--validate-credentials` | off | Works | Check every account's credentials, then exit (0 if all work, 1 if not). |
-| `--credential-timeout SECONDS` | `30` | Works | Timeout for each credential check. |
+| `--credential-timeout SECONDS` | `30` | Works | Timeout for sign-in and credential checks, including AssumeRole. |
 | `--skip-credential-validation` | off | Works | Skip the credential check at the start of a run. |
 
 ## Read-only guard and audit
@@ -206,7 +220,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 | `--s3-bucket BUCKET` | none | Works | Upload every file the run wrote (Excel, Word and tag-compliance JSON) to this bucket. The run exits with code 1 if an upload fails. Needs `s3:PutObject`. |
 | `--s3-key-prefix PREFIX` | `bom-reports/` | Works | Folder (key prefix) in the bucket. Files go under `<prefix><UTC timestamp>/`. |
 | `--s3-encryption AES256\|aws:kms` | `AES256` | Works | Server-side encryption for the uploads. |
-| `--s3-kms-key-id KEY` | none | Works | KMS key for `aws:kms`. |
+| `--s3-kms-key-id KEY` | none | Works | KMS key for `aws:kms`. Without it, S3 uses the AWS managed key `aws/s3`. Needs `--s3-encryption aws:kms`, else exit code 2. |
 
 See [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
 
@@ -214,8 +228,10 @@ See [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
 
 | Code | Meaning |
 |---|---|
-| 0 | Success. Also 0 when some accounts failed but others worked, and when no resources were found (no report is written). See [Feature status](../getting-started/status.md#when-a-run-goes-wrong). |
-| 1 | An error: invalid arguments, configuration or template, failed credentials, every account failed, a failed S3 upload, or a report format that could not be written |
-| 2 | Invalid command line: unknown or badly formed options, flags that are not implemented, bad Google options, a layout file flag without the report it needs, or a role name without `--accounts-file` |
+| 0 | Success. Also 0 when some accounts failed but others worked, and when no resources were found, unless you pass `--fail-on-account-error` or `--fail-if-empty`. See [Feature status](../getting-started/status.md#when-a-run-goes-wrong). |
+| 1 | An error: invalid arguments, configuration or template, failed credentials, every account failed (also when some were only partly scanned), a failed S3 upload, or a report format that could not be written |
+| 2 | Invalid command line: unknown, badly formed or conflicting options, flags that are not implemented, bad Google options, a layout file flag without the report it needs, or a role name without `--accounts-file` |
 | 3 | Reports written, but a config template with `fail_on_tag_violations: true` found tag policy violations |
 | 4 | Reports written, but `--risk-threshold` found a security group rule at or above that level |
+| 5 | Reports written, but an account could not be scanned completely, and you passed `--fail-on-account-error` |
+| 6 | No resources to report, and you passed `--fail-if-empty` |

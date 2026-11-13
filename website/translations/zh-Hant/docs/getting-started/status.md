@@ -25,7 +25,6 @@ sidebar_position: 5
 
 | 引數 | 實際會發生什麼 |
 |---|---|
-| `--service-descriptions` | 自定義描述對 InvenTag 沒有內建描述的服務有效。對於 S3、EC2、RDS、Lambda 和 VPC 資源，內建描述優先，除非你的條目同時指定了 `template`。參見[設定檔](../reference/configuration-files.md#service-descriptions)。 |
 | `--enable-cost-analysis` | 增加一個 Cost Analysis 工作表和四個 `forgotten_analysis.*` 欄。其中的費用是根據 AWS Pricing API 得出的估算值，不是你的帳單。它會額外發出 Cost Explorer、Pricing 和 CloudWatch 呼叫。參見[費用](#costs)。 |
 | `--compliance-standard` | 以結束代碼 2 停止。像 SOC 2 這樣的標準無法從資源清單中檢查，而一個只列印標籤的引數會誤導你。請使用標籤策略範本。 |
 | `--create-google-docs`、`--create-google-sheets` | 只針對模擬的 Google 客戶端驗證過。參見 [Google Sheets 和 Docs](../guides/google-sheets-and-docs.md#what-is-not-verified)。 |

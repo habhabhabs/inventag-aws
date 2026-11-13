@@ -27,7 +27,6 @@ and what each one checks is on the [Tests](../security/tests.md) page.
 
 | Flag | What actually happens |
 |---|---|
-| `--service-descriptions` | Custom descriptions work for services InvenTag has no built-in description for. For S3, EC2, RDS, Lambda and VPC resources, a built-in description wins unless your entry also names a `template`. See [Configuration files](../reference/configuration-files.md#service-descriptions). |
 | `--enable-cost-analysis` | Adds a Cost Analysis sheet and the four `forgotten_analysis.*` columns. The costs are estimates from the AWS Pricing API, not your invoice. It makes extra Cost Explorer, Pricing and CloudWatch calls. See [Costs](#costs). |
 | `--compliance-standard` | Stops with exit code 2. A standard such as SOC 2 cannot be checked from an inventory, and a flag that only printed a label would mislead you. Use a tag-policy template. |
 | `--create-google-docs`, `--create-google-sheets` | Work against mocked Google clients only. See [Google Sheets and Docs](../guides/google-sheets-and-docs.md#what-is-not-verified). |

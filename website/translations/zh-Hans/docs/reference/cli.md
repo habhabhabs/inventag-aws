@@ -17,6 +17,7 @@ sidebar_position: 1
 
 ```text
 inventag [flags]                       run a scan and write reports
+inventag --version                     print the version and exit
 inventag templates list [--kind K] [--all]
 inventag templates show NAME|PATH [--resolved]
 inventag templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] [--force]
@@ -45,9 +46,9 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 
 | 参数 | 默认值 | 状态 | 功能 |
 |---|---|---|---|
-| `--accounts-file FILE` | 无 | 可用 | 从 JSON 或 YAML 文件读取账户。见[配置文件](./configuration-files.md#accounts-file)。 |
+| `--accounts-file FILE` | 无 | 可用 | 从 JSON 或 YAML 文件读取账户。见[配置文件](./configuration-files.md#accounts-file)。`--accounts-file` 和 `--accounts-prompt` 只能给一个（否则退出码 2）。 |
 | `--accounts-prompt` | 关 | 可用 | 以交互方式询问账户和凭证。 |
-| `--cross-account-role ARN\|NAME` | 无 | 可用 | 完整的角色 ARN 会被直接代入。角色名称会与 `--accounts-file` 中的每个账户 ID 组合。只给角色名称而没有 `--accounts-file` 时，会以退出码 2 停止。 |
+| `--cross-account-role ARN\|NAME` | 无 | 可用 | 完整的角色 ARN 会被直接代入；与 `--accounts-file` 或 `--accounts-prompt` 一起使用时以退出码 2 停止。角色名称会与 `--accounts-file` 中的每个账户 ID 组合。只给角色名称而没有 `--accounts-file` 时，会以退出码 2 停止。 |
 
 ## 输出 {#output}
 
@@ -91,8 +92,8 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | 参数 | 默认值 | 状态 | 功能 |
 |---|---|---|---|
 | `--tag-mappings FILE` | 无 | 可用 | 每条映射添加一个命名列。见[配置文件](./configuration-files.md#tag-mappings)。 |
-| `--service-descriptions FILE` | 无 | 部分可用 | 添加 `service_description` 列。对于 S3、EC2、RDS、Lambda 和 VPC，内置描述优先，除非该条目指定了 `template`。见[配置文件](./configuration-files.md#service-descriptions)。 |
-| `--bom-config FILE` | 无 | 可用 | 从 YAML 或 JSON 文件设置 BOM 处理配置的字段。其他键会被忽略，并给出指明这些键的警告。 |
+| `--service-descriptions FILE` | 无 | 可用 | 添加 `service_description` 列。你的条目会替换内置描述。见[配置文件](./configuration-files.md#service-descriptions)。 |
+| `--bom-config FILE` | 无 | 可用 | 从 YAML 或 JSON 文件设置 BOM 处理配置的字段。其他键会被忽略，并给出指明这些键的警告。类型错误的值会以退出码 1 停止，并指明该键。 |
 | `--validate-config` | 关 | 可用 | 加载并检查配置，然后退出。 |
 | `--validate-config-only` | 关 | 可用 | 只检查你指定的文件，然后退出。不会进行任何 AWS 调用。 |
 
@@ -111,9 +112,11 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 
 | 参数 | 默认值 | 状态 | 功能 |
 |---|---|---|---|
-| `--max-concurrent-accounts N` | `4` | 可用 | 同时扫描的账户数。 |
-| `--account-processing-timeout SECONDS` | `1800` | 可用 | 每个账户允许的时间（至少 60）。 |
+| `--max-concurrent-accounts N` | `4` | 可用 | 同时扫描的账户数（至少 1）。 |
+| `--account-processing-timeout SECONDS` | `1800` | 可用 | 每个账户允许的时间，从该账户开始扫描时算起（至少 60）。超时的账户算作失败；它找到的资源保留在报告中。 |
 | `--disable-parallel-processing` | 关 | 可用 | 一次只扫描一个账户。 |
+| `--resume` | 关 | 可用 | 复用同一条命令之前未完成的运行中已完成账户的保存结果（相同的账户、区域、服务和筛选条件），只扫描其他账户。与 `--disable-state-management` 一起使用：退出码 2。 |
+| `--resume-max-age-hours HOURS` | `24` | 可用 | 与 `--resume` 一起使用时，只复用不超过这个时长的保存结果（最多 168）。 |
 
 ## 状态与变更跟踪 {#state-and-change-tracking}
 
@@ -123,6 +126,17 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | `--disable-state-management` | 关 | 可用 | 不保存快照和变更日志。 |
 | `--enable-delta-detection` / `--disable-delta-detection` | 开 | 可用 | 把新快照与上一份快照比较。`--disable-delta-detection` 不写出变更报告。 |
 | `--generate-changelog`, `--no-generate-changelog` | 开 | 可用 | 从第二次运行起写出 `changelog_<timestamp>.md`。`--no-generate-changelog` 会停止写出。 |
+| `--state-retention-days N` | `30` | 可用 | 运行保存新快照时，删除超过 N 天的状态快照。`0` 或 `none` 保留任何时长的快照。 |
+| `--state-max-snapshots N` | `100` | 可用 | 只保留最新的 N 个状态快照。`0` 或 `none` 保留所有快照。 |
+
+## 可选的退出码 {#opt-in-exit-codes}
+
+| 参数 | 默认值 | 状态 | 功能 |
+|---|---|---|---|
+| `--fail-on-account-error` | 关 | 可用 | 有账户未能完整扫描时以退出码 5 结束。报告仍会写出。 |
+| `--fail-if-empty` | 关 | 可用 | 没有找到资源或筛选条件把它们全部去掉时，以退出码 6 结束。 |
+
+退出码 5 和 6 优先于 3 和 4。
 
 ## 日志 {#logging}
 
@@ -138,7 +152,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | 参数 | 默认值 | 状态 | 功能 |
 |---|---|---|---|
 | `--validate-credentials` | 关 | 可用 | 检查每个账户的凭证，然后退出（全部可用为 0，否则为 1）。 |
-| `--credential-timeout SECONDS` | `30` | 可用 | 每次凭证检查的超时时间。 |
+| `--credential-timeout SECONDS` | `30` | 可用 | 登录和凭证检查（包括 AssumeRole）的超时时间。 |
 | `--skip-credential-validation` | 关 | 可用 | 在运行开始时跳过凭证检查。 |
 
 ## 只读防护与审计 {#read-only-guard-and-audit}
@@ -191,7 +205,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 | `--s3-bucket BUCKET` | 无 | 可用 | 把本次运行写出的每个文件（Excel、Word 和标签合规 JSON）上传到该存储桶。上传失败时，运行以退出码 1 结束。需要 `s3:PutObject`。 |
 | `--s3-key-prefix PREFIX` | `bom-reports/` | 可用 | 存储桶中的文件夹（键前缀）。文件位于 `<prefix><UTC timestamp>/` 之下。 |
 | `--s3-encryption AES256\|aws:kms` | `AES256` | 可用 | 上传文件使用的服务器端加密。 |
-| `--s3-kms-key-id KEY` | 无 | 可用 | 用于 `aws:kms` 的 KMS 密钥。 |
+| `--s3-kms-key-id KEY` | 无 | 可用 | 用于 `aws:kms` 的 KMS 密钥。不给出时，S3 使用 AWS 托管密钥 `aws/s3`。需要 `--s3-encryption aws:kms`，否则退出码 2。 |
 
 见[按计划把报告上传到 S3](../examples/scheduled-s3-upload.md)。
 
@@ -199,8 +213,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 | 代码 | 含义 |
 |---|---|
-| 0 | 成功。部分账户失败但其他账户正常，以及没有找到任何资源（不写出报告）时，也是 0。见[功能状态](../getting-started/status.md#when-a-run-goes-wrong)。 |
-| 1 | 出错：参数、配置或模板无效，凭证失败，所有账户都失败，S3 上传失败，或某种报告格式无法写出 |
-| 2 | 命令行无效：未知或格式错误的选项，尚未实现的参数，Google 选项有误，版式文件参数缺少它所需的报告，或给了角色名称但没有 `--accounts-file` |
+| 0 | 成功。部分账户失败但其他账户正常，以及没有找到任何资源时，也是 0，除非你传入 `--fail-on-account-error` 或 `--fail-if-empty`。见[功能状态](../getting-started/status.md#when-a-run-goes-wrong)。 |
+| 1 | 出错：参数、配置或模板无效，凭证失败，所有账户都失败（包括有些只扫描了一部分），S3 上传失败，或某种报告格式无法写出 |
+| 2 | 命令行无效：未知、格式错误或相互冲突的选项，尚未实现的参数，Google 选项有误，版式文件参数缺少它所需的报告，或给了角色名称但没有 `--accounts-file` |
 | 3 | 报告已写出，但带有 `fail_on_tag_violations: true` 的配置模板发现了标签策略违规 |
 | 4 | 报告已写出，但 `--risk-threshold` 发现有安全组规则达到或超过该级别 |
+| 5 | 报告已写出，但有账户未能完整扫描，并且你传入了 `--fail-on-account-error` |
+| 6 | 没有可报告的资源，并且你传入了 `--fail-if-empty` |

@@ -17,6 +17,7 @@ sidebar_position: 1
 
 ```text
 inventag [flags]                       run a scan and write reports
+inventag --version                     print the version and exit
 inventag templates list [--kind K] [--all]
 inventag templates show NAME|PATH [--resolved]
 inventag templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] [--force]
@@ -45,9 +46,9 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 
 | 引數 | 預設值 | 狀態 | 功能 |
 |---|---|---|---|
-| `--accounts-file FILE` | 無 | 可用 | 從 JSON 或 YAML 檔案讀取帳戶。見[設定檔](./configuration-files.md#accounts-file)。 |
+| `--accounts-file FILE` | 無 | 可用 | 從 JSON 或 YAML 檔案讀取帳戶。見[設定檔](./configuration-files.md#accounts-file)。`--accounts-file` 和 `--accounts-prompt` 只能給一個（否則結束代碼 2）。 |
 | `--accounts-prompt` | 關 | 可用 | 以互動方式詢問帳戶和憑證。 |
-| `--cross-account-role ARN\|NAME` | 無 | 可用 | 完整的角色 ARN 會被直接擔任。角色名稱會與 `--accounts-file` 中的每個帳戶 ID 組合。只給角色名稱而沒有 `--accounts-file` 時，會以結束代碼 2 停止。 |
+| `--cross-account-role ARN\|NAME` | 無 | 可用 | 完整的角色 ARN 會被直接擔任；與 `--accounts-file` 或 `--accounts-prompt` 一起使用時以結束代碼 2 停止。角色名稱會與 `--accounts-file` 中的每個帳戶 ID 組合。只給角色名稱而沒有 `--accounts-file` 時，會以結束代碼 2 停止。 |
 
 ## 輸出 {#output}
 
@@ -91,8 +92,8 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | 引數 | 預設值 | 狀態 | 功能 |
 |---|---|---|---|
 | `--tag-mappings FILE` | 無 | 可用 | 每條對應新增一個命名欄。見[設定檔](./configuration-files.md#tag-mappings)。 |
-| `--service-descriptions FILE` | 無 | 部分可用 | 新增 `service_description` 欄。對於 S3、EC2、RDS、Lambda 和 VPC，內建描述優先，除非該條目指定了 `template`。見[設定檔](./configuration-files.md#service-descriptions)。 |
-| `--bom-config FILE` | 無 | 可用 | 從 YAML 或 JSON 檔案設定 BOM 處理設定的欄位。其他鍵會被忽略，並給出指明這些鍵的警告。 |
+| `--service-descriptions FILE` | 無 | 可用 | 新增 `service_description` 欄。你的條目會替換內建描述。見[設定檔](./configuration-files.md#service-descriptions)。 |
+| `--bom-config FILE` | 無 | 可用 | 從 YAML 或 JSON 檔案設定 BOM 處理設定的欄位。其他鍵會被忽略，並給出指明這些鍵的警告。型別錯誤的值會以結束代碼 1 停止，並指明該鍵。 |
 | `--validate-config` | 關 | 可用 | 載入並檢查設定，然後退出。 |
 | `--validate-config-only` | 關 | 可用 | 只檢查你指定的檔案，然後退出。不會進行任何 AWS 呼叫。 |
 
@@ -111,9 +112,11 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 
 | 引數 | 預設值 | 狀態 | 功能 |
 |---|---|---|---|
-| `--max-concurrent-accounts N` | `4` | 可用 | 同時掃描的帳戶數。 |
-| `--account-processing-timeout SECONDS` | `1800` | 可用 | 每個帳戶允許的時間（至少 60）。 |
+| `--max-concurrent-accounts N` | `4` | 可用 | 同時掃描的帳戶數（至少 1）。 |
+| `--account-processing-timeout SECONDS` | `1800` | 可用 | 每個帳戶允許的時間，從該帳戶開始掃描時算起（至少 60）。超時的帳戶算作失敗；它找到的資源保留在報告中。 |
 | `--disable-parallel-processing` | 關 | 可用 | 一次只掃描一個帳戶。 |
+| `--resume` | 關 | 可用 | 複用同一條命令之前未完成的執行中已完成帳戶的儲存結果（相同的帳戶、區域、服務和篩選條件），只掃描其他帳戶。與 `--disable-state-management` 一起使用：結束代碼 2。 |
+| `--resume-max-age-hours HOURS` | `24` | 可用 | 與 `--resume` 一起使用時，只複用不超過這個時長的儲存結果（最多 168）。 |
 
 ## 狀態與變更跟蹤 {#state-and-change-tracking}
 
@@ -123,6 +126,17 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | `--disable-state-management` | 關 | 可用 | 不儲存快照和變更日誌。 |
 | `--enable-delta-detection` / `--disable-delta-detection` | 開 | 可用 | 把新快照與上一份快照比較。`--disable-delta-detection` 不寫出變更報告。 |
 | `--generate-changelog`, `--no-generate-changelog` | 開 | 可用 | 從第二次執行起寫出 `changelog_<timestamp>.md`。`--no-generate-changelog` 會停止寫出。 |
+| `--state-retention-days N` | `30` | 可用 | 執行儲存新快照時，刪除超過 N 天的狀態快照。`0` 或 `none` 保留任何時長的快照。 |
+| `--state-max-snapshots N` | `100` | 可用 | 只保留最新的 N 個狀態快照。`0` 或 `none` 保留所有快照。 |
+
+## 可選的結束代碼 {#opt-in-exit-codes}
+
+| 引數 | 預設值 | 狀態 | 功能 |
+|---|---|---|---|
+| `--fail-on-account-error` | 關 | 可用 | 有帳戶未能完整掃描時以結束代碼 5 結束。報告仍會寫出。 |
+| `--fail-if-empty` | 關 | 可用 | 沒有找到資源或篩選條件把它們全部去掉時，以結束代碼 6 結束。 |
+
+結束代碼 5 和 6 優先於 3 和 4。
 
 ## 日誌 {#logging}
 
@@ -138,7 +152,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | 引數 | 預設值 | 狀態 | 功能 |
 |---|---|---|---|
 | `--validate-credentials` | 關 | 可用 | 檢查每個帳戶的憑證，然後退出（全部可用為 0，否則為 1）。 |
-| `--credential-timeout SECONDS` | `30` | 可用 | 每次憑證檢查的超時時間。 |
+| `--credential-timeout SECONDS` | `30` | 可用 | 登入和憑證檢查（包括 AssumeRole）的超時時間。 |
 | `--skip-credential-validation` | 關 | 可用 | 在執行開始時跳過憑證檢查。 |
 
 ## 唯讀防護與審計 {#read-only-guard-and-audit}
@@ -191,7 +205,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 | `--s3-bucket BUCKET` | 無 | 可用 | 把本次執行寫出的每個檔案（Excel、Word 和標籤合規 JSON）上傳到該儲存貯體。上傳失敗時，執行以結束代碼 1 結束。需要 `s3:PutObject`。 |
 | `--s3-key-prefix PREFIX` | `bom-reports/` | 可用 | 儲存貯體中的資料夾（鍵字首）。檔案位於 `<prefix><UTC timestamp>/` 之下。 |
 | `--s3-encryption AES256\|aws:kms` | `AES256` | 可用 | 上傳檔案使用的伺服器端加密。 |
-| `--s3-kms-key-id KEY` | 無 | 可用 | 用於 `aws:kms` 的 KMS 金鑰。 |
+| `--s3-kms-key-id KEY` | 無 | 可用 | 用於 `aws:kms` 的 KMS 金鑰。不給出時，S3 使用 AWS 託管金鑰 `aws/s3`。需要 `--s3-encryption aws:kms`，否則結束代碼 2。 |
 
 見[按計劃把報告上傳到 S3](../examples/scheduled-s3-upload.md)。
 
@@ -199,8 +213,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 | 程式碼 | 含義 |
 |---|---|
-| 0 | 成功。部分帳戶失敗但其他帳戶正常，以及沒有找到任何資源（不寫出報告）時，也是 0。見[功能狀態](../getting-started/status.md#when-a-run-goes-wrong)。 |
-| 1 | 出錯：引數、設定或範本無效，憑證失敗，所有帳戶都失敗，S3 上傳失敗，或某種報告格式無法寫出 |
-| 2 | 命令列無效：未知或格式錯誤的選項，尚未實現的引數，Google 選項有誤，版面配置檔案引數缺少它所需的報告，或給了角色名稱但沒有 `--accounts-file` |
+| 0 | 成功。部分帳戶失敗但其他帳戶正常，以及沒有找到任何資源時，也是 0，除非你傳入 `--fail-on-account-error` 或 `--fail-if-empty`。見[功能狀態](../getting-started/status.md#when-a-run-goes-wrong)。 |
+| 1 | 出錯：引數、設定或範本無效，憑證失敗，所有帳戶都失敗（包括有些只掃描了一部分），S3 上傳失敗，或某種報告格式無法寫出 |
+| 2 | 命令列無效：未知、格式錯誤或相互衝突的選項，尚未實現的引數，Google 選項有誤，版面配置檔案引數缺少它所需的報告，或給了角色名稱但沒有 `--accounts-file` |
 | 3 | 報告已寫出，但帶有 `fail_on_tag_violations: true` 的設定範本發現了標籤策略違規 |
 | 4 | 報告已寫出，但 `--risk-threshold` 發現有安全組規則達到或超過該級別 |
+| 5 | 報告已寫出，但有帳戶未能完整掃描，並且你傳入了 `--fail-on-account-error` |
+| 6 | 沒有可報告的資源，並且你傳入了 `--fail-if-empty` |

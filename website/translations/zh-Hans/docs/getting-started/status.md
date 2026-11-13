@@ -25,7 +25,6 @@ sidebar_position: 5
 
 | 参数 | 实际会发生什么 |
 |---|---|
-| `--service-descriptions` | 自定义描述对 InvenTag 没有内置描述的服务有效。对于 S3、EC2、RDS、Lambda 和 VPC 资源，内置描述优先，除非你的条目同时指定了 `template`。参见[配置文件](../reference/configuration-files.md#service-descriptions)。 |
 | `--enable-cost-analysis` | 增加一个 Cost Analysis 工作表和四个 `forgotten_analysis.*` 列。其中的费用是根据 AWS Pricing API 得出的估算值，不是你的账单。它会额外发出 Cost Explorer、Pricing 和 CloudWatch 调用。参见[费用](#costs)。 |
 | `--compliance-standard` | 以退出码 2 停止。像 SOC 2 这样的标准无法从资源清单中检查，而一个只打印标签的参数会误导你。请使用标签策略模板。 |
 | `--create-google-docs`、`--create-google-sheets` | 只针对模拟的 Google 客户端验证过。参见 [Google Sheets 和 Docs](../guides/google-sheets-and-docs.md#what-is-not-verified)。 |

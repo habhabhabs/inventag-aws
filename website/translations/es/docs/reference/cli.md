@@ -22,6 +22,7 @@ volvió a probar» significa que no la ejecutamos para esta página. Hay más de
 
 ```text
 inventag [flags]                       run a scan and write reports
+inventag --version                     print the version and exit
 inventag templates list [--kind K] [--all]
 inventag templates show NAME|PATH [--resolved]
 inventag templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] [--force]
@@ -50,9 +51,9 @@ El comando `inventag` funciona igual en Linux, macOS y Windows.
 
 | Opción | Predeterminado | Estado | Qué hace |
 |---|---|---|---|
-| `--accounts-file FILE` | ninguno | Funciona | Lee las cuentas de un archivo JSON o YAML. Consulta [Archivos de configuración](./configuration-files.md#accounts-file). |
+| `--accounts-file FILE` | ninguno | Funciona | Lee las cuentas de un archivo JSON o YAML. Consulta [Archivos de configuración](./configuration-files.md#accounts-file). Indica `--accounts-file` o `--accounts-prompt`, no ambos (código de salida 2). |
 | `--accounts-prompt` | desactivado | Funciona | Pide las cuentas y las credenciales de forma interactiva. |
-| `--cross-account-role ARN\|NAME` | ninguno | Funciona | Un ARN de rol completo se asume directamente. Un nombre de rol se combina con cada ID de cuenta de `--accounts-file`. Un nombre sin `--accounts-file` se detiene con el código de salida 2. |
+| `--cross-account-role ARN\|NAME` | ninguno | Funciona | Un ARN de rol completo se asume directamente; con `--accounts-file` o `--accounts-prompt` se detiene con el código de salida 2. Un nombre de rol se combina con cada ID de cuenta de `--accounts-file`. Un nombre sin `--accounts-file` se detiene con el código de salida 2. |
 
 ## Salida {#output}
 
@@ -96,8 +97,8 @@ El comando `inventag` funciona igual en Linux, macOS y Windows.
 | Opción | Predeterminado | Estado | Qué hace |
 |---|---|---|---|
 | `--tag-mappings FILE` | ninguno | Funciona | Añade una columna con nombre por cada asignación. Consulta [Archivos de configuración](./configuration-files.md#tag-mappings). |
-| `--service-descriptions FILE` | ninguno | Parcial | Añade una columna `service_description`. Una descripción integrada prevalece para S3, EC2, RDS, Lambda y VPC, salvo que la entrada indique un `template`. Consulta [Archivos de configuración](./configuration-files.md#service-descriptions). |
-| `--bom-config FILE` | ninguno | Funciona | Define campos de la configuración de procesamiento de la BOM desde un archivo YAML o JSON. Las demás claves se ignoran con una advertencia que las nombra. |
+| `--service-descriptions FILE` | ninguno | Funciona | Añade una columna `service_description`. Tu entrada sustituye a la descripción integrada. Consulta [Archivos de configuración](./configuration-files.md#service-descriptions). |
+| `--bom-config FILE` | ninguno | Funciona | Define campos de la configuración de procesamiento de la BOM desde un archivo YAML o JSON. Las demás claves se ignoran con una advertencia que las nombra. Un valor de tipo incorrecto se detiene con el código de salida 1 y nombra la clave. |
 | `--validate-config` | desactivado | Funciona | Carga y comprueba la configuración y después termina. |
 | `--validate-config-only` | desactivado | Funciona | Comprueba solo los archivos que indiques y después termina. No hace ninguna llamada a AWS. |
 
@@ -117,9 +118,11 @@ con un archivo YAML o JSON. Consulta [Archivos de diseño para un informe](../te
 
 | Opción | Predeterminado | Estado | Qué hace |
 |---|---|---|---|
-| `--max-concurrent-accounts N` | `4` | Funciona | Cuentas que se analizan al mismo tiempo. |
-| `--account-processing-timeout SECONDS` | `1800` | Funciona | Tiempo permitido por cuenta (mínimo 60). |
+| `--max-concurrent-accounts N` | `4` | Funciona | Cuentas que se analizan al mismo tiempo (mínimo 1). |
+| `--account-processing-timeout SECONDS` | `1800` | Funciona | Tiempo permitido por cuenta, contado desde que empieza su análisis (mínimo 60). Una cuenta que se queda sin tiempo cuenta como fallida; los recursos que encontró se quedan en el informe. |
 | `--disable-parallel-processing` | desactivado | Funciona | Analiza una cuenta cada vez. |
+| `--resume` | desactivado | Funciona | Reutiliza los resultados guardados de las cuentas que terminaron en una ejecución anterior del mismo comando que no se completó (mismas cuentas, regiones, servicios y filtros) y analiza solo las demás. Con `--disable-state-management`: código de salida 2. |
+| `--resume-max-age-hours HOURS` | `24` | Funciona | Con `--resume`, reutiliza los resultados guardados solo hasta esta antigüedad (como máximo 168). |
 
 ## Estado y seguimiento de cambios {#state-and-change-tracking}
 
@@ -129,6 +132,17 @@ con un archivo YAML o JSON. Consulta [Archivos de diseño para un informe](../te
 | `--disable-state-management` | desactivado | Funciona | No guarda instantáneas ni registros de cambios. |
 | `--enable-delta-detection` / `--disable-delta-detection` | activado | Funciona | Compara la instantánea nueva con la anterior. `--disable-delta-detection` no escribe informe de cambios. |
 | `--generate-changelog`, `--no-generate-changelog` | activado | Funciona | Escribe `changelog_<timestamp>.md` a partir de la segunda ejecución. `--no-generate-changelog` lo evita. |
+| `--state-retention-days N` | `30` | Funciona | Borra las instantáneas de estado con más de N días cuando una ejecución guarda una nueva. `0` o `none` conserva instantáneas de cualquier antigüedad. |
+| `--state-max-snapshots N` | `100` | Funciona | Conserva solo las N instantáneas de estado más recientes. `0` o `none` conserva todas. |
+
+## Códigos de salida opcionales {#opt-in-exit-codes}
+
+| Opción | Predeterminado | Estado | Qué hace |
+|---|---|---|---|
+| `--fail-on-account-error` | desactivado | Funciona | Termina con el código 5 cuando una cuenta no se pudo analizar por completo. Los informes se escriben igualmente. |
+| `--fail-if-empty` | desactivado | Funciona | Termina con el código 6 cuando no se encontraron recursos o los filtros los quitaron todos. |
+
+Los códigos 5 y 6 tienen prioridad sobre 3 y 4.
 
 ## Registro {#logging}
 
@@ -144,7 +158,7 @@ con un archivo YAML o JSON. Consulta [Archivos de diseño para un informe](../te
 | Opción | Predeterminado | Estado | Qué hace |
 |---|---|---|---|
 | `--validate-credentials` | desactivado | Funciona | Comprueba las credenciales de cada cuenta y después termina (0 si todas funcionan, 1 si no). |
-| `--credential-timeout SECONDS` | `30` | Funciona | Tiempo de espera de cada comprobación de credenciales. |
+| `--credential-timeout SECONDS` | `30` | Funciona | Tiempo de espera del inicio de sesión y de las comprobaciones de credenciales, incluido AssumeRole. |
 | `--skip-credential-validation` | desactivado | Funciona | Omite la comprobación de credenciales al inicio de una ejecución. |
 
 ## Protección de solo lectura y auditoría {#read-only-guard-and-audit}
@@ -198,7 +212,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 | `--s3-bucket BUCKET` | ninguno | Funciona | Sube a este bucket todos los archivos que escribió la ejecución (Excel, Word y JSON de cumplimiento de etiquetas). La ejecución termina con el código 1 si falla una carga. Necesita `s3:PutObject`. |
 | `--s3-key-prefix PREFIX` | `bom-reports/` | Funciona | Carpeta (prefijo de clave) en el bucket. Los archivos van bajo `<prefix><UTC timestamp>/`. |
 | `--s3-encryption AES256\|aws:kms` | `AES256` | Funciona | Cifrado del lado del servidor para las cargas. |
-| `--s3-kms-key-id KEY` | ninguno | Funciona | Clave de KMS para `aws:kms`. |
+| `--s3-kms-key-id KEY` | ninguno | Funciona | Clave de KMS para `aws:kms`. Sin ella, S3 usa la clave administrada por AWS `aws/s3`. Necesita `--s3-encryption aws:kms`; si no, código de salida 2. |
 
 Consulta [Subir informes a S3 de forma programada](../examples/scheduled-s3-upload.md).
 
@@ -206,8 +220,10 @@ Consulta [Subir informes a S3 de forma programada](../examples/scheduled-s3-uplo
 
 | Código | Significado |
 |---|---|
-| 0 | Correcto. También es 0 cuando algunas cuentas fallaron pero otras funcionaron, y cuando no se encontraron recursos (no se escribe ningún informe). Consulta [Estado de las funciones](../getting-started/status.md#when-a-run-goes-wrong). |
-| 1 | Un error: argumentos, configuración o plantilla no válidos, credenciales fallidas, todas las cuentas fallaron, una carga a S3 fallida o un formato de informe que no se pudo escribir |
-| 2 | Línea de comandos no válida: opciones desconocidas o mal formadas, opciones no implementadas, opciones de Google incorrectas, una opción de archivo de diseño sin el informe que necesita o un nombre de rol sin `--accounts-file` |
+| 0 | Correcto. También es 0 cuando algunas cuentas fallaron pero otras funcionaron, y cuando no se encontraron recursos, salvo que pases `--fail-on-account-error` o `--fail-if-empty`. Consulta [Estado de las funciones](../getting-started/status.md#when-a-run-goes-wrong). |
+| 1 | Un error: argumentos, configuración o plantilla no válidos, credenciales fallidas, todas las cuentas fallaron (también cuando algunas solo se analizaron en parte), una carga a S3 fallida o un formato de informe que no se pudo escribir |
+| 2 | Línea de comandos no válida: opciones desconocidas, mal formadas o incompatibles entre sí, opciones no implementadas, opciones de Google incorrectas, una opción de archivo de diseño sin el informe que necesita o un nombre de rol sin `--accounts-file` |
 | 3 | Informes escritos, pero una plantilla de configuración con `fail_on_tag_violations: true` encontró infracciones de la política de etiquetas |
 | 4 | Informes escritos, pero `--risk-threshold` encontró una regla de un grupo de seguridad en ese nivel o por encima |
+| 5 | Informes escritos, pero una cuenta no se pudo analizar por completo, y pasaste `--fail-on-account-error` |
+| 6 | No hay recursos que informar, y pasaste `--fail-if-empty` |
