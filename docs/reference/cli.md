@@ -11,8 +11,10 @@ sidebar_position: 1
 **What you can do after reading:** build any InvenTag command line, and know
 which flags work today.
 
-This page matches `inventag --help` on v5.0.0. The **Status** column
-says what we saw when we ran the flag offline against mocked AWS. "Not
+This page matches `inventag --help` of the release that this version of the
+docs describes. Run `inventag --help` to see the flags of the release you have
+installed. The **Status** column says what we saw when we ran the flag offline
+against mocked AWS. "Not
 re-tested" means we did not run it for this page. Details are on
 [Feature status](../getting-started/status.md).
 
@@ -60,7 +62,7 @@ The `inventag` command works the same on Linux, macOS and Windows.
 | `--create-word` | off | Works | Write `multi_account_bom_<timestamp>.docx`. |
 | `--create-google-docs` | off | Works (mocked clients only) | Create the Word report as a Google Doc. Needs the Google add-on (`pip install "inventag-aws[google]"`). See [Google Sheets and Docs](../guides/google-sheets-and-docs.md). |
 | `--create-google-sheets` | off | Works (mocked clients only) | Create the Excel report as a Google Sheets spreadsheet. |
-| `--google-credentials FILE` | none | Works (mocked clients only) | Service account key file. |
+| `--google-credentials FILE` | none | Works (mocked clients only) | Service account key file. Without it, Application Default Credentials are used. |
 | `--google-oauth-client FILE` | none | Works (mocked clients only) | OAuth client file; you sign in in the browser. |
 | `--google-folder-id ID` | none | Works (mocked clients only) | Drive folder for the files. |
 | `--google-share-with EMAIL` | none | Works (mocked clients only) | Share with this address. Repeat for more. |
@@ -86,7 +88,7 @@ The `inventag` command works the same on Linux, macOS and Windows.
 |---|---|---|---|
 | `--enable-network-analysis` | off | Works | Adds a `Network Analysis` sheet to the Excel report when VPCs are found. Adds nothing with `--template`. See [Network and security analysis](../guides/network-and-security-analysis.md). |
 | `--enable-security-analysis` | off | Works | Adds a `Security Analysis` sheet to the Excel report when security groups are found. Adds nothing with `--template`. |
-| `--enable-cost-analysis` | off | Works | Adds a Cost Analysis sheet (and the four `forgotten_analysis.*` columns) to the default workbook. Makes extra Cost Explorer, Pricing and CloudWatch calls, also with `--no-billing-validation`. Needs `pricing:GetProducts`. |
+| `--enable-cost-analysis` | off | Works | Adds a Cost Analysis sheet (and the four `forgotten_analysis.*` columns) to the default workbook. Makes extra Cost Explorer, Pricing and CloudWatch calls, also with `--no-billing-validation`. Needs `pricing:GetProducts` and `cloudwatch:GetMetricStatistics`. The costs are estimates from the AWS Pricing API, not your invoice. |
 | `--billing-validation`, `--no-billing-validation` | on | Works | Use Cost Explorer during discovery to find services with spend. AWS charges for each Cost Explorer request. `--no-billing-validation` stops those calls. |
 
 ## Configuration files
@@ -98,6 +100,18 @@ The `inventag` command works the same on Linux, macOS and Windows.
 | `--bom-config FILE` | none | Works | Sets fields of the BOM processing configuration from a YAML or JSON file. Other keys are ignored with a warning that names them. |
 | `--validate-config` | off | Works | Load and check the configuration, then exit. |
 | `--validate-config-only` | off | Works | Check only the files you name, then exit. It makes no AWS call. |
+
+## Report layout files
+
+These flags change the layout of the default Excel and Word reports with a
+YAML or JSON file. See [Layout files for one report](../templates/layout-flags.md).
+
+| Flag | Default | Status | What it does |
+|---|---|---|---|
+| `--word-template PATH` | none | Works | Layout file for the Word report. Needs `--create-word`; without it the run stops with exit code 2. |
+| `--excel-template PATH` | none | Works | Layout file for the Excel report. With `--create-word` alone, the run stops with exit code 2. |
+| `--print-default-template word\|excel` | none | Works | Print the default layout file for that format, then exit with code 0. |
+| `--validate-templates` | off | Works | Check the files given with `--word-template` and `--excel-template`, then exit. It makes no AWS call. Without one of those flags: exit code 2. |
 
 ## Parallel processing
 
@@ -203,6 +217,6 @@ See [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
 |---|---|
 | 0 | Success. Also 0 when some accounts failed but others worked, and when no resources were found (no report is written). See [Feature status](../getting-started/status.md#when-a-run-goes-wrong). |
 | 1 | An error: invalid arguments, configuration or template, failed credentials, every account failed, a failed S3 upload, or a report format that could not be written |
-| 2 | Invalid command line: unknown or badly formed options, flags that are not implemented, bad Google options, or a role name without `--accounts-file` |
+| 2 | Invalid command line: unknown or badly formed options, flags that are not implemented, bad Google options, a layout file flag without the report it needs, or a role name without `--accounts-file` |
 | 3 | Reports written, but a config template with `fail_on_tag_violations: true` found tag policy violations |
 | 4 | Reports written, but `--risk-threshold` found a security group rule at or above that level |

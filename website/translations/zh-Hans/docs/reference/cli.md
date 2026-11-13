@@ -10,7 +10,7 @@ sidebar_position: 1
 
 **读完后你可以：** 写出任意 InvenTag 命令行，并知道哪些参数现在可用。
 
-本页与 v5.0.0 的 `inventag --help` 一致。**状态**列说明我们针对模拟 AWS 离线运行该参数时看到的结果。
+本页与这一版文档所描述的发行版的 `inventag --help` 一致。运行 `inventag --help` 可查看你已安装的发行版的参数。**状态**列说明我们针对模拟 AWS 离线运行该参数时看到的结果。
 “未重新测试”表示我们没有为本页运行它。详情见[功能状态](../getting-started/status.md)。
 
 ## 命令 {#commands}
@@ -57,7 +57,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | `--create-word` | 关 | 可用 | 写出 `multi_account_bom_<timestamp>.docx`。 |
 | `--create-google-docs` | 关 | 可用（仅限模拟客户端） | 把 Word 报告创建为 Google 文档。需要 Google 附加组件（`pip install "inventag-aws[google]"`）。见 [Google Sheets 和 Docs](../guides/google-sheets-and-docs.md)。 |
 | `--create-google-sheets` | 关 | 可用（仅限模拟客户端） | 把 Excel 报告创建为 Google Sheets 电子表格。 |
-| `--google-credentials FILE` | 无 | 可用（仅限模拟客户端） | 服务账号密钥文件。 |
+| `--google-credentials FILE` | 无 | 可用（仅限模拟客户端） | 服务账号密钥文件。不给出时使用应用默认凭证（Application Default Credentials）。 |
 | `--google-oauth-client FILE` | 无 | 可用（仅限模拟客户端） | OAuth 客户端文件；你在浏览器中登录。 |
 | `--google-folder-id ID` | 无 | 可用（仅限模拟客户端） | 存放文件的 Drive 文件夹。 |
 | `--google-share-with EMAIL` | 无 | 可用（仅限模拟客户端） | 与该地址共享。可重复指定以添加更多地址。 |
@@ -83,7 +83,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 |---|---|---|---|
 | `--enable-network-analysis` | 关 | 可用 | 找到 VPC 时，在 Excel 报告中添加 `Network Analysis` 工作表。与 `--template` 一起使用时不添加任何内容。见[网络与安全分析](../guides/network-and-security-analysis.md)。 |
 | `--enable-security-analysis` | 关 | 可用 | 找到安全组时，在 Excel 报告中添加 `Security Analysis` 工作表。与 `--template` 一起使用时不添加任何内容。 |
-| `--enable-cost-analysis` | 关 | 可用 | 在默认工作簿中添加 Cost Analysis 工作表（以及四个 `forgotten_analysis.*` 列）。会额外调用 Cost Explorer、Pricing 和 CloudWatch，即使加了 `--no-billing-validation` 也一样。需要 `pricing:GetProducts`。 |
+| `--enable-cost-analysis` | 关 | 可用 | 在默认工作簿中添加 Cost Analysis 工作表（以及四个 `forgotten_analysis.*` 列）。会额外调用 Cost Explorer、Pricing 和 CloudWatch，即使加了 `--no-billing-validation` 也一样。需要 `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`。费用是根据 AWS Pricing API 得出的估算值，不是你的账单。 |
 | `--billing-validation`, `--no-billing-validation` | 开 | 可用 | 在发现阶段使用 Cost Explorer 找出有支出的服务。AWS 对每次 Cost Explorer 请求收费。`--no-billing-validation` 会停止这些调用。 |
 
 ## 配置文件 {#configuration-files}
@@ -95,6 +95,17 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | `--bom-config FILE` | 无 | 可用 | 从 YAML 或 JSON 文件设置 BOM 处理配置的字段。其他键会被忽略，并给出指明这些键的警告。 |
 | `--validate-config` | 关 | 可用 | 加载并检查配置，然后退出。 |
 | `--validate-config-only` | 关 | 可用 | 只检查你指定的文件，然后退出。不会进行任何 AWS 调用。 |
+
+## 报告版式文件 {#report-layout-files}
+
+这些参数用一个 YAML 或 JSON 文件改变默认 Excel 和 Word 报告的版式。见[单份报告的版式文件](../templates/layout-flags.md)。
+
+| 参数 | 默认值 | 状态 | 功能 |
+|---|---|---|---|
+| `--word-template PATH` | 无 | 可用 | Word 报告的版式文件。需要 `--create-word`；没有它时运行以退出码 2 停止。 |
+| `--excel-template PATH` | 无 | 可用 | Excel 报告的版式文件。只给了 `--create-word` 时，运行以退出码 2 停止。 |
+| `--print-default-template word\|excel` | 无 | 可用 | 打印该格式的默认版式文件，然后以退出码 0 退出。 |
+| `--validate-templates` | 关 | 可用 | 检查 `--word-template` 和 `--excel-template` 给出的文件，然后退出。不调用 AWS。两个参数都没有时：退出码 2。 |
 
 ## 并行处理 {#parallel-processing}
 
@@ -191,6 +202,6 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 |---|---|
 | 0 | 成功。部分账户失败但其他账户正常，以及没有找到任何资源（不写出报告）时，也是 0。见[功能状态](../getting-started/status.md#when-a-run-goes-wrong)。 |
 | 1 | 出错：参数、配置或模板无效，凭证失败，所有账户都失败，S3 上传失败，或某种报告格式无法写出 |
-| 2 | 命令行无效：未知或格式错误的选项，尚未实现的参数，Google 选项有误，或给了角色名称但没有 `--accounts-file` |
+| 2 | 命令行无效：未知或格式错误的选项，尚未实现的参数，Google 选项有误，版式文件参数缺少它所需的报告，或给了角色名称但没有 `--accounts-file` |
 | 3 | 报告已写出，但带有 `fail_on_tag_violations: true` 的配置模板发现了标签策略违规 |
 | 4 | 报告已写出，但 `--risk-threshold` 发现有安全组规则达到或超过该级别 |

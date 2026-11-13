@@ -11,7 +11,9 @@ sidebar_position: 1
 **Ce que vous saurez faire après lecture :** construire n’importe quelle ligne de commande
 InvenTag et savoir quelles options fonctionnent aujourd’hui.
 
-Cette page correspond à `inventag --help` dans la v5.0.0. La colonne **État**
+Cette page correspond à `inventag --help` de la version que décrit cette version
+de la documentation. Exécutez `inventag --help` pour voir les options de la version
+installée chez vous. La colonne **État**
 indique ce que nous avons observé en exécutant l’option hors ligne sur un AWS simulé.
 « Non retesté » signifie que nous ne l’avons pas exécutée pour cette page. Les détails
 se trouvent sur la page [État des fonctionnalités](../getting-started/status.md).
@@ -60,7 +62,7 @@ La commande `inventag` fonctionne de la même façon sous Linux, macOS et Window
 | `--create-word` | désactivé | Fonctionne | Écrit `multi_account_bom_<timestamp>.docx`. |
 | `--create-google-docs` | désactivé | Fonctionne (clients simulés uniquement) | Crée le rapport Word sous forme de Google Doc. Nécessite le module complémentaire Google (`pip install "inventag-aws[google]"`). Voir [Google Sheets et Docs](../guides/google-sheets-and-docs.md). |
 | `--create-google-sheets` | désactivé | Fonctionne (clients simulés uniquement) | Crée le rapport Excel sous forme de feuille de calcul Google Sheets. |
-| `--google-credentials FILE` | aucun | Fonctionne (clients simulés uniquement) | Fichier de clé de compte de service. |
+| `--google-credentials FILE` | aucun | Fonctionne (clients simulés uniquement) | Fichier de clé de compte de service. Sans lui, les identifiants par défaut de l’application (Application Default Credentials) sont utilisés. |
 | `--google-oauth-client FILE` | aucun | Fonctionne (clients simulés uniquement) | Fichier de client OAuth ; vous vous connectez dans le navigateur. |
 | `--google-folder-id ID` | aucun | Fonctionne (clients simulés uniquement) | Dossier Drive pour les fichiers. |
 | `--google-share-with EMAIL` | aucun | Fonctionne (clients simulés uniquement) | Partage avec cette adresse. À répéter pour en ajouter d’autres. |
@@ -86,7 +88,7 @@ La commande `inventag` fonctionne de la même façon sous Linux, macOS et Window
 |---|---|---|---|
 | `--enable-network-analysis` | désactivé | Fonctionne | Ajoute une feuille `Network Analysis` au rapport Excel lorsque des VPC sont trouvés. N’ajoute rien avec `--template`. Voir [Analyse du réseau et de la sécurité](../guides/network-and-security-analysis.md). |
 | `--enable-security-analysis` | désactivé | Fonctionne | Ajoute une feuille `Security Analysis` au rapport Excel lorsque des groupes de sécurité sont trouvés. N’ajoute rien avec `--template`. |
-| `--enable-cost-analysis` | désactivé | Fonctionne | Ajoute une feuille Cost Analysis (et les quatre colonnes `forgotten_analysis.*`) au classeur par défaut. Effectue des appels supplémentaires à Cost Explorer, Pricing et CloudWatch, y compris avec `--no-billing-validation`. Nécessite `pricing:GetProducts`. |
+| `--enable-cost-analysis` | désactivé | Fonctionne | Ajoute une feuille Cost Analysis (et les quatre colonnes `forgotten_analysis.*`) au classeur par défaut. Effectue des appels supplémentaires à Cost Explorer, Pricing et CloudWatch, y compris avec `--no-billing-validation`. Nécessite `pricing:GetProducts` et `cloudwatch:GetMetricStatistics`. Les coûts sont des estimations de l’API AWS Pricing, pas votre facture. |
 | `--billing-validation`, `--no-billing-validation` | activé | Fonctionne | Utilise Cost Explorer pendant la découverte pour repérer les services qui génèrent des dépenses. AWS facture chaque requête Cost Explorer. `--no-billing-validation` arrête ces appels. |
 
 ## Fichiers de configuration {#configuration-files}
@@ -98,6 +100,18 @@ La commande `inventag` fonctionne de la même façon sous Linux, macOS et Window
 | `--bom-config FILE` | aucun | Fonctionne | Définit des champs de la configuration de traitement de la nomenclature (BOM) à partir d’un fichier YAML ou JSON. Les autres clés sont ignorées, avec un avertissement qui les nomme. |
 | `--validate-config` | désactivé | Fonctionne | Charge et vérifie la configuration, puis s’arrête. |
 | `--validate-config-only` | désactivé | Fonctionne | Vérifie uniquement les fichiers que vous indiquez, puis s’arrête. N’effectue aucun appel AWS. |
+
+## Fichiers de mise en page des rapports {#report-layout-files}
+
+Ces options changent la mise en page des rapports Excel et Word par défaut avec
+un fichier YAML ou JSON. Voir [Fichiers de mise en page pour un rapport](../templates/layout-flags.md).
+
+| Option | Par défaut | État | Ce qu’elle fait |
+|---|---|---|---|
+| `--word-template PATH` | aucun | Fonctionne | Fichier de mise en page du rapport Word. Nécessite `--create-word` ; sans elle, l’exécution s’arrête avec le code de sortie 2. |
+| `--excel-template PATH` | aucun | Fonctionne | Fichier de mise en page du rapport Excel. Avec `--create-word` seul, l’exécution s’arrête avec le code de sortie 2. |
+| `--print-default-template word\|excel` | aucun | Fonctionne | Affiche le fichier de mise en page par défaut de ce format, puis quitte avec le code 0. |
+| `--validate-templates` | désactivé | Fonctionne | Vérifie les fichiers donnés avec `--word-template` et `--excel-template`, puis quitte. Aucun appel à AWS. Sans l’une de ces options : code de sortie 2. |
 
 ## Traitement parallèle {#parallel-processing}
 
@@ -195,6 +209,6 @@ Voir [Téléverser des rapports vers S3 selon un calendrier](../examples/schedul
 |---|---|
 | 0 | Succès. Vaut aussi 0 lorsque certains comptes ont échoué mais que d’autres ont fonctionné, et lorsqu’aucune ressource n’a été trouvée (aucun rapport n’est écrit). Voir [État des fonctionnalités](../getting-started/status.md#when-a-run-goes-wrong). |
 | 1 | Une erreur : arguments, configuration ou modèle non valides, échec des identifiants, échec de tous les comptes, échec d’un téléversement S3, ou format de rapport impossible à écrire |
-| 2 | Ligne de commande non valide : options inconnues ou mal formées, options non implémentées, options Google incorrectes, ou nom de rôle sans `--accounts-file` |
+| 2 | Ligne de commande non valide : options inconnues ou mal formées, options non implémentées, options Google incorrectes, option de fichier de mise en page sans le rapport dont elle a besoin, ou nom de rôle sans `--accounts-file` |
 | 3 | Rapports écrits, mais un modèle de configuration avec `fail_on_tag_violations: true` a trouvé des violations de la politique d’étiquetage |
 | 4 | Rapports écrits, mais `--risk-threshold` a trouvé une règle de groupe de sécurité égale ou supérieure à ce niveau |
