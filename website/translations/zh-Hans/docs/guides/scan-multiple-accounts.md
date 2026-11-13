@@ -115,13 +115,50 @@ inventag --accounts-file accounts.yaml --create-excel
 | 设置 | 配置模板字段 | 参数 |
 |---|---|---|
 | 同时扫描的账户数（默认 4） | `max_concurrent_accounts` | `--max-concurrent-accounts` |
-| 每个账户允许的秒数（默认 1800） | `account_processing_timeout` | `--account-processing-timeout` |
+| 每个账户允许的秒数（默认 1800，至少 60） | `account_processing_timeout` | `--account-processing-timeout` |
 | 一次一个账户 | `parallel_processing: false` | `--disable-parallel-processing` |
 
 如果某个账户失败，例如因为无法代入它的角色，InvenTag 会记录错误，并报告成功的那些账户。
-它不会对该账户回退到你的默认凭证。**运行仍然以退出码 0 退出，而且报告不会指出缺少的账户。**
-请在日志中搜索 `Failed to establish context for account`。如果所有账户都失败，
-运行会以退出码 1 退出，并且不写出任何报告。
+它不会对该账户回退到你的默认凭证。Excel 报告的 `Summary` 工作表和 Word 报告都有“运行备注”（Run notes）部分，
+列出每个未被扫描的账户及原因。日志中有同样的列表：
+
+```text
+1 account(s) were not scanned, or only partly. The report does not include them:
+  - 222222222222 (Dev): Context establishment failed: Role assumption failed for account 222222222222: An error occurred (AccessDenied) when calling the AssumeRole operation: ...
+```
+
+运行仍然以退出码 0 结束。加上 `--fail-on-account-error`，当有账户无法完整扫描时会以退出码 5 结束。报告仍会写出。
+如果所有账户都失败，运行会以退出码 1 结束，并且不写出任何报告。
+
+超时的账户（`--account-processing-timeout`）算作失败，但它在限制之前找到的资源仍留在报告中，备注会说明该账户不完整。
+见[时间限制与并行账户](./run-a-scan.md#time-limit-and-parallel-accounts)。
+
+## 失败之后继续 {#continue-after-a-failure}
+
+InvenTag 会保存已完成的账户。排除原因后，用同一条命令加上 `--resume`，只扫描其余账户：
+
+```bash
+inventag --accounts-file accounts.yaml --create-excel --resume
+```
+
+InvenTag 会复用同一条命令（相同的账户、区域、服务和筛选条件）保存的、不早于 `--resume-max-age-hours`（默认 24，最多 168）的结果。
+见[失败的运行之后继续](./run-a-scan.md#continue-after-a-failed-run)。
+
+## 检查账户文件 {#check-the-accounts-file}
+
+InvenTag 以 UTF-8 文本读取账户文件（有无字节顺序标记均可），文件不能超过 1 MiB。出现以下情况时，它会以退出码 1 停止并指出问题：
+
+- 文件为空，或顶层是列表而不是一组 `key: value`；
+- 某个键写了两次（消息会给出行号，例如 `accounts file accounts.yaml:3: duplicate key 'accounts'`）；
+- 文件类型不是 `.json`、`.yaml` 或 `.yml`；
+- 某个账户没有非空的 `account_id`，或某个字段的类型不对。
+
+如果文件中有 `secret_access_key` 或 `session_token`，并且其他用户可以读取它，InvenTag 会发出警告，提示你运行 `chmod 600`。
+请使用 `profile_name` 或 `role_arn`，而不要使用密钥。不扫描也能检查文件：
+`inventag --accounts-file accounts.yaml --validate-config-only --skip-credential-validation`。
+
+有两种选项错误会让运行以退出码 2 停止：`--accounts-file` 与 `--accounts-prompt` 同时给出，
+以及 `--cross-account-role` 中的完整角色 ARN 与账户文件同用（那里应给角色名，或在文件中写 `role_arn`）。
 
 ## 下一步 {#next-steps}
 

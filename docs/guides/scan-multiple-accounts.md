@@ -134,15 +134,64 @@ inventag --accounts-file accounts.yaml --create-excel
 | Setting | Config template field | Flag |
 |---|---|---|
 | Accounts scanned at once (default 4) | `max_concurrent_accounts` | `--max-concurrent-accounts` |
-| Seconds allowed per account (default 1800) | `account_processing_timeout` | `--account-processing-timeout` |
+| Seconds allowed per account (default 1800, at least 60) | `account_processing_timeout` | `--account-processing-timeout` |
 | One account at a time | `parallel_processing: false` | `--disable-parallel-processing` |
 
 If one account fails, for example because its role cannot be assumed,
 InvenTag logs the error and reports the accounts that worked. It does not
-fall back to your default credentials for that account. **The run still exits
-with code 0, and the report does not name the missing account.** Search the
-log for `Failed to establish context for account`. If every account fails, the
-run exits with code 1 and writes no report.
+fall back to your default credentials for that account. The `Summary` sheet
+of the Excel report and the Word report have a "Run notes" section that names
+each account that was not scanned, and why. The log has the same list:
+
+```text
+1 account(s) were not scanned, or only partly. The report does not include them:
+  - 222222222222 (Dev): Context establishment failed: Role assumption failed for account 222222222222: An error occurred (AccessDenied) when calling the AssumeRole operation: ...
+```
+
+The run still exits with code 0. Add `--fail-on-account-error` to exit with
+code 5 when any account could not be scanned completely. The reports are
+still written. If every account fails, the run exits with code 1 and writes
+no report.
+
+An account that runs out of time (`--account-processing-timeout`) counts as
+failed, but the resources it found before the limit stay in the report, and
+the notes say that the account is incomplete. See
+[Time limit and parallel accounts](./run-a-scan.md#time-limit-and-parallel-accounts).
+
+## Continue after a failure
+
+InvenTag saves the accounts that finished. After you fix the cause, run the
+same command with `--resume` to scan only the others:
+
+```bash
+inventag --accounts-file accounts.yaml --create-excel --resume
+```
+
+InvenTag reuses saved results of the same command (same accounts, regions,
+services and filters) that are not older than `--resume-max-age-hours` (default
+24, at most 168). See [Continue after a failed run](./run-a-scan.md#continue-after-a-failed-run).
+
+## Check the accounts file
+
+InvenTag reads the accounts file as UTF-8 text, with or without a byte order
+mark, from a file of at most 1 MiB. It stops with exit code 1 and names the
+problem when:
+
+- the file is empty, or its top level is a list and not a set of
+  `key: value` pairs;
+- a key is written twice (the message gives the line, for example
+  `accounts file accounts.yaml:3: duplicate key 'accounts'`);
+- the file type is not `.json`, `.yaml` or `.yml`;
+- an account has no non-empty `account_id`, or a field has the wrong type.
+
+If the file holds `secret_access_key` or `session_token` and other users can
+read it, InvenTag warns and tells you to run `chmod 600`. Use `profile_name`
+or `role_arn` instead of keys. Check a file without scanning:
+`inventag --accounts-file accounts.yaml --validate-config-only --skip-credential-validation`.
+
+Two option mistakes stop the run with exit code 2: `--accounts-file` together
+with `--accounts-prompt`, and a full role ARN in `--cross-account-role` together
+with an accounts file (give a role name there, or put `role_arn` in the file).
 
 ## Next steps
 

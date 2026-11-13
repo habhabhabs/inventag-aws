@@ -122,15 +122,56 @@ inventag --accounts-file accounts.yaml --create-excel
 | Ajuste | Campo de la plantilla de configuración | Opción |
 |---|---|---|
 | Cuentas analizadas a la vez (por defecto 4) | `max_concurrent_accounts` | `--max-concurrent-accounts` |
-| Segundos permitidos por cuenta (por defecto 1800) | `account_processing_timeout` | `--account-processing-timeout` |
+| Segundos permitidos por cuenta (por defecto 1800, al menos 60) | `account_processing_timeout` | `--account-processing-timeout` |
 | Una cuenta cada vez | `parallel_processing: false` | `--disable-parallel-processing` |
 
 Si una cuenta falla, por ejemplo porque no se puede asumir su rol, InvenTag
 registra el error e informa de las cuentas que funcionaron. No recurre a tus
-credenciales predeterminadas para esa cuenta. **La ejecución aun así termina
-con el código 0 y el informe no nombra la cuenta que falta.** Busca en el
-registro `Failed to establish context for account`. Si todas las cuentas
-fallan, la ejecución termina con el código 1 y no escribe ningún informe.
+credenciales predeterminadas para esa cuenta. La hoja `Summary` del informe de
+Excel y el informe de Word tienen una sección «Run notes» (notas de la ejecución) que nombra cada cuenta que no se analizó y por qué.
+El registro tiene la misma lista:
+
+```text
+1 account(s) were not scanned, or only partly. The report does not include them:
+  - 222222222222 (Dev): Context establishment failed: Role assumption failed for account 222222222222: An error occurred (AccessDenied) when calling the AssumeRole operation: ...
+```
+
+La ejecución sigue terminando con el código 0. Añade `--fail-on-account-error` para terminar con el código 5
+cuando alguna cuenta no se haya podido analizar por completo. Los informes se escriben igualmente.
+Si todas las cuentas fallan, la ejecución termina con el código 1 y no escribe ningún informe.
+
+Una cuenta que se queda sin tiempo (`--account-processing-timeout`) cuenta como fallida, pero los recursos que encontró
+antes del límite siguen en el informe, y las notas indican que la cuenta está incompleta.
+Consulta [Límite de tiempo y cuentas en paralelo](./run-a-scan.md#time-limit-and-parallel-accounts).
+
+## Continúa tras un fallo {#continue-after-a-failure}
+
+InvenTag guarda las cuentas que terminaron. Cuando corrijas la causa, ejecuta el mismo comando con `--resume` para analizar solo las demás:
+
+```bash
+inventag --accounts-file accounts.yaml --create-excel --resume
+```
+
+InvenTag reutiliza los resultados guardados del mismo comando (mismas cuentas, regiones, servicios y filtros) que no sean
+más antiguos que `--resume-max-age-hours` (por defecto 24, como máximo 168).
+Consulta [Continúa tras una ejecución fallida](./run-a-scan.md#continue-after-a-failed-run).
+
+## Comprueba el archivo de cuentas {#check-the-accounts-file}
+
+InvenTag lee el archivo de cuentas como texto UTF-8, con o sin marca de orden de bytes, de hasta 1 MiB.
+Se detiene con código de salida 1 y nombra el problema cuando:
+
+- el archivo está vacío, o su nivel superior es una lista y no un conjunto de pares `clave: valor`;
+- una clave está escrita dos veces (el mensaje indica la línea, por ejemplo `accounts file accounts.yaml:3: duplicate key 'accounts'`);
+- el tipo de archivo no es `.json`, `.yaml` ni `.yml`;
+- una cuenta no tiene un `account_id` no vacío, o un campo tiene el tipo equivocado.
+
+Si el archivo contiene `secret_access_key` o `session_token` y otros usuarios pueden leerlo, InvenTag avisa y te indica que ejecutes `chmod 600`.
+Usa `profile_name` o `role_arn` en lugar de claves. Comprueba un archivo sin analizar:
+`inventag --accounts-file accounts.yaml --validate-config-only --skip-credential-validation`.
+
+Dos errores de opciones detienen la ejecución con código de salida 2: `--accounts-file` junto con `--accounts-prompt`,
+y un ARN de rol completo en `--cross-account-role` junto con un archivo de cuentas (indica ahí un nombre de rol, o pon `role_arn` en el archivo).
 
 ## Siguientes pasos {#next-steps}
 

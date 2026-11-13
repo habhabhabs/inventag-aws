@@ -122,15 +122,56 @@ inventag --accounts-file accounts.yaml --create-excel
 | Réglage | Champ du modèle de configuration | Option |
 |---|---|---|
 | Comptes analysés simultanément (4 par défaut) | `max_concurrent_accounts` | `--max-concurrent-accounts` |
-| Secondes autorisées par compte (1800 par défaut) | `account_processing_timeout` | `--account-processing-timeout` |
+| Secondes autorisées par compte (1800 par défaut, au moins 60) | `account_processing_timeout` | `--account-processing-timeout` |
 | Un compte à la fois | `parallel_processing: false` | `--disable-parallel-processing` |
 
 Si un compte échoue, par exemple parce que son rôle ne peut pas être assumé,
 InvenTag journalise l’erreur et rapporte les comptes qui ont fonctionné. Il ne
-se rabat pas sur vos identifiants par défaut pour ce compte. **L’exécution se termine quand même
-avec le code 0, et le rapport ne nomme pas le compte manquant.** Cherchez dans le
-journal `Failed to establish context for account`. Si tous les comptes échouent, l’
-exécution se termine avec le code 1 et n’écrit aucun rapport.
+se rabat pas sur vos identifiants par défaut pour ce compte. La feuille `Summary`
+du rapport Excel et le rapport Word ont une section « Run notes » (notes d’exécution) qui nomme chaque compte non analysé et la raison.
+Le journal contient la même liste :
+
+```text
+1 account(s) were not scanned, or only partly. The report does not include them:
+  - 222222222222 (Dev): Context establishment failed: Role assumption failed for account 222222222222: An error occurred (AccessDenied) when calling the AssumeRole operation: ...
+```
+
+L’exécution se termine toujours avec le code 0. Ajoutez `--fail-on-account-error` pour terminer avec le code 5
+quand un compte n’a pas pu être analysé complètement. Les rapports sont quand même écrits.
+Si tous les comptes échouent, l’exécution se termine avec le code 1 et n’écrit aucun rapport.
+
+Un compte qui manque de temps (`--account-processing-timeout`) compte comme en échec, mais les ressources qu’il a trouvées
+avant la limite restent dans le rapport, et les notes indiquent que le compte est incomplet.
+Voir [Limite de temps et comptes en parallèle](./run-a-scan.md#time-limit-and-parallel-accounts).
+
+## Continuer après un échec {#continue-after-a-failure}
+
+InvenTag enregistre les comptes qui ont terminé. Une fois la cause corrigée, relancez la même commande avec `--resume` pour n’analyser que les autres :
+
+```bash
+inventag --accounts-file accounts.yaml --create-excel --resume
+```
+
+InvenTag réutilise les résultats enregistrés de la même commande (mêmes comptes, régions, services et filtres) qui ne sont pas
+plus anciens que `--resume-max-age-hours` (24 par défaut, 168 au maximum).
+Voir [Reprendre après une exécution en échec](./run-a-scan.md#continue-after-a-failed-run).
+
+## Vérifier le fichier de comptes {#check-the-accounts-file}
+
+InvenTag lit le fichier de comptes comme du texte UTF-8, avec ou sans marque d’ordre des octets, de 1 Mio au plus.
+Il s’arrête avec le code de sortie 1 et nomme le problème quand :
+
+- le fichier est vide, ou son niveau supérieur est une liste et non un ensemble de paires `clé: valeur` ;
+- une clé est écrite deux fois (le message donne la ligne, par exemple `accounts file accounts.yaml:3: duplicate key 'accounts'`) ;
+- le type de fichier n’est ni `.json`, ni `.yaml`, ni `.yml` ;
+- un compte n’a pas d’`account_id` non vide, ou un champ a un mauvais type.
+
+Si le fichier contient `secret_access_key` ou `session_token` et que d’autres utilisateurs peuvent le lire, InvenTag avertit et vous dit d’exécuter `chmod 600`.
+Utilisez `profile_name` ou `role_arn` plutôt que des clés. Vérifiez un fichier sans analyser :
+`inventag --accounts-file accounts.yaml --validate-config-only --skip-credential-validation`.
+
+Deux erreurs d’options arrêtent l’exécution avec le code de sortie 2 : `--accounts-file` avec `--accounts-prompt`,
+et un ARN de rôle complet dans `--cross-account-role` avec un fichier de comptes (donnez-y un nom de rôle, ou mettez `role_arn` dans le fichier).
 
 ## Étapes suivantes {#next-steps}
 
