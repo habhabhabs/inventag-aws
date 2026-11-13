@@ -551,7 +551,7 @@
     "message": "{dir} 中的部分 boto3 调用。"
   },
   "home.c2.body": {
-    "message": "通过 Resource Groups Tagging API、各服务自己的 list 和 describe 调用以及 Cost Explorer 来查找资源。防护机制会拦截任何可能改动内容的 AWS 调用。加上 {flag} 可保存每次调用的记录。"
+    "message": "通过 Resource Groups Tagging API、各服务自己的 list 和 describe 调用以及 Cost Explorer 来查找资源。防护机制会拦截任何可能改动内容的 AWS 调用，并遮盖常用于存放机密的值。加上 {flag} 可保存每次调用的记录。"
   },
   "home.c3.title": {
     "message": "一个账户或多个账户"
@@ -668,7 +668,7 @@
     "message": "费用说明"
   },
   "home.honest.3": {
-    "message": "InvenTag 自带 24 种 AWS 服务的发现代码，目前只在模拟的 AWS 上测试过，没有在真实账户上测试。"
+    "message": "InvenTag 自带 46 种 AWS 服务的发现代码，目前只在模拟的 AWS 上测试过，没有在真实账户上测试。"
   },
   "home.honest.4": {
     "message": "它收集的是证据，例如资源清单和标签规范程度。它不会证明你符合任何合规标准。"

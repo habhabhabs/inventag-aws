@@ -77,7 +77,7 @@ better than one: [Set up read-only access](../guides/read-only-access.md).
   Analysis sheet with estimated monthly costs from the AWS Pricing API. These
   are estimates only, not your invoice.
 - **Not affiliated with AWS.**
-- **Not complete.** It has its own discovery code for 24 AWS services, not
+- **Not complete.** It has its own discovery code for 46 AWS services, not
   every service, and it has never been tested against a real AWS account.
   [Feature status and known limitations](./status.md) lists the limits.
 

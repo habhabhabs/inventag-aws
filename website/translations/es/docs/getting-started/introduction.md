@@ -77,7 +77,7 @@ son mejor que una: [Configurar el acceso de solo lectura](../guides/read-only-ac
   Analysis con costes mensuales estimados a partir de la API AWS Pricing. Son
   solo estimaciones, no tu factura.
 - **No está afiliado a AWS.**
-- **No es completo.** Tiene código de descubrimiento propio para 24 servicios de AWS, no para
+- **No es completo.** Tiene código de descubrimiento propio para 46 servicios de AWS, no para
   todos, y nunca se ha probado con una cuenta real de AWS.
   [Estado de las funciones y limitaciones conocidas](./status.md) enumera los límites.
 

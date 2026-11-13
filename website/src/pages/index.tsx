@@ -375,7 +375,7 @@ function Capabilities(): ReactNode {
           }>
           <p>
             <Translate id="home.c2.body" values={{flag: <code>--audit-output</code>}}>
-              {"Finds resources through the Resource Groups Tagging API, each service's own list and describe calls, and Cost Explorer. A guard blocks any AWS call that could change something. Add {flag} to save a record of every call made."}
+              {"Finds resources through the Resource Groups Tagging API, each service's own list and describe calls, and Cost Explorer. A guard blocks any AWS call that could change something, and values that often hold secrets are masked. Add {flag} to save a record of every call made."}
             </Translate>
           </p>
         </Cell>
@@ -597,7 +597,7 @@ function Honest(): ReactNode {
           </li>
           <li>
             <Translate id="home.honest.3">
-              InvenTag has its own discovery code for 24 AWS services and has only been tested against mocked AWS, not a real account.
+              InvenTag has its own discovery code for 46 AWS services and has only been tested against mocked AWS, not a real account.
             </Translate>
           </li>
           <li>

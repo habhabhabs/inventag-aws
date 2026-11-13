@@ -77,7 +77,7 @@ valent mieux qu’un : [Configurer l’accès en lecture seule](../guides/read-o
   Cost Analysis avec des coûts mensuels estimés à partir de l’API AWS Pricing. Ce
   sont uniquement des estimations, pas votre facture.
 - **Sans lien avec AWS.**
-- **Pas complet.** Il dispose de son propre code de découverte pour 24 services AWS, pas pour
+- **Pas complet.** Il dispose de son propre code de découverte pour 46 services AWS, pas pour
   tous, et n’a jamais été testé sur un compte AWS réel.
   [État des fonctionnalités et limites connues](./status.md) en énumère les limites.
 

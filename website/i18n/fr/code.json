@@ -78,7 +78,7 @@
     "message": "Quelques appels boto3 dans {dir}."
   },
   "home.c2.body": {
-    "message": "Trouve les ressources via l’API Resource Groups Tagging, les appels list et describe propres à chaque service et Cost Explorer. Une protection bloque tout appel AWS susceptible de modifier quelque chose. Ajoutez {flag} pour enregistrer chaque appel effectué."
+    "message": "Trouve les ressources via l’API Resource Groups Tagging, les appels list et describe propres à chaque service et Cost Explorer. Une protection bloque tout appel AWS susceptible de modifier quelque chose, et les valeurs qui contiennent souvent des secrets sont masquées. Ajoutez {flag} pour enregistrer chaque appel effectué."
   },
   "home.c3.title": {
     "message": "Un compte ou plusieurs"
@@ -195,7 +195,7 @@
     "message": "notes sur les coûts"
   },
   "home.honest.3": {
-    "message": "InvenTag dispose de son propre code de découverte pour 24 services AWS et n’a été testé que sur un AWS simulé, pas sur un compte réel."
+    "message": "InvenTag dispose de son propre code de découverte pour 46 services AWS et n’a été testé que sur un AWS simulé, pas sur un compte réel."
   },
   "home.honest.4": {
     "message": "Il rassemble des éléments de preuve, comme une liste de ressources et la qualité de leur étiquetage. Il ne certifie pas que vous respectez une norme de conformité."

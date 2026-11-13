@@ -551,7 +551,7 @@
     "message": "{dir} 中的部分 boto3 呼叫。"
   },
   "home.c2.body": {
-    "message": "透過 Resource Groups Tagging API、各服務自己的 list 和 describe 呼叫以及 Cost Explorer 來查詢資源。防護機制會攔截任何可能改動內容的 AWS 呼叫。加上 {flag} 可儲存每次呼叫的記錄。"
+    "message": "透過 Resource Groups Tagging API、各服務自己的 list 和 describe 呼叫以及 Cost Explorer 來查詢資源。防護機制會攔截任何可能改動內容的 AWS 呼叫，並遮蓋常用於存放機密的值。加上 {flag} 可儲存每次呼叫的記錄。"
   },
   "home.c3.title": {
     "message": "一個帳戶或多個帳戶"
@@ -668,7 +668,7 @@
     "message": "費用說明"
   },
   "home.honest.3": {
-    "message": "InvenTag 自帶 24 種 AWS 服務的發現程式碼，目前只在模擬的 AWS 上測試過，沒有在真實帳戶上測試。"
+    "message": "InvenTag 自帶 46 種 AWS 服務的發現程式碼，目前只在模擬的 AWS 上測試過，沒有在真實帳戶上測試。"
   },
   "home.honest.4": {
     "message": "它收集的是證據，例如資源清單和標籤規範程度。它不會證明你符合任何合規標準。"
