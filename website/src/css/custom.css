@@ -868,8 +868,20 @@ button[class*='expandButton'] {
 [class*='backToTopButton']::after {
   background-color: var(--it-ink);
 }
-[class*='backToTopButton']:hover {
-  background: var(--it-hover);
+@media (hover: hover) {
+  [class*='backToTopButton']:hover {
+    background: var(--it-hover);
+  }
+}
+/* On phones the button sits at the left edge, where an article has text and
+   not controls: a missed tap on a code Copy button no longer sends the reader
+   to the top of a long page. */
+@media (max-width: 996px) {
+  [class*='backToTopButton'] {
+    left: 1rem;
+    right: auto;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+  }
 }
 
 /* ------------------------------------------------- 6. Markdown content */

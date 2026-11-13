@@ -780,7 +780,7 @@ div.it-search__empty p {
   }
   .it-menubtn--rail {
     position: absolute;
-    top: 0.9rem;
+    top: 0.75rem;
     /* same left edge as the page content */
     left: 2rem;
     width: auto;
@@ -793,9 +793,13 @@ div.it-search__empty p {
     font-weight: 600;
     z-index: 2;
   }
-  /* not sticky when hidden, so the button scrolls away with the page and positions against the docs column */
+  /* the button's container is sticky, so "Menu" stays in view while the page scrolls */
   aside.theme-doc-sidebar-container[class*='docSidebarContainerHidden'] > div[class*='sidebarViewport'] {
-    position: static;
+    position: sticky;
+    top: var(--ifm-navbar-height);
+    height: 0;
+    overflow: visible;
+    max-height: none;
   }
   /* the row above the breadcrumbs belongs to the button */
   main[class*='docMainContainerEnhanced'] {
@@ -1219,4 +1223,17 @@ a.it-card:is(:active, [data-nav-pending]) {
 }
 .it-nf__links {
   font-size: 0.9375rem;
+}
+
+/* Below 1280px there is no gutter for a labelled button: a 36px icon square */
+@media (min-width: 997px) and (max-width: 1279px) {
+  .it-menubtn--rail {
+    width: 2.25rem;
+    padding: 0;
+    left: 0.5rem;
+    justify-content: center;
+  }
+  .it-menubtn--rail span {
+    display: none;
+  }
 }
