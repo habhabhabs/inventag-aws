@@ -141,13 +141,18 @@ def convert_file(src):
             elif ':' in line and n > 0:
                 k, v = line.split(':', 1)
                 out.append(k + ':' + convert_text(v))
+            elif re.match(r'^\s+- ', line):
+                out.append(convert_text(line))
             else:
                 out.append(line)
             continue
         m = FENCE.match(line)
         if fence is None and m:
             fence = m.group(1)
-            out.append(line)
+            # The title of a code block is a label for the reader, so it is converted
+            # like prose; the code lines themselves are never touched.
+            t = re.match(r'^(.*? title=")([^"]*)(".*)$', line)
+            out.append(t.group(1) + convert_text(t.group(2)) + t.group(3) if t else line)
         elif fence is not None:
             if line.startswith(fence):
                 fence = None
@@ -162,13 +167,15 @@ def convert_file(src):
 def invariants(src, dst):
     """Parts that must be identical to the zh-Hans file."""
     def parts(t):
-        fences = re.findall(r'^(```[\s\S]*?^```)', t, flags=re.M)
+        fences = [re.sub(r'^(```[^\n]*?) title="[^"]*"', r'\1', f)
+                  for f in re.findall(r'^(```[\s\S]*?^```)', t, flags=re.M)]
         body = re.sub(r'^```[\s\S]*?^```', '', t, flags=re.M)
         return (fences,
                 re.findall(r'`[^`\n]+`', body),
                 re.findall(r'\]\([^)\n]*\)', body),
                 re.findall(r'\{(?:#|/\* #)[\w-]+(?: \*/)?\}', body),
-                [l.split(':', 1)[0] for l in t.split('\n---\n')[0].split('\n')],
+                [l.split(':', 1)[0] for l in t.split('\n---\n')[0].split('\n')
+                 if not re.match(r'^\s+- ', l)],
                 [l for l in t.split('\n') if re.match(r'^(import|export) ', l)])
     return parts(src) == parts(dst)
 

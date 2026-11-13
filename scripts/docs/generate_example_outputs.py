@@ -804,7 +804,7 @@ def collect(images: bool) -> Dict[str, str]:
             # 1. Default layout, no template
             w = workdir("default")
             r = run_cli("default", ["--create-excel", "--create-word", *regions], w)
-            add("quick-default-console", code(r.console, title="Terminal"))
+            add("quick-default-console", code(r.console, title="Output"))
             add(
                 "quick-default-excel",
                 excel_preview(r.files["xlsx:multi"], "S3", rows=3, max_cols=8),
@@ -826,7 +826,7 @@ def collect(images: bool) -> Dict[str, str]:
                 ],
                 w,
             )
-            add("standard-console", code(r.console, title="Terminal"))
+            add("standard-console", code(r.console, title="Output"))
             add(
                 "standard-excel-summary",
                 excel_preview(r.files["xlsx:multi"], "Summary", rows=12),
@@ -922,7 +922,7 @@ def collect(images: bool) -> Dict[str, str]:
                 ],
                 w,
             )
-            add("finops-console", code(r.console, title="Terminal"))
+            add("finops-console", code(r.console, title="Output"))
             add(
                 "finops-excel-compliance",
                 excel_preview(
@@ -1015,7 +1015,7 @@ def collect(images: bool) -> Dict[str, str]:
                 ],
                 w,
             )
-            add("security-console", code(r.console, title="Terminal"))
+            add("security-console", code(r.console, title="Output"))
             add(
                 "security-excel-compliance",
                 excel_preview(
@@ -1063,10 +1063,10 @@ def collect(images: bool) -> Dict[str, str]:
             w = workdir("org")
             add(
                 "org-validate",
-                code(run_templates_cli(["validate", "our-org"], w), title="Terminal"),
+                code(run_templates_cli(["validate", "our-org"], w), title="Output"),
             )
             r = run_cli("org", ["--template", "our-org"], w)
-            add("org-console", code(r.console, title="Terminal"))
+            add("org-console", code(r.console, title="Output"))
             add(
                 "org-excel-summary",
                 excel_preview(r.files["xlsx:multi"], "Summary", rows=10),
@@ -1081,13 +1081,13 @@ def collect(images: bool) -> Dict[str, str]:
             add(
                 "board-validate",
                 code(
-                    run_templates_cli(["validate", "board-report"], w), title="Terminal"
+                    run_templates_cli(["validate", "board-report"], w), title="Output"
                 ),
             )
             r = run_cli(
                 "board", ["--template", "board-report", "--create-word", *regions], w
             )
-            add("board-console", code(r.console, title="Terminal"))
+            add("board-console", code(r.console, title="Output"))
             add(
                 "board-word", word_preview(r.files["docx:multi"], table_index=1, rows=4)
             )
@@ -1133,13 +1133,13 @@ def collect(images: bool) -> Dict[str, str]:
             add(
                 "columns-validate",
                 code(
-                    run_templates_cli(["validate", "team-sheet"], w), title="Terminal"
+                    run_templates_cli(["validate", "team-sheet"], w), title="Output"
                 ),
             )
             r = run_cli(
                 "columns", ["--template", "team-sheet", "--create-excel", *regions], w
             )
-            add("columns-console", code(r.console, title="Terminal"))
+            add("columns-console", code(r.console, title="Output"))
             add(
                 "columns-excel",
                 excel_preview(
@@ -1185,7 +1185,7 @@ def collect(images: bool) -> Dict[str, str]:
                         ],
                         w,
                     ),
-                    title="Terminal",
+                    title="Output",
                 ),
             )
             add(
@@ -1201,25 +1201,25 @@ def collect(images: bool) -> Dict[str, str]:
             )
             add(
                 "adapt-validate-error",
-                code(run_templates_cli(["validate", "acme-bom"], w), title="Terminal"),
+                code(run_templates_cli(["validate", "acme-bom"], w), title="Output"),
             )
             (w / ".inventag/templates/acme-bom.yaml").write_text(
                 PROJECT_TEMPLATES["acme-bom.yaml"]
             )
             add(
                 "adapt-validate-ok",
-                code(run_templates_cli(["validate", "acme-bom"], w), title="Terminal"),
+                code(run_templates_cli(["validate", "acme-bom"], w), title="Output"),
             )
             add(
                 "adapt-list",
                 code(
-                    run_templates_cli(["list", "--kind", "report"], w), title="Terminal"
+                    run_templates_cli(["list", "--kind", "report"], w), title="Output"
                 ),
             )
             r = run_cli(
                 "adapt", ["--template", "acme-bom", "--create-excel", *regions], w
             )
-            add("adapt-console", code(r.console, title="Terminal"))
+            add("adapt-console", code(r.console, title="Output"))
             add(
                 "adapt-excel",
                 excel_preview(
@@ -1235,7 +1235,7 @@ def collect(images: bool) -> Dict[str, str]:
             os.environ["XDG_CONFIG_HOME"] = str(plain / "xdg")
             add(
                 "catalogue-list",
-                code(run_templates_cli(["list"], plain), title="Terminal"),
+                code(run_templates_cli(["list"], plain), title="Output"),
             )
 
             # 11. two runs: changelog and snapshot diff
@@ -1311,7 +1311,7 @@ def collect(images: bool) -> Dict[str, str]:
                 text=True,
                 check=True,
             )
-            add("changes-diff", code(proc.stdout, title="Terminal"))
+            add("changes-diff", code(proc.stdout, title="Output"))
             snap = json.loads(
                 sorted((w / "bom_output/state").glob("state_*.json"))[-1].read_text()
             )
@@ -1427,7 +1427,7 @@ def collect(images: bool) -> Dict[str, str]:
                 ],
                 w,
             )
-            add("s3-console", code(r.console, title="Terminal"))
+            add("s3-console", code(r.console, title="Output"))
             drop_guard()
             keys = [
                 o["Key"]
@@ -1579,7 +1579,7 @@ def collect(images: bool) -> Dict[str, str]:
                 ],
                 w,
             )
-            add("analysis-console", code(r.console, title="Terminal"))
+            add("analysis-console", code(r.console, title="Output"))
             add(
                 "analysis-network",
                 excel_preview(
