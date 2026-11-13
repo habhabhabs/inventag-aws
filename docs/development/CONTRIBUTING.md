@@ -40,7 +40,7 @@ python -m pytest -q
 ```
 
 CI runs the same `black --check` and `flake8` commands, then the tests on
-Python 3.11, 3.12, 3.13 and 3.14. The full suite (`python -m pytest -q`) takes
+Python 3.11, 3.12, 3.13, 3.14 and 3.15. The full suite (`python -m pytest -q`) takes
 about two minutes, passes on `main` (1315 passed, 9 performance benchmarks
 deselected) and needs no AWS account: every test uses moto. A change must keep
 it green. Run the benchmarks only on request: `python -m pytest -m performance`.

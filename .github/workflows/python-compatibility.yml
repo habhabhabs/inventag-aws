@@ -22,13 +22,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.11', '3.12', '3.13', '3.14']
+        python-version: ['3.11', '3.12', '3.13', '3.14', '3.15']
         experimental: [false]
-        include:
-          # Newest CPython (3.15, released Oct 2026): informational until all
-          # dependencies publish wheels for it.
-          - python-version: '3.15'
-            experimental: true
 
     steps:
     - name: Checkout code
@@ -90,11 +85,11 @@ jobs:
           ubuntu-python-${{ matrix.python-version }}-compat-
           ubuntu-python-compat-
 
-    - name: Install system dependencies for Python 3.14-dev
-      if: steps.setup-python.outcome == 'success' && matrix.python-version == '3.14-dev'
+    - name: Install build dependencies for Python 3.15
+      if: steps.setup-python.outcome == 'success' && matrix.python-version == '3.15'
       shell: bash
       run: |
-        echo "🔧 Installing system dependencies for Python 3.14-dev..."
+        echo "🔧 Installing build dependencies for Python 3.15..."
         sudo apt-get update
         sudo apt-get install -y libxml2-dev libxslt-dev python3-dev build-essential
 

@@ -1,9 +1,9 @@
 {
-  "version": "1.0.0",
-  "release_notes": "Release 1.0.0 - 2026-11-13\\\\nFirst public release. Install with pip: pip install inventag-aws, then run the inventag command.",
+  "version": "1.0.1",
+  "release_notes": "Release 1.0.1 - 2026-11-13\\\\nPython 3.15 support, tested in CI. colorama restored for the legacy scripts.",
   "release_date": "2026-11-13T00:00:00",
-  "previous_version": "0.0.0",
-  "version_bump_type": "major",
-  "git_tag": "v1.0.0",
-  "github_release_url": "https://github.com/habhabhabs/inventag-aws/releases/tag/v1.0.0"
+  "previous_version": "1.0.0",
+  "version_bump_type": "patch",
+  "git_tag": "v1.0.1",
+  "github_release_url": "https://github.com/habhabhabs/inventag-aws/releases/tag/v1.0.1"
 }

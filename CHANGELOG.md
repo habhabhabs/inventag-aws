@@ -8,6 +8,17 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-13
+
+### Added
+
+- Python 3.15 is supported. CI runs the tests on 3.11, 3.12, 3.13, 3.14 and
+  3.15.
+
+### Fixed
+
+- `colorama` is a dependency again. `scripts/legacy/` imports it.
+
 ## [1.0.0] - 2026-11-13
 
 First numbered release. It includes everything from the alpha builds below,
@@ -240,5 +251,6 @@ One-time setup for PyPI:
 3. In the GitHub repository settings, set the variable `PYPI_PUBLISH` to
    `true`.
 
-[Unreleased]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/habhabhabs/inventag-aws/releases/tag/v1.0.0

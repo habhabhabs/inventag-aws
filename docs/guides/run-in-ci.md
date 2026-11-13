@@ -60,7 +60,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: habhabhabs/inventag-aws
-          ref: v1.0.0            # pin a release
+          ref: v1.0.1            # pin a release
           path: inventag
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
