@@ -9,6 +9,7 @@ boto3>=1.35.0           # first floor whose botocore accepts urllib3 2.x on ever
 PyYAML>=6.0
 openpyxl>=3.0.0
 python-docx>=0.8.11
+colorama>=0.4.4        # used by scripts/legacy/*.py (run in CI)
 psutil>=5.9.0
 keyring>=24.0.0
 cryptography>=50.0.0    # CVE-2026-69247 (fixed 50.0.0); CVE-2026-69248, CVE-2026-69249 (fixed 49.0.0)
