@@ -108,7 +108,7 @@ inventag --accounts-file accounts.yaml --create-excel --resume
 | `--output-directory reports` | 把所有内容写入 `reports/`，而不是 `bom_output/` |
 
 如果不指定输出参数，InvenTag 只写出 Excel。如果扫描没有发现任何资源，或者你的过滤条件把它们全部排除了，
-InvenTag 不会写出任何文件，并且仍以退出码 0 退出。添加 `--s3-bucket` 还可以上传这些文件：
+InvenTag 不会写出任何文件，记录 `No resources to report (none found, or the filters removed all of them).`，并且仍以退出码 0 退出。使用 `--template` 时，它会写出一份不列出任何资源的报告。添加 `--s3-bucket` 还可以上传这些文件：
 参见[定时把报告上传到 S3](../examples/scheduled-s3-upload.md)。
 
 使用 `--template standard-bom --create-excel
@@ -163,7 +163,7 @@ $ echo $?
 
 ## 退出码 {#exit-codes}
 
-即使有账户失败或什么都没找到，InvenTag 也以退出码 0 结束。两个可选参数可以改变这一点。报告仍会写出。
+即使有账户失败或什么都没找到，InvenTag 也以退出码 0 结束。两个可选参数可以改变这一点。退出码 5 时报告仍会写出。
 
 | 参数 | 退出码 | 何时 |
 |---|---|---|

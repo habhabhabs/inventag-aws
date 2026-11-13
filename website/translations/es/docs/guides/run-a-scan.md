@@ -124,7 +124,7 @@ y que se analizan de nuevo. InvenTag borra los resultados guardados tras una eje
 
 Si no indicas ninguna opción de salida, InvenTag escribe solo Excel. Si el
 análisis no encuentra recursos, o tus filtros los eliminan todos, InvenTag no
-escribe ningún archivo y aun así termina con el código 0. Añade `--s3-bucket`
+escribe ningún archivo, registra `No resources to report (none found, or the filters removed all of them).` y aun así termina con el código 0. Con `--template`, escribe un informe que no lista ningún recurso. Añade `--s3-bucket`
 para subir también los archivos: consulta
 [Subir informes a S3 de forma programada](../examples/scheduled-s3-upload.md).
 
@@ -183,7 +183,7 @@ $ echo $?
 
 ## Códigos de salida {#exit-codes}
 
-InvenTag sale con código 0 aunque una cuenta haya fallado o no se haya encontrado nada. Dos opciones lo cambian. Los informes se escriben igualmente.
+InvenTag sale con código 0 aunque una cuenta haya fallado o no se haya encontrado nada. Dos opciones lo cambian. Con el código 5 los informes se escriben igualmente.
 
 | Opción | Código de salida | Cuándo |
 |---|---|---|

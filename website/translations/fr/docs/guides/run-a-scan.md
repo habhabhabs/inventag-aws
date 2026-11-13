@@ -119,8 +119,8 @@ et qu’ils sont analysés de nouveau. InvenTag supprime les résultats enregist
 | `--output-directory reports` | Écrit tout dans `reports/` au lieu de `bom_output/` |
 
 Si vous ne donnez aucune option de sortie, InvenTag n’écrit que le fichier Excel. Si l’analyse ne trouve
-aucune ressource, ou si vos filtres les écartent toutes, InvenTag n’écrit aucun fichier et
-se termine tout de même avec le code 0. Ajoutez `--s3-bucket` pour téléverser aussi les fichiers : voir
+aucune ressource, ou si vos filtres les écartent toutes, InvenTag n’écrit aucun fichier, journalise
+`No resources to report (none found, or the filters removed all of them).` et se termine tout de même avec le code 0. Avec `--template`, il écrit un rapport qui ne liste aucune ressource. Ajoutez `--s3-bucket` pour téléverser aussi les fichiers : voir
 [Téléverser les rapports vers S3 selon un calendrier](../examples/scheduled-s3-upload.md).
 
 Exemple de sortie d’une exécution avec `--template standard-bom --create-excel
@@ -177,7 +177,7 @@ $ echo $?
 
 ## Codes de sortie {#exit-codes}
 
-InvenTag se termine avec le code 0 même si un compte a échoué ou si rien n’a été trouvé. Deux options changent cela. Les rapports sont quand même écrits.
+InvenTag se termine avec le code 0 même si un compte a échoué ou si rien n’a été trouvé. Deux options changent cela. Avec le code 5, les rapports sont quand même écrits.
 
 | Option | Code de sortie | Quand |
 |---|---|---|

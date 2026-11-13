@@ -108,7 +108,7 @@ inventag --accounts-file accounts.yaml --create-excel --resume
 | `--output-directory reports` | 把所有內容寫入 `reports/`，而不是 `bom_output/` |
 
 如果不指定輸出引數，InvenTag 只寫出 Excel。如果掃描沒有發現任何資源，或者你的過濾條件把它們全部排除了，
-InvenTag 不會寫出任何檔案，並且仍以結束代碼 0 退出。新增 `--s3-bucket` 還可以上傳這些檔案：
+InvenTag 不會寫出任何檔案，記錄 `No resources to report (none found, or the filters removed all of them).`，並且仍以結束代碼 0 退出。使用 `--template` 時，它會寫出一份不列出任何資源的報告。新增 `--s3-bucket` 還可以上傳這些檔案：
 參見[定時把報告上傳到 S3](../examples/scheduled-s3-upload.md)。
 
 使用 `--template standard-bom --create-excel
@@ -163,7 +163,7 @@ $ echo $?
 
 ## 結束代碼 {#exit-codes}
 
-即使有帳戶失敗或什麼都沒找到，InvenTag 也以結束代碼 0 結束。兩個可選引數可以改變這一點。報告仍會寫出。
+即使有帳戶失敗或什麼都沒找到，InvenTag 也以結束代碼 0 結束。兩個可選引數可以改變這一點。結束代碼 5 時報告仍會寫出。
 
 | 引數 | 結束代碼 | 何時 |
 |---|---|---|
