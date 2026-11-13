@@ -36,7 +36,7 @@ const facts = (s) => {
 };
 const slug = (h) => h.toLowerCase().replace(/[^\w\s-]/g, '').trim().replace(/\s/g, '-');
 
-const english = walk(source);
+const english = walk(source).filter((f) => f !== 'assets/readme.md'); // excluded from the site
 let problems = 0;
 const locales = fs.readdirSync(path.join(root, 'translations'));
 for (const loc of locales) {

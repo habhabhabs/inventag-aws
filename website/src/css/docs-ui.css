@@ -835,8 +835,24 @@ textarea {
 .it-listen {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 0.5rem;
-  margin: 0 0 1.25rem;
+  margin: 0 0 1rem;
+}
+/* On wide screens the controls sit in the top right corner of the article,
+   level with the breadcrumbs. */
+@media (min-width: 997px) {
+  [class*='docItemContainer'] {
+    position: relative;
+  }
+  [class*='docItemContainer'] .it-listen {
+    position: absolute;
+    top: -0.35rem;
+    right: 0;
+    z-index: 2;
+    margin: 0;
+    flex-wrap: nowrap;
+  }
 }
 .it-listen__btn {
   display: inline-flex;
