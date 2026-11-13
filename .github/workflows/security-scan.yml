@@ -99,7 +99,9 @@ jobs:
         pip install detect-secrets
         
         echo "🕵️ Running secrets detection..."
-        detect-secrets scan --all-files --baseline security-results/secrets.baseline --force-use-all-plugins || echo "⚠️ Potential secrets detected"
+        # Scan the tracked files and write the result as the baseline. (--baseline needs
+        # an existing file, so the old command exited with "Invalid path" and wrote nothing.)
+        detect-secrets scan --force-use-all-plugins > security-results/secrets.baseline || echo "⚠️ detect-secrets failed"
         
         if [ -f "security-results/secrets.baseline" ]; then
           echo "✅ Secrets baseline created"
