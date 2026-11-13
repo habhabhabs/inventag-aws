@@ -8,6 +8,18 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-13
+
+### Fixed
+
+- The example screenshots on the documentation site show as images. Four
+  pages displayed the raw `<img src={require(...)}>` text instead.
+
+### Changed
+
+- The install pages say that a virtual environment is optional and give
+  `pipx` and plain `pip` as alternatives.
+
 ## [1.0.1] - 2026-11-13
 
 ### Added
@@ -251,6 +263,7 @@ One-time setup for PyPI:
 3. In the GitHub repository settings, set the variable `PYPI_PUBLISH` to
    `true`.
 
-[Unreleased]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/habhabhabs/inventag-aws/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/habhabhabs/inventag-aws/releases/tag/v1.0.0

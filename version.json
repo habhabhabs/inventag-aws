@@ -1,9 +1,9 @@
 {
-  "version": "1.0.1",
-  "release_notes": "Release 1.0.1 - 2026-11-13\\\\nPython 3.15 support, tested in CI. colorama restored for the legacy scripts.",
+  "version": "1.0.2",
+  "release_notes": "Release 1.0.2 - 2026-11-13\\\\nDocs example screenshots render as images. Install pages say a virtual environment is optional.",
   "release_date": "2026-11-13T00:00:00",
-  "previous_version": "1.0.0",
+  "previous_version": "1.0.1",
   "version_bump_type": "patch",
-  "git_tag": "v1.0.1",
-  "github_release_url": "https://github.com/habhabhabs/inventag-aws/releases/tag/v1.0.1"
+  "git_tag": "v1.0.2",
+  "github_release_url": "https://github.com/habhabhabs/inventag-aws/releases/tag/v1.0.2"
 }

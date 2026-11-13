@@ -27,7 +27,11 @@ inventag --validate-credentials       # uses your current AWS credentials
 inventag --create-excel --verbose     # -> bom_output/multi_account_bom_<timestamp>.xlsx
 ```
 
-To upgrade later, run `pip install --upgrade inventag-aws`. To work on the code
+A virtual environment is optional. `pipx install inventag-aws` gives you the
+same `inventag` command without activating anything, and plain
+`pip install inventag-aws` works wherever your Python allows it (newer Linux and
+Homebrew Pythons refuse system-wide installs). To upgrade later, run
+`pip install --upgrade inventag-aws`. To work on the code
 or run the newest unreleased version, install from source instead:
 
 ```bash

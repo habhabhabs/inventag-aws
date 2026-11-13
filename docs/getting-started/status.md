@@ -1,6 +1,6 @@
 ---
 title: Feature status and known limitations
-description: Which InvenTag features work in v1.0.1, which are partial, which flags stop with an error, and the specific limits, costs and risks to know before you rely on it.
+description: Which InvenTag features work in v1.0.2, which are partial, which flags stop with an error, and the specific limits, costs and risks to know before you rely on it.
 sidebar_position: 5
 ---
 
@@ -11,7 +11,7 @@ sidebar_position: 5
 **What you will know after reading:** which features work, where they stop
 short, which flags stop with an error, and what to do about each limit.
 
-This page is deliberately blunt. This page describes InvenTag v1.0.1. We
+This page is deliberately blunt. This page describes InvenTag v1.0.2. We
 checked each item by running the code offline against mocked AWS (moto), or by
 reading the code path. **No test has run against a real AWS account.** Where a
 point below depends on how real AWS behaves, the page says so. If you fix or
@@ -48,7 +48,7 @@ change one of these, update this page in the same pull request.
 | `--enable-cost-analysis` | Adds four `forgotten_analysis.*` columns to the default workbook. It makes many extra Cost Explorer, Pricing and CloudWatch calls. It adds no cost sheet. |
 | `--bom-config` | Applies only keys that are fields of the BOM processing configuration. Other keys are ignored without a message. |
 | `--validate-config-only` | Checks the files, but still makes one `ec2:DescribeRegions` call to list regions. If that fails, it logs a warning and carries on. |
-| `--accounts-prompt`, `--credential-timeout`, `--disable-account-logging` | Accepted. We did not re-test them for v1.0.1. |
+| `--accounts-prompt`, `--credential-timeout`, `--disable-account-logging` | Accepted. We did not re-test them for v1.0.2. |
 
 ## Accepted but with no effect
 
