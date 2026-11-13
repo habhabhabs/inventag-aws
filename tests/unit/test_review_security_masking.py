@@ -27,6 +27,10 @@ S = "planted-review-secret-7f3a"
         {"Certificates": [{"CertificateWallet": S}]},
         {"jobDriver": {"sparkSubmitJobDriver": {"entryPointArguments": ["--pw", S]}}},
         {"taxDocumentMetadatas": [{"taxDocumentAccessToken": S}]},
+        {"Report": {"documentPresignedUrl": S}},
+        {"Events": [{"PreSignedLogUrl": S}]},
+        {"Details": {"ExportAssetToSignedUrl": {"SignedUrl": S}}},
+        {"uploadUrls": [S]},
         {"Nested": {"Deeper": [{"Payload": json.dumps({"Variables": {"A": S}})}]}},
     ],
 )

@@ -68,7 +68,8 @@ names ending in password, passwd,         RDS/Redshift/DocumentDB master passwor
 secret string/binary, secret access key,  Cognito client secrets, FSx, MSK, Storage
 client/shared secret, private key,        Gateway CHAP secrets, Amplify basic auth,
 api key, auth/session/security/bearer     ElastiCache auth tokens, credentials
-token, connection string, credential(s);  blocks, database connection strings
+token, connection string, credential(s); blocks, database connection strings,
+signed, download or upload URL;           signed links in many services
 and the fixed names in
 :data:`SECRET_VALUE_KEYS`
 ========================================  ==========================================
@@ -124,7 +125,9 @@ SECRET_VALUE_KEYS = frozenset(
 _SECRET_SUFFIX = re.compile(
     r"(password|passwd|secretstring|secretbinary|secretaccesskey|clientsecret|"
     r"sharedsecret|privatekey|apikey|authtoken|sessiontoken|securitytoken|"
-    r"bearertoken|accesstoken|refreshtoken|connectionstring|credentials?)$"
+    r"bearertoken|accesstoken|refreshtoken|connectionstring|credentials?|"
+    r"presignedurl|signedurl|presignedlogurl|presigneds3url|downloadurl|"
+    r"uploadurls?)$"
 )
 # Mappings of name -> value whose names stay and whose values go.
 SECRET_MAPPING_KEYS = frozenset(

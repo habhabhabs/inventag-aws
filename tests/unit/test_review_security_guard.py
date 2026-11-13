@@ -243,3 +243,38 @@ def test_allow_on_client_is_per_client(guard):
     ReadOnlyGuard.allow_on_client(upload, {"PutObject"})
     _blocked(other, lambda c: c.put_object(Bucket="b", Key="k", Body=b"x"))
     _blocked(upload, lambda c: c.delete_object(Bucket="b", Key="k"))
+
+
+@pytest.mark.parametrize(
+    "service,operation",
+    [
+        ("cognito-identity", "GetId"),
+        ("ssm", "GetCommandInvocation"),
+        ("ssm", "GetDocument"),
+        ("ssm", "GetDeployablePatchSnapshotForInstance"),
+        ("ssm", "GetMaintenanceWindowTask"),
+        ("datapipeline", "GetPipelineDefinition"),
+        ("cloudformation", "GetGeneratedTemplate"),
+        ("apigateway", "GetExport"),
+        ("codeartifact", "GetPackageVersionAsset"),
+        ("connect", "GetAttachedFile"),
+        ("bedrock-agent-runtime", "GetDocumentContent"),
+        ("support", "GetAttachmentDownloadLink"),
+        ("iot", "GetJobDocument"),
+    ],
+)
+def test_review_additions_to_the_deny_list(service, operation):
+    assert not ReadOnlyGuard().evaluate(service, operation)[0]
+
+
+def test_every_denied_operation_exists_in_botocore():
+    """A typo in the deny-list would silently allow the real operation."""
+    session = botocore.session.get_session()
+    available = set(session.get_available_services())
+    missing = []
+    for service, operation in rog.DENIED_OPERATIONS:
+        if service == "*" or service not in available:
+            continue
+        if operation not in session.get_service_model(service).operation_names:
+            missing.append(f"{service}:{operation}")
+    assert not missing, missing
