@@ -30,7 +30,7 @@ const PAGE_DESCRIPTION =
 
 // The templates guide is being written in parallel (docs/templates).
 // TODO(templates-route): switch to '/docs/templates' once that page exists on main.
-const TEMPLATES_LINK = '/docs/architecture/template-framework';
+const TEMPLATES_LINK = '/docs/templates/';
 
 // Commands from docs/getting-started/quick-start.md
 const QUICK_START = [
@@ -260,7 +260,7 @@ function Capabilities(): ReactNode {
           icon={<IconSheet />}
           title="Excel and Word reports"
           flag="--create-excel  --create-word"
-          link="/docs/user-guides/cli-user-guide"
+          link="/docs/reference/cli"
           linkLabel="See every report option"
           preview={<BomPreview />}>
           <p>
@@ -324,7 +324,7 @@ function Capabilities(): ReactNode {
           icon={<IconTag />}
           title="Your tags, your columns"
           flag="--tag-mappings"
-          link="/docs/user-guides/configuration-examples"
+          link="/docs/templates/"
           linkLabel="Map tags to columns"
           preview={
             <pre className={styles.snippet} tabIndex={0}>

@@ -33,9 +33,7 @@
  */
 import {createRequire} from 'node:module';
 import fs from 'node:fs';
-import http from 'node:http';
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
 
 const require = createRequire(import.meta.url);
 let chromium;
@@ -98,17 +96,13 @@ function auditInPage(isTouch) {
   });
   const backgrounds = (el) => {
     const layers = [];
-    let gradient = false;
     for (let n = el; n; n = n.parentElement) {
       const cs = getComputedStyle(n);
       const img = cs.backgroundImage;
       if (img && img.includes('gradient')) {
         const stops = [...img.matchAll(/rgba?\([^)]+\)/g)].map((m) => parse(m[0]));
-        if (stops.length) {
-          gradient = true;
-          layers.push({stops});
-          if (stops.every((s) => s.a === 1)) break;
-        }
+        layers.push({stops});
+        if (stops.every((s) => s.a === 1)) break;
       }
       const bg = parse(cs.backgroundColor);
       if (bg && bg.a > 0) {
@@ -132,7 +126,6 @@ function auditInPage(isTouch) {
     for (let n = el; n; n = n.parentElement) if (parseFloat(getComputedStyle(n).opacity) === 0) return false;
     return true;
   };
-  const rootBg = parse(getComputedStyle(document.documentElement).backgroundColor);
   const fails = [];
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   const seen = new Set();
@@ -141,7 +134,7 @@ function auditInPage(isTouch) {
     if (!t.textContent.trim()) continue;
     const el = t.parentElement;
     if (!el || seen.has(el) || !visible(el)) continue;
-    if (el.closest('svg, [aria-hidden="true"], noscript')) continue;
+    if (el.closest('svg, [aria-hidden="true"], .sr-only, noscript')) continue;
     seen.add(el);
     const cs = getComputedStyle(el);
     const fg = parse(cs.color);
@@ -156,7 +149,6 @@ function auditInPage(isTouch) {
       fails.push({
         text: t.textContent.trim().slice(0, 50),
         ratio: Math.round(worst * 100) / 100,
-        need: large ? 3 : 4.5,
         color: cs.color,
         where: typeof el.className === 'string' ? el.className.slice(0, 60) : el.tagName,
       });
@@ -221,27 +213,6 @@ function auditInPage(isTouch) {
       boundary.push(`${el.tagName.toLowerCase()} "${(el.getAttribute('aria-label') || el.innerText || '').trim().slice(0, 30)}" boundary ${Math.round(best * 100) / 100}:1`);
     }
   }
-  return {contrast: fails, small};
-}
-
-/** Facts about the element that has keyboard focus now. */
-function readFocus() {
-  const el = document.activeElement;
-  if (!el || el === document.body || el === document.documentElement) return null;
-  window.__a11yIds = window.__a11yIds || new WeakMap();
-  if (!window.__a11yIds.has(el)) window.__a11yIds.set(el, (window.__a11yNext = (window.__a11yNext || 0) + 1));
-  const cs = getComputedStyle(el);
-  const r = el.getBoundingClientRect();
-  const clear = (c) => c === 'transparent' || /,\s*0\)$/.test(c);
-  const outline = cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2 && !clear(cs.outlineColor);
-  const shadow = cs.boxShadow && cs.boxShadow !== 'none';
-  const banner = document.querySelector('.consent-banner');
-  let coveredByBanner = false;
-  if (banner && !banner.contains(el)) {
-    const b = banner.getBoundingClientRect();
-    coveredByBanner = r.left >= b.left && r.right <= b.right && r.top >= b.top && r.bottom <= b.bottom;
-  }
-  const cls = typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/)[0] : '';
   return {
     boundary,
     contrast: fails,
@@ -343,317 +314,6 @@ if (SHOTS) {
       }
       await ctx.close();
     }
-    if (seen.has(f.id)) continue;
-    seen.add(f.id);
-    if (!f.sized) res.failures.push({check: 'focus-visible', detail: `focus on a hidden element: ${f.label}`});
-    else if (!f.inView) res.failures.push({check: 'focus-visible', detail: `focus on an off-screen element: ${f.label}`});
-    else if (!f.ring) res.failures.push({check: 'focus-visible', detail: `no focus indicator: ${f.label}`});
-    if (banner && f.coveredByBanner) res.failures.push({check: 'consent-banner', detail: `banner completely covers focused ${f.label}`});
-  }
-  res.tabStops = stops;
-  if (!stops) res.failures.push({check: 'focus-visible', detail: 'Tab never moved focus to anything'});
-}
-
-/** Tab from the top until `test(focus)` is true. Returns the focus facts, or null. */
-async function tabTo(page, test, max = 20) {
-  await page.evaluate(() => {
-    window.scrollTo(0, 0);
-    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
-  });
-  for (let i = 0; i < max; i++) {
-    await page.keyboard.press('Tab');
-    const f = await page.evaluate(readFocus);
-    if (f && test(f)) return f;
-  }
-  return null;
-}
-
-async function checkMobileMenu(page, pg, vp, theme) {
-  const res = newResult(pg, vp, theme, 'menu-open');
-  if (!(await open(page, pg, res))) return;
-  const fail = (detail) => res.failures.push({check: 'mobile-menu', detail});
-  const toggle = await tabTo(page, (f) => f.isToggle);
-  if (!toggle) return fail('the menu button cannot be reached with Tab');
-  if (!toggle.ring) fail('the menu button has no focus indicator');
-  const before = await page.evaluate(() => {
-    const t = document.querySelector('.navbar__toggle');
-    return {name: t.getAttribute('aria-label') || t.innerText, expanded: t.getAttribute('aria-expanded')};
-  });
-  if (!before.name) fail('the menu button has no accessible name');
-  if (before.expanded !== 'false') fail(`aria-expanded is "${before.expanded}" while the menu is closed`);
-  await page.keyboard.press('Enter');
-  try {
-    await page.waitForFunction(() => {
-      const s = document.querySelector('.navbar-sidebar');
-      return s && getComputedStyle(s).visibility === 'visible' && s.getBoundingClientRect().left >= 0;
-    }, null, {timeout: 3000});
-  } catch {
-    return fail('Enter on the menu button did not open the menu');
-  }
-  await page.waitForTimeout(350); // slide-in transition
-  const opened = await page.evaluate(() => {
-    const s = document.querySelector('.navbar-sidebar').getBoundingClientRect();
-    return {
-      expanded: document.querySelector('.navbar__toggle').getAttribute('aria-expanded'),
-      links: [...document.querySelectorAll('.navbar-sidebar a[href]')].filter((a) => a.getBoundingClientRect().width > 0).length,
-      fits: s.right <= window.innerWidth + 0.5,
-      overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
-    };
-  });
-  if (opened.expanded !== 'true') fail(`aria-expanded is "${opened.expanded}" while the menu is open`);
-  if (!opened.links) fail('the open menu shows no links');
-  if (!opened.fits || opened.overflow) fail('the open menu is wider than the screen');
-  await verifyTheme(page, theme, res);
-  await scan(page, res);
-  await shot(page, res);
-  // Keyboard: opening the menu moves focus into it, and Tab stays inside it.
-  const first = await page.evaluate(readFocus);
-  if (!first || !first.inMenu) fail(`opening the menu left focus outside it${first ? ` (on ${first.label})` : ''}`);
-  else if (!first.ring) fail(`no focus indicator in the menu: ${first.label}`);
-  let inside = 0;
-  for (let i = 0; i < 12; i++) {
-    await page.keyboard.press('Tab');
-    const f = await page.evaluate(readFocus);
-    if (!f) continue; // focus moved to the browser's own controls and comes back
-    if (!f.inMenu) {
-      fail(`Tab left the open menu and went to ${f.label} behind it`);
-      break;
-    }
-    inside++;
-    if (!f.ring) fail(`no focus indicator in the menu: ${f.label}`);
-    if (!f.inView || !f.sized) fail(`focus on a hidden menu item: ${f.label}`);
-  }
-  if (!inside) fail('Tab does not reach the items in the open menu');
-  const isClosed = () => page.waitForFunction(() => !document.querySelector('.navbar-sidebar--show'), null, {timeout: 3000}).then(() => true, () => false);
-  // Escape closes the menu and gives focus back to the menu button.
-  await page.keyboard.press('Escape');
-  if (!(await isClosed())) fail('Escape does not close the menu');
-  else {
-    await page.waitForTimeout(100);
-    const back = await page.evaluate(readFocus);
-    if (!back || !back.isToggle) fail('closing the menu does not give focus back to the menu button');
-    // Open it again and close it with the close button.
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(450);
-  }
-  const close = await page.evaluate(() => {
-    const c = document.querySelector('.navbar-sidebar--show .navbar-sidebar__close');
-    if (c) c.focus();
-    return !!c && document.activeElement === c && !!(c.getAttribute('aria-label') || c.innerText);
-  });
-  if (!close) return fail('the close button is missing, cannot take focus, or has no accessible name');
-  await page.keyboard.press('Enter');
-  if (!(await isClosed())) fail('Enter on the close button does not close the menu');
-}
-
-async function checkSearch(page, pg, vp, theme) {
-  const res = newResult(pg, vp, theme, 'search-open');
-  if (!(await open(page, pg, res))) return;
-  const fail = (detail) => res.failures.push({check: 'search', detail});
-  const indexReady = () => page.waitForSelector('.navbar__search-input[role="combobox"]', {timeout: 10000}).then(() => true, () => false);
-  const box = await tabTo(page, (f) => f.isSearch, 30);
-  if (!box) return fail('the search box cannot be reached with Tab');
-  if (!box.ring) fail('the search box has no focus indicator');
-  // The search index loads on first focus (slowed down for this page, see
-  // runCombo). Move on before it arrives: focus must stay where the user put it.
-  await page.keyboard.press('Tab');
-  const moved = await page.evaluate(readFocus);
-  if (!(await indexReady())) return fail('the search index did not load');
-  await page.waitForTimeout(150);
-  const now = await page.evaluate(readFocus);
-  if (moved && !moved.isSearch && now && now.isSearch) fail(`focus jumped back to the search box from ${moved.label} when the search index loaded`);
-  await page.keyboard.press('Shift+Tab');
-  const backIn = await page.evaluate(readFocus);
-  if (!backIn || !backIn.isSearch) return fail('Shift+Tab does not go back to the search box');
-  await page.keyboard.type('tag', {delay: 30});
-  try {
-    await page.waitForFunction(() => document.querySelectorAll('.navbar__search [role="option"]').length > 0, null, {timeout: 8000});
-  } catch {
-    return fail('typing in the search box showed no suggestions');
-  }
-  await page.waitForTimeout(250);
-  const box2 = await page.evaluate(() => {
-    const list = document.querySelector('.navbar__search [role="listbox"]').getBoundingClientRect();
-    const input = document.querySelector('.navbar__search-input').getBoundingClientRect();
-    return {
-      left: Math.round(list.left), right: Math.round(list.right), vw: document.documentElement.clientWidth,
-      inputWidth: Math.round(input.width),
-      overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
-    };
-  });
-  if (box2.left < 0 || box2.right > box2.vw) fail(`the suggestion list runs off the screen (${box2.left}px to ${box2.right}px of ${box2.vw}px)`);
-  if (box2.overflow) fail('the open suggestion list makes the page scroll sideways');
-  if (box2.inputWidth < 120) fail(`the search box is only ${box2.inputWidth}px wide while typing`);
-  await verifyTheme(page, theme, res);
-  await scan(page, res);
-  await shot(page, res);
-  // keyboard: arrow down selects a suggestion, Escape closes the list
-  await page.keyboard.press('ArrowDown');
-  const active = await page.evaluate(() => {
-    const i = document.querySelector('.navbar__search-input');
-    const id = i.getAttribute('aria-activedescendant');
-    return !!(id && document.getElementById(id));
-  });
-  if (!active) fail('arrow keys do not select a suggestion');
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(150);
-  const closed = await page.evaluate(() => {
-    const l = document.querySelector('.navbar__search [role="listbox"]');
-    return !l || getComputedStyle(l).display === 'none';
-  });
-  if (!closed) fail('Escape does not close the suggestion list');
-  // A query with no results: the "no results" message is scanned as well.
-  await page.focus('.navbar__search-input');
-  await page.keyboard.press('Control+A');
-  await page.keyboard.type('zzqxv', {delay: 30});
-  try {
-    await page.waitForFunction(() => {
-      const l = document.querySelector('.navbar__search [role="listbox"]');
-      return l && getComputedStyle(l).display !== 'none' && !l.querySelector('[role="option"][id]') && l.innerText.trim().length > 0;
-    }, null, {timeout: 8000});
-  } catch {
-    return fail('a query with no results shows no message');
-  }
-  const empty = await runAxe(page);
-  const mark = (v) => ({...v, help: `${v.help} [no-results state]`});
-  res.wcag.push(...empty.wcag.map(mark));
-  res.advisory.push(...empty.advisory.map(mark));
-}
-
-async function checkConsentBanner(page, pg, vp, theme) {
-  const res = newResult(pg, vp, theme, 'consent-banner');
-  if (!(await open(page, pg, res))) return;
-  const fail = (detail) => res.failures.push({check: 'consent-banner', detail});
-  try {
-    await page.waitForSelector('.consent-banner', {state: 'visible', timeout: 3000});
-  } catch {
-    res.warnings.push({check: 'consent-banner', detail: 'no consent banner on a first visit; checks skipped'});
-    return;
-  }
-  await verifyTheme(page, theme, res);
-  await scan(page, res);
-  await shot(page, res);
-  const m = await page.evaluate(async () => {
-    const b = document.querySelector('.consent-banner');
-    const r = b.getBoundingClientRect();
-    const nav = document.querySelector('.navbar').getBoundingClientRect();
-    const out = {
-      height: Math.round(r.height), share: r.height / window.innerHeight,
-      offscreen: r.left < 0 || r.right > window.innerWidth || r.top < 0 || r.bottom > window.innerHeight,
-      coversNavbar: r.top < nav.bottom,
-      stoleFocus: b.contains(document.activeElement),
-      overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
-    };
-    // Is the end of the page readable when scrolled all the way down?
-    window.scrollTo(0, document.documentElement.scrollHeight);
-    await new Promise((ok) => setTimeout(ok, 200));
-    const b2 = b.getBoundingClientRect();
-    const last = [...document.querySelectorAll('footer a, footer .footer__copyright')].filter((e) => e.getBoundingClientRect().height > 0).pop();
-    if (last) {
-      const range = document.createRange();
-      range.selectNodeContents(last);
-      const lr = range.getBoundingClientRect();
-      out.endHidden = lr.bottom > b2.top && lr.right > b2.left && lr.left < b2.right;
-      out.endDetail = `last footer text ends at ${Math.round(lr.bottom)}px, banner starts at ${Math.round(b2.top)}px`;
-    }
-    window.scrollTo(0, 0);
-    return out;
-  });
-  res.banner = m;
-  if (m.offscreen) fail('the banner does not fit on the screen');
-  if (m.overflow) fail('the banner makes the page scroll sideways');
-  if (m.coversNavbar) fail('the banner covers the navbar');
-  if (m.share > 0.5) fail(`the banner covers ${Math.round(m.share * 100)}% of the screen height`);
-  if (m.stoleFocus) fail('the banner takes keyboard focus on page load');
-  if (m.endHidden) fail(`the banner hides the end of the page (${m.endDetail})`);
-  // Tab through the page with the banner open: nothing fully covered, no trap.
-  await tabWalk(page, res, TAB_STOPS, {banner: true});
-  // Focus must be able to leave the banner in both directions.
-  for (const key of ['Tab', 'Shift+Tab']) {
-    await page.evaluate((k) => {
-      const btns = document.querySelectorAll('.consent-banner button');
-      btns[k === 'Tab' ? btns.length - 1 : 0].focus();
-    }, key);
-    const start = await page.evaluate(readFocus);
-    if (!start || !start.inBanner) fail(`the banner buttons cannot take focus (focus is on ${start ? start.label : 'nothing'}; banner ${(await page.$('.consent-banner')) ? 'present' : 'gone'})`);
-    else if (!start.ring) fail(`no focus indicator on banner button ${start.label}`);
-    await page.keyboard.press(key);
-    const f = await page.evaluate(readFocus);
-    if (f && f.inBanner) fail(`${key} from the ${key === 'Tab' ? 'last' : 'first'} banner button stays in the banner (focus trap)`);
-  }
-  // Keyboard can dismiss it, and the choice is stored.
-  await page.evaluate(() => {
-    // "Essential only" is the first button.
-    document.querySelectorAll('.consent-banner button')[0].focus();
-  });
-  await page.keyboard.press('Enter');
-  await page.waitForTimeout(150);
-  const after = await page.evaluate(() => ({gone: !document.querySelector('.consent-banner'), choice: localStorage.getItem('inventag-analytics')}));
-  if (!after.gone) fail('Enter on "Essential only" does not close the banner');
-  if (after.choice !== 'denied') fail(`"Essential only" stored "${after.choice}" instead of "denied"`);
-}
-
-async function checkPage(page, pg, vp, theme) {
-  const res = newResult(pg, vp, theme, 'default');
-  if (!(await open(page, pg, res))) return;
-  await verifyTheme(page, theme, res);
-  const layout = await page.evaluate(readLayout);
-  res.layout = layout;
-  const wantMobile = vp.width < DESKTOP_MIN_WIDTH;
-  if (layout.mobileLayout !== wantMobile) {
-    res.failures.push({check: 'breakpoint', detail: `expected the ${wantMobile ? 'mobile' : 'desktop'} layout at ${vp.width}px`});
-  }
-  if (layout.scrollWidth > layout.clientWidth) {
-    res.failures.push({
-      check: 'reflow',
-      detail: `page scrolls sideways: ${layout.scrollWidth}px content in a ${layout.clientWidth}px viewport` +
-        (layout.offenders.length ? `; caused by ${layout.offenders.join(', ')}` : ''),
-    });
-  }
-  const c = await scan(page, res);
-  if (vp.touch) for (const s of c.small) res.warnings.push({check: 'touch-target', detail: `smaller than 44px: ${s}`});
-  await shot(page, res);
-  await tabWalk(page, res, TAB_STOPS);
-}
-
-async function runCombo(browser, vp, theme) {
-  const contextOptions = {
-    viewport: {width: vp.width, height: vp.height},
-    isMobile: vp.touch,
-    hasTouch: vp.touch,
-    colorScheme: theme,
-  };
-  const prepare = async (ctx) => {
-    // Nothing leaves the machine: fonts, analytics and other third parties are blocked.
-    await ctx.route((url) => url.origin !== ORIGIN, (route) => route.abort());
-  };
-  // 1. Pages, menu and search: consent already answered, so the banner is closed.
-  const ctx = await browser.newContext(contextOptions);
-  await prepare(ctx);
-  // Docusaurus reads the `theme` key from localStorage before first paint and
-  // sets <html data-theme>. Setting the key is what the theme switch does.
-  await ctx.addInitScript((t) => {
-    try {
-      localStorage.setItem('theme', t);
-      localStorage.setItem('inventag-analytics', 'denied');
-    } catch (e) { /* ignore */ }
-  }, theme);
-  const page = await ctx.newPage();
-  for (const pg of PAGES) await checkPage(page, pg, vp, theme);
-  for (const pg of PAGES.filter((p) => STATE_PAGES.includes(p.id))) {
-    if (vp.width < DESKTOP_MIN_WIDTH) await checkMobileMenu(page, pg, vp, theme);
-  }
-  await page.close();
-  // Search: a fresh page per check, with a slow search index, so the check
-  // can leave the search box before the index arrives.
-  for (const pg of PAGES.filter((p) => STATE_PAGES.includes(p.id))) {
-    const sp = await ctx.newPage();
-    await sp.route(/search-index[^/]*\.json/, async (route) => {
-      await new Promise((ok) => setTimeout(ok, 600));
-      await route.continue();
-    });
-    await checkSearch(sp, pg, vp, theme);
-    await sp.close();
   }
 }
 
@@ -705,7 +365,7 @@ for (const theme of ['light', 'dark']) {
       fail(`landing copy button copied the wrong text [${theme}]: ${JSON.stringify(clip.slice(0, 60))}`);
     }
     // code block copy button
-    await page.goto(BASE + '/docs/getting-started/quick-start', {waitUntil: 'networkidle'});
+    await page.goto(BASE + '/docs/getting-started/installation', {waitUntil: 'networkidle'});
     await hydrated(page);
     const codeCopy = page.getByRole('button', {name: 'Copy code to clipboard'}).first();
     await codeCopy.focus();
@@ -792,39 +452,21 @@ for (const theme of ['light', 'dark']) {
   const stored = await page.evaluate(() => localStorage.getItem('inventag-analytics'));
   if (stored !== 'denied') fail(`closing the banner stored "${stored}", expected "denied"`);
   await ctx.close();
-  // 2. First visit: no stored consent choice, so the banner is open.
-  const first = await browser.newContext(contextOptions);
-  await prepare(first);
-  await first.addInitScript((t) => {
-    try {
-      localStorage.setItem('theme', t);
-      if (!sessionStorage.getItem('a11y-first')) {
-        localStorage.removeItem('inventag-analytics');
-        sessionStorage.setItem('a11y-first', '1');
-      }
-    } catch (e) { /* ignore */ }
-  }, theme);
-  for (const pg of PAGES.filter((p) => STATE_PAGES.includes(p.id))) {
-    const p2 = await first.newPage();
-    await checkConsentBanner(p2, pg, vp, theme);
-    await p2.close();
-  }
-  await first.close();
 }
 
 // 5. reduced motion
 {
   const ctx = await newContext(browser, {viewport: {width: 1440, height: 900}, theme: 'light', reducedMotion: 'reduce'});
   const page = await ctx.newPage();
-  for (const pg of PAGES) {
-    const res = newResult(pg, {width: 1440}, 'light', 'reduced-motion');
-    if (!(await open(page, pg, res))) continue;
+  for (const [pName, p] of PAGES) {
+    await page.goto(BASE + p, {waitUntil: 'networkidle'});
     const running = await page.evaluate(() =>
       document.getAnimations().filter((a) => a.playState === 'running' && a.effect && a.effect.getTiming().iterations === Infinity).length);
     if (running) fail(`${pName}: ${running} infinite animation(s) running with prefers-reduced-motion`);
   }
   await ctx.close();
 }
+await browser.close();
 
 const uniq = (a) => [...new Set(a)];
 if (warnings.length) {

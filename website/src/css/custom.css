@@ -1612,3 +1612,220 @@ html:has(.consent-banner) {
     display: none;
   }
 }
+
+/* ---------------------------------------------------------------------
+   Mobile menu (drawer). Primary links are large numbered rows; the docs
+   section list below uses the same hairline rows. Flat, no gradients.
+   --------------------------------------------------------------------- */
+@media (max-width: 996px) {
+  :root {
+    --ifm-navbar-sidebar-width: min(92vw, 25rem);
+  }
+  .navbar-sidebar {
+    border-right: 1px solid var(--it-ink);
+    display: flex;
+    flex-direction: column;
+  }
+  .navbar-sidebar__brand {
+    min-height: 3.75rem;
+    padding: 0 0.75rem 0 1rem;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .navbar-sidebar__brand .navbar__brand {
+    margin-right: auto;
+  }
+  .navbar-sidebar__brand [class*='toggle_'] {
+    margin: 0;
+    display: flex;
+    align-items: center;
+  }
+  /* theme toggle and close share one 44px bordered square */
+  .navbar-sidebar__brand button[class*='toggleButton'],
+  .navbar-sidebar__close {
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid var(--it-line-strong, var(--it-ink-2));
+    border-radius: var(--it-radius);
+    background: transparent;
+    color: var(--it-ink);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    flex: 0 0 2.75rem;
+    min-width: 2.75rem;
+  }
+  .navbar-sidebar__close svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+  .navbar-sidebar__close svg path {
+    stroke-width: 2;
+  }
+  .navbar-sidebar__items {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .navbar-sidebar__item {
+    padding: 0;
+  }
+
+  /* back button: a clear outlined control, not a stray mono line */
+  .navbar-sidebar__back {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: calc(100% - 2rem);
+    margin: 0.75rem 1rem;
+    min-height: 2.75rem;
+    padding: 0 0.875rem;
+    border: 1px solid var(--it-ink-2);
+    border-radius: var(--it-radius);
+    font-family: var(--it-font-mono);
+    font-size: 0.8125rem;
+    color: var(--it-ink);
+    text-align: left;
+  }
+  .navbar-sidebar__back:hover,
+  .navbar-sidebar__back:focus-visible {
+    background: var(--it-accent-wash);
+    border-color: var(--it-accent);
+  }
+
+  /* rows */
+  .navbar-sidebar .menu {
+    padding: 0 1rem 1.5rem;
+  }
+  .navbar-sidebar .menu__list-item {
+    border-bottom: 1px solid var(--it-line);
+    margin: 0;
+  }
+  .navbar-sidebar .menu__list .menu__list .menu__list-item {
+    border-bottom: 0;
+  }
+  .navbar-sidebar .menu__link {
+    border-radius: 0;
+    padding: 0.75rem 0.25rem;
+    min-height: 3rem;
+    font-weight: 500;
+    color: var(--it-ink);
+  }
+  .navbar-sidebar .menu__link:hover {
+    background: transparent;
+    color: var(--it-ink);
+    text-decoration: underline;
+    text-decoration-color: var(--it-accent);
+    text-underline-offset: 0.25em;
+  }
+  .navbar-sidebar .menu__link--active {
+    background: var(--it-accent-wash);
+    background-image: none;
+    color: var(--it-ink);
+    box-shadow: inset 3px 0 0 var(--it-accent);
+    padding-left: 0.75rem;
+    font-weight: 600;
+  }
+
+  .navbar-sidebar .menu__list-item-collapsible .menu__link--active,
+  .navbar-sidebar .menu__list-item-collapsible--active > .menu__link {
+    background: transparent;
+    background-image: none;
+    box-shadow: none;
+    padding-left: 0.25rem;
+  }
+
+  /* main menu: big, numbered, with an arrow */
+  .navbar-sidebar__items > .navbar-sidebar__item:first-child {
+    counter-reset: navrow;
+  }
+  .navbar-sidebar__items > .navbar-sidebar__item:first-child > .menu__list > .menu__list-item > .menu__link {
+    font-size: 1.1875rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    min-height: 3.5rem;
+    gap: 0.75rem;
+  }
+  .navbar-sidebar__items > .navbar-sidebar__item:first-child > .menu__list > .menu__list-item > .menu__link:not(.menu__link--sublist)::before {
+    counter-increment: navrow;
+    content: counter(navrow, decimal-leading-zero);
+    font-family: var(--it-font-mono);
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--it-ink-2);
+    min-width: 1.5rem;
+  }
+  .navbar-sidebar__items > .navbar-sidebar__item:first-child > .menu__list > .menu__list-item > .menu__link:not(.menu__link--sublist)::after {
+    content: '→';
+    margin-left: auto;
+    font-family: var(--it-font-mono);
+    color: var(--it-ink-2);
+  }
+
+  /* doc section list: category headings in the same hairline rhythm */
+  .navbar-sidebar .menu__list-item-collapsible {
+    border-radius: 0;
+  }
+  .navbar-sidebar .menu__list-item-collapsible > .menu__link {
+    font-weight: 600;
+  }
+  .navbar-sidebar .menu__list .menu__list {
+    margin-left: 0;
+    padding-left: 0.5rem;
+    border-left: 1px solid var(--it-line);
+  }
+  .navbar-sidebar .menu__list .menu__list .menu__link {
+    font-weight: 400;
+    color: var(--it-ink-2);
+    min-height: 2.75rem;
+  }
+  .navbar-sidebar .menu__list .menu__list .menu__link--active {
+    color: var(--it-ink);
+    font-weight: 600;
+  }
+
+  /* GitHub row: icon plus a text label instead of a bordered box */
+  .navbar-sidebar .header-github-link {
+    width: auto;
+    height: auto;
+    border: 0;
+    margin: 0;
+    justify-content: flex-start;
+    gap: 0.75rem;
+  }
+  .navbar-sidebar .header-github-link::before {
+    width: 1.25rem;
+    height: 1.25rem;
+    min-width: 1.25rem;
+    counter-increment: none;
+  }
+  .navbar-sidebar .header-github-link::after {
+    content: 'GitHub  ↗' !important;
+    margin-left: 0 !important;
+    font-family: inherit !important;
+    color: var(--it-ink) !important;
+  }
+
+  /* the cookie banner must never sit on top of the open menu */
+  body:has(.navbar-sidebar--show) .consent-banner {
+    display: none;
+  }
+}
+
+/* the banner's close button used to overlap its first lines on narrow phones */
+@media (max-width: 520px) {
+  .consent-banner .consent-banner__title,
+  .consent-banner p:not(.consent-banner__title) {
+    padding-right: 2.75rem;
+  }
+  .consent-banner p:not(.consent-banner__title) {
+    padding-right: 0;
+  }
+  .consent-banner .consent-banner__title {
+    min-height: 2.25rem;
+    display: flex;
+    align-items: center;
+  }
+}

@@ -63,6 +63,7 @@ const config: Config = {
   onBrokenLinks: 'warn',
   onBrokenAnchors: 'warn',
   markdown: {
+    format: 'detect', // .md is CommonMark (allows <!-- comments -->), .mdx is MDX
     hooks: {
       onBrokenMarkdownLinks: ({sourceFilePath, url}) => {
         // ../docs/ is the current version; versioned_docs/ are archives.
@@ -176,7 +177,7 @@ const config: Config = {
   customFields: {
     gaMeasurementId: 'G-CVK8311NYE',
   },
-  clientModules: ['./src/clientModules/analyticsConsent.ts'],
+  clientModules: ['./src/clientModules/analyticsConsent.ts', './src/clientModules/a11yPatches.js'],
 
   plugins: [
     [
@@ -232,7 +233,7 @@ const config: Config = {
       items: [
         {type: 'doc', docId: 'index', label: 'Docs', position: 'left'},
         {to: '/docs/getting-started/quick-start', label: 'Quick start', position: 'left'},
-        {to: '/docs/user-guides/cli-user-guide', label: 'CLI reference', position: 'left'},
+        {to: '/docs/reference/cli', label: 'CLI reference', position: 'left'},
         {type: 'docsVersionDropdown', position: 'right', dropdownActiveClassDisabled: true},
         {type: 'search', position: 'right'},
         {
@@ -258,9 +259,9 @@ const config: Config = {
         {
           title: 'Guides',
           items: [
-            {label: 'CLI reference', to: '/docs/user-guides/cli-user-guide'},
+            {label: 'CLI reference', to: '/docs/reference/cli'},
             {label: 'Account setup', to: '/docs/examples/accounts-setup'},
-            {label: 'Configuration examples', to: '/docs/user-guides/configuration-examples'},
+            {label: 'Configuration examples', to: '/docs/templates/'},
             {label: 'Permissions and safety', to: '/docs/user-guides/production-safety'},
           ],
         },
