@@ -63,6 +63,14 @@ from ..security.safe_output import (
 )
 
 
+def _coverage_of(context) -> List[Dict[str, Any]]:
+    """The coverage entries of an account context (none if it has no list)."""
+    entries = getattr(context, "coverage", None)
+    if not isinstance(entries, list):
+        return []
+    return [e for e in entries if isinstance(e, dict)]
+
+
 class AccountSessionError(Exception):
     """Raised when explicitly configured credentials for an account do not work."""
 
@@ -346,7 +354,10 @@ class CloudBOMGenerator:
                 self.config.accounts
                 and self._processing_stats["successful_accounts"] == 0
             ):
-                if not any(ctx.partial for ctx in self.account_contexts.values()):
+                if not any(
+                    getattr(ctx, "partial", False) is True
+                    for ctx in self.account_contexts.values()
+                ):
                     raise AccountSessionError(
                         "Resource discovery failed for all "
                         f"{len(self.config.accounts)} configured account(s); "
@@ -546,7 +557,7 @@ class CloudBOMGenerator:
         summary: Dict[str, Dict[str, int]] = {}
         for acc_id, ctx in self.account_contexts.items():
             counts: Dict[str, int] = {}
-            for entry in ctx.coverage:
+            for entry in _coverage_of(ctx):
                 outcome = str(entry.get("outcome", ""))
                 counts[outcome] = counts.get(outcome, 0) + 1
             if counts:
@@ -580,6 +591,7 @@ class CloudBOMGenerator:
                 if getattr(
                     self.account_contexts.get(item["account_id"]), "partial", False
                 )
+                is True
             ]
             if len(partial) == len(failed):
                 notes.append(
@@ -1538,7 +1550,7 @@ class CloudBOMGenerator:
                             "resource_count": ctx.resource_count,
                             "processing_time_seconds": ctx.processing_time_seconds,
                             "error_count": len(ctx.processing_errors),
-                            "partial": bool(ctx.partial),
+                            "partial": getattr(ctx, "partial", False) is True,
                         }
                         for acc_id, ctx in self.account_contexts.items()
                     ],
@@ -1549,7 +1561,7 @@ class CloudBOMGenerator:
                     "coverage": [
                         entry
                         for ctx in self.account_contexts.values()
-                        for entry in ctx.coverage
+                        for entry in _coverage_of(ctx)
                     ],
                 }
             )

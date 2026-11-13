@@ -304,15 +304,12 @@ def test_second_run_writes_a_changelog_and_no_empty_changelogs_folder(estate, tm
 def test_credential_timeout_is_applied_to_the_sts_client(estate, monkeypatch):
     from inventag.core import cloud_bom_generator as gen
 
-    seen = {}
+    seen = []
     real = boto3.Session.client
 
     def spy(self, service, *a, **kw):
         if service == "sts" and kw.get("config") is not None:
-            seen["timeout"] = (
-                kw["config"].connect_timeout,
-                kw["config"].read_timeout,
-            )
+            seen.append((kw["config"].connect_timeout, kw["config"].read_timeout))
         return real(self, service, *a, **kw)
 
     monkeypatch.setattr(boto3.Session, "client", spy)
@@ -327,7 +324,10 @@ def test_credential_timeout_is_applied_to_the_sts_client(estate, monkeypatch):
         )
         == 0
     )
-    assert seen["timeout"] == (7, 7)
+    # The sign-in and identity checks (the first STS clients) use the
+    # timeout. Discovery later makes its own STS client with the shared
+    # retry settings; that one is not a credential check.
+    assert seen and seen[0] == (7, 7)
     assert gen.BotoConfig is not None
 
 

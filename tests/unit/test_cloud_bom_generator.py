@@ -424,8 +424,10 @@ class TestCloudBOMGenerator:
         generator.account_contexts["123456789012"] = context
 
         # Mock compliance checker
-        mock_compliance = Mock()
-        mock_compliance.check_resources_compliance.return_value = {
+        # spec= makes a call to a method the checker does not have fail, as
+        # it does with the real class.
+        mock_compliance = Mock(spec=["check_compliance"])
+        mock_compliance.check_compliance.return_value = {
             "total_resources": 10,
             "compliant_resources": 8,
             "non_compliant_resources": 2,
@@ -438,12 +440,14 @@ class TestCloudBOMGenerator:
         result = generator._run_compliance_analysis(resources, policies)
 
         # Verify compliance checker initialization
+        # The checker's real API: policy=, and regions so that it makes no
+        # AWS call of its own.
         mock_compliance_class.assert_called_once_with(
-            session=session, policies=policies
+            regions=["us-east-1"], session=session, policy=policies
         )
 
         # Verify compliance analysis
-        mock_compliance.check_resources_compliance.assert_called_once_with(resources)
+        mock_compliance.check_compliance.assert_called_once_with(resources)
 
         # Check result structure
         assert result["total_resources"] == 10
