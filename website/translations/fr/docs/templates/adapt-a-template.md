@@ -96,6 +96,10 @@ Pour voir le résultat final après héritage, lancez
 inventag templates validate acme-bom
 ```
 
+Vous pouvez aussi donner un chemin de fichier, par exemple
+`inventag templates validate ./acme-bom.yaml`. Toute référence qui contient un
+point ou une barre oblique est lue comme un chemin.
+
 En cas de problème, vous obtenez le fichier, la ligne et une suggestion. Ici, le mot
 `layout` a été mal saisi en `layuot` :
 

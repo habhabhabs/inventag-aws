@@ -104,6 +104,10 @@ To see the final result after inheritance, run
 inventag templates validate acme-bom
 ```
 
+You can also give a file path, for example
+`inventag templates validate ./acme-bom.yaml`. Any reference that contains a
+dot or a slash is read as a path.
+
 If something is wrong, you get the file, the line and a hint. Here the word
 `layout` was mistyped as `layuot`:
 

@@ -85,6 +85,8 @@ spec:
 inventag templates validate acme-bom
 ```
 
+也可以给出文件路径，例如 `inventag templates validate ./acme-bom.yaml`。任何包含点或斜杠的引用都会被当作路径。
+
 如果有错误，你会得到文件、行号和提示。这里把单词 `layout` 误拼成了 `layuot`：
 
 ```text title="Terminal"

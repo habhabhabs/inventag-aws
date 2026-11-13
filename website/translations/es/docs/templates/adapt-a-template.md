@@ -98,6 +98,10 @@ Para ver el resultado final después de la herencia, ejecuta
 inventag templates validate acme-bom
 ```
 
+También puedes indicar una ruta de archivo, por ejemplo
+`inventag templates validate ./acme-bom.yaml`. Cualquier referencia que contenga
+un punto o una barra se lee como una ruta.
+
 Si algo está mal, obtienes el archivo, la línea y una pista. Aquí la palabra
 `layout` se escribió mal como `layuot`:
 
