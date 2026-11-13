@@ -238,7 +238,8 @@ Examples:
         # Upload to S3 if requested
         if args.s3_bucket:
             s3_key = args.s3_key or f"compliance-reports/{filename}"
-            checker.upload_to_s3(args.s3_bucket, s3_key, args.format)
+            # --s3-bucket is the user's explicit request to write this one object.
+            checker.upload_to_s3(args.s3_bucket, s3_key, args.format, allow_write=True)
             print(f"Results uploaded to s3://{args.s3_bucket}/{s3_key}")
 
         # Generate BOM documents if requested
