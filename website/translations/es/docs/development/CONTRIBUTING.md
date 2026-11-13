@@ -15,8 +15,8 @@ request) fácil de revisar.
 
 ## Antes de empezar {#before-you-start}
 
-1. Busca una [incidencia](https://github.com/habhabhabs/inventag-aws/issues)
-   existente. Si no hay ninguna, abre una y describe el cambio.
+1. Busca un [problema (issue)](https://github.com/habhabhabs/inventag-aws/issues)
+   existente. Si no hay ninguno, abre uno y describe el cambio.
 2. Para un cambio grande, espera la respuesta de un responsable del proyecto
    antes de escribir mucho código.
 

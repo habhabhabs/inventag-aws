@@ -13,8 +13,8 @@ projet utilise et ouvrir une pull request facile à relire.
 
 ## Avant de commencer {#before-you-start}
 
-1. Cherchez une [issue](https://github.com/habhabhabs/inventag-aws/issues) existante.
-   S’il n’y en a pas, ouvrez-en une et décrivez la modification.
+1. Cherchez un [problème (issue)](https://github.com/habhabhabs/inventag-aws/issues) existant.
+   S’il n’y en a pas, ouvrez-en un et décrivez la modification.
 2. Pour une modification importante, attendez la réponse d’un mainteneur avant d’écrire beaucoup
    de code.
 

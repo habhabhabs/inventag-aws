@@ -73,7 +73,7 @@ pip-audit -r requirements.txt
 InvenTag 会读取你的 AWS 账户，所以你给它的凭证比工具本身更重要。
 
 - **只读，最小权限。** 只给 InvenTag 读取权限：[设置只读访问](../guides/read-only-access.md)。
-- **短期凭证。** 使用 IAM Identity Center 或被担任的角色，而不是放在磁盘上或 CI 机密中的访问密钥。
+- **短期凭证。** 使用 IAM Identity Center 或被代入的角色，而不是放在磁盘上或 CI 机密中的访问密钥。
   在 GitHub Actions 中使用 OIDC。
 - **保持日志私有。** 日志中的机密会被遮蔽，但日志仍然会描述你的账户。
 - **固定你运行的版本。** 检出 InvenTag 的发布标签，并把 GitHub Actions 固定到提交 SHA。

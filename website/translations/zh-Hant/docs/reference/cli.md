@@ -47,7 +47,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 |---|---|---|---|
 | `--accounts-file FILE` | 無 | 可用 | 從 JSON 或 YAML 檔案讀取帳戶。見[設定檔](./configuration-files.md#accounts-file)。 |
 | `--accounts-prompt` | 關 | 可用 | 以互動方式詢問帳戶和憑證。 |
-| `--cross-account-role ARN\|NAME` | 無 | 可用 | 完整的角色 ARN 會被直接 assume。角色名稱會與 `--accounts-file` 中的每個帳戶 ID 組合。只給角色名稱而沒有 `--accounts-file` 時，會以結束代碼 2 停止。 |
+| `--cross-account-role ARN\|NAME` | 無 | 可用 | 完整的角色 ARN 會被直接擔任。角色名稱會與 `--accounts-file` 中的每個帳戶 ID 組合。只給角色名稱而沒有 `--accounts-file` 時，會以結束代碼 2 停止。 |
 
 ## 輸出 {#output}
 

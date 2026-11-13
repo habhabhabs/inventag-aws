@@ -14,11 +14,11 @@ las dependencias de InvenTag y cómo limitar el daño si algo sale mal.
 
 ## Comunica una vulnerabilidad {#report-a-vulnerability}
 
-Por favor, no pongas detalles de un exploit en una incidencia (issue) pública.
+Por favor, no pongas detalles de un exploit en un problema (issue) público.
 
 Este repositorio todavía no tiene un archivo `SECURITY.md` ni la comunicación
 privada de vulnerabilidades de GitHub configurada (comprobado en noviembre de
-2026). Hasta que la tenga, abre una [incidencia](https://github.com/habhabhabs/inventag-aws/issues)
+2026). Hasta que la tenga, abre un [problema (issue)](https://github.com/habhabhabs/inventag-aws/issues)
 con el título "Security contact request", sin detalles técnicos, y pide a la
 persona mantenedora un canal privado.
 

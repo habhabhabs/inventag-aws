@@ -49,7 +49,7 @@ settings:                              # optional
 | 字段 | 用途 |
 |---|---|
 | `profile_name` | 一个 AWS CLI 配置文件，例如 IAM Identity Center 配置文件。 |
-| `role_arn` | InvenTag 使用你当前的凭证 assume 的角色。 |
+| `role_arn` | InvenTag 使用你当前的凭证代入的角色。 |
 | `access_key_id` 和 `secret_access_key`（以及可选的 `session_token`） | 写在文件中的密钥。应避免使用：任何能读取该文件的人都拿到了密钥。 |
 
 `settings` 中的值会覆盖对应的命令行参数。

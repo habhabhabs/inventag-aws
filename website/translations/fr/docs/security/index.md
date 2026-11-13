@@ -15,11 +15,11 @@ de problème.
 
 ## Signaler une vulnérabilité {#report-a-vulnerability}
 
-Merci de ne pas publier de détails d’exploitation dans une issue publique.
+Merci de ne pas publier de détails d’exploitation dans un problème (issue) public.
 
 Ce dépôt n’a pas encore de fichier `SECURITY.md` ni de signalement privé de vulnérabilités
 GitHub configuré (vérifié en novembre 2026). D’ici là,
-ouvrez une [issue](https://github.com/habhabhabs/inventag-aws/issues) intitulée
+ouvrez un [problème (issue)](https://github.com/habhabhabs/inventag-aws/issues) intitulée
 « Security contact request », sans détails techniques, et demandez au
 mainteneur un canal privé.
 

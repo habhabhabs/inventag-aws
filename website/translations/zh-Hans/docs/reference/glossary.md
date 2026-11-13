@@ -23,7 +23,7 @@ sidebar_position: 6
 | **退出码（Exit code）** | 命令结束时返回的数字。`0` 表示成功；InvenTag 用 `1` 表示错误，`2` 表示选项无效，`3` 表示标签策略违规，`4` 表示有安全组规则达到或超过 `--risk-threshold`。 |
 | **IAM** | AWS Identity and Access Management：用户、角色，以及规定它们可以做什么的策略。 |
 | **IAM Identity Center** | 用于单点登录（SSO）AWS 账户的 AWS 服务。它曾叫 AWS SSO。 |
-| **IAM 角色（IAM role）** | 一种带有权限的身份，其他身份可以临时 assume 它。 |
+| **IAM 角色（IAM role）** | 一种带有权限的身份，其他身份可以临时代入它。 |
 | **moto** | 一个在你的电脑上模拟 AWS 的 Python 库。文档中的示例输出来自针对 moto 的运行。 |
 | **OIDC** | OpenID Connect：让 GitHub Actions 等 CI 系统无需存储密钥即可获得短期 AWS 凭证。 |
 | **范围外（Out of scope）** | 由于 `scope` 设置，标签策略不检查的资源。 |
