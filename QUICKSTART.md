@@ -13,14 +13,14 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 # 2. check credentials (any boto3 credential source: profile, SSO, env vars)
-./inventag.sh --validate-credentials
+inventag --validate-credentials
 
 # 3. first report, limited to two regions to keep it quick
-./inventag.sh --create-excel --account-regions us-east-1,ap-southeast-1 --verbose
+inventag --create-excel --account-regions us-east-1,ap-southeast-1 --verbose
 #    -> bom_output/multi_account_bom_<timestamp>.xlsx
 
 # 4. several accounts
-./inventag.sh --accounts-file accounts.json --create-excel --create-word
+inventag --accounts-file accounts.json --create-excel --create-word
 ```
 
 Before you rely on it:
@@ -36,4 +36,4 @@ Before you rely on it:
   [Current status](docs/getting-started/status.md).
 - Keep `us-east-1` in `--account-regions`: S3, IAM, CloudFront and Route 53 are
   scanned only from there.
-- On Windows use `inventag.bat` instead of `./inventag.sh`.
+- The `inventag` command works the same on Linux, macOS and Windows.

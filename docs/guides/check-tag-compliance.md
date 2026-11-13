@@ -18,7 +18,7 @@ write your own policy.
 Pick a built-in policy, or your own:
 
 ```bash
-./inventag.sh --template finops-cost-allocation --create-excel --account-regions us-east-1
+inventag --template finops-cost-allocation --create-excel --account-regions us-east-1
 ```
 
 InvenTag scans as usual, then checks every resource in scope. Sample output
@@ -137,7 +137,7 @@ even when they have them (in the sample above, the DynamoDB table). See
 Start from a built-in one and change only what differs:
 
 ```bash
-./inventag.sh templates init finops-cost-allocation --output .inventag/templates/our-tags.yaml --extend
+inventag templates init finops-cost-allocation --output .inventag/templates/our-tags.yaml --extend
 ```
 
 ```yaml

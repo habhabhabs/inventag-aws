@@ -1,6 +1,5 @@
 <p align="center">
-  <img src="website/static/img/logo-wordmark.svg#gh-light-mode-only" alt="InvenTag" width="331" height="96">
-  <img src="website/static/img/logo-wordmark-dark.svg#gh-dark-mode-only" alt="InvenTag" width="331" height="96">
+  <img src="https://raw.githubusercontent.com/habhabhabs/inventag-aws/main/website/static/img/logo-wordmark-readme.png" alt="InvenTag" width="331" height="96">
 </p>
 
 <p align="center">
@@ -9,25 +8,37 @@
 
 [![Automated Release](https://github.com/habhabhabs/inventag-aws/workflows/Automated%20Release/badge.svg)](https://github.com/habhabhabs/inventag-aws/actions)
 [![Documentation](https://github.com/habhabhabs/inventag-aws/workflows/Documentation%20Deployment/badge.svg)](https://habhabhabs.github.io/inventag-aws/)
+[![PyPI](https://img.shields.io/pypi/v/inventag-aws.svg)](https://pypi.org/project/inventag-aws/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/habhabhabs/inventag-aws/blob/main/LICENSE)
 
+**Install:** `pip install inventag-aws` ([PyPI](https://pypi.org/project/inventag-aws/))  
 **Docs:** <https://habhabhabs.github.io/inventag-aws/>
 
 ## Quick start
+
+Install from [PyPI](https://pypi.org/project/inventag-aws/) with pip:
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install inventag-aws
+
+inventag --validate-credentials       # uses your current AWS credentials
+inventag --create-excel --verbose     # -> bom_output/multi_account_bom_<timestamp>.xlsx
+```
+
+To upgrade later, run `pip install --upgrade inventag-aws`. To work on the code
+or run the newest unreleased version, install from source instead:
 
 ```bash
 git clone https://github.com/habhabhabs/inventag-aws.git
 cd inventag-aws
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-
-./inventag.sh --validate-credentials       # uses your current AWS credentials
-./inventag.sh --create-excel --verbose     # -> bom_output/multi_account_bom_<timestamp>.xlsx
+inventag --validate-credentials
 ```
 
-Python 3.11 or later is required. InvenTag is not on PyPI yet: install it from
-this repository. Use a read-only IAM identity. By default, discovery made two
+Python 3.11 or later is required. Use a read-only IAM identity. By default, discovery made two
 Cost Explorer requests for each account in our offline test, and AWS bills each
 request. Add `--no-billing-validation` to make no Cost Explorer request.
 Details:
@@ -41,7 +52,7 @@ Details:
 - **Bill of materials** as an Excel workbook (`--create-excel`) and/or Word
   document (`--create-word`), with your own tag columns (`--tag-mappings`) and
   service descriptions (`--service-descriptions`).
-- **Templates** (`--template`, `./inventag.sh templates list`): built-in and your own
+- **Templates** (`--template`, `inventag templates list`): built-in and your own
   report layouts, tag policies and run settings.
 - **Layout files** (`--word-template`, `--excel-template`): a YAML or JSON
   file selects the title, the sections or sheets, the columns, and the header
@@ -81,24 +92,24 @@ compliance with SOC 2 or other standards. For the full list, see
 
 ```bash
 # Several accounts, Excel + Word, your own tag columns
-./inventag.sh --accounts-file accounts.json \
+inventag --accounts-file accounts.json \
   --create-excel --create-word \
   --tag-mappings config/defaults/mappings/tag_to_column_mappings_example.yaml \
   --service-descriptions config/defaults/services/service_descriptions_example.yaml
 
 # Assume a read-only role (full role ARN)
-./inventag.sh --cross-account-role arn:aws:iam::123456789012:role/InvenTagReadOnly \
+inventag --cross-account-role arn:aws:iam::123456789012:role/InvenTagReadOnly \
   --create-excel
 
 # Assume the same role name in each account of accounts.json
-./inventag.sh --accounts-file accounts.json --cross-account-role InvenTagReadOnly \
+inventag --accounts-file accounts.json --cross-account-role InvenTagReadOnly \
   --create-excel
 
 # Upload the reports to S3 (server-side encrypted)
-./inventag.sh --create-excel --s3-bucket my-reports-bucket
+inventag --create-excel --s3-bucket my-reports-bucket
 
 # Faster runs: fewer regions, more accounts in parallel
-./inventag.sh --accounts-file accounts.json --create-excel \
+inventag --accounts-file accounts.json --create-excel \
   --account-regions us-east-1,ap-southeast-1 --max-concurrent-accounts 8
 ```
 
@@ -108,26 +119,26 @@ Every flag: [Command-line reference](https://habhabhabs.github.io/inventag-aws/d
 
 | Section | Link |
 |---|---|
-| Quick start | [docs/getting-started/quick-start.md](docs/getting-started/quick-start.md) |
-| Current status and known limitations | [docs/getting-started/status.md](docs/getting-started/status.md) |
-| Upgrade from v4 | [docs/getting-started/upgrade-to-v5.md](docs/getting-started/upgrade-to-v5.md) |
-| Choose what to scan | [docs/guides/run-a-scan.md](docs/guides/run-a-scan.md) |
-| Command-line reference | [docs/reference/cli.md](docs/reference/cli.md) |
-| Configuration files | [docs/reference/configuration-files.md](docs/reference/configuration-files.md) |
-| Templates | [docs/templates/index.md](docs/templates/index.md) |
-| Read-only access and permissions | [docs/guides/read-only-access.md](docs/guides/read-only-access.md) |
-| Architecture | [docs/development/architecture.md](docs/development/architecture.md) |
-| Contributing | [docs/development/CONTRIBUTING.md](docs/development/CONTRIBUTING.md) |
+| Quick start | [docs/getting-started/quick-start.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/getting-started/quick-start.md) |
+| Current status and known limitations | [docs/getting-started/status.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/getting-started/status.md) |
+| Upgrade from v4 | [docs/getting-started/upgrade-to-v5.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/getting-started/upgrade-to-v5.md) |
+| Choose what to scan | [docs/guides/run-a-scan.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/guides/run-a-scan.md) |
+| Command-line reference | [docs/reference/cli.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/reference/cli.md) |
+| Configuration files | [docs/reference/configuration-files.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/reference/configuration-files.md) |
+| Templates | [docs/templates/index.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/templates/index.md) |
+| Read-only access and permissions | [docs/guides/read-only-access.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/guides/read-only-access.md) |
+| Architecture | [docs/development/architecture.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/development/architecture.md) |
+| Contributing | [docs/development/CONTRIBUTING.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/development/CONTRIBUTING.md) |
 
 The same Markdown files are published as the documentation site (Docusaurus,
 in `website/`). Brand assets (logo, favicon, social card) and the script that
-regenerates them live in [`website/brand/`](website/brand/README.md).
+regenerates them live in [`website/brand/`](https://github.com/habhabhabs/inventag-aws/blob/main/website/brand/README.md).
 
 ## Project layout
 
 ```text
 inventag-aws/
-├── inventag_cli.py              # CLI entry point (inventag.sh / inventag.bat wrap it)
+├── inventag_cli.py              # CLI entry point (the `inventag` command runs it)
 ├── inventag/                    # Python package: cli, core, discovery, reporting, templating, state, security
 ├── scripts/legacy/              # standalone scripts (inventory, tag compliance, BOM converter)
 ├── config/                      # example configs, IAM policy, JSON schemas
@@ -144,7 +155,7 @@ inventag-aws/
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](https://github.com/habhabhabs/inventag-aws/blob/main/LICENSE).
 
 ---
 

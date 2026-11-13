@@ -35,7 +35,7 @@ spec:
 ## Command
 
 ```bash title="Terminal"
-./inventag.sh --template ci-pipeline
+inventag --template ci-pipeline
 echo $?
 ```
 

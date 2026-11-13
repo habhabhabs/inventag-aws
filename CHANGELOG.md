@@ -8,6 +8,20 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [5.1.0] - 2026-11-13
+
+### Added
+
+- InvenTag is installed with `pip install inventag-aws` from PyPI and run with
+  the `inventag` command. The README, docs, website and examples now start with
+  pip, and every example uses `inventag` instead of `./inventag.sh`.
+- Pushing a new version to `main` publishes it to PyPI.
+- Links to the PyPI page in the README, docs and website footer.
+
+### Fixed
+
+- The README logo and links show correctly on the PyPI page.
+
 ### Fixed
 
 - The Excel and Word reports now list services in name order and sort the rows

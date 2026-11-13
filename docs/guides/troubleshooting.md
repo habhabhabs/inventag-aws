@@ -154,7 +154,7 @@ and an error that starts `Blocked AWS operation <service>:<Operation>`.
 doesn't make such calls, so this usually means custom code or a plug-in.
 
 **Fix:** check which operation it was with
-`./inventag.sh --validate-operations <service>:<Operation>`. The guard cannot
+`inventag --validate-operations <service>:<Operation>`. The guard cannot
 be turned off.
 
 ## Regions
@@ -204,7 +204,7 @@ $ echo $?
 <!-- END EXAMPLE OUTPUT: error-bad-template -->
 
 **Fix:** correct the field on the line shown. Run
-`./inventag.sh templates validate <file>` to check without scanning.
+`inventag templates validate <file>` to check without scanning.
 
 ### Unknown template name
 
@@ -219,7 +219,7 @@ $ echo $?
 
 <!-- END EXAMPLE OUTPUT: error-unknown-template -->
 
-**Fix:** check the spelling with `./inventag.sh templates list`. Project
+**Fix:** check the spelling with `inventag templates list`. Project
 templates must be in `.inventag/templates/` in the folder you run from.
 
 ### Invalid accounts file

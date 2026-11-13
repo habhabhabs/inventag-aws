@@ -27,7 +27,7 @@ aws organizations list-accounts --query "Accounts[?Status=='ACTIVE'].[Id,Name]" 
 Copy the built-in template and put your accounts in it:
 
 ```bash title="Terminal"
-./inventag.sh templates init org-multi-account --output .inventag/templates/our-org.yaml
+inventag templates init org-multi-account --output .inventag/templates/our-org.yaml
 ```
 
 ```yaml title=".inventag/templates/our-org.yaml"
@@ -56,8 +56,8 @@ spec:
 ## Command
 
 ```bash title="Terminal"
-./inventag.sh templates validate our-org
-./inventag.sh --template our-org
+inventag templates validate our-org
+inventag --template our-org
 ```
 
 ## Output

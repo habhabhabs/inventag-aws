@@ -1,11 +1,9 @@
 {
-  "version": "5.0.0",
-  "release_notes": "Release 5.0.0 - 2026-11-12\\✨ New Features:\\  • feat!: InvenTag 5.0.0 - fix dropped EC2 instances, analysis sheets, packaging, PyPI release\\  • feat(site): accessibility checks at four widths in both themes; quieter cookie banner\\  • feat(reporting): report templates for the Word and Excel BOM reports\\  • feat(templates): generate the docs field reference from the schema\\  • feat(templates): reusable report, tag-policy and config templates\\🐛 Bug Fixes:\\  • fix(security): green test suite, Python 3.11 minimum, October 2026 CVE floors, strict CI\\  • fix: apply service/tag filters to all discovery paths; add changelog and billing switches\\  • fix: bugs found while repairing the test suite\\  • fix(security): read-only guard, log redaction, least-privilege IAM, safe outputs\\📚 Documentation:\\  • docs: describe the CLI as the code is now (guard, S3 upload, filters, exit codes)\\  • docs: restructure into Get started, Guides, Templates, Examples, Reference, Security, Contributing\\  • docs: archive documentation for release v4.2.27 (N-1 strategy)\\💄 Style Changes:\\  • style: black-format changelog_generator.py (CI lint was red on main)\\✅ Tests:\\  • test: fix performance benchmark bugs; run them only with -m performance\\  • test: repair out-of-date tests against the real API (part 1)\\  • test(templates): reset the process-wide read-only guard around moto seeding\\📝 Other Changes:\\  • ci: pin dev tools, lint once, test Python 3.11-3.14; fix release bump\\  • website: load Google Analytics 4 only after consent\\  • ci(security): pin actions to SHAs, least-privilege tokens, remove pwn request\\📊 Summary: 19 commits in this release",
-  "release_date": "2026-11-12T11:59:27.804505",
-  "previous_version": "4.2.27",
-  "version_bump_type": "major",
-  "git_tag": "v5.0.0",
-  "github_release_url": "https://github.com/habhabhabs/inventag-aws/releases/tag/v5.0.0",
-  "triggered_by_pr": "41",
-  "pr_url": "https://github.com/habhabhabs/inventag-aws/pull/41"
+  "version": "5.1.0",
+  "release_notes": "Release 5.1.0 - 2026-11-13\\\\nInstall with pip: pip install inventag-aws, then run the inventag command. README renders on PyPI. New landing page and mobile menu.",
+  "release_date": "2026-11-13T00:00:00",
+  "previous_version": "5.0.0",
+  "version_bump_type": "minor",
+  "git_tag": "v5.1.0",
+  "github_release_url": "https://github.com/habhabhabs/inventag-aws/releases/tag/v5.1.0"
 }

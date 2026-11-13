@@ -36,8 +36,8 @@ report then has the same structure as in versions without templates.
 1. Print the default template to a file.
 
    ```bash
-   ./inventag.sh --print-default-template word > my_word_template.yaml
-   ./inventag.sh --print-default-template excel > my_excel_template.json
+   inventag --print-default-template word > my_word_template.yaml
+   inventag --print-default-template excel > my_excel_template.json
    ```
 
 2. Edit the file. See the [key reference](#key-reference).
@@ -45,7 +45,7 @@ report then has the same structure as in versions without templates.
 3. Validate the file. This command makes no AWS call.
 
    ```bash
-   ./inventag.sh --validate-templates \
+   inventag --validate-templates \
      --word-template my_word_template.yaml \
      --excel-template my_excel_template.json
    ```
@@ -56,7 +56,7 @@ report then has the same structure as in versions without templates.
 4. Use the file in a run.
 
    ```bash
-   ./inventag.sh --create-word --create-excel \
+   inventag --create-word --create-excel \
      --word-template my_word_template.yaml \
      --excel-template my_excel_template.json
    ```

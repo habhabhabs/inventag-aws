@@ -27,7 +27,7 @@ The built-in `security-baseline` tag policy requires:
 ## Command
 
 ```bash title="Terminal"
-./inventag.sh --template standard-bom --template security-baseline \
+inventag --template standard-bom --template security-baseline \
   --create-excel --create-word --account-regions us-east-1
 ```
 

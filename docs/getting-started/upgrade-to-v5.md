@@ -41,9 +41,8 @@ python3.12 -m venv .venv      # any version from 3.11 up
 ```
 
 :::note What happens on an older Python
-`inventag.sh` and `inventag.bat` look for Python 3.11 or later and stop with a
-message if they find none. `python inventag_cli.py` on an older Python also
-stops with a message. The package metadata (`requires-python`) says
+`pip install inventag-aws` refuses to install on an older Python, and
+`python inventag_cli.py` on an older Python stops with a message. The package metadata (`requires-python`) says
 `>=3.11`.
 :::
 
@@ -58,7 +57,7 @@ You usually don't need to change anything. To check an operation against the
 guard:
 
 ```bash title="After (v5)"
-./inventag.sh --validate-operations ec2:DescribeInstances s3:PutObject secretsmanager:GetSecretValue
+inventag --validate-operations ec2:DescribeInstances s3:PutObject secretsmanager:GetSecretValue
 ```
 
 Sample output from an offline run:
@@ -93,11 +92,11 @@ before anything is scanned.
 | `--disable-production-safety` | Remove it. The read-only guard cannot be turned off. |
 
 ```bash title="Before (v4): ran, but ignored two flags"
-./inventag.sh --create-excel --compliance-standard soc2 --per-account-reports
+inventag --create-excel --compliance-standard soc2 --per-account-reports
 ```
 
 ```bash title="After (v5)"
-./inventag.sh --create-excel --template finops-cost-allocation
+inventag --create-excel --template finops-cost-allocation
 ```
 
 What v5 prints if you keep them:
@@ -105,19 +104,19 @@ What v5 prints if you keep them:
 <!-- BEGIN EXAMPLE OUTPUT: failing-flags -->
 
 ```text title="Terminal"
-$ ./inventag.sh --create-google-docs
+$ inventag --create-google-docs
 inventag: error: --create-google-docs: Google Docs/Sheets output is not implemented yet (InvenTag has no Google API integration). Use --create-excel or --create-word.
 (exit code 2)
 
-$ ./inventag.sh --per-account-reports
+$ inventag --per-account-reports
 inventag: error: --per-account-reports: Per-account reports are not implemented yet; InvenTag writes one consolidated report. Run once per account to get separate reports.
 (exit code 2)
 
-$ ./inventag.sh --compliance-standard soc2
+$ inventag --compliance-standard soc2
 inventag: error: --compliance-standard: Compliance-standard enforcement is not implemented yet; the option has never changed InvenTag's behaviour.
 (exit code 2)
 
-$ ./inventag.sh --disable-production-safety
+$ inventag --disable-production-safety
 inventag: error: --disable-production-safety: The read-only guard cannot be disabled from the CLI: InvenTag only needs read access, so non-read AWS calls are always blocked.
 (exit code 2)
 ```
@@ -134,13 +133,13 @@ ARN (Amazon Resource Name) did. In v5:
 - a role name **without** `--accounts-file` stops with exit code 2.
 
 ```bash title="Before (v4): failed"
-./inventag.sh --cross-account-role InvenTagReadOnly
+inventag --cross-account-role InvenTagReadOnly
 ```
 
 ```bash title="After (v5)"
-./inventag.sh --cross-account-role arn:aws:iam::123456789012:role/InvenTagReadOnly
+inventag --cross-account-role arn:aws:iam::123456789012:role/InvenTagReadOnly
 # or, for every account listed in accounts.yaml:
-./inventag.sh --accounts-file accounts.yaml --cross-account-role InvenTagReadOnly
+inventag --accounts-file accounts.yaml --cross-account-role InvenTagReadOnly
 ```
 
 What v5 prints for a bare name:
@@ -210,7 +209,7 @@ What to do: if you kept `--s3-bucket` in a v4 job, give the identity
 `s3:PutObject` on that bucket, or remove the flag.
 
 ```bash title="After (v5)"
-./inventag.sh --template standard-bom --create-excel \
+inventag --template standard-bom --create-excel \
   --s3-bucket acme-inventory-reports --s3-key-prefix inventag/
 ```
 
@@ -233,8 +232,8 @@ Templates let you reuse a report layout, a tag policy or a set of scan
 settings:
 
 ```bash title="After (v5)"
-./inventag.sh templates list
-./inventag.sh --template executive-summary --create-word
+inventag templates list
+inventag --template executive-summary --create-word
 ```
 
 Start with [Templates](../templates/index.md).

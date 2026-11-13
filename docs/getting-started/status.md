@@ -1,6 +1,6 @@
 ---
 title: Feature status and known limitations
-description: Which InvenTag features work in v5.0.0, which are partial, which flags stop with an error, and the specific limits, costs and risks to know before you rely on it.
+description: Which InvenTag features work in v5.1.0, which are partial, which flags stop with an error, and the specific limits, costs and risks to know before you rely on it.
 sidebar_position: 5
 ---
 
@@ -11,7 +11,7 @@ sidebar_position: 5
 **What you will know after reading:** which features work, where they stop
 short, which flags stop with an error, and what to do about each limit.
 
-This page is deliberately blunt. This page describes InvenTag v5.0.0. We
+This page is deliberately blunt. This page describes InvenTag v5.1.0. We
 checked each item by running the code offline against mocked AWS (moto), or by
 reading the code path. **No test has run against a real AWS account.** Where a
 point below depends on how real AWS behaves, the page says so. If you fix or
@@ -48,7 +48,7 @@ change one of these, update this page in the same pull request.
 | `--enable-cost-analysis` | Adds four `forgotten_analysis.*` columns to the default workbook. It makes many extra Cost Explorer, Pricing and CloudWatch calls. It adds no cost sheet. |
 | `--bom-config` | Applies only keys that are fields of the BOM processing configuration. Other keys are ignored without a message. |
 | `--validate-config-only` | Checks the files, but still makes one `ec2:DescribeRegions` call to list regions. If that fails, it logs a warning and carries on. |
-| `--accounts-prompt`, `--credential-timeout`, `--disable-account-logging` | Accepted. We did not re-test them for v5.0.0. |
+| `--accounts-prompt`, `--credential-timeout`, `--disable-account-logging` | Accepted. We did not re-test them for v5.1.0. |
 
 ## Accepted but with no effect
 
@@ -64,19 +64,19 @@ with exit code 2 and say why:
 <!-- BEGIN EXAMPLE OUTPUT: failing-flags -->
 
 ```text title="Terminal"
-$ ./inventag.sh --create-google-docs
+$ inventag --create-google-docs
 inventag: error: --create-google-docs: Google Docs/Sheets output is not implemented yet (InvenTag has no Google API integration). Use --create-excel or --create-word.
 (exit code 2)
 
-$ ./inventag.sh --per-account-reports
+$ inventag --per-account-reports
 inventag: error: --per-account-reports: Per-account reports are not implemented yet; InvenTag writes one consolidated report. Run once per account to get separate reports.
 (exit code 2)
 
-$ ./inventag.sh --compliance-standard soc2
+$ inventag --compliance-standard soc2
 inventag: error: --compliance-standard: Compliance-standard enforcement is not implemented yet; the option has never changed InvenTag's behaviour.
 (exit code 2)
 
-$ ./inventag.sh --disable-production-safety
+$ inventag --disable-production-safety
 inventag: error: --disable-production-safety: The read-only guard cannot be disabled from the CLI: InvenTag only needs read access, so non-read AWS calls are always blocked.
 (exit code 2)
 ```

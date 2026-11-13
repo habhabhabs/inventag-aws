@@ -41,7 +41,7 @@ Limits:
 - The risk level is a simple rule in InvenTag, not a security assessment.
 
 ```bash
-./inventag.sh --create-excel --enable-network-analysis --enable-security-analysis
+inventag --create-excel --enable-network-analysis --enable-security-analysis
 ```
 
 What a run prints, and the first rows of each sheet, from an offline run
@@ -106,7 +106,7 @@ spec:
 ```
 
 ```bash
-./inventag.sh --template network-review --create-excel --account-regions us-east-1
+inventag --template network-review --create-excel --account-regions us-east-1
 ```
 
 The VPC sheet then has a column for every field the AWS API returned. They

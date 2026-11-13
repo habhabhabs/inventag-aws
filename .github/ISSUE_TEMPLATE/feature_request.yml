@@ -53,7 +53,7 @@ body:
         The feature should work by...
         
         Example commands:
-        ./inventag.sh --include-service appflow
+        inventag --include-service appflow
         
         Expected behavior:
         - Discovery of AppFlow flows

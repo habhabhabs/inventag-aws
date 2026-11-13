@@ -12,6 +12,9 @@ read-only AWS credentials.
 **What you can do after reading:** scan one account, open the Excel and Word
 reports, and choose a clearer layout with a template.
 
+Commands below use `inventag`. If you installed with `pip install inventag-aws`,
+type `inventag` instead; the options are the same.
+
 All sample output on this page comes from an offline run against mocked AWS
 (sample data). Account `123456789012` and the `acme-*` resources are made up.
 
@@ -28,7 +31,7 @@ InvenTag scans the account these credentials belong to.
 Start small. One region is quick and cheap.
 
 ```bash title="Terminal"
-./inventag.sh --create-excel --create-word --account-regions us-east-1
+inventag --create-excel --create-word --account-regions us-east-1
 ```
 
 - `--create-excel` and `--create-word` choose the files to write. Without
@@ -117,7 +120,7 @@ A [report template](../templates/index.md) gives you readable column names,
 one column per tag, a frozen header row and filter buttons:
 
 ```bash title="Terminal"
-./inventag.sh --template standard-bom --create-excel --create-word --account-regions us-east-1
+inventag --template standard-bom --create-excel --create-word --account-regions us-east-1
 ```
 
 <!-- BEGIN EXAMPLE OUTPUT: standard-console -->
@@ -138,7 +141,7 @@ See what the result looks like in
 Add a tag policy to see which resources are missing tags:
 
 ```bash title="Terminal"
-./inventag.sh --template finops-cost-report --create-excel --create-word --account-regions us-east-1
+inventag --template finops-cost-report --create-excel --create-word --account-regions us-east-1
 ```
 
 <!-- BEGIN EXAMPLE OUTPUT: finops-console -->

@@ -13,7 +13,7 @@ scans and what it writes.
 **What you can do after reading:** choose accounts, regions, output files and
 logging for a run. For every flag, see the [CLI reference](../reference/cli.md).
 
-On Windows, use `inventag.bat` wherever this page says `./inventag.sh`.
+The `inventag` command works the same on Linux, macOS and Windows.
 
 ## Choose the accounts
 
@@ -28,7 +28,7 @@ On Windows, use `inventag.bat` wherever this page says `./inventag.sh`.
 ## Choose the regions
 
 ```bash
-./inventag.sh --account-regions us-east-1,eu-west-1 --create-excel
+inventag --account-regions us-east-1,eu-west-1 --create-excel
 ```
 
 Without `--account-regions`, InvenTag asks EC2 which regions are enabled in
@@ -75,9 +75,9 @@ If you always run with the same settings, put them in a
 typing them:
 
 ```bash
-./inventag.sh templates init single-account --output .inventag/templates/my-scan.yaml
+inventag templates init single-account --output .inventag/templates/my-scan.yaml
 # edit regions and outputs, then:
-./inventag.sh --template my-scan
+inventag --template my-scan
 ```
 
 Flags you type still win over the template.
@@ -95,8 +95,8 @@ Flags you type still win over the template.
 ## Validate configuration files without scanning
 
 ```bash title="Terminal"
-./inventag.sh --accounts-file accounts.yaml --validate-config-only --skip-credential-validation
-./inventag.sh templates validate my-scan
+inventag --accounts-file accounts.yaml --validate-config-only --skip-credential-validation
+inventag templates validate my-scan
 ```
 
 Exit code 0 means the files are valid. The first command still makes one

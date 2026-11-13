@@ -11,8 +11,8 @@ sidebar_position: 2
 **What you can do after reading:** pick the template that is closest to what
 you need and know exactly what it will produce.
 
-To list them, run `./inventag.sh templates list`. To print one, run
-`./inventag.sh templates show <name>`; add `--resolved` to see the result
+To list them, run `inventag templates list`. To print one, run
+`inventag templates show <name>`; add `--resolved` to see the result
 after inheritance and defaults.
 
 <!-- BEGIN EXAMPLE OUTPUT: catalogue-list -->
@@ -55,7 +55,7 @@ The header colour in all three is dark blue (`1F3A5F`) with white text.
 
 ### standard-bom
 
-Command: `./inventag.sh --template standard-bom --create-excel --create-word --account-regions us-east-1`
+Command: `inventag --template standard-bom --create-excel --create-word --account-regions us-east-1`
 
 <!-- BEGIN EXAMPLE OUTPUT: standard-excel-summary -->
 
@@ -153,7 +153,7 @@ A table from the document:
 
 ### executive-summary
 
-Command: `./inventag.sh --template executive-summary --create-excel --create-word --account-regions us-east-1`
+Command: `inventag --template executive-summary --create-excel --create-word --account-regions us-east-1`
 
 <!-- BEGIN EXAMPLE OUTPUT: exec-excel -->
 
@@ -197,7 +197,7 @@ A table from the document:
 
 ### finops-cost-report
 
-Command: `./inventag.sh --template finops-cost-report --create-excel --create-word --account-regions us-east-1`
+Command: `inventag --template finops-cost-report --create-excel --create-word --account-regions us-east-1`
 
 <!-- BEGIN EXAMPLE OUTPUT: finops-excel-s3 -->
 
@@ -262,7 +262,7 @@ are present and valid.
 | `org-multi-account` | Three example accounts, by assuming `InvenTagReadOnly` in each | Excel and Word, `standard-bom` layout, `finops-cost-allocation` policy | The account IDs are placeholders. InvenTag does not list your organization's accounts for you. |
 | `ci-pipeline` | The account of the pipeline's credentials, in `us-east-1` | Excel and a tag-compliance JSON file | Exits with code 3 if a resource breaks the `finops-cost-allocation` policy. Scans accounts one at a time. |
 
-`./inventag.sh templates validate org-multi-account` warns you while the
+`inventag templates validate org-multi-account` warns you while the
 placeholder account IDs are still there.
 
 ## Next steps

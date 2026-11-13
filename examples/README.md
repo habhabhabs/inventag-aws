@@ -2,14 +2,10 @@
 
 This directory contains example configuration files to help you get started with InvenTag.
 
-## 🔧 Wrapper Scripts
+## 🔧 The `inventag` command
 
-InvenTag provides wrapper scripts that automatically detect the best Python command:
-
-- **`inventag.sh`** (Unix/Linux/macOS) - Auto-detects `python3` or `python`
-- **`inventag.bat`** (Windows) - Auto-detects `python3`, `python`, or `py -3`
-
-Both scripts require Python 3.11+ and will show helpful error messages if no suitable Python is found.
+Install the package with `pip install inventag-aws` and run it with the `inventag` command
+on Linux, macOS and Windows. It needs Python 3.11 or later.
 
 ## Configuration Files
 
@@ -18,7 +14,7 @@ Example multi-account configuration file showing how to configure multiple AWS a
 
 **Usage:**
 ```bash
-./inventag.sh --accounts-file examples/accounts-example.json --create-excel
+inventag --accounts-file examples/accounts-example.json --create-excel
 ```
 
 ### `service-descriptions-example.yaml`
@@ -26,7 +22,7 @@ Example service descriptions configuration that customizes how AWS services and 
 
 **Usage:**
 ```bash
-./inventag.sh --create-excel --service-descriptions examples/service-descriptions-example.yaml
+inventag --create-excel --service-descriptions examples/service-descriptions-example.yaml
 ```
 
 ### `tag-mappings-example.yaml`
@@ -34,7 +30,7 @@ Example tag mappings configuration that maps AWS resource tags to custom columns
 
 **Usage:**
 ```bash
-./inventag.sh --create-excel --tag-mappings examples/tag-mappings-example.yaml
+inventag --create-excel --tag-mappings examples/tag-mappings-example.yaml
 ```
 
 ## Demo Scripts
@@ -81,7 +77,7 @@ The examples directory also contains specialized demo scripts for specific featu
 Use all configuration files together with comprehensive analysis:
 
 ```bash
-./inventag.sh \
+inventag \
   --accounts-file examples/accounts-example.json \
   --service-descriptions examples/service-descriptions-example.yaml \
   --tag-mappings examples/tag-mappings-example.yaml \
@@ -97,19 +93,19 @@ Override regions for all accounts:
 
 ```bash
 # Scan specific regions across all accounts
-./inventag.sh \
+inventag \
   --accounts-file examples/accounts-example.json \
   --account-regions us-east-1,us-west-2,ap-southeast-1,ap-northeast-1 \
   --create-excel
 
 # Asia-Pacific focus with cost analysis
-./inventag.sh \
+inventag \
   --accounts-file examples/accounts-example.json \
   --account-regions ap-southeast-1,ap-southeast-2,ap-northeast-1,ap-south-1 \
   --enable-cost-analysis --create-excel
 
 # Global scan (all regions - default behavior)
-./inventag.sh \
+inventag \
   --accounts-file examples/accounts-example.json \
   --create-excel --verbose
 ```
@@ -126,7 +122,7 @@ cp examples/tag-mappings-example.yaml config/tag-mappings.yaml
 
 # Edit the files for your environment
 # Then use them with production safety:
-./inventag.sh \
+inventag \
   --accounts-file config/accounts.json \
   --service-descriptions config/service-descriptions.yaml \
   --tag-mappings config/tag-mappings.yaml \
@@ -139,7 +135,7 @@ cp examples/tag-mappings-example.yaml config/tag-mappings.yaml
 Always validate your configuration files before use:
 
 ```bash
-./inventag.sh \
+inventag \
   --accounts-file examples/accounts-example.json \
   --service-descriptions examples/service-descriptions-example.yaml \
   --tag-mappings examples/tag-mappings-example.yaml \

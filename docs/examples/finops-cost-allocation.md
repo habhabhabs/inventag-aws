@@ -44,9 +44,9 @@ spec:
 ## Command
 
 ```bash title="Terminal"
-./inventag.sh --template finops-cost-report --create-excel --create-word --account-regions us-east-1
+inventag --template finops-cost-report --create-excel --create-word --account-regions us-east-1
 # with your own policy:
-./inventag.sh --template finops-cost-report --template our-cost-tags --create-excel
+inventag --template finops-cost-report --template our-cost-tags --create-excel
 ```
 
 ## Output

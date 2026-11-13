@@ -21,7 +21,7 @@ with a record of every AWS call it made.
 ## Command
 
 ```bash title="Terminal"
-./inventag.sh --template standard-bom --create-excel --account-regions us-east-1 \
+inventag --template standard-bom --create-excel --account-regions us-east-1 \
   --s3-bucket acme-inventory-reports --s3-key-prefix inventag/ \
   --audit-output audit.json
 ```

@@ -1365,7 +1365,7 @@ def collect(images: bool) -> Dict[str, str]:
                 blocks.setdefault("failing-flags", "")
                 blocks[
                     "failing-flags"
-                ] += f"$ ./inventag.sh {' '.join(flag)}\n{r.console}\n(exit code {r.exit_code})\n\n"
+                ] += f"$ inventag {' '.join(flag)}\n{r.console}\n(exit code {r.exit_code})\n\n"
             blocks["failing-flags"] = code(
                 blocks["failing-flags"].strip(), title="Terminal"
             )

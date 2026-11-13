@@ -34,7 +34,7 @@ body:
       label: Steps to Reproduce
       description: Step-by-step instructions to reproduce the bug
       placeholder: |
-        1. Run command `./inventag.sh --create-excel`
+        1. Run command `inventag --create-excel`
         2. Wait for discovery to complete
         3. See error...
     validations:
@@ -132,7 +132,7 @@ body:
       description: The exact command line or configuration you used
       render: shell
       placeholder: |
-        ./inventag.sh --create-excel --create-word --regions us-east-1,us-west-2
+        inventag --create-excel --create-word --regions us-east-1,us-west-2
 
   - type: textarea
     id: additional_context

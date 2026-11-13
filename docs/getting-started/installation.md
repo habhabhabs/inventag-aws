@@ -9,23 +9,43 @@ sidebar_position: 2
 **Who this is for:** anyone setting up InvenTag on a laptop, a server or a CI
 runner.
 
-**What you can do after reading:** run `./inventag.sh --help` and confirm that
+**What you can do after reading:** run `inventag --help` and confirm that
 InvenTag can reach your AWS account.
 
 ## What you need
 
 - **Python 3.11 or later.** Python 3.10 stopped getting security fixes in
   October 2026. Check your version with `python3 --version`.
-- **Git**, to download the code.
+- **pip**, which comes with Python. (Git is only needed to install from source.)
 - **AWS credentials** for a read-only identity. The
   [AWS Command Line Interface (AWS CLI)](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
   is optional, but it is the easiest way to set them up.
 
-InvenTag is not on PyPI (the Python Package Index) yet. The repository
-builds a package named `inventag-aws`, but we found no published release, so
-install it from the GitHub repository.
+## Install with pip (recommended)
 
-## Download and install
+InvenTag is published on the Python Package Index as
+[`inventag-aws`](https://pypi.org/project/inventag-aws/). Install it with pip
+into a virtual environment:
+
+```bash title="Terminal"
+python3 -m venv .venv
+source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install inventag-aws
+inventag --help
+```
+
+This gives you an `inventag` command. Everything in these docs that shows
+`inventag` works the same with `inventag`. The report templates are
+included in the package.
+
+To upgrade, run `pip install --upgrade inventag-aws`. To install a specific
+release, run `pip install inventag-aws==5.1.0`. Prefer to keep it out of your
+project environments? `pipx install inventag-aws` installs it on its own.
+
+## Install from source
+
+Use this if you want the newest unreleased code or you plan to change InvenTag.
 
 ```bash title="Terminal"
 git clone https://github.com/habhabhabs/inventag-aws.git
@@ -34,16 +54,14 @@ python3 -m venv .venv
 source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 pip install -r requirements.txt
-./inventag.sh --help               # Windows: inventag.bat --help
+inventag --help               # Windows: inventag --help
 ```
 
-`inventag.sh` and `inventag.bat` look for Python 3.11 or later and run
-`inventag_cli.py`. You can also run `python inventag_cli.py --help` directly.
-If you want an `inventag` command on your path, run `pip install .` in the
-cloned folder.
+Run `pip install -e .` in the cloned folder to get the `inventag` command from
+your source checkout. You can also run `python inventag_cli.py --help` directly.
 
-To use a fixed release instead of the newest code, check out its tag, for
-example `git checkout v5.0.0`. The
+To use a fixed release from source instead of the newest code, check out its tag, for
+example `git checkout v5.1.0`. The
 [releases page](https://github.com/habhabhabs/inventag-aws/releases) lists
 every release. Upgrading from v4? Read
 [Upgrade from v4 to v5](./upgrade-to-v5.md) first.
@@ -65,7 +83,7 @@ role, over access keys stored on disk.
 ## Check that it works
 
 ```bash title="Terminal"
-./inventag.sh --validate-credentials --verbose
+inventag --validate-credentials --verbose
 ```
 
 Exit code 0 means InvenTag could sign in. With `--verbose` you also see the
@@ -112,7 +130,7 @@ suite.
 | What you see | What to do |
 |---|---|
 | `Error: No suitable Python interpreter found.` or `InvenTag requires Python 3.11 or later` | Install Python 3.11 or later and check that `python3 --version` works. |
-| `Permission denied: ./inventag.sh` | Run `chmod +x inventag.sh`. |
+| `inventag: command not found` | Activate the virtual environment where you ran `pip install inventag-aws`, or run `python -m pip show inventag-aws` to check it is installed. |
 | `ModuleNotFoundError` | Activate the virtual environment and run `pip install -r requirements.txt` again. |
 | `No AWS credentials found!` | Run `aws sso login` or `aws configure`, or set `AWS_PROFILE`. |
 

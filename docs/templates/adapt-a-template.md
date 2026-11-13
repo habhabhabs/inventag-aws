@@ -20,7 +20,7 @@ Your project folder is shown as `~/acme-infra/`.
 Run this in your project folder:
 
 ```bash
-./inventag.sh templates init standard-bom --output .inventag/templates/acme-bom.yaml --extend
+inventag templates init standard-bom --output .inventag/templates/acme-bom.yaml --extend
 ```
 
 <!-- BEGIN EXAMPLE OUTPUT: adapt-init -->
@@ -96,12 +96,12 @@ How inheritance works:
   tag, add a tag, or drop one with `remove: true`, without repeating the rest.
 
 To see the final result after inheritance, run
-`./inventag.sh templates show acme-bom --resolved`.
+`inventag templates show acme-bom --resolved`.
 
 ## 3. Validate it
 
 ```bash
-./inventag.sh templates validate acme-bom
+inventag templates validate acme-bom
 ```
 
 If something is wrong, you get the file, the line and a hint. Here the word
@@ -133,7 +133,7 @@ run it in CI. It also checks that templates you refer to (for example a
 Your template now shows up in the list:
 
 ```bash title="Terminal"
-./inventag.sh templates list --kind report
+inventag templates list --kind report
 ```
 
 <!-- BEGIN EXAMPLE OUTPUT: adapt-list -->
@@ -161,7 +161,7 @@ The sample project also holds the other templates used in these docs.
 ## 4. Use it
 
 ```bash
-./inventag.sh --template acme-bom --create-excel --account-regions us-east-1
+inventag --template acme-bom --create-excel --account-regions us-east-1
 ```
 
 <!-- BEGIN EXAMPLE OUTPUT: adapt-console -->
@@ -200,7 +200,7 @@ The header row is green, as set in the template.
 
 If two folders contain a template with the same name, the first one in the
 [search order](./index.md#where-inventag-looks-for-templates) wins.
-`./inventag.sh templates list --all` shows the hidden ones too.
+`inventag templates list --all` shows the hidden ones too.
 
 ## Next steps
 

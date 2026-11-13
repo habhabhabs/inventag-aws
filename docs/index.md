@@ -34,12 +34,13 @@ who owns it and how it is tagged.
 ## Try it
 
 ```bash
-git clone https://github.com/habhabhabs/inventag-aws.git
-cd inventag-aws
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-./inventag.sh --template standard-bom --create-excel --account-regions us-east-1
+pip install inventag-aws
+inventag --template standard-bom --create-excel --account-regions us-east-1
 ```
+
+InvenTag is on [PyPI](https://pypi.org/project/inventag-aws/). To run it from
+source instead, see [Installation](./getting-started/installation.md).
 
 InvenTag uses your current AWS credentials and writes the workbook to
 `bom_output/`. Give it a read-only identity:

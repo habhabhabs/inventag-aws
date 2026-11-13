@@ -18,7 +18,7 @@ The built-in `single-account` config template scans `us-east-1` and writes
 both files with the `standard-bom` layout. Copy it and set your regions:
 
 ```bash title="Terminal"
-./inventag.sh templates init single-account --output .inventag/templates/audit.yaml
+inventag templates init single-account --output .inventag/templates/audit.yaml
 ```
 
 ```yaml title=".inventag/templates/audit.yaml"
@@ -36,8 +36,8 @@ spec:
 ## Command
 
 ```bash title="Terminal"
-./inventag.sh templates validate audit
-./inventag.sh --template audit
+inventag templates validate audit
+inventag --template audit
 ```
 
 ## Output
@@ -98,5 +98,5 @@ The sheet has 12 columns; the first 11 are shown.
 
 ## Next steps
 
-- Add a tag check: `./inventag.sh --template audit --template security-baseline`.
+- Add a tag check: `inventag --template audit --template security-baseline`.
 - Run it every week: [Run InvenTag in CI/CD](../guides/run-in-ci.md).

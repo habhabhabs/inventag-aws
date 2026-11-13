@@ -45,8 +45,8 @@ spec:
 ## Command
 
 ```bash title="Terminal"
-./inventag.sh templates validate board-report
-./inventag.sh --template board-report --create-word --account-regions us-east-1
+inventag templates validate board-report
+inventag --template board-report --create-word --account-regions us-east-1
 ```
 
 ## Output
@@ -123,4 +123,4 @@ $ echo $?
 - Keep colours readable: pick a header colour with a contrast ratio of at
   least 4.5:1 against the header text.
 - Add the full inventory as an Excel file:
-  `./inventag.sh --template board-report --create-word --create-excel`.
+  `inventag --template board-report --create-word --create-excel`.

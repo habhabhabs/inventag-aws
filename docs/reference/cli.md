@@ -11,7 +11,7 @@ sidebar_position: 1
 **What you can do after reading:** build any InvenTag command line, and know
 which flags work today.
 
-This page matches `./inventag.sh --help` on v5.0.0. The **Status** column
+This page matches `inventag --help` on v5.0.0. The **Status** column
 says what we saw when we ran the flag offline against mocked AWS. "Not
 re-tested" means we did not run it for this page. Details are on
 [Feature status](../getting-started/status.md).
@@ -19,14 +19,14 @@ re-tested" means we did not run it for this page. Details are on
 ## Commands
 
 ```text
-./inventag.sh [flags]                       run a scan and write reports
-./inventag.sh templates list [--kind K] [--all]
-./inventag.sh templates show NAME|PATH [--resolved]
-./inventag.sh templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] [--force]
-./inventag.sh templates validate NAME|PATH [NAME|PATH ...]
+inventag [flags]                       run a scan and write reports
+inventag templates list [--kind K] [--all]
+inventag templates show NAME|PATH [--resolved]
+inventag templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] [--force]
+inventag templates validate NAME|PATH [NAME|PATH ...]
 ```
 
-On Windows use `inventag.bat`, or run `python inventag_cli.py` anywhere.
+The `inventag` command works the same on Linux, macOS and Windows.
 `templates` must be the first word after the program name.
 
 ## Templates
@@ -157,19 +157,19 @@ What the flags that stop with exit code 2 print:
 <!-- BEGIN EXAMPLE OUTPUT: failing-flags -->
 
 ```text title="Terminal"
-$ ./inventag.sh --create-google-docs
+$ inventag --create-google-docs
 inventag: error: --create-google-docs: Google Docs/Sheets output is not implemented yet (InvenTag has no Google API integration). Use --create-excel or --create-word.
 (exit code 2)
 
-$ ./inventag.sh --per-account-reports
+$ inventag --per-account-reports
 inventag: error: --per-account-reports: Per-account reports are not implemented yet; InvenTag writes one consolidated report. Run once per account to get separate reports.
 (exit code 2)
 
-$ ./inventag.sh --compliance-standard soc2
+$ inventag --compliance-standard soc2
 inventag: error: --compliance-standard: Compliance-standard enforcement is not implemented yet; the option has never changed InvenTag's behaviour.
 (exit code 2)
 
-$ ./inventag.sh --disable-production-safety
+$ inventag --disable-production-safety
 inventag: error: --disable-production-safety: The read-only guard cannot be disabled from the CLI: InvenTag only needs read access, so non-read AWS calls are always blocked.
 (exit code 2)
 ```

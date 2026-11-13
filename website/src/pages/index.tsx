@@ -33,11 +33,9 @@ const TEMPLATES_LINK = '/docs/templates/';
 
 // Commands from docs/getting-started/quick-start.md
 const QUICK_START = [
-  {cmd: 'git clone https://github.com/habhabhabs/inventag-aws.git'},
-  {cmd: 'cd inventag-aws'},
   {cmd: 'python3 -m venv .venv && source .venv/bin/activate'},
-  {cmd: 'pip install -r requirements.txt'},
-  {cmd: './inventag.sh --create-excel --verbose'},
+  {cmd: 'pip install inventag-aws'},
+  {cmd: 'inventag --create-excel --verbose'},
 ];
 
 // Summary sheet layout written by BOMConverter._create_summary_sheet
@@ -156,7 +154,7 @@ function Hero(): ReactNode {
           lines={QUICK_START}
           footnote={
             <>
-              Uses your current AWS credentials. Writes{' '}
+              Installs <code>inventag-aws</code> from PyPI with pip. Uses your current AWS credentials. Writes{' '}
               <code>bom_output/multi_account_bom_&lt;timestamp&gt;.xlsx</code>. Cost Explorer requests
               are billed by AWS.
             </>
@@ -379,7 +377,7 @@ function Capabilities(): ReactNode {
           }>
           <p>
             Start from eight built-in templates: report layouts, tag policies and run settings. List them with{' '}
-            <code>./inventag.sh templates list</code>, copy one into your project and change only what you need.
+            <code>inventag templates list</code>, copy one into your project and change only what you need.
           </p>
         </Cell>
         <Cell

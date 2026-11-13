@@ -45,8 +45,8 @@ spec:
 ## Command
 
 ```bash title="Terminal"
-./inventag.sh templates validate team-sheet
-./inventag.sh --template team-sheet --create-excel --account-regions us-east-1
+inventag templates validate team-sheet
+inventag --template team-sheet --create-excel --account-regions us-east-1
 ```
 
 ## Output

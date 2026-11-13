@@ -269,6 +269,7 @@ const config: Config = {
         {
           title: 'Project',
           items: [
+            {label: 'Install from PyPI', href: 'https://pypi.org/project/inventag-aws/'},
             {label: 'Source on GitHub', href: 'https://github.com/habhabhabs/inventag-aws'},
             {label: 'Report an issue', href: 'https://github.com/habhabhabs/inventag-aws/issues'},
             {label: 'Discussions', href: 'https://github.com/habhabhabs/inventag-aws/discussions'},

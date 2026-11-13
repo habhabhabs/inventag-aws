@@ -39,7 +39,7 @@ aws organizations list-accounts \
 ## 3. Write the list as a config template
 
 ```bash
-./inventag.sh templates init org-multi-account --output .inventag/templates/our-org.yaml
+inventag templates init org-multi-account --output .inventag/templates/our-org.yaml
 ```
 
 Edit the `accounts` section. Each account needs its 12-digit ID **in quotes**
@@ -60,8 +60,8 @@ spec:
 Check it, then run it:
 
 ```bash
-./inventag.sh templates validate our-org
-./inventag.sh --template our-org
+inventag templates validate our-org
+inventag --template our-org
 ```
 
 `validate` catches the common mistakes: unquoted account IDs, a role ARN that
@@ -119,13 +119,13 @@ them if you can). If every account uses the same role name, you don't need to
 write each ARN:
 
 ```bash title="Terminal"
-./inventag.sh --accounts-file accounts.yaml --cross-account-role InvenTagReadOnly --create-excel
+inventag --accounts-file accounts.yaml --cross-account-role InvenTagReadOnly --create-excel
 ```
 
 The accounts file format is in [Configuration files](../reference/configuration-files.md#accounts-file).
 
 ```bash
-./inventag.sh --accounts-file accounts.yaml --create-excel
+inventag --accounts-file accounts.yaml --create-excel
 ```
 
 ## Tune the run

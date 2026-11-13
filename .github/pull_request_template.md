@@ -38,7 +38,7 @@ Related to #<!-- issue number -->
 <!-- Include the commands you used to test -->
 ```bash
 # Example test commands
-./inventag.sh --create-excel --regions us-east-1
+inventag --create-excel --regions us-east-1
 python -m pytest tests/
 ```
 

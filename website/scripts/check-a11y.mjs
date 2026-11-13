@@ -361,7 +361,7 @@ for (const theme of ['light', 'dark']) {
     const status = await page.locator('[role="status"]').first().textContent();
     const clip = await page.evaluate(() => navigator.clipboard.readText());
     if (!/copied/i.test(status || '')) fail(`landing copy button: no "Copied" status [${theme}]`);
-    if (!clip.startsWith('git clone https://github.com/habhabhabs/inventag-aws.git') || clip.includes('$ ')) {
+    if (!clip.startsWith('python3 -m venv .venv') || clip.includes('$ ')) {
       fail(`landing copy button copied the wrong text [${theme}]: ${JSON.stringify(clip.slice(0, 60))}`);
     }
     // code block copy button
@@ -372,7 +372,7 @@ for (const theme of ['light', 'dark']) {
     await page.keyboard.press('Enter');
     await page.waitForTimeout(200);
     const clip2 = await page.evaluate(() => navigator.clipboard.readText());
-    if (!clip2.includes('git clone')) fail(`code block copy button did not copy the block [${theme}]`);
+    if (!clip2.includes('pip install inventag-aws')) fail(`code block copy button did not copy the block [${theme}]`);
     // theme toggle: Docusaurus 3.10 cycles system -> light -> dark, so check
     // that the button's state (its label) changes, not only data-theme
     await hydrated(page);

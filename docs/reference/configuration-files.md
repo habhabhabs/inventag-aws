@@ -21,7 +21,7 @@ All files can be YAML (`.yaml`, `.yml`) or JSON (`.json`). Check them without
 scanning:
 
 ```bash
-./inventag.sh --accounts-file accounts.yaml --tag-mappings tags.yaml \
+inventag --accounts-file accounts.yaml --tag-mappings tags.yaml \
   --validate-config-only --skip-credential-validation
 ```
 

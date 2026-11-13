@@ -31,14 +31,14 @@ them into your project and [adapt it](./adapt-a-template.md).
 Add `--template` to a normal run. You can give a name or a file path:
 
 ```bash
-./inventag.sh --template executive-summary --create-word
-./inventag.sh --template ./my-templates/acme-bom.yaml --create-excel
+inventag --template executive-summary --create-word
+inventag --template ./my-templates/acme-bom.yaml --create-excel
 ```
 
 Repeat `--template` to combine one template of each kind:
 
 ```bash
-./inventag.sh --template standard-bom --template security-baseline --create-excel
+inventag --template standard-bom --template security-baseline --create-excel
 ```
 
 A few rules decide what wins when settings overlap:
@@ -95,7 +95,7 @@ first match:
 
 So a file called `.inventag/templates/standard-bom.yaml` replaces the built-in
 `standard-bom` for that project. It can still build on the original with
-`extends: standard-bom`. Run `./inventag.sh templates list` to see what is
+`extends: standard-bom`. Run `inventag templates list` to see what is
 found and from where.
 
 ## Safe by design

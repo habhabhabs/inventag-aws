@@ -79,7 +79,7 @@ body:
         If relevant, show the command you're trying to use or configuration you're working with.
       render: shell
       placeholder: |
-        ./inventag.sh --create-excel --regions us-east-1,us-west-2 --enable-production-safety
+        inventag --create-excel --regions us-east-1,us-west-2 --enable-production-safety
 
   - type: textarea
     id: output_logs

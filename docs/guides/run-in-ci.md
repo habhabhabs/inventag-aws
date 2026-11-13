@@ -33,7 +33,7 @@ walks through it.
 ## 2. Add a config template to your repository
 
 ```bash
-./inventag.sh templates init ci-pipeline --output .inventag/templates/nightly.yaml
+inventag templates init ci-pipeline --output .inventag/templates/nightly.yaml
 ```
 
 Set your regions and tag policy, then commit the file.
@@ -96,7 +96,7 @@ With `fail_on_tag_violations: true`, InvenTag writes every report first, then
 exits with code 3. The job fails, and the artifact still holds the Excel file
 and `tag_compliance_<timestamp>.json` with every non-compliant resource.
 
-Sample output of `./inventag.sh --template ci-pipeline` from an offline run
+Sample output of `inventag --template ci-pipeline` from an offline run
 (sample data):
 
 <!-- BEGIN EXAMPLE OUTPUT: ci-console -->

@@ -169,7 +169,7 @@ Missing values are left blank. To see every field your resources have, set
 
 ## Validation messages
 
-`./inventag.sh templates validate <file>` and every run with `--template`
+`inventag templates validate <file>` and every run with `--template`
 print problems as:
 
 ```text
