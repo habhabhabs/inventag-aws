@@ -756,7 +756,7 @@
     "message": "Tabla. Desplázate hacia los lados para ver todas las columnas."
   },
   "menu.backToSections": {
-    "message": "Volver a todas las secciones"
+    "message": "{section}: volver a todas las secciones"
   },
   "menu.language": {
     "message": "Idioma: {language}. Cambiar idioma"

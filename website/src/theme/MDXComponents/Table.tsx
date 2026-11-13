@@ -31,6 +31,9 @@ export default function Table(props: ComponentProps<'table'>): ReactNode {
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
+    // content width can change without the scroller changing size (fonts, wrapping)
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    document.fonts?.ready.then(update);
     el.addEventListener('scroll', onScroll, {passive: true});
     return () => {
       ro.disconnect();
@@ -44,7 +47,7 @@ export default function Table(props: ComponentProps<'table'>): ReactNode {
         ref={ref}
         className="table-scroll"
         tabIndex={scrollable ? 0 : undefined}
-        role={scrollable ? 'region' : undefined}
+        role={scrollable ? 'group' : undefined}
         aria-label={scrollable ? translate({id: 'table.scrollHint', message: 'Table. Scroll sideways to see all columns.'}) : undefined}>
         <table {...props} />
       </div>

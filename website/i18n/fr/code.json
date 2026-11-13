@@ -756,7 +756,7 @@
     "message": "Tableau. Faites défiler latéralement pour voir toutes les colonnes."
   },
   "menu.backToSections": {
-    "message": "Retour à toutes les sections"
+    "message": "{section} : retour à toutes les sections"
   },
   "menu.language": {
     "message": "Langue : {language}. Changer de langue"

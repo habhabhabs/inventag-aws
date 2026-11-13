@@ -28,6 +28,16 @@
  *   - theme toggle, version dropdown and the mobile menu work from the keyboard
  *   - the analytics banner is reachable, and Google Analytics is not requested
  *     before consent
+ * Interaction states (added after the UX advisor review):
+ *   - pressed state: pressing a control changes its look compared with hover
+ *   - search: shows a loading state while the index loads (never "No results"
+ *     first), keeps Tab inside the dialog, Escape closes it from any element
+ *     and returns focus to the trigger
+ *   - wide tables: an overflowing table is a focusable, named region with an
+ *     edge cue; the row label stays in view after a full scroll
+ *   - cookie banner on a phone: 150px or less, and it states the current choice
+ *   - phone menu: Close stays at the same height on every level, focus is not
+ *     lost when a section opens, the language button is in the header
  * And: no infinite animations with prefers-reduced-motion.
  * Exit code 1 if anything fails.
  */
@@ -454,6 +464,220 @@ for (const theme of ['light', 'dark']) {
   const stored = await page.evaluate(() => localStorage.getItem('inventag-analytics'));
   if (stored !== 'denied') fail(`closing the banner stored "${stored}", expected "denied"`);
   await ctx.close();
+}
+
+// 6. interaction states
+{
+  // 6a. pressed state (desktop, mouse)
+  for (const theme of ['light', 'dark']) {
+    const ctx = await newContext(browser, {viewport: {width: 1440, height: 900}, theme});
+    const page = await ctx.newPage();
+    const probes = [
+      ['/', '.button--primary'],
+      ['/', '[class*="copyButton"]'],
+      ['/docs/getting-started/quick-start', '.it-listen__btn'],
+      ['/docs/getting-started/quick-start', '.it-searchbtn'],
+      ['/docs/getting-started/quick-start', '[class*="colorModeToggle"] button'],
+      ['/docs/getting-started/quick-start', '.it-mnav__row'],
+      ['/docs/getting-started/quick-start', '.theme-code-block button'],
+      ['/docs/getting-started/quick-start', '.pagination-nav__link'],
+      ['/docs/getting-started/quick-start', '.table-of-contents__link'],
+      ['/docs/getting-started/quick-start', '.footer__link-item'],
+      ['/docs/getting-started/quick-start', '.breadcrumbs__link'],
+    ];
+    const look = (el) => {
+      const cs = getComputedStyle(el);
+      return [cs.backgroundColor, cs.borderTopColor, cs.transform, cs.boxShadow, cs.color].join('|');
+    };
+    let lastPath = null;
+    for (const [p, sel] of probes) {
+      if (p !== lastPath) {
+        await page.goto(BASE + p, {waitUntil: 'networkidle'});
+        await hydrated(page);
+        lastPath = p;
+      }
+      const loc = page.locator(sel).first();
+      if (!(await loc.count())) {
+        fail(`pressed state [${theme}]: no element for ${sel} on ${p}`);
+        continue;
+      }
+      await loc.scrollIntoViewIfNeeded();
+      const box = await loc.boundingBox();
+      if (!box) continue;
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.waitForTimeout(220);
+      const hover = await loc.evaluate(look);
+      await page.mouse.down();
+      await page.waitForTimeout(40);
+      const pressed = await loc.evaluate(look);
+      await page.mouse.move(2, 2);
+      await page.mouse.up();
+      await page.waitForTimeout(50);
+      if (hover === pressed) fail(`pressed state [${theme}]: ${sel} looks the same pressed as hovered`);
+      if (/\.button--primary/.test(sel)) {
+        const c = await loc.evaluate((el) => getComputedStyle(el).backgroundColor);
+        if (c !== 'rgb(224, 79, 51)') fail(`primary button fill changed on press [${theme}]: ${c}`);
+      }
+    }
+    await ctx.close();
+  }
+
+  // 6b. search: loading state, focus trap, Escape
+  for (const theme of ['light', 'dark']) {
+    for (const phone of [false, true]) {
+      const ctx = await newContext(browser, {
+        viewport: phone ? {width: 390, height: 844} : {width: 1440, height: 900},
+        dpr: phone ? 3 : 1,
+        mobile: phone,
+        theme,
+      });
+      const page = await ctx.newPage();
+      const tag = `[${phone ? '390' : '1440'}, ${theme}]`;
+      await page.route('**/search-index.json*', async (route) => {
+        await new Promise((r) => setTimeout(r, 1500));
+        await route.continue();
+      });
+      await page.goto(BASE + '/docs/getting-started/quick-start', {waitUntil: 'networkidle'});
+      await hydrated(page);
+      await page.locator('.it-searchbtn').click();
+      await page.waitForSelector('.it-search__input');
+      await page.keyboard.type('accounts');
+      let sawNoResults = false;
+      let sawLoading = false;
+      for (let i = 0; i < 12; i++) {
+        const text = await page.locator('.it-search__body').innerText();
+        if (/no results|aucun r|sin resultados|没有|沒有/i.test(text)) sawNoResults = true;
+        if (/loading|searching/i.test(text)) sawLoading = true;
+        if (await page.locator('.it-search__hit[role="option"]').count()) break;
+        await page.waitForTimeout(250);
+      }
+      if (sawNoResults) fail(`search ${tag}: shows "No results" while the index is still loading`);
+      if (!sawLoading) fail(`search ${tag}: no loading state while the index loads`);
+      await page.waitForSelector('[role="option"]', {timeout: 8000}).catch(() => fail(`search ${tag}: no results for "accounts"`));
+      let left = 0;
+      for (let i = 0; i < 14; i++) {
+        await page.keyboard.press('Tab');
+        const inside = await page.evaluate(() => !!document.activeElement.closest('.it-search__dialog'));
+        if (!inside) left++;
+      }
+      if (left) fail(`search ${tag}: Tab left the dialog ${left} times in 14 presses`);
+      const seeAll = page.locator('.it-search__foot a');
+      if (await seeAll.count()) await seeAll.focus();
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(150);
+      if (await page.locator('.it-search__dialog').count()) fail(`search ${tag}: Escape did not close the dialog from "See all results"`);
+      const back = await page.evaluate(() => document.activeElement && document.activeElement.classList.contains('it-searchbtn'));
+      if (!back) fail(`search ${tag}: focus did not return to the search button after Escape`);
+      if (phone) {
+        await page.locator('.it-searchbtn').click();
+        const close = await page.locator('.it-search__esc').boundingBox();
+        if (!close || close.width < 43.5 || close.height < 43.5) fail(`search ${tag}: close button is ${close && Math.round(close.width)}x${close && Math.round(close.height)}, expected 44x44`);
+      }
+      await ctx.close();
+    }
+  }
+
+  // 6c. wide tables on a phone
+  for (const theme of ['light', 'dark']) {
+    const ctx = await newContext(browser, {viewport: {width: 390, height: 844}, dpr: 2, mobile: true, theme});
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/docs/reference/cli', {waitUntil: 'networkidle'});
+    await hydrated(page);
+    await page.waitForTimeout(300);
+    const r = await page.evaluate(() => {
+      const out = {overflowing: 0, bad: [], noCue: 0, noLabelAfter: []};
+      for (const sc of document.querySelectorAll('.table-scroll')) {
+        if (sc.scrollWidth <= sc.clientWidth + 1) continue;
+        out.overflowing++;
+        if (sc.getAttribute('tabindex') !== '0' || sc.getAttribute('role') !== 'region' || !sc.getAttribute('aria-label')) out.bad.push('unnamed or not focusable');
+        const frame = sc.parentElement;
+        if (!frame.querySelector('.table-frame__edge--end')) out.noCue++;
+      }
+      return out;
+    });
+    if (!r.overflowing) fail(`tables [390, ${theme}]: expected overflowing tables on the CLI reference`);
+    if (r.bad.length) fail(`tables [390, ${theme}]: ${r.bad.length} overflowing table(s) are not a focusable, named region`);
+    if (r.noCue) fail(`tables [390, ${theme}]: ${r.noCue} overflowing table(s) show no edge cue at rest`);
+    const after = await page.evaluate(async () => {
+      const sc = [...document.querySelectorAll('.table-scroll')].find((e) => e.scrollWidth > e.clientWidth + 1);
+      if (!sc) return null;
+      sc.scrollLeft = sc.scrollWidth;
+      await new Promise((r) => setTimeout(r, 150));
+      const cell = sc.querySelector('tbody td:first-child');
+      const cr = cell.getBoundingClientRect();
+      const sr = sc.getBoundingClientRect();
+      return {labelVisible: cr.left >= sr.left - 1 && cr.right <= sr.right + 1, startEdge: !!sc.parentElement.querySelector('.table-frame__edge--start'), endEdge: !!sc.parentElement.querySelector('.table-frame__edge--end')};
+    });
+    if (after && !after.labelVisible) fail(`tables [390, ${theme}]: row label scrolled out of view`);
+    if (after && (!after.startEdge || after.endEdge)) fail(`tables [390, ${theme}]: edge cue wrong at the end of the scroll (start ${after.startEdge}, end ${after.endEdge})`);
+    await ctx.close();
+  }
+
+  // 6d. cookie banner on a phone, and its state after "Allow analytics"
+  {
+    const ctx = await newContext(browser, {viewport: {width: 390, height: 844}, dpr: 2, mobile: true, theme: 'light', consent: null});
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/', {waitUntil: 'networkidle'});
+    await hydrated(page);
+    const h = await page.locator('.consent-banner').boundingBox();
+    if (!h || h.height > 150.5) fail(`cookie banner [390]: ${h && Math.round(h.height)}px tall, expected 150px or less`);
+    await page.getByRole('button', {name: 'Allow analytics'}).click();
+    await page.getByRole('button', {name: 'Cookie preferences'}).click();
+    await page.waitForTimeout(150);
+    const pressed = await page.evaluate(() => [...document.querySelectorAll('.consent-banner__actions button')].map((b) => b.getAttribute('aria-pressed')));
+    if (pressed.join() !== 'true,false') fail(`cookie banner: after "Allow analytics" the buttons report aria-pressed ${pressed.join()}, expected true,false`);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(100);
+    if (await page.locator('.consent-banner').count()) fail('cookie banner: Escape did not close the reopened banner');
+    const choice = await page.evaluate(() => localStorage.getItem('inventag-analytics'));
+    if (choice !== 'granted') fail(`cookie banner: Escape changed the stored choice to ${choice}`);
+    await ctx.close();
+  }
+
+  // 6e. phone menu: stable header, kept focus, language in the header
+  {
+    const ctx = await newContext(browser, {viewport: {width: 390, height: 844}, dpr: 2, mobile: true, theme: 'light'});
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/docs/getting-started/quick-start', {waitUntil: 'networkidle'});
+    await hydrated(page);
+    await page.getByRole('button', {name: /toggle navigation bar/i}).click();
+    await page.waitForSelector('.navbar-sidebar--show');
+    await page.waitForTimeout(300);
+    const closeY = async () => Math.round((await page.locator('.navbar-sidebar__close').boundingBox()).y);
+    const ys = [await closeY()];
+    if (!(await page.locator('.navbar-sidebar__lang').count())) fail('phone menu: no language button in the header');
+    // drill down: open a section, then go back to the main menu
+    const row = page.locator('.it-mnav__row--section').first();
+    if (await row.count()) {
+      await row.focus();
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(150);
+      const onBody = await page.evaluate(() => document.activeElement === document.body);
+      if (onBody) fail('phone menu: focus dropped to <body> after opening a section');
+      ys.push(await closeY());
+      await page.locator('.it-mnav__back').focus();
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(150);
+      const rowFocused = await page.evaluate(() => !!document.activeElement && document.activeElement.classList.contains('it-mnav__row--section'));
+      if (!rowFocused) fail('phone menu: focus is not on the section row after Back');
+    }
+    const back = page.locator('.navbar-sidebar__back');
+    if (await back.count()) {
+      await back.click();
+      await page.waitForTimeout(250);
+      ys.push(await closeY());
+    }
+    if (new Set(ys).size > 1) fail(`phone menu: Close moves between levels (y = ${ys.join(', ')})`);
+    const lang = page.locator('.navbar-sidebar__lang');
+    if (await lang.count()) {
+      await lang.click();
+      const links = await page.locator('.it-mlang__link').count();
+      if (links < 5) fail(`phone menu: language list has ${links} links, expected 5`);
+      const cur = await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('aria-current'));
+      if (cur !== 'true') fail('phone menu: the current language is not focused when the list opens');
+    }
+    await ctx.close();
+  }
 }
 
 // 5. reduced motion

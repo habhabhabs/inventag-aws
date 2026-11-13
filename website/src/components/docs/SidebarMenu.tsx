@@ -124,7 +124,7 @@ export default function SidebarMenu({sidebar, path, onGo}: {sidebar: readonly Pr
         <button
           type="button"
           className="it-mnav__back"
-          aria-label={translate({id: 'menu.backToSections', message: 'Back to all sections'})}
+          aria-label={translate({id: 'menu.backToSections', message: '{section}: back to all sections'}, {section: current.label})}
           onClick={back}>
           <Icon name="chevron-left" size={18} />
           <span>{current.label}</span>

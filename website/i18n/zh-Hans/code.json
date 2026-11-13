@@ -756,7 +756,7 @@
     "message": "表格。左右滚动可查看所有列。"
   },
   "menu.backToSections": {
-    "message": "返回所有章节"
+    "message": "{section}：返回所有章节"
   },
   "menu.language": {
     "message": "语言：{language}。切换语言"
