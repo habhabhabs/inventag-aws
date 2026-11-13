@@ -162,7 +162,7 @@ class TestSecurityAnalyzer(unittest.TestCase):
 
         self.assertEqual(rule.protocol, "tcp")
         self.assertEqual(rule.port_range, "3306")
-        self.assertEqual(rule.source_destination, "sg-sg-referenced")
+        self.assertEqual(rule.source_destination, "sg-referenced")
         self.assertTrue(rule.references_security_group)
         self.assertEqual(rule.referenced_sg_id, "sg-referenced")
         self.assertEqual(rule.risk_assessment, "low")  # SG references are lower risk
@@ -180,9 +180,8 @@ class TestSecurityAnalyzer(unittest.TestCase):
         self.assertEqual(rule.protocol, "All")
         self.assertEqual(rule.port_range, "All")
         self.assertTrue(rule.is_permissive)
-        self.assertEqual(
-            rule.risk_assessment, "medium"
-        )  # All ports but not high-risk specific port
+        # Open egress is the AWS default, so it is low risk (still flagged open)
+        self.assertEqual(rule.risk_assessment, "low")
 
     def test_parse_nacl_rule(self):
         """Test NACL rule parsing."""

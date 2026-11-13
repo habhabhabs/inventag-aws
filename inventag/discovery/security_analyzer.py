@@ -22,6 +22,21 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _collect(client, operation: str, key: str, **kwargs) -> List[Dict[str, Any]]:
+    """All items of a Describe call, following ``NextToken`` to the end."""
+    items: List[Dict[str, Any]] = []
+    token = None
+    while True:
+        params = dict(kwargs)
+        if token:
+            params["NextToken"] = token
+        response = getattr(client, operation)(**params)
+        items.extend(response[key])
+        token = response.get("NextToken")
+        if not isinstance(token, str) or not token:
+            return items
+
+
 @dataclass
 class SecurityRule:
     """Analysis data for a single security rule."""
@@ -54,6 +69,11 @@ class SecurityGroupAnalysis:
     references_other_sgs: List[str] = field(default_factory=list)
     referenced_by_sgs: List[str] = field(default_factory=list)
     tags: Dict[str, str] = field(default_factory=dict)
+    # Network interfaces that use this group (EC2, RDS, Lambda in a VPC, load
+    # balancers, endpoints, ...).
+    network_interfaces: List[str] = field(default_factory=list)
+    # True when the interfaces could not be read, so "unused" cannot be known.
+    usage_unknown: bool = False
 
 
 @dataclass
@@ -394,9 +414,8 @@ class SecurityAnalyzer:
             self.region_clients[region] = ec2
 
             # Get security groups
-            sg_response = ec2.describe_security_groups()
-
-            for sg in sg_response["SecurityGroups"]:
+            region_groups = []
+            for sg in _collect(ec2, "describe_security_groups", "SecurityGroups"):
                 sg_id = sg["GroupId"]
                 sg_name = sg["GroupName"]
                 description = sg["Description"]
@@ -426,9 +445,40 @@ class SecurityAnalyzer:
                 )
 
                 self.sg_cache[sg_id] = sg_analysis
+                region_groups.append(sg_analysis)
+
+            self._cache_security_group_usage(ec2, region, region_groups)
 
         except Exception as e:
             logger.warning(f"Could not cache security group info for {region}: {e}")
+
+    def _cache_security_group_usage(
+        self, ec2, region: str, groups: List[SecurityGroupAnalysis]
+    ):
+        """Record which network interfaces use each group of a region.
+
+        A group that is attached to nothing has no network interface, so the
+        interfaces are the one place that shows every user of a group at once.
+        If they cannot be read, the groups are marked as usage unknown instead
+        of being reported as unused.
+        """
+        try:
+            interfaces = _collect(
+                ec2, "describe_network_interfaces", "NetworkInterfaces"
+            )
+        except Exception as e:
+            logger.warning(
+                f"Could not read network interfaces for {region}: {e}. "
+                "Security groups there are not reported as unused."
+            )
+            for group in groups:
+                group.usage_unknown = True
+            return
+        for interface in interfaces:
+            for attached in interface.get("Groups", []):
+                group = self.sg_cache.get(attached.get("GroupId"))
+                if group is not None:
+                    group.network_interfaces.append(interface["NetworkInterfaceId"])
 
     def _parse_security_rule(
         self, rule: Dict[str, Any], rule_type: str
@@ -444,48 +494,51 @@ class SecurityAnalyzer:
         from_port = rule.get("FromPort")
         to_port = rule.get("ToPort")
 
-        if from_port is None or to_port is None:
+        if from_port is None or to_port is None or from_port == -1:
+            # No ports (all traffic) or ICMP "all types" (-1)
             port_range = "All"
         elif from_port == to_port:
             port_range = str(from_port)
         else:
             port_range = f"{from_port}-{to_port}"
 
-        # Process IP ranges
-        for ip_range in rule.get("IpRanges", []):
-            cidr = ip_range.get("CidrIp", "")
-            description = ip_range.get("Description", "")
-
-            security_rule = SecurityRule(
-                protocol=protocol,
-                port_range=port_range,
-                source_destination=cidr,
-                description=description,
-                rule_type=rule_type,
-                risk_assessment=self._assess_rule_risk(cidr, from_port, protocol),
-                is_permissive=cidr in self.permissive_sources,
-                common_service=self._identify_common_service(from_port),
+        # Process IP ranges and IPv6 ranges the same way
+        ranges = [
+            (r.get("CidrIp", ""), r.get("Description", ""))
+            for r in rule.get("IpRanges", [])
+        ] + [
+            (r.get("CidrIpv6", ""), r.get("Description", ""))
+            for r in rule.get("Ipv6Ranges", [])
+        ]
+        for cidr, description in ranges:
+            parsed_rules.append(
+                SecurityRule(
+                    protocol=protocol,
+                    port_range=port_range,
+                    source_destination=cidr,
+                    description=description,
+                    rule_type=rule_type,
+                    risk_assessment=self._assess_rule_risk(
+                        cidr, from_port, protocol, to_port, rule_type
+                    ),
+                    is_permissive=cidr in self.permissive_sources,
+                    common_service=self._identify_common_service(from_port),
+                )
             )
 
-            parsed_rules.append(security_rule)
-
-        # Process IPv6 ranges
-        for ipv6_range in rule.get("Ipv6Ranges", []):
-            cidr = ipv6_range.get("CidrIpv6", "")
-            description = ipv6_range.get("Description", "")
-
-            security_rule = SecurityRule(
-                protocol=protocol,
-                port_range=port_range,
-                source_destination=cidr,
-                description=description,
-                rule_type=rule_type,
-                risk_assessment=self._assess_rule_risk(cidr, from_port, protocol),
-                is_permissive=cidr in self.permissive_sources,
-                common_service=self._identify_common_service(from_port),
+        # Process prefix lists (a managed list of CIDRs, not an open range)
+        for prefix_list in rule.get("PrefixListIds", []):
+            parsed_rules.append(
+                SecurityRule(
+                    protocol=protocol,
+                    port_range=port_range,
+                    source_destination=prefix_list.get("PrefixListId", ""),
+                    description=prefix_list.get("Description", ""),
+                    rule_type=rule_type,
+                    risk_assessment="low",
+                    common_service=self._identify_common_service(from_port),
+                )
             )
-
-            parsed_rules.append(security_rule)
 
         # Process security group references
         for sg_ref in rule.get("UserIdGroupPairs", []):
@@ -495,7 +548,7 @@ class SecurityAnalyzer:
             security_rule = SecurityRule(
                 protocol=protocol,
                 port_range=port_range,
-                source_destination=f"sg-{referenced_sg_id}",
+                source_destination=referenced_sg_id,
                 description=description,
                 rule_type=rule_type,
                 risk_assessment="low",  # SG references are generally lower risk
@@ -508,16 +561,43 @@ class SecurityAnalyzer:
 
         return parsed_rules
 
-    def _assess_rule_risk(self, cidr: str, port: Optional[int], protocol: str) -> str:
-        """Assess the risk level of a security rule."""
-        # Critical risk: permissive source with high-risk ports
+    def _assess_rule_risk(
+        self,
+        cidr: str,
+        port: Optional[int],
+        protocol: str,
+        to_port: Optional[int] = None,
+        rule_type: str = "inbound",
+    ) -> str:
+        """Assess the risk level of a security rule.
+
+        Inbound from 0.0.0.0/0 or ::/0 is critical if the rule allows all
+        protocols, all ports, or a port range that includes a high-risk port
+        (SSH, Telnet, RDP, SQL Server, MySQL, PostgreSQL); high if it includes
+        a well-known port (below 1024); otherwise medium. A CIDR wider than /16
+        is medium. Outbound rules are low: open egress is the AWS default and
+        does not expose the resource.
+        """
+        if rule_type == "outbound":
+            return "low"
+
         if cidr in self.permissive_sources:
-            if port in self.high_risk_ports:
+            name = str(protocol).lower()
+            if name in ("all", "-1"):
                 return "critical"
-            elif port and port < 1024:  # Well-known ports
-                return "high"
-            else:
+            if name in ("icmp", "icmpv6", "1", "58"):
+                return "medium"  # the numbers are ICMP types, not ports
+            if name in ("tcp", "udp", "6", "17"):
+                if port is None:
+                    return "critical"  # no ports given means every port
+                low = port
+                high = port if to_port is None else to_port
+                if any(low <= p <= high for p in self.high_risk_ports):
+                    return "critical"
+                if low < 1024:
+                    return "high"
                 return "medium"
+            return "medium"  # another protocol number, open to the internet
 
         # Medium risk: broad CIDR ranges
         if "/" in cidr:
@@ -543,9 +623,7 @@ class SecurityAnalyzer:
             ec2 = self.session.client("ec2", region_name=region)
 
             # Get NACLs
-            nacl_response = ec2.describe_network_acls()
-
-            for nacl in nacl_response["NetworkAcls"]:
+            for nacl in _collect(ec2, "describe_network_acls", "NetworkAcls"):
                 nacl_id = nacl["NetworkAclId"]
                 is_default = nacl["IsDefault"]
                 vpc_id = nacl["VpcId"]
@@ -591,7 +669,7 @@ class SecurityAnalyzer:
         rule_number = entry.get("RuleNumber", 0)
         protocol = entry.get("Protocol", "")
         rule_action = entry.get("RuleAction", "")
-        cidr_block = entry.get("CidrBlock", "")
+        cidr_block = entry.get("CidrBlock") or entry.get("Ipv6CidrBlock", "")
 
         # Handle protocol numbers
         if protocol == "-1":
@@ -602,6 +680,8 @@ class SecurityAnalyzer:
             protocol = "UDP"
         elif protocol == "1":
             protocol = "ICMP"
+        elif protocol == "58":
+            protocol = "ICMPv6"
 
         # Determine port range
         port_range = "All"
@@ -694,34 +774,37 @@ class SecurityAnalyzer:
             else:
                 sg.risk_level = "low"
 
-            # Check if unused
-            sg.is_unused = len(sg.associated_resources) == 0
+            # Unused: nothing attached, not referenced by another group, and not
+            # the default group (which cannot be deleted). If the network
+            # interfaces could not be read, usage is unknown, so not unused.
+            sg.is_unused = (
+                not sg.associated_resources
+                and not sg.network_interfaces
+                and not sg.referenced_by_sgs
+                and sg.group_name != "default"
+                and not sg.usage_unknown
+            )
 
     def _analyze_nacl_optimization(self):
         """Analyze NACLs for optimization opportunities."""
         for nacl in self.nacl_cache.values():
             recommendations = []
 
-            # Check for redundant rules
-            all_rules = nacl.inbound_rules + nacl.outbound_rules
-            rule_numbers = [rule.rule_number for rule in all_rules]
-
-            # Check for gaps in rule numbers (potential cleanup opportunity)
-            if rule_numbers:
-                max_rule = max(rule_numbers)
-                if max_rule > len(rule_numbers) * 10:  # Arbitrary threshold
-                    recommendations.append(
-                        "Consider renumbering rules to eliminate gaps"
-                    )
-
-            # Check for overly broad rules
-            for rule in all_rules:
+            # Inbound allow rules open to the internet. Open outbound rules are
+            # the AWS default and are not listed. Gaps in rule numbers are
+            # AWS's own advice, so they are not listed either.
+            for rule in nacl.inbound_rules:
                 if (
                     rule.cidr_block in ["0.0.0.0/0", "::/0"]
                     and rule.rule_action == "allow"
                 ):
+                    what = (
+                        "all traffic"
+                        if rule.protocol == "All"
+                        else f"{rule.protocol} {rule.port_range}"
+                    )
                     recommendations.append(
-                        f"Rule {rule.rule_number} allows all traffic - consider restricting"
+                        f"Rule {rule.rule_number} allows {what} from anywhere - consider restricting"
                     )
 
             nacl.optimization_recommendations = recommendations
@@ -758,7 +841,7 @@ class SecurityAnalyzer:
         )
         if nacl_recommendations > 0:
             recommendations.append(
-                f"Optimize {nacl_recommendations} NACL rules for better performance"
+                f"Review {nacl_recommendations} NACL rules that allow traffic from anywhere"
             )
 
         return recommendations
