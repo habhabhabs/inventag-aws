@@ -14,6 +14,7 @@ from .columns import (
     format_value,
     get_field,
     group_by_service,
+    resource_sort_key,
     unique_sheet_name,
 )
 from .tag_policy import ComplianceReport, rule_summary
@@ -146,7 +147,8 @@ def _compliance_sheet(wb, styler, compliance: ComplianceReport, used: set) -> No
     ]
     styler.header(ws, 1, headers)
     ordered = sorted(
-        compliance.findings, key=lambda f: (f.compliant, str(f.resource.get("service")))
+        compliance.findings,
+        key=lambda f: (f.compliant, resource_sort_key(f.resource)),
     )
     for row, finding in enumerate(ordered, 2):
         r = finding.resource
@@ -207,13 +209,7 @@ def render_excel(
         columns = build_columns(spec, resources, excel["include_all_fields"])
         if not any(c[0] == "service" for c in columns):
             columns.insert(0, ("service", "Service", None))
-        ordered = sorted(
-            resources,
-            key=lambda r: (
-                str(r.get("service") or "").lower(),
-                str(r.get("resource_type") or ""),
-            ),
-        )
+        ordered = sorted(resources, key=resource_sort_key)
         _table_sheet(ws, styler, columns, ordered, excel)
     else:
         for service, items in group_by_service(resources).items():

@@ -155,11 +155,25 @@ def unique_sheet_name(name: str, used: set) -> str:
     return candidate
 
 
+def resource_sort_key(resource: Dict[str, Any]) -> Tuple[str, ...]:
+    """Stable order: service, type, name, ID, account, region."""
+    keys = (
+        "service",
+        "resource_type",
+        "resource_name",
+        "resource_id",
+        "source_account_id",
+        "region",
+    )
+    return tuple(str(resource.get(k) or "").lower() for k in keys)
+
+
 def group_by_service(
     resources: List[Dict[str, Any]],
 ) -> Dict[str, List[Dict[str, Any]]]:
+    """Group by service; services and rows are sorted so output is repeatable."""
     groups: Dict[str, List[Dict[str, Any]]] = {}
-    for resource in resources:
+    for resource in sorted(resources, key=resource_sort_key):
         groups.setdefault(str(resource.get("service") or "Unknown"), []).append(
             resource
         )

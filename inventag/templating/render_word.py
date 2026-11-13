@@ -12,7 +12,13 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, RGBColor
 
-from .columns import build_columns, format_value, get_field, group_by_service
+from .columns import (
+    build_columns,
+    format_value,
+    get_field,
+    group_by_service,
+    resource_sort_key,
+)
 from .loader import safe_relative_path
 from .tag_policy import ComplianceReport, rule_summary
 
@@ -145,7 +151,10 @@ def _tag_compliance(doc, spec, compliance: Optional[ComplianceReport]) -> None:
             for rule in compliance.rules
         ],
     )
-    bad = [f for f in compliance.findings if not f.compliant]
+    bad = sorted(
+        (f for f in compliance.findings if not f.compliant),
+        key=lambda f: resource_sort_key(f.resource),
+    )
     if not bad:
         return
     doc.add_heading("Non-compliant resources", level=2)

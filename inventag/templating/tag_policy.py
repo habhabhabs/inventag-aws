@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from .columns import normalize_tags
+from .columns import normalize_tags, resource_sort_key
 
 
 @dataclass
@@ -91,7 +91,9 @@ class ComplianceReport:
                     "missing": f.missing,
                     "invalid": f.invalid,
                 }
-                for f in self.findings
+                for f in sorted(
+                    self.findings, key=lambda f: resource_sort_key(f.resource)
+                )
                 if not f.compliant
             ],
         }

@@ -21,12 +21,11 @@ class TemplateIssue:
     field: Optional[str] = None  # dotted path, e.g. "spec.excel.layout"
 
     def __str__(self) -> str:
-        location = self.source or "<template>"
-        if self.line:
+        location = self.source or ""
+        if self.line and location:
             location = f"{location}:{self.line}"
-        if self.field:
-            return f"{location}: {self.field}: {self.message}"
-        return f"{location}: {self.message}"
+        parts = [p for p in (location, self.field, self.message) if p]
+        return ": ".join(parts)
 
 
 class TemplateError(Exception):
