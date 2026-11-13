@@ -1,4 +1,4 @@
-import React, {useState, type ReactNode} from 'react';
+import React, {useEffect, useRef, useState, type ReactNode} from 'react';
 import {translate} from '@docusaurus/Translate';
 import Link from '@docusaurus/Link';
 import type {PropSidebarItem, PropSidebarItemLink, PropSidebarItemCategory} from '@docusaurus/plugin-content-docs';
@@ -93,11 +93,39 @@ export default function SidebarMenu({sidebar, path, onGo}: {sidebar: readonly Pr
   const initial = rest.find((c) => hasActive(c, path))?.label ?? null;
   const [open, setOpen] = useState<string | null>(initial);
   const current = rest.find((c) => c.label === open);
+  const rootRef = useRef<HTMLDivElement>(null);
+  // Set only by a press on a section row or on Back, so focus moves for the
+  // reader's own action and not on mount or on a route change.
+  const focusNext = useRef<{kind: 'back'} | {kind: 'row'; label: string} | null>(null);
+  const openSection = (label: string) => {
+    focusNext.current = {kind: 'back'};
+    setOpen(label);
+  };
+  const back = () => {
+    if (current) focusNext.current = {kind: 'row', label: current.label};
+    setOpen(null);
+  };
+  useEffect(() => {
+    const want = focusNext.current;
+    if (!want) return;
+    focusNext.current = null;
+    const root = rootRef.current;
+    if (!root) return;
+    if (want.kind === 'back') root.querySelector<HTMLElement>('.it-mnav__back')?.focus();
+    else {
+      const rows = Array.from(root.querySelectorAll<HTMLElement>('[data-section]'));
+      rows.find((r) => r.dataset.section === want.label)?.focus();
+    }
+  }, [open]);
 
   if (current) {
     return (
-      <div className="it-mnav">
-        <button type="button" className="it-mnav__back" onClick={() => setOpen(null)}>
+      <div className="it-mnav" ref={rootRef}>
+        <button
+          type="button"
+          className="it-mnav__back"
+          aria-label={translate({id: 'menu.backToSections', message: 'Back to all sections'})}
+          onClick={back}>
           <Icon name="chevron-left" size={18} />
           <span>{current.label}</span>
         </button>
@@ -112,7 +140,7 @@ export default function SidebarMenu({sidebar, path, onGo}: {sidebar: readonly Pr
   }
 
   return (
-    <div className="it-mnav">
+    <div className="it-mnav" ref={rootRef}>
       <p className="it-mnav__label">{start?.label ?? translate({id: 'menu.getStarted', message: 'Get started'})}</p>
       <ul className="it-mnav__list">
         {links.map((l) => (
@@ -131,7 +159,8 @@ export default function SidebarMenu({sidebar, path, onGo}: {sidebar: readonly Pr
             <button
               type="button"
               className={`it-mnav__row it-mnav__row--section${hasActive(c, path) ? ' is-current' : ''}`}
-              onClick={() => setOpen(c.label)}>
+              data-section={c.label}
+              onClick={() => openSection(c.label)}>
               <Icon name={SECTION_ICON[(c.className ?? '').split(' ').find((n) => n in SECTION_ICON) ?? ''] ?? 'file'} size={18} />
               <span>{c.label}</span>
               <Icon name="chevron-right" size={16} />

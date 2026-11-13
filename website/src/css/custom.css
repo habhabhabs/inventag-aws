@@ -1651,7 +1651,10 @@ html:has(.consent-banner) {
     flex-direction: column;
   }
   .navbar-sidebar__brand {
-    min-height: 3.75rem;
+    /* a fixed height: Infima gives the header flex: 1, so it grew and shrank
+       with the list below it and the Close button moved between levels */
+    flex: 0 0 auto;
+    height: 3.75rem;
     padding: 0 0.75rem 0 1rem;
     gap: 0.5rem;
     align-items: center;
@@ -1666,6 +1669,7 @@ html:has(.consent-banner) {
   }
   /* theme toggle and close share one 44px bordered square */
   .navbar-sidebar__brand button[class*='toggleButton'],
+  .navbar-sidebar__lang,
   .navbar-sidebar__close {
     width: 2.75rem;
     height: 2.75rem;

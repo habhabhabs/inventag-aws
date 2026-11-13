@@ -1054,6 +1054,7 @@ html.docs-version-current .theme-doc-version-badge {
     [class*='colorModeToggle'] button,
     .navbar__toggle,
     .navbar-sidebar__close,
+    .navbar-sidebar__lang,
     .navbar-sidebar__back,
     .it-mnav__back,
     .it-nf__btn,
@@ -1113,5 +1114,60 @@ a.it-card:is(:active, [data-nav-pending]) {
 @media (forced-colors: active) {
   :is(.button, .it-listen__btn, [class*='copyButton']):is(:active, [data-nav-pending]) {
     outline: 2px solid Highlight;
+  }
+}
+
+/* Language list opened from the drawer header (phones) */
+.navbar-sidebar__lang svg {
+  width: 20px;
+  height: 20px;
+}
+.navbar-sidebar__lang {
+  padding: 0;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+.navbar-sidebar__lang[aria-expanded='true'] {
+  background: var(--it-line);
+}
+.it-mlang {
+  position: absolute;
+  top: 3.75rem;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  overflow-y: auto;
+  padding: 0.5rem 1rem 1rem;
+  background: var(--it-bg);
+}
+.it-mlang ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.it-mlang__link {
+  display: flex;
+  align-items: center;
+  min-height: 2.875rem;
+  padding: 0 0.75rem;
+  border-bottom: 1px solid var(--it-line);
+  color: var(--it-ink);
+  font-size: 1.0625rem;
+  text-decoration: none;
+}
+.it-mlang__link.is-active {
+  background: var(--it-accent-wash);
+  box-shadow: inset 2px 0 0 var(--it-accent);
+  font-weight: 650;
+}
+.it-mlang__link:active {
+  background: var(--it-line);
+}
+@media (min-width: 997px) {
+  .it-mlang,
+  .navbar-sidebar__lang {
+    display: none;
   }
 }

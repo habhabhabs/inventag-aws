@@ -754,5 +754,11 @@
   },
   "table.scrollHint": {
     "message": "表格。左右捲動可查看所有欄。"
+  },
+  "menu.backToSections": {
+    "message": "返回所有章節"
+  },
+  "menu.language": {
+    "message": "語言：{language}。切換語言"
   }
 }

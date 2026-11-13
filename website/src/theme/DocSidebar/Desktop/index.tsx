@@ -6,6 +6,15 @@ import Icon from '@site/src/components/docs/Icon';
 import type {Props} from '@theme/DocSidebar/Desktop';
 import SidebarMenu from '@site/src/components/docs/SidebarMenu';
 
+/** Focus an element once the layout change has been painted (it may have been display:none). */
+function focusSoon(selector: string, tries = 10) {
+  requestAnimationFrame(() => {
+    const el = document.querySelector<HTMLElement>(selector);
+    if (el && el.getClientRects().length) el.focus();
+    else if (tries > 0) focusSoon(selector, tries - 1);
+  });
+}
+
 /** Desktop sidebar: the same two-level menu as the phone drawer. */
 function DocSidebarDesktop({path, sidebar, onCollapse, isHidden}: Props): ReactNode {
   const {
@@ -17,7 +26,10 @@ function DocSidebarDesktop({path, sidebar, onCollapse, isHidden}: Props): ReactN
     <div className={clsx('it-dsb', isHidden && 'it-dsb--hidden')}>
       {hideable && (
         <div className="it-dsb__head">
-          <button type="button" className="it-menubtn" onClick={onCollapse} aria-label={translate({id: 'menu.hide', message: 'Hide menu'})} title={translate({id: 'menu.hide', message: 'Hide menu'})}>
+          <button type="button" className="it-menubtn" onClick={() => {
+              onCollapse();
+              focusSoon('.it-menubtn--rail');
+            }} aria-label={translate({id: 'menu.hide', message: 'Hide menu'})} title={translate({id: 'menu.hide', message: 'Hide menu'})}>
             <Icon name="menu" size={20} />
           </button>
           <span className="it-dsb__title">{translate({id: 'menu.title', message: 'Menu'})}</span>
