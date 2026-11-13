@@ -125,6 +125,13 @@ The `summary` part of the JSON file:
 **Out of scope** resources are counted but not checked: the policy's `scope`
 excludes them, for example KMS aliases, which cannot carry tags.
 
+**Know this before you trust the numbers:** InvenTag matches tags from the
+Resource Groups Tagging API to resources by ARN. For Lambda, RDS, DynamoDB,
+SQS and SNS, the ARN InvenTag builds differs from the real one in our offline
+tests, so their tags are not matched and they are reported as missing tags
+even when they have them (in the sample above, the DynamoDB table). See
+[Tags and ARNs](../getting-started/status.md#tags-and-arns).
+
 ## Write your own policy
 
 Start from a built-in one and change only what differs:
@@ -170,8 +177,8 @@ writes every report, then exits with code 3. See
 ## The older checker script
 
 `scripts/legacy/tag_compliance_checker.py --config policy.yaml` predates
-templates. It only checks that required tag keys exist, not their values.
-Prefer tag-policy templates.
+templates and has its own options (`--help` lists them). It is not covered by
+this documentation. Prefer tag-policy templates.
 
 ## Next steps
 

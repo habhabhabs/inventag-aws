@@ -80,8 +80,16 @@ temporary keys. If you use access keys, check them with `aws configure list`.
 
 ### A role cannot be assumed
 
-**What you see:** the account is listed as failed, with a line such as
-`Role assumption failed for account 123456789012: ...` in the log.
+**What you see:** this in the log, and a report that lacks the account:
+
+```text
+inventag.core.cloud_bom_generator.CloudBOMGenerator - ERROR - Failed to establish context for account 999999999999: Role assumption failed for account 999999999999: An error occurred (AccessDenied) when calling the AssumeRole operation: ...
+inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Skipping account 999999999999 due to invalid session
+```
+
+If other accounts worked, InvenTag still writes their report and **exits with
+code 0**. If every account fails, it exits with code 1. (Message text from an
+offline run with a simulated AWS error.)
 
 **Fix:** check the role ARN, and check that the role's trust policy allows
 your identity. InvenTag does not fall back to other credentials, so that
@@ -130,14 +138,17 @@ is missing.
 ### A service or column is empty
 
 **Cause:** the identity lacks a `List*`, `Describe*` or `Get*` permission for
-that service. Discovery carries on without it.
+that service. Discovery carries on without it and prints no message. The AWS
+error is logged only at debug level, where it is hard to find in the long
+output. Run the matching AWS CLI call with the same identity to check.
 
 **Fix:** use the policy in `config/defaults/iam-policy-read-only.json`, which
 covers every call InvenTag makes. See [IAM permissions](../reference/iam-permissions.md).
 
 ### Blocked by the read-only guard
 
-**What you see:** `Read-only guard blocked <service>:<Operation>` in the log.
+**What you see:** `Read-only guard blocked <service>:<Operation>` in the log,
+and an error that starts `Blocked AWS operation <service>:<Operation>`.
 
 **Cause:** a call that is not a read reached the guard. InvenTag itself
 doesn't make such calls, so this usually means custom code or a plug-in.
@@ -254,9 +265,14 @@ the JSON file to see which resources.
 | What you see | Cause and fix |
 |---|---|
 | Very wide sheets with `raw_data.*` columns | That is the default layout. Use `--template standard-bom`. |
-| Tag mappings or service descriptions are missing | A known bug: they are loaded but not applied. Use a report template's `tag_columns`. |
-| No network or security sheets | A known limitation. See [Network and security analysis](./network-and-security-analysis.md). |
-| The change report says 0 changes | A known bug. See [Track changes between runs](./track-changes.md). |
+| Tag mapping columns are missing | Tag mappings add columns only to the default workbook. With `--template`, use `tag_columns`. See [Configuration files](../reference/configuration-files.md#tag-mappings). |
+| A custom service description is ignored | S3, EC2, RDS, Lambda and VPC have built-in descriptions that win unless your entry names a `template`. See [Configuration files](../reference/configuration-files.md#service-descriptions). |
+| No network or security sheets | Add `--enable-network-analysis` or `--enable-security-analysis`, and make sure the scan found VPCs or security groups. The flags add nothing with `--template`. See [Network and security analysis](./network-and-security-analysis.md). |
+| IAM, S3, CloudFront or Route 53 resources are missing | `--account-regions` does not include `us-east-1`. Global services are scanned only from there. |
+| Lambda, DynamoDB, RDS, SQS or SNS resources show no tags, or appear twice | InvenTag builds an ARN that differs from the real one, so tags are not matched. See [Tags and ARNs](../getting-started/status.md#tags-and-arns). |
+| No report file, and the exit code is 0 | The scan found nothing, or `--account-services` or `--account-tags` removed everything. Check the log for `No resources to report`. |
+| An account is missing from the report | Its credentials or role failed. See [A role cannot be assumed](#a-role-cannot-be-assumed). |
+| The change report is missing | The first run writes none. It also needs state management and delta detection to be on. See [Track changes between runs](./track-changes.md). |
 | Another user can't open `bom_output/` | Since v5, output files are private to the user who ran InvenTag. Share them on purpose. |
 
 ## Install problems

@@ -95,10 +95,12 @@ The header row is frozen and has filter buttons.
 
 ## Tag mappings and service descriptions
 
-`--tag-mappings` and `--service-descriptions` are meant to add custom columns
-too, but a known bug stops them reaching the report (see
-[Feature status](../getting-started/status.md)). Use `tag_columns` in a report
-template instead.
+`--tag-mappings` and `--service-descriptions` add columns to the default
+workbook. With `--template` they add nothing (we checked with
+`--template standard-bom --tag-mappings`), so use `tag_columns` as above. With
+a layout file (`--excel-template` or `--word-template`), list the mapped
+column under `extra_fields`. See
+[Configuration files](../reference/configuration-files.md#tag-mappings).
 
 ## Next steps
 

@@ -26,31 +26,48 @@ pip install -r requirements.txt
 ./inventag.sh --create-excel --verbose     # -> bom_output/multi_account_bom_<timestamp>.xlsx
 ```
 
-Use a read-only IAM identity. By default, discovery makes two Cost Explorer
-requests for each account, and AWS bills each request. Add
-`--no-billing-validation` to make no Cost Explorer request. Details:
+Python 3.11 or later is required. InvenTag is not on PyPI yet: install it from
+this repository. Use a read-only IAM identity. By default, discovery made two
+Cost Explorer requests for each account in our offline test, and AWS bills each
+request. Add `--no-billing-validation` to make no Cost Explorer request.
+Details:
 [Installation](https://habhabhabs.github.io/inventag-aws/docs/getting-started/installation).
 
 ## What it does
 
 - **Discovery** across accounts and regions through the Resource Groups Tagging
-  API, per-service `List*`/`Describe*`/`Get*` calls and Cost Explorer billing data.
+  API, per-service `List*`/`Describe*`/`Get*` calls (24 services have their own
+  discovery code) and Cost Explorer billing data.
 - **Bill of materials** as an Excel workbook (`--create-excel`) and/or Word
   document (`--create-word`), with your own tag columns (`--tag-mappings`) and
   service descriptions (`--service-descriptions`).
-- **Report templates** (`--word-template`, `--excel-template`): a YAML or JSON
+- **Templates** (`--template`, `./inventag.sh templates list`): built-in and your own
+  report layouts, tag policies and run settings.
+- **Layout files** (`--word-template`, `--excel-template`): a YAML or JSON
   file selects the title, the sections or sheets, the columns, and the header
   and footer text.
 - **Several accounts** from a file (`--accounts-file`), interactively
   (`--accounts-prompt`) or through an assumed role (`--cross-account-role`),
   processed in parallel.
-- **Change tracking**: each run saves a snapshot in `bom_output/state/`; the
-  next run reports what was added, removed or changed.
+- **Change tracking**: each run saves a snapshot in `bom_output/state/`; from
+  the second run on, InvenTag writes a change report (`changelog_<timestamp>.md`)
+  of what was added, removed or changed.
 - **Upload to Amazon S3** (`--s3-bucket`) with server-side encryption.
 - **Read-only guard**: the CLI blocks each AWS API call that is not a read
   operation. `--audit-output audit.json` writes a list of the calls.
-- **Tag-policy checks** (required tags, allowed values) with
-  `scripts/legacy/tag_compliance_checker.py --config policy.yaml`.
+- **Tag-policy checks** (required tags, allowed values) with a tag-policy
+  template, for example `--template finops-cost-allocation`. Results go to a Tag
+  Compliance sheet, a Word section and a JSON file, and a config template can
+  fail a CI job (exit code 3).
+
+### Limits
+
+InvenTag has never been tested against a real AWS account; every test uses
+mocked AWS. Global services (S3, IAM, CloudFront, Route 53) are scanned only if
+`us-east-1` is among the regions. Tags on Lambda, RDS, DynamoDB, SQS and SNS
+resources are not matched to the resource in our tests. One failed account does
+not change the exit code. Read
+[Current status and known limitations](https://habhabhabs.github.io/inventag-aws/docs/getting-started/status).
 
 ### Not implemented
 
@@ -85,7 +102,7 @@ compliance with SOC 2 or other standards. For the full list, see
   --account-regions us-east-1,ap-southeast-1 --max-concurrent-accounts 8
 ```
 
-Every flag: [CLI user guide](https://habhabhabs.github.io/inventag-aws/docs/user-guides/cli-user-guide).
+Every flag: [Command-line reference](https://habhabhabs.github.io/inventag-aws/docs/reference/cli).
 
 ## Documentation
 
@@ -93,11 +110,13 @@ Every flag: [CLI user guide](https://habhabhabs.github.io/inventag-aws/docs/user
 |---|---|
 | Quick start | [docs/getting-started/quick-start.md](docs/getting-started/quick-start.md) |
 | Current status and known limitations | [docs/getting-started/status.md](docs/getting-started/status.md) |
-| CLI user guide | [docs/user-guides/cli-user-guide.md](docs/user-guides/cli-user-guide.md) |
-| Configuration examples | [docs/user-guides/configuration-examples.md](docs/user-guides/configuration-examples.md) |
-| Report templates | [docs/user-guides/report-templates.md](docs/user-guides/report-templates.md) |
-| Permissions and production safety | [docs/user-guides/production-safety.md](docs/user-guides/production-safety.md) |
-| Architecture | [docs/architecture/core-module-integration.md](docs/architecture/core-module-integration.md) |
+| Upgrade from v4 | [docs/getting-started/upgrade-to-v5.md](docs/getting-started/upgrade-to-v5.md) |
+| Choose what to scan | [docs/guides/run-a-scan.md](docs/guides/run-a-scan.md) |
+| Command-line reference | [docs/reference/cli.md](docs/reference/cli.md) |
+| Configuration files | [docs/reference/configuration-files.md](docs/reference/configuration-files.md) |
+| Templates | [docs/templates/index.md](docs/templates/index.md) |
+| Read-only access and permissions | [docs/guides/read-only-access.md](docs/guides/read-only-access.md) |
+| Architecture | [docs/development/architecture.md](docs/development/architecture.md) |
 | Contributing | [docs/development/CONTRIBUTING.md](docs/development/CONTRIBUTING.md) |
 
 The same Markdown files are published as the documentation site (Docusaurus,
@@ -109,7 +128,7 @@ regenerates them live in [`website/brand/`](website/brand/README.md).
 ```text
 inventag-aws/
 ├── inventag_cli.py              # CLI entry point (inventag.sh / inventag.bat wrap it)
-├── inventag/                    # Python package: cli, core, discovery, compliance, reporting, state
+├── inventag/                    # Python package: cli, core, discovery, reporting, templating, state, security
 ├── scripts/legacy/              # standalone scripts (inventory, tag compliance, BOM converter)
 ├── config/                      # example configs, IAM policy, JSON schemas
 ├── examples/                    # account files and CI examples

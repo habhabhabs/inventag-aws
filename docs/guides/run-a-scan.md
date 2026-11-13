@@ -32,8 +32,14 @@ On Windows, use `inventag.bat` wherever this page says `./inventag.sh`.
 ```
 
 Without `--account-regions`, InvenTag asks EC2 which regions are enabled in
-the account and scans all of them. That is thorough but slow. Global services
-such as IAM and S3 are found whichever regions you choose.
+the account and scans all of them. That is thorough but slow. If that lookup
+fails, InvenTag logs a warning and scans only `us-east-1`, `us-west-2`,
+`eu-west-1` and `ap-southeast-1`.
+
+**Keep `us-east-1` in the list.** S3, IAM, CloudFront and Route 53 are
+global, and InvenTag scans them only from `us-east-1`. In our offline test,
+`--account-regions eu-west-1` alone returned no IAM resources. A region that
+fails its access check is skipped with a warning.
 
 ## Choose the output files
 
@@ -44,8 +50,9 @@ such as IAM and S3 are found whichever regions you choose.
 | `--template <name>` | The same files, laid out by a [report template](../templates/index.md) |
 | `--output-directory reports` | Writes everything to `reports/` instead of `bom_output/` |
 
-If you give no output flag, InvenTag writes Excel only. Add `--s3-bucket` to
-also upload the files: see
+If you give no output flag, InvenTag writes Excel only. If the scan finds
+no resources, or your filters remove them all, InvenTag writes no file and
+still exits with code 0. Add `--s3-bucket` to also upload the files: see
 [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
 
 Sample output of a run with `--template standard-bom --create-excel
@@ -79,7 +86,7 @@ Flags you type still win over the template.
 
 | Flag | Shows |
 |---|---|
-| (none) | Warnings, errors and where the files were written |
+| (none) | Warnings, errors and where the files were written. AWS permission errors for single calls are not shown. |
 | `--verbose` or `-v` | Each step of the run |
 | `--log-file run.log` | Writes a detailed log to a file as well |
 | `--debug` or `-d` | Every AWS request. Secrets are masked, but treat the log as sensitive. |
@@ -92,8 +99,9 @@ Flags you type still win over the template.
 ./inventag.sh templates validate my-scan
 ```
 
-Exit code 0 means the files are valid. A broken accounts file looks like
-this (sample data):
+Exit code 0 means the files are valid. The first command still makes one
+`ec2:DescribeRegions` call to list regions; if it fails, it logs a warning and
+carries on. A broken accounts file looks like this (sample data):
 
 <!-- BEGIN EXAMPLE OUTPUT: error-bad-accounts -->
 

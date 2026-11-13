@@ -48,7 +48,8 @@ still refuse the call. Give InvenTag nothing more than it needs.
 | `ce:GetCostAndUsage` | Finds services that have spend. AWS charges per request. |
 | `ec2:DescribeRegions` | Lists the regions enabled in the account. |
 
-Add `pricing:GetProducts` only if you use `--enable-cost-analysis`, and
+Add `pricing:GetProducts` only if you use `--enable-cost-analysis` (it also
+calls `cloudwatch:GetMetricStatistics`, which `ReadOnlyAccess` covers), and
 `s3:PutObject` on your reports bucket if you use `--s3-bucket`.
 
 `ReadOnlyAccess` is broad: it can read data such as S3 object listings and
@@ -66,8 +67,8 @@ Its `OptionalS3ReportUpload` statement allows `s3:PutObject` with server-side
 encryption, for `--s3-bucket`. Replace `YOUR-REPORTS-BUCKET-NAME` with your
 bucket, or remove the statement if you don't upload reports.
 
-Where an action is missing, discovery carries on and that detail is left
-empty.
+Where an action is missing, discovery carries on, prints no message and
+leaves that detail empty.
 
 ## With IAM Identity Center (SSO)
 

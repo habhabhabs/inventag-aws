@@ -20,8 +20,7 @@ InvenTag answers three questions about your AWS accounts:
    [tag-policy template](../templates/index.md), a check of required tags and
    allowed values.
 3. **What changed since last time?** Each run saves a snapshot so runs can be
-   compared. Read [Track changes between runs](../guides/track-changes.md)
-   first: comparison has a known bug today.
+   compared. See [Track changes between runs](../guides/track-changes.md).
 
 The answer is a bill of materials (BOM): an Excel workbook, a Word document,
 or both.
@@ -48,9 +47,9 @@ your AWS credentials
    environment variables, an IAM Identity Center (SSO) session or an IAM role.
    It can also assume a role in other accounts.
 2. **Discovery.** For each account and region it calls read-only AWS
-   application programming interfaces (APIs). It also calls Cost Explorer
-   `GetCostAndUsage` to spot services that have spend. AWS charges for Cost
-   Explorer API requests.
+   application programming interfaces (APIs). By default it also calls Cost
+   Explorer `GetCostAndUsage` to spot services that have spend. AWS charges for
+   Cost Explorer API requests; `--no-billing-validation` turns the calls off.
 3. **Processing.** It standardises service names and IDs and collects tags.
 4. **Output.** It writes files to the output folder (`bom_output/` by default)
    and a snapshot to `bom_output/state/`.
@@ -76,8 +75,9 @@ better than one: [Set up read-only access](../guides/read-only-access.md).
 - **Not a cost tool.** It lists resources and tags. It does not calculate
   what they cost.
 - **Not affiliated with AWS.**
-- **Not finished.** Some features have known bugs.
-  [Feature status and known limitations](./status.md) lists them.
+- **Not complete.** It has its own discovery code for 24 AWS services, not
+  every service, and it has never been tested against a real AWS account.
+  [Feature status and known limitations](./status.md) lists the limits.
 
 ## Next steps
 

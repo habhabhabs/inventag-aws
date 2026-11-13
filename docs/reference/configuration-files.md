@@ -25,6 +25,9 @@ scanning:
   --validate-config-only --skip-credential-validation
 ```
 
+This reads the files and scans nothing. It still makes one `ec2:DescribeRegions`
+call to list regions, and logs a warning if that fails.
+
 ## Accounts file
 
 Used with `--accounts-file`.
@@ -95,6 +98,11 @@ tag_mappings:
     case_sensitive: false
 ```
 
+The column appears in the default workbook (no `--template`). With
+`--template` it does not appear: use `tag_columns` in the report template
+instead. With a layout file (`--excel-template`, `--word-template`), add the
+column name to `extra_fields`.
+
 Use the top-level key `tag_mappings` with a **list** of entries. InvenTag also
 accepts the older layout, which uses each tag key as a top-level key with a
 `column_name` value.
@@ -109,22 +117,37 @@ Example result for the entry above, on the EC2 sheet:
 ## Service descriptions
 
 Used with `--service-descriptions`. It adds the `service_description` column
-to the report, for example `Amazon EC2 Instance (i-0abc1234def567890) in us-east-1`.
+to the report. Without a file, InvenTag writes a built-in description, for
+example `Amazon EC2 Instance (i-0abc1234def567890) in us-east-1`.
 
 ```yaml
 service_descriptions:
-  S3:
-    Bucket:
-      description: Object storage bucket
+  DYNAMODB:
+    default:
+      description: Application data table
   EC2:
     Volume:
-      description: Block storage volume
-    default:
-      description: Amazon EC2 resource
+      description: Block storage
+      template: volume_text       # needed for EC2, S3, RDS, Lambda and VPC
+templates:
+  volume_text:
+    template: "Disk {resource_id} in {region}"
 ```
 
 The top-level key `service_descriptions` is required. Under each service,
 each resource type (or `default`) needs a `description`.
+
+**A built-in description wins for some services.** InvenTag has built-in
+description templates for S3, EC2, RDS, Lambda and VPC. For those services, a
+custom `description` alone is ignored, and the built-in text is used. To
+replace it, give the entry a `template` and define that template under
+`templates`. A template can use `{resource_id}`, `{resource_type}`, `{service}`,
+`{region}` and `{account_id}`. For every other service, a plain `description`
+is used as written (in the example, `Application data table` for DynamoDB
+tables).
+
+If a template cannot be filled in, InvenTag logs a warning such as
+`Failed to render template vpc_vpc: 'cidr_block'` and uses the fallback text.
 
 ## BOM processing configuration
 
@@ -137,7 +160,9 @@ enable_parallel_processing: true
 max_worker_threads: 4
 ```
 
-Unknown keys are ignored. This file is for advanced tuning; most people never
+Unknown keys are ignored without a message, so a mistyped key does nothing.
+For example, `enable_network_analysis: true` adds the same sheet as
+`--enable-network-analysis`. This file is for advanced tuning; most people never
 need it.
 
 ## Next steps

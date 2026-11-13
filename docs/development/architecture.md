@@ -41,6 +41,7 @@ inventag_cli.py
 | `inventag/templating/` | Template loading, validation, inheritance, tag-policy checks and template-driven Excel and Word output | `schema.py`, `registry.py`, `runner.py` |
 | `inventag/state/` | Snapshots, differences and changelogs | `state_manager.py` |
 | `inventag/compliance/` | Library classes for tag checks and safety; mostly not used by the CLI today | `checker.py` |
+| `inventag/security/` | The read-only guard, IAM policy list, log redaction, safe output files | `read_only_guard.py`, `iam_policy.py` |
 
 ## The resource dictionary
 
@@ -59,17 +60,26 @@ before.
 
 ## Known gaps worth fixing
 
-These are tracked on [Feature status](../getting-started/status.md). Each is a
-good first contribution:
+These are tracked on [Feature status](../getting-started/status.md) and in the
+"Open work" list of `CHANGELOG.md`. Each is a good first contribution:
 
-- `reporting/bom_processor.py` calls `apply_mappings_to_resource` and
-  `apply_description_to_resource`, which don't exist (the real methods take a
-  list), so tag mappings and service descriptions are never applied.
-- `--validate-credentials` passes a `timeout` argument that
-  `CredentialManager.validate_account_credentials()` does not accept.
-- The changelog compares the newest snapshot with itself.
-- Network and security analysis results are computed but not written to the
-  reports.
+- `discovery/comprehensive_discovery.py` builds an ARN for resources whose list
+  call returns none (`_construct_arn`), and matches tags from the Resource
+  Groups Tagging API by ARN. For Lambda, RDS, DynamoDB, SQS, SNS and VPC
+  resources the built ARN differs from the real one, so their tags are lost.
+- Global services (S3, IAM, CloudFront, Route 53) are scanned only if
+  `us-east-1` is in the region list.
+- The region lookup in `cloud_bom_generator.py` falls back to four regions when
+  `DescribeRegions` fails. `discovery/inventory.py` has a different fallback
+  list of fourteen.
+- A custom `description` in a service-descriptions file is ignored for the
+  services that have a built-in template (S3, EC2, RDS, Lambda, VPC).
+- `--enable-cost-analysis` calls Cost Explorer even with
+  `--no-billing-validation`.
+- One failed account does not change the exit code.
+- These modules are not on the CLI path: `reporting/template_framework.py`,
+  `branding_system.py`, `word_builder.py`, `excel_builder.py`,
+  `document_generator.py` and `configuration_manager.py`.
 
 Older design notes, which may be out of date, are kept in the repository under
 `development/docs-archive/`. They are not published on this site.

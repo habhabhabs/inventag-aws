@@ -1,6 +1,6 @@
 ---
 title: Track changes between runs
-description: How InvenTag saves a snapshot of each run in bom_output/state, what the change report contains, and its current limitation.
+description: How InvenTag saves a snapshot of each run in bom_output/state, what the change report contains, and what to know before you rely on it.
 sidebar_position: 6
 slug: /architecture/state-management
 ---
@@ -11,7 +11,7 @@ slug: /architecture/state-management
 changed.
 
 **What you will know after reading:** where snapshots are stored, what the
-change report contains, and how to compare runs today.
+change report contains, and how to compare runs yourself.
 
 ## Snapshots
 
@@ -21,9 +21,9 @@ mocked AWS (sample data):
 <!-- BEGIN EXAMPLE OUTPUT: changes-tree -->
 
 ```text title="bom_output/ after two runs (reports omitted)"
-bom_output/changelog_20261112_090000.md
+bom_output/changelog_20261112_090100.md
 bom_output/state/metadata.json
-bom_output/state/state_20261112_090100.json
+bom_output/state/state_20261112_090000.json
 bom_output/state/state_20261112_090100.json
 ```
 
@@ -66,17 +66,19 @@ Keep the `state/` folder between runs, for example as a CI cache or in a
 bucket, if you want history. Turn snapshots off with
 `--disable-state-management`.
 
-## The change report: known limitation
+## The change report
 
-From the second run on, InvenTag writes `changelog_<timestamp>.md`. On the
-current release it compares the newest snapshot with **itself**, so it always
-reports zero changes. In this sample a bucket was added between the two runs,
-yet the changelog says:
+From the second run on, InvenTag compares the new snapshot with the one before
+it and writes `changelog_<timestamp>.md` in the output folder. The first run
+has nothing to compare with, so it writes no change report.
+
+In this sample a bucket was added between the two runs. The change report
+lists it:
 
 <!-- BEGIN EXAMPLE OUTPUT: changes-changelog -->
 
 <details>
-<summary>changelog_20261112_090000.md (first 30 lines)</summary>
+<summary>changelog_20261112_090100.md (first 30 lines)</summary>
 
 ```markdown
 # Multi-Account Infrastructure Changes
@@ -86,7 +88,7 @@ yet the changelog says:
 ## State Comparison
 
 - **from_state:** 20261112_090000
-- **to_state:** 20261112_090000
+- **to_state:** 20261112_090100
 - **comparison_timestamp:** 2026-11-12T09:00:00+00:00
 
 ## Summary
@@ -115,12 +117,28 @@ Changes detected in S3 service resources
 
 <!-- END EXAMPLE OUTPUT: changes-changelog -->
 
-Until this is fixed, don't rely on the changelog.
+The report has a summary table, then a section for each service with
+changes. Each change has a type (such as `added`), a severity, the resource and
+its ARN.
 
-## Compare runs today
+What to know:
 
-The snapshots themselves are correct, so you can compare two of them. Each
-snapshot is JSON with a `resources` list:
+- It compares one run with the run before it. It does not compare with an
+  older run you pick.
+- It compares the resources each run found. Use the same regions, services and
+  filters for both runs, so that a change in scope is not read as a change in
+  your estate.
+- `--no-generate-changelog` stops the report but keeps the snapshots.
+  `--disable-delta-detection` also stops it. `--disable-state-management`
+  stops snapshots and reports.
+- InvenTag removes snapshots that are older than 30 days or beyond the newest
+  100. A scheduled job on a fresh runner has no earlier snapshot, so keep the
+  `state/` folder between runs.
+
+## Compare two snapshots yourself
+
+You can compare any two snapshots, because each is JSON with a `resources`
+list:
 
 ```bash
 python3 - <<'EOF'

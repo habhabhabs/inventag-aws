@@ -11,10 +11,10 @@ sidebar_position: 1
 **What you can do after reading:** build any InvenTag command line, and know
 which flags work today.
 
-This page matches `./inventag.sh --help` on the current release. The
-**Status** column says what we saw when we ran the flag offline against
-mocked AWS. "Not re-tested" means we did not run it for this page. Details
-are on [Feature status](../getting-started/status.md).
+This page matches `./inventag.sh --help` on v5.0.0. The **Status** column
+says what we saw when we ran the flag offline against mocked AWS. "Not
+re-tested" means we did not run it for this page. Details are on
+[Feature status](../getting-started/status.md).
 
 ## Commands
 
@@ -66,29 +66,30 @@ On Windows use `inventag.bat`, or run `python inventag_cli.py` anywhere.
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--account-regions LIST` | every enabled region | Works | Comma-separated region codes, for example `us-east-1,eu-west-1`. |
-| `--account-services LIST` | all | Partial | Comma-separated service names. Applied in one discovery path only. |
-| `--account-tags JSON` | none | Partial | Tag filter, for example `'{"Environment":"prod"}'`. Applied in one discovery path only. |
-| `--fallback-display auto\|always\|never` | `auto` | Not re-tested | Whether to show resources found only through fallback methods. `auto` shows them only for services with no other results. |
+| `--account-regions LIST` | every enabled region | Works | Comma-separated region codes, for example `us-east-1,eu-west-1`. Include `us-east-1`: S3, IAM, CloudFront and Route 53 are scanned only from there. |
+| `--account-services LIST` | all | Works | Comma-separated service names that are kept in the report, matched against the Service column, for example `EC2,S3`. |
+| `--account-tags JSON` | none | Works | Tag filter, for example `'{"Environment":"prod"}'`. Only resources with those tags are kept. |
+| `--fallback-display auto\|always\|never` | `auto` | Works | Whether to show resources found only through the Resource Groups Tagging API. `auto` shows them only for services with no results from their own discovery code. |
 | `--hide-fallback-resources` | off | Not re-tested | Same as `--fallback-display never`. Deprecated. |
 
 ## Analysis
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--enable-network-analysis` | off | No effect on reports | No sheets are added. |
-| `--enable-security-analysis` | off | No effect on reports | No sheets are added. |
-| `--enable-cost-analysis` | off | Not verified | Turns on cost estimation in processing. Needs `pricing:GetProducts`. |
+| `--enable-network-analysis` | off | Works | Adds a `Network Analysis` sheet to the Excel report when VPCs are found. Adds nothing with `--template`. See [Network and security analysis](../guides/network-and-security-analysis.md). |
+| `--enable-security-analysis` | off | Works | Adds a `Security Analysis` sheet to the Excel report when security groups are found. Adds nothing with `--template`. |
+| `--enable-cost-analysis` | off | Partial | Adds four `forgotten_analysis.*` columns to the default workbook. Makes extra Cost Explorer, Pricing and CloudWatch calls, also with `--no-billing-validation`. Needs `pricing:GetProducts`. |
+| `--billing-validation`, `--no-billing-validation` | on | Works | Use Cost Explorer during discovery to find services with spend. AWS charges for each Cost Explorer request. `--no-billing-validation` stops those calls. |
 
 ## Configuration files
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--tag-mappings FILE` | none | Loaded, not applied | See [Configuration files](./configuration-files.md#tag-mappings). |
-| `--service-descriptions FILE` | none | Loaded, not applied | See [Configuration files](./configuration-files.md#service-descriptions). |
-| `--bom-config FILE` | none | Not re-tested | Sets fields of the BOM processing configuration from a YAML or JSON file. |
+| `--tag-mappings FILE` | none | Works | Adds one named column per mapping. See [Configuration files](./configuration-files.md#tag-mappings). |
+| `--service-descriptions FILE` | none | Partial | Adds a `service_description` column. A built-in description wins for S3, EC2, RDS, Lambda and VPC unless the entry names a `template`. See [Configuration files](./configuration-files.md#service-descriptions). |
+| `--bom-config FILE` | none | Partial | Sets fields of the BOM processing configuration from a YAML or JSON file. Other keys are ignored without a message. |
 | `--validate-config` | off | Works | Load and check the configuration, then exit. |
-| `--validate-config-only` | off | Works | Check only the files you name, then exit. Add `--skip-credential-validation` to skip the AWS check. |
+| `--validate-config-only` | off | Works | Check only the files you name, then exit. Add `--skip-credential-validation` to skip the credential check. It still makes one `ec2:DescribeRegions` call. |
 
 ## Parallel processing
 
@@ -104,8 +105,8 @@ On Windows use `inventag.bat`, or run `python inventag_cli.py` anywhere.
 |---|---|---|---|
 | `--enable-state-management` | on | Works | Save a snapshot in `<output>/state/`. |
 | `--disable-state-management` | off | Works | Don't save snapshots or changelogs. |
-| `--enable-delta-detection` / `--disable-delta-detection` | on | Partial | Compare snapshots. The comparison currently uses the newest snapshot twice. |
-| `--generate-changelog` | on | Cannot be turned off | Changelogs are always written when state management is on. |
+| `--enable-delta-detection` / `--disable-delta-detection` | on | Works | Compare the new snapshot with the previous one. `--disable-delta-detection` writes no change report. |
+| `--generate-changelog`, `--no-generate-changelog` | on | Works | Write `changelog_<timestamp>.md` from the second run on. `--no-generate-changelog` stops it. |
 
 ## Logging
 
@@ -179,8 +180,8 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--s3-bucket BUCKET` | none | Works | Upload the reports to this bucket after the run. The run fails if an upload fails. Needs `s3:PutObject`. |
-| `--s3-key-prefix PREFIX` | `bom-reports/` | Works | Folder (key prefix) in the bucket. |
+| `--s3-bucket BUCKET` | none | Works | Upload every file the run wrote (Excel, Word and tag-compliance JSON) to this bucket. The run exits with code 1 if an upload fails. Needs `s3:PutObject`. |
+| `--s3-key-prefix PREFIX` | `bom-reports/` | Works | Folder (key prefix) in the bucket. Files go under `<prefix><UTC timestamp>/`. |
 | `--s3-encryption AES256\|aws:kms` | `AES256` | Works | Server-side encryption for the uploads. |
 | `--s3-kms-key-id KEY` | none | Works | KMS key for `aws:kms`. |
 
@@ -190,7 +191,7 @@ See [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
 
 | Code | Meaning |
 |---|---|
-| 0 | Success |
-| 1 | An error: invalid arguments, configuration or template, failed credentials, or a failed run |
+| 0 | Success. Also 0 when some accounts failed but others worked, and when no resources were found (no report is written). See [Feature status](../getting-started/status.md#when-a-run-goes-wrong). |
+| 1 | An error: invalid arguments, configuration or template, failed credentials, every account failed, a failed S3 upload, or a report format that could not be written |
 | 2 | Invalid command line: unknown or badly formed options, flags that are not implemented, or a role name without `--accounts-file` |
 | 3 | Reports written, but a config template with `fail_on_tag_violations: true` found tag policy violations |

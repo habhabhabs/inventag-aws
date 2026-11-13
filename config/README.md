@@ -115,6 +115,6 @@ See the [examples/](../examples/) directory for complete working configurations:
 
 ## 🔗 Documentation Links
 
-- **[Configuration Examples Guide](../docs/user-guides/CONFIGURATION_EXAMPLES.md)** - Detailed setup instructions
-- **[CLI User Guide](../docs/user-guides/CLI_USER_GUIDE.md)** - Command-line usage
-- **[Production Safety Guide](../docs/user-guides/PRODUCTION_SAFETY.md)** - Security best practices
+- **[Configuration files](../docs/reference/configuration-files.md)** - Detailed setup instructions
+- **[Command-line reference](../docs/reference/cli.md)** - Command-line usage
+- **[Set up read-only access](../docs/guides/read-only-access.md)** - Security best practices

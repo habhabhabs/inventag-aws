@@ -138,7 +138,10 @@ The accounts file format is in [Configuration files](../reference/configuration-
 
 If one account fails, for example because its role cannot be assumed,
 InvenTag logs the error and reports the accounts that worked. It does not
-fall back to your default credentials for that account.
+fall back to your default credentials for that account. **The run still exits
+with code 0, and the report does not name the missing account.** Search the
+log for `Failed to establish context for account`. If every account fails, the
+run exits with code 1 and writes no report.
 
 ## Next steps
 

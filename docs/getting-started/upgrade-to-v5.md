@@ -40,10 +40,11 @@ python3.9 -m venv .venv
 python3.12 -m venv .venv      # any version from 3.11 up
 ```
 
-:::note Not enforced yet
-The launch scripts (`inventag.sh`, `inventag.bat`) still only reject Python
-older than 3.8. The project's own checks are moving to 3.11 and later; use a
-supported version now so the change doesn't surprise you.
+:::note What happens on an older Python
+`inventag.sh` and `inventag.bat` look for Python 3.11 or later and stop with a
+message if they find none. `python inventag_cli.py` on an older Python also
+stops with a message. The package metadata (`requires-python`) says
+`>=3.11`.
 :::
 
 ## The read-only guard is always on

@@ -24,8 +24,8 @@ project uses, and open a pull request that is easy to review.
 git clone https://github.com/habhabhabs/inventag-aws.git
 cd inventag-aws
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt -r requirements-dev.txt
-pip install moto          # mocked AWS for the end-to-end template tests
+pip install -r requirements.txt -r requirements-dev.txt   # includes moto
+pip install -e .          # optional: gives you the `inventag` command
 git checkout -b fix/short-description
 ```
 
@@ -34,18 +34,18 @@ Branch prefixes: `feat/`, `fix/`, `docs/`, `refactor/`, `test/`.
 ## Run the checks
 
 ```bash
-black inventag/ tests/
-flake8 --max-line-length=88 --extend-ignore=E203 inventag/templating tests/unit/templating
-python -m pytest tests/unit/templating tests/integration/templating
+black --check scripts/ inventag/
+flake8 scripts/ inventag/ --count --select=E9,F63,F7,F82 --show-source --statistics
+python -m pytest -q
 ```
 
-The template tests run in about 15 seconds and need no AWS account: the
-end-to-end tests use moto and are skipped if it is not installed.
-
-The full suite is `python -m pytest tests`. On `main` today it has many old
-failures that don't match the current code ([Feature status](../getting-started/status.md#tests)).
-A change must not add new failures: compare the failing tests before and
-after your change.
+CI runs the same `black --check` and `flake8` commands, then the tests on
+Python 3.11, 3.12, 3.13 and 3.14. The full suite (`python -m pytest -q`) takes
+about two minutes, passes on `main` (1315 passed, 9 performance benchmarks
+deselected) and needs no AWS account: every test uses moto. A change must keep
+it green. Run the benchmarks only on request: `python -m pytest -m performance`.
+Run `pip-audit -r requirements.txt` when you change a dependency; CI fails on a
+new advisory.
 
 **Never run tests against a real AWS account by accident.** Unset
 `AWS_PROFILE` and real keys, or use moto.
@@ -58,6 +58,12 @@ after your change.
   `inventag/templating/schema.py`. After changing it, regenerate the docs
   reference: `python -m inventag.templating.reference --write`. A unit test
   fails if you forget.
+- The sample outputs on the docs pages come from
+  `scripts/docs/generate_example_outputs.py`, which runs the real CLI against
+  moto. After a change in behaviour, run `pip install pillow` and
+  `python scripts/docs/generate_example_outputs.py`, and commit the result.
+  `--check` tells you whether the pages are stale. The pictures need
+  LibreOffice (`soffice`) and `pdftoppm`.
 
 ## Work on the docs
 
@@ -67,8 +73,8 @@ The docs are Markdown files in `docs/`, published with Docusaurus from
 ```bash
 cd website
 npm ci
-npm run build          # reports broken links as warnings
-npm run check:links    # fails on broken links in the current docs
+npm run build          # fails on broken links and missing SEO metadata
+npm run check:links    # checks links in the built site
 npm run start          # local preview at http://localhost:3000/inventag-aws/
 ```
 

@@ -125,7 +125,8 @@ The sheet has 9 columns; the first 7 are shown.
 
 ## Next steps
 
-- If an account fails, InvenTag logs the error and reports the others. Run
-  with `--verbose` to see why; it is usually the role's trust policy.
+- If an account fails, InvenTag logs the error, reports the others and still
+  exits with code 0, so check the log. The usual cause is the role's trust
+  policy.
 - [Scan several accounts](../guides/scan-multiple-accounts.md) explains the
   tuning options.

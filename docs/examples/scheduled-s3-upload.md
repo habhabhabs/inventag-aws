@@ -29,7 +29,11 @@ with a record of every AWS call it made.
 - `--s3-bucket` uploads every report the run wrote. Uploads use server-side
   encryption (`AES256` by default; use `--s3-encryption aws:kms` and
   `--s3-kms-key-id` for a KMS key).
-- If an upload fails, the run fails, so a scheduler notices.
+- Each file goes to `<prefix><UTC timestamp>/<file name>`, so runs do not
+  overwrite each other. The tag-compliance JSON file is uploaded too, when
+  there is one.
+- If an upload fails, the run exits with code 1, so a scheduler notices. The
+  reports are still on your disk.
 - `--audit-output` writes a JSON list of every AWS operation the run called.
   It works with or without S3.
 

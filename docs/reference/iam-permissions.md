@@ -18,9 +18,9 @@ For step-by-step setup, see [Set up read-only access](../guides/read-only-access
 | Permission | Why | Notes |
 |---|---|---|
 | `sts:GetCallerIdentity` | Finds out which account the credentials belong to | AWS allows this for every identity; you don't need to grant it. |
-| `ec2:DescribeRegions` | Lists enabled regions | Needed unless every account sets `regions`. |
+| `ec2:DescribeRegions` | Lists enabled regions, and checks each region you scan | The check runs for every region, even with `--account-regions`. A region that fails it is skipped with a warning. |
 | `tag:GetResources` | Finds tagged resources (Resource Groups Tagging API) | The IAM prefix is `tag`, not `resourcegroupstaggingapi`. |
-| `ce:GetCostAndUsage` | Finds services with spend | **AWS charges per request.** If denied, discovery continues without billing data. |
+| `ce:GetCostAndUsage` | Finds services with spend | **AWS charges per request.** In our offline test a run made two for each account. If denied, discovery continues without billing data. `--no-billing-validation` stops the calls, and then you can leave this permission out. |
 | `List*`, `Describe*`, `Get*` for each service you want in the report | Per-service discovery | For example `s3:ListAllMyBuckets`, `s3:GetBucketTagging`, `lambda:ListFunctions`, `dynamodb:ListTables`. The AWS managed `ReadOnlyAccess` policy covers these. |
 
 ## What some features need
@@ -28,7 +28,7 @@ For step-by-step setup, see [Set up read-only access](../guides/read-only-access
 | Feature | Extra permission |
 |---|---|
 | Scanning other accounts through a role | `sts:AssumeRole` on those roles, and a trust policy in each account that allows your identity |
-| `--enable-cost-analysis` | `pricing:GetProducts` |
+| `--enable-cost-analysis` | `pricing:GetProducts`, and `cloudwatch:GetMetricStatistics` (both are in the repository policy) |
 | `--s3-bucket` | `s3:PutObject` on that bucket (and `kms:GenerateDataKey` on the key if you use `aws:kms`) |
 
 ## What InvenTag never needs

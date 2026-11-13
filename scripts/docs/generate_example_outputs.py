@@ -372,6 +372,8 @@ def normalise(text: str, workdir: Optional[Path] = None) -> str:
 
     def stamp(match):
         value = match.group(0)
+        if value[:12] == FIXED_STAMP[:12] and value.endswith("00"):
+            return value  # already a fixed stamp (see the changes scenario)
         if value not in seen:
             when = datetime.strptime(value, "%Y%m%d_%H%M%S").timestamp()
             for seconds, fixed in moments:
@@ -1212,26 +1214,52 @@ def collect(images: bool) -> Dict[str, str]:
                 Bucket="acme-new-bucket"
             )
             r = run_cli("changes-2", ["--create-excel", *regions], w)
+            # Two runs are only a second or two apart, so give each snapshot a
+            # fixed, distinct stamp one minute after the one before.
+            state_ids = sorted(
+                p.stem[len("state_") :]
+                for p in (w / "bom_output/state").glob("state_*.json")
+            )
+            fixed_ids = {
+                sid: f"{FIXED_STAMP[:-4]}{i:02d}00" for i, sid in enumerate(state_ids)
+            }
+
+            def fix_states(text: str) -> str:
+                for sid, fixed in fixed_ids.items():
+                    text = text.replace(sid, fixed)
+                return text
+
+            changelog = next((w / "bom_output").glob("changelog_*.md"))
+            tree = sorted(
+                str(p.relative_to(w))
+                for p in (w / "bom_output").rglob("*")
+                if p.is_file() and p.suffix in (".json", ".md")
+            )
+            tree = [
+                (
+                    f"bom_output/changelog_{fixed_ids[state_ids[-1]]}.md"
+                    if line.startswith("bom_output/changelog_")
+                    else fix_states(line)
+                )
+                for line in tree
+            ]
             add(
                 "changes-tree",
                 code(
-                    "\n".join(
-                        sorted(
-                            str(p.relative_to(w))
-                            for p in (w / "bom_output").rglob("*")
-                            if p.is_file() and p.suffix in (".json", ".md")
-                        )
-                    ),
+                    "\n".join(sorted(tree)),
                     title="bom_output/ after two runs (reports omitted)",
                 ),
             )
-            changelog = next((w / "bom_output").glob("changelog_*.md"))
             add(
                 "changes-changelog",
                 details(
-                    "changelog_" + FIXED_STAMP + ".md (first 30 lines)",
+                    f"changelog_{fixed_ids[state_ids[-1]]}.md (first 30 lines)",
                     code(
-                        "\n".join(normalise(changelog.read_text()).splitlines()[:30]),
+                        "\n".join(
+                            normalise(fix_states(changelog.read_text())).splitlines()[
+                                :30
+                            ]
+                        ),
                         "markdown",
                     ),
                 ),
@@ -1505,6 +1533,32 @@ def collect(images: bool) -> Dict[str, str]:
                 "network-columns",
                 f"The VPC sheet has {len(headers)} columns. The `raw_data.*` columns in this sample are:\n\n"
                 + code(", ".join(raw)),
+            )
+
+            # 13. network and security analysis sheets
+            w = workdir("analysis")
+            r = run_cli(
+                "analysis",
+                [
+                    "--create-excel",
+                    "--enable-network-analysis",
+                    "--enable-security-analysis",
+                    *regions,
+                ],
+                w,
+            )
+            add("analysis-console", code(r.console, title="Terminal"))
+            add(
+                "analysis-network",
+                excel_preview(
+                    r.files["xlsx:multi"], "Network Analysis", rows=1, max_cols=8
+                ),
+            )
+            add(
+                "analysis-security",
+                excel_preview(
+                    r.files["xlsx:multi"], "Security Analysis", rows=1, max_cols=9
+                ),
             )
     finally:
         drop_guard()

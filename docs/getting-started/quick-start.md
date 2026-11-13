@@ -35,7 +35,8 @@ Start small. One region is quick and cheap.
   either, you get Excel only.
 - `--account-regions` limits the scan to the regions you list, separated by
   commas. Without it, InvenTag scans every region enabled in the account,
-  which takes longer.
+  which takes longer. Keep `us-east-1` in the list: S3, IAM, CloudFront and
+  Route 53 are scanned only from there.
 
 At the end you see where the files went:
 
@@ -158,8 +159,10 @@ each resource. More in [Check tags against a policy](../guides/check-tag-complia
 ## What a run costs
 
 The read-only calls InvenTag makes are free. Cost Explorer
-`GetCostAndUsage` calls are not: AWS charges per request. See the current
+`GetCostAndUsage` calls are not: AWS charges per request, and a default run
+makes two for each account in our offline test. See the current
 [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
+Add `--no-billing-validation` to make no Cost Explorer calls.
 
 ## Next steps
 

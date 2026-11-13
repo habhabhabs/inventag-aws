@@ -10,6 +10,8 @@ This directory contains all images, diagrams, and other static assets used in th
 
 - `images/` - Screenshots, diagrams, and other images
 - `files/` - Downloadable files, templates, and other documents
+- `examples/` - Pictures and sample files that
+  `scripts/docs/generate_example_outputs.py` writes. Do not edit them by hand.
 
 ## Usage Guidelines
 
@@ -65,13 +67,8 @@ To verify that all assets are accessible from both GitHub and Docusaurus:
 
 ## Examples
 
-```markdown
-# In any documentation file
-![InvenTag Logo](/img/inventag-logo-placeholder.svg)
-![CLI Output Example](/img/cli-output.png)
-![Architecture Diagram](/img/architecture-overview.svg)
-
-[Download Excel Template](/files/default_excel_template.json)
-[Download Word Template](/files/default_word_template.yaml)
-[Download Account Example](/files/accounts-example.json)
-```
+The sample-output pictures are inserted by the generator script as
+`<img src={require("../assets/examples/img/<name>.png").default} ... />`
+between `<!-- BEGIN EXAMPLE OUTPUT: <name> -->` markers. Write other images
+and downloads as plain Markdown links relative to the page, for example
+`![Alt text](../assets/images/inventag-logo-placeholder.svg)`.

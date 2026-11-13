@@ -149,5 +149,5 @@ Always validate your configuration files before use:
 ## More Information
 
 - [Quick Start Guide](../QUICKSTART.md)
-- [Complete CLI User Guide](../docs/user-guides/CLI_USER_GUIDE.md)
-- [Configuration Guide](../docs/user-guides/CONFIGURATION_EXAMPLES.md)
+- [Command-line reference](../docs/reference/cli.md)
+- [Configuration files](../docs/reference/configuration-files.md)

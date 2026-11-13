@@ -1,6 +1,6 @@
 ---
 title: Network and security analysis
-description: The current state of InvenTag's network and security-group analysis flags, and how to review VPCs and security groups with the reports today.
+description: What InvenTag's network and security-group analysis flags add to the Excel report, what they leave out, and how to review VPCs and security groups.
 sidebar_position: 5
 slug: /architecture/network-analysis
 ---
@@ -12,33 +12,77 @@ InvenTag.
 
 **What you will know after reading:** what the analysis flags add to a report.
 
-## Current state
+## What the flags add
 
 InvenTag has two flags for this:
 
 - `--enable-network-analysis`: VPCs, subnets and how they are used.
-- `--enable-security-analysis`: security groups and network ACLs.
+- `--enable-security-analysis`: security groups.
 
 Each flag adds one sheet to the Excel report:
 
 - `--enable-network-analysis` adds the `Network Analysis` sheet. It lists each
-  VPC with its CIDR block, total and available IP addresses, and subnets.
+  VPC with its CIDR block, total and available IP addresses, utilisation and
+  subnet count, then a table of subnets.
 - `--enable-security-analysis` adds the `Security Analysis` sheet. It lists
-  each security group with its rules, its risk level and the resources that
-  use it.
+  each security group with its rule counts, a risk level and whether it has
+  permissive rules, then a table of each rule.
 
-InvenTag writes a sheet only if the scan finds VPCs or security groups. The
-Word report does not have these sections.
+Limits:
+
+- A sheet is written only if the scan finds VPCs or security groups.
+- The Word report has no network or security sections.
+- Network ACLs are not part of the Security Analysis sheet. They appear on the
+  `VPC` sheet.
+- With `--template`, the flags add **no sheets**: the built-in report
+  templates have no such sheets (we checked with `--template standard-bom`).
+  Use the default layout, or a layout file (`--excel-template`), which keeps
+  the `network_analysis` and `security_analysis` sections.
+- The risk level is a simple rule in InvenTag, not a security assessment.
 
 ```bash
 ./inventag.sh --create-excel --enable-network-analysis --enable-security-analysis
 ```
 
-Example of the `Security Analysis` sheet:
+What a run prints, and the first rows of each sheet, from an offline run
+against mocked AWS (sample data):
 
-| Security Group ID | Group Name | VPC ID | Risk Level | Inbound Rules | Has Permissive Rules |
-|---|---|---|---|---|---|
-| sg-0bf7019da40cb75c1 | web | vpc-d242bc5ced0c09235 | High | 1 | Yes |
+<!-- BEGIN EXAMPLE OUTPUT: analysis-console -->
+
+```text title="Terminal"
+inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+Performing network analysis...
+Network analysis completed for 7 VPC resources
+Performing security analysis...
+Security analysis completed for 1 security groups
+Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
+```
+
+<!-- END EXAMPLE OUTPUT: analysis-console -->
+
+<!-- BEGIN EXAMPLE OUTPUT: analysis-network -->
+
+**Sheets:** `Summary`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`, `Network Analysis`, `Security Analysis`
+
+`Network Analysis` sheet, first rows:
+
+| VPC ID | VPC Name | CIDR Block | Total IPs | Available IPs | Utilization % | Subnet Count | Associated Resources |
+|---|---|---|---|---|---|---|---|
+| vpc-b790a8316b5a9b85e | vpc-b790a8316b5a9b85e | 172.31.0.0/16 | 65531 | 24545 | 0.0% | 6 | 1 |
+
+<!-- END EXAMPLE OUTPUT: analysis-network -->
+
+<!-- BEGIN EXAMPLE OUTPUT: analysis-security -->
+
+**Sheets:** `Summary`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`, `Network Analysis`, `Security Analysis`
+
+`Security Analysis` sheet, first rows:
+
+| Security Group ID | Group Name | VPC ID | Risk Level | Inbound Rules | Outbound Rules | Associated Resources | Has Permissive Rules | Permissive Rule Details |
+|---|---|---|---|---|---|---|---|---|
+| sg-46eeda8dc8fa7955d | default | vpc-b790a8316b5a9b85e | medium | 0 | 1 | 0 | No |  |
+
+<!-- END EXAMPLE OUTPUT: analysis-security -->
 
 ## More detail on network resources
 

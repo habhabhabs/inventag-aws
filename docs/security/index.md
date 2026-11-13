@@ -64,10 +64,11 @@ fixes: 3.10 reached end of life in October 2026
 
 | What | How, on the current `main` branch |
 |---|---|
-| Python dependencies | Listed in `requirements.txt` with minimum versions (`>=`), not exact pins. A fresh install gets the newest matching releases. |
-| Development tools | Listed in `requirements-dev.txt`, also with minimum versions. |
+| Python dependencies | Listed in `requirements.txt` with minimum versions (`>=`), not exact pins. Each security floor names the advisory it avoids. A fresh install gets the newest matching releases. |
+| Development tools | Listed in `requirements-dev.txt` with exact pins (`==`) for the test and lint tools, plus minimum versions for their dependencies. |
 | Website | Locked in `website/package-lock.json`. |
-| Scanning | A GitHub Actions workflow runs on pushes to `main`, on pull requests and weekly (Sundays, 02:00 UTC). It runs Bandit, Safety, pip-audit, `npm audit` and detect-secrets. Today, findings are reported but do not fail the workflow. |
+| Dependency check in CI | The CI workflow runs `pip-audit -r requirements.txt` and fails on a finding. It runs Bandit and `npm audit` too, but does not fail on their findings. |
+| Scheduled scan | A separate workflow runs on pushes to `main`, on pull requests and weekly (Sundays, 02:00 UTC). It runs Bandit, Safety, pip-audit, `npm audit` and detect-secrets. Findings are reported but do not fail that workflow. |
 | Software bill of materials | The documentation build generates SBOM files for the Python and website dependencies. |
 
 To check your own installation:

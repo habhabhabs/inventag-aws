@@ -21,8 +21,9 @@ InvenTag can reach your AWS account.
   [AWS Command Line Interface (AWS CLI)](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
   is optional, but it is the easiest way to set them up.
 
-InvenTag is not on PyPI (the Python Package Index). You install it from the
-GitHub repository.
+InvenTag is not on PyPI (the Python Package Index) yet. The repository
+builds a package named `inventag-aws`, but we found no published release, so
+install it from the GitHub repository.
 
 ## Download and install
 
@@ -36,8 +37,10 @@ pip install -r requirements.txt
 ./inventag.sh --help               # Windows: inventag.bat --help
 ```
 
-`inventag.sh` and `inventag.bat` find a Python interpreter and run
+`inventag.sh` and `inventag.bat` look for Python 3.11 or later and run
 `inventag_cli.py`. You can also run `python inventag_cli.py --help` directly.
+If you want an `inventag` command on your path, run `pip install .` in the
+cloned folder.
 
 To use a fixed release instead of the newest code, check out its tag, for
 example `git checkout v5.0.0`. The
@@ -98,7 +101,7 @@ Before your first real scan, give the identity a read-only policy:
 
 ```bash title="Terminal"
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest tests/unit/templating tests/integration/templating
+python -m pytest -q
 ```
 
 The [contributing guide](../development/CONTRIBUTING.md) explains the full test
@@ -108,13 +111,10 @@ suite.
 
 | What you see | What to do |
 |---|---|
-| `InvenTag requires Python 3.8 or later.` | Install Python 3.11 or later and check that `python3 --version` works. |
+| `Error: No suitable Python interpreter found.` or `InvenTag requires Python 3.11 or later` | Install Python 3.11 or later and check that `python3 --version` works. |
 | `Permission denied: ./inventag.sh` | Run `chmod +x inventag.sh`. |
 | `ModuleNotFoundError` | Activate the virtual environment and run `pip install -r requirements.txt` again. |
 | `No AWS credentials found!` | Run `aws sso login` or `aws configure`, or set `AWS_PROFILE`. |
-
-The launcher's message still says 3.8 because it only checks for that old
-minimum; use 3.11 or later anyway.
 
 ## Next step
 

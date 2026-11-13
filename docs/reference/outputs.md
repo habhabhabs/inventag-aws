@@ -30,9 +30,9 @@ data).
 | `multi_account_bom_<timestamp>.xlsx` | `--create-excel`, or no output flag | The Excel report |
 | `multi_account_bom_<timestamp>.docx` | `--create-word` | The Word report |
 | `tag_compliance_<timestamp>.json` | A tag policy is active | Tag check results |
-| `state/state_<timestamp>.json` | Every run, unless `--disable-state-management` | Snapshot of every resource found |
+| `state/state_<timestamp>.json` | Every run, unless `--disable-state-management` | Snapshot of every resource found. Snapshots older than 30 days, or beyond the newest 100, are removed. |
 | `state/metadata.json` | With snapshots | Index of snapshots: time, account, regions, resource count, checksum |
-| `changelog_<timestamp>.md` | Second and later runs | Change report. Currently always reports 0 changes; see [Track changes](../guides/track-changes.md). |
+| `changelog_<timestamp>.md` | Second and later runs, unless `--no-generate-changelog` or `--disable-delta-detection` | What was added, removed or changed since the previous snapshot. See [Track changes](../guides/track-changes.md). |
 | The file you name with `--audit-output` | When you ask for it | Every AWS operation the run called |
 
 `<timestamp>` is `YYYYMMDD_HHMMSS`.
@@ -42,9 +42,11 @@ data).
 **Without a template**, the workbook has:
 
 - **Summary:** Service, Resource Count, Percentage, and a total.
-- **One sheet per service** (for example `EC2`, `S3`, `VPC`) with every field
-  found on its resources, including flattened `raw_data.*` and `tags.*`
-  columns.
+- **One sheet per service** (for example `EC2`, `S3`, `VPC`), sorted by
+  service name, with every field found on its resources, including flattened
+  `raw_data.*` and `tags.*` columns. Rows are sorted by type, name and ID.
+- **Network Analysis** and **Security Analysis** sheets, only with
+  `--enable-network-analysis` or `--enable-security-analysis`.
 
 **With a report template**, the layout follows the template:
 
@@ -125,9 +127,9 @@ screen readers. The logo, if any, carries alt text.
 <!-- BEGIN EXAMPLE OUTPUT: changes-tree -->
 
 ```text title="bom_output/ after two runs (reports omitted)"
-bom_output/changelog_20261112_090000.md
+bom_output/changelog_20261112_090100.md
 bom_output/state/metadata.json
-bom_output/state/state_20261112_090100.json
+bom_output/state/state_20261112_090000.json
 bom_output/state/state_20261112_090100.json
 ```
 

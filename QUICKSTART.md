@@ -25,12 +25,15 @@ pip install -r requirements.txt
 
 Before you rely on it:
 
-- Use a **read-only** IAM identity: [IAM permissions](docs/getting-started/installation.md#iam-permissions).
-- By default, discovery makes two Cost Explorer requests for each account.
-  AWS bills each request. Add `--no-billing-validation` to make no Cost
+- Use a **read-only** IAM identity: [Set up read-only access](docs/guides/read-only-access.md)
+  and [IAM permissions](docs/reference/iam-permissions.md).
+- By default, discovery made two Cost Explorer requests for each account in our
+  offline test. AWS bills each request. Add `--no-billing-validation` to make no Cost
   Explorer request.
 - `--create-google-docs`, `--per-account-reports`, `--compliance-standard`,
   `--risk-threshold` and `--disable-production-safety` are not implemented.
   The CLI stops with exit code `2` if you use one of them. See
   [Current status](docs/getting-started/status.md).
+- Keep `us-east-1` in `--account-regions`: S3, IAM, CloudFront and Route 53 are
+  scanned only from there.
 - On Windows use `inventag.bat` instead of `./inventag.sh`.

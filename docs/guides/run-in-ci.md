@@ -66,7 +66,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r inventag/requirements.txt
-      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+      - uses: aws-actions/configure-aws-credentials@<full-commit-SHA> # pin the current release
         with:
           role-to-assume: arn:aws:iam::123456789012:role/InvenTagGitHubReadOnly
           aws-region: us-east-1
@@ -80,9 +80,12 @@ jobs:
           retention-days: 30
 ```
 
-Each action is pinned to a full commit SHA, with the version in a comment.
-That protects you if a tag is moved to malicious code. Update the SHAs when
-you update the versions.
+Pin each action to a full commit SHA, with the version in a comment. That
+protects you if a tag is moved to malicious code. The SHAs above for
+`checkout`, `setup-python` and `upload-artifact` are the ones this repository's
+own workflows use. For `aws-actions/configure-aws-credentials`, look up the
+SHA of its current release on its GitHub releases page: we did not verify one
+for this page. Update the SHAs when you update the versions.
 
 InvenTag runs from your repository's folder, so `.inventag/templates/nightly.yaml`
 is found by name.
@@ -113,7 +116,7 @@ $ echo $?
 | Exit code | Meaning |
 |---|---|
 | 0 | Reports written, no tag violations (or no failing policy) |
-| 1 | Error: invalid template, credentials or a failed run |
+| 1 | Error: invalid template, credentials, every account failed, or a failed S3 upload |
 | 3 | Reports written, tag policy violations found |
 
 ## Keep it safe

@@ -28,8 +28,7 @@ const PAGE_DESCRIPTION =
   'InvenTag is an open-source Python CLI. It lists the resources in your AWS accounts, ' +
   'shows how each one is tagged and writes an Excel or Word bill of materials.';
 
-// The templates guide is being written in parallel (docs/templates).
-// TODO(templates-route): switch to '/docs/templates' once that page exists on main.
+// The templates guide: docs/templates/index.md
 const TEMPLATES_LINK = '/docs/templates/';
 
 // Commands from docs/getting-started/quick-start.md
@@ -79,7 +78,7 @@ function StructuredData(): ReactNode {
         applicationSubCategory: 'Command-line tool',
         operatingSystem: 'Linux, macOS, Windows',
         softwareVersion: VERSION,
-        softwareRequirements: 'Python 3.8 or newer; AWS credentials with read-only permissions',
+        softwareRequirements: 'Python 3.11 or newer; AWS credentials with read-only permissions',
         license: 'https://opensource.org/licenses/MIT',
         isAccessibleForFree: true,
         offers: {'@type': 'Offer', price: '0', priceCurrency: 'USD'},
@@ -324,7 +323,7 @@ function Capabilities(): ReactNode {
           icon={<IconTag />}
           title="Your tags, your columns"
           flag="--tag-mappings"
-          link="/docs/templates/"
+          link="/docs/user-guides/configuration-examples"
           linkLabel="Map tags to columns"
           preview={
             <pre className={styles.snippet} tabIndex={0}>
@@ -335,7 +334,7 @@ function Capabilities(): ReactNode {
     name: "Cost Center"`}</code>
             </pre>
           }>
-          <p>Turn the tags your team agreed on into named columns in the report. Add your own service descriptions too.</p>
+          <p>Turn the tags your team agreed on into named columns in the default report. Add your own service descriptions too.</p>
         </Cell>
         <Cell
           className={styles.span4}
@@ -360,25 +359,27 @@ function Capabilities(): ReactNode {
           link={TEMPLATES_LINK}
           linkLabel="Browse the templates"
           preview={
-            <ul className={styles.fileList} aria-label="Template files in the repository">
+            <ul className={styles.fileList} aria-label="Built-in templates">
               <li>
                 <span>Report layouts</span>
-                <code>templates/default_excel_template.json</code>
-                <code>templates/default_word_template.yaml</code>
+                <code>standard-bom</code>
+                <code>executive-summary</code>
               </li>
               <li>
                 <span>Tag policies</span>
-                <code>config/aws-prescriptive-guidance/tagging-dictionary.yaml</code>
+                <code>finops-cost-allocation</code>
+                <code>security-baseline</code>
               </li>
               <li>
-                <span>Account configs</span>
-                <code>examples/accounts_*.json</code>
+                <span>Run settings</span>
+                <code>single-account</code>
+                <code>ci-pipeline</code>
               </li>
             </ul>
           }>
           <p>
-            Start from files that come with the project: report layouts, a tagging dictionary based on AWS
-            Prescriptive Guidance, and account files for profiles, roles and CI secrets.
+            Start from eight built-in templates: report layouts, tag policies and run settings. List them with{' '}
+            <code>./inventag.sh templates list</code>, copy one into your project and change only what you need.
           </p>
         </Cell>
         <Cell
@@ -399,7 +400,7 @@ function Capabilities(): ReactNode {
           title="Tag policy checks"
           link="/docs/architecture/tag-compliance"
           linkLabel="Tag compliance">
-          <p>Check for required tags and allowed values, using your own policy file. This runs as a separate script for now.</p>
+          <p>Check for required tags and allowed values with a tag-policy template. Results go to a sheet, a Word section and a JSON file.</p>
         </Cell>
       </div>
     </section>
@@ -454,8 +455,12 @@ function Honest(): ReactNode {
             <Link to="/docs/getting-started/status">current status page</Link> lists what works today.
           </li>
           <li>
-            Discovery calls Cost Explorer, and AWS charges for each Cost Explorer request. Read the{' '}
+            By default, discovery calls Cost Explorer, and AWS charges for each Cost Explorer request. Read the{' '}
             <Link to="/docs/getting-started/status#costs">notes on cost</Link> before you scan many accounts.
+          </li>
+          <li>
+            InvenTag has its own discovery code for 24 AWS services and has only been tested against mocked AWS,
+            not a real account.
           </li>
           <li>
             It gathers evidence, such as a list of resources and how well they are tagged. It does not certify

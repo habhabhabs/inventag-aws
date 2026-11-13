@@ -8,39 +8,75 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The Excel and Word reports now list services in name order and sort the rows
+  of each service. Before, the order followed the order in which parallel
+  discovery finished, so two runs on the same estate could give different
+  sheet and row order.
+- Several links in `README.md`, `config/README.md` and `examples/README.md`
+  pointed at pages that no longer exist.
+
+### Changed
+
+- Every page in `docs/` was checked against the code of 5.0.0 and corrected.
+  The page "Feature status and known limitations" lists the limits found:
+  global services are scanned only from `us-east-1`, tags on Lambda, RDS,
+  DynamoDB, SQS and SNS resources are not matched because the built ARN
+  differs from the real one, one failed account does not change the exit
+  code, and others.
+- The sample outputs in the docs are generated again from the current code.
+  `scripts/docs/generate_example_outputs.py` now gives the same IDs and
+  timestamps on every run, and `--check` works without rendering pictures.
+- `README.md`, `QUICKSTART.md` and the website landing page say Python 3.11 or
+  later, and describe tag-policy templates and the change report as they work
+  today.
+
 ### Open work
 
 These items are not done. A contributor can start any of them.
 
-- Docusaurus is at 3.8.1. The upgrade to the newest major version is not done.
-- The visual redesign of the website and the landing page is not done.
+- Resources of Lambda, RDS, DynamoDB, SQS, SNS and VPC get an ARN that InvenTag
+  builds and that differs from the real ARN. Tags from the Resource Groups
+  Tagging API are matched by ARN, so these resources lose their tags and a tag
+  policy reports them as missing tags. With `--fallback-display always`, they
+  appear twice.
+- Global services (S3, IAM, CloudFront, Route 53) are scanned only if
+  `us-east-1` is in the region list.
+- A run in which some accounts fail exits with code 0, and the report does not
+  say which accounts are missing.
+- The analysis flags `--enable-network-analysis` and `--enable-security-analysis`
+  add no sheets with `--template`.
+- `--tag-mappings` and `--service-descriptions` add columns only to the default
+  workbook, not with `--template`.
+- A custom description in a service-descriptions file is ignored for S3, EC2,
+  RDS, Lambda and VPC unless the entry names a `template`.
 - There are two template mechanisms: named templates (`--template`,
   `inventag/templating/`) and layout files (`--word-template`,
   `--excel-template`, `inventag/reporting/report_template.py`). Merge them
   into one.
-- Only some documentation pages have example output.
-- The pages in `docs/guides/`, `docs/examples/` and `docs/reference/` were
-  written before release 5.0.0. The flag tables are corrected. Do a full
-  check of each page against the CLI.
-- `--validate-credentials` is not re-tested.
+- `inventag/discovery/intelligent_discovery.py` logs
+  `'OptimizedAWSDiscovery' object has no attribute '_snake_case'` at debug level
+  for each operation. The results of the run are not affected.
 - AWS API calls are not checked against the current AWS documentation for
   deprecated or renamed operations.
-- `inventory.py` has a fixed fallback region list. The CLI uses it only if the
-  live region lookup fails.
+- `cloud_bom_generator.py` falls back to four regions when `DescribeRegions`
+  fails. `inventory.py` has a different fallback list of fourteen regions.
 - `--bom-config` applies only the `BOMProcessingConfig` field names. It ignores
   the other documented keys without a message.
 - `--enable-cost-analysis` calls Cost Explorer, also with
   `--no-billing-validation`.
 - `--s3-kms-key-id` is optional with `--s3-encryption aws:kms`. The help text
   says that it is necessary.
-- `--validate-config` calls AWS to do a check of the credentials unless you
-  add `--skip-credential-validation`.
-- With `--verbose`, each log line shows two times.
+- `--validate-config` and `--validate-config-only` call AWS (credential check
+  and `DescribeRegions`) unless you add `--skip-credential-validation`, and
+  `--validate-config-only` still makes the `DescribeRegions` call.
+- With `--verbose` or `--debug`, some log lines (from `inventag.discovery`)
+  show twice.
+- A second run creates an empty `bom_output/changelogs/` folder.
 - These modules are not on the CLI path: `reporting/template_framework.py`,
   `branding_system.py`, `word_builder.py`, `excel_builder.py`,
-  `document_generator.py`, `configuration_manager.py`. The page
-  `docs/architecture/template-framework.md` describes features that they do
-  not supply.
+  `document_generator.py`, `configuration_manager.py`.
 - No test runs against a real AWS account. All tests use `moto`.
 
 ## [5.0.0] - 2026-11-12
@@ -128,7 +164,7 @@ These items are not done. A contributor can start any of them.
 
 ### Changed
 
-- Website cookie banner: the two choices are "Essential only" and "Allow
+- Website cookie banner: the two choices are "Just the essentials" and "Allow
   analytics". The two buttons have the same style and a visible border.
   Analytics loads only after the visitor selects "Allow analytics".
 - `datetime.utcnow()` is replaced with timezone-aware time
