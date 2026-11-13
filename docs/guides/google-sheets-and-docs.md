@@ -1,6 +1,6 @@
 ---
 title: Google Sheets and Docs output
-description: Write the InvenTag inventory to Google Sheets and Google Docs: how to sign in, who can open the files, and what has not been verified against real Google.
+description: "Write the InvenTag inventory to Google Sheets and Google Docs: how to sign in, who can open the files, and what has not been verified against real Google."
 sidebar_position: 9
 ---
 
