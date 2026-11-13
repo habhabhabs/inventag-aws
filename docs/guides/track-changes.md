@@ -66,7 +66,9 @@ The `metadata` part of a snapshot records the snapshot version (`1.1`;
 version `1.0` files still load), `accounts_scanned` and `accounts_failed`.
 Values of fields that often hold secrets, such as Lambda environment
 variables, passwords, tokens and private keys, are replaced by
-`***REDACTED***`; the names stay. A change to such a value is not reported.
+`***REDACTED***`; the names stay. The full list, which also covers
+CloudFormation stack outputs, Glue trigger arguments, connection strings and
+signed URLs, is on [Feature status](../getting-started/status.md#what-inventag-finds-and-what-it-does-not). A change to such a value is not reported.
 Snapshots from earlier versions may still hold these values, so delete or
 restrict old `bom_output/` folders. The first run after the upgrade shows the
 masked values as changed.

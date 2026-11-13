@@ -81,13 +81,21 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   informes, la salida JSON, las instantáneas de estado, los puntos de control de
   reanudación y los registros: variables de entorno de Lambda y App Runner,
   valores de entorno de ECS y CodeBuild, datos de usuario de EC2, valores de
-  parámetros y de salidas de CloudFormation, argumentos de trabajos y
-  desencadenadores de Glue y propiedades de conexión, y cualquier campo con un
-  nombre como password, secret, token, private key o credentials. Los nombres
-  se mantienen.
+  parámetros de CloudFormation, valores de salida de pilas y cuerpos de
+  plantilla de conjuntos de pilas, argumentos de trabajos, desencadenadores y
+  ejecuciones de trabajos de Glue y propiedades de conexión, argumentos de
+  trabajos de EMR on EKS, códigos de activación de WorkSpaces Thin Client,
+  carteras de certificados de DMS, cadenas de conexión, URL firmadas, de
+  descarga y de carga, tokens de Splunk HEC, de Grafana y de unión, y cualquier
+  campo con un nombre como password, secret, token, access o refresh token,
+  private key o credentials, también dentro de texto JSON. Los nombres se
+  mantienen.
 - **Los secretos de otros campos no se detectan.** InvenTag se guía por el
-  nombre del campo, así que un secreto en una descripción, una etiqueta u otro
-  campo de texto libre no se oculta.
+  nombre del campo, así que un secreto en una descripción, una etiqueta, otro
+  campo de texto libre o un campo que AWS añada más adelante se copia tal cual
+  en los informes.
+- **Las etiquetas se muestran tal cual**, también cuando una clave de etiqueta
+  parece un secreto, como `password`.
 - **Los informes y las instantáneas escritos por versiones anteriores a v1.2.0
   pueden contener valores secretos.** Borra o restringe las carpetas
   `bom_output/` antiguas y las copias compartidas.
@@ -226,6 +234,12 @@ veces (modo de reintento standard); `AWS_RETRY_MODE` y `AWS_MAX_ATTEMPTS` cambia
   ejecución de la CLI.
 - **Usar `CloudBOMGenerator` desde tu propio código Python** no instala la
   protección de solo lectura. Solo lo hace el comando `inventag`.
+- **Una plantilla de configuración puede fijar la carpeta de salida y las
+  cuentas y roles que se analizan.** Usa solo plantillas de confianza.
+- **Las sesiones de rol asumido duran una hora y no se renuevan**, así que el
+  análisis de una cuenta que dure más se encuentra con un token caducado.
+- **MFA se admite mediante perfiles de AWS** (`mfa_serial`), no para entradas
+  `role_arn` de un archivo de cuentas.
 
 ## Pruebas y lista de materiales de software {#tests-and-the-software-bill-of-materials}
 

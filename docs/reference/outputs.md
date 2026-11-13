@@ -57,7 +57,8 @@ data).
   monthly costs from the AWS Pricing API, not your invoice.
 
 Values of fields that often hold secrets, such as Lambda environment
-variables, show `***REDACTED***` in every report, snapshot and log. The field
+variables, CloudFormation stack outputs, Glue trigger arguments, connection
+strings and signed URLs, show `***REDACTED***` in every report, snapshot and log. The field
 names stay. See [Feature status](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 
 **With a report template**, the layout follows the template:

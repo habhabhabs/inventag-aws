@@ -56,7 +56,7 @@ Cada instantánea contiene todos los recursos que encontró la ejecución:
 
 La parte `metadata` de una instantánea registra la versión de la instantánea (`1.1`; los archivos de la versión `1.0` aún se cargan),
 `accounts_scanned` y `accounts_failed`. Los valores de campos que suelen contener secretos, como las variables de entorno de Lambda,
-contraseñas, tokens y claves privadas, se sustituyen por `***REDACTED***`; los nombres se conservan.
+contraseñas, tokens y claves privadas, se sustituyen por `***REDACTED***`; los nombres se conservan. La lista completa, que también incluye las salidas de pilas de CloudFormation, los argumentos de desencadenadores de Glue, las cadenas de conexión y las URL firmadas, está en [Estado de las funciones](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 Un cambio en uno de esos valores no se informa. Las instantáneas de versiones anteriores pueden seguir conteniendo esos valores,
 así que borra o restringe las carpetas `bom_output/` antiguas. La primera ejecución tras la actualización muestra los valores enmascarados como cambiados.
 

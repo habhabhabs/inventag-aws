@@ -52,7 +52,7 @@ bom_output/state/state_20261112_090100.json
 ```
 
 快照的 `metadata` 部分記錄快照版本（`1.1`；`1.0` 版本的檔案仍可載入）、`accounts_scanned` 和 `accounts_failed`。
-經常儲存機密的欄位的值，例如 Lambda 環境變數、密碼、權杖和私鑰，會被替換為 `***REDACTED***`；名稱保留。
+經常儲存機密的欄位的值，例如 Lambda 環境變數、密碼、權杖和私鑰，會被替換為 `***REDACTED***`；名稱保留。完整列表（還包括 CloudFormation 堆疊輸出、Glue 觸發器引數、連線字串和簽名 URL）見[功能狀態](../getting-started/status.md#what-inventag-finds-and-what-it-does-not)。
 這類值的變化不會被報告。早期版本的快照中可能仍有這些值，所以請刪除或限制存取舊的 `bom_output/` 資料夾。
 升級後的第一次執行會把被遮蔽的值顯示為已變化。
 

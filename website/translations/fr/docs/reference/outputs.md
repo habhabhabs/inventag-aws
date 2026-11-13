@@ -57,7 +57,8 @@ d’exemple).
   mensuels estimés à partir de l’API AWS Pricing, pas votre facture.
 
 Les valeurs des champs qui contiennent souvent des secrets, comme les variables
-d’environnement Lambda, apparaissent sous la forme `***REDACTED***` dans chaque
+d’environnement Lambda, les sorties de piles CloudFormation, les arguments des
+déclencheurs Glue, les chaînes de connexion et les URL signées, apparaissent sous la forme `***REDACTED***` dans chaque
 rapport, instantané et journal. Les noms des champs restent. Voir
 [État des fonctionnalités](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 

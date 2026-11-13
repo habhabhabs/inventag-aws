@@ -67,9 +67,14 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **不收集：** 机密值、参数值、对象内容或任何其他数据。只读防护会阻止返回这些内容的调用。
 - **允许的响应中的机密值会被遮盖。** 有些读取调用会在设置旁边返回机密。常用于存放机密的字段，其值在报告、
   JSON 输出、状态快照、续扫检查点和日志中会被替换为 `***REDACTED***`：Lambda 和 App Runner 环境变量、
-  ECS 和 CodeBuild 环境值、EC2 用户数据、CloudFormation 参数值和输出值、Glue 作业和触发器参数以及连接属性，
-  以及任何名称类似 password、secret、token、private key 或 credentials 的字段。名称会保留。
-- **其他字段中的机密不会被发现。** InvenTag 按字段名称判断，因此描述、标签或其他自由文本字段中的机密不会被遮盖。
+  ECS 和 CodeBuild 环境值、EC2 用户数据、CloudFormation 参数值、堆栈输出值和堆栈集模板正文、
+  Glue 作业、触发器和作业运行参数以及连接属性、EMR on EKS 作业参数、WorkSpaces Thin Client 激活码、
+  DMS 证书钱包、连接字符串、签名 URL、下载和上传 URL、Splunk HEC、Grafana 和加入令牌，
+  以及任何名称类似 password、secret、token、access token 或 refresh token、private key 或 credentials 的字段，
+  在 JSON 文本中也是如此。名称会保留。
+- **其他字段中的机密不会被发现。** InvenTag 按字段名称判断，因此描述、标签、其他自由文本字段或 AWS 以后新增的字段中的机密，
+  会按原样复制到报告中。
+- **标签按原样显示**，即使标签键看起来像机密，例如 `password`。
 - **v1.2.0 之前的版本写出的报告和快照可能包含机密值。** 请删除旧的 `bom_output/` 文件夹和共享副本，或限制其访问。
 - **全局服务**（IAM、S3 存储桶列表、CloudFront、Route 53、用于 CloudFront 的 WAF Web ACL，以及
   CloudFront 使用的 ACM 证书）每个账户只从 `us-east-1`（中国为 `cn-north-1`，GovCloud 为
@@ -150,6 +155,9 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   `CredentialManager.setup_cross_account_roles()` 只在 `allow_iam_writes=True` 时运行，S3 生命周期辅助函数
   只在 `allow_bucket_writes=True` 时运行。在 CLI 运行中，只读防护会阻止这两者。
 - **从你自己的 Python 代码中使用 `CloudBOMGenerator`** 不会安装只读防护。只有 `inventag` 命令会安装。
+- **配置模板可以设置输出文件夹以及要扫描的账户和角色。** 只使用你信任的模板。
+- **代入角色的会话持续一小时且不会刷新**，因此超过这个时长的账户扫描会遇到令牌过期。
+- **MFA 通过 AWS 配置文件（`mfa_serial`）支持**，不支持账户文件中的 `role_arn` 条目。
 
 ## 测试与软件物料清单 {#tests-and-the-software-bill-of-materials}
 

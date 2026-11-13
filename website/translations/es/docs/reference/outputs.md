@@ -57,7 +57,8 @@ de ejemplo).
   estimados a partir de la API AWS Pricing, no tu factura.
 
 Los valores de los campos que suelen contener secretos, como las variables de
-entorno de Lambda, aparecen como `***REDACTED***` en todos los informes,
+entorno de Lambda, las salidas de pilas de CloudFormation, los argumentos de
+desencadenadores de Glue, las cadenas de conexión y las URL firmadas, aparecen como `***REDACTED***` en todos los informes,
 instantáneas y registros. Los nombres de los campos se mantienen. Consulta
 [Estado de las funciones](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 

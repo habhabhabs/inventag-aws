@@ -56,7 +56,7 @@ Chaque instantané contient toutes les ressources trouvées par l’exécution :
 
 La partie `metadata` d’un instantané enregistre la version de l’instantané (`1.1` ; les fichiers de version `1.0` se chargent encore),
 `accounts_scanned` et `accounts_failed`. Les valeurs de champs qui contiennent souvent des secrets, comme les variables d’environnement Lambda,
-les mots de passe, les jetons et les clés privées, sont remplacées par `***REDACTED***` ; les noms restent.
+les mots de passe, les jetons et les clés privées, sont remplacées par `***REDACTED***` ; les noms restent. La liste complète, qui couvre aussi les sorties de piles CloudFormation, les arguments des déclencheurs Glue, les chaînes de connexion et les URL signées, se trouve dans [État des fonctionnalités](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 Un changement de l’une de ces valeurs n’est pas signalé. Les instantanés des versions antérieures peuvent encore contenir ces valeurs :
 supprimez ou restreignez les anciens dossiers `bom_output/`. La première exécution après la mise à jour affiche les valeurs masquées comme modifiées.
 

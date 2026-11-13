@@ -52,7 +52,7 @@ bom_output/state/state_20261112_090100.json
 ```
 
 快照的 `metadata` 部分记录快照版本（`1.1`；`1.0` 版本的文件仍可加载）、`accounts_scanned` 和 `accounts_failed`。
-经常保存机密的字段的值，例如 Lambda 环境变量、密码、令牌和私钥，会被替换为 `***REDACTED***`；名称保留。
+经常保存机密的字段的值，例如 Lambda 环境变量、密码、令牌和私钥，会被替换为 `***REDACTED***`；名称保留。完整列表（还包括 CloudFormation 堆栈输出、Glue 触发器参数、连接字符串和签名 URL）见[功能状态](../getting-started/status.md#what-inventag-finds-and-what-it-does-not)。
 这类值的变化不会被报告。早期版本的快照中可能仍有这些值，所以请删除或限制访问旧的 `bom_output/` 文件夹。
 升级后的第一次运行会把被屏蔽的值显示为已变化。
 

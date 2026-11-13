@@ -83,11 +83,18 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   replaced by `***REDACTED***` in reports, JSON output, state snapshots,
   resume checkpoints and logs: Lambda and App Runner environment variables,
   ECS and CodeBuild environment values, EC2 user data, CloudFormation
-  parameter and output values, Glue job and trigger arguments and connection
-  properties, and any field named like a password, secret, token, private key
-  or credentials. The names stay.
+  parameter values, stack output values and stack set template bodies, Glue
+  job, trigger and job-run arguments and connection properties, EMR on EKS job
+  arguments, WorkSpaces Thin Client activation codes, DMS certificate wallets,
+  connection strings, signed, download and upload URLs, Splunk HEC, Grafana and
+  join tokens, and any field named like a password, secret, token, access or
+  refresh token, private key or credentials, also inside JSON text. The names
+  stay.
 - **Secrets in other fields are not found.** InvenTag goes by field name, so a
-  secret in a description, a tag or another free-text field is not masked.
+  secret in a description, a tag, another free-text field or a field name AWS
+  adds later is copied into reports as it is.
+- **Tags are shown as they are**, also when a tag key looks like a secret, such
+  as `password`.
 - **Reports and snapshots written by versions before v1.2.0 may contain
   secret values.** Delete or restrict old `bom_output/` folders and shared
   copies.
@@ -214,6 +221,12 @@ override this.
   with `allow_bucket_writes=True`. The read-only guard blocks both in a CLI run.
 - **Using `CloudBOMGenerator` from your own Python code** does not install the
   read-only guard. Only the `inventag` command does.
+- **A config template can set the output folder and the accounts and roles to
+  scan.** Use only templates you trust.
+- **Assumed-role sessions last one hour and are not refreshed**, so an account
+  scan longer than that runs into an expired token.
+- **MFA is supported through AWS profiles** (`mfa_serial`), not for `role_arn`
+  entries in an accounts file.
 
 ## Tests and the software bill of materials
 

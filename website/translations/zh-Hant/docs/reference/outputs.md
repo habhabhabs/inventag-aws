@@ -45,7 +45,7 @@ InvenTag 寫入的其他位置只有你指定的檔案（`--log-file`、`--audit
 - **Network Analysis** 和 **Security Analysis** 工作表，僅在使用 `--enable-network-analysis` 或 `--enable-security-analysis` 時出現。
 - **Cost Analysis** 工作表，僅在使用 `--enable-cost-analysis` 時出現：根據 AWS Pricing API 估算的每月費用，不是你的帳單。
 
-常用於存放機密的欄位（例如 Lambda 環境變數）的值，在每份報告、快照和日誌中都顯示為 `***REDACTED***`。
+常用於存放機密的欄位（例如 Lambda 環境變數、CloudFormation 堆疊輸出、Glue 觸發器引數、連線字串和簽名 URL）的值，在每份報告、快照和日誌中都顯示為 `***REDACTED***`。
 欄位名稱會保留。參見[功能狀態](../getting-started/status.md#what-inventag-finds-and-what-it-does-not)。
 
 **使用報告範本時**，版面配置遵循範本：

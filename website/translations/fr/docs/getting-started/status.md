@@ -81,12 +81,20 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   rapports, la sortie JSON, les instantanés d’état, les points de reprise et les
   journaux : variables d’environnement Lambda et App Runner, valeurs
   d’environnement ECS et CodeBuild, données utilisateur EC2, valeurs des
-  paramètres et des sorties CloudFormation, arguments des tâches et déclencheurs
-  Glue et propriétés de connexion, et tout champ nommé comme password, secret,
-  token, private key ou credentials. Les noms restent.
+  paramètres CloudFormation, valeurs de sortie des piles et corps de modèle des
+  ensembles de piles, arguments des tâches, déclencheurs et exécutions de tâches
+  Glue et propriétés de connexion, arguments des tâches EMR on EKS, codes
+  d’activation WorkSpaces Thin Client, portefeuilles de certificats DMS, chaînes
+  de connexion, URL signées, de téléchargement et de téléversement, jetons
+  Splunk HEC, Grafana et de jonction, et tout champ nommé comme password,
+  secret, token, access ou refresh token, private key ou credentials, y compris
+  dans du texte JSON. Les noms restent.
 - **Les secrets dans d’autres champs ne sont pas trouvés.** InvenTag se fie au
-  nom du champ : un secret dans une description, une étiquette ou un autre champ
-  de texte libre n’est pas masqué.
+  nom du champ : un secret dans une description, une étiquette, un autre champ de
+  texte libre ou un champ qu’AWS ajoutera plus tard est copié tel quel dans les
+  rapports.
+- **Les étiquettes sont affichées telles quelles**, même quand une clé
+  d’étiquette ressemble à un secret, comme `password`.
 - **Les rapports et instantanés écrits par les versions antérieures à v1.2.0
   peuvent contenir des valeurs secrètes.** Supprimez ou restreignez les anciens
   dossiers `bom_output/` et les copies partagées.
@@ -223,6 +231,12 @@ limitation de débit (AWS ralentit vos requêtes). InvenTag relance un appel lim
   une exécution de la CLI.
 - **Utiliser `CloudBOMGenerator` depuis votre propre code Python** n’installe pas
   la protection en lecture seule. Seule la commande `inventag` le fait.
+- **Un modèle de configuration peut fixer le dossier de sortie ainsi que les
+  comptes et rôles à analyser.** N’utilisez que des modèles de confiance.
+- **Les sessions de rôle assumé durent une heure et ne sont pas renouvelées** :
+  l’analyse d’un compte qui dure plus longtemps tombe sur un jeton expiré.
+- **La MFA est prise en charge via les profils AWS** (`mfa_serial`), pas pour
+  les entrées `role_arn` d’un fichier de comptes.
 
 ## Tests et nomenclature logicielle {#tests-and-the-software-bill-of-materials}
 
