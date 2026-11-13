@@ -24,6 +24,8 @@ slug: /user-guides/cli-user-guide
 | 多個帳戶，每個帳戶中的角色同名 | `--accounts-file accounts.yaml --cross-account-role InvenTagReadOnly` |
 | 在被詢問時由你輸入的帳戶 | `--accounts-prompt` |
 
+`--accounts-file` 和 `--accounts-prompt` 只能給一個，不能同時給。`--cross-account-role` 中的完整角色 ARN 只指向一個帳戶，所以不能與它們同用。這兩種錯誤都會讓執行以結束代碼 2 停止。
+
 ## 選擇區域 {#choose-the-regions}
 
 ```bash
@@ -31,24 +33,70 @@ inventag --account-regions us-east-1,eu-west-1 --create-excel
 ```
 
 不使用 `--account-regions` 時，InvenTag 會向 EC2 詢問帳戶中啟用了哪些區域，並掃描全部區域。
-這樣很全面，但速度較慢。如果這次查詢失敗，InvenTag 會記錄一條警告，只掃描 `us-east-1`、
-`us-west-2`、`eu-west-1` 和 `ap-southeast-1`。
+這樣很全面，但速度較慢。如果 `ec2:DescribeRegions` 失敗，InvenTag 會改問 `account:ListRegions`。
+如果它也失敗，InvenTag 會記錄一條警告，並嘗試你的 AWS SDK 所知的該分割槽的每個區域。
+帳戶未啟用的區域會通不過存取檢查而被跳過。可以用 `--account-regions` 自己選擇區域。
 
-存取檢查失敗的區域會被跳過，並給出警告。
+存取檢查失敗的區域會被跳過，並給出警告。如果檢查在每個區域都失敗（因為該身份缺少 `ec2:DescribeRegions`），
+InvenTag 無法判斷哪些區域可用，會掃描全部區域。
 
 ### 全域性服務 {#global-services}
 
-你不需要把 `us-east-1` 加入列表。無論你選擇哪些區域，InvenTag 都會針對每個帳戶，
-從 `us-east-1` 讀取一次全域性服務：IAM、S3 儲存貯體列表、CloudFront、Route 53，
-以及 CloudFront 使用的 ACM 證書。如果 `us-east-1` 已在你的列表中，它們不會被重複讀取。
+你不需要把主區域加入列表。無論你選擇哪些區域，InvenTag 都會針對每個帳戶，
+從該分割槽的主區域讀取一次全域性服務：標準分割槽是 `us-east-1`，中國是 `cn-north-1`，GovCloud 是 `us-gov-west-1`。
+這些服務是 IAM、S3 儲存貯體列表、CloudFront、Route 53，以及 CloudFront 使用的 ACM 證書。
+如果主區域已在你的列表中，它們不會被重複讀取。
 
 - `--account-services` 和 `--account-tags` 對它們的作用與對其他資源相同。
   使用 `--account-services ec2` 時，不會讀取任何 IAM 資源。
 - IAM、CloudFront 和 Route 53 資源在區域欄中顯示 `global`。
   S3 儲存貯體顯示它自己所在的區域，例如 `eu-west-1`。
-- 它們的標籤來自 `us-east-1` 的 Resource Groups Tagging API，AWS 在那裡儲存全域性資源的標籤。
+- 它們的標籤來自主區域的 Resource Groups Tagging API，AWS 在那裡儲存全域性資源的標籤。
 - 離線測試覆蓋了僅 `eu-west-1`、所有區域，以及包含 `us-east-1` 的列表。
   真實 AWS 會如何回應，沒有測試過。
+
+### 服務 {#services}
+
+InvenTag 為 46 個 AWS 服務提供了自己的唯讀列舉呼叫。其他服務的資源只有在 Resource Groups Tagging API 返回它們時才會出現。
+見[功能狀態與已知限制](../getting-started/status.md)。
+
+### 限流與失敗的呼叫 {#throttling-and-failed-calls}
+
+對於被限流的呼叫，InvenTag 總共最多重試 10 次（AWS SDK 的 「standard」 重試模式）。
+如果你設定了 `AWS_RETRY_MODE` 或 `AWS_MAX_ATTEMPTS`，則使用你的值。仍然失敗的列舉會為該服務和區域記錄一條警告：
+`<service> <operation> in <region> failed (<error>); its resources there may be incomplete.`
+JSON 輸出會記錄每次列舉的結果。被拒絕的權限對每個服務只記錄一次。
+
+## 時間限制與平行帳戶 {#time-limit-and-parallel-accounts}
+
+InvenTag 預設同時掃描最多四個帳戶。用 `--max-concurrent-accounts`（至少為 1）修改，
+或用 `--disable-parallel-processing` 一次只掃描一個帳戶。
+
+每個帳戶有 `--account-processing-timeout` 秒（預設 1800，至少 60），從該帳戶開始掃描時計時。
+發現過程會提前一點結束，提前 300 秒或限制的 20%（取較小者），以便還能讀取標籤、詳情和帳單資料。
+
+超時的帳戶會被報告為失敗，其他帳戶會保留。它在限制之前找到的資源仍留在報告中，報告的備註會說明該帳戶不完整。
+下面是用 `--account-processing-timeout 60` 做離線執行時的一行日誌（範例資料）：
+
+```text
+Resource discovery failed for account 123456789012: timed out after 60 seconds (--account-processing-timeout); the 1302 resource(s) found before the limit are in the report, other resources of this account may be missing (45 service/region listing(s) did not finish)
+```
+
+如果沒有任何帳戶完成，InvenTag 仍會用已找到的內容寫出報告，記錄 `No account finished within its time limit`，並以結束代碼 1 結束。
+
+## 失敗的執行之後繼續 {#continue-after-a-failed-run}
+
+有帳戶失敗時，InvenTag 會把已完成的帳戶儲存在 `bom_output/state/partial/` 中。排除原因後，用同一條命令加上 `--resume` 再執行一次。
+InvenTag 只掃描缺少的帳戶：
+
+```bash
+inventag --accounts-file accounts.yaml --create-excel --resume
+```
+
+只有當命令使用相同的帳戶、區域、服務和篩選條件，並且儲存的結果不早於 `--resume-max-age-hours`（預設 24，最多 168）時，InvenTag 才會複用它。
+它需要狀態管理，所以 `--resume` 與 `--disable-state-management` 同用會以結束代碼 2 停止。
+日誌會顯示 `123456789012: reusing results scanned 2026-11-14 06:13 UTC (--resume)`，報告的備註會列出每個被複用的帳戶及其掃描時間。
+不帶 `--resume` 時，警告會說明存在已儲存的結果，並且它們會被重新掃描。所有帳戶都完成的執行結束後，InvenTag 會刪除已儲存的結果。
 
 ## 選擇輸出檔案 {#choose-the-output-files}
 
@@ -102,8 +150,7 @@ inventag --accounts-file accounts.yaml --validate-config-only --skip-credential-
 inventag templates validate my-scan
 ```
 
-結束代碼 0 表示檔案有效。第一條命令仍會發出一次 `ec2:DescribeRegions` 呼叫來列出區域；
-如果它失敗，會記錄一條警告並繼續。損壞的帳戶檔案如下所示（範例資料）：
+結束代碼 0 表示檔案有效。使用 `--skip-credential-validation` 時，第一條命令不發出任何 AWS 呼叫。損壞的帳戶檔案如下所示（範例資料）：
 
 ```text title="Terminal"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
@@ -113,6 +160,17 @@ inventag - ERROR - ❌ Some configuration files have validation errors
 $ echo $?
 1
 ```
+
+## 結束代碼 {#exit-codes}
+
+即使有帳戶失敗或什麼都沒找到，InvenTag 也以結束代碼 0 結束。兩個可選引數可以改變這一點。報告仍會寫出。
+
+| 引數 | 結束代碼 | 何時 |
+|---|---|---|
+| `--fail-on-account-error` | 5 | 有帳戶無法掃描，或只掃描了一部分 |
+| `--fail-if-empty` | 6 | 沒有可報告的資源 |
+
+完整列表見[在 CI/CD 中執行 InvenTag](./run-in-ci.md#exit-codes)。
 
 ## 下一步 {#next-steps}
 

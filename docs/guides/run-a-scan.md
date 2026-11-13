@@ -25,6 +25,10 @@ The `inventag` command works the same on Linux, macOS and Windows.
 | Several accounts, same role name in each | `--accounts-file accounts.yaml --cross-account-role InvenTagReadOnly` |
 | Accounts you type in when asked | `--accounts-prompt` |
 
+Give `--accounts-file` or `--accounts-prompt`, not both. A full role ARN in
+`--cross-account-role` names one account, so it cannot go with either of them.
+Both mistakes stop the run with exit code 2.
+
 ## Choose the regions
 
 ```bash
@@ -32,27 +36,92 @@ inventag --account-regions us-east-1,eu-west-1 --create-excel
 ```
 
 Without `--account-regions`, InvenTag asks EC2 which regions are enabled in
-the account and scans all of them. That is thorough but slow. If that lookup
-fails, InvenTag logs a warning and scans only `us-east-1`, `us-west-2`,
-`eu-west-1` and `ap-southeast-1`.
+the account and scans all of them. That is thorough but slow. If
+`ec2:DescribeRegions` fails, InvenTag asks `account:ListRegions`. If that also
+fails, it logs a warning and tries every region of the partition that your
+AWS SDK knows. Regions that the account has not enabled fail the access check
+and are skipped. Use `--account-regions` to choose the regions yourself.
 
-A region that fails its access check is skipped with a warning.
+A region that fails its access check is skipped with a warning. If the check
+fails in every region, because the identity lacks `ec2:DescribeRegions`,
+InvenTag cannot tell which regions work and scans all of them.
 
 ### Global services
 
-You do not need to add `us-east-1` to the list. For any region choice,
-InvenTag reads the global services once for each account, from `us-east-1`:
-IAM, the S3 bucket list, CloudFront, Route 53 and the ACM certificates that
-CloudFront uses. If `us-east-1` is in your list, they are not read twice.
+You do not need to add the home region to the list. For any region choice,
+InvenTag reads the global services once for each account, from the home region
+of the partition: `us-east-1` in the standard partition, `cn-north-1` in China
+and `us-gov-west-1` in GovCloud. These are IAM, the S3 bucket list,
+CloudFront, Route 53 and the ACM certificates that CloudFront uses. If the home
+region is in your list, they are not read twice.
 
 - `--account-services` and `--account-tags` apply to them like to any other
   resource. With `--account-services ec2`, no IAM resource is read.
 - IAM, CloudFront and Route 53 resources show `global` in the region column.
   An S3 bucket shows its own region, for example `eu-west-1`.
-- Their tags come from the Resource Groups Tagging API in `us-east-1`, where
-  AWS keeps the tags of global resources.
+- Their tags come from the Resource Groups Tagging API in the home region,
+  where AWS keeps the tags of global resources.
 - Offline tests cover `eu-west-1` alone, all regions, and a list that includes
   `us-east-1`. How real AWS answers is not tested.
+
+### Services
+
+InvenTag has its own read-only listing calls for 46 AWS services. Resources of
+other services appear only when the Resource Groups Tagging API returns them.
+See [Feature status and known limitations](../getting-started/status.md).
+
+### Throttling and failed calls
+
+InvenTag retries a throttled call up to 10 times in total (the AWS SDK
+"standard" retry mode). If you set `AWS_RETRY_MODE` or `AWS_MAX_ATTEMPTS`,
+your values are used instead. A listing that still fails is logged as a
+warning for that service and region: `<service> <operation> in <region>
+failed (<error>); its resources there may be incomplete.` The JSON output
+records how each listing ended. A denied permission is logged once for the
+service.
+
+## Time limit and parallel accounts
+
+InvenTag scans up to four accounts at a time. Change that with
+`--max-concurrent-accounts` (at least 1), or use
+`--disable-parallel-processing` to scan one account at a time.
+
+Each account has `--account-processing-timeout` seconds (default 1800, at
+least 60), counted from when that account's scan starts. Discovery stops a
+little earlier, by 300 seconds or 20% of the limit, whichever is smaller, so
+that tags, details and billing can still be read.
+
+An account that runs out of time is reported as failed, and the other accounts
+are kept. The resources it found before the limit stay in the report, and the
+report's notes say the account is incomplete. A log line from an offline run
+with `--account-processing-timeout 60` (sample data):
+
+```text
+Resource discovery failed for account 123456789012: timed out after 60 seconds (--account-processing-timeout); the 1302 resource(s) found before the limit are in the report, other resources of this account may be missing (45 service/region listing(s) did not finish)
+```
+
+If no account finishes, InvenTag still writes the report with what it found,
+logs `No account finished within its time limit`, and exits with code 1.
+
+## Continue after a failed run
+
+When some accounts fail, InvenTag saves the accounts that finished in
+`bom_output/state/partial/`. Fix the cause, then run the same command with
+`--resume`. InvenTag scans only the accounts that are missing:
+
+```bash
+inventag --accounts-file accounts.yaml --create-excel --resume
+```
+
+InvenTag reuses a saved result only if the command used the same accounts,
+regions, services and filters, and the result is not older than
+`--resume-max-age-hours` (default 24, at most 168). It needs state management,
+so `--resume` with `--disable-state-management` stops with exit code 2. The log
+says `123456789012: reusing results scanned 2026-11-14 06:13 UTC (--resume)`,
+and the report's notes list each reused account with its scan time. Without
+`--resume`, a warning says that saved results exist and are scanned again.
+InvenTag deletes the saved results after a run in which every account
+finishes.
 
 ## Choose the output files
 
@@ -112,9 +181,9 @@ inventag --accounts-file accounts.yaml --validate-config-only --skip-credential-
 inventag templates validate my-scan
 ```
 
-Exit code 0 means the files are valid. The first command still makes one
-`ec2:DescribeRegions` call to list regions; if it fails, it logs a warning and
-carries on. A broken accounts file looks like this (sample data):
+Exit code 0 means the files are valid. With `--skip-credential-validation`,
+the first command makes no AWS call. A broken accounts file looks like this
+(sample data):
 
 <!-- BEGIN EXAMPLE OUTPUT: error-bad-accounts -->
 
@@ -128,6 +197,18 @@ $ echo $?
 ```
 
 <!-- END EXAMPLE OUTPUT: error-bad-accounts -->
+
+## Exit codes
+
+InvenTag exits with code 0 even when an account failed or nothing was found.
+Two opt-in flags change that. The reports are still written.
+
+| Flag | Exit code | When |
+|---|---|---|
+| `--fail-on-account-error` | 5 | An account could not be scanned, or only partly |
+| `--fail-if-empty` | 6 | No resources to report |
+
+The full list is in [Run InvenTag in CI/CD](./run-in-ci.md#exit-codes).
 
 ## Next steps
 
