@@ -94,6 +94,15 @@ def partition_for_region(region: Optional[str]) -> str:
         return "aws-cn"
     if region.startswith("us-gov-"):
         return "aws-us-gov"
+    for prefix, partition in (
+        ("us-iso-", "aws-iso"),
+        ("us-isob-", "aws-iso-b"),
+        ("eu-isoe-", "aws-iso-e"),
+        ("us-isof-", "aws-iso-f"),
+        ("eusc-", "aws-eusc"),
+    ):
+        if region.startswith(prefix):
+            return partition
     return "aws"
 
 
