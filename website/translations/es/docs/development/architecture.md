@@ -1,6 +1,6 @@
 ---
 title: Cómo encaja el código
-description: Un mapa del paquete de Python de InvenTag (CLI, orquestación de varias cuentas, descubrimiento, procesamiento, plantillas, informes y estado) para quienes contribuyen.
+description: Un mapa del paquete de Python de InvenTag (CLI, varias cuentas, descubrimiento, procesamiento, plantillas, informes y estado) para quienes contribuyen.
 sidebar_position: 2
 slug: /architecture/core-module-integration
 ---

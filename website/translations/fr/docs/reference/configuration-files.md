@@ -1,6 +1,6 @@
 ---
 title: Fichiers de configuration
-description: Les formats de fichiers qu’InvenTag lit - fichiers de comptes, correspondances d’étiquettes et descriptions de services - avec les champs que les chargeurs acceptent réellement.
+description: Les formats de fichiers qu’InvenTag lit (comptes, correspondances d’étiquettes, descriptions de services) et les champs que les chargeurs acceptent réellement.
 sidebar_position: 2
 slug: /user-guides/configuration-examples
 ---

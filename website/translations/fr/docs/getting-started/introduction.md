@@ -1,6 +1,6 @@
 ---
 title: Ce qu’est InvenTag
-description: Ce que fait InvenTag en une exécution (trouver des ressources AWS, vérifier les étiquettes, écrire des rapports Excel et Word), ce qu’il écrit et ce qu’il n’est pas.
+description: Ce que fait InvenTag en une exécution (trouver les ressources AWS, vérifier les étiquettes, écrire des rapports Excel et Word), ce qu’il écrit et ses limites.
 sidebar_position: 1
 ---
 

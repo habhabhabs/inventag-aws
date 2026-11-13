@@ -1,6 +1,6 @@
 ---
 title: Fichiers de sortie
-description: Chaque fichier qu’InvenTag écrit - rapports Excel et Word, JSON de conformité des étiquettes, instantanés et journaux des changements - avec leurs noms, emplacements et contenus.
+description: Chaque fichier qu’InvenTag écrit (rapports Excel et Word, JSON de conformité, instantanés, journaux des changements), avec noms, emplacements et contenus.
 sidebar_position: 4
 ---
 

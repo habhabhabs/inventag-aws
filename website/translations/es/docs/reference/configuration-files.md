@@ -1,6 +1,6 @@
 ---
 title: Archivos de configuración
-description: Los formatos de archivo que lee InvenTag - archivos de cuentas, asignaciones de etiquetas y descripciones de servicios - con los campos que los cargadores aceptan de verdad.
+description: Los formatos de archivo que lee InvenTag (cuentas, asignaciones de etiquetas y descripciones de servicios) y los campos que los cargadores aceptan de verdad.
 sidebar_position: 2
 slug: /user-guides/configuration-examples
 ---

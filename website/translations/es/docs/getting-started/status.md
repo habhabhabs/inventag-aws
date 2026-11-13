@@ -1,6 +1,6 @@
 ---
 title: Estado de las funciones y limitaciones conocidas
-description: Qué funciones de InvenTag funcionan en la versión actual, cuáles son parciales, qué opciones se detienen con un error y los límites, costes y riesgos concretos que conviene conocer antes de depender de ella.
+description: Qué funciones de InvenTag funcionan, cuáles son parciales, qué opciones se detienen con un error y qué límites, costes y riesgos conocer antes de usarlo.
 sidebar_position: 5
 ---
 

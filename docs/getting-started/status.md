@@ -1,6 +1,6 @@
 ---
 title: Feature status and known limitations
-description: Which InvenTag features work in the current release, which are partial, which flags stop with an error, and the specific limits, costs and risks to know before you rely on it.
+description: Which InvenTag features work, which are partial, which flags stop with an error, and the limits, costs and risks to know before you rely on it.
 sidebar_position: 5
 ---
 

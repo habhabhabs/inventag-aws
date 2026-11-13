@@ -1,6 +1,6 @@
 ---
 title: Sécurité
-description: Comment signaler une vulnérabilité dans InvenTag, quelles versions de Python utiliser, comment les dépendances sont vérifiées et que faire après un incident de chaîne d’approvisionnement.
+description: Signaler une vulnérabilité d’InvenTag, versions de Python à utiliser, vérification des dépendances et conduite à tenir après un incident de sécurité.
 sidebar_position: 1
 ---
 

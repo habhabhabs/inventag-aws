@@ -1,6 +1,6 @@
 ---
 title: Archivos de salida
-description: Todos los archivos que escribe InvenTag - informes de Excel y Word, JSON de cumplimiento de etiquetas, instantáneas y registros de cambios - con sus nombres, ubicaciones y contenido.
+description: Los archivos que escribe InvenTag (informes Excel y Word, JSON de cumplimiento, instantáneas y registros de cambios), con nombres, ubicaciones y contenido.
 sidebar_position: 4
 ---
 

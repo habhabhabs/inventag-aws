@@ -1,6 +1,6 @@
 ---
 title: Glossaire
-description: Le sens en langage simple des termes utilisés dans la documentation d’InvenTag, du fichier de comptes et de l’ARN à la politique d’étiquetage et à la protection en lecture seule.
+description: Le sens simple des termes de la documentation d’InvenTag, du fichier de comptes et de l’ARN à la politique d’étiquetage et à la protection en lecture seule.
 sidebar_position: 6
 ---
 

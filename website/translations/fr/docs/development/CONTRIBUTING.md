@@ -1,6 +1,6 @@
 ---
 title: Contribuer à InvenTag
-description: Mettez en place un environnement de développement pour InvenTag, lancez les tests et les linters, construisez le site de documentation et ouvrez une pull request.
+description: Préparez un environnement de développement pour InvenTag, lancez les tests et les linters, construisez le site de documentation et ouvrez une pull request.
 sidebar_position: 1
 ---
 

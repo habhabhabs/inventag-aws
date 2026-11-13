@@ -1,6 +1,6 @@
 ---
 title: Autorisations IAM
-description: Les autorisations AWS IAM qu’InvenTag utilise, pourquoi chacune est nécessaire, lesquelles coûtent de l’argent et quelles fonctionnalités exigent des autorisations supplémentaires.
+description: "Les autorisations AWS IAM d’InvenTag : pourquoi chacune est nécessaire, lesquelles coûtent de l’argent et quelles fonctionnalités en exigent d’autres."
 sidebar_position: 3
 ---
 

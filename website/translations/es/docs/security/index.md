@@ -1,6 +1,6 @@
 ---
 title: Seguridad
-description: Cómo comunicar una vulnerabilidad en InvenTag, qué versiones de Python usar, cómo se comprueban las dependencias y qué hacer tras un incidente en la cadena de suministro.
+description: Cómo comunicar una vulnerabilidad en InvenTag, qué versiones de Python usar, cómo se revisan las dependencias y qué hacer tras un incidente de suministro.
 sidebar_position: 1
 ---
 

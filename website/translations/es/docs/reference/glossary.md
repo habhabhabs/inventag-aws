@@ -1,6 +1,6 @@
 ---
 title: Glosario
-description: Significados en lenguaje sencillo de los términos usados en la documentación de InvenTag, desde archivo de cuentas y ARN hasta política de etiquetas y protección de solo lectura.
+description: Qué significan de los términos de la documentación de InvenTag, del archivo de cuentas y el ARN a la política de etiquetas y la protección de solo lectura.
 sidebar_position: 6
 ---
 

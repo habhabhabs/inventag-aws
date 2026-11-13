@@ -1,6 +1,6 @@
 ---
 title: État des fonctionnalités et limites connues
-description: Quelles fonctionnalités d’InvenTag marchent dans la version actuelle, lesquelles sont partielles, quelles options s’arrêtent sur une erreur, et les limites, coûts et risques à connaître avant de vous y fier.
+description: Quelles fonctionnalités d’InvenTag fonctionnent, lesquelles sont partielles, quelles options s’arrêtent sur erreur, et les limites, coûts et risques connus.
 sidebar_position: 5
 ---
 
