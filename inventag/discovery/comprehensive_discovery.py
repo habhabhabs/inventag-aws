@@ -27,7 +27,7 @@ from botocore.exceptions import ClientError
 from . import coverage as coverage_mod
 from .aws_clients import create_client
 from .coverage import CoverageLedger
-from .regions import cost_explorer_region, global_home_region
+from .regions import cost_explorer_region, global_home_region, partition_of
 from .sensitive_fields import mask_secret_values
 from .service_filter import canonical_service
 from .arn_utils import (
@@ -44,6 +44,349 @@ from .arn_utils import (
 # listed once per account from the home region and shown with this region.
 GLOBAL_REGION_LABEL = "global"
 GLOBAL_HOME_REGION = "us-east-1"
+
+
+def _arn(service: str, resource: str) -> str:
+    return "arn:{partition}:" + service + ":{region}:{account}:" + resource
+
+
+# Table-driven services. Each entry: client_service (boto3 client), arn_service
+# (service code in ARNs, used to match Tagging API rows), regional, and the
+# list operations as dicts (see ComprehensiveAWSDiscovery._op_spec).
+TABLE_DRIVEN_SERVICES: Dict[str, Dict[str, Any]] = {
+    "elasticache": {
+        "operations": [
+            {
+                "op": "describe_cache_clusters",
+                "key": "CacheClusters",
+                "type": "CacheCluster",
+                "id": "CacheClusterId",
+                "arn": "ARN",
+            },
+            {
+                "op": "describe_replication_groups",
+                "key": "ReplicationGroups",
+                "type": "ReplicationGroup",
+                "id": "ReplicationGroupId",
+                "arn": "ARN",
+            },
+        ],
+        "regional": True,
+    },
+    "redshift": {
+        "operations": [
+            {
+                "op": "describe_clusters",
+                "key": "Clusters",
+                "type": "Cluster",
+                "id": "ClusterIdentifier",
+                "arn_template": _arn("redshift", "cluster:{id}"),
+            }
+        ],
+        "regional": True,
+    },
+    "redshift-serverless": {
+        "operations": [
+            {
+                "op": "list_workgroups",
+                "key": "workgroups",
+                "type": "Workgroup",
+                "id": "workgroupName",
+                "arn": "workgroupArn",
+            },
+            {
+                "op": "list_namespaces",
+                "key": "namespaces",
+                "type": "Namespace",
+                "id": "namespaceName",
+                "arn": "namespaceArn",
+            },
+        ],
+        "regional": True,
+    },
+    "opensearch": {
+        "client_service": "opensearch",
+        "arn_service": "es",
+        "operations": [
+            {
+                "op": "list_domain_names",
+                "key": "DomainNames",
+                "type": "Domain",
+                "id": "DomainName",
+                "arn_template": _arn("es", "domain/{id}"),
+            }
+        ],
+        "regional": True,
+    },
+    "efs": {
+        "arn_service": "elasticfilesystem",
+        "operations": [
+            {
+                "op": "describe_file_systems",
+                "key": "FileSystems",
+                "type": "FileSystem",
+                "id": "FileSystemId",
+                "name": "Name",
+                "arn": "FileSystemArn",
+            }
+        ],
+        "regional": True,
+    },
+    "ecr": {
+        "operations": [
+            {
+                "op": "describe_repositories",
+                "key": "repositories",
+                "type": "Repository",
+                "id": "repositoryName",
+                "arn": "repositoryArn",
+            }
+        ],
+        "regional": True,
+    },
+    "stepfunctions": {
+        "arn_service": "states",
+        "operations": [
+            {
+                "op": "list_state_machines",
+                "key": "stateMachines",
+                "type": "StateMachine",
+                "id": "name",
+                "arn": "stateMachineArn",
+            }
+        ],
+        "regional": True,
+    },
+    "kinesis": {
+        "operations": [
+            {
+                "op": "list_streams",
+                "key": "StreamSummaries",
+                "type": "Stream",
+                "id": "StreamName",
+                "arn": "StreamARN",
+            }
+        ],
+        "regional": True,
+    },
+    "firehose": {
+        "operations": [
+            {
+                "op": "list_delivery_streams",
+                "key": "DeliveryStreamNames",
+                "type": "DeliveryStream",
+                "token": ("ExclusiveStartDeliveryStreamName", "HasMoreDeliveryStreams"),
+                "arn_template": _arn("firehose", "deliverystream/{id}"),
+            }
+        ],
+        "regional": True,
+    },
+    "secretsmanager": {
+        "operations": [
+            {
+                # Names and metadata only; never GetSecretValue
+                "op": "list_secrets",
+                "key": "SecretList",
+                "type": "Secret",
+                "id": "Name",
+                "arn": "ARN",
+            }
+        ],
+        "regional": True,
+    },
+    "ssm": {
+        "operations": [
+            {
+                # Names and metadata only; never GetParameter(s)
+                "op": "describe_parameters",
+                "key": "Parameters",
+                "type": "Parameter",
+                "id": "Name",
+                "arn": "ARN",
+                "arn_template": _arn("ssm", "parameter/{id_noslash}"),
+            }
+        ],
+        "regional": True,
+    },
+    "autoscaling": {
+        "operations": [
+            {
+                "op": "describe_auto_scaling_groups",
+                "key": "AutoScalingGroups",
+                "type": "AutoScalingGroup",
+                "id": "AutoScalingGroupName",
+                "arn": "AutoScalingGroupARN",
+            }
+        ],
+        "regional": True,
+    },
+    "backup": {
+        "operations": [
+            {
+                "op": "list_backup_vaults",
+                "key": "BackupVaultList",
+                "type": "BackupVault",
+                "id": "BackupVaultName",
+                "arn": "BackupVaultArn",
+            }
+        ],
+        "regional": True,
+    },
+    "cognito": {
+        "client_service": "cognito-idp",
+        "arn_service": "cognito-idp",
+        "operations": [
+            {
+                "op": "list_user_pools",
+                "key": "UserPools",
+                "type": "UserPool",
+                "params": {"MaxResults": 60},
+                "id": "Id",
+                "name": "Name",
+                "arn_template": _arn("cognito-idp", "userpool/{id}"),
+            }
+        ],
+        "regional": True,
+    },
+    "codebuild": {
+        "operations": [
+            {
+                # Project names only; no environment variables are read
+                "op": "list_projects",
+                "key": "projects",
+                "type": "Project",
+                "arn_template": _arn("codebuild", "project/{id}"),
+            }
+        ],
+        "regional": True,
+    },
+    "codepipeline": {
+        "operations": [
+            {
+                "op": "list_pipelines",
+                "key": "pipelines",
+                "type": "Pipeline",
+                "id": "name",
+                "arn_template": _arn("codepipeline", "{id}"),
+            }
+        ],
+        "regional": True,
+    },
+    "athena": {
+        "operations": [
+            {
+                "op": "list_work_groups",
+                "key": "WorkGroups",
+                "type": "WorkGroup",
+                "id": "Name",
+                "arn_template": _arn("athena", "workgroup/{id}"),
+            }
+        ],
+        "regional": True,
+    },
+    "emr": {
+        "arn_service": "elasticmapreduce",
+        "operations": [
+            {
+                "op": "list_clusters",
+                "key": "Clusters",
+                "type": "Cluster",
+                # Terminated clusters stay listed for two months; skip them
+                "params": {
+                    "ClusterStates": [
+                        "STARTING",
+                        "BOOTSTRAPPING",
+                        "RUNNING",
+                        "WAITING",
+                        "TERMINATING",
+                    ]
+                },
+                "id": "Id",
+                "name": "Name",
+                "arn": "ClusterArn",
+            }
+        ],
+        "regional": True,
+    },
+    "msk": {
+        "client_service": "kafka",
+        "arn_service": "kafka",
+        "operations": [
+            {
+                "op": "list_clusters_v2",
+                "key": "ClusterInfoList",
+                "type": "Cluster",
+                "id": "ClusterName",
+                "arn": "ClusterArn",
+            }
+        ],
+        "regional": True,
+    },
+    "appsync": {
+        "operations": [
+            {
+                "op": "list_graphql_apis",
+                "key": "graphqlApis",
+                "type": "GraphqlApi",
+                "id": "apiId",
+                "name": "name",
+                "arn": "arn",
+            }
+        ],
+        "regional": True,
+    },
+    "elasticbeanstalk": {
+        "operations": [
+            {
+                "op": "describe_applications",
+                "key": "Applications",
+                "type": "Application",
+                "id": "ApplicationName",
+                "arn": "ApplicationArn",
+            },
+            {
+                "op": "describe_environments",
+                "key": "Environments",
+                "type": "Environment",
+                "params": {"IncludeDeleted": False},
+                "id": "EnvironmentName",
+                "arn": "EnvironmentArn",
+            },
+        ],
+        "regional": True,
+    },
+    "wafv2": {
+        "operations": [
+            {
+                "op": "list_web_acls",
+                "key": "WebACLs",
+                "type": "WebACL",
+                "params": {"Scope": "REGIONAL"},
+                "id": "Name",
+                "arn": "ARN",
+            }
+        ],
+        "regional": True,
+    },
+    # Web ACLs for CloudFront exist only in us-east-1 of the aws partition
+    "wafv2-cloudfront": {
+        "client_service": "wafv2",
+        "arn_service": "wafv2",
+        "label": "wafv2",
+        "partitions": ["aws"],
+        "operations": [
+            {
+                "op": "list_web_acls",
+                "key": "WebACLs",
+                "type": "WebACL",
+                "params": {"Scope": "CLOUDFRONT"},
+                "id": "Name",
+                "arn": "ARN",
+            }
+        ],
+        "regional": False,
+    },
+}
 
 
 def _add_source(resource: Dict[str, Any], source: str) -> None:
@@ -341,7 +684,16 @@ class ComprehensiveAWSDiscovery:
             # Amazon WorkMail
             "workmail": {
                 "operations": [
-                    ("list_organizations", "Organizations", "Organization"),
+                    {
+                        # The result key is OrganizationSummaries; "Organizations"
+                        # matched nothing, so WorkMail was never listed.
+                        "op": "list_organizations",
+                        "key": "OrganizationSummaries",
+                        "type": "Organization",
+                        "id": "OrganizationId",
+                        "name": "Alias",
+                        "arn_template": _arn("workmail", "organization/{id}"),
+                    },
                 ],
                 "regional": True,
                 "critical": False,
@@ -385,6 +737,10 @@ class ComprehensiveAWSDiscovery:
                 "graceful_degradation": True,
             },
         }
+        # Services listed through the table-driven entries (one dict per list
+        # call, see _op_spec). Metadata only: ListSecrets and
+        # DescribeParameters never return secret or parameter values.
+        self.service_discovery_patterns.update(TABLE_DRIVEN_SERVICES)
 
         # Global services that should only be called from us-east-1
         self.global_services = {"s3", "iam", "cloudfront", "route53"}
@@ -504,6 +860,21 @@ class ComprehensiveAWSDiscovery:
                 f"checks are skipped: {e}",
             )
 
+    def _service_regions(self, client_service: str, partition: str) -> set:
+        """Regions where botocore knows an endpoint for the service.
+
+        Empty when unknown (then every requested region is tried). Skips, for
+        example, a service that does not exist in a newer region, instead of
+        reporting a connection error for it.
+        """
+        try:
+            found = self.session.get_available_regions(
+                client_service, partition_name=partition
+            )
+            return set(found) if isinstance(found, list) else set()
+        except Exception:
+            return set()
+
     def _discover_all_service_resources(self, max_workers: int):
         """Discover ALL resources using service-specific APIs (PRIMARY METHOD)."""
         self.logger.info("🚀 Starting comprehensive service-specific discovery")
@@ -511,10 +882,18 @@ class ComprehensiveAWSDiscovery:
         # Prepare discovery tasks
         discovery_tasks = []
 
+        partition = partition_of(self.regions)
         for service_name, config in self.service_discovery_patterns.items():
+            if partition not in config.get("partitions", [partition]):
+                continue
             if config.get("regional", True):
-                # Regional service - discover in all regions
+                # Regional service - discover in all regions where it exists
+                served = self._service_regions(
+                    config.get("client_service", service_name), partition
+                )
                 for region in self.regions:
+                    if served and region not in served:
+                        continue
                     discovery_tasks.append(
                         {
                             "service": service_name,
@@ -990,8 +1369,10 @@ class ComprehensiveAWSDiscovery:
             tags = self._extract_tags(raw_data)
 
             # Reclassify VPC-related resources from EC2 to VPC service
-            actual_service = self._determine_actual_service(
-                service_name, resource_type, resource_id, arn
+            actual_service = self._label_for(service_name) or (
+                self._determine_actual_service(
+                    service_name, resource_type, resource_id, arn
+                )
             )
 
             # Build normalized resource
@@ -1048,7 +1429,7 @@ class ComprehensiveAWSDiscovery:
                 )
             name = re.split(r"[/]", value)[-1] if value else value
             resource = {
-                "service": service_name.upper(),
+                "service": (self._label_for(service_name) or service_name).upper(),
                 "resource_type": resource_type,
                 "resource_id": value,
                 "resource_name": name,
@@ -1220,6 +1601,10 @@ class ComprehensiveAWSDiscovery:
             self._get_account_id(),
             raw_data,
         )
+
+    def _label_for(self, service_name: str) -> Optional[str]:
+        """Service name shown in the report when it differs from the table key."""
+        return self.service_discovery_patterns.get(service_name, {}).get("label")
 
     def _arn_from_template(
         self, spec: Dict[str, Any], region: str, resource_id: str

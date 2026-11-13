@@ -159,6 +159,7 @@ def test_every_row_comes_from_an_api_and_says_which(account_with_planted_secrets
     ops = {(e.service, e.operation) for e in inv.coverage.entries}
     assert ("lambda", "ListFunctions") in ops
     assert ("ecs", "ListServices") in ops
-    # moto does not implement WorkMail; that failure must be in the ledger
+    # moto does not implement WorkMail or Redshift Serverless; those
+    # failures must be in the ledger
     failed = {e.service for e in inv.coverage.failed_units()}
-    assert failed <= {"workmail"}
+    assert failed <= {"workmail", "redshift-serverless"}
