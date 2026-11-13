@@ -57,21 +57,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: habhabhabs/inventag-aws
-          ref: v1.0.2            # pin a release
-          path: inventag
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
-      - run: pip install -r inventag/requirements.txt
+      - run: pip install "inventag-aws==1.1.3"   # pin a release
       - uses: aws-actions/configure-aws-credentials@<full-commit-SHA> # pin the current release
         with:
           role-to-assume: arn:aws:iam::123456789012:role/InvenTagGitHubReadOnly
           aws-region: us-east-1
       - name: Run InvenTag
-        run: python inventag/inventag_cli.py --template nightly
+        run: inventag --template nightly
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()          # keep the reports even when the tag check fails
         with:
@@ -128,7 +123,8 @@ $ echo $?
   [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
 - Keep the role read-only and scoped to the repository and branch that need
   it.
-- Pin InvenTag to a release tag, not `main`.
+- Pin InvenTag to a release (`inventag-aws==1.1.3`), not to the latest
+  version. Raise the number when you choose to upgrade.
 
 ## Next steps
 

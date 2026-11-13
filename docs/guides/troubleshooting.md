@@ -252,8 +252,10 @@ each account `profile_name`, `role_arn` or access keys.
 
 ## Flags that stop the run
 
-Exit code 2 with `not implemented yet` means the flag is accepted but not built.
-That is now `--compliance-standard` and `--disable-production-safety`. See
+Two flags are accepted but stop the run with exit code 2 and a message that
+starts with the flag name. `--compliance-standard` says it is not implemented
+yet. `--disable-production-safety` says the read-only guard cannot be
+disabled. See
 [Feature status and known limitations](../getting-started/status.md).
 
 ## Exit code 3
@@ -294,5 +296,6 @@ See [Install InvenTag](../getting-started/installation.md#fix-install-problems).
 ## Still stuck?
 
 Open an [issue](https://github.com/habhabhabs/inventag-aws/issues) with the
-command you ran, the version (`git describe --tags`) and the message. Remove
+command you ran, the version (`python -m pip show inventag-aws`, or
+`git describe --tags` in a clone) and the message. Remove
 account IDs and names you don't want to share. Never paste credentials.
