@@ -1313,6 +1313,8 @@ pre code,
 .footer__link-item {
   display: inline-flex;
   align-items: center;
+  /* a long label wraps inside its column; without this it widens a 320px page */
+  max-width: 100%;
   min-height: 28px;
   color: var(--it-ink);
   line-height: 1.3;
