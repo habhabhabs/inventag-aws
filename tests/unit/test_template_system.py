@@ -1096,7 +1096,7 @@ class TestExcelOutput:
             copy.deepcopy(RESOURCES), str(out)
         )
         wb = load_workbook(str(out))
-        assert wb.sheetnames == ["Summary", "EC2", "S3", "Lambda"]
+        assert wb.sheetnames == ["Summary", "EC2", "Lambda", "S3"]
         summary = [[c.value for c in row] for row in wb["Summary"].iter_rows()]
         assert summary == [
             ["Service", "Resource Count", "Percentage"],
