@@ -3,7 +3,7 @@
     "message": "Inventario de AWS, revisión de etiquetas e informes BOM"
   },
   "home.pageDescription": {
-    "message": "InvenTag es una CLI de Python de código abierto. Lista los recursos de tus cuentas de AWS, muestra cómo está etiquetado cada uno y genera una lista de materiales en Excel o Word."
+    "message": "InvenTag es una CLI de Python de código abierto. Lista los recursos de tus cuentas AWS, muestra su etiquetado y crea una lista de materiales en Excel o Word."
   },
   "home.kicker": {
     "message": "CLI de código abierto para AWS"
@@ -702,5 +702,9 @@
   },
   "listen.speedAria": {
     "message": "Cambiar la velocidad de lectura"
+  },
+  "footer.cookiePreferences": {
+    "message": "Preferencias de cookies",
+    "description": "Footer button that reopens the cookie banner (read by docusaurus.config.ts)"
   }
 }

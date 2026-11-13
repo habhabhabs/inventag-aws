@@ -702,5 +702,9 @@
   },
   "listen.speedAria": {
     "message": "更改朗读速度"
+  },
+  "footer.cookiePreferences": {
+    "message": "Cookie 偏好设置",
+    "description": "Footer button that reopens the cookie banner (read by docusaurus.config.ts)"
   }
 }

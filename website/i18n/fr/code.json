@@ -3,7 +3,7 @@
     "message": "Inventaire AWS, contrôle des étiquettes et rapports BOM"
   },
   "home.pageDescription": {
-    "message": "InvenTag est une CLI Python open source. Elle liste les ressources de vos comptes AWS, montre comment chacune est étiquetée et produit une nomenclature (BOM) au format Excel ou Word."
+    "message": "InvenTag est une CLI Python open source. Elle liste les ressources de vos comptes AWS, montre leur étiquetage et produit une nomenclature (BOM) Excel ou Word."
   },
   "home.kicker": {
     "message": "CLI open source pour AWS"
@@ -702,5 +702,9 @@
   },
   "listen.speedAria": {
     "message": "Modifier la vitesse de lecture"
+  },
+  "footer.cookiePreferences": {
+    "message": "Préférences en matière de cookies",
+    "description": "Footer button that reopens the cookie banner (read by docusaurus.config.ts)"
   }
 }
