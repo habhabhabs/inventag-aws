@@ -237,8 +237,9 @@ class DynamicServiceHandler(ServiceHandler):
                 ]
             )
 
-        # Remove empty parameter values
-        return [p for p in patterns if all(v for v in p.values() if v != "")]
+        # Drop patterns with an empty value (for example an ARN parameter when
+        # the resource ID is not an ARN): AWS would only reject them.
+        return [p for p in patterns if all(p.values())]
 
     def _extract_resource_data(
         self, response: Dict[str, Any], resource_type: str
