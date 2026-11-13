@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
+import time
 from pathlib import Path
 from botocore.exceptions import (
     BotoCoreError,
@@ -59,6 +60,58 @@ from ..security.safe_output import (
 
 class AccountSessionError(Exception):
     """Raised when explicitly configured credentials for an account do not work."""
+
+
+class ReportGenerationError(Exception):
+    """Raised when a requested report format could not be written."""
+
+    def __init__(self, message: str, bom_results: Optional[Dict[str, Any]] = None):
+        super().__init__(message)
+        self.bom_results = bom_results or {}
+
+
+class AccountTimeoutError(Exception):
+    """Raised when an account's discovery runs past ``account_processing_timeout``."""
+
+
+class _AccountDeadline:
+    """Stops an account's AWS calls once its time limit has passed.
+
+    Python cannot stop a running thread, so the limit is enforced at the next
+    AWS call: a botocore ``before-call`` handler, registered on the account's
+    session before discovery creates its clients, raises
+    :class:`AccountTimeoutError` for every call made after the deadline. The
+    discovery then winds down quickly instead of scanning on in the background.
+    """
+
+    UNIQUE_ID = "inventag-account-deadline"
+
+    def __init__(self, account_id: str, timeout_seconds: float, clock=time.monotonic):
+        self.account_id = account_id
+        self.timeout_seconds = timeout_seconds
+        self._clock = clock
+        self._deadline = clock() + timeout_seconds
+        self.active = True
+        self.expired = False
+
+    def before_call(self, **kwargs):
+        if self.active and self._clock() > self._deadline:
+            self.expired = True
+            raise AccountTimeoutError(
+                f"Account {self.account_id} reached its time limit of "
+                f"{self.timeout_seconds:g} seconds (--account-processing-timeout)"
+            )
+
+    def attach(self, session) -> None:
+        events = getattr(session, "events", None)
+        if events is not None:
+            events.register("before-call", self.before_call, unique_id=self.UNIQUE_ID)
+
+    def detach(self, session) -> None:
+        self.active = False
+        events = getattr(session, "events", None)
+        if events is not None:
+            events.unregister("before-call", unique_id=self.UNIQUE_ID)
 
 
 @dataclass
@@ -164,6 +217,8 @@ class CloudBOMGenerator:
         # Initialize output directory (created owner-only if it does not exist)
         self.output_dir = ensure_private_dir(self.config.output_directory)
         self._default_identity: Optional[Dict[str, Any]] = None
+        # Clock for the per-account time limit (replaceable in tests).
+        self._clock = time.monotonic
 
         self.logger.info(
             f"Initialized CloudBOMGenerator with {len(self.config.accounts)} accounts"
@@ -238,6 +293,13 @@ class CloudBOMGenerator:
                 output_formats or ["excel", "word"],
             )
 
+            # A requested report that could not be written fails the run.
+            if not bom_results.get("success", True):
+                raise ReportGenerationError(
+                    bom_results.get("error") or "Report generation failed",
+                    bom_results,
+                )
+
             # Step 6: Generate state management artifacts if enabled
             state_results = {}
             if self.config.enable_state_management:
@@ -290,9 +352,10 @@ class CloudBOMGenerator:
             self.logger.error(f"Multi-account BOM generation failed: {e}")
             self._processing_stats["processing_end_time"] = datetime.now(timezone.utc)
 
-            return {
+            failure = {
                 "success": False,
                 "error": str(e),
+                "failed_accounts": self._failed_accounts(),
                 "processing_statistics": self._processing_stats,
                 "account_contexts": {
                     acc_id: {
@@ -303,6 +366,9 @@ class CloudBOMGenerator:
                     for acc_id, ctx in self.account_contexts.items()
                 },
             }
+            if isinstance(e, ReportGenerationError):
+                failure["bom_generation"] = e.bom_results
+            return failure
 
     def generate_comprehensive_bom(
         self,
@@ -756,9 +822,9 @@ class CloudBOMGenerator:
             }
 
             # Collect results
-            for future in as_completed(
-                future_to_account, timeout=self.config.account_processing_timeout
-            ):
+            # No timeout here: each account enforces its own time limit (see
+            # _AccountDeadline), so waiting for all futures always ends.
+            for future in as_completed(future_to_account):
                 account_id = future_to_account[future]
                 try:
                     account_resources = future.result()
@@ -835,9 +901,31 @@ class CloudBOMGenerator:
     def _discover_account_resources(
         self, account_id: str, context: AccountContext
     ) -> List[Dict[str, Any]]:
-        """Discover resources for a single account."""
-        with account_log_context(account_id, context.credentials.account_name):
-            return self._discover_account_resources_inner(account_id, context)
+        """Discover resources for a single account, within its time limit.
+
+        If the account runs out of time, its AWS calls are stopped and the
+        account fails with :class:`AccountTimeoutError`; its partial results
+        are not used.
+        """
+        deadline = _AccountDeadline(
+            account_id, self.config.account_processing_timeout, clock=self._clock
+        )
+        deadline.attach(context.session)
+        try:
+            with account_log_context(account_id, context.credentials.account_name):
+                resources = self._discover_account_resources_inner(account_id, context)
+        except AccountTimeoutError:
+            deadline.expired = True
+            resources = None
+        finally:
+            deadline.detach(context.session)
+        if deadline.expired:
+            raise AccountTimeoutError(
+                f"stopped after {deadline.timeout_seconds:g} seconds "
+                "(--account-processing-timeout); the account's partial results "
+                "are not in the report"
+            )
+        return resources
 
     def _discover_account_resources_inner(
         self, account_id: str, context: AccountContext
@@ -912,8 +1000,8 @@ class CloudBOMGenerator:
 
             return resources
 
-        except Exception as e:
-            context.processing_errors.append(f"Resource discovery failed: {e}")
+        except Exception:
+            # The caller records the error on the account (once).
             context.processing_time_seconds = (
                 datetime.now(timezone.utc) - start_time
             ).total_seconds()
