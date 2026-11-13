@@ -327,6 +327,13 @@ class TagMappingEngine:
 
         # Get resource tags
         tags = resource.get("tags", {})
+        if isinstance(tags, list):
+            # AWS list form: [{"Key": "Owner", "Value": "alex"}]
+            tags = {
+                item["Key"]: item.get("Value", "")
+                for item in tags
+                if isinstance(item, dict) and "Key" in item
+            }
         if not isinstance(tags, dict):
             tags = {}
 
@@ -345,24 +352,26 @@ class TagMappingEngine:
                         break
 
             # Handle missing tag
-            if tag_value is None or (
+            tag_is_missing = tag_value is None or (
                 isinstance(tag_value, str) and not tag_value.strip()
-            ):
+            )
+            if tag_is_missing:
                 if mapping.required:
                     missing_required_tags.append(tag_key)
 
                 # Use default value
                 tag_value = mapping.default_value
 
-            # Normalize value
+            # Normalize value (a default value is normalized too)
             if tag_value and isinstance(tag_value, str):
                 normalized_value = self.normalizer.normalize_value(
                     tag_value, mapping.normalize_function
                 )
                 normalized_values[tag_key] = normalized_value
 
-                # Validate normalized value
-                if mapping.validation_pattern:
+                # Validate the tag's own value. A default value stands in for a
+                # missing tag and is not checked against the pattern.
+                if mapping.validation_pattern and not tag_is_missing:
                     if not self.normalizer.validate_value(
                         normalized_value, mapping.validation_pattern
                     ):
