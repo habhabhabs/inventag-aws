@@ -62,14 +62,14 @@ inventag --template our-org
 
 佔位符 ID 還在時，`validate` 會給出警告：
 
-```text title="Terminal"
+```text title="輸出"
 WARNING ~/acme-infra/.inventag/templates/our-org.yaml: account IDs 111111111111, 222222222222, 333333333333 look like placeholders; replace them with your own
 OK    ~/acme-infra/.inventag/templates/our-org.yaml (config 'our-org')
 ```
 
 執行結果如下，三個虛構帳戶中各有一個範例儲存貯體：
 
-```text title="Terminal"
+```text title="輸出"
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx

@@ -41,7 +41,7 @@ inventag --create-excel --enable-network-analysis --enable-security-analysis
 
 下面是针对模拟 AWS 离线运行时打印的内容，以及每个工作表的前几行（示例数据）：
 
-```text title="Terminal"
+```text title="输出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Performing network analysis...
 Network analysis completed for 7 VPC resources
@@ -141,5 +141,5 @@ raw_data.AssignIpv6AddressOnCreation, raw_data.Associations, raw_data.Availabili
 
 ## 下一步 {#next-steps}
 
-- [功能状态与已知限制](../getting-started/status.md)
+- [功能状态](../getting-started/status.md)
 - [调整模板](../templates/adapt-a-template.md)

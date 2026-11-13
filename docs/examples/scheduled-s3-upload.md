@@ -45,7 +45,7 @@ From an offline run against mocked AWS (sample data):
 
 <!-- BEGIN EXAMPLE OUTPUT: s3-console -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```

@@ -66,7 +66,7 @@ While the placeholder IDs are still there, `validate` warns you:
 
 <!-- BEGIN EXAMPLE OUTPUT: org-validate -->
 
-```text title="Terminal"
+```text title="Output"
 WARNING ~/acme-infra/.inventag/templates/our-org.yaml: account IDs 111111111111, 222222222222, 333333333333 look like placeholders; replace them with your own
 OK    ~/acme-infra/.inventag/templates/our-org.yaml (config 'our-org')
 ```
@@ -77,7 +77,7 @@ The run, with one sample bucket in each of the three made-up accounts:
 
 <!-- BEGIN EXAMPLE OUTPUT: org-console -->
 
-```text title="Terminal"
+```text title="Output"
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx

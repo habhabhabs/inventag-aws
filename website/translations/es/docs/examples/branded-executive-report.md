@@ -52,11 +52,11 @@ inventag --template board-report --create-word --account-regions us-east-1
 
 ## Salida {#output}
 
-```text title="Terminal"
+```text title="Salida"
 OK    ~/acme-infra/.inventag/templates/board-report.yaml (report 'board-report')
 ```
 
-```text title="Terminal"
+```text title="Salida"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx

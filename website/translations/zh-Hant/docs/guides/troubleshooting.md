@@ -283,7 +283,7 @@ inventag: error: --resume: needs state management (saved results live in the sta
 
 超出範圍的值會以結束代碼 1 停止，並寫出選項名稱：`--max-concurrent-accounts must be a positive integer`、`--account-processing-timeout must be at least 60 seconds`、`--resume-max-age-hours must be above 0 and at most 168`。`--state-retention-days` 或 `--state-max-snapshots` 的值如果不是數字，則以結束代碼 2 停止：`expected a whole number or 'none'`。
 
-見[功能狀態與已知限制](../getting-started/status.md)。
+見[功能狀態](../getting-started/status.md)。
 
 ## 結束代碼 3 {#exit-code-3}
 

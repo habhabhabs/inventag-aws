@@ -54,7 +54,7 @@
     "message": "复制失败。请手动选中命令。"
   },
   "search.suggest.quickstart": {
-    "message": "生成第一份报告"
+    "message": "快速开始"
   },
   "search.suggest.install": {
     "message": "安装 InvenTag"
@@ -557,7 +557,7 @@
     "message": "一个账户或多个账户"
   },
   "home.c3.link": {
-    "message": "设置多个账户"
+    "message": "盘点组织中的每个账户"
   },
   "home.c3.body": {
     "message": "可使用 AWS 配置文件、访问密钥或要代入的角色。账户并行扫描，默认同时扫描四个。"
@@ -659,7 +659,7 @@
     "message": "有些选项尚未实现。如果你用到了，运行会以明确的“尚未实现”提示停止，而不是悄悄忽略。{link}列出了目前可用的功能。"
   },
   "home.honest.1.link": {
-    "message": "当前状态页面"
+    "message": "功能状态页面"
   },
   "home.honest.2": {
     "message": "默认情况下，发现过程会调用 Cost Explorer，而 AWS 会对每次 Cost Explorer 请求收费。扫描多个账户之前，请先阅读{link}。"

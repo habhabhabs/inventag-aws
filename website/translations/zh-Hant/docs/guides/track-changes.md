@@ -139,12 +139,12 @@ EOF
 
 在兩次執行之間新增一個儲存貯體之後的範例輸出（範例資料）：
 
-```text title="Terminal"
+```text title="輸出"
 Added: ['arn:aws:s3:::acme-new-bucket']
 Removed: []
 ```
 
 ## 下一步 {#next-steps}
 
-- [功能狀態與已知限制](../getting-started/status.md)
+- [功能狀態](../getting-started/status.md)
 - [在 CI/CD 中執行 InvenTag](./run-in-ci.md)

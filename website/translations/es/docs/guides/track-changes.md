@@ -157,12 +157,12 @@ EOF
 Ejemplo de salida tras añadir un bucket entre dos ejecuciones (datos de
 ejemplo):
 
-```text title="Terminal"
+```text title="Salida"
 Added: ['arn:aws:s3:::acme-new-bucket']
 Removed: []
 ```
 
 ## Siguientes pasos {#next-steps}
 
-- [Estado de las funciones y limitaciones conocidas](../getting-started/status.md)
+- [Estado de las funciones](../getting-started/status.md)
 - [Ejecutar InvenTag en CI/CD](./run-in-ci.md)

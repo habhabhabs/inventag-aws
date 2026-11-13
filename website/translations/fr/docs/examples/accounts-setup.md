@@ -64,14 +64,14 @@ inventag --template our-org
 
 Tant que les identifiants fictifs sont en place, `validate` vous avertit :
 
-```text title="Terminal"
+```text title="Sortie"
 WARNING ~/acme-infra/.inventag/templates/our-org.yaml: account IDs 111111111111, 222222222222, 333333333333 look like placeholders; replace them with your own
 OK    ~/acme-infra/.inventag/templates/our-org.yaml (config 'our-org')
 ```
 
 L’exécution, avec un bucket d’exemple dans chacun des trois comptes fictifs :
 
-```text title="Terminal"
+```text title="Sortie"
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx

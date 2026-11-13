@@ -44,7 +44,7 @@ inventag --template standard-bom --create-excel --account-regions us-east-1 \
 
 Issue d’une exécution hors ligne sur un AWS simulé (données d’exemple) :
 
-```text title="Terminal"
+```text title="Sortie"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```

@@ -1,10 +1,11 @@
 ---
-title: Générer votre premier rapport
+title: "Démarrage rapide : générer votre premier rapport"
+sidebar_label: Démarrage rapide
 description: Analysez un compte et une région AWS avec InvenTag et ouvrez les rapports de nomenclature Excel et Word qu’il produit, en une dizaine de minutes.
 sidebar_position: 3
 ---
 
-# Générer votre premier rapport
+# Démarrage rapide : générer votre premier rapport
 
 **À qui s’adresse cette page :** vous avez [installé InvenTag](./installation.md) et vous disposez
 d’identifiants AWS en lecture seule.
@@ -45,7 +46,7 @@ inventag --create-excel --create-word --account-regions us-east-1
 
 À la fin, vous voyez où les fichiers ont été écrits :
 
-```text title="Terminal"
+```text title="Sortie"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Word document saved: bom_output/multi_account_bom_20261112_090000.docx
 Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
@@ -114,7 +115,7 @@ une colonne par étiquette, une ligne d’en-tête figée et des boutons de filt
 inventag --template standard-bom --create-excel --create-word --account-regions us-east-1
 ```
 
-```text title="Terminal"
+```text title="Sortie"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
@@ -131,7 +132,7 @@ Ajoutez une politique d’étiquetage pour voir quelles ressources n’ont pas d
 inventag --template finops-cost-report --create-excel --create-word --account-regions us-east-1
 ```
 
-```text title="Terminal"
+```text title="Sortie"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
@@ -152,7 +153,7 @@ Ajoutez `--no-billing-validation` pour ne faire aucun appel à Cost Explorer.
 
 ## Étapes suivantes {#next-steps}
 
-- [État des fonctionnalités et limites connues](./status.md) : à lire avant de
+- [État des fonctionnalités](./status.md) : à lire avant de
   vous fier à une option.
 - [Choisir ce qu’il faut analyser et produire](../guides/run-a-scan.md)
 - [Exemples](../examples/index.md) : recettes à copier-coller.

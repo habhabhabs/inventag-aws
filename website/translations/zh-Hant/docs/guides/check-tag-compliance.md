@@ -22,7 +22,7 @@ inventag --template finops-cost-allocation --create-excel --account-regions us-e
 InvenTag 照常掃描，然後檢查範圍內的每個資源。下面是使用
 `--template finops-cost-report` 離線執行的範例輸出（範例資料）：
 
-```text title="Terminal"
+```text title="輸出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx

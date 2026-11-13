@@ -301,7 +301,7 @@ inventag: error: --resume: needs state management (saved results live in the sta
 
 Un valor fuera de rango se detiene con el código de salida 1 y nombra la opción: `--max-concurrent-accounts must be a positive integer`, `--account-processing-timeout must be at least 60 seconds`, `--resume-max-age-hours must be above 0 and at most 168`. Un valor que no es un número en `--state-retention-days` o `--state-max-snapshots` se detiene con el código de salida 2: `expected a whole number or 'none'`.
 
-Consulta [Estado de las funciones y limitaciones conocidas](../getting-started/status.md).
+Consulta [Estado de las funciones](../getting-started/status.md).
 
 ## Código de salida 3 {#exit-code-3}
 

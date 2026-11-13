@@ -158,4 +158,4 @@ python -m pytest -q
 
 ## 下一步 {#next-step}
 
-[生成第一份報告](./quick-start.md)
+[快速開始](./quick-start.md)

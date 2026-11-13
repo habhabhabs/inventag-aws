@@ -178,7 +178,7 @@ Sample output after adding one bucket between two runs (sample data):
 
 <!-- BEGIN EXAMPLE OUTPUT: changes-diff -->
 
-```text title="Terminal"
+```text title="Output"
 Added: ['arn:aws:s3:::acme-new-bucket']
 Removed: []
 ```
@@ -187,5 +187,5 @@ Removed: []
 
 ## Next steps
 
-- [Feature status and known limitations](../getting-started/status.md)
+- [Feature status](../getting-started/status.md)
 - [Run InvenTag in CI/CD](./run-in-ci.md)

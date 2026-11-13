@@ -58,7 +58,7 @@ InvenTag 無法判斷哪些區域可用，會掃描全部區域。
 ### 服務 {#services}
 
 InvenTag 為 46 個 AWS 服務提供了自己的唯讀列舉呼叫。其他服務的資源只有在 Resource Groups Tagging API 返回它們時才會出現。
-見[功能狀態與已知限制](../getting-started/status.md)。
+見[功能狀態](../getting-started/status.md)。
 
 ### 限流與失敗的呼叫 {#throttling-and-failed-calls}
 
@@ -114,7 +114,7 @@ InvenTag 不會寫出任何檔案，記錄 `No resources to report (none found, 
 使用 `--template standard-bom --create-excel
 --create-word --account-regions us-east-1` 執行時的範例輸出（離線，範例資料）：
 
-```text title="Terminal"
+```text title="輸出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx

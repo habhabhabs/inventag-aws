@@ -1,5 +1,6 @@
 ---
 title: 功能狀態與已知限制
+sidebar_label: 功能狀態
 description: 目前發行版中哪些 InvenTag 功能可用、哪些只是部分可用、哪些引數會報錯停止，以及在依賴它之前需要了解的具體限制、費用和風險。
 sidebar_position: 5
 ---

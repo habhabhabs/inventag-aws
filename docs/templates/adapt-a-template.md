@@ -25,7 +25,7 @@ inventag templates init standard-bom --output .inventag/templates/acme-bom.yaml 
 
 <!-- BEGIN EXAMPLE OUTPUT: adapt-init -->
 
-```text title="Terminal"
+```text title="Output"
 Created .inventag/templates/acme-bom.yaml (kind: report, name: acme-bom).
 Next: edit it, then run 'inventag templates validate .inventag/templates/acme-bom.yaml'.
 ```
@@ -113,7 +113,7 @@ If something is wrong, you get the file, the line and a hint. Here the word
 
 <!-- BEGIN EXAMPLE OUTPUT: adapt-validate-error -->
 
-```text title="Terminal"
+```text title="Output"
 ERROR ~/acme-infra/.inventag/templates/acme-bom.yaml:13: spec.excel.layuot: unknown field 'layuot'; did you mean 'layout'? Allowed here: autofilter, freeze_header, include_all_fields, layout, max_column_width, single_sheet_name, summary_sheet, tag_compliance_sheet
 (exit code 1)
 ```
@@ -124,7 +124,7 @@ After fixing it:
 
 <!-- BEGIN EXAMPLE OUTPUT: adapt-validate-ok -->
 
-```text title="Terminal"
+```text title="Output"
 OK    ~/acme-infra/.inventag/templates/acme-bom.yaml (report 'acme-bom')
 ```
 
@@ -142,7 +142,7 @@ inventag templates list --kind report
 
 <!-- BEGIN EXAMPLE OUTPUT: adapt-list -->
 
-```text title="Terminal"
+```text title="Output"
 NAME                KIND    SOURCE   DESCRIPTION
 acme-bom            report  project  Acme's inventory layout
 board-report        report  project  Branded summary for the leadership team
@@ -170,7 +170,7 @@ inventag --template acme-bom --create-excel --account-regions us-east-1
 
 <!-- BEGIN EXAMPLE OUTPUT: adapt-console -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```

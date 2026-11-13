@@ -55,7 +55,7 @@ inventag --template team-sheet --create-excel --account-regions us-east-1
 
 <!-- BEGIN EXAMPLE OUTPUT: columns-validate -->
 
-```text title="Terminal"
+```text title="Output"
 OK    ~/acme-infra/.inventag/templates/team-sheet.yaml (report 'team-sheet')
 ```
 
@@ -63,7 +63,7 @@ OK    ~/acme-infra/.inventag/templates/team-sheet.yaml (report 'team-sheet')
 
 <!-- BEGIN EXAMPLE OUTPUT: columns-console -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```

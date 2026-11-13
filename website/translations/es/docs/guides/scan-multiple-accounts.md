@@ -1,6 +1,12 @@
 ---
 title: Analizar varias cuentas
 description: Analiza muchas cuentas de AWS en una sola ejecución de InvenTag con un archivo de cuentas o una plantilla de configuración y un rol de solo lectura por cuenta.
+keywords:
+  - varias cuentas
+  - multicuenta
+  - muchas cuentas
+  - entre cuentas
+  - AWS Organizations
 sidebar_position: 3
 ---
 
@@ -69,14 +75,14 @@ de rol que apunta a una cuenta distinta de `account_id` y claves de acceso en
 el archivo (no se permiten en las plantillas). Con los IDs de marcador de
 posición aún presentes dice (datos de ejemplo):
 
-```text title="Terminal"
+```text title="Salida"
 WARNING ~/acme-infra/.inventag/templates/our-org.yaml: account IDs 111111111111, 222222222222, 333333333333 look like placeholders; replace them with your own
 OK    ~/acme-infra/.inventag/templates/our-org.yaml (config 'our-org')
 ```
 
 Una ejecución sobre las tres cuentas de ejemplo:
 
-```text title="Terminal"
+```text title="Salida"
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx

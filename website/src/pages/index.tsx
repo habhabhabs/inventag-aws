@@ -385,7 +385,7 @@ function Capabilities(): ReactNode {
           title={translate({id: 'home.c3.title', message: 'One account or many'})}
           flag="--accounts-file"
           link="/docs/examples/accounts-setup"
-          linkLabel={translate({id: 'home.c3.link', message: 'Set up several accounts'})}
+          linkLabel={translate({id: 'home.c3.link', message: 'Inventory every account in an organization'})}
           preview={
             <pre className={styles.snippet} tabIndex={0}>
               <code>{`{
@@ -575,7 +575,7 @@ function Honest(): ReactNode {
               values={{
                 link: (
                   <Link to="/docs/getting-started/status">
-                    {translate({id: 'home.honest.1.link', message: 'current status page'})}
+                    {translate({id: 'home.honest.1.link', message: 'feature status page'})}
                   </Link>
                 ),
               }}>

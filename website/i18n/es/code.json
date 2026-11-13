@@ -84,7 +84,7 @@
     "message": "Una cuenta o varias"
   },
   "home.c3.link": {
-    "message": "Configurar varias cuentas"
+    "message": "Inventariar todas las cuentas de una organización"
   },
   "home.c3.body": {
     "message": "Usa perfiles de AWS, claves de acceso o un rol que asumir. Las cuentas se analizan en paralelo, de cuatro en cuatro por defecto."
@@ -186,7 +186,7 @@
     "message": "Algunas opciones aún no están implementadas. Si usas una, la ejecución se detiene con un mensaje claro de «aún no implementado» en lugar de ignorarla. La {link} indica qué funciona hoy."
   },
   "home.honest.1.link": {
-    "message": "página de estado actual"
+    "message": "página de estado de las funciones"
   },
   "home.honest.2": {
     "message": "Por defecto, el descubrimiento llama a Cost Explorer, y AWS cobra cada solicitud a Cost Explorer. Lee las {link} antes de analizar muchas cuentas."
@@ -264,7 +264,7 @@
     "message": "No se pudo copiar. Selecciona los comandos."
   },
   "search.suggest.quickstart": {
-    "message": "Genera tu primer informe"
+    "message": "Inicio rápido"
   },
   "search.suggest.install": {
     "message": "Instalar InvenTag"

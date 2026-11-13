@@ -68,7 +68,7 @@ region is in your list, they are not read twice.
 
 InvenTag has its own read-only listing calls for 46 AWS services. Resources of
 other services appear only when the Resource Groups Tagging API returns them.
-See [Feature status and known limitations](../getting-started/status.md).
+See [Feature status](../getting-started/status.md).
 
 ### Throttling and failed calls
 
@@ -144,7 +144,7 @@ Sample output of a run with `--template standard-bom --create-excel
 
 <!-- BEGIN EXAMPLE OUTPUT: standard-console -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx

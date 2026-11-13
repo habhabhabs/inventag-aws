@@ -79,9 +79,9 @@ better than one: [Set up read-only access](../guides/read-only-access.md).
 - **Not affiliated with AWS.**
 - **Not complete.** It has its own discovery code for 46 AWS services, not
   every service, and it has never been tested against a real AWS account.
-  [Feature status and known limitations](./status.md) lists the limits.
+  [Feature status](./status.md) lists the limits.
 
 ## Next steps
 
 - [Install InvenTag](./installation.md)
-- [Generate your first report](./quick-start.md)
+- [Quick start](./quick-start.md)

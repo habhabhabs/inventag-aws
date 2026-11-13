@@ -1,10 +1,11 @@
 ---
-title: Generar tu primer informe
+title: "Inicio rápido: generar tu primer informe"
+sidebar_label: Inicio rápido
 description: Analiza una cuenta y una región de AWS con InvenTag y abre los informes de lista de materiales en Excel y Word que genera, en unos diez minutos.
 sidebar_position: 3
 ---
 
-# Generar tu primer informe
+# Inicio rápido: generar tu primer informe
 
 **Para quién es:** ya has [instalado InvenTag](./installation.md) y tienes
 credenciales de AWS de solo lectura.
@@ -45,7 +46,7 @@ inventag --create-excel --create-word --account-regions us-east-1
 
 Al final ves dónde se guardaron los archivos:
 
-```text title="Terminal"
+```text title="Salida"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Word document saved: bom_output/multi_account_bom_20261112_090000.docx
 Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
@@ -114,7 +115,7 @@ una columna por etiqueta, una fila de encabezado fija y botones de filtro:
 inventag --template standard-bom --create-excel --create-word --account-regions us-east-1
 ```
 
-```text title="Terminal"
+```text title="Salida"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
@@ -131,7 +132,7 @@ Añade una política de etiquetas para ver qué recursos carecen de etiquetas:
 inventag --template finops-cost-report --create-excel --create-word --account-regions us-east-1
 ```
 
-```text title="Terminal"
+```text title="Salida"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
@@ -152,7 +153,7 @@ Añade `--no-billing-validation` para no hacer ninguna llamada a Cost Explorer.
 
 ## Siguientes pasos {#next-steps}
 
-- [Estado de las funciones y limitaciones conocidas](./status.md): léelo antes de
+- [Estado de las funciones](./status.md): léelo antes de
   depender de una opción.
 - [Elegir qué analizar y qué generar](../guides/run-a-scan.md)
 - [Ejemplos](../examples/index.md): recetas para copiar y pegar.

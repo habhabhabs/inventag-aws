@@ -60,7 +60,7 @@ inventag --template standard-bom --template security-baseline --create-excel
 
 使用 `--template finops-cost-report` 离线运行的示例输出（示例数据）：
 
-```text title="Terminal"
+```text title="输出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx

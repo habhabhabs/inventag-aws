@@ -367,7 +367,7 @@ A value that is out of range stops with exit code 1 and names the option:
 a number for `--state-retention-days` or `--state-max-snapshots` stops with
 exit code 2: `expected a whole number or 'none'`.
 
-See [Feature status and known limitations](../getting-started/status.md).
+See [Feature status](../getting-started/status.md).
 
 ## Exit code 3
 

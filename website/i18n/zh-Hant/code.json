@@ -54,7 +54,7 @@
     "message": "複製失敗。請手動選取命令。"
   },
   "search.suggest.quickstart": {
-    "message": "生成第一份報告"
+    "message": "快速開始"
   },
   "search.suggest.install": {
     "message": "安裝 InvenTag"
@@ -557,7 +557,7 @@
     "message": "一個帳戶或多個帳戶"
   },
   "home.c3.link": {
-    "message": "設定多個帳戶"
+    "message": "盤點組織中的每個帳戶"
   },
   "home.c3.body": {
     "message": "可使用 AWS 設定檔、存取金鑰或要擔任的角色。帳戶平行掃描，預設同時掃描四個。"
@@ -659,7 +659,7 @@
     "message": "有些選項尚未實現。如果你用到了，執行會以明確的「尚未實現」提示停止，而不是悄悄忽略。{link}列出了目前可用的功能。"
   },
   "home.honest.1.link": {
-    "message": "目前狀態頁面"
+    "message": "功能狀態頁面"
   },
   "home.honest.2": {
     "message": "預設情況下，發現過程會呼叫 Cost Explorer，而 AWS 會對每次 Cost Explorer 請求收費。掃描多個帳戶之前，請先閱讀{link}。"

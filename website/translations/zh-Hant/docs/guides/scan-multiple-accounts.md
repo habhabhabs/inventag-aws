@@ -1,6 +1,12 @@
 ---
 title: 掃描多個帳戶
 description: 用帳戶檔案或設定範本，在一次 InvenTag 執行中掃描多個 AWS 帳戶，並在每個帳戶中使用唯讀角色。
+keywords:
+  - 多個帳戶
+  - 多帳戶
+  - 許多帳戶
+  - 跨帳戶
+  - AWS Organizations
 sidebar_position: 3
 ---
 
@@ -63,14 +69,14 @@ inventag --template our-org
 `validate` 能發現常見的錯誤：沒有加引號的帳戶 ID、指向與 `account_id` 不同帳戶的角色 ARN，
 以及檔案中的存取金鑰（範本中不允許）。如果仍保留著佔位符 ID，它會提示（範例資料）：
 
-```text title="Terminal"
+```text title="輸出"
 WARNING ~/acme-infra/.inventag/templates/our-org.yaml: account IDs 111111111111, 222222222222, 333333333333 look like placeholders; replace them with your own
 OK    ~/acme-infra/.inventag/templates/our-org.yaml (config 'our-org')
 ```
 
 針對三個範例帳戶的一次執行：
 
-```text title="Terminal"
+```text title="輸出"
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx

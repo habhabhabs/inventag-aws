@@ -64,14 +64,14 @@ inventag --template our-org
 
 Mientras los ID de marcador de posición siguen ahí, `validate` te avisa:
 
-```text title="Terminal"
+```text title="Salida"
 WARNING ~/acme-infra/.inventag/templates/our-org.yaml: account IDs 111111111111, 222222222222, 333333333333 look like placeholders; replace them with your own
 OK    ~/acme-infra/.inventag/templates/our-org.yaml (config 'our-org')
 ```
 
 La ejecución, con un bucket de ejemplo en cada una de las tres cuentas inventadas:
 
-```text title="Terminal"
+```text title="Salida"
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx

@@ -44,7 +44,7 @@ inventag --template standard-bom --create-excel --account-regions us-east-1 \
 
 De una ejecución sin conexión contra AWS simulado (datos de ejemplo):
 
-```text title="Terminal"
+```text title="Salida"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```

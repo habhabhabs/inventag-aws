@@ -1,10 +1,11 @@
 ---
-title: 生成第一份報告
+title: "快速開始：生成第一份報告"
+sidebar_label: 快速開始
 description: 用 InvenTag 掃描一個 AWS 帳戶和區域，並在大約十分鐘內開啟它生成的 Excel 和 Word 物料清單報告。
 sidebar_position: 3
 ---
 
-# 生成第一份報告
+# 快速開始：生成第一份報告
 
 **適合誰閱讀：** 你已經[安裝了 InvenTag](./installation.md)，並且有隻讀的 AWS 憑證。
 
@@ -40,7 +41,7 @@ inventag --create-excel --create-word --account-regions us-east-1
 
 結束時你會看到檔案寫到了哪裡：
 
-```text title="Terminal"
+```text title="輸出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Word document saved: bom_output/multi_account_bom_20261112_090000.docx
 Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
@@ -106,7 +107,7 @@ InvenTag 還會把本次執行的快照儲存到 `bom_output/state/`。
 inventag --template standard-bom --create-excel --create-word --account-regions us-east-1
 ```
 
-```text title="Terminal"
+```text title="輸出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
@@ -122,7 +123,7 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 inventag --template finops-cost-report --create-excel --create-word --account-regions us-east-1
 ```
 
-```text title="Terminal"
+```text title="輸出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
@@ -143,6 +144,6 @@ InvenTag 發出的唯讀呼叫是免費的，但 Cost Explorer 的 `GetCostAndUs
 
 ## 下一步 {#next-steps}
 
-- [功能狀態與已知限制](./status.md)：依賴某個引數之前請先閱讀。
+- [功能狀態](./status.md)：依賴某個引數之前請先閱讀。
 - [選擇要掃描什麼、生成什麼](../guides/run-a-scan.md)
 - [範例](../examples/index.md)：可複製貼上的方案。

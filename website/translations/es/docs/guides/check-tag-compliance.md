@@ -25,7 +25,7 @@ InvenTag analiza como siempre y después comprueba cada recurso incluido en el
 ámbito. Ejemplo de salida de una ejecución sin conexión con
 `--template finops-cost-report` (datos de ejemplo):
 
-```text title="Terminal"
+```text title="Salida"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx

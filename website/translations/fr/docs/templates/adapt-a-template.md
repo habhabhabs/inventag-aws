@@ -23,7 +23,7 @@ Lancez ceci dans votre dossier de projet :
 inventag templates init standard-bom --output .inventag/templates/acme-bom.yaml --extend
 ```
 
-```text title="Terminal"
+```text title="Sortie"
 Created .inventag/templates/acme-bom.yaml (kind: report, name: acme-bom).
 Next: edit it, then run 'inventag templates validate .inventag/templates/acme-bom.yaml'.
 ```
@@ -103,14 +103,14 @@ point ou une barre oblique est lue comme un chemin.
 En cas de problème, vous obtenez le fichier, la ligne et une suggestion. Ici, le mot
 `layout` a été mal saisi en `layuot` :
 
-```text title="Terminal"
+```text title="Sortie"
 ERROR ~/acme-infra/.inventag/templates/acme-bom.yaml:13: spec.excel.layuot: unknown field 'layuot'; did you mean 'layout'? Allowed here: autofilter, freeze_header, include_all_fields, layout, max_column_width, single_sheet_name, summary_sheet, tag_compliance_sheet
 (exit code 1)
 ```
 
 Une fois corrigé :
 
-```text title="Terminal"
+```text title="Sortie"
 OK    ~/acme-infra/.inventag/templates/acme-bom.yaml (report 'acme-bom')
 ```
 
@@ -124,7 +124,7 @@ Votre modèle apparaît maintenant dans la liste :
 inventag templates list --kind report
 ```
 
-```text title="Terminal"
+```text title="Sortie"
 NAME                KIND    SOURCE   DESCRIPTION
 acme-bom            report  project  Acme's inventory layout
 board-report        report  project  Branded summary for the leadership team
@@ -148,7 +148,7 @@ Le projet d’exemple contient aussi les autres modèles utilisés dans cette do
 inventag --template acme-bom --create-excel --account-regions us-east-1
 ```
 
-```text title="Terminal"
+```text title="Sortie"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```

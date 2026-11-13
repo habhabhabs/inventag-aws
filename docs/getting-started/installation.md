@@ -179,4 +179,4 @@ suite.
 
 ## Next step
 
-[Generate your first report](./quick-start.md)
+[Quick start](./quick-start.md)

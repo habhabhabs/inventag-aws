@@ -1,5 +1,6 @@
 ---
 title: Estado de las funciones y limitaciones conocidas
+sidebar_label: Estado de las funciones
 description: Qué funciones de InvenTag funcionan, cuáles son parciales, qué opciones se detienen con un error y qué límites, costes y riesgos conocer antes de usarlo.
 sidebar_position: 5
 ---

@@ -13,7 +13,7 @@ sidebar_position: 2
 要列出它們，請執行 `inventag templates list`。要列印其中一個，請執行
 `inventag templates show <name>`；加上 `--resolved` 可以看到繼承和預設值處理之後的結果。
 
-```text title="Terminal"
+```text title="輸出"
 NAME                    KIND        SOURCE   DESCRIPTION
 executive-summary       report      builtin  Short Word report with totals and tag compliance; Excel has one filterable sheet.
 finops-cost-report      report      builtin  Standard layout with cost-allocation tag columns, checked against finops-cost-allocation.

@@ -46,7 +46,7 @@ The same layout from an offline run in one region (sample data):
 
 <!-- BEGIN EXAMPLE OUTPUT: standard-console -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx

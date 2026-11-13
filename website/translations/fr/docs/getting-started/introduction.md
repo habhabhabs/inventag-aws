@@ -79,9 +79,9 @@ valent mieux qu’un : [Configurer l’accès en lecture seule](../guides/read-o
 - **Sans lien avec AWS.**
 - **Pas complet.** Il dispose de son propre code de découverte pour 46 services AWS, pas pour
   tous, et n’a jamais été testé sur un compte AWS réel.
-  [État des fonctionnalités et limites connues](./status.md) en énumère les limites.
+  [État des fonctionnalités](./status.md) en énumère les limites.
 
 ## Étapes suivantes {#next-steps}
 
 - [Installer InvenTag](./installation.md)
-- [Générer votre premier rapport](./quick-start.md)
+- [Démarrage rapide](./quick-start.md)

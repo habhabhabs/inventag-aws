@@ -15,25 +15,25 @@
     "message": "概览",
     "description": "The label of footer link with label=Overview linking to /docs"
   },
-  "link.item.label.Introduction": {
-    "message": "简介",
-    "description": "The label of footer link with label=Introduction linking to /docs/getting-started/introduction"
+  "link.item.label.What InvenTag is": {
+    "message": "InvenTag 是什么",
+    "description": "The label of footer link with label=What InvenTag is linking to /docs/getting-started/introduction"
   },
   "link.item.label.Quick start": {
     "message": "快速开始",
     "description": "The label of footer link with label=Quick start linking to /docs/getting-started/quick-start"
   },
-  "link.item.label.What works today": {
-    "message": "当前可用功能",
-    "description": "The label of footer link with label=What works today linking to /docs/getting-started/status"
+  "link.item.label.Feature status": {
+    "message": "功能状态",
+    "description": "The label of footer link with label=Feature status linking to /docs/getting-started/status"
   },
   "link.item.label.CLI reference": {
     "message": "命令行参考",
     "description": "The label of footer link with label=CLI reference linking to /docs/reference/cli"
   },
-  "link.item.label.Account setup": {
-    "message": "账户设置",
-    "description": "The label of footer link with label=Account setup linking to /docs/examples/accounts-setup"
+  "link.item.label.Inventory every account in an organization": {
+    "message": "盘点组织中的每个账户",
+    "description": "The label of footer link with label=Inventory every account in an organization linking to /docs/examples/accounts-setup"
   },
   "link.item.label.Configuration files": {
     "message": "配置文件",

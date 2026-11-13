@@ -1,10 +1,11 @@
 ---
-title: Generate your first report
+title: "Quick start: generate your first report"
+sidebar_label: Quick start
 description: Scan one AWS account and region with InvenTag and open the Excel and Word bill-of-materials reports it writes, in about ten minutes.
 sidebar_position: 3
 ---
 
-# Generate your first report
+# Quick start: generate your first report
 
 **Who this is for:** you have [installed InvenTag](./installation.md) and have
 read-only AWS credentials.
@@ -47,7 +48,7 @@ At the end you see where the files went:
 
 <!-- BEGIN EXAMPLE OUTPUT: quick-default-console -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Word document saved: bom_output/multi_account_bom_20261112_090000.docx
 Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
@@ -128,7 +129,7 @@ inventag --template standard-bom --create-excel --create-word --account-regions 
 
 <!-- BEGIN EXAMPLE OUTPUT: standard-console -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
@@ -149,7 +150,7 @@ inventag --template finops-cost-report --create-excel --create-word --account-re
 
 <!-- BEGIN EXAMPLE OUTPUT: finops-console -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
@@ -172,7 +173,7 @@ Add `--no-billing-validation` to make no Cost Explorer calls.
 
 ## Next steps
 
-- [Feature status and known limitations](./status.md): read this before you
+- [Feature status](./status.md): read this before you
   rely on a flag.
 - [Choose what to scan and what to produce](../guides/run-a-scan.md)
 - [Examples](../examples/index.md): copy-paste recipes.

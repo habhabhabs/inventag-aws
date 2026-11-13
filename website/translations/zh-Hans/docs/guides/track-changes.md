@@ -139,12 +139,12 @@ EOF
 
 在两次运行之间新增一个存储桶之后的示例输出（示例数据）：
 
-```text title="Terminal"
+```text title="输出"
 Added: ['arn:aws:s3:::acme-new-bucket']
 Removed: []
 ```
 
 ## 下一步 {#next-steps}
 
-- [功能状态与已知限制](../getting-started/status.md)
+- [功能状态](../getting-started/status.md)
 - [在 CI/CD 中运行 InvenTag](./run-in-ci.md)

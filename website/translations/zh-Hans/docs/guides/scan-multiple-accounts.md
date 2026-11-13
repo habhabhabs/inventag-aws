@@ -1,6 +1,12 @@
 ---
 title: 扫描多个账户
 description: 用账户文件或配置模板，在一次 InvenTag 运行中扫描多个 AWS 账户，并在每个账户中使用只读角色。
+keywords:
+  - 多个账户
+  - 多账户
+  - 许多账户
+  - 跨账户
+  - AWS Organizations
 sidebar_position: 3
 ---
 
@@ -63,14 +69,14 @@ inventag --template our-org
 `validate` 能发现常见的错误：没有加引号的账户 ID、指向与 `account_id` 不同账户的角色 ARN，
 以及文件中的访问密钥（模板中不允许）。如果仍保留着占位符 ID，它会提示（示例数据）：
 
-```text title="Terminal"
+```text title="输出"
 WARNING ~/acme-infra/.inventag/templates/our-org.yaml: account IDs 111111111111, 222222222222, 333333333333 look like placeholders; replace them with your own
 OK    ~/acme-infra/.inventag/templates/our-org.yaml (config 'our-org')
 ```
 
 针对三个示例账户的一次运行：
 
-```text title="Terminal"
+```text title="输出"
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx

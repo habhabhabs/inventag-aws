@@ -19,7 +19,7 @@ type Hit = {
 };
 
 const suggested = (): {to: string; title: string; icon: string}[] => [
-  {to: 'docs/getting-started/quick-start', title: translate({id: 'search.suggest.quickstart', message: 'Generate your first report'}), icon: 'rocket'},
+  {to: 'docs/getting-started/quick-start', title: translate({id: 'search.suggest.quickstart', message: 'Quick start'}), icon: 'rocket'},
   {to: 'docs/getting-started/installation', title: translate({id: 'search.suggest.install', message: 'Install InvenTag'}), icon: 'download'},
   {to: 'docs/reference/cli', title: translate({id: 'search.suggest.cli', message: 'Command-line reference'}), icon: 'terminal'},
   {to: 'docs/guides/troubleshooting', title: translate({id: 'search.suggest.troubleshooting', message: 'Fix common problems'}), icon: 'help'},

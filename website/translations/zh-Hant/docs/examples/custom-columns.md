@@ -49,11 +49,11 @@ inventag --template team-sheet --create-excel --account-regions us-east-1
 
 ## 輸出 {#output}
 
-```text title="Terminal"
+```text title="輸出"
 OK    ~/acme-infra/.inventag/templates/team-sheet.yaml (report 'team-sheet')
 ```
 
-```text title="Terminal"
+```text title="輸出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```

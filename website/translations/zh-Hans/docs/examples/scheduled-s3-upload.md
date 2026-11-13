@@ -39,7 +39,7 @@ inventag --template standard-bom --create-excel --account-regions us-east-1 \
 
 以下来自针对模拟 AWS 的离线运行（示例数据）：
 
-```text title="Terminal"
+```text title="输出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```

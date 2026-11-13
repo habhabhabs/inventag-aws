@@ -17,7 +17,7 @@ after inheritance and defaults.
 
 <!-- BEGIN EXAMPLE OUTPUT: catalogue-list -->
 
-```text title="Terminal"
+```text title="Output"
 NAME                    KIND        SOURCE   DESCRIPTION
 executive-summary       report      builtin  Short Word report with totals and tag compliance; Excel has one filterable sheet.
 finops-cost-report      report      builtin  Standard layout with cost-allocation tag columns, checked against finops-cost-allocation.

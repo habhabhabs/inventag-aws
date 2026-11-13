@@ -310,16 +310,16 @@ const config: Config = {
           title: 'Start here',
           items: [
             {label: 'Overview', to: '/docs'},
-            {label: 'Introduction', to: '/docs/getting-started/introduction'},
+            {label: 'What InvenTag is', to: '/docs/getting-started/introduction'},
             {label: 'Quick start', to: '/docs/getting-started/quick-start'},
-            {label: 'What works today', to: '/docs/getting-started/status'},
+            {label: 'Feature status', to: '/docs/getting-started/status'},
           ],
         },
         {
           title: 'Guides',
           items: [
             {label: 'CLI reference', to: '/docs/reference/cli'},
-            {label: 'Account setup', to: '/docs/examples/accounts-setup'},
+            {label: 'Inventory every account in an organization', to: '/docs/examples/accounts-setup'},
             // the page docs/reference/configuration-files.md is served at this slug
             {label: 'Configuration files', to: '/docs/user-guides/configuration-examples'},
             {label: 'Permissions and safety', to: '/docs/user-guides/production-safety'},

@@ -43,7 +43,7 @@ inventag --template audit
 
 以下是同一版面配置在一個區域上的離線執行結果（範例資料）：
 
-```text title="Terminal"
+```text title="輸出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx

@@ -71,9 +71,9 @@ your AWS credentials
 - **与 AWS 无关联。**
 - **并不完整。** 它自带 46 种 AWS 服务的发现代码，并非所有服务，
   而且从未在真实的 AWS 账户上测试过。
-  [功能状态与已知限制](./status.md)列出了这些限制。
+  [功能状态](./status.md)列出了这些限制。
 
 ## 下一步 {#next-steps}
 
 - [安装 InvenTag](./installation.md)
-- [生成第一份报告](./quick-start.md)
+- [快速开始](./quick-start.md)

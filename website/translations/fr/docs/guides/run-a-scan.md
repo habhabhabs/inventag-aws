@@ -64,7 +64,7 @@ CloudFront. Si la région d’origine figure dans votre liste, ils ne sont pas l
 ### Services {#services}
 
 InvenTag dispose de ses propres appels de listage en lecture seule pour 46 services AWS. Les ressources des autres services n’apparaissent que si l’API Resource Groups Tagging les renvoie.
-Voir [État des fonctionnalités et limites connues](../getting-started/status.md).
+Voir [État des fonctionnalités](../getting-started/status.md).
 
 ### Limitation de débit et appels en échec {#throttling-and-failed-calls}
 
@@ -126,7 +126,7 @@ aucune ressource, ou si vos filtres les écartent toutes, InvenTag n’écrit au
 Exemple de sortie d’une exécution avec `--template standard-bom --create-excel
 --create-word --account-regions us-east-1` (hors ligne, données d’exemple) :
 
-```text title="Terminal"
+```text title="Sortie"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx

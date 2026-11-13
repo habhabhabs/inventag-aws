@@ -15,7 +15,7 @@ Pour les lister, lancez `inventag templates list`. Pour en afficher un, lancez
 `inventag templates show <name>` ; ajoutez `--resolved` pour voir le résultat
 après héritage et valeurs par défaut.
 
-```text title="Terminal"
+```text title="Sortie"
 NAME                    KIND        SOURCE   DESCRIPTION
 executive-summary       report      builtin  Short Word report with totals and tag compliance; Excel has one filterable sheet.
 finops-cost-report      report      builtin  Standard layout with cost-allocation tag columns, checked against finops-cost-allocation.

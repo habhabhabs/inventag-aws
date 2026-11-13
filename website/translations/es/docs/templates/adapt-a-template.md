@@ -23,7 +23,7 @@ Ejecuta esto en la carpeta de tu proyecto:
 inventag templates init standard-bom --output .inventag/templates/acme-bom.yaml --extend
 ```
 
-```text title="Terminal"
+```text title="Salida"
 Created .inventag/templates/acme-bom.yaml (kind: report, name: acme-bom).
 Next: edit it, then run 'inventag templates validate .inventag/templates/acme-bom.yaml'.
 ```
@@ -105,14 +105,14 @@ un punto o una barra se lee como una ruta.
 Si algo está mal, obtienes el archivo, la línea y una pista. Aquí la palabra
 `layout` se escribió mal como `layuot`:
 
-```text title="Terminal"
+```text title="Salida"
 ERROR ~/acme-infra/.inventag/templates/acme-bom.yaml:13: spec.excel.layuot: unknown field 'layuot'; did you mean 'layout'? Allowed here: autofilter, freeze_header, include_all_fields, layout, max_column_width, single_sheet_name, summary_sheet, tag_compliance_sheet
 (exit code 1)
 ```
 
 Después de corregirlo:
 
-```text title="Terminal"
+```text title="Salida"
 OK    ~/acme-infra/.inventag/templates/acme-bom.yaml (report 'acme-bom')
 ```
 
@@ -127,7 +127,7 @@ Tu plantilla ya aparece en la lista:
 inventag templates list --kind report
 ```
 
-```text title="Terminal"
+```text title="Salida"
 NAME                KIND    SOURCE   DESCRIPTION
 acme-bom            report  project  Acme's inventory layout
 board-report        report  project  Branded summary for the leadership team
@@ -152,7 +152,7 @@ documentación.
 inventag --template acme-bom --create-excel --account-regions us-east-1
 ```
 
-```text title="Terminal"
+```text title="Salida"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```

@@ -177,4 +177,4 @@ de tests complète.
 
 ## Étape suivante {#next-step}
 
-[Générer votre premier rapport](./quick-start.md)
+[Démarrage rapide](./quick-start.md)

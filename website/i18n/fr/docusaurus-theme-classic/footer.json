@@ -15,25 +15,25 @@
     "message": "Présentation",
     "description": "The label of footer link with label=Overview linking to /docs"
   },
-  "link.item.label.Introduction": {
-    "message": "Introduction",
-    "description": "The label of footer link with label=Introduction linking to /docs/getting-started/introduction"
+  "link.item.label.What InvenTag is": {
+    "message": "Ce qu’est InvenTag",
+    "description": "The label of footer link with label=What InvenTag is linking to /docs/getting-started/introduction"
   },
   "link.item.label.Quick start": {
     "message": "Démarrage rapide",
     "description": "The label of footer link with label=Quick start linking to /docs/getting-started/quick-start"
   },
-  "link.item.label.What works today": {
-    "message": "Ce qui fonctionne aujourd’hui",
-    "description": "The label of footer link with label=What works today linking to /docs/getting-started/status"
+  "link.item.label.Feature status": {
+    "message": "État des fonctionnalités",
+    "description": "The label of footer link with label=Feature status linking to /docs/getting-started/status"
   },
   "link.item.label.CLI reference": {
     "message": "Référence de la CLI",
     "description": "The label of footer link with label=CLI reference linking to /docs/reference/cli"
   },
-  "link.item.label.Account setup": {
-    "message": "Configuration des comptes",
-    "description": "The label of footer link with label=Account setup linking to /docs/examples/accounts-setup"
+  "link.item.label.Inventory every account in an organization": {
+    "message": "Inventorier tous les comptes d’une organisation",
+    "description": "The label of footer link with label=Inventory every account in an organization linking to /docs/examples/accounts-setup"
   },
   "link.item.label.Configuration files": {
     "message": "Fichiers de configuration",

@@ -177,4 +177,4 @@ completo de pruebas.
 
 ## Siguiente paso {#next-step}
 
-[Generar tu primer informe](./quick-start.md)
+[Inicio rápido](./quick-start.md)

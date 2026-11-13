@@ -49,7 +49,7 @@ against mocked AWS (sample data):
 
 <!-- BEGIN EXAMPLE OUTPUT: analysis-console -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Performing network analysis...
 Network analysis completed for 7 VPC resources
@@ -190,5 +190,5 @@ raw_data.AssignIpv6AddressOnCreation, raw_data.Associations, raw_data.Availabili
 
 ## Next steps
 
-- [Feature status and known limitations](../getting-started/status.md)
+- [Feature status](../getting-started/status.md)
 - [Adapt a template](../templates/adapt-a-template.md)

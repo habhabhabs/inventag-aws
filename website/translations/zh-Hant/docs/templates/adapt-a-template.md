@@ -20,7 +20,7 @@ sidebar_position: 3
 inventag templates init standard-bom --output .inventag/templates/acme-bom.yaml --extend
 ```
 
-```text title="Terminal"
+```text title="輸出"
 Created .inventag/templates/acme-bom.yaml (kind: report, name: acme-bom).
 Next: edit it, then run 'inventag templates validate .inventag/templates/acme-bom.yaml'.
 ```
@@ -89,14 +89,14 @@ inventag templates validate acme-bom
 
 如果有錯誤，你會得到檔案、行號和提示。這裡把單詞 `layout` 誤拼成了 `layuot`：
 
-```text title="Terminal"
+```text title="輸出"
 ERROR ~/acme-infra/.inventag/templates/acme-bom.yaml:13: spec.excel.layuot: unknown field 'layuot'; did you mean 'layout'? Allowed here: autofilter, freeze_header, include_all_fields, layout, max_column_width, single_sheet_name, summary_sheet, tag_compliance_sheet
 (exit code 1)
 ```
 
 修正之後：
 
-```text title="Terminal"
+```text title="輸出"
 OK    ~/acme-infra/.inventag/templates/acme-bom.yaml (report 'acme-bom')
 ```
 
@@ -109,7 +109,7 @@ OK    ~/acme-infra/.inventag/templates/acme-bom.yaml (report 'acme-bom')
 inventag templates list --kind report
 ```
 
-```text title="Terminal"
+```text title="輸出"
 NAME                KIND    SOURCE   DESCRIPTION
 acme-bom            report  project  Acme's inventory layout
 board-report        report  project  Branded summary for the leadership team
@@ -133,7 +133,7 @@ Search order (first match wins):
 inventag --template acme-bom --create-excel --account-regions us-east-1
 ```
 
-```text title="Terminal"
+```text title="輸出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```

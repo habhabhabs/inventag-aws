@@ -68,7 +68,7 @@ está en tu lista, no se leen dos veces.
 ### Servicios {#services}
 
 InvenTag tiene sus propias llamadas de listado de solo lectura para 46 servicios de AWS. Los recursos de otros servicios solo aparecen cuando la API Resource Groups Tagging los devuelve.
-Consulta [Estado de las funciones y limitaciones conocidas](../getting-started/status.md).
+Consulta [Estado de las funciones](../getting-started/status.md).
 
 ### Limitación y llamadas fallidas {#throttling-and-failed-calls}
 
@@ -131,7 +131,7 @@ para subir también los archivos: consulta
 Ejemplo de salida de una ejecución con `--template standard-bom --create-excel
 --create-word --account-regions us-east-1` (sin conexión, datos de ejemplo):
 
-```text title="Terminal"
+```text title="Salida"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx

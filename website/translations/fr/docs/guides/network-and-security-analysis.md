@@ -47,7 +47,7 @@ inventag --create-excel --enable-network-analysis --enable-security-analysis
 Ce qu’affiche une exécution, et les premières lignes de chaque feuille, issus d’une exécution hors ligne
 sur un AWS simulé (données d’exemple) :
 
-```text title="Terminal"
+```text title="Sortie"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Performing network analysis...
 Network analysis completed for 7 VPC resources
@@ -154,5 +154,5 @@ raw_data.AssignIpv6AddressOnCreation, raw_data.Associations, raw_data.Availabili
 
 ## Étapes suivantes {#next-steps}
 
-- [État des fonctionnalités et limites connues](../getting-started/status.md)
+- [État des fonctionnalités](../getting-started/status.md)
 - [Adapter un modèle](../templates/adapt-a-template.md)

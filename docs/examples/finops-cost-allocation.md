@@ -53,7 +53,7 @@ inventag --template finops-cost-report --template our-cost-tags --create-excel
 
 <!-- BEGIN EXAMPLE OUTPUT: finops-console -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
