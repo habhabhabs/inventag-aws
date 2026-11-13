@@ -1,6 +1,6 @@
 ---
 title: 功能狀態與已知限制
-description: v1.0.2 中哪些 InvenTag 功能可用、哪些只是部分可用、哪些引數會報錯停止，以及在依賴它之前需要了解的具體限制、費用和風險。
+description: 當前發行版中哪些 InvenTag 功能可用、哪些只是部分可用、哪些引數會報錯停止，以及在依賴它之前需要了解的具體限制、費用和風險。
 sidebar_position: 5
 ---
 
@@ -11,7 +11,7 @@ sidebar_position: 5
 **讀完後你會了解：** 哪些功能可用、它們在哪裡止步、哪些引數會報錯停止，
 以及每項限制該怎麼應對。
 
-這一頁刻意寫得直白。本頁描述的是 InvenTag v1.0.2。我們逐項檢查過：
+這一頁刻意寫得直白。本頁描述的是當前發行版；[更新日誌](https://github.com/habhabhabs/inventag-aws/blob/main/CHANGELOG.md)列出了每個發行版的變化。我們逐項檢查過：
 要麼對模擬的 AWS（moto）離線執行程式碼，要麼閱讀程式碼路徑。
 **沒有任何測試在真實的 AWS 賬戶上執行過。** 凡是下面某一點取決於真實 AWS 的行為，
 本頁都會明說。如果你修復或改動了其中一項，請在同一個拉取請求中更新本頁。
@@ -26,7 +26,7 @@ sidebar_position: 5
 | 引數 | 實際會發生什麼 |
 |---|---|
 | `--service-descriptions` | 自定義描述對 InvenTag 沒有內建描述的服務有效。對於 S3、EC2、RDS、Lambda 和 VPC 資源，內建描述優先，除非你的條目同時指定了 `template`。參見[配置檔案](../reference/configuration-files.md#service-descriptions)。 |
-| `--enable-cost-analysis` | 增加一個 Cost Analysis 工作表和四個 `forgotten_analysis.*` 列。它會額外發出許多 Cost Explorer、Pricing 和 CloudWatch 呼叫。參見[費用](#costs)。 |
+| `--enable-cost-analysis` | 增加一個 Cost Analysis 工作表和四個 `forgotten_analysis.*` 列。其中的費用是根據 AWS Pricing API 得出的估算值，不是你的賬單。它會額外發出許多 Cost Explorer、Pricing 和 CloudWatch 呼叫。參見[費用](#costs)。 |
 | `--compliance-standard` | 以退出碼 2 停止。像 SOC 2 這樣的標準無法從資源清單中檢查，而一個只列印標籤的引數會誤導你。請使用標籤策略模板。 |
 | `--create-google-docs`、`--create-google-sheets` | 只針對模擬的 Google 客戶端驗證過。參見 [Google Sheets 和 Docs](../guides/google-sheets-and-docs.md#what-is-not-verified)。 |
 | `--enable-production-safety`、`--security-validation`、`--enforce-read-only` | 保留下來，讓舊命令仍能執行。只讀防護始終開啟。 |
@@ -92,7 +92,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 - `--no-billing-validation` 會停止這些呼叫。此時報告裡沒有可供對比的計費資料。
 - `--enable-cost-analysis` 即使加上 `--no-billing-validation` 也會發出更多 Cost Explorer 呼叫
-  （在我們的離線測試中多出八次），此外還有 Pricing 和 CloudWatch 呼叫。
+  （在我們的離線測試中每個賬戶多出五到八次，取決於發現的資源），此外還有 Pricing 和 CloudWatch 呼叫。
 
 其他呼叫是免費的，但大型賬戶意味著請求很多，並可能遇到限流（AWS 放慢你的請求）。
 

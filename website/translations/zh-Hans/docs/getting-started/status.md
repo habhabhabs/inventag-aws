@@ -1,6 +1,6 @@
 ---
 title: 功能状态与已知限制
-description: v1.0.2 中哪些 InvenTag 功能可用、哪些只是部分可用、哪些参数会报错停止，以及在依赖它之前需要了解的具体限制、费用和风险。
+description: 当前发行版中哪些 InvenTag 功能可用、哪些只是部分可用、哪些参数会报错停止，以及在依赖它之前需要了解的具体限制、费用和风险。
 sidebar_position: 5
 ---
 
@@ -11,7 +11,7 @@ sidebar_position: 5
 **读完后你会了解：** 哪些功能可用、它们在哪里止步、哪些参数会报错停止，
 以及每项限制该怎么应对。
 
-这一页刻意写得直白。本页描述的是 InvenTag v1.0.2。我们逐项检查过：
+这一页刻意写得直白。本页描述的是当前发行版；[更新日志](https://github.com/habhabhabs/inventag-aws/blob/main/CHANGELOG.md)列出了每个发行版的变化。我们逐项检查过：
 要么对模拟的 AWS（moto）离线运行代码，要么阅读代码路径。
 **没有任何测试在真实的 AWS 账户上运行过。** 凡是下面某一点取决于真实 AWS 的行为，
 本页都会明说。如果你修复或改动了其中一项，请在同一个拉取请求中更新本页。
@@ -26,7 +26,7 @@ sidebar_position: 5
 | 参数 | 实际会发生什么 |
 |---|---|
 | `--service-descriptions` | 自定义描述对 InvenTag 没有内置描述的服务有效。对于 S3、EC2、RDS、Lambda 和 VPC 资源，内置描述优先，除非你的条目同时指定了 `template`。参见[配置文件](../reference/configuration-files.md#service-descriptions)。 |
-| `--enable-cost-analysis` | 增加一个 Cost Analysis 工作表和四个 `forgotten_analysis.*` 列。它会额外发出许多 Cost Explorer、Pricing 和 CloudWatch 调用。参见[费用](#costs)。 |
+| `--enable-cost-analysis` | 增加一个 Cost Analysis 工作表和四个 `forgotten_analysis.*` 列。其中的费用是根据 AWS Pricing API 得出的估算值，不是你的账单。它会额外发出许多 Cost Explorer、Pricing 和 CloudWatch 调用。参见[费用](#costs)。 |
 | `--compliance-standard` | 以退出码 2 停止。像 SOC 2 这样的标准无法从资源清单中检查，而一个只打印标签的参数会误导你。请使用标签策略模板。 |
 | `--create-google-docs`、`--create-google-sheets` | 只针对模拟的 Google 客户端验证过。参见 [Google Sheets 和 Docs](../guides/google-sheets-and-docs.md#what-is-not-verified)。 |
 | `--enable-production-safety`、`--security-validation`、`--enforce-read-only` | 保留下来，让旧命令仍能运行。只读防护始终开启。 |
@@ -92,7 +92,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 - `--no-billing-validation` 会停止这些调用。此时报告里没有可供对比的计费数据。
 - `--enable-cost-analysis` 即使加上 `--no-billing-validation` 也会发出更多 Cost Explorer 调用
-  （在我们的离线测试中多出八次），此外还有 Pricing 和 CloudWatch 调用。
+  （在我们的离线测试中每个账户多出五到八次，取决于发现的资源），此外还有 Pricing 和 CloudWatch 调用。
 
 其他调用是免费的，但大型账户意味着请求很多，并可能遇到限流（AWS 放慢你的请求）。
 

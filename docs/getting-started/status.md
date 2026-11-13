@@ -1,6 +1,6 @@
 ---
 title: Feature status and known limitations
-description: Which InvenTag features work in v1.0.2, which are partial, which flags stop with an error, and the specific limits, costs and risks to know before you rely on it.
+description: Which InvenTag features work in the current release, which are partial, which flags stop with an error, and the specific limits, costs and risks to know before you rely on it.
 sidebar_position: 5
 ---
 
@@ -11,7 +11,8 @@ sidebar_position: 5
 **What you will know after reading:** which features work, where they stop
 short, which flags stop with an error, and what to do about each limit.
 
-This page is deliberately blunt. This page describes InvenTag v1.0.2. We
+This page is deliberately blunt. It describes the current release; the
+[changelog](https://github.com/habhabhabs/inventag-aws/blob/main/CHANGELOG.md) lists what changed in each release. We
 checked each item by running the code offline against mocked AWS (moto), or by
 reading the code path. **No test has run against a real AWS account.** Where a
 point below depends on how real AWS behaves, the page says so. If you fix or
@@ -27,7 +28,7 @@ and what each one checks is on the [Tests](../security/tests.md) page.
 | Flag | What actually happens |
 |---|---|
 | `--service-descriptions` | Custom descriptions work for services InvenTag has no built-in description for. For S3, EC2, RDS, Lambda and VPC resources, a built-in description wins unless your entry also names a `template`. See [Configuration files](../reference/configuration-files.md#service-descriptions). |
-| `--enable-cost-analysis` | Adds a Cost Analysis sheet and the four `forgotten_analysis.*` columns. It makes many extra Cost Explorer, Pricing and CloudWatch calls. See [Costs](#costs). |
+| `--enable-cost-analysis` | Adds a Cost Analysis sheet and the four `forgotten_analysis.*` columns. The costs are estimates from the AWS Pricing API, not your invoice. It makes many extra Cost Explorer, Pricing and CloudWatch calls. See [Costs](#costs). |
 | `--compliance-standard` | Stops with exit code 2. A standard such as SOC 2 cannot be checked from an inventory, and a flag that only printed a label would mislead you. Use a tag-policy template. |
 | `--create-google-docs`, `--create-google-sheets` | Work against mocked Google clients only. See [Google Sheets and Docs](../guides/google-sheets-and-docs.md#what-is-not-verified). |
 | `--enable-production-safety`, `--security-validation`, `--enforce-read-only` | Kept so old commands still run. The read-only guard is always on. |
@@ -111,7 +112,7 @@ Explorer request. See the current
 - `--no-billing-validation` stops those calls. The report then has no billing
   data to compare with.
 - `--enable-cost-analysis` makes more Cost Explorer calls even with
-  `--no-billing-validation` (eight more in our offline test), as well as
+  `--no-billing-validation` (five to eight more per account in our offline tests, depending on the resources found), as well as
   Pricing and CloudWatch calls.
 
 Other calls are free, but large accounts mean many requests and possible

@@ -12,8 +12,8 @@ sidebar_position: 1
 InvenTag y saber qué opciones funcionan hoy.
 
 Esta página coincide con `inventag --help` de la versión que describe esta versión
-de la documentación. Ejecute `inventag --help` para ver las opciones de la versión
-que tiene instalada. La columna **Estado**
+de la documentación. Ejecuta `inventag --help` para ver las opciones de la versión
+que tienes instalada. La columna **Estado**
 indica lo que vimos al ejecutar la opción sin conexión contra AWS simulado. «No se
 volvió a probar» significa que no la ejecutamos para esta página. Hay más detalles en
 [Estado de las funciones](../getting-started/status.md).
@@ -88,7 +88,7 @@ El comando `inventag` funciona igual en Linux, macOS y Windows.
 |---|---|---|---|
 | `--enable-network-analysis` | desactivado | Funciona | Añade una hoja `Network Analysis` al informe de Excel cuando se encuentran VPC. No añade nada con `--template`. Consulta [Análisis de red y seguridad](../guides/network-and-security-analysis.md). |
 | `--enable-security-analysis` | desactivado | Funciona | Añade una hoja `Security Analysis` al informe de Excel cuando se encuentran grupos de seguridad. No añade nada con `--template`. |
-| `--enable-cost-analysis` | desactivado | Funciona | Añade una hoja Cost Analysis (y las cuatro columnas `forgotten_analysis.*`) al libro predeterminado. Hace llamadas adicionales a Cost Explorer, Pricing y CloudWatch, también con `--no-billing-validation`. Necesita `pricing:GetProducts` y `cloudwatch:GetMetricStatistics`. Los costes son estimaciones de la API AWS Pricing, no su factura. |
+| `--enable-cost-analysis` | desactivado | Funciona | Añade una hoja Cost Analysis (y las cuatro columnas `forgotten_analysis.*`) al libro predeterminado. Hace llamadas adicionales a Cost Explorer, Pricing y CloudWatch, también con `--no-billing-validation`. Necesita `pricing:GetProducts` y `cloudwatch:GetMetricStatistics`. Los costes son estimaciones de la API AWS Pricing, no tu factura. |
 | `--billing-validation`, `--no-billing-validation` | activado | Funciona | Usa Cost Explorer durante el descubrimiento para encontrar servicios con gasto. AWS cobra cada solicitud a Cost Explorer. `--no-billing-validation` detiene esas llamadas. |
 
 ## Archivos de configuración {#configuration-files}
@@ -104,7 +104,7 @@ El comando `inventag` funciona igual en Linux, macOS y Windows.
 ## Archivos de diseño de informes {#report-layout-files}
 
 Estas opciones cambian el diseño de los informes predeterminados de Excel y Word
-con un archivo YAML o JSON. Consulte [Archivos de diseño para un informe](../templates/layout-flags.md).
+con un archivo YAML o JSON. Consulta [Archivos de diseño para un informe](../templates/layout-flags.md).
 
 | Opción | Predeterminado | Estado | Qué hace |
 |---|---|---|---|

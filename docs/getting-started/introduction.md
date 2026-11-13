@@ -72,8 +72,10 @@ better than one: [Set up read-only access](../guides/read-only-access.md).
 - **Not a compliance tool.** InvenTag can collect evidence, such as an
   inventory and tag coverage. It does not assess or certify compliance with
   SOC 2, PCI DSS, HIPAA, GDPR or any other framework.
-- **Not a cost tool.** It lists resources and tags. It does not calculate
-  what they cost.
+- **Not a cost-management tool.** It lists resources and tags, and does not
+  track your bill. The optional `--enable-cost-analysis` flag adds a Cost
+  Analysis sheet with estimated monthly costs from the AWS Pricing API. These
+  are estimates only, not your invoice.
 - **Not affiliated with AWS.**
 - **Not complete.** It has its own discovery code for 24 AWS services, not
   every service, and it has never been tested against a real AWS account.

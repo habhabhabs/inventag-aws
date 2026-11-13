@@ -1,6 +1,6 @@
 ---
 title: État des fonctionnalités et limites connues
-description: Quelles fonctionnalités d’InvenTag marchent dans la v1.0.2, lesquelles sont partielles, quelles options s’arrêtent sur une erreur, et les limites, coûts et risques à connaître avant de vous y fier.
+description: Quelles fonctionnalités d’InvenTag marchent dans la version actuelle, lesquelles sont partielles, quelles options s’arrêtent sur une erreur, et les limites, coûts et risques à connaître avant de vous y fier.
 sidebar_position: 5
 ---
 
@@ -11,7 +11,8 @@ sidebar_position: 5
 **Ce que vous saurez après lecture :** quelles fonctionnalités marchent, où elles
 s’arrêtent, quelles options s’arrêtent sur une erreur et que faire face à chaque limite.
 
-Cette page est volontairement directe. Elle décrit InvenTag v1.0.2. Nous avons
+Cette page est volontairement directe. Elle décrit la version actuelle ; le
+[journal des modifications](https://github.com/habhabhabs/inventag-aws/blob/main/CHANGELOG.md) liste ce qui a changé dans chaque version. Nous avons
 vérifié chaque point en exécutant le code hors ligne sur un AWS simulé (moto), ou en
 lisant le chemin du code. **Aucun test n’a été exécuté sur un compte AWS réel.** Lorsqu’un
 point ci-dessous dépend du comportement du vrai AWS, la page le dit. Si vous corrigez ou
@@ -27,7 +28,7 @@ et ce que chacun vérifie se trouvent sur la page [Tests](../security/tests.md).
 | Option | Ce qui se passe réellement |
 |---|---|
 | `--service-descriptions` | Les descriptions personnalisées fonctionnent pour les services pour lesquels InvenTag n’a pas de description intégrée. Pour les ressources S3, EC2, RDS, Lambda et VPC, la description intégrée l’emporte, sauf si votre entrée indique aussi un `template`. Voir [Fichiers de configuration](../reference/configuration-files.md#service-descriptions). |
-| `--enable-cost-analysis` | Ajoute une feuille Cost Analysis et les quatre colonnes `forgotten_analysis.*`. Elle effectue de nombreux appels supplémentaires à Cost Explorer, Pricing et CloudWatch. Voir [Coûts](#costs). |
+| `--enable-cost-analysis` | Ajoute une feuille Cost Analysis et les quatre colonnes `forgotten_analysis.*`. Les coûts sont des estimations de l’API AWS Pricing, pas votre facture. Elle effectue de nombreux appels supplémentaires à Cost Explorer, Pricing et CloudWatch. Voir [Coûts](#costs). |
 | `--compliance-standard` | S’arrête avec le code de sortie 2. Une norme telle que SOC 2 ne peut pas être vérifiée à partir d’un inventaire, et une option qui n’afficherait qu’une étiquette vous induirait en erreur. Utilisez un modèle de politique d’étiquetage. |
 | `--create-google-docs`, `--create-google-sheets` | Ne fonctionnent qu’avec des clients Google simulés. Voir [Google Sheets et Docs](../guides/google-sheets-and-docs.md#what-is-not-verified). |
 | `--enable-production-safety`, `--security-validation`, `--enforce-read-only` | Conservées pour que les anciennes commandes fonctionnent encore. La protection en lecture seule est toujours active. |
@@ -107,7 +108,7 @@ Cost Explorer. Consultez les
 - `--no-billing-validation` arrête ces appels. Le rapport n’a alors aucune donnée de
   facturation à comparer.
 - `--enable-cost-analysis` fait davantage d’appels à Cost Explorer même avec
-  `--no-billing-validation` (huit de plus dans notre test hors ligne), ainsi que
+  `--no-billing-validation` (cinq à huit de plus par compte dans nos tests hors ligne, selon les ressources trouvées), ainsi que
   des appels à Pricing et CloudWatch.
 
 Les autres appels sont gratuits, mais les grands comptes impliquent de nombreuses requêtes et une possible

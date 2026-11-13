@@ -72,8 +72,10 @@ valent mieux qu’un : [Configurer l’accès en lecture seule](../guides/read-o
 - **Pas un outil de conformité.** InvenTag peut recueillir des éléments de preuve, comme un
   inventaire et la couverture des étiquettes. Il n’évalue ni ne certifie la conformité à
   SOC 2, PCI DSS, HIPAA, RGPD ou tout autre référentiel.
-- **Pas un outil de coûts.** Il liste les ressources et les étiquettes. Il ne calcule pas
-  ce qu’elles coûtent.
+- **Pas un outil de gestion des coûts.** Il liste les ressources et les étiquettes, et
+  ne suit pas votre facture. L’option `--enable-cost-analysis` ajoute une feuille
+  Cost Analysis avec des coûts mensuels estimés à partir de l’API AWS Pricing. Ce
+  sont uniquement des estimations, pas votre facture.
 - **Sans lien avec AWS.**
 - **Pas complet.** Il dispose de son propre code de découverte pour 24 services AWS, pas pour
   tous, et n’a jamais été testé sur un compte AWS réel.
