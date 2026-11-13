@@ -9,6 +9,7 @@
  * Without JavaScript they render in full (noscript style in docusaurus.config.ts).
  */
 import React, {useId, useState, type ReactNode} from 'react';
+import {translate} from '@docusaurus/Translate';
 import clsx from 'clsx';
 import {useCodeBlockContext} from '@docusaurus/theme-common/internal';
 import Container from '@theme/CodeBlock/Container';
@@ -80,7 +81,7 @@ export default function CodeBlockLayout({className}: Props): ReactNode {
               aria-expanded={expanded}
               aria-controls={contentId}
               onClick={() => setExpanded((v) => !v)}>
-              {expanded ? 'Show less' : `Show all ${lineCount} lines`}
+              {expanded ? translate({id: 'code.showLess', message: 'Show less'}) : translate({id: 'code.showAll', message: 'Show all {count} lines'}, {count: lineCount})}
             </button>
           )}
           <Buttons className={styles.buttons} />

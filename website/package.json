@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
+    "prestart": "node scripts/sync-i18n.mjs",
     "start": "docusaurus start",
+    "prebuild": "node scripts/sync-i18n.mjs",
     "build": "docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
@@ -17,7 +19,8 @@
     "brand": "python3 brand/generate_brand_assets.py",
     "typecheck": "tsc",
     "test:vendor": "node vendor/deepmerge/test.cjs",
-    "serve:pages": "node scripts/serve-pages.mjs"
+    "serve:pages": "node scripts/serve-pages.mjs",
+    "sync:i18n": "node scripts/sync-i18n.mjs"
   },
   "dependencies": {
     "@docusaurus/core": "^3.10.2",

@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode} from 'react';
+import {translate} from '@docusaurus/Translate';
 import {createPortal} from 'react-dom';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import {useHistory} from '@docusaurus/router';
@@ -17,11 +18,11 @@ type Hit = {
   tokens: string[];
 };
 
-const SUGGESTED: {to: string; title: string; icon: string}[] = [
-  {to: 'docs/getting-started/quick-start', title: 'Generate your first report', icon: 'rocket'},
-  {to: 'docs/getting-started/installation', title: 'Install InvenTag', icon: 'download'},
-  {to: 'docs/reference/cli', title: 'Command-line reference', icon: 'terminal'},
-  {to: 'docs/guides/troubleshooting', title: 'Fix common problems', icon: 'help'},
+const suggested = (): {to: string; title: string; icon: string}[] => [
+  {to: 'docs/getting-started/quick-start', title: translate({id: 'search.suggest.quickstart', message: 'Generate your first report'}), icon: 'rocket'},
+  {to: 'docs/getting-started/installation', title: translate({id: 'search.suggest.install', message: 'Install InvenTag'}), icon: 'download'},
+  {to: 'docs/reference/cli', title: translate({id: 'search.suggest.cli', message: 'Command-line reference'}), icon: 'terminal'},
+  {to: 'docs/guides/troubleshooting', title: translate({id: 'search.suggest.troubleshooting', message: 'Fix common problems'}), icon: 'help'},
 ];
 
 function Marked({text, tokens}: {text: string; tokens: string[]}): ReactNode {
@@ -187,7 +188,7 @@ export default function SearchBar(): ReactNode {
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) close();
             }}>
-            <div className="it-search__dialog" role="dialog" aria-modal="true" aria-label="Search documentation">
+            <div className="it-search__dialog" role="dialog" aria-modal="true" aria-label={translate({id: 'theme.SearchBar.label', message: 'Search documentation'})}>
               <div className="it-search__bar">
                 <Icon name="search" size={18} />
                 <input
@@ -197,8 +198,8 @@ export default function SearchBar(): ReactNode {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={onInputKey}
-                  placeholder="Search documentation"
-                  aria-label="Search documentation"
+                  placeholder={translate({id: 'theme.SearchBar.label', message: 'Search documentation'})}
+                  aria-label={translate({id: 'theme.SearchBar.label', message: 'Search documentation'})}
                   role="combobox"
                   aria-expanded={count > 0}
                   aria-controls={listId}
@@ -214,7 +215,7 @@ export default function SearchBar(): ReactNode {
               </div>
               <div className="it-search__body">
                 {count > 0 && (
-                  <ul id={listId} role="listbox" aria-label="Results" className="it-search__list">
+                  <ul id={listId} role="listbox" aria-label={translate({id: 'search.results', message: 'Results'})} className="it-search__list">
                     {hits.map((h, i) => {
                       const path = (h.page ? [...(h.page.b ?? []), h.page.t] : (h.document.b ?? [])).join(' › ');
                       return (
@@ -245,14 +246,14 @@ export default function SearchBar(): ReactNode {
                 )}
                 {!count && query.trim() && (
                   <p className="it-search__empty">
-                    No results for <strong>“{query}”</strong>. Try fewer or different words.
+                    {translate({id: 'search.noResults', message: 'No results for “{query}”. Try fewer or different words.'}, {query})}
                   </p>
                 )}
                 {!query.trim() && (
                   <div className="it-search__suggest">
-                    <p className="it-search__label">Suggested</p>
+                    <p className="it-search__label">{translate({id: 'search.suggested', message: 'Suggested'})}</p>
                     <ul>
-                      {SUGGESTED.map((s) => (
+                      {suggested().map((s) => (
                         <li key={s.to}>
                           <a
                             href={`${baseUrl}${s.to}`}
@@ -279,7 +280,7 @@ export default function SearchBar(): ReactNode {
               </div>
               <div className="it-search__foot">
                 <span>
-                  <kbd>↑</kbd> <kbd>↓</kbd> to move <kbd>↵</kbd> to open
+                  <kbd>↑</kbd> <kbd>↓</kbd> {translate({id: 'search.toMove', message: 'to move'})} <kbd>↵</kbd> {translate({id: 'search.toOpen', message: 'to open'})}
                 </span>
                 {query.trim() && (
                   <a
@@ -288,7 +289,7 @@ export default function SearchBar(): ReactNode {
                       e.preventDefault();
                       navigate(seeAll);
                     }}>
-                    See all results
+                    {translate({id: 'search.seeAll', message: 'See all results'})}
                   </a>
                 )}
               </div>
@@ -308,7 +309,7 @@ export default function SearchBar(): ReactNode {
         aria-haspopup="dialog"
         aria-expanded={open}>
         <Icon name="search" size={16} />
-        <span className="it-searchbtn__label">Search documentation</span>
+        <span className="it-searchbtn__label">{translate({id: 'theme.SearchBar.label', message: 'Search documentation'})}</span>
         <span className="it-searchbtn__keys">
           <kbd>{mac ? '⌘' : 'Ctrl'}</kbd>
           <kbd>K</kbd>

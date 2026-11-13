@@ -31,7 +31,9 @@ const SOCIAL_ALT =
 function brokenLinksGate(): Plugin {
   return {
     name: 'inventag-broken-links-gate',
-    async postBuild({outDir}) {
+    async postBuild({outDir, i18n}) {
+      // each language builds into its own folder; the check reads the default (root) build
+      if (i18n.currentLocale !== i18n.defaultLocale) return;
       const {checkLinks, printReport} = await import('./scripts/check-links.mjs');
       const result = checkLinks(outDir);
       printReport(result, outDir);
@@ -77,7 +79,11 @@ const config: Config = {
 
   i18n: {
     defaultLocale: 'en',
-    locales: ['en'],
+    locales: ['en', 'zh-Hans'],
+    localeConfigs: {
+      en: {label: 'English', htmlLang: 'en'},
+      'zh-Hans': {label: '简体中文', htmlLang: 'zh-Hans'},
+    },
   },
 
   // A fixed storage namespace keeps the theme key ('theme-inventag') stable for the headTags script below.
@@ -195,7 +201,7 @@ const config: Config = {
         indexDocs: true,
         indexBlog: false,
         indexPages: false,
-        language: 'en',
+        language: ['en', 'zh'],
         searchBarShortcut: true,
         searchBarShortcutHint: true,
         highlightSearchTermsOnTargetPage: true,
@@ -247,6 +253,7 @@ const config: Config = {
         {to: '/docs/getting-started/quick-start', label: 'Quick start', position: 'left', className: 'nav-ico nav-ico-start'},
         {to: '/docs/reference/cli', label: 'CLI reference', position: 'left', className: 'nav-ico nav-ico-cli'},
         {type: 'docsVersionDropdown', position: 'right', dropdownActiveClassDisabled: true},
+        {type: 'localeDropdown', position: 'right'},
         {type: 'search', position: 'right'},
         {
           href: 'https://github.com/habhabhabs/inventag-aws',

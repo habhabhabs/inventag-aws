@@ -1,4 +1,5 @@
 import React, {type ReactNode} from 'react';
+import {translate} from '@docusaurus/Translate';
 import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import IconHome from '@theme/Icon/Home';
@@ -16,7 +17,7 @@ export default function HomeBreadcrumbItem(): ReactNode {
   return (
     <li className="breadcrumbs__item">
       <Link
-        aria-label="InvenTag documentation"
+        aria-label={translate({id: 'breadcrumb.home', message: 'InvenTag documentation'})}
         className="breadcrumbs__link"
         href={docsHref}>
         <IconHome className={styles.breadcrumbHomeIcon} />

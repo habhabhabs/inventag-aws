@@ -1,4 +1,5 @@
 import React, {type ReactNode} from 'react';
+import {translate} from '@docusaurus/Translate';
 import Link from '@docusaurus/Link';
 import {useDocById, useAllDocsData} from '@docusaurus/plugin-content-docs/client';
 import Icon from './Icon';
@@ -32,7 +33,7 @@ export default function RelatedTiles({docId}: {docId: string}): ReactNode {
   return (
     <aside className="it-related" aria-labelledby="it-related-title">
       <h2 id="it-related-title" className="it-related__title">
-        Where to next
+        {translate({id: 'related.title', message: 'Where to next'})}
       </h2>
       <div className={`it-cards it-cards--${entry.ids.length >= 4 ? 2 : entry.ids.length === 3 ? 3 : 2}`}>
         {entry.ids.map((id, i) => (

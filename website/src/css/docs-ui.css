@@ -673,3 +673,108 @@ a.it-search__hit:hover .it-search__hit-go {
     z-index: 2;
   }
 }
+
+/* Collapsed menu: no empty strip, just a floating button */
+@media (min-width: 997px) {
+  aside.theme-doc-sidebar-container[class*='docSidebarContainerHidden'] {
+    width: 0 !important;
+    min-width: 0;
+    border: 0;
+    overflow: visible;
+  }
+  .it-menubtn--rail {
+    position: fixed;
+    top: calc(var(--ifm-navbar-height) + 0.75rem);
+    left: 1rem;
+    width: auto;
+    height: 2.25rem;
+    padding: 0 0.8rem 0 0.65rem;
+    gap: 0.5rem;
+    background: var(--it-surface);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+    z-index: 20;
+  }
+}
+
+/* ---------------------------------------------------------- Page tree */
+.it-tree__list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 0.5rem;
+  margin-left: 0.85rem;
+  border-left: 1px solid var(--it-line-strong);
+}
+.it-tree__list--root {
+  margin: 0.25rem 0 0 1rem;
+}
+.it-tree__list .it-mnav__row {
+  position: relative;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.94rem;
+  border-radius: 8px;
+}
+.it-tree__list .it-mnav__row.is-active {
+  font-weight: 650;
+}
+.it-tree__list .it-mnav__row.is-active::before {
+  content: '';
+  position: absolute;
+  left: calc(-0.5rem - 1px);
+  top: 0.35rem;
+  bottom: 0.35rem;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--it-accent-ink);
+}
+.it-tree__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  min-height: 2.25rem;
+  margin: 0.15rem 0;
+  padding: 0.35rem 0.4rem 0.35rem 0.1rem;
+  border: 0;
+  background: transparent;
+  color: var(--it-ink);
+  font: inherit;
+  font-size: 0.94rem;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+.it-tree__toggle .it-icon {
+  flex: none;
+  color: var(--it-ink-2);
+  transition: transform 0.15s ease;
+}
+.it-tree__toggle[aria-expanded='true'] .it-icon {
+  transform: rotate(90deg);
+}
+.it-tree__toggle:hover {
+  color: var(--it-accent-ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .it-tree__toggle .it-icon {
+    transition: none;
+  }
+}
+
+/* Docs layout shares the navbar's and footer's column, so all three line up */
+@media (min-width: 997px) {
+  div[class*='docRoot_'] {
+    width: 100%;
+    max-width: var(--it-grid-max);
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+}
+
+/* Page content must not show through the navbar while scrolling */
+.navbar {
+  background: color-mix(in srgb, var(--it-bg) 96%, transparent);
+}

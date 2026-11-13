@@ -1,4 +1,5 @@
 import React, {type ReactNode} from 'react';
+import {translate} from '@docusaurus/Translate';
 import clsx from 'clsx';
 import {useThemeConfig} from '@docusaurus/theme-common';
 import Icon from '@site/src/components/docs/Icon';
@@ -16,13 +17,13 @@ function DocSidebarDesktop({path, sidebar, onCollapse, isHidden}: Props): ReactN
     <div className={clsx('it-dsb', isHidden && 'it-dsb--hidden')}>
       {hideable && (
         <div className="it-dsb__head">
-          <button type="button" className="it-menubtn" onClick={onCollapse} aria-label="Hide menu" title="Hide menu">
+          <button type="button" className="it-menubtn" onClick={onCollapse} aria-label={translate({id: 'menu.hide', message: 'Hide menu'})} title={translate({id: 'menu.hide', message: 'Hide menu'})}>
             <Icon name="menu" size={20} />
           </button>
-          <span className="it-dsb__title">Menu</span>
+          <span className="it-dsb__title">{translate({id: 'menu.title', message: 'Menu'})}</span>
         </div>
       )}
-      <nav className="it-dsb__scroll" aria-label="Docs sidebar">
+      <nav className="it-dsb__scroll" aria-label={translate({id: 'menu.sidebar', message: 'Docs sidebar'})}>
         <SidebarMenu sidebar={sidebar} path={path} />
       </nav>
     </div>

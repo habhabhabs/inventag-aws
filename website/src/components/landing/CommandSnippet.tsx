@@ -1,4 +1,5 @@
 import React, {useEffect, useRef, useState, type ReactNode} from 'react';
+import {translate} from '@docusaurus/Translate';
 import clsx from 'clsx';
 import {IconCopy, IconDone} from './Icons';
 import styles from './landing.module.css';
@@ -44,15 +45,15 @@ export default function CommandSnippet({
           type="button"
           className={clsx(styles.copyButton, status === 'copied' && styles.copyButtonDone)}
           onClick={copy}
-          aria-label={status === 'copied' ? 'Commands copied' : `Copy all ${lines.length} commands`}>
+          aria-label={status === 'copied' ? translate({id: 'code.commandsCopied', message: 'Commands copied'}) : translate({id: 'code.copyAll', message: 'Copy all {count} commands'}, {count: lines.length})}>
           {status === 'copied' ? <IconDone /> : <IconCopy />}
-          <span aria-hidden="true">{status === 'copied' ? 'Copied' : 'Copy'}</span>
+          <span aria-hidden="true">{status === 'copied' ? translate({id: 'code.copied', message: 'Copied'}) : translate({id: 'code.copy', message: 'Copy'})}</span>
         </button>
         <span className="sr-only" role="status" aria-live="polite">
           {status === 'copied'
-            ? 'Copied to clipboard'
+            ? translate({id: 'code.copiedClipboard', message: 'Copied to clipboard'})
             : status === 'failed'
-              ? 'Copy failed. Select the commands instead.'
+              ? translate({id: 'code.copyFailedCommands', message: 'Copy failed. Select the commands instead.'})
               : ''}
         </span>
       </div>

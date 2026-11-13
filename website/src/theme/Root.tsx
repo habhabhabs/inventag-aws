@@ -1,4 +1,5 @@
 import React, {useEffect, useRef, useState, type ReactNode} from 'react';
+import {translate} from '@docusaurus/Translate';
 import Link from '@docusaurus/Link';
 import {getChoice, setChoice} from '@site/src/clientModules/analyticsConsent';
 
@@ -55,27 +56,27 @@ export default function Root({children}: {children: ReactNode}): ReactNode {
     <>
       {children}
       {open && (
-        <section className="consent-banner" aria-label="Cookie preferences" tabIndex={-1} ref={regionRef}>
+        <section className="consent-banner" aria-label={translate({id: 'consent.region', message: 'Cookie preferences'})} tabIndex={-1} ref={regionRef}>
           <button
             type="button"
             className="consent-banner__close"
-            aria-label="Close and keep just the essential cookies"
+            aria-label={translate({id: 'consent.close', message: 'Close and keep just the essential cookies'})}
             onClick={() => decide('denied')}>
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
               <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" strokeWidth="1.5" />
             </svg>
           </button>
-          <p className="consent-banner__title">A tiny cookie confession</p>
+          <p className="consent-banner__title">{translate({id: 'consent.title', message: 'A tiny cookie confession'})}</p>
           <p>
-            Only the essential cookies are on: they just remember your choice. Allow one more? It helps
-            me see which pages people find useful. <Link to="/privacy">What&rsquo;s stored and why</Link>.
+            {translate({id: 'consent.body', message: 'Only the essential cookies are on: they just remember your choice. Allow one more? It helps me see which pages people find useful.'})}{' '}
+            <Link to="/privacy">{translate({id: 'consent.link', message: 'What’s stored and why'})}</Link>.
           </p>
           <div className="consent-banner__actions">
             <button type="button" className="button consent-banner__solid" onClick={() => decide('granted')}>
-              Allow analytics
+              {translate({id: 'consent.allow', message: 'Allow analytics'})}
             </button>
             <button type="button" className="button button--secondary" onClick={() => decide('denied')}>
-              Just the essentials
+              {translate({id: 'consent.essentials', message: 'Just the essentials'})}
             </button>
           </div>
         </section>

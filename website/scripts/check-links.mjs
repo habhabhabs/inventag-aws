@@ -91,7 +91,8 @@ export function checkLinks(build) {
   for (const file of walk(build)) {
     const pagePath = BASE + path.relative(build, file).replace(/\\/g, '/').replace(/(index)?\.html$/, '');
     const cleanPath = pagePath.replace(/\/$/, '') || BASE;
-    const isArchived = ARCHIVED.test(pagePath);
+    // other-language copies are checked but only warn, like archived versions
+    const isArchived = ARCHIVED.test(pagePath) || /^\/inventag-aws\/zh-Hans(\/|$)/.test(pagePath);
     const html = fs.readFileSync(file, 'utf8');
     // static/docs/index.html is a hand-written redirect stub, not a Docusaurus page
     const isStub = /http-equiv=["']?refresh/i.test(html);
@@ -123,6 +124,8 @@ export function checkLinks(build) {
         continue;
       }
       if (target.host !== 'habhabhabs.github.io' || !target.pathname.startsWith(BASE)) continue;
+      // the English build runs before the other languages exist: links to them cannot resolve yet
+      if (/^\/inventag-aws\/zh-Hans(\/|$)/.test(target.pathname) && !fs.existsSync(path.join(build, 'zh-Hans'))) continue;
       checked++;
       const f = resolveFile(build, target.pathname.replace(/\/$/, '') || BASE);
       let problem = null;

@@ -3,6 +3,7 @@
  * and a polite live region so screen readers hear "Copied" after a click.
  */
 import React, {useCallback, useEffect, useRef, useState, type ReactNode} from 'react';
+import {translate} from '@docusaurus/Translate';
 import clsx from 'clsx';
 import {useCodeBlockContext} from '@docusaurus/theme-common/internal';
 import Button from '@theme/CodeBlock/Buttons/Button';
@@ -41,7 +42,7 @@ export default function CopyButton({className}: Props): ReactNode {
   return (
     <>
       <Button
-        aria-label={status === 'copied' ? 'Copied' : 'Copy code to clipboard'}
+        aria-label={status === 'copied' ? translate({id: 'code.copied', message: 'Copied'}) : translate({id: 'code.copyAria', message: 'Copy code to clipboard'})}
         className={clsx(className, styles.copyButton, status === 'copied' && styles.copied)}
         onClick={onClick}>
         {status === 'copied' ? (
@@ -49,10 +50,10 @@ export default function CopyButton({className}: Props): ReactNode {
         ) : (
           <IconCopy aria-hidden="true" className={styles.icon} />
         )}
-        <span aria-hidden="true">{status === 'copied' ? 'Copied' : 'Copy'}</span>
+        <span aria-hidden="true">{status === 'copied' ? translate({id: 'code.copied', message: 'Copied'}) : translate({id: 'code.copy', message: 'Copy'})}</span>
       </Button>
       <span className="sr-only" role="status" aria-live="polite">
-        {status === 'copied' ? 'Copied to clipboard' : status === 'failed' ? 'Copy failed. Select the text instead.' : ''}
+        {status === 'copied' ? translate({id: 'code.copiedClipboard', message: 'Copied to clipboard'}) : status === 'failed' ? translate({id: 'code.copyFailed', message: 'Copy failed. Select the text instead.'}) : ''}
       </span>
     </>
   );

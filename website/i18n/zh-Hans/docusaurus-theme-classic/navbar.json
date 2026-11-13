@@ -1,0 +1,18 @@
+{
+  "logo.alt": {
+    "message": "InvenTag",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.Docs": {
+    "message": "文档",
+    "description": "Navbar item with label Docs"
+  },
+  "item.label.Quick start": {
+    "message": "快速开始",
+    "description": "Navbar item with label Quick start"
+  },
+  "item.label.CLI reference": {
+    "message": "命令行参考",
+    "description": "Navbar item with label CLI reference"
+  }
+}

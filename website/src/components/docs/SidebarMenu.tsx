@@ -1,4 +1,5 @@
 import React, {useState, type ReactNode} from 'react';
+import {translate} from '@docusaurus/Translate';
 import Link from '@docusaurus/Link';
 import type {PropSidebarItem, PropSidebarItemLink, PropSidebarItemCategory} from '@docusaurus/plugin-content-docs';
 import Icon from '@site/src/components/docs/Icon';
@@ -50,22 +51,33 @@ function Row({item, path, onGo, icon}: {item: PropSidebarItemLink; path: string;
   );
 }
 
-function Pages({items, path, onGo}: {items: PropSidebarItem[]; path: string; onGo: () => void}): ReactNode {
+/** One folder in the page tree: a toggle with its own indented, guided children. */
+function Branch({item, path, onGo}: {item: PropSidebarItemCategory; path: string; onGo: () => void}): ReactNode {
+  const [open, setOpen] = useState(hasActive(item, path) || !item.collapsed);
+  return (
+    <li className="it-tree__branch">
+      <button type="button" className="it-tree__toggle" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <Icon name="chevron-right" size={14} />
+        <span>{item.label}</span>
+      </button>
+      {open && (
+        <ul className="it-tree__list">
+          {item.href && (
+            <Row item={{type: 'link', href: item.href, label: translate({id: 'menu.sectionOverview', message: '{label} overview'}, {label: item.label})}} path={path} onGo={onGo} />
+          )}
+          <Pages items={item.items} path={path} onGo={onGo} />
+        </ul>
+      )}
+    </li>
+  );
+}
+
+function Pages({items, path, onGo}: {items: readonly PropSidebarItem[]; path: string; onGo: () => void}): ReactNode {
   return (
     <>
       {items.map((item, i) => {
         if (item.type === 'link') return <Row key={item.href} item={item} path={path} onGo={onGo} />;
-        if (item.type === 'category') {
-          return (
-            <React.Fragment key={`${item.label}-${i}`}>
-              <li className="it-mnav__sub">{item.label}</li>
-              {item.href && (
-                <Row item={{type: 'link', href: item.href, label: item.label}} path={path} onGo={onGo} />
-              )}
-              <Pages items={item.items} path={path} onGo={onGo} />
-            </React.Fragment>
-          );
-        }
+        if (item.type === 'category') return <Branch key={`${item.label}-${i}`} item={item} path={path} onGo={onGo} />;
         return null;
       })}
     </>
@@ -89,9 +101,9 @@ export default function SidebarMenu({sidebar, path, onGo}: {sidebar: readonly Pr
           <Icon name="chevron-left" size={18} />
           <span>{current.label}</span>
         </button>
-        <ul className="it-mnav__list">
+        <ul className="it-mnav__list it-tree__list it-tree__list--root">
           {current.href && (
-            <Row item={{type: 'link', href: current.href, label: `${current.label} overview`}} path={path} onGo={close} />
+            <Row item={{type: 'link', href: current.href, label: translate({id: 'menu.sectionOverview', message: '{label} overview'}, {label: current.label})}} path={path} onGo={close} />
           )}
           <Pages items={current.items} path={path} onGo={close} />
         </ul>
@@ -101,10 +113,10 @@ export default function SidebarMenu({sidebar, path, onGo}: {sidebar: readonly Pr
 
   return (
     <div className="it-mnav">
-      <p className="it-mnav__label">{start?.label ?? 'Get started'}</p>
+      <p className="it-mnav__label">{start?.label ?? translate({id: 'menu.getStarted', message: 'Get started'})}</p>
       <ul className="it-mnav__list">
         {links.map((l) => (
-          <Row key={l.href} item={{...l, label: 'Overview'}} path={path} onGo={close} icon="book" />
+          <Row key={l.href} item={{...l, label: translate({id: 'menu.overview', message: 'Overview'})}} path={path} onGo={close} icon="book" />
         ))}
         {start?.items
           .filter((i): i is PropSidebarItemLink => i.type === 'link')
@@ -112,7 +124,7 @@ export default function SidebarMenu({sidebar, path, onGo}: {sidebar: readonly Pr
             <Row key={l.href} item={l} path={path} onGo={close} icon={pageIcon(l)} />
           ))}
       </ul>
-      <p className="it-mnav__label">Documentation</p>
+      <p className="it-mnav__label">{translate({id: 'menu.documentation', message: 'Documentation'})}</p>
       <ul className="it-mnav__list">
         {rest.map((c) => (
           <li key={c.label}>

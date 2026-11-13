@@ -1,0 +1,30 @@
+{
+  "version.label": {
+    "message": "1.0.1",
+    "description": "The label for version 1.0.1"
+  },
+  "sidebar.docsSidebar.category.Get started": {
+    "message": "快速上手",
+    "description": "The label for category 'Get started' in sidebar 'docsSidebar'"
+  },
+  "sidebar.docsSidebar.category.Guides": {
+    "message": "指南",
+    "description": "The label for category 'Guides' in sidebar 'docsSidebar'"
+  },
+  "sidebar.docsSidebar.category.Templates": {
+    "message": "模板",
+    "description": "The label for category 'Templates' in sidebar 'docsSidebar'"
+  },
+  "sidebar.docsSidebar.category.Examples": {
+    "message": "示例",
+    "description": "The label for category 'Examples' in sidebar 'docsSidebar'"
+  },
+  "sidebar.docsSidebar.category.Reference": {
+    "message": "参考",
+    "description": "The label for category 'Reference' in sidebar 'docsSidebar'"
+  },
+  "sidebar.docsSidebar.category.Contributing": {
+    "message": "参与贡献",
+    "description": "The label for category 'Contributing' in sidebar 'docsSidebar'"
+  }
+}

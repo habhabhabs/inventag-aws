@@ -1,0 +1,77 @@
+---
+title: InvenTag 文档
+description: InvenTag 是一款开源的 Python 命令行工具，可列出你的 AWS 账户中的资源、检查标签，并生成 Excel 和 Word 报告。
+sidebar_position: 1
+slug: /
+---
+
+# InvenTag 文档
+
+InvenTag 是一款免费、开源（MIT）的 Python 命令行工具。
+你让它指向一个或多个 AWS 账户，它会列出找到的资源、检查它们的标签，
+并把结果写成 Excel 工作簿和 Word 文档，交给从不打开 AWS 控制台的人也能看懂。
+
+我们把这份清单称为**物料清单（BOM）**：你运行了什么、运行在哪里、
+归谁负责，以及标签是否规范。
+
+![The InvenTag wordmark](/img/logo-wordmark.svg#gh-light-mode-only)![The InvenTag wordmark](/img/logo-wordmark-dark.svg#gh-dark-mode-only)
+
+## 从这里开始
+
+<CardGroup cols={2}>
+  <Card title="生成第一份报告" icon="rocket" href="/docs/getting-started/quick-start">
+    扫描一个账户，大约十分钟内打开 Excel 和 Word 报告。
+  </Card>
+  <Card title="安装 InvenTag" icon="download" href="/docs/getting-started/installation">
+    用 pip 或 pipx 安装，并连接你的 AWS 凭证。
+  </Card>
+  <Card title="InvenTag 是什么" icon="info" href="/docs/getting-started/introduction">
+    一页说明它能做什么、不能做什么。
+  </Card>
+  <Card title="功能状态" icon="check" href="/docs/getting-started/status">
+    哪些功能目前可用，以及已知限制。
+  </Card>
+  <Card title="模板" icon="layers" href="/docs/templates">
+    用一个小小的 YAML 文件复用报告版式或标签策略。
+  </Card>
+  <Card title="示例" icon="terminal" href="/docs/examples">
+    常见任务的可复制粘贴方案。
+  </Card>
+  <Card title="命令行参考" icon="book" href="/docs/reference/cli">
+    所有参数、文件格式和 IAM 权限。
+  </Card>
+  <Card title="术语表" icon="help" href="/docs/reference/glossary">
+    本文档所用术语的通俗解释。
+  </Card>
+</CardGroup>
+
+## 试一试
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install inventag-aws
+inventag --template standard-bom --create-excel --account-regions us-east-1
+```
+
+InvenTag 发布在 [PyPI](https://pypi.org/project/inventag-aws/) 上。若要从源码运行，
+请参阅[安装](./getting-started/installation.md)。
+
+InvenTag 使用你当前的 AWS 凭证，并把工作簿写入 `bom_output/`。
+请为它使用只读身份：
+[设置只读访问](./guides/read-only-access.md)。
+
+## 获取帮助
+
+- 在 [GitHub Issues](https://github.com/habhabhabs/inventag-aws/issues)
+  中报告错误或提出功能需求。
+- 在 [GitHub Discussions](https://github.com/habhabhabs/inventag-aws/discussions)
+  中提问。
+- 安全问题请按[安全](./security/index.md)页面所述方式报告。
+
+InvenTag 以
+[MIT 许可证](https://github.com/habhabhabs/inventag-aws/blob/main/LICENSE)发布。
+
+---
+
+*AWS 是 Amazon.com, Inc. 或其关联公司的商标。InvenTag 是独立项目，
+与 Amazon Web Services 无关联，也未获其认可或赞助。*
