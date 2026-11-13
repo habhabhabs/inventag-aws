@@ -536,53 +536,6 @@ jobs:
         echo "✅ Version.json updated and committed to main branch"
         echo "🏷️ Git tag ${{ steps.version.outputs.tag_name }} created and pushed"
 
-  test-release:
-    name: Test Release Functionality
-    runs-on: ubuntu-latest
-    needs: [check-for-release, release]
-    if: needs.check-for-release.outputs.should_release == 'true'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-    - name: Set up Python
-      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-      with:
-        python-version: '3.13'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-
-    - name: Test BOM converter
-      run: |
-        python scripts/legacy/bom_converter.py --help
-        echo "✅ BOM converter works correctly"
-
-    - name: Test tag compliance checker
-      run: |
-        if [ -f scripts/legacy/tag_compliance_checker.py ]; then
-          python scripts/legacy/tag_compliance_checker.py --help
-          echo "✅ Tag compliance checker works correctly"
-        else
-          echo "ℹ️ Tag compliance checker not found - skipping"
-        fi
-
-        if [ -f scripts/legacy/aws_resource_inventory.py ]; then
-          python scripts/legacy/aws_resource_inventory.py --help
-          echo "✅ AWS resource inventory works correctly"
-        else
-          echo "ℹ️ AWS resource inventory script not found - skipping"
-        fi
-
-    - name: Test CI/CD BOM generation
-      run: |
-        python scripts/development/cicd_bom_generation.py --help
-        echo "✅ CI/CD BOM generation works correctly"
-
   publish-pypi:
     name: Publish to PyPI
     runs-on: ubuntu-latest

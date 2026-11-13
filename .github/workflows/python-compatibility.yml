@@ -8,14 +8,35 @@ on:
   schedule:
     # Run compatibility tests weekly to catch issues with new Python releases
     - cron: '0 6 * * 1'
+  workflow_dispatch:
 
 permissions:
   contents: read
   pull-requests: read  # gitleaks-action lists PR commits
 
 jobs:
+  # Secret scan: once per push and pull request (it used to run in every matrix leg).
+  gitleaks:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        fetch-depth: 0  # Fetch full history for gitleaks
+
+    - name: Security scan with gitleaks
+      uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+        GITLEAKS_ENABLE_SUMMARY: true
+
+  # The full compatibility matrix runs weekly and by hand. On every push and pull
+  # request, ci.yml already tests Python 3.11 to 3.15.
   python-compatibility:
     name: Test Python ${{ matrix.python-version }} compatibility
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.experimental }}
     
@@ -28,29 +49,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      with:
-        fetch-depth: 0  # Fetch full history for gitleaks
-        
-    - name: Security scan with gitleaks
-      id: gitleaks
-      uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
-      continue-on-error: true  # Don't fail the entire workflow on artifact issues
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
-        GITLEAKS_ENABLE_SUMMARY: true
-        
-    - name: Check gitleaks results
-      if: always()
-      run: |
-        if [ "${{ steps.gitleaks.outcome }}" == "failure" ]; then
-          echo "⚠️ Gitleaks detected security issues - please review"
-          exit 1
-        elif [ "${{ steps.gitleaks.outcome }}" == "success" ]; then
-          echo "✅ No security leaks detected"
-        else
-          echo "ℹ️ Gitleaks scan completed with warnings"
-        fi
 
     - name: Set up Python ${{ matrix.python-version }}
       id: setup-python
@@ -256,7 +254,7 @@ jobs:
     name: Compatibility Test Summary  
     runs-on: ubuntu-latest
     needs: python-compatibility
-    if: always()
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     
     steps:
     - name: Download all compatibility reports
