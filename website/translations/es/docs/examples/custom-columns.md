@@ -80,8 +80,7 @@ La fila de encabezado está inmovilizada y tiene botones de filtro.
 ## Asignaciones de etiquetas y descripciones de servicios {#tag-mappings-and-service-descriptions}
 
 `--tag-mappings` y `--service-descriptions` añaden columnas al libro
-predeterminado. Con `--template` no añaden nada (lo comprobamos con
-`--template standard-bom --tag-mappings`), así que usa `tag_columns` como se
+predeterminado. Con `--template` no añaden nada, así que usa `tag_columns` como se
 indica arriba. Con un archivo de diseño (`--excel-template` o `--word-template`),
 indica la columna asignada en `extra_fields`. Consulta
 [Archivos de configuración](../reference/configuration-files.md#tag-mappings).

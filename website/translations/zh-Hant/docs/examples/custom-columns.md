@@ -77,7 +77,7 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ## 標籤對映和服務描述 {#tag-mappings-and-service-descriptions}
 
 `--tag-mappings` 和 `--service-descriptions` 會為預設工作簿新增列。
-與 `--template` 一起使用時它們不會新增任何內容（我們用 `--template standard-bom --tag-mappings` 檢查過），
+與 `--template` 一起使用時它們不會新增任何內容，
 所以請像上面那樣使用 `tag_columns`。如果使用版式檔案（`--excel-template` 或 `--word-template`），
 請把對映的列列在 `extra_fields` 下。參見
 [配置檔案](../reference/configuration-files.md#tag-mappings)。
