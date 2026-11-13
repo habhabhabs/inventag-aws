@@ -6,3 +6,7 @@ User-agent: *
 Allow: /
 
 Sitemap: https://habhabhabs.github.io/inventag-aws/sitemap.xml
+Sitemap: https://habhabhabs.github.io/inventag-aws/zh-Hans/sitemap.xml
+Sitemap: https://habhabhabs.github.io/inventag-aws/zh-Hant/sitemap.xml
+Sitemap: https://habhabhabs.github.io/inventag-aws/es/sitemap.xml
+Sitemap: https://habhabhabs.github.io/inventag-aws/fr/sitemap.xml
