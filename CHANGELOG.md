@@ -10,6 +10,131 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- InvenTag lists 22 more services with their own read-only calls: ElastiCache,
+  Redshift, Redshift Serverless, OpenSearch, EFS, ECR, Step Functions, Kinesis,
+  Firehose, Secrets Manager (names only, through `ListSecrets`), Systems
+  Manager parameters (names only, through `DescribeParameters`), Auto Scaling
+  groups, Backup vaults, Cognito user pools, CodeBuild projects, CodePipeline,
+  Athena workgroups, EMR, MSK, AppSync, Elastic Beanstalk and WAF web ACLs.
+  The read-only IAM policy file lists the new actions.
+- Every row has a `source` column (`service-api`, `tagging-api` or `billing`),
+  a `sources` column and a `detail_level` column, so you can see which API
+  returned it.
+- The JSON output and the state snapshot record what discovery attempted and
+  how each listing call ended (ok, empty, denied, throttled, error or timeout).
+- `--resume` reuses the results of accounts that finished in an earlier run of
+  the same command that did not complete, and scans only the others.
+  `--resume-max-age-hours` sets how old those results may be (default 24).
+- `--state-retention-days` and `--state-max-snapshots` set how many state
+  snapshots are kept (defaults 30 days and 100 snapshots; `0` or `none` keeps
+  all).
+- `--fail-on-account-error` makes the run exit with code 5 when an account
+  could not be scanned completely. `--fail-if-empty` makes it exit with code 6
+  when there is nothing to report. Without these flags the exit codes are as
+  before.
+- When `ec2:DescribeRegions` fails, InvenTag reads the enabled regions with
+  `account:ListRegions`, and then tries every region of the partition, instead
+  of four fixed regions. China and GovCloud accounts use their own home
+  regions for global services, Cost Explorer and the Tagging API.
+
+### Changed
+
+- `--account-processing-timeout` is a limit per account, counted from when
+  that account's scan starts. An account that runs out of time is reported as
+  failed and the other accounts are kept. The resources it found before the
+  limit stay in the report, and the report says the account is incomplete.
+  Discovery's own listing limit follows this setting instead of a fixed 10
+  minutes.
+- A failed listing call (throttled after the retries, or any error other than
+  access denied) is logged as a warning for that service and region, instead
+  of looking like "no resources". Throttled calls are retried up to 10 times
+  (standard retry mode); `AWS_RETRY_MODE` and `AWS_MAX_ATTEMPTS` override this.
+- A report format that cannot be written makes the run exit with code 1.
+- Excel sheet names are made valid and unique (characters Excel does not allow
+  become `-`, a repeated name gets ` (2)`); the log names each changed sheet.
+- Reports are written to a temporary file and moved into place, so a failed
+  save leaves no partial file and keeps the previous report.
+- Word tables that are cut say how many resources are not listed and that the
+  Excel report lists all of them.
+- Change tracking treats lists as unordered and ignores fields that change on
+  every run (discovery route, cost figures, usage counters). Accounts that
+  failed in either of the two runs are left out of the comparison, and the
+  change report names them.
+- Conflicting options now stop with exit code 2: `--accounts-file` with
+  `--accounts-prompt`, a full role ARN in `--cross-account-role` with an
+  accounts file, `--s3-kms-key-id` without `--s3-encryption aws:kms`, and
+  `--resume` with `--disable-state-management`.
+- `--bom-config` checks the type of each value and stops with exit code 1
+  naming the key. Accounts files, tag-mapping files, service-description files
+  and `--bom-config` are read as UTF-8 with or without a byte order mark, and
+  a key written twice is an error.
+- With `--template`, a warning says when the columns added by `--tag-mappings`
+  or `--service-descriptions` are not shown by the template.
+- A description in a `--service-descriptions` file replaces the built-in one,
+  also for S3, EC2, RDS, Lambda and VPC.
+- The development script `scripts/development/cicd_bom_generation.py` no
+  longer changes the bucket's lifecycle rules by default
+  (`--s3-lifecycle-days` defaults to 0).
+
+### Fixed
+
+- Network analysis: a subnet is public only when its route table sends
+  `0.0.0.0/0` or `::/0` to an internet gateway (before, every subnet of a VPC
+  with an internet gateway was public). Lists of VPCs, subnets and gateways
+  are read page by page. IPv6-only subnets no longer stop the analysis.
+  Resources are counted in their VPC, subnet and security group.
+- Security analysis: port ranges, all-traffic rules and ICMP are rated
+  correctly (for example 20-25 open to the internet is critical). Outbound
+  rules are rated low. A group counts as unused only when no network interface
+  uses it.
+- Discovery lists every page of every call, ECS services in every cluster,
+  WorkMail organizations, and SQS queues beyond 1,000 per region. Lambda, RDS
+  and CloudFormation details are read in the resource's own region.
+- A resource whose name starts with `vpc-`, `sg-` or similar is no longer moved
+  to the VPC service unless it is an EC2 resource.
+- No row is added for a resource that no API returned (the "AI prediction"
+  code was removed).
+- The `monthly_spend` column shows the billed amount of the service, like
+  `service_monthly_spend` (it was always 0.0).
+- Resources with the same ID in two accounts are no longer merged into one.
+- IAM Identity Center (SSO) and web-identity profiles work under the read-only
+  guard.
+- `--credential-timeout` also applies to AssumeRole and the identity checks.
+- State snapshots are written atomically, a corrupt snapshot is skipped with a
+  message, and two runs in the same folder no longer overwrite each other.
+- The older tag compliance checker script ignores `aws:` system tags, says
+  which policy fields it does not enforce, and fills the compliance status
+  column of its BOM. Its `--s3-bucket` upload still works.
+- Library use of `CloudBOMGenerator` with `compliance_policies` runs the tag
+  check instead of failing.
+
+### Security
+
+- Values that often hold secrets are replaced by `***REDACTED***` in reports,
+  JSON output, state snapshots, resume checkpoints and logs: Lambda and App
+  Runner environment variables, ECS and CodeBuild environment values, EC2 user
+  data, CloudFormation parameter values, Glue job arguments and connection
+  properties, passwords, client secrets, tokens and private keys. The names
+  stay. Secrets in other fields (descriptions, tags, free text) are not
+  recognised. Reports and snapshots written by earlier versions may contain
+  such values: delete or restrict old `bom_output/` folders and shared copies.
+  The first run after the upgrade shows changed values in the change report.
+- The read-only guard blocks more calls that return secrets or contents (for
+  example `cloudformation:GetTemplate`, Athena query results,
+  `ec2:GetLaunchTemplateData`, API keys with their values), checks presigned
+  URLs and database auth tokens, and blocks `ec2:DescribeInstanceAttribute`
+  for user data.
+- `CredentialManager.setup_cross_account_roles()` and the S3 lifecycle helper
+  write to AWS only when called with an explicit opt-in
+  (`allow_iam_writes=True`, `allow_bucket_writes=True`); the read-only guard
+  still blocks them in a CLI run.
+- A warning is printed when an accounts file that holds access keys can be
+  read by other users.
+
+## [v1.1.4] - 2026-11-13
+
+### Added
+
 - `inventag --version` prints the installed version. `python -m inventag` runs
   the same command as `inventag`.
 
@@ -406,7 +531,8 @@ One-time setup for PyPI:
 3. In the GitHub repository settings, set the variable `PYPI_PUBLISH` to
    `true`.
 
-[Unreleased]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.3...HEAD
+[Unreleased]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.4...HEAD
+[v1.1.4]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.3...v1.1.4
 [v1.1.3]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.2...v1.1.3
 [v1.1.2]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.1...v1.1.2
 [v1.1.1]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.0...v1.1.1
