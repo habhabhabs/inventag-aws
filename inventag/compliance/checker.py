@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
 """
 InvenTag - Tag Compliance Checker
-Enterprise-grade AWS™ resource tag compliance validation tool.
+Checks AWS resource tags against a list of required tag keys.
 
-Extracted from scripts/tag_compliance_checker.py and enhanced for the unified inventag package.
+This is the engine behind ``scripts/legacy/tag_compliance_checker.py``. The
+``inventag --template`` tag-policy check uses ``inventag.templating`` instead,
+which also supports allowed values, patterns and scope rules.
+
+What it checks: a resource is compliant when it has at least one user tag and
+every required tag key is present. Tag keys are compared case-sensitively, as
+AWS does. Values are not checked. Tags whose key starts with ``aws:`` are
+created by AWS and are not counted as user tags.
+
+It does not assess or certify compliance with any security or regulatory
+framework.
 """
 
 import json
@@ -15,7 +25,50 @@ from typing import Dict, List, Any, Optional, Set, Tuple
 from botocore.exceptions import ClientError, NoCredentialsError
 import time
 
+from ..security.read_only_guard import ReadOnlyGuard
 from ..security.safe_output import open_private
+
+# AWS reserves this tag-key prefix for tags it creates itself; users cannot
+# set them (for example, S3 rejects them with "System tags cannot be added").
+SYSTEM_TAG_PREFIX = "aws:"
+
+
+def user_tags(resource: Any) -> Dict[str, str]:
+    """Return the user tags of a resource as ``{key: value}``.
+
+    Accepts ``{"k": "v"}`` or ``[{"Key": "k", "Value": "v"}]``. Tags whose key
+    starts with ``aws:`` (any case) are dropped: AWS creates them, so they say
+    nothing about whether a person tagged the resource. ``None`` values become
+    empty strings. Keys are left exactly as given (tag keys are case-sensitive).
+    """
+    raw = resource.get("tags") if isinstance(resource, dict) else None
+    pairs: List[Tuple[Any, Any]] = []
+    if isinstance(raw, dict):
+        pairs = list(raw.items())
+    elif isinstance(raw, list):
+        for item in raw:
+            if isinstance(item, dict):
+                key = item.get("Key", item.get("key"))
+                pairs.append((key, item.get("Value", item.get("value"))))
+    tags: Dict[str, str] = {}
+    for key, value in pairs:
+        if key is None:
+            continue
+        key = str(key)
+        if key.lower().startswith(SYSTEM_TAG_PREFIX):
+            continue
+        tags[key] = "" if value is None else str(value)
+    return tags
+
+
+def _resource_key(resource: Dict[str, Any]):
+    """Identity used to match a resource to its compliance status."""
+    return resource.get("arn") or (
+        resource.get("service"),
+        resource.get("type"),
+        resource.get("id"),
+        resource.get("region"),
+    )
 
 
 class ComprehensiveTagComplianceChecker:
@@ -25,6 +78,7 @@ class ComprehensiveTagComplianceChecker:
         config_file: Optional[str] = None,
         session: Optional[boto3.Session] = None,
         policy: Optional[Dict[str, Any]] = None,
+        strict_policy: bool = False,
     ):
         """Initialize the Comprehensive Tag Compliance Checker.
 
@@ -33,7 +87,13 @@ class ComprehensiveTagComplianceChecker:
             config_file: tag policy file (YAML/JSON)
             session: boto3 session to use (default: default credentials)
             policy: tag policy as a dict (instead of config_file)
+            strict_policy: raise ValueError when the policy has fields this
+                checker does not enforce (such as ``allowed_values``). By
+                default they are ignored with a warning and listed in
+                ``summary["ignored_policy_fields"]``.
         """
+        self.strict_policy = strict_policy
+        self.ignored_policy_fields: List[str] = []
         self.session = session or boto3.Session()
         self.logger = self._setup_logging()
         self.regions = regions or self._get_available_regions()
@@ -110,13 +170,51 @@ class ComprehensiveTagComplianceChecker:
             raise
 
     def _validate_tag_policy(self, config: Any) -> Dict[str, Any]:
-        """Check a tag policy has a list of required tags."""
+        """Check a tag policy has a valid list of required tags.
+
+        Only required tag keys are enforced. Every other field (for example
+        ``allowed_values``, ``pattern``, ``service_specific``) is recorded in
+        ``self.ignored_policy_fields`` and logged, never silently dropped.
+        """
         if not isinstance(config, dict):
             raise ValueError("Tag policy must be a mapping")
         if "required_tags" not in config:
             raise ValueError("Configuration must contain 'required_tags' section")
         if not isinstance(config["required_tags"], list):
             raise ValueError("'required_tags' must be a list")
+        ignored: List[str] = []
+        for index, entry in enumerate(config["required_tags"]):
+            if isinstance(entry, str):
+                key = entry
+            elif isinstance(entry, dict):
+                key = entry.get("key")
+            else:
+                raise ValueError(
+                    f"required_tags[{index}] must be a tag key or a mapping with 'key'"
+                )
+            if not isinstance(key, str) or not key.strip():
+                raise ValueError(
+                    f"required_tags[{index}] needs a non-empty string 'key'"
+                )
+            if key.lower().startswith(SYSTEM_TAG_PREFIX):
+                raise ValueError(
+                    f"required_tags[{index}]: '{key}' uses the reserved aws: prefix; "
+                    "AWS-created tags are not counted as user tags"
+                )
+            if isinstance(entry, dict):
+                ignored.extend(
+                    f"required_tags[{key}].{name}" for name in entry if name != "key"
+                )
+        ignored.extend(name for name in config if name != "required_tags")
+        if ignored:
+            message = (
+                "This checker only enforces that required tag keys are present. "
+                "Not enforced: " + ", ".join(ignored)
+            )
+            if self.strict_policy:
+                raise ValueError(message)
+            self.logger.warning(message)
+        self.ignored_policy_fields = ignored
         if len(config["required_tags"]) == 0:
             self.logger.warning(
                 "Tag policy contains no required tags; only untagged resources "
@@ -126,25 +224,27 @@ class ComprehensiveTagComplianceChecker:
         return config
 
     def discover_all_resources(self) -> List[Dict[str, Any]]:
-        """Discover ALL AWS resources using Resource Groups Tagging API and other comprehensive methods."""
-        self.logger.info(
-            "Starting comprehensive AWS resource discovery across ALL services..."
-        )
+        """Discover resources with the Resource Groups Tagging API.
 
-        # Method 1: Use Resource Groups Tagging API for comprehensive discovery
+        That API lists resources of supported services that have tags (or had
+        tags before). A resource that never had a tag is usually not returned,
+        so the ``untagged`` result of a self-discovered run undercounts. Pass
+        resources from a full inventory to ``check_compliance`` to count them.
+        """
+        self.logger.info("Starting resource discovery via the Tagging API...")
+
+        # Method 1: Resource Groups Tagging API
         self._discover_via_resource_groups_tagging_api()
 
-        # Method 2: Use AWS Config (if available) for additional resources
+        # Methods 2 and 3 are placeholders and add nothing today.
         self._discover_via_config_service()
-
-        # Method 3: Service-specific discovery for resources that might not appear in RGT API
         self._discover_additional_resources()
 
         # Remove duplicates based on ARN
         self._deduplicate_resources()
 
         self.logger.info(
-            f"Comprehensive discovery complete. Found {len(self.all_resources)} unique resources."
+            f"Discovery complete. Found {len(self.all_resources)} unique resources."
         )
         return self.all_resources
 
@@ -166,7 +266,7 @@ class ComprehensiveTagComplianceChecker:
                         try:
                             # Parse ARN to extract service and resource type
                             arn = resource["ResourceARN"]
-                            arn_parts = arn.split(":")
+                            arn_parts = arn.split(":", 5)
 
                             if len(arn_parts) >= 6:
                                 service = arn_parts[2]
@@ -174,11 +274,22 @@ class ComprehensiveTagComplianceChecker:
                                 account_id = arn_parts[4]
                                 resource_part = arn_parts[5]
 
-                                # Extract resource type and ID
-                                if "/" in resource_part:
-                                    resource_type, resource_id = resource_part.split(
-                                        "/", 1
-                                    )
+                                # Extract resource type and ID. The part after
+                                # the account is "type/id", "type:id" or just an
+                                # id (S3 buckets).
+                                slash = resource_part.find("/")
+                                colon = resource_part.find(":")
+                                cut = (
+                                    min(i for i in (slash, colon) if i >= 0)
+                                    if (slash >= 0 or colon >= 0)
+                                    else -1
+                                )
+                                if cut >= 0:
+                                    resource_type = resource_part[:cut]
+                                    resource_id = resource_part[cut + 1 :]
+                                elif service == "s3":
+                                    resource_type = "bucket"
+                                    resource_id = resource_part
                                 else:
                                     resource_type = resource_part
                                     resource_id = resource_part
@@ -187,7 +298,7 @@ class ComprehensiveTagComplianceChecker:
                                 tags = {
                                     tag["Key"]: tag["Value"]
                                     for tag in resource.get("Tags", [])
-                                }
+                                }  # all tags, including aws:* (filtered when checking)
 
                                 # Get additional resource details if possible
                                 additional_info = self._get_additional_resource_info(
@@ -244,17 +355,13 @@ class ComprehensiveTagComplianceChecker:
 
     def _discover_via_config_service(self):
         """Use AWS Config to discover additional resources."""
-        self.logger.info("Discovering resources via AWS Config...")
-        # Simplified implementation - full implementation would be more comprehensive
-        pass
+        # Not implemented: adds no resources.
+        self.logger.debug("AWS Config discovery is not implemented; skipped")
 
     def _discover_additional_resources(self):
         """Discover additional resources that might not appear in RGT API."""
-        self.logger.info(
-            "Discovering additional resources via service-specific APIs..."
-        )
-        # Simplified implementation - full implementation would include more services
-        pass
+        # Not implemented: adds no resources.
+        self.logger.debug("Service-specific discovery is not implemented; skipped")
 
     def _get_additional_resource_info(
         self, service: str, resource_type: str, resource_id: str, region: str, arn: str
@@ -316,9 +423,9 @@ class ComprehensiveTagComplianceChecker:
             resources = [r for r in resources if isinstance(r, dict)]
 
         for resource in resources:
-            tags = resource.get("tags", {}) or {}
-
-            if not tags:
+            # "aws:" system tags do not count: a resource that only has those
+            # is untagged as far as a person is concerned.
+            if not user_tags(resource):
                 untagged.append(resource)
                 continue
 
@@ -337,6 +444,9 @@ class ComprehensiveTagComplianceChecker:
         non_compliant_count = len(non_compliant)
         untagged_count = len(untagged)
 
+        # Percentage = compliant / all resources given (untagged ones count in
+        # the denominator and as not compliant), rounded to 2 decimals; 0 when
+        # there are no resources.
         compliance_percentage = (
             (compliant_count / total_resources * 100) if total_resources > 0 else 0
         )
@@ -347,6 +457,7 @@ class ComprehensiveTagComplianceChecker:
             "non_compliant_resources": non_compliant_count,
             "untagged_resources": untagged_count,
             "compliance_percentage": round(compliance_percentage, 2),
+            "ignored_policy_fields": list(self.ignored_policy_fields),
             "check_timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -367,9 +478,13 @@ class ComprehensiveTagComplianceChecker:
     def _check_resource_compliance(
         self, resource: Dict[str, Any]
     ) -> Tuple[bool, List[str]]:
-        """Return (is_compliant, missing required tag keys) for one resource."""
-        tags = resource.get("tags", {}) or {}
-        missing_tags = []
+        """Return (is_compliant, missing required tag keys) for one resource.
+
+        Keys match exactly (case-sensitive). A key with an empty value counts as
+        present. ``aws:`` tags are ignored.
+        """
+        tags = user_tags(resource)
+        missing_tags: List[str] = []
         for required_tag in self.tag_policy.get("required_tags", []):
             if isinstance(required_tag, str):
                 tag_key = required_tag
@@ -377,7 +492,7 @@ class ComprehensiveTagComplianceChecker:
                 tag_key = required_tag.get("key", "")
             else:
                 continue
-            if tag_key not in tags:
+            if tag_key not in tags and tag_key not in missing_tags:
                 missing_tags.append(tag_key)
         return (bool(tags) and not missing_tags), missing_tags
 
@@ -590,34 +705,34 @@ class ComprehensiveTagComplianceChecker:
 
         return result
 
+    def _rows_with_status(self, bom_data, include_missing: bool = False):
+        """Copy BOM rows and add ``compliance_status`` (matched by ARN)."""
+        status_by_key = {}
+        for label, bucket in (
+            ("Compliant", "compliant"),
+            ("Non-Compliant", "non_compliant"),
+            ("Untagged", "untagged"),
+        ):
+            for item in self.compliance_results[bucket]:
+                status_by_key[_resource_key(item)] = (
+                    label,
+                    ", ".join(item.get("missing_tags", [])),
+                )
+        rows = []
+        for resource in bom_data.resources:
+            row = resource.copy()
+            label, missing = status_by_key.get(_resource_key(resource), ("Unknown", ""))
+            row["compliance_status"] = label
+            if include_missing and label == "Non-Compliant":
+                row["missing_tags"] = missing
+            rows.append(row)
+        return rows
+
     def _generate_excel_bom(self, bom_data, filename: str):
         """Generate Excel BOM document."""
         from ..reporting import BOMConverter
 
-        # Create a temporary JSON file with the processed data
-        temp_data = []
-        for resource in bom_data.resources:
-            # Add compliance status to each resource
-            resource_copy = resource.copy()
-
-            # Determine compliance status
-            if resource in self.compliance_results["compliant"]:
-                resource_copy["compliance_status"] = "Compliant"
-            elif resource in self.compliance_results["non_compliant"]:
-                resource_copy["compliance_status"] = "Non-Compliant"
-                # Add missing tags info if available
-                for nc_resource in self.compliance_results["non_compliant"]:
-                    if nc_resource.get("arn") == resource.get("arn"):
-                        resource_copy["missing_tags"] = ", ".join(
-                            nc_resource.get("missing_tags", [])
-                        )
-                        break
-            elif resource in self.compliance_results["untagged"]:
-                resource_copy["compliance_status"] = "Untagged"
-            else:
-                resource_copy["compliance_status"] = "Unknown"
-
-            temp_data.append(resource_copy)
+        temp_data = self._rows_with_status(bom_data, include_missing=True)
 
         # Use BOM converter to generate Excel
         converter = BOMConverter(enrich_vpc_info=False)  # Already enriched by processor
@@ -644,12 +759,12 @@ class ComprehensiveTagComplianceChecker:
                 "Word document generation not available, creating text report"
             )
             with open(filename.replace(".docx", ".txt"), "w") as f:
-                f.write("InvenTag Compliance BOM Report\n")
+                f.write("InvenTag Tag Check BOM Report\n")
                 f.write("=" * 40 + "\n\n")
                 f.write(f"Generated: {datetime.now(timezone.utc).isoformat()}\n")
                 f.write(f"Total Resources: {len(bom_data.resources)}\n")
                 f.write(
-                    f"Compliance Rate: {bom_data.compliance_details['compliance_percentage']}%\n\n"
+                    f"Resources with all required tags: {bom_data.compliance_details['compliance_percentage']}%\n\n"
                 )
 
                 # Write summary by service
@@ -666,32 +781,34 @@ class ComprehensiveTagComplianceChecker:
         """Generate CSV BOM document."""
         from ..reporting import BOMConverter
 
-        # Prepare data with compliance status
-        temp_data = []
-        for resource in bom_data.resources:
-            resource_copy = resource.copy()
-
-            # Add compliance status
-            if resource in self.compliance_results["compliant"]:
-                resource_copy["compliance_status"] = "Compliant"
-            elif resource in self.compliance_results["non_compliant"]:
-                resource_copy["compliance_status"] = "Non-Compliant"
-            elif resource in self.compliance_results["untagged"]:
-                resource_copy["compliance_status"] = "Untagged"
-            else:
-                resource_copy["compliance_status"] = "Unknown"
-
-            temp_data.append(resource_copy)
+        temp_data = self._rows_with_status(bom_data)
 
         # Use BOM converter to generate CSV
         converter = BOMConverter(enrich_vpc_info=False)
         converter.data = temp_data
         converter.export_to_csv(filename)
 
-    def upload_to_s3(self, bucket_name: str, key: str, format_type: str = "json"):
-        """Upload compliance results to S3."""
+    def upload_to_s3(
+        self,
+        bucket_name: str,
+        key: str,
+        format_type: str = "json",
+        allow_write: bool = False,
+    ):
+        """Upload the results file to S3 (a write: ``s3:PutObject``).
+
+        InvenTag is read-only by default, so this refuses unless the caller
+        passes ``allow_write=True``. Even then the read-only guard, if
+        installed, only lets ``PutObject`` through on this one client.
+        """
+        if not allow_write:
+            raise PermissionError(
+                "upload_to_s3 writes an object to S3 and is disabled by default; "
+                "call it with allow_write=True to upload to a bucket you choose"
+            )
         try:
             s3 = self.session.client("s3")
+            ReadOnlyGuard.allow_on_client(s3, {"PutObject"})
 
             if format_type.lower() == "json":
                 content = json.dumps(self.compliance_results, indent=2, default=str)
