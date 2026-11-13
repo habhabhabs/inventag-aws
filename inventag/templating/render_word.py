@@ -14,6 +14,7 @@ from docx.shared import Inches, RGBColor
 
 from .columns import (
     build_columns,
+    clean_text,
     format_value,
     get_field,
     group_by_service,
@@ -60,11 +61,11 @@ def _table(doc, spec, headers: List[str], rows: List[List[str]]):
     table = doc.add_table(rows=1, cols=len(headers))
     table.style = "Table Grid"
     for i, text in enumerate(headers):
-        table.rows[0].cells[i].text = text
+        table.rows[0].cells[i].text = clean_text(text)
     for values in rows:
         cells = table.add_row().cells
         for i, value in enumerate(values):
-            cells[i].text = value
+            cells[i].text = clean_text(value)
     _style_header_row(table, spec)
     return table
 

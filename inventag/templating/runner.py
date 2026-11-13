@@ -35,7 +35,30 @@ from .render_word import render_word
 from .tag_policy import ComplianceReport, evaluate
 
 EXIT_TAG_VIOLATIONS = 3
+# Exit code for "no resources to report" when the caller asks for it (an
+# opt-in flag in the main command). 1 is a failed run, 2 a usage error and 3
+# a tag policy violation.
+EXIT_NO_RESOURCES = 4
 DEFAULT_REPORT = "standard-bom"
+
+
+def bom_result_is_empty(results: Dict[str, Any]) -> bool:
+    """True when a run succeeded but there was nothing to report.
+
+    Works on the dictionary returned by ``generate_comprehensive_bom`` with or
+    without ``--template``. A failed run, or a result that does not say how
+    many resources there were, is not "empty".
+    """
+    if not isinstance(results, dict) or not results.get("success"):
+        return False
+    counts = []
+    generation = results.get("bom_generation")
+    if isinstance(generation, dict) and "total_resources" in generation:
+        counts.append(generation["total_resources"])
+    stats = results.get("processing_statistics")
+    if isinstance(stats, dict) and "total_resources" in stats:
+        counts.append(stats["total_resources"])
+    return bool(counts) and all(c == 0 for c in counts)
 
 
 def add_template_arguments(parser: argparse.ArgumentParser) -> None:
@@ -95,11 +118,28 @@ class TemplateRun:
     def create_generator(self, config) -> "TemplatedCloudBOMGenerator":
         return TemplatedCloudBOMGenerator(config, self)
 
-    def finish(self, results: Dict[str, Any], logger: logging.Logger) -> int:
-        """Print a short summary and return the exit code (0 or 3)."""
+    def finish(
+        self,
+        results: Dict[str, Any],
+        logger: logging.Logger,
+        fail_if_empty: bool = False,
+    ) -> int:
+        """Print a short summary and return the exit code.
+
+        0 normally; 3 for tag policy violations when the config template asks
+        for that; ``EXIT_NO_RESOURCES`` (4) when ``fail_if_empty`` is true and
+        no resources were found (or the filters removed them all).
+        """
         files = results.get("bom_generation", {}).get("generated_files", [])
         for path in files:
             print(f"Wrote {path}")
+        if fail_if_empty and bom_result_is_empty(results):
+            print(
+                "No resources found and --fail-if-empty is set (exit code "
+                f"{EXIT_NO_RESOURCES}).",
+                file=sys.stderr,
+            )
+            return EXIT_NO_RESOURCES
         if self.compliance is None:
             return 0
         c = self.compliance
@@ -294,8 +334,66 @@ def prepare_template_run(
         sys.exit(1)
     if run.config:
         apply_config(run, args, explicit_dests(parser_factory, argv), logger)
+    for message in unused_option_warnings(args, run):
+        logger.warning(message)
     logger.info(f"Using templates: {run.describe()}")
     return run
+
+
+def _listed_fields(run: Optional[TemplateRun]) -> set:
+    """Field names the report template shows in its Excel or Word columns."""
+    if run is None:
+        return set()
+    spec = run.report.spec
+    columns = list(spec.get("columns") or []) + list(
+        (spec.get("word") or {}).get("columns") or []
+    )
+    return {c.get("field") for c in columns if isinstance(c, dict)}
+
+
+def _mapping_column_names(path: str) -> List[str]:
+    """Column names defined in a ``--tag-mappings`` file (empty if unreadable)."""
+    try:
+        from ..discovery.tag_mapping import TagMappingEngine
+
+        return [m.name for m in TagMappingEngine(path).mappings.values()]
+    except Exception:  # the real error is reported when the file is loaded
+        return []
+
+
+def unused_option_warnings(args, run: Optional[TemplateRun] = None) -> List[str]:
+    """Messages for options that do not change a ``--template`` report.
+
+    ``--tag-mappings`` and ``--service-descriptions`` add fields to every
+    resource, but a template shows only the columns it lists, so without a
+    matching ``columns`` entry the report looks as if the option was ignored.
+    """
+    messages = []
+    listed = _listed_fields(run)
+    if getattr(args, "tag_mappings", None):
+        names = _mapping_column_names(args.tag_mappings)
+        missing = [n for n in names if n not in listed]
+        if missing or not names:
+            shown = ", ".join(f"'{n}'" for n in missing) or "<column name>"
+            messages.append(
+                f"--tag-mappings {args.tag_mappings}: with --template, the mapped "
+                f"column(s) {shown} are not in the report unless the report "
+                "template lists them. Add '- field: <column name>' under 'columns' "
+                "(and 'word.columns' for Word), or set 'excel.include_all_fields: "
+                "true' for Excel. 'tag_columns' shows raw tag values, without the "
+                "mapping's default values."
+            )
+    if getattr(args, "service_descriptions", None) and not (
+        "service_description" in listed
+    ):
+        messages.append(
+            f"--service-descriptions {args.service_descriptions}: with --template, "
+            "the 'service_description' column is not in the report unless the "
+            "report template lists it. Add '- field: service_description' under "
+            "'columns' (and 'word.columns' for Word), or set "
+            "'excel.include_all_fields: true' for Excel."
+        )
+    return messages
 
 
 class TemplatedCloudBOMGenerator(CloudBOMGenerator):
@@ -355,10 +453,16 @@ class TemplatedCloudBOMGenerator(CloudBOMGenerator):
                     continue
                 generated.append(str(path))
 
+            if not processed:
+                self.logger.warning(
+                    "No resources to report (none found, or the filters removed "
+                    "all of them). The report files list no resources."
+                )
             return {
                 "success": True,
                 "generated_files": generated,
                 "total_resources": len(processed),
+                "empty": not processed,
                 "processing_statistics": bom_data.processing_statistics,
                 "generation_timestamp": now.isoformat(),
                 "templates": run.describe(),

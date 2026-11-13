@@ -10,7 +10,9 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from .columns import (
+    EXCEL_CELL_LIMIT,
     build_columns,
+    clean_text,
     format_value,
     get_field,
     group_by_service,
@@ -37,13 +39,17 @@ class _Styler:
 
     def header(self, ws, row: int, headers: List[str]) -> None:
         for col, text in enumerate(headers, 1):
-            cell = ws.cell(row=row, column=col, value=text)
+            cell = ws.cell(row=row, column=col, value=clean_text(str(text)))
             cell.font = self.font
             cell.fill = self.fill
             cell.alignment = Alignment(vertical="center")
 
 
 def _write(ws, row: int, col: int, value: Any):
+    if isinstance(value, str):
+        # Control characters make openpyxl refuse the cell; a cell holds at most
+        # 32,767 characters.
+        value = clean_text(value)[:EXCEL_CELL_LIMIT]
     cell = ws.cell(row=row, column=col, value=value)
     # Never let data from AWS become a formula (CSV/formula injection).
     if isinstance(value, str) and value.startswith("="):

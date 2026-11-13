@@ -18,11 +18,11 @@ from .errors import TemplateIssue
 
 FORMAT_VERSION = 1
 KINDS = ("report", "tag-policy", "config")
-NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
-COLOR_PATTERN = re.compile(r"^#?[0-9A-Fa-f]{6}$")
-ACCOUNT_ID_PATTERN = re.compile(r"^\d{12}$")
-ROLE_ARN_PATTERN = re.compile(r"^arn:aws[a-z-]*:iam::\d{12}:role/[\w+=,.@/-]+$")
-REGION_PATTERN = re.compile(r"^[a-z]{2}(-[a-z]+)+-\d{1,2}$")
+NAME_PATTERN = re.compile(r"[a-z0-9][a-z0-9-]{0,62}")
+COLOR_PATTERN = re.compile(r"#?[0-9A-Fa-f]{6}")
+ACCOUNT_ID_PATTERN = re.compile(r"[0-9]{12}")
+ROLE_ARN_PATTERN = re.compile(r"arn:aws[a-z-]*:iam::[0-9]{12}:role/[\w+=,.@/-]+")
+REGION_PATTERN = re.compile(r"[a-z]{2}(-[a-z]+)+-[0-9]{1,2}")
 CREDENTIAL_KEYS = ("access_key_id", "secret_access_key", "session_token")
 WORD_SECTIONS = (
     "cover",
@@ -669,11 +669,11 @@ class _Validator:
                 path,
                 f"must be one of {', '.join(spec.choices)} (got '{value}'){suggestion}",
             )
-        elif kind == "color" and not COLOR_PATTERN.match(value):
+        elif kind == "color" and not COLOR_PATTERN.fullmatch(value):
             self.add(
                 path, f"must be a six-digit hex colour such as 1F3A5F (got '{value}')"
             )
-        elif kind == "name" and not NAME_PATTERN.match(value):
+        elif kind == "name" and not NAME_PATTERN.fullmatch(value):
             self.add(
                 path,
                 "must use only lower-case letters, digits and hyphens, start with a "
@@ -686,7 +686,7 @@ class _Validator:
                 self.add(path, f"is not a valid regular expression: {error}")
         elif kind in ("ref", "relpath") and not value.strip():
             self.add(path, "must not be empty")
-        if spec.pattern is not None and not spec.pattern.match(value):
+        if spec.pattern is not None and not spec.pattern.fullmatch(value):
             self.add(path, f"must be {spec.pattern_hint} (got '{value}')")
 
     def list(self, value: Any, spec: Field, path) -> None:
@@ -735,6 +735,8 @@ def _semantic_checks(kind: str, spec: Dict[str, Any], v: _Validator) -> None:
             if not isinstance(tag, dict):
                 continue
             key = tag.get("key")
+            if isinstance(key, str) and not key.strip():
+                v.add(("spec", "required_tags", index, "key"), "must not be empty")
             if key in seen:
                 v.add(
                     ("spec", "required_tags", index, "key"),
@@ -763,7 +765,7 @@ def _semantic_checks(kind: str, spec: Dict[str, Any], v: _Validator) -> None:
             if (
                 isinstance(arn, str)
                 and isinstance(acct, str)
-                and ROLE_ARN_PATTERN.match(arn)
+                and ROLE_ARN_PATTERN.fullmatch(arn)
             ):
                 arn_account = arn.split(":")[4]
                 if arn_account != acct:

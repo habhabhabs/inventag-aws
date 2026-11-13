@@ -59,9 +59,15 @@ class ComplianceReport:
 
     def invalid_by_key(self) -> Dict[str, int]:
         counts = {rule["key"]: 0 for rule in self.rules}
+        # Tag keys can hold colons ("team:owner"), so match the rule keys
+        # instead of cutting the text at the first colon. Longest key first.
+        keys = sorted(counts, key=len, reverse=True)
         for finding in self.findings:
             for reason in finding.invalid:
-                key = reason.split(":", 1)[0]
+                key = next(
+                    (k for k in keys if reason.startswith(f"{k}: ")),
+                    reason.split(":", 1)[0],
+                )
                 counts[key] = counts.get(key, 0) + 1
         return counts
 

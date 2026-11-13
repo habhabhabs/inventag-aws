@@ -9,6 +9,14 @@ ILLEGAL_SHEET_CHARS = re.compile(r"[\[\]:*?/\\]")
 CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
 
+EXCEL_CELL_LIMIT = 32767
+
+
+def clean_text(value: str) -> str:
+    """Remove control characters that Word and Excel files cannot hold."""
+    return CONTROL_CHARS.sub("", value)
+
+
 def normalize_tags(tags: Any) -> Dict[str, str]:
     """Accept ``{"k": "v"}`` or ``[{"Key": "k", "Value": "v"}]`` and return a dict."""
     if isinstance(tags, dict):

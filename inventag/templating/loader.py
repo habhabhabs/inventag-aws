@@ -235,6 +235,12 @@ def safe_relative_path(base_dir: Path, reference: str) -> Path:
             "must be a local relative path; URLs and other schemes are not allowed "
             f"(got '{reference}')"
         )
+    # A template written on Windows uses backslashes; read them as folder
+    # separators on every system, so "..\\x.png" cannot slip past the check below
+    # on Linux and macOS, and "assets\\logo.png" works there.
+    reference = reference.replace("\\", "/")
+    if re.match(r"^[A-Za-z]:", reference):
+        raise ValueError(f"must not include a drive letter (got '{reference}')")
     candidate = Path(reference)
     if candidate.is_absolute() or reference.startswith(("~", "/", "\\")):
         raise ValueError(

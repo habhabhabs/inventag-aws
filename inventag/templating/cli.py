@@ -182,7 +182,7 @@ def _cmd_init(args, registry: TemplateRegistry, out: TextIO, err: TextIO) -> int
         )
         output = output / f"{name}.yaml"
     name = _derive_name(output, args.name)
-    if not NAME_PATTERN.match(name):
+    if not NAME_PATTERN.fullmatch(name):
         err.write(
             f"error: '{name}' is not a valid template name (use lower-case letters, "
             "digits and hyphens); choose another file name or pass --name\n"

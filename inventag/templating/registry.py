@@ -73,12 +73,9 @@ class ResolvedTemplate:
 
 
 def looks_like_path(reference: str) -> bool:
-    return (
-        "/" in reference
-        or "\\" in reference
-        or reference.endswith(SUFFIXES)
-        or reference.startswith(".")
-    )
+    """Template names hold only lower-case letters, digits and hyphens, so a
+    dot, a slash or a backslash means the reference is a file path."""
+    return "/" in reference or "\\" in reference or "." in reference
 
 
 def search_dirs(
