@@ -1,144 +1,59 @@
-# Repository Configuration for Automated Releases
+# Repository configuration for releases and the docs site
 
-This document provides instructions for configuring your GitHub repository to allow the automated release workflow to push version updates back to the main branch.
+Who this is for: the maintainer who sets up or repairs the GitHub settings that the workflows in `.github/workflows/` need.
 
-## 🚀 Quick Setup
+What you can do after reading: create the token, variable and environment that releases need, set safe Actions permissions, and control whether a push to `main` releases.
 
-### Step 1: Repository Settings
-1. Go to your repository on GitHub
-2. Click on **Settings** tab
-3. Navigate to **Actions** → **General**
+## What happens on a push to main
 
-### Step 2: Configure Actions Permissions
-Under **Actions permissions**, ensure the following are enabled:
-- ✅ **Allow all actions and reusable workflows**
-- ✅ **Allow actions created by GitHub**
-- ✅ **Allow actions by Marketplace verified creators**
+`release.yml` (Automated Release) runs on every push to `main`:
 
-### Step 3: Configure Workflow Permissions
-Under **Workflow permissions**, select:
-- ✅ **Read and write permissions**
-- ✅ **Allow GitHub Actions to create and approve pull requests**
+1. It decides whether to release. A commit whose message contains `[skip release]` (or `[skip ci]`) does not release. The bot's own `chore: bump version to X.Y.Z` commit never releases. Every other push is a patch release, unless the commit message has a line `Release-As: minor` or `Release-As: major`. A merge commit ("Merge pull request #N") uses the PR label `release:patch`, `release:minor` or `release:major` if it has one.
+2. It computes the next version from the latest GitHub release and `inventag/_version.py`. It writes `version.json` and `inventag/_version.py`, commits them as `chore: bump version to X.Y.Z` and pushes `main`.
+3. It tags that commit `vX.Y.Z`, creates the GitHub release and attaches a `.tar.gz` and a `.zip` of the source.
+4. It builds the sdist and wheel and uploads them to PyPI through trusted publishing (no API token).
 
-### Step 4: Configure Branch Protection (If Main is Protected)
+The GitHub release starts `release-docs-versioning.yml`. The docs site is built and deployed by `docs-deploy.yml` whenever `docs/`, `website/` or `version.json` changes on `main`.
 
-If your main branch has protection rules:
+## Secret: VERSION_BUMP_WORKFLOW
 
-1. Go to **Settings** → **Branches**
-2. Find your main branch protection rule
-3. Click **Edit**
-4. Under **Restrict pushes that create files**, ensure:
-   - ✅ **Do not restrict pushes that create files** (or)
-   - ✅ Add `github-actions[bot]` to the allowed list
+The release, docs-versioning and docs-sync workflows push to `main`, push tags and create releases with this token. Pushes made with the default `GITHUB_TOKEN` do not start other workflows, so the bump commit would not redeploy the docs.
 
-5. Under **Allow force pushes**, you can leave this **disabled**
-6. Under **Do not allow bypassing the above settings**, ensure:
-   - ✅ **Include administrators** is checked if you want consistent enforcement
+1. Create a fine-grained personal access token limited to this repository.
+2. Permissions: **Contents: Read and write** (push commits and tags, create releases). Metadata: Read is added automatically.
+3. Save it as the repository secret `VERSION_BUMP_WORKFLOW` (Settings → Secrets and variables → Actions → Secrets).
+4. Set a reminder to rotate it before it expires. When it expires, releases fail at the checkout step.
 
-### Step 5: Alternative - Add GitHub Actions as Exception
+## PyPI trusted publishing
 
-If you want to keep strict branch protection:
+1. On pypi.org, open the `inventag-aws` project → Publishing → add a trusted publisher:
+   owner `habhabhabs`, repository `inventag-aws`, workflow `release.yml`, environment `pypi`.
+2. In GitHub, create the environment `pypi` (Settings → Environments). Adding required reviewers is optional; with reviewers, every upload waits for an approval.
+3. Create the repository variable `PYPI_PUBLISH` with the value `true` (Settings → Secrets and variables → Actions → Variables). Without it the publish job is skipped.
 
-1. In branch protection settings
-2. Under **Restrict pushes that create files**:
-   - Add `github-actions[bot]` to the exceptions
-3. Under **Allow specified actors to bypass required pull requests**:
-   - Add `github-actions[bot]`
+To upload a release that is already tagged but missing on PyPI, run **Automated Release** by hand with `publish_existing_tag` set to the tag, for example `v1.1.3`.
 
-## 🔧 Advanced Configuration
+## Actions permissions
 
-### Option 1: Use Personal Access Token (PAT)
+Settings → Actions → General:
 
-For maximum control, you can use a Personal Access Token:
+- **Workflow permissions**: choose **Read repository contents and packages permissions**. Each workflow asks for the extra scopes it needs in its own `permissions:` block.
+- **Fork pull request workflows**: keep "Require approval for first-time contributors". Fork pull requests run with a read-only token.
 
-1. Create a fine-grained PAT with repository access
-2. Grant permissions:
-   - Contents: Write
-   - Metadata: Read
-   - Pull requests: Write
-   - Actions: Write
-3. Add as repository secret named `RELEASE_TOKEN`
-4. Update workflow to use `${{ secrets.RELEASE_TOKEN }}` instead of `${{ secrets.GITHUB_TOKEN }}`
+## Branch protection on main
 
-### Option 2: Use GitHub App
+If `main` is protected, the account that owns `VERSION_BUMP_WORKFLOW` must be allowed to push to `main` without a pull request (add it to the bypass list). Otherwise the bump commit is rejected and the release stops before the tag is created.
 
-For enterprise environments:
+## Manual jobs
 
-1. Create a GitHub App with appropriate permissions
-2. Install the app on your repository
-3. Use the app's credentials in the workflow
+- **Sync Documentation Versions** (`sync-doc-versions.yml`): archives every release tag on `main`'s history that has no snapshot in `website/versioned_docs/` yet and rebuilds `website/versions.json`. Run it with `dry_run` first to see what it would change.
+- **Automated Release** by hand: choose `patch`, `minor` or `major`, or fill in `publish_existing_tag` (see above).
 
-## ✅ Verification
+## Troubleshooting
 
-After configuration, test the setup:
-
-1. Create a test PR with the label `release:patch`
-2. Merge the PR to main
-3. Verify the workflow:
-   - ✅ Updates `version.json`
-   - ✅ Commits changes to main
-   - ✅ Creates git tag
-   - ✅ Creates GitHub release
-
-## 🚨 Troubleshooting
-
-### Common Issues
-
-**Error: "Remote rejected (protected branch hook declined)"**
-- Solution: Add `github-actions[bot]` to branch protection exceptions
-
-**Error: "Permission denied (push to protected branch)"**
-- Solution: Enable "Read and write permissions" in Actions settings
-
-**Error: "Resource not accessible by integration"**
-- Solution: Verify workflow permissions include "contents: write"
-
-### Debug Steps
-
-1. Check workflow permissions in `.github/workflows/release.yml`:
-   ```yaml
-   permissions:
-     contents: write
-     issues: write
-     pull-requests: write
-     actions: write
-   ```
-
-2. Verify repository Actions settings:
-   - Actions permissions: Enabled
-   - Workflow permissions: Read and write
-
-3. Check branch protection settings:
-   - GitHub Actions bot has appropriate exceptions
-   - Force push restrictions don't block version commits
-
-## 📋 Required Labels
-
-The workflow recognizes these PR labels for version bumping:
-- `release:major` - Major version bump (e.g., 1.0.0 → 2.0.0)
-- `release:minor` - Minor version bump (e.g., 1.0.0 → 1.1.0)  
-- `release:patch` - Patch version bump (e.g., 1.0.0 → 1.0.1)
-
-Without labels, PRs merged to main default to patch releases.
-
-## 🛡️ Security Considerations
-
-1. **Principle of Least Privilege**: Only grant minimum required permissions
-2. **Token Rotation**: If using PAT, rotate regularly
-3. **Audit Logs**: Monitor Actions usage in repository settings
-4. **Branch Protection**: Keep main branch protection for human pushes
-5. **Review Process**: Require PR reviews for all changes except automated version bumps
-
-## 📚 Additional Resources
-
-- [GitHub Actions Permissions](https://docs.github.com/en/actions/security-guides/automatic-token-authentication)
-- [Branch Protection Rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/about-protected-branches)
-- [Fine-grained PATs](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token)
-
----
-
-✅ **Once configured, every PR merge to main will automatically:**
-- Update `version.json` with new version and release notes
-- Commit changes back to main branch  
-- Create and push git tag
-- Generate comprehensive GitHub release with assets
+| Symptom | Likely cause |
+| --- | --- |
+| `remote rejected ... protected branch` in the release job | The token owner cannot bypass branch protection on `main`. |
+| Release job fails at checkout | `VERSION_BUMP_WORKFLOW` is missing or expired. |
+| Publish job skipped | `PYPI_PUBLISH` is not `true`. |
+| PyPI upload fails with `invalid-publisher` | The trusted publisher on pypi.org does not match the workflow file name or the `pypi` environment. |
