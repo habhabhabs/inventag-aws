@@ -54,9 +54,16 @@ Cada instantánea contiene todos los recursos que encontró la ejecución:
 }
 ```
 
+La parte `metadata` de una instantánea registra la versión de la instantánea (`1.1`; los archivos de la versión `1.0` aún se cargan),
+`accounts_scanned` y `accounts_failed`. Los valores de campos que suelen contener secretos, como las variables de entorno de Lambda,
+contraseñas, tokens y claves privadas, se sustituyen por `***REDACTED***`; los nombres se conservan.
+Un cambio en uno de esos valores no se informa. Las instantáneas de versiones anteriores pueden seguir conteniendo esos valores,
+así que borra o restringe las carpetas `bom_output/` antiguas. La primera ejecución tras la actualización muestra los valores enmascarados como cambiados.
+
 Conserva la carpeta `state/` entre ejecuciones, por ejemplo como caché de CI o
 en un bucket, si quieres historial. Desactiva las instantáneas con
-`--disable-state-management`.
+`--disable-state-management`. La carpeta `state/partial/` contiene resultados guardados de cuentas para
+[`--resume`](./run-a-scan.md#continue-after-a-failed-run). No forma parte del historial.
 
 ## El informe de cambios {#the-change-report}
 
@@ -120,9 +127,16 @@ Qué debes saber:
 - `--no-generate-changelog` detiene el informe pero conserva las instantáneas.
   `--disable-delta-detection` también lo detiene. `--disable-state-management`
   detiene las instantáneas y los informes.
-- InvenTag elimina las instantáneas con más de 30 días o que superan las 100
-  más recientes. Un trabajo programado en un ejecutor nuevo no tiene ninguna
-  instantánea anterior, así que conserva la carpeta `state/` entre ejecuciones.
+- Si una cuenta no se pudo analizar, o solo en parte, en cualquiera de las dos ejecuciones, sus recursos se dejan fuera de la comparación.
+  Si no, todos aparecerían como añadidos o eliminados. El informe de cambios nombra la cuenta en su sección State Comparison (`accounts_not_compared`).
+- InvenTag compara las listas sin tener en cuenta el orden, así que mover elementos dentro de una lista no es un cambio.
+  También ignora los campos que cambian en cada ejecución: la vía de descubrimiento, las cifras de coste y los contadores de uso
+  como `ItemCount` o `ApproximateNumberOfMessages`.
+- Cuando una ejecución guarda una instantánea, InvenTag elimina las de más de 30 días o que superan las 100 más recientes.
+  Cambia los límites con `--state-retention-days N` y `--state-max-snapshots N`; `0` o `none` desactiva un límite.
+  La instantánea recién escrita y aquella con la que se compara no se eliminan nunca, así que `--state-max-snapshots 1` deja dos archivos.
+  InvenTag solo elimina los archivos `state_<timestamp>.json` que escribió él mismo. Un trabajo programado en un ejecutor nuevo
+  no tiene ninguna instantánea anterior, así que conserva la carpeta `state/` entre ejecuciones.
 
 ## Compara dos instantáneas por tu cuenta {#compare-two-snapshots-yourself}
 

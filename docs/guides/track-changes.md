@@ -62,9 +62,20 @@ Each snapshot holds every resource the run found:
 
 <!-- END EXAMPLE OUTPUT: changes-snapshot -->
 
+The `metadata` part of a snapshot records the snapshot version (`1.1`;
+version `1.0` files still load), `accounts_scanned` and `accounts_failed`.
+Values of fields that often hold secrets, such as Lambda environment
+variables, passwords, tokens and private keys, are replaced by
+`***REDACTED***`; the names stay. A change to such a value is not reported.
+Snapshots from earlier versions may still hold these values, so delete or
+restrict old `bom_output/` folders. The first run after the upgrade shows the
+masked values as changed.
+
 Keep the `state/` folder between runs, for example as a CI cache or in a
 bucket, if you want history. Turn snapshots off with
-`--disable-state-management`.
+`--disable-state-management`. The `state/partial/` folder holds saved account
+results for [`--resume`](./run-a-scan.md#continue-after-a-failed-run). It is
+not part of the history.
 
 ## The change report
 
@@ -131,9 +142,21 @@ What to know:
 - `--no-generate-changelog` stops the report but keeps the snapshots.
   `--disable-delta-detection` also stops it. `--disable-state-management`
   stops snapshots and reports.
-- InvenTag removes snapshots that are older than 30 days or beyond the newest
-  100. A scheduled job on a fresh runner has no earlier snapshot, so keep the
-  `state/` folder between runs.
+- If an account could not be scanned, or only partly, in either of the two
+  runs, its resources are left out of the comparison. Otherwise all of them
+  would show as added or removed. The change report names the account in its
+  State Comparison section (`accounts_not_compared`).
+- InvenTag compares lists as unordered, so moving items around in a list is
+  not a change. It also ignores fields that change on every run: the
+  discovery route, cost figures and usage counters such as `ItemCount` or
+  `ApproximateNumberOfMessages`.
+- When a run saves a snapshot, InvenTag removes snapshots older than 30 days
+  or beyond the newest 100. Change the limits with `--state-retention-days N`
+  and `--state-max-snapshots N`; `0` or `none` turns a limit off. The snapshot
+  just written and the one it is compared with are never removed, so
+  `--state-max-snapshots 1` leaves two files. InvenTag removes only the
+  `state_<timestamp>.json` files it wrote itself. A scheduled job on a fresh
+  runner has no earlier snapshot, so keep the `state/` folder between runs.
 
 ## Compare two snapshots yourself
 

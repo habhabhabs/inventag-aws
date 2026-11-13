@@ -54,9 +54,16 @@ Chaque instantané contient toutes les ressources trouvées par l’exécution :
 }
 ```
 
+La partie `metadata` d’un instantané enregistre la version de l’instantané (`1.1` ; les fichiers de version `1.0` se chargent encore),
+`accounts_scanned` et `accounts_failed`. Les valeurs de champs qui contiennent souvent des secrets, comme les variables d’environnement Lambda,
+les mots de passe, les jetons et les clés privées, sont remplacées par `***REDACTED***` ; les noms restent.
+Un changement de l’une de ces valeurs n’est pas signalé. Les instantanés des versions antérieures peuvent encore contenir ces valeurs :
+supprimez ou restreignez les anciens dossiers `bom_output/`. La première exécution après la mise à jour affiche les valeurs masquées comme modifiées.
+
 Conservez le dossier `state/` entre les exécutions, par exemple comme cache de CI ou dans un
 bucket, si vous voulez un historique. Désactivez les instantanés avec
-`--disable-state-management`.
+`--disable-state-management`. Le dossier `state/partial/` contient les résultats de comptes enregistrés pour
+[`--resume`](./run-a-scan.md#continue-after-a-failed-run). Il ne fait pas partie de l’historique.
 
 ## Le rapport de changements {#the-change-report}
 
@@ -119,9 +126,16 @@ son ARN.
 - `--no-generate-changelog` supprime le rapport mais conserve les instantanés.
   `--disable-delta-detection` le supprime aussi. `--disable-state-management`
   supprime les instantanés et les rapports.
-- InvenTag supprime les instantanés de plus de 30 jours ou au-delà des 100
-  plus récents. Un job planifié sur un runner neuf n’a aucun instantané antérieur ; conservez donc le
-  dossier `state/` entre les exécutions.
+- Si un compte n’a pas pu être analysé, ou seulement en partie, dans l’une des deux exécutions, ses ressources sont exclues de la comparaison.
+  Sinon, toutes apparaîtraient comme ajoutées ou supprimées. Le rapport de changements nomme le compte dans sa section State Comparison (`accounts_not_compared`).
+- InvenTag compare les listes sans tenir compte de l’ordre : déplacer des éléments dans une liste n’est donc pas un changement.
+  Il ignore aussi les champs qui changent à chaque exécution : la voie de découverte, les chiffres de coût et les compteurs d’utilisation
+  comme `ItemCount` ou `ApproximateNumberOfMessages`.
+- Quand une exécution enregistre un instantané, InvenTag supprime ceux de plus de 30 jours ou au-delà des 100 plus récents.
+  Modifiez les limites avec `--state-retention-days N` et `--state-max-snapshots N` ; `0` ou `none` désactive une limite.
+  L’instantané qui vient d’être écrit et celui auquel il est comparé ne sont jamais supprimés : `--state-max-snapshots 1` laisse donc deux fichiers.
+  InvenTag ne supprime que les fichiers `state_<timestamp>.json` qu’il a écrits lui-même. Un job planifié sur un runner neuf
+  n’a aucun instantané antérieur ; conservez donc le dossier `state/` entre les exécutions.
 
 ## Comparer vous-même deux instantanés {#compare-two-snapshots-yourself}
 
