@@ -94,7 +94,7 @@ A table from the document:
 
 <!-- BEGIN EXAMPLE OUTPUT: board-image -->
 
-<img src={require("../assets/examples/img/board-report-word-page1.png").default} alt="First page of the branded landscape Word report: a purple square logo, the title Cloud Estate Summary, Quarterly review, Prepared for Acme Ltd and the summary list (sample data)" width="977" height="736" loading="lazy" />
+![First page of the branded landscape Word report: a purple square logo, the title Cloud Estate Summary, Quarterly review, Prepared for Acme Ltd and the summary list (sample data)](../assets/examples/img/board-report-word-page1.png)
 
 <!-- END EXAMPLE OUTPUT: board-image -->
 

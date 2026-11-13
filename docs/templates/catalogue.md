@@ -101,7 +101,7 @@ The sheet has 12 columns; the first 11 are shown.
 
 <!-- BEGIN EXAMPLE OUTPUT: standard-excel-image -->
 
-<img src={require("../assets/examples/img/standard-bom-s3-sheet.png").default} alt="Excel S3 sheet from the standard-bom template: a dark blue header row with Account, Region, Service, Type, Name, ID, ARN and one column per tag, followed by four bucket rows (sample data)" width="1075" height="108" loading="lazy" />
+![Excel S3 sheet from the standard-bom template: a dark blue header row with Account, Region, Service, Type, Name, ID, ARN and one column per tag, followed by four bucket rows (sample data)](../assets/examples/img/standard-bom-s3-sheet.png)
 
 <!-- END EXAMPLE OUTPUT: standard-excel-image -->
 
@@ -141,7 +141,7 @@ A table from the document:
 
 <!-- BEGIN EXAMPLE OUTPUT: standard-word-image -->
 
-<img src={require("../assets/examples/img/standard-bom-word-page1.png").default} alt="First page of the Word report from the standard-bom template: title, generation date, summary bullet list and the resources-by-service table (sample data)" width="702" height="900" loading="lazy" />
+![First page of the Word report from the standard-bom template: title, generation date, summary bullet list and the resources-by-service table (sample data)](../assets/examples/img/standard-bom-word-page1.png)
 
 <!-- END EXAMPLE OUTPUT: standard-word-image -->
 
