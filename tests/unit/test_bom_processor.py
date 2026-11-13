@@ -556,11 +556,16 @@ class TestBOMDataProcessor(unittest.TestCase):
         self.assertIn("processing_statistics", bom_data.generation_metadata)
         self.assertFalse(bom_data.error_summary["has_errors"])
 
-        # Only the reclassified VPC/SecurityGroup resources reach the analyzers
+        # Every resource reaches the analyzers, so they can say which resources
+        # sit in each VPC and use each security group
         (vpc_arg,), _ = network.analyze_vpc_resources.call_args
-        self.assertEqual([r["id"] for r in vpc_arg], ["vpc-12345678"])
+        self.assertEqual(len(vpc_arg), 3)
+        self.assertIn("vpc-12345678", [r["id"] for r in vpc_arg])
         (sg_arg,), _ = security.analyze_security_groups.call_args
-        self.assertEqual([r["id"] for r in sg_arg], ["sg-0123456789abcdef0"])
+        self.assertEqual(len(sg_arg), 3)
+        # ... and the mapping methods that exist on the analyzers are called
+        network.map_resources_to_network.assert_called_once()
+        security.map_resources_to_security_groups.assert_called_once()
 
         # Network summary is a plain dict in the shape the builders read
         self.assertIsInstance(bom_data.network_analysis, dict)

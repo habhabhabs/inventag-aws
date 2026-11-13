@@ -197,7 +197,17 @@ class BOMDataProcessor:
                 inventory_data
             )
 
-            # Step 2: Parallel enrichment processing
+            # Step 2: Network and security analysis. These read the account once
+            # (read-only calls) and fill the analyzers' caches.
+            network_analysis = self._generate_network_analysis(processed_resources)
+            security_analysis = self._generate_security_analysis(processed_resources)
+
+            # Step 3: Tell every resource which VPC, subnet and security groups it
+            # uses, from those caches (no further AWS calls)
+            processed_resources = self._map_network_and_security(processed_resources)
+
+            # Step 4: Per-resource enrichment (service attributes, descriptions,
+            # tag mappings, cost)
             if self.config.enable_parallel_processing:
                 enriched_resources = self._parallel_enrichment_processing(
                     processed_resources
@@ -207,9 +217,6 @@ class BOMDataProcessor:
                     processed_resources
                 )
 
-            # Step 3: Generate analysis summaries
-            network_analysis = self._generate_network_analysis(enriched_resources)
-            security_analysis = self._generate_security_analysis(enriched_resources)
             cost_analysis = (
                 self._generate_cost_analysis(enriched_resources)
                 if self.config.enable_cost_analysis
@@ -610,18 +617,6 @@ class BOMDataProcessor:
         enriched_resource = resource.copy()
 
         try:
-            # Network analysis enrichment
-            if self.network_analyzer:
-                enriched_resource = self._enrich_with_network_analysis(
-                    enriched_resource
-                )
-
-            # Security analysis enrichment
-            if self.security_analyzer:
-                enriched_resource = self._enrich_with_security_analysis(
-                    enriched_resource
-                )
-
             # Service attribute enrichment
             if self.service_enricher:
                 enriched_resource = self._enrich_with_service_attributes(
@@ -648,41 +643,48 @@ class BOMDataProcessor:
 
         return enriched_resource
 
-    def _enrich_with_network_analysis(self, resource: Dict[str, Any]) -> Dict[str, Any]:
-        """Add network analysis to a resource."""
-        try:
-            if self.network_analyzer:
-                enriched = self.network_analyzer.enrich_resource_with_network_info(
-                    resource
-                )
-                if enriched != resource:
-                    self._count("network_enriched")
-                return enriched
-        except Exception as e:
-            self.logger.debug(
-                f"Network enrichment failed for {resource.get('id', 'unknown')}: {e}"
+    def _map_network_and_security(
+        self, resources: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Add VPC, subnet and security group context to all resources.
+
+        Uses the analyzers' own mapping methods on the whole list, after the
+        analysis filled their caches. A failure leaves the resources as they
+        were and is recorded as a warning.
+        """
+        for analyzer, method, counter in (
+            (self.network_analyzer, "map_resources_to_network", "network_enriched"),
+            (
+                self.security_analyzer,
+                "map_resources_to_security_groups",
+                "security_enriched",
+            ),
+        ):
+            if analyzer is None:
+                continue
+            try:
+                mapped = getattr(analyzer, method)(resources)
+            except Exception as e:
+                message = f"{method} failed: {e}"
+                self.logger.warning(message)
+                self.statistics.warnings.append(message)
+                continue
+            if not isinstance(mapped, list) or len(mapped) != len(resources):
+                message = f"{method} did not return one result per resource; ignored"
+                self.logger.warning(message)
+                self.statistics.warnings.append(message)
+                continue
+            changed = sum(
+                1 for before, after in zip(resources, mapped) if before != after
             )
-
-        return resource
-
-    def _enrich_with_security_analysis(
-        self, resource: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Add security analysis to a resource."""
-        try:
-            if self.security_analyzer:
-                enriched = self.security_analyzer.enrich_resource_with_security_info(
-                    resource
+            with self._lock:
+                setattr(
+                    self.statistics,
+                    counter,
+                    getattr(self.statistics, counter, 0) + changed,
                 )
-                if enriched != resource:
-                    self._count("security_enriched")
-                return enriched
-        except Exception as e:
-            self.logger.debug(
-                f"Security enrichment failed for {resource.get('id', 'unknown')}: {e}"
-            )
-
-        return resource
+            resources = mapped
+        return resources
 
     def _enrich_with_service_attributes(
         self, resource: Dict[str, Any]
@@ -763,9 +765,9 @@ class BOMDataProcessor:
                 if r.get("service") == "VPC" and r.get("type") in ["VPC", "Subnet"]
             ]
             if vpc_resources:
-                vpc_analysis = self.network_analyzer.analyze_vpc_resources(
-                    vpc_resources
-                )
+                # All resources go in: the analyzer uses them to list which
+                # resources sit in each VPC and subnet.
+                vpc_analysis = self.network_analyzer.analyze_vpc_resources(resources)
                 summary = self.network_analyzer.generate_network_summary(vpc_analysis)
                 return self._network_summary_to_dict(summary, vpc_analysis)
             return {}
@@ -790,9 +792,7 @@ class BOMDataProcessor:
                 if r.get("service") == "VPC" and r.get("type") == "SecurityGroup"
             ]
             if sg_resources:
-                sg_analysis = self.security_analyzer.analyze_security_groups(
-                    sg_resources
-                )
+                sg_analysis = self.security_analyzer.analyze_security_groups(resources)
                 # generate_security_summary expects the analysis keyed by kind
                 summary = self.security_analyzer.generate_security_summary(
                     {"security_groups": sg_analysis}

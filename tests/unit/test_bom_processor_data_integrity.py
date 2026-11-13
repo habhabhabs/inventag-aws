@@ -138,3 +138,55 @@ def test_statistics_counter_is_thread_safe():
     [t.start() for t in threads]
     [t.join() for t in threads]
     assert p.statistics.tag_mapped == 8000
+
+
+def test_network_and_security_mapping_uses_methods_that_exist():
+    from unittest.mock import patch
+
+    from inventag.discovery.network_analyzer import NetworkAnalyzer
+    from inventag.discovery.security_analyzer import SecurityAnalyzer
+
+    for cls, name in (
+        (NetworkAnalyzer, "map_resources_to_network"),
+        (SecurityAnalyzer, "map_resources_to_security_groups"),
+    ):
+        assert callable(getattr(cls, name))
+
+    config = BOMProcessingConfig(
+        enable_service_enrichment=False,
+        enable_service_descriptions=False,
+        enable_tag_mapping=False,
+        enable_parallel_processing=False,
+    )
+    with (
+        patch("inventag.reporting.bom_processor.NetworkAnalyzer") as net,
+        patch("inventag.reporting.bom_processor.SecurityAnalyzer") as sec,
+    ):
+        net.return_value.map_resources_to_network.side_effect = lambda rs: [
+            dict(r, vpc_name="main") for r in rs
+        ]
+        sec.return_value.map_resources_to_security_groups.side_effect = lambda rs: [
+            dict(r, security_group_count=1) for r in rs
+        ]
+        p = BOMDataProcessor(config, session=MagicMock())
+        out = p.process_inventory_data([{"service": "EC2", "id": "i-1", "arn": "a"}])
+    assert out.resources[0]["vpc_name"] == "main"
+    assert out.resources[0]["security_group_count"] == 1
+    assert p.statistics.network_enriched == 1 and p.statistics.security_enriched == 1
+
+
+def test_mapping_failure_keeps_resources_and_warns():
+    from unittest.mock import patch
+
+    config = BOMProcessingConfig(
+        enable_service_enrichment=False,
+        enable_service_descriptions=False,
+        enable_tag_mapping=False,
+        enable_security_analysis=False,
+    )
+    with patch("inventag.reporting.bom_processor.NetworkAnalyzer") as net:
+        net.return_value.map_resources_to_network.side_effect = RuntimeError("boom")
+        p = BOMDataProcessor(config, session=MagicMock())
+        out = p.process_inventory_data([{"service": "EC2", "id": "i-1", "arn": "a"}])
+    assert len(out.resources) == 1
+    assert any("map_resources_to_network failed" in w for w in p.statistics.warnings)
