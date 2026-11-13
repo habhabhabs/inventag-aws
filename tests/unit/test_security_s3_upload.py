@@ -51,7 +51,10 @@ def test_merge_keeps_other_rules_and_replaces_own():
 
 
 def test_ensure_lifecycle_rule_does_not_clobber_existing_rules(s3):
-    assert ensure_lifecycle_rule(s3, "reports", "bom", 30) is True
+    assert (
+        ensure_lifecycle_rule(s3, "reports", "bom", 30, allow_bucket_writes=True)
+        is True
+    )
     ids = [
         r["ID"]
         for r in s3.get_bucket_lifecycle_configuration(Bucket="reports")["Rules"]
@@ -152,3 +155,33 @@ def test_webhooks_require_https():
     }
     with pytest.raises(ValueError):
         integration._send_slack_notification(content)
+
+
+def test_lifecycle_rule_refuses_without_the_opt_in(s3):
+    from inventag.security.read_only_guard import ReadOnlyViolationError
+
+    with pytest.raises(ReadOnlyViolationError, match="allow_bucket_writes"):
+        ensure_lifecycle_rule(s3, "reports", "bom", 30)
+    assert [
+        r["ID"]
+        for r in s3.get_bucket_lifecycle_configuration(Bucket="reports")["Rules"]
+    ] == ["keep-me"]
+
+
+def test_lifecycle_rule_stays_blocked_under_the_guard_even_with_the_opt_in(s3):
+    from inventag.security.read_only_guard import ReadOnlyViolationError
+
+    uninstall_global_guard()
+    install_global_guard(ReadOnlyGuard())
+    try:
+        guarded = boto3.client("s3", region_name="us-east-1")
+        with pytest.raises(ReadOnlyViolationError):
+            ensure_lifecycle_rule(
+                guarded, "reports", "bom", 30, allow_bucket_writes=True
+            )
+    finally:
+        uninstall_global_guard()
+    assert [
+        r["ID"]
+        for r in s3.get_bucket_lifecycle_configuration(Bucket="reports")["Rules"]
+    ] == ["keep-me"]

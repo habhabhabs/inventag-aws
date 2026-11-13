@@ -137,8 +137,11 @@ Environment Variables:
     parser.add_argument(
         "--s3-lifecycle-days",
         type=int,
-        default=90,
-        help="S3 lifecycle policy days (default: 90)",
+        default=0,
+        help=(
+            "Add an expiry rule of N days to the bucket's lifecycle configuration "
+            "(a write to the bucket; default: 0 = do not change the bucket)"
+        ),
     )
 
     # Compliance gate configuration

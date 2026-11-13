@@ -434,6 +434,8 @@ class CICDIntegration:
                 self.s3_config.bucket_name,
                 self.s3_config.key_prefix,
                 self.s3_config.lifecycle_days,
+                # lifecycle_days > 0 is the caller's explicit opt-in.
+                allow_bucket_writes=True,
             )
         except ClientError as e:
             self.logger.warning(f"Could not set lifecycle policy: {e}")

@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional
 
 from botocore.exceptions import ClientError
 
-from ..security.read_only_guard import ReadOnlyGuard
+from ..security.read_only_guard import ReadOnlyGuard, ReadOnlyViolationError
 from ..security.safe_output import safe_filename_component
 
 logger = logging.getLogger(__name__)
@@ -135,13 +135,30 @@ def merge_lifecycle_rule(
     return merged
 
 
-def ensure_lifecycle_rule(s3_client, bucket: str, key_prefix: str, days: int) -> bool:
+def ensure_lifecycle_rule(
+    s3_client,
+    bucket: str,
+    key_prefix: str,
+    days: int,
+    *,
+    allow_bucket_writes: bool = False,
+) -> bool:
     """Add/update InvenTag's expiry rule without removing the bucket's other rules.
+
+    This changes the bucket's configuration (a write), so it refuses unless
+    the caller passes ``allow_bucket_writes=True``. It never opens the
+    read-only guard: under the guard (every CLI run) the write stays blocked.
 
     Returns True if the configuration was written.
     """
+    if allow_bucket_writes is not True:
+        raise ReadOnlyViolationError(
+            "s3",
+            "PutBucketLifecycleConfiguration",
+            "ensure_lifecycle_rule() changes the bucket's lifecycle configuration; "
+            "pass allow_bucket_writes=True to confirm",
+        )
     validate_bucket_name(bucket)
-    ReadOnlyGuard.allow_on_client(s3_client, {"PutBucketLifecycleConfiguration"})
     try:
         current = s3_client.get_bucket_lifecycle_configuration(Bucket=bucket)
         existing = current.get("Rules", [])
