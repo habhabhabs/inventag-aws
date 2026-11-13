@@ -14,13 +14,34 @@ Features:
 """
 
 import logging
+import math
 import os
 from typing import Dict, List, Any, Optional, Set
 from datetime import datetime, timezone
 from collections import defaultdict
 
-from .document_generator import DocumentBuilder, DocumentGenerationResult, BOMData
-from ..security.safe_output import neutralize_workbook_formulas, precreate_private
+from .document_generator import (
+    DocumentBuilder,
+    DocumentGenerationResult,
+    BOMData,
+    MAX_CELL_CHARS,
+    MAX_EXCEL_COLUMNS,
+    clean_bom_data,
+    limit_text,
+    safe_sheet_name,
+    save_atomically,
+)
+from ..security.safe_output import neutralize_workbook_formulas
+
+# Sheets this builder always creates. Service sheets must not take these names.
+FIXED_SHEET_NAMES = (
+    "Executive Summary",
+    "Network Analysis",
+    "Security Analysis",
+    "Compliance Details",
+)
+# Numbers above this have more digits than Excel keeps (15), so they stay text.
+_MAX_EXACT_NUMBER = 10**15
 
 try:
     from openpyxl import Workbook
@@ -175,6 +196,12 @@ class ExcelWorkbookBuilder(DocumentBuilder):
 
             self.logger.info(f"Generating Excel workbook: {output_path}")
 
+            # Text from AWS (names, tag keys and values) can hold characters an
+            # .xlsx file cannot store; they become U+FFFD instead of a crash.
+            bom_data = clean_bom_data(bom_data)
+            self._warnings = []
+            self._used_sheet_names = {name.lower() for name in FIXED_SHEET_NAMES}
+
             # Create workbook
             wb = Workbook()
 
@@ -192,10 +219,11 @@ class ExcelWorkbookBuilder(DocumentBuilder):
             # Apply branding
             self._apply_workbook_branding(wb)
 
-            # Save workbook (no data value may become a live formula; owner-only file)
+            # Save workbook (no data value may become a live formula; owner-only
+            # file). It is written under a temporary name and renamed, so a
+            # failed save never leaves a half-written report.
             neutralize_workbook_formulas(wb)
-            precreate_private(output_path)
-            wb.save(output_path)
+            save_atomically(output_path, wb.save)
 
             end_time = datetime.now(timezone.utc)
 
@@ -206,15 +234,17 @@ class ExcelWorkbookBuilder(DocumentBuilder):
                 filename=os.path.basename(output_path),
                 success=True,
                 generation_time_seconds=(end_time - start_time).total_seconds(),
+                warnings=list(self._warnings),
             )
 
         except Exception as e:
-            self.logger.error(f"Excel generation failed: {e}")
+            message = f"{type(e).__name__}: {e}"
+            self.logger.error(f"Excel generation failed: {message}")
             return DocumentGenerationResult(
                 format_type="excel",
                 filename=os.path.basename(output_path) if output_path else "",
                 success=False,
-                error_message=str(e),
+                error_message=message,
             )
 
     def _create_executive_summary_sheet(self, wb: Workbook, bom_data: BOMData):
@@ -260,8 +290,8 @@ class ExcelWorkbookBuilder(DocumentBuilder):
         # Group resources by service
         services = defaultdict(list)
         for resource in bom_data.resources:
-            service = resource.get("service", "Unknown")
-            services[service].append(resource)
+            service = resource.get("service") or "Unknown"
+            services[str(service)].append(resource)
 
         # Create sheet for each service
         for service, resources in sorted(services.items()):
@@ -271,8 +301,18 @@ class ExcelWorkbookBuilder(DocumentBuilder):
         self, wb: Workbook, service: str, resources: List[Dict], bom_data: BOMData
     ):
         """Create a sheet for a specific service."""
-        # Sanitize sheet name (Excel has restrictions)
-        sheet_name = service[:31]  # Excel sheet names are limited to 31 characters
+        # Excel sheet names: at most 31 characters, none of [ ] : * ? / \,
+        # and unique without regard to case. The full service name is on the
+        # sheet itself (title row and "Service:" line).
+        used = getattr(self, "_used_sheet_names", None)
+        if used is None:
+            used = self._used_sheet_names = {n.lower() for n in FIXED_SHEET_NAMES}
+        sheet_name = safe_sheet_name(service, used)
+        if sheet_name != service:
+            warning = f"Service '{service}' is on sheet '{sheet_name}' (Excel sheet names are limited)."
+            self.logger.warning(warning)
+            if hasattr(self, "_warnings"):
+                self._warnings.append(warning)
         ws = wb.create_sheet(sheet_name)
 
         # Sheet title
@@ -422,7 +462,7 @@ class ExcelWorkbookBuilder(DocumentBuilder):
         # Count resources by service
         services = defaultdict(int)
         for resource in bom_data.resources:
-            service = resource.get("service", "Unknown")
+            service = str(resource.get("service") or "Unknown")
             services[service] += 1
 
         # Section header
@@ -573,37 +613,76 @@ class ExcelWorkbookBuilder(DocumentBuilder):
         ws[f"A{start_row + 3}"] = f"Non-Compliant: {non_compliant}"
         ws[f"A{start_row + 3}"].fill = self.styles["non_compliant_fill"]
 
+    @staticmethod
+    def _cell_value(value: Any) -> Any:
+        """What to write for a resource value.
+
+        Whole and decimal numbers stay numbers (so Excel can sort and add them);
+        everything else, including dates and booleans, is written as text. Dates
+        keep their time zone offset because nothing is converted. Text over
+        Excel's 32,767-character limit is cut with a visible note.
+        """
+        if value is None:
+            return ""
+        if isinstance(value, bool):
+            return str(value)
+        if isinstance(value, (int, float)):
+            if math.isfinite(value) and abs(value) < _MAX_EXACT_NUMBER:
+                return value
+            return str(value)
+        return limit_text(str(value), MAX_CELL_CHARS)
+
     def _add_service_resource_table(self, ws, resources: List[Dict], start_row: int):
         """Add resource table for a service."""
         if not resources:
             return
 
-        # Get all unique headers for this service
+        # Flatten each resource once; collect every column name for this service
+        flattened_rows = [self._flatten_dict(resource) for resource in resources]
         headers = set()
-        for resource in resources:
-            flattened = self._flatten_dict(resource)
+        for flattened in flattened_rows:
             headers.update(flattened.keys())
 
-        sorted_headers = sorted(headers)
+        sorted_headers = sorted(headers, key=str)
+        if len(sorted_headers) > MAX_EXCEL_COLUMNS:
+            # An Excel sheet has 16,384 columns. Keep the first ones (in name
+            # order) and say what was left out.
+            dropped = len(sorted_headers) - MAX_EXCEL_COLUMNS
+            sorted_headers = sorted_headers[:MAX_EXCEL_COLUMNS]
+            warning = (
+                f"Sheet '{ws.title}': {dropped} columns do not fit in an Excel "
+                f"sheet ({MAX_EXCEL_COLUMNS} columns at most) and were left out."
+            )
+            self.logger.warning(warning)
+            if hasattr(self, "_warnings"):
+                self._warnings.append(warning)
+            ws["A2"] = limit_text(warning)
 
         # Write headers
         for col, header in enumerate(sorted_headers, 1):
-            cell = ws.cell(row=start_row, column=col, value=header)
+            cell = ws.cell(row=start_row, column=col, value=limit_text(str(header)))
             cell.font = self.styles["header_font"]
             cell.fill = self.styles["header_fill"]
             cell.alignment = self.styles["center_alignment"]
             cell.border = self.styles["border"]
 
         # Write data
-        for row, resource in enumerate(resources, start_row + 1):
-            flattened = self._flatten_dict(resource)
+        border = self.styles["border"]
+        alignment = self.styles["left_alignment"]
+        for row, flattened in enumerate(flattened_rows, start_row + 1):
             for col, header in enumerate(sorted_headers, 1):
-                value = flattened.get(header, "")
                 cell = ws.cell(
-                    row=row, column=col, value=str(value) if value is not None else ""
+                    row=row, column=col, value=self._cell_value(flattened.get(header))
                 )
-                cell.border = self.styles["border"]
-                cell.alignment = self.styles["left_alignment"]
+                cell.border = border
+                cell.alignment = alignment
+
+        # Keep the header row in view and let users filter the table
+        ws.freeze_panes = ws.cell(row=start_row + 1, column=1).coordinate
+        last_cell = ws.cell(
+            row=start_row + len(flattened_rows), column=len(sorted_headers)
+        )
+        ws.auto_filter.ref = f"A{start_row}:{last_cell.coordinate}"
 
     def _apply_service_conditional_formatting(self, ws, num_resources: int):
         """Apply conditional formatting to service sheet."""
@@ -686,13 +765,15 @@ class ExcelWorkbookBuilder(DocumentBuilder):
         # VPC data
         row += 1
         for vpc_id, vpc_data in vpc_utilization.items():
-            ws.cell(row=row, column=1, value=vpc_id).border = self.styles["border"]
-            ws.cell(row=row, column=2, value=vpc_data.get("name", "")).border = (
+            ws.cell(row=row, column=1, value=self._cell_value(vpc_id)).border = (
                 self.styles["border"]
             )
-            ws.cell(row=row, column=3, value=vpc_data.get("cidr_block", "")).border = (
-                self.styles["border"]
-            )
+            ws.cell(
+                row=row, column=2, value=self._cell_value(vpc_data.get("name"))
+            ).border = self.styles["border"]
+            ws.cell(
+                row=row, column=3, value=self._cell_value(vpc_data.get("cidr_block"))
+            ).border = self.styles["border"]
             ws.cell(
                 row=row,
                 column=4,
@@ -732,7 +813,9 @@ class ExcelWorkbookBuilder(DocumentBuilder):
 
         row += 1
         for vpc_id, count in sorted(vpc_resources.items()):
-            ws.cell(row=row, column=1, value=vpc_id).border = self.styles["border"]
+            ws.cell(row=row, column=1, value=self._cell_value(vpc_id)).border = (
+                self.styles["border"]
+            )
             ws.cell(row=row, column=2, value=count).border = self.styles["border"]
             row += 1
 
@@ -782,14 +865,16 @@ class ExcelWorkbookBuilder(DocumentBuilder):
         # Risk data
         row += 1
         for rule in overly_permissive_rules:
-            ws.cell(row=row, column=1, value=rule.get("group_id", "")).border = (
-                self.styles["border"]
-            )
-            ws.cell(row=row, column=2, value=rule.get("rule", "")).border = self.styles[
-                "border"
-            ]
+            ws.cell(
+                row=row, column=1, value=self._cell_value(rule.get("group_id"))
+            ).border = self.styles["border"]
+            ws.cell(
+                row=row, column=2, value=self._cell_value(rule.get("rule"))
+            ).border = self.styles["border"]
 
-            risk_cell = ws.cell(row=row, column=3, value=rule.get("risk_level", ""))
+            risk_cell = ws.cell(
+                row=row, column=3, value=self._cell_value(rule.get("risk_level"))
+            )
             risk_cell.border = self.styles["border"]
             if rule.get("risk_level") == "high":
                 risk_cell.fill = self.styles["non_compliant_fill"]
@@ -825,7 +910,7 @@ class ExcelWorkbookBuilder(DocumentBuilder):
         service_compliance = defaultdict(lambda: {"compliant": 0, "non_compliant": 0})
 
         for resource in bom_data.resources:
-            service = resource.get("service", "Unknown")
+            service = str(resource.get("service") or "Unknown")
             status = resource.get("compliance_status", "unknown")
 
             if status == "compliant":
@@ -856,7 +941,9 @@ class ExcelWorkbookBuilder(DocumentBuilder):
             total = compliant + non_compliant
             compliance_pct = (compliant / total * 100) if total > 0 else 0
 
-            ws.cell(row=row, column=1, value=service).border = self.styles["border"]
+            ws.cell(row=row, column=1, value=self._cell_value(service)).border = (
+                self.styles["border"]
+            )
 
             compliant_cell = ws.cell(row=row, column=2, value=compliant)
             compliant_cell.border = self.styles["border"]
@@ -904,21 +991,21 @@ class ExcelWorkbookBuilder(DocumentBuilder):
         # Resource data
         row += 1
         for resource in non_compliant_resources:
-            ws.cell(row=row, column=1, value=resource.get("service", "")).border = (
-                self.styles["border"]
-            )
-            ws.cell(row=row, column=2, value=resource.get("type", "")).border = (
-                self.styles["border"]
-            )
-            ws.cell(row=row, column=3, value=resource.get("id", "")).border = (
-                self.styles["border"]
-            )
-            ws.cell(row=row, column=4, value=resource.get("name", "")).border = (
-                self.styles["border"]
-            )
-            ws.cell(row=row, column=5, value=resource.get("region", "")).border = (
-                self.styles["border"]
-            )
+            ws.cell(
+                row=row, column=1, value=self._cell_value(resource.get("service"))
+            ).border = self.styles["border"]
+            ws.cell(
+                row=row, column=2, value=self._cell_value(resource.get("type"))
+            ).border = self.styles["border"]
+            ws.cell(
+                row=row, column=3, value=self._cell_value(resource.get("id"))
+            ).border = self.styles["border"]
+            ws.cell(
+                row=row, column=4, value=self._cell_value(resource.get("name"))
+            ).border = self.styles["border"]
+            ws.cell(
+                row=row, column=5, value=self._cell_value(resource.get("region"))
+            ).border = self.styles["border"]
             ws.cell(row=row, column=6, value="Missing required tags").border = (
                 self.styles["border"]
             )

@@ -15,10 +15,12 @@ Features:
 
 import logging
 import os
+import re
 import json
+import uuid
 import yaml
 from typing import Dict, List, Any, Optional, Union, Set
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace as dataclass_replace
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -26,7 +28,125 @@ import threading
 from abc import ABC, abstractmethod
 
 from .bom_processor import BOMData
-from ..security.safe_output import ensure_private_dir, open_private
+from ..security.safe_output import (
+    ensure_private_dir,
+    open_private,
+    precreate_private,
+)
+
+# Excel allows 32,767 characters in a cell and 16,384 columns on a sheet.
+# Word has no hard cell limit, but one huge tag value would make the file
+# unusable, so the same cap is used there.
+MAX_CELL_CHARS = 32767
+MAX_EXCEL_COLUMNS = 16384
+MAX_SHEET_NAME_CHARS = 31
+
+# Characters XML 1.0 cannot hold (control characters, lone surrogates, U+FFFE
+# and U+FFFF). openpyxl and python-docx refuse to write them.
+_ILLEGAL_XML_CHARS = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]")
+_INVALID_SHEET_CHARS = re.compile(r"[\[\]:*?/\\\x00-\x1f]")
+# Excel reserves this sheet name.
+_RESERVED_SHEET_NAMES = {"history"}
+
+
+def clean_text(value: str) -> str:
+    """Replace characters that cannot be stored in an Office XML file with U+FFFD."""
+    return _ILLEGAL_XML_CHARS.sub("\ufffd", value)
+
+
+def limit_text(text: str, limit: int = MAX_CELL_CHARS) -> str:
+    """Cut text to ``limit`` characters and say so, so nobody mistakes it for the full value."""
+    if len(text) <= limit:
+        return text
+    marker = f"... [truncated, {len(text)} characters in total]"
+    return text[: limit - len(marker)] + marker
+
+
+def clean_structure(value: Any) -> Any:
+    """Return ``value`` with illegal XML characters removed from every string and key.
+
+    Nothing is copied when the data is already clean, so this is cheap to call
+    on a large inventory.
+    """
+    if isinstance(value, str):
+        return clean_text(value) if _ILLEGAL_XML_CHARS.search(value) else value
+    if isinstance(value, dict):
+        changed = False
+        out = {}
+        for key, item in value.items():
+            new_key = clean_structure(key)
+            new_item = clean_structure(item)
+            changed = changed or new_key is not key or new_item is not item
+            out[new_key] = new_item
+        return out if changed else value
+    if isinstance(value, (list, tuple)):
+        items = [clean_structure(item) for item in value]
+        if any(new is not old for new, old in zip(items, value)):
+            return items if isinstance(value, list) else tuple(items)
+        return value
+    return value
+
+
+def clean_bom_data(bom_data: "BOMData") -> "BOMData":
+    """A BOMData whose text can be written to Excel and Word (same object if already clean)."""
+    changes = {}
+    for name in (
+        "resources",
+        "network_analysis",
+        "security_analysis",
+        "compliance_summary",
+        "generation_metadata",
+        "custom_attributes",
+    ):
+        original = getattr(bom_data, name)
+        cleaned = clean_structure(original)
+        if cleaned is not original:
+            changes[name] = cleaned
+    return dataclass_replace(bom_data, **changes) if changes else bom_data
+
+
+def safe_sheet_name(name: Any, taken: Set[str]) -> str:
+    """An Excel sheet name made from ``name`` that is valid and not in ``taken``.
+
+    ``taken`` holds lower-case names already used (Excel compares names without
+    regard to case). The caller adds the result to it. Characters Excel
+    forbids (``[ ] : * ? / \\``) become ``_``; a name longer than 31 characters
+    is cut, and a name that is already used gets `` (2)``, `` (3)`` ... inside
+    the 31 characters.
+    """
+    text = _INVALID_SHEET_CHARS.sub("_", "" if name is None else str(name))
+    text = text.strip().strip("'").strip() or "Sheet"
+    base = text[:MAX_SHEET_NAME_CHARS]
+    candidate = base
+    number = 1
+    while candidate.lower() in taken or candidate.lower() in _RESERVED_SHEET_NAMES:
+        number += 1
+        suffix = f" ({number})"
+        candidate = base[: MAX_SHEET_NAME_CHARS - len(suffix)] + suffix
+    taken.add(candidate.lower())
+    return candidate
+
+
+def save_atomically(output_path: str, save) -> None:
+    """Write a report so a failure never leaves a half-written file at ``output_path``.
+
+    ``save`` is called with a temporary path in the same directory (created
+    owner-only); the file is renamed to ``output_path`` only when ``save``
+    finished. On any error the temporary file is removed and an existing file
+    at ``output_path`` is left as it was.
+    """
+    directory, name = os.path.split(os.fspath(output_path))
+    temporary = os.path.join(directory, f".{name}.{uuid.uuid4().hex[:8]}.tmp")
+    try:
+        precreate_private(temporary)
+        save(temporary)
+        os.replace(temporary, output_path)
+    except BaseException:
+        try:
+            os.remove(temporary)
+        except OSError:
+            pass
+        raise
 
 
 @dataclass
@@ -74,6 +194,9 @@ class DocumentConfig:
     field_visibility: Dict[str, bool] = field(default_factory=dict)
     enable_parallel_generation: bool = True
     max_worker_threads: int = 3
+    # Word only: show at most this many resources per service and say how many
+    # were left out. None (the default) shows every resource.
+    max_rows_per_service: Optional[int] = None
     generation_timeout: int = 300  # seconds
     output_directory: str = "."
     filename_template: str = "bom_report_{timestamp}"

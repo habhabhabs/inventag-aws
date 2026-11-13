@@ -20,8 +20,14 @@ from typing import Dict, List, Any, Optional, Set
 from datetime import datetime, timezone
 from collections import defaultdict
 
-from .document_generator import DocumentBuilder, DocumentGenerationResult, BOMData
-from ..security.safe_output import precreate_private
+from .document_generator import (
+    DocumentBuilder,
+    DocumentGenerationResult,
+    BOMData,
+    clean_bom_data,
+    limit_text,
+    save_atomically,
+)
 
 try:
     from docx import Document
@@ -32,6 +38,7 @@ try:
     from docx.oxml.shared import OxmlElement, qn
     from docx.oxml.ns import nsdecls
     from docx.oxml import parse_xml
+    from docx.table import _Cell
 
     PYTHON_DOCX_AVAILABLE = True
 except ImportError:
@@ -155,6 +162,11 @@ class WordDocumentBuilder(DocumentBuilder):
 
             self.logger.info(f"Generating Word document: {output_path}")
 
+            # Text from AWS (names, tag values) can hold characters a .docx
+            # file cannot store; they become U+FFFD instead of a crash.
+            bom_data = clean_bom_data(bom_data)
+            self._warnings = []
+
             # Create document
             doc = Document()
 
@@ -174,9 +186,9 @@ class WordDocumentBuilder(DocumentBuilder):
             # Apply branding
             self._apply_document_branding(doc)
 
-            # Save document (owner-only file)
-            precreate_private(output_path)
-            doc.save(output_path)
+            # Save document (owner-only file), under a temporary name that is
+            # renamed when complete so a failure leaves no half-written report
+            save_atomically(output_path, doc.save)
 
             end_time = datetime.now(timezone.utc)
 
@@ -187,15 +199,17 @@ class WordDocumentBuilder(DocumentBuilder):
                 filename=os.path.basename(output_path),
                 success=True,
                 generation_time_seconds=(end_time - start_time).total_seconds(),
+                warnings=list(self._warnings),
             )
 
         except Exception as e:
-            self.logger.error(f"Word generation failed: {e}")
+            message = f"{type(e).__name__}: {e}"
+            self.logger.error(f"Word generation failed: {message}")
             return DocumentGenerationResult(
                 format_type="word",
                 filename=os.path.basename(output_path) if output_path else "",
                 success=False,
-                error_message=str(e),
+                error_message=message,
             )
 
     def _configure_document_styles(self, doc: Document):
@@ -405,7 +419,7 @@ class WordDocumentBuilder(DocumentBuilder):
         # Count resources by service
         services = defaultdict(int)
         for resource in bom_data.resources:
-            service = resource.get("service", "Unknown")
+            service = str(resource.get("service") or "Unknown")
             services[service] += 1
 
         # Service breakdown table
@@ -468,7 +482,7 @@ class WordDocumentBuilder(DocumentBuilder):
         # Group resources by service
         services = defaultdict(list)
         for resource in bom_data.resources:
-            service = resource.get("service", "Unknown")
+            service = str(resource.get("service") or "Unknown")
             services[service].append(resource)
 
         # Create section for each service
@@ -500,51 +514,59 @@ class WordDocumentBuilder(DocumentBuilder):
 
         # Resource table
         if resources:
-            # Get common fields for this service
-            common_fields = self._get_common_fields(resources)
+            max_rows = self._max_rows()
+            shown = resources if max_rows is None else resources[:max_rows]
+            common_fields = self._simple_fields(resources)[:8]
+            every_field = set()
+            for resource in resources:
+                every_field.update(resource.keys())
 
             # Create table
-            resource_table = doc.add_table(
-                rows=len(resources) + 1, cols=len(common_fields)
-            )
+            resource_table = doc.add_table(rows=len(shown) + 1, cols=len(common_fields))
             resource_table.style = "Table Grid"
 
-            # Headers
-            header_row = resource_table.rows[0]
-            for i, field in enumerate(common_fields):
-                header_row.cells[i].text = field.replace("_", " ").title()
+            def cell_text(resource, field):
+                value = resource.get(field, "")
+                if isinstance(value, dict):
+                    value = str(value)
+                elif isinstance(value, list):
+                    value = ", ".join(str(item) for item in value)
+                return "" if value is None else str(value)
 
-            # Format headers
-            for cell in header_row.cells:
-                for paragraph in cell.paragraphs:
-                    for run in paragraph.runs:
-                        run.font.bold = True
-                        run.font.size = self.styles["table_font_size"]
-                        run.font.color.rgb = self.styles["primary_color"]
+            def status_color(column, text):
+                if common_fields[column] == "compliance_status":
+                    if text == "compliant":
+                        return self.styles["accent_color"]
+                    if text == "non_compliant":
+                        return self.styles["danger_color"]
+                return None
 
-            # Resource data
-            for i, resource in enumerate(resources, 1):
-                row = resource_table.rows[i]
-                for j, field in enumerate(common_fields):
-                    value = resource.get(field, "")
-                    if isinstance(value, dict):
-                        value = str(value)
-                    elif isinstance(value, list):
-                        value = ", ".join(str(item) for item in value)
+            self._fill_table(
+                resource_table,
+                [field.replace("_", " ").title() for field in common_fields],
+                [[cell_text(r, f) for f in common_fields] for r in shown],
+                color_for=status_color,
+            )
 
-                    row.cells[j].text = str(value) if value is not None else ""
-
-                    # Format cells
-                    for paragraph in row.cells[j].paragraphs:
-                        for run in paragraph.runs:
-                            run.font.size = self.styles["table_font_size"]
-
-                            # Color code compliance status
-                            if field == "compliance_status":
-                                if value == "compliant":
-                                    run.font.color.rgb = self.styles["accent_color"]
-                                elif value == "non_compliant":
-                                    run.font.color.rgb = self.styles["danger_color"]
+            # Say plainly what is not in the table
+            notes = []
+            if len(shown) < len(resources):
+                notes.append(
+                    f"Showing {len(shown)} of {len(resources)} {service} resources; "
+                    f"{len(resources) - len(shown)} are not listed here."
+                )
+            if len(every_field) > len(common_fields):
+                notes.append(
+                    f"The table shows {len(common_fields)} of {len(every_field)} fields."
+                )
+            if notes:
+                notes.append(
+                    "The full list is in the Excel report (add the excel format to get it)."
+                )
+                note_run = doc.add_paragraph().add_run(" ".join(notes))
+                note_run.font.size = self.styles["body_font_size"]
+                note_run.font.italic = True
+                self._warnings.append(f"{service}: " + " ".join(notes[:-1]))
 
         doc.add_paragraph()  # Add spacing
 
@@ -760,7 +782,7 @@ class WordDocumentBuilder(DocumentBuilder):
         service_compliance = defaultdict(lambda: {"compliant": 0, "non_compliant": 0})
 
         for resource in bom_data.resources:
-            service = resource.get("service", "Unknown")
+            service = str(resource.get("service") or "Unknown")
             status = resource.get("compliance_status", "unknown")
 
             if status == "compliant":
@@ -830,40 +852,47 @@ class WordDocumentBuilder(DocumentBuilder):
         if non_compliant_resources:
             doc.add_heading("Non-Compliant Resources", level=2)
 
+            max_rows = self._max_rows()
+            shown_nc = (
+                non_compliant_resources
+                if max_rows is None
+                else non_compliant_resources[:max_rows]
+            )
+
             # Non-compliant table
-            nc_table = doc.add_table(rows=len(non_compliant_resources) + 1, cols=6)
+            nc_table = doc.add_table(rows=len(shown_nc) + 1, cols=6)
             nc_table.style = "Table Grid"
 
-            # Headers
-            headers = ["Service", "Type", "ID", "Name", "Region", "Issues"]
-            header_row = nc_table.rows[0]
-            for i, header in enumerate(headers):
-                header_row.cells[i].text = header
+            def text_of(resource, field):
+                value = resource.get(field, "")
+                return "" if value is None else str(value)
 
-            # Format headers
-            for cell in header_row.cells:
-                for paragraph in cell.paragraphs:
-                    for run in paragraph.runs:
-                        run.font.bold = True
-                        run.font.size = self.styles["table_font_size"]
-                        run.font.color.rgb = self.styles["primary_color"]
-
-            # Resource data
-            for i, resource in enumerate(non_compliant_resources, 1):
-                row = nc_table.rows[i]
-
-                row.cells[0].text = resource.get("service", "")
-                row.cells[1].text = resource.get("type", "")
-                row.cells[2].text = resource.get("id", "")
-                row.cells[3].text = resource.get("name", "")
-                row.cells[4].text = resource.get("region", "")
-                row.cells[5].text = "Missing required tags"
-
-                # Format cells
-                for cell in row.cells:
-                    for paragraph in cell.paragraphs:
-                        for run in paragraph.runs:
-                            run.font.size = self.styles["table_font_size"]
+            self._fill_table(
+                nc_table,
+                ["Service", "Type", "ID", "Name", "Region", "Issues"],
+                [
+                    [
+                        text_of(resource, "service"),
+                        text_of(resource, "type"),
+                        text_of(resource, "id"),
+                        text_of(resource, "name"),
+                        text_of(resource, "region"),
+                        "Missing required tags",
+                    ]
+                    for resource in shown_nc
+                ],
+            )
+            if len(shown_nc) < len(non_compliant_resources):
+                note = (
+                    f"Showing {len(shown_nc)} of {len(non_compliant_resources)} "
+                    f"non-compliant resources; "
+                    f"{len(non_compliant_resources) - len(shown_nc)} are not listed here. "
+                    "The full list is in the Excel report (add the excel format to get it)."
+                )
+                note_run = doc.add_paragraph().add_run(note)
+                note_run.font.size = self.styles["body_font_size"]
+                note_run.font.italic = True
+                self._warnings.append(note.split(" The full list")[0])
 
         doc.add_page_break()
 
@@ -912,8 +941,42 @@ class WordDocumentBuilder(DocumentBuilder):
             "Professional AWS resource inventory and compliance report"
         )
 
+    def _max_rows(self) -> Optional[int]:
+        """Rows per service table, or None for all of them."""
+        limit = getattr(self.config, "max_rows_per_service", None)
+        return limit if isinstance(limit, int) and limit > 0 else None
+
+    def _fill_table(self, table, header, rows, color_for=None):
+        """Write a header and rows into a table made with ``rows=len(rows) + 1``.
+
+        python-docx's ``row.cells`` walks the table on every call, which makes
+        large tables very slow; this writes straight to each row's cells.
+        """
+        size = self.styles["table_font_size"]
+        for index, tr in enumerate(table._tbl.tr_lst):
+            if index == 0:
+                values, is_header = header, True
+            elif index <= len(rows):
+                values, is_header = rows[index - 1], False
+            else:
+                break
+            for column, (tc, text) in enumerate(zip(tr.tc_lst, values)):
+                run = _Cell(tc, table).paragraphs[0].add_run(limit_text(str(text)))
+                run.font.size = size
+                if is_header:
+                    run.font.bold = True
+                    run.font.color.rgb = self.styles["primary_color"]
+                elif color_for is not None:
+                    color = color_for(column, text)
+                    if color is not None:
+                        run.font.color.rgb = color
+
     def _get_common_fields(self, resources: List[Dict]) -> List[str]:
-        """Get common fields across resources for table generation."""
+        """The first 8 fields of ``_simple_fields``, used as table columns."""
+        return self._simple_fields(resources)[:8]
+
+    def _simple_fields(self, resources: List[Dict]) -> List[str]:
+        """Fields with simple values, in table order (priority fields first)."""
         if not resources:
             return []
 
@@ -952,8 +1015,7 @@ class WordDocumentBuilder(DocumentBuilder):
         # Add remaining fields
         sorted_fields.extend(sorted(simple_fields))
 
-        # Limit to reasonable number of columns
-        return sorted_fields[:8]
+        return sorted_fields
 
     def _generate_key_findings(self, bom_data: BOMData) -> List[str]:
         """Generate key findings based on BOM data."""
@@ -1003,7 +1065,7 @@ class WordDocumentBuilder(DocumentBuilder):
 
         # Service diversity
         services = set(
-            resource.get("service", "Unknown") for resource in bom_data.resources
+            str(resource.get("service") or "Unknown") for resource in bom_data.resources
         )
         findings.append(
             f"Infrastructure utilizes {len(services)} different AWS services"
