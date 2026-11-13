@@ -1425,6 +1425,40 @@ def validate_template_data(
 
 
 # ----------------------------------------------------------------- loading
+class _UniqueKeyLoader(yaml.SafeLoader):
+    """SafeLoader that refuses a key written twice in one mapping.
+
+    Plain PyYAML keeps the last one without a word, so a misplaced copy of a
+    key silently changes the template.
+    """
+
+    def construct_mapping(self, node, deep=False):
+        if isinstance(node, yaml.MappingNode):
+            seen = set()
+            for key_node, _ in node.value:
+                if not isinstance(key_node, yaml.ScalarNode):
+                    continue
+                key = key_node.value
+                if key in seen and key_node.tag != "tag:yaml.org,2002:merge":
+                    raise yaml.constructor.ConstructorError(
+                        None,
+                        None,
+                        f"duplicate key '{key}'",
+                        key_node.start_mark,
+                    )
+                seen.add(key)
+        return super().construct_mapping(node, deep)
+
+
+def _no_duplicate_keys(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate key '{key}'")
+        result[key] = value
+    return result
+
+
 def read_template_file(path: Any) -> Tuple[Any, Path]:
     """Read and parse a template file. Returns ``(data, resolved_path)``.
 
@@ -1464,13 +1498,15 @@ def read_template_file(path: Any) -> Tuple[Any, Path]:
         raise fail("the file is not UTF-8 text") from None
     try:
         if suffix == ".json":
-            data = json.loads(text)
+            data = json.loads(text, object_pairs_hook=_no_duplicate_keys)
         else:
-            data = yaml.safe_load(text)
+            data = yaml.load(text, Loader=_UniqueKeyLoader)  # noqa: S506 - SafeLoader
     except json.JSONDecodeError as e:
         raise fail(
             f"JSON syntax error at line {e.lineno}, column {e.colno}: {e.msg}"
         ) from None
+    except ValueError as e:  # a key written twice in a JSON file
+        raise fail(f"JSON error: {e}") from None
     except yaml.YAMLError as e:
         mark = getattr(e, "problem_mark", None)
         where = f" at line {mark.line + 1}, column {mark.column + 1}" if mark else ""

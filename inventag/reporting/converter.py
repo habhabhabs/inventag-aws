@@ -7,6 +7,7 @@ Extracted from scripts/bom_converter.py and enhanced for the unified inventag pa
 """
 
 import json
+import re
 import yaml
 import boto3
 from typing import Dict, List, Any, Union, Optional
@@ -27,6 +28,7 @@ from .report_template import (
 
 try:
     from openpyxl import Workbook
+    from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
     from openpyxl.styles import Font, PatternFill, Alignment
     from openpyxl.utils import get_column_letter
 
@@ -35,6 +37,7 @@ except ImportError:
     OPENPYXL_AVAILABLE = False
     # Create a placeholder for type hints when openpyxl is not available
     Workbook = Any
+    ILLEGAL_CHARACTERS_RE = None
 
 try:
     from docx import Document
@@ -47,6 +50,25 @@ except ImportError:
     PYTHON_DOCX_AVAILABLE = False
     # Create placeholders for type hints when python-docx is not available
     Document = Any
+
+
+_SHEET_NAME_ILLEGAL = re.compile(r"[\[\]:*?/\\]")
+_EXCEL_CELL_LIMIT = 32767
+
+
+def _cell_text(value: Any) -> str:
+    """Text for one Excel cell: no control characters (openpyxl refuses them)
+    and at most 32,767 characters (the Excel limit)."""
+    text = "" if value is None else str(value)
+    if ILLEGAL_CHARACTERS_RE is not None:
+        text = ILLEGAL_CHARACTERS_RE.sub("", text)
+    return text[:_EXCEL_CELL_LIMIT]
+
+
+def _sheet_name(name: Any) -> str:
+    """An Excel sheet name: no []:*?/\\, not empty, at most 31 characters."""
+    cleaned = _SHEET_NAME_ILLEGAL.sub("-", _cell_text(name)).strip("'")
+    return (cleaned or "Sheet")[:31]
 
 
 def _group_by_service(resources: List[Dict[str, Any]]) -> Dict[str, List[Dict]]:
@@ -62,7 +84,7 @@ def _group_by_service(resources: List[Dict[str, Any]]) -> Dict[str, List[Dict]]:
 
     groups: Dict[str, List[Dict]] = {}
     for resource in resources:
-        groups.setdefault(resource.get("service", "Unknown"), []).append(resource)
+        groups.setdefault(resource.get("service") or "Unknown", []).append(resource)
     return {
         service: sorted(rows, key=row_key)
         for service, rows in sorted(groups.items(), key=lambda kv: str(kv[0]).lower())
@@ -99,7 +121,9 @@ class BOMConverter:
     def load_data(self, filename: str) -> List[Dict[str, Any]]:
         """Load data from JSON or YAML file."""
         try:
-            with open(filename, "r") as f:
+            # utf-8-sig: read UTF-8 on every system (Windows would use its code
+            # page) and accept a byte order mark, which Notepad adds.
+            with open(filename, "r", encoding="utf-8-sig") as f:
                 if filename.lower().endswith(".json"):
                     raw_data = json.load(f)
                 elif filename.lower().endswith((".yaml", ".yml")):
@@ -654,7 +678,7 @@ class BOMConverter:
 
         # Add service data
         row += 1
-        for service, resources in sorted(services.items()):
+        for service, resources in services.items():  # already sorted
             count = len(resources)
             percentage = (count / total_resources * 100) if total_resources > 0 else 0
             for col, value in enumerate(
@@ -692,7 +716,7 @@ class BOMConverter:
             template.data["branding"]["header_color"] if template else "366092"
         )
         # Sanitize sheet name (Excel has restrictions)
-        sheet_name = service[:31]  # Excel sheet names are limited to 31 characters
+        sheet_name = _sheet_name(service)
 
         ws = wb.create_sheet(sheet_name)
         flattened_rows = [self._flatten_dict(resource) for resource in resources]
@@ -713,7 +737,7 @@ class BOMConverter:
 
         # Write headers
         for col, heading in enumerate(headings, 1):
-            cell = ws.cell(row=1, column=col, value=heading)
+            cell = ws.cell(row=1, column=col, value=_cell_text(heading))
             cell.font = Font(bold=True)
             cell.fill = PatternFill(
                 start_color=header_color, end_color=header_color, fill_type="solid"
@@ -726,9 +750,7 @@ class BOMConverter:
                     value = flattened[field_name]
                 else:
                     value = self._format_structured_value(resource.get(field_name, ""))
-                ws.cell(
-                    row=row, column=col, value=str(value) if value is not None else ""
-                )
+                ws.cell(row=row, column=col, value=_cell_text(value))
 
         self._auto_fit_columns(ws, widths)
 
@@ -1665,7 +1687,7 @@ class BOMConverter:
 
         # Add service data
         total_resources = sum(len(resources) for resources in services.values())
-        for service, resources in sorted(services.items()):
+        for service, resources in services.items():  # already sorted
             count = len(resources)
             percentage = (count / total_resources * 100) if total_resources > 0 else 0
             values = {
@@ -1739,7 +1761,7 @@ class BOMConverter:
         if section.get("services"):
             selected = self._select_services(services, section["services"])
         else:
-            selected = sorted(services.items())
+            selected = list(services.items())  # already sorted
 
         max_resources = section["max_rows"]
         for service, resources in selected:
