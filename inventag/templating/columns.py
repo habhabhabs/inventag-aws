@@ -33,12 +33,36 @@ def normalize_tags(tags: Any) -> Dict[str, str]:
     return result
 
 
+# Types whose discovery record has no name key: the ID is the name (the
+# function name, the role name, the alias). The standard report shows this
+# value in its ID column; a template Name column shows it too.
+_ID_IS_NAME = {("LAMBDA", "FUNCTION"), ("IAM", "ROLE"), ("KMS", "ALIAS")}
+
+
+def _id_as_name(resource: Dict[str, Any]) -> Any:
+    key = (
+        str(resource.get("service") or "").upper(),
+        str(resource.get("resource_type") or resource.get("type") or "").upper(),
+    )
+    if key in _ID_IS_NAME:
+        return resource.get("resource_id") or resource.get("id")
+    return None
+
+
 def get_field(resource: Dict[str, Any], dotted: str) -> Any:
     """Read ``a.b.c`` from nested dictionaries; ``tags.X`` reads tag X."""
     if dotted.startswith("tags."):
         return normalize_tags(resource.get("tags")).get(dotted[5:])
-    if dotted in resource:
+    if dotted in resource and not (
+        dotted in ("resource_name", "name") and not resource[dotted]
+    ):
         return resource[dotted]
+    if dotted in ("resource_name", "name"):
+        fallback = _id_as_name(resource)
+        if fallback:
+            return fallback
+        if dotted in resource:
+            return resource[dotted]
     current: Any = resource
     for part in dotted.split("."):
         if isinstance(current, dict) and part in current:
