@@ -304,46 +304,90 @@ class CostAnalyzer:
                 return
         self.logger.debug(f"{message}: {error}")
 
+    _NOT_CACHED = object()
+
     def _get_pricing_info(
         self, service: str, resource_type: str, region: str, resource: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
-        """Get pricing information from AWS Pricing API."""
-        cache_key = f"{service}:{resource_type}:{region}"
+        """Get pricing information from AWS Pricing API.
 
-        with self._cache_lock:
-            if cache_key in self._pricing_cache:
-                return self._pricing_cache[cache_key]
+        The result, including "no price" and a failed call, is cached for the
+        run under the full lookup key (service code plus every filter), so N
+        resources that share a key cost one Pricing API call, not N.
+        """
+        service_code = self._map_service_to_pricing_code(service)
+        if not service_code:
+            return None
 
         try:
-            # Map service names to pricing service codes
-            service_code = self._map_service_to_pricing_code(service)
-            if not service_code:
-                return None
-
-            # Build filters for pricing query
             filters = self._build_pricing_filters(
                 service, resource_type, region, resource
             )
+        except Exception as e:
+            self.logger.debug(f"Could not build pricing filters for {service}: {e}")
+            return None
+        cache_key = json.dumps([service_code, filters], sort_keys=True)
 
-            # Query pricing API
-            response = self._get_pricing_client().get_products(
-                ServiceCode=service_code, Filters=filters, MaxResults=10
+        with self._cache_lock:
+            cached = self._pricing_cache.get(cache_key, self._NOT_CACHED)
+            if cached is not self._NOT_CACHED:
+                return cached
+            key_lock = self.__dict__.setdefault("_pricing_key_locks", {}).setdefault(
+                cache_key, threading.Lock()
             )
 
-            pricing_info = self._parse_pricing_response(
-                response, service, resource_type
-            )
+        # One thread looks a key up; the others wait for its answer.
+        with key_lock:
+            with self._cache_lock:
+                cached = self._pricing_cache.get(cache_key, self._NOT_CACHED)
+                if cached is not self._NOT_CACHED:
+                    return cached
+
+            try:
+                response = self._get_pricing_client().get_products(
+                    ServiceCode=service_code, Filters=filters, MaxResults=10
+                )
+                pricing_info = self._parse_pricing_response(
+                    response, service, resource_type
+                )
+            except Exception as e:
+                pricing_info = None
+                self._log_pricing_failure(service, resource_type, e)
 
             with self._cache_lock:
                 self._pricing_cache[cache_key] = pricing_info
-
             return pricing_info
 
-        except Exception as e:
+    def _log_pricing_failure(
+        self, service: str, resource_type: str, error: Exception
+    ) -> None:
+        """Log a failed Pricing lookup once per distinct reason, not per resource."""
+        code = ""
+        response = getattr(error, "response", None)
+        if isinstance(response, dict):
+            code = response.get("Error", {}).get("Code", "")
+        if code in self._DENIED:
             self._log_aws_failure(
-                "pricing", f"Pricing API query failed for {service}:{resource_type}", e
+                "pricing",
+                f"Pricing API query failed for {service}:{resource_type}",
+                error,
             )
-            return None
+            return
+        reason = code or type(error).__name__
+        warned = self.__dict__.setdefault("_warned_pricing_reasons", set())
+        with self._cache_lock:
+            first = reason not in warned
+            warned.add(reason)
+        if first:
+            self.logger.warning(
+                f"Cost analysis: a Pricing API lookup failed ({reason}); the same "
+                "lookup is not repeated in this run. Estimates for it will be missing. "
+                f"First seen for {service}:{resource_type}: {error}"
+            )
+        else:
+            self.logger.debug(
+                f"Pricing API query failed for {service}:{resource_type}: {error}"
+            )
 
     def _map_service_to_pricing_code(self, service: str) -> Optional[str]:
         """Map AWS service names to pricing service codes."""
