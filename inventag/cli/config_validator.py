@@ -8,6 +8,8 @@ import stat
 import yaml
 import logging
 from pathlib import Path
+
+from ..reporting.settings_loader import SettingsFileError, load_settings_file
 from typing import Dict, Any, List, Optional, Union, Tuple
 from dataclasses import dataclass, field
 
@@ -60,17 +62,13 @@ class ConfigValidator:
                 result.errors.append(f"Accounts file not found: {file_path}")
                 return result
 
-            # Load configuration based on file extension
-            with open(path, "r") as f:
-                if path.suffix.lower() in [".yaml", ".yml"]:
-                    config = yaml.safe_load(f)
-                elif path.suffix.lower() == ".json":
-                    config = json.load(f)
-                else:
-                    result.errors.append(
-                        f"Unsupported file format: {path.suffix}. Use .json, .yaml, or .yml"
-                    )
-                    return result
+            # UTF-8 with or without BOM, duplicate keys refused (with the
+            # line), empty files and non-mapping top levels named, size cap.
+            try:
+                config = load_settings_file(path, "accounts file")
+            except SettingsFileError as e:
+                result.errors.append(str(e))
+                return result
 
             result.config = config
 
@@ -266,14 +264,13 @@ class ConfigValidator:
                 )
                 return result
 
-            with open(path, "r") as f:
-                if path.suffix.lower() in [".yaml", ".yml"]:
-                    config = yaml.safe_load(f)
-                elif path.suffix.lower() == ".json":
-                    config = json.load(f)
-                else:
-                    result.errors.append(f"Unsupported file format: {path.suffix}")
-                    return result
+            # UTF-8 with or without BOM, duplicate keys refused (with the
+            # line), empty files and non-mapping top levels named, size cap.
+            try:
+                config = load_settings_file(path, "service descriptions file")
+            except SettingsFileError as e:
+                result.errors.append(str(e))
+                return result
 
             result.config = config
 
@@ -353,14 +350,13 @@ class ConfigValidator:
                 result.errors.append(f"Tag mappings file not found: {file_path}")
                 return result
 
-            with open(path, "r") as f:
-                if path.suffix.lower() in [".yaml", ".yml"]:
-                    config = yaml.safe_load(f)
-                elif path.suffix.lower() == ".json":
-                    config = json.load(f)
-                else:
-                    result.errors.append(f"Unsupported file format: {path.suffix}")
-                    return result
+            # UTF-8 with or without BOM, duplicate keys refused (with the
+            # line), empty files and non-mapping top levels named, size cap.
+            try:
+                config = load_settings_file(path, "tag mappings file")
+            except SettingsFileError as e:
+                result.errors.append(str(e))
+                return result
 
             result.config = config
 

@@ -7,7 +7,6 @@ compliance checking, and advanced reporting capabilities.
 """
 
 import argparse
-import dataclasses
 import getpass
 import sys
 import json
@@ -43,6 +42,11 @@ from ..security.arn import (
     is_role_arn,
     validate_role_arn,
     validate_role_name,
+)
+from ..reporting.settings_loader import (
+    SettingsFileError,
+    read_bom_settings,
+    valid_bom_setting_names,
 )
 from ..templating.runner import (
     add_template_arguments,
@@ -936,19 +940,18 @@ def create_multi_account_config(args) -> MultiAccountConfig:
         bom_config.tag_mappings_config = args.tag_mappings
 
     if args.bom_config:
-        bom_file_config = load_configuration_file(args.bom_config, "bom_config")
-        # Update bom_config with file settings
-        ignored = []
-        for key, value in bom_file_config.items():
-            if hasattr(bom_config, key):
-                setattr(bom_config, key, value)
-            else:
-                ignored.append(str(key))
+        # Typed settings: wrong value types stop here with the key named,
+        # instead of failing later in BOM processing.
+        try:
+            ignored = read_bom_settings(args.bom_config, bom_config)
+        except SettingsFileError as e:
+            logger.error(str(e))
+            sys.exit(1)
         if ignored:
             logger.warning(
                 f"--bom-config {args.bom_config}: ignored unknown key(s) "
                 f"{', '.join(sorted(ignored))}. Valid keys: "
-                f"{', '.join(sorted(f.name for f in dataclasses.fields(bom_config)))}"
+                f"{', '.join(valid_bom_setting_names())}"
             )
 
     # Create multi-account config
