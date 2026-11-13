@@ -75,6 +75,52 @@ Hoja `Security Analysis`, primeras filas:
 |---|---|---|---|---|---|---|---|---|
 | sg-46eeda8dc8fa7955d | default | vpc-b790a8316b5a9b85e | low | 0 | 1 | 1 | No |  |
 
+### Qué hace el análisis de red {#what-the-network-analysis-does}
+
+- Una subred cuenta como pública cuando la tabla de rutas que usa (la suya, o la tabla principal de la VPC) tiene una ruta activa
+  para `0.0.0.0/0` o `::/0` hacia una puerta de enlace de internet (`igw-`). Una VPC que tiene una puerta de enlace de internet
+  pero ninguna ruta así no hace públicas sus subredes. Las hojas no muestran esta propiedad.
+- `Total IPs` procede de los bloques CIDR de la VPC. `Available IPs` y `Utilization %` proceden de sus subredes, así que las tres columnas
+  no cuadran entre sí, y una VPC sin subredes muestra 0 disponibles. Las direcciones IPv6 no se cuentan.
+- `Associated Resources` cuenta los recursos cuyos datos de API nombran la VPC o la subred: instancias EC2, funciones Lambda en una VPC,
+  recursos de RDS y ElastiCache y balanceadores de carga. Los grupos de seguridad, las ACL de red, las tablas de rutas y las puertas de enlace
+  son la infraestructura propia de la VPC y no se cuentan.
+- Solo lee las VPC y subredes de las regiones que analizas. No comprueba las ACL de red, los grupos de seguridad, `MapPublicIpOnLaunch`,
+  Direct Connect, las conexiones VPN, Network Firewall ni las rutas de peering.
+
+### Qué hace el análisis de seguridad {#what-the-security-analysis-does}
+
+- Cada regla recibe un nivel de riesgo a partir de la propia regla. Una regla abierta a `0.0.0.0/0` o `::/0` es **critical** (crítica)
+  si permite todos los protocolos, todos los puertos o un rango que contiene 22, 23, 3389, 1433, 3306 o 5432. Por ejemplo, los puertos 20 a 25 son críticos.
+  Es **high** (alta) si el rango tiene un puerto por debajo de 1024, y **medium** (media) para cualquier otro puerto. Una regla ICMP abierta a internet es medium.
+  Un rango de origen más ancho que `/16` es medium, así que `10.0.0.0/8` es medium. Todo lo demás es low (baja).
+- Las reglas de salida son siempre **low**. El tráfico de salida abierto es el valor predeterminado de AWS.
+- El nivel de riesgo de un grupo es el más alto de sus reglas.
+- Un grupo cuenta como no usado cuando ninguna interfaz de red lo usa, ningún otro grupo lo referencia y no es el grupo `default`.
+  Un grupo al que solo hace referencia una plantilla de lanzamiento o un grupo de Auto Scaling parece no usado. Si no se pueden leer las interfaces de red,
+  ningún grupo se considera no usado. La hoja no muestra esta propiedad.
+- La columna `Has Permissive Rules` dice `Yes` cuando una regla de entrada está abierta a `0.0.0.0/0` o `::/0`. Una regla que hace referencia a otro grupo de seguridad
+  o a una lista de prefijos aparece en la lista, pero InvenTag no mira lo que hay detrás de la referencia. Las ACL de red no se analizan.
+
+### Hacer fallar un pipeline por reglas de riesgo {#fail-a-pipeline-on-risky-rules}
+
+`--risk-threshold LOW|MEDIUM|HIGH|CRITICAL` necesita `--enable-security-analysis`. InvenTag mira las reglas de grupos de seguridad abiertas a
+`0.0.0.0/0` o `::/0`, de entrada y de salida. Si alguna tiene un nivel igual o superior al umbral, InvenTag escribe los informes, registra cada regla y sale con código 4:
+
+```text
+2 security group rule(s) at or above risk level LOW:
+  - sg-57691d920ce0e0a5e: outbound All All 0.0.0.0/0 (low)
+```
+
+Como las reglas de salida son low, `--risk-threshold LOW` sale con código 4 por el grupo `default` de casi todas las VPC. `MEDIUM` y superiores ignoran las reglas de salida.
+Solo cuentan las reglas de grupos de seguridad: las ACL de red y otros recursos nunca provocan el código 4. Los códigos 5 (`--fail-on-account-error`) y 6 (`--fail-if-empty`) tienen prioridad sobre el 4.
+
+### Permisos {#permissions}
+
+Ambos análisis hacen llamadas de solo lectura a EC2 en cada región analizada. Además de las llamadas habituales `ec2:Describe*` para VPC, subredes y grupos de seguridad,
+necesitan `ec2:DescribeRouteTables` (subredes públicas) y `ec2:DescribeNetworkInterfaces` (grupos no usados). El archivo de política del repositorio las incluye.
+Consulta [Permisos de IAM](../reference/iam-permissions.md). Sin ellas, el análisis continúa y omite ese detalle.
+
 ## Más detalle sobre los recursos de red {#more-detail-on-network-resources}
 
 Los recursos de red forman parte de cada análisis normal. Con la plantilla

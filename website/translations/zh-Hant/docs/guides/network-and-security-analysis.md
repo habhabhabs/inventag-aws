@@ -66,6 +66,46 @@ Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
 |---|---|---|---|---|---|---|---|---|
 | sg-46eeda8dc8fa7955d | default | vpc-b790a8316b5a9b85e | low | 0 | 1 | 1 | No |  |
 
+### 網路分析做什麼 {#what-the-network-analysis-does}
+
+- 當子網所用的路由表（它自己的，或 VPC 的主路由表）中有一條指向網際網路閘道器（`igw-`）的、處於活動狀態的 `0.0.0.0/0` 或 `::/0` 路由時，該子網算作公有子網。
+  VPC 有網際網路閘道器但沒有這樣的路由，並不會讓它的子網變成公有。工作表不顯示這一屬性。
+- `Total IPs` 來自 VPC 的 CIDR 塊。`Available IPs` 和 `Utilization %` 來自它的子網，所以這三欄加起來對不上，
+  沒有子網的 VPC 顯示可用數為 0。IPv6 地址不計入。
+- `Associated Resources` 統計 API 資料中指明瞭該 VPC 或子網的資源：EC2 例項、位於 VPC 中的 Lambda 函式、RDS 和 ElastiCache 資源以及負載均衡器。
+  安全組、網路 ACL、路由表和閘道器屬於 VPC 自身的網路元件，不計入。
+- 它唯讀取你所掃描區域中的 VPC 和子網。它不檢查網路 ACL、安全組、`MapPublicIpOnLaunch`、Direct Connect、VPN 連線、Network Firewall 或對等連線路由。
+
+### 安全分析做什麼 {#what-the-security-analysis-does}
+
+- 每條規則只根據規則本身得到風險級別。對 `0.0.0.0/0` 或 `::/0` 開放的規則，如果允許所有協議、所有埠，或者範圍包含 22、23、3389、1433、3306 或 5432，就是 **critical**（嚴重）。
+  例如 20 到 25 號埠是 critical。範圍內含 1024 以下的埠則是 **high**（高），其他埠是 **medium**（中）。對網際網路開放的 ICMP 規則是 medium。
+  來源範圍比 `/16` 更寬也是 medium，所以 `10.0.0.0/8` 是 medium。其餘都是 low（低）。
+- 出站規則始終是 **low**。出站全開是 AWS 的預設設定。
+- 安全組的風險級別是其規則中最高的級別。
+- 當沒有網路介面使用某個安全組、沒有其他安全組引用它，並且它不是 `default` 組時，它算作未使用。只被啟動範本或 Auto Scaling 組引用的組看起來會是未使用。
+  如果無法讀取網路介面，就不會把任何組判為未使用。工作表不顯示這一屬性。
+- 當入站規則對 `0.0.0.0/0` 或 `::/0` 開放時，`Has Permissive Rules` 欄顯示 `Yes`。引用其他安全組或字首列表的規則會被列出，但 InvenTag 不會檢視引用背後的內容。不分析網路 ACL。
+
+### 讓流水線因高風險規則而失敗 {#fail-a-pipeline-on-risky-rules}
+
+`--risk-threshold LOW|MEDIUM|HIGH|CRITICAL` 需要 `--enable-security-analysis`。InvenTag 會檢查對 `0.0.0.0/0` 或 `::/0` 開放的安全組規則，入站和出站都檢查。
+只要有一條的級別達到或超過閾值，InvenTag 就會寫出報告，記錄每條規則，並以結束代碼 4 結束：
+
+```text
+2 security group rule(s) at or above risk level LOW:
+  - sg-57691d920ce0e0a5e: outbound All All 0.0.0.0/0 (low)
+```
+
+因為出站規則是 low，`--risk-threshold LOW` 幾乎對每個 VPC 的 `default` 組都會以結束代碼 4 結束。`MEDIUM` 及更高的閾值會忽略出站規則。
+只有安全組規則會計入：網路 ACL 和其他資源永遠不會觸發結束代碼 4。結束代碼 5（`--fail-on-account-error`）和 6（`--fail-if-empty`）優先於 4。
+
+### 權限 {#permissions}
+
+兩種分析都會在每個被掃描的區域中發出唯讀的 EC2 呼叫。除了針對 VPC、子網和安全組的常規 `ec2:Describe*` 呼叫外，
+還需要 `ec2:DescribeRouteTables`（公有子網）和 `ec2:DescribeNetworkInterfaces`（未使用的組）。儲存庫中的策略檔案已包含它們。
+見 [IAM 權限](../reference/iam-permissions.md)。缺少它們時，分析會繼續，只是省略相應的細節。
+
 ## 網路資源的更多細節 {#more-detail-on-network-resources}
 
 網路資源是每次普通掃描的一部分。使用 `standard-bom` 範本時，它們出現在 **VPC** 工作表中：

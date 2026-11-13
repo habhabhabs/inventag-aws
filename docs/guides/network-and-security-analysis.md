@@ -84,6 +84,72 @@ Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
 
 <!-- END EXAMPLE OUTPUT: analysis-security -->
 
+### What the network analysis does
+
+- A subnet counts as public when the route table it uses (its own, or the
+  VPC's main table) has an active route for `0.0.0.0/0` or `::/0` to an
+  internet gateway (`igw-`). A VPC that has an internet gateway but no such
+  route does not make its subnets public. The sheets do not show this
+  property.
+- `Total IPs` comes from the VPC's CIDR blocks. `Available IPs` and
+  `Utilization %` come from its subnets, so the three columns do not add up,
+  and a VPC without subnets shows 0 available. IPv6 addresses are not counted.
+- `Associated Resources` counts the resources whose API data names the VPC or
+  subnet: EC2 instances, Lambda functions in a VPC, RDS and ElastiCache
+  resources and load balancers. Security groups, network ACLs, route tables
+  and gateways are the VPC's own plumbing and are not counted.
+- It reads only the VPCs and subnets in the regions you scan. It does not
+  check network ACLs, security groups, `MapPublicIpOnLaunch`, Direct Connect,
+  VPN connections, Network Firewall or peering routes.
+
+### What the security analysis does
+
+- Each rule gets a risk level from the rule alone. A rule open to `0.0.0.0/0`
+  or `::/0` is **critical** if it allows all protocols, all ports, or a range
+  that contains 22, 23, 3389, 1433, 3306 or 5432. For example, ports 20 to 25
+  are critical. It is **high** if the range has a port below 1024, and
+  **medium** for any other port. An ICMP rule open to the internet is medium.
+  A source range wider than `/16` is medium, so `10.0.0.0/8` is medium.
+  Everything else is low.
+- Outbound rules are always **low**. Open outbound traffic is the AWS default.
+- A group's risk level is the highest level among its rules.
+- A group counts as unused when no network interface uses it, no other group
+  refers to it, and it is not the `default` group. A group that only a launch
+  template or an Auto Scaling group refers to looks unused. If the network
+  interfaces cannot be read, no group is called unused. The sheet does not
+  show this property.
+- The `Has Permissive Rules` column says `Yes` when an inbound rule is open to
+  `0.0.0.0/0` or `::/0`. A rule that refers to another security group or to a
+  prefix list is listed, but InvenTag does not look at what is behind the
+  reference. Network ACLs are not analyzed.
+
+### Fail a pipeline on risky rules
+
+`--risk-threshold LOW|MEDIUM|HIGH|CRITICAL` needs `--enable-security-analysis`.
+InvenTag looks at the security group rules that are open to `0.0.0.0/0` or
+`::/0`, inbound and outbound. If one has a level at or above the threshold,
+InvenTag writes the reports, logs each rule and exits with code 4:
+
+```text
+2 security group rule(s) at or above risk level LOW:
+  - sg-57691d920ce0e0a5e: outbound All All 0.0.0.0/0 (low)
+```
+
+Because outbound rules are low, `--risk-threshold LOW` exits with code 4 for
+the `default` group of almost every VPC. `MEDIUM` and higher ignore outbound
+rules. Only security group rules count: network ACLs and other resources
+never trigger exit code 4. Exit code 5 (`--fail-on-account-error`) and 6
+(`--fail-if-empty`) take precedence over 4.
+
+### Permissions
+
+Both analyses make read-only EC2 calls in each scanned region. Besides the
+usual `ec2:Describe*` calls for VPCs, subnets and security groups, they need
+`ec2:DescribeRouteTables` (public subnets) and `ec2:DescribeNetworkInterfaces`
+(unused groups). The policy file in the repository includes
+them. See [IAM permissions](../reference/iam-permissions.md). Without them,
+the analysis carries on and leaves that detail out.
+
 ## More detail on network resources
 
 Network resources are part of every normal scan. With the `standard-bom`
