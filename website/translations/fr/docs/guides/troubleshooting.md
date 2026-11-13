@@ -238,7 +238,7 @@ le fichier JSON pour voir quelles ressources sont concernées.
 | Une description de service personnalisée est ignorée | S3, EC2, RDS, Lambda et VPC ont des descriptions intégrées qui l’emportent, sauf si votre entrée indique un `template`. Voir [Fichiers de configuration](../reference/configuration-files.md#service-descriptions). |
 | Aucune feuille réseau ni sécurité | Ajoutez `--enable-network-analysis` ou `--enable-security-analysis`, et vérifiez que l’analyse a trouvé des VPC ou des groupes de sécurité. Ces options n’ajoutent rien avec `--template`. Voir [Analyse du réseau et de la sécurité](./network-and-security-analysis.md). |
 | Des ressources IAM, S3, CloudFront ou Route 53 sont absentes | `--account-services` ou `--account-tags` les a retirées, ou l’identité n’a pas l’autorisation (cherchez un avertissement par service dans le journal). La liste des régions n’a pas d’importance : les services globaux sont toujours lus depuis `us-east-1`. |
-| Une ressource n’affiche aucune étiquette, ou apparaît deux fois | Exécutez avec `--debug` et comparez la colonne ARN avec l’ARN dans la console AWS. Signalez toute différence dans un ticket (issue), avec le service et le type de ressource. |
+| Une ressource n’affiche aucune étiquette, ou apparaît deux fois | Exécutez avec `--debug` et comparez la colonne ARN avec l’ARN dans la console AWS. Signalez toute différence dans un problème (issue), avec le service et le type de ressource. |
 | Aucun fichier de rapport, et le code de sortie est 0 | L’analyse n’a rien trouvé, ou `--account-services` ou `--account-tags` a tout retiré. Cherchez `No resources to report` dans le journal. |
 | Un compte est absent du rapport | Ses identifiants ou son rôle ont échoué. Voir [Un rôle ne peut pas être assumé](#a-role-cannot-be-assumed). |
 | Le rapport des changements est absent | La première exécution n’en écrit aucun. Il faut aussi que la gestion de l’état et la détection des différences soient activées. Voir [Suivre les changements entre les exécutions](./track-changes.md). |
@@ -260,6 +260,6 @@ Voir [Installer InvenTag](../getting-started/installation.md#fix-install-problem
 
 ## Toujours bloqué ? {#still-stuck}
 
-Ouvrez un [ticket (issue)](https://github.com/habhabhabs/inventag-aws/issues) avec la
+Ouvrez un [problème (issue)](https://github.com/habhabhabs/inventag-aws/issues) avec la
 commande exécutée, la version (`python -m pip show inventag-aws`, ou `git describe --tags` dans un clone) et le message. Retirez
 les ID et les noms de compte que vous ne voulez pas partager. Ne collez jamais d’identifiants.

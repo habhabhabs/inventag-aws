@@ -1,6 +1,6 @@
 ---
 title: "示例：盘点组织中的每个账户"
-description: 通过在每个账户中担任只读角色，一次 InvenTag 运行扫描 AWS Organization 中的所有账户，并得到一份合并的报告。
+description: 通过在每个账户中代入只读角色，一次 InvenTag 运行扫描 AWS Organization 中的所有账户，并得到一份合并的报告。
 sidebar_position: 3
 ---
 
@@ -12,7 +12,7 @@ sidebar_position: 3
 
 - 每个账户中都有一个同名角色（这里是 `InvenTagReadOnly`），并附带
   [只读策略](../guides/read-only-access.md#with-an-iam-role-in-each-account)；
-- 一个可以担任这些角色的身份的凭证，例如管理账户或委派的安全账户中的凭证。
+- 一个可以代入这些角色的身份的凭证，例如管理账户或委派的安全账户中的凭证。
 
 ## 模板 {#template}
 

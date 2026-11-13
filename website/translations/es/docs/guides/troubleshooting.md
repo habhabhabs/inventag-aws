@@ -238,7 +238,7 @@ el archivo JSON para ver qué recursos.
 | Se ignora una descripción de servicio personalizada | S3, EC2, RDS, Lambda y VPC tienen descripciones integradas que prevalecen salvo que tu entrada indique un `template`. Consulta [Archivos de configuración](../reference/configuration-files.md#service-descriptions). |
 | No hay hojas de red ni de seguridad | Añade `--enable-network-analysis` o `--enable-security-analysis`, y asegúrate de que el análisis encontró VPC o grupos de seguridad. Las opciones no añaden nada con `--template`. Consulta [Análisis de red y seguridad](./network-and-security-analysis.md). |
 | Faltan recursos de IAM, S3, CloudFront o Route 53 | `--account-services` o `--account-tags` los quitaron, o la identidad no tiene el permiso (busca una advertencia por servicio en el registro). La lista de regiones no importa: los servicios globales siempre se leen desde `us-east-1`. |
-| Un recurso no muestra etiquetas, o aparece dos veces | Ejecuta con `--debug` y compara la columna ARN con el ARN de la consola de AWS. Notifica una discrepancia como incidencia (issue) indicando el servicio y el tipo de recurso. |
+| Un recurso no muestra etiquetas, o aparece dos veces | Ejecuta con `--debug` y compara la columna ARN con el ARN de la consola de AWS. Notifica una discrepancia como problema (issue) indicando el servicio y el tipo de recurso. |
 | No hay archivo de informe y el código de salida es 0 | El análisis no encontró nada, o `--account-services` o `--account-tags` lo quitaron todo. Busca `No resources to report` en el registro. |
 | Falta una cuenta en el informe | Fallaron sus credenciales o su rol. Consulta [No se puede asumir un rol](#a-role-cannot-be-assumed). |
 | Falta el informe de cambios | La primera ejecución no escribe ninguno. Además, necesita que la gestión de estado y la detección de diferencias estén activadas. Consulta [Sigue los cambios entre ejecuciones](./track-changes.md). |
@@ -260,6 +260,6 @@ Consulta [Instala InvenTag](../getting-started/installation.md#fix-install-probl
 
 ## ¿Sigues atascado? {#still-stuck}
 
-Abre una [incidencia (issue)](https://github.com/habhabhabs/inventag-aws/issues) con el
+Abre un [problema (issue)](https://github.com/habhabhabs/inventag-aws/issues) con el
 comando que ejecutaste, la versión (`python -m pip show inventag-aws`, o `git describe --tags` en un clon) y el mensaje. Quita los
 ID y nombres de cuenta que no quieras compartir. No pegues nunca credenciales.

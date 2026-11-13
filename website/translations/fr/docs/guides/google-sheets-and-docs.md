@@ -114,7 +114,7 @@ Tous les tests utilisent des clients Google simulés. **Aucun test n’a été e
 Google**, car cela demande un compte Google. En particulier, les positions
 qu’InvenTag calcule lorsqu’il remplit les tableaux d’un document Google Docs sont vérifiées par rapport aux
 règles de l’API Docs telles que nous les comprenons, et non par rapport au vrai service. Essayez
-d’abord avec un petit compte, et signalez tout problème de mise en page du document dans une issue.
+d’abord avec un petit compte, et signalez tout problème de mise en page du document dans un problème (issue).
 
 ## Pour aller plus loin {#where-to-next}
 

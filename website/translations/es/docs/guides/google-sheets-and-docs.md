@@ -121,7 +121,7 @@ ejecutado contra las API reales de Google**, porque eso requiere una cuenta de
 Google. En concreto, las posiciones que InvenTag calcula al rellenar las tablas
 de un Google Doc se comprueban contra las reglas de la API de Docs tal como las
 interpretamos, no contra el servicio real. Prueba primero con una cuenta
-pequeña y comunica cualquier problema con el diseño del Doc como una incidencia
+pequeña y comunica cualquier problema con el diseño del Doc como un problema
 (issue).
 
 ## Siguientes pasos {#where-to-next}

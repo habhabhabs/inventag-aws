@@ -13,7 +13,7 @@ sidebar_position: 3
 ## 工作原理 {#how-it-works}
 
 InvenTag 读取一份账户列表。对每个账户，它要么从指定的 AWS CLI 配置文件（profile）获取凭证，
-要么用你运行它时所用的身份去担任一个 IAM 角色。它会扫描每个账户（默认最多同时扫描四个），
+要么用你运行它时所用的身份去代入一个 IAM 角色。它会扫描每个账户（默认最多同时扫描四个），
 并写出一份带有 Account 列的报告。
 
 InvenTag 不会替你列出 AWS Organization 中的账户。这份列表需要你自己写。
@@ -117,7 +117,7 @@ inventag --accounts-file accounts.yaml --create-excel
 | 每个账户允许的秒数（默认 1800） | `account_processing_timeout` | `--account-processing-timeout` |
 | 一次一个账户 | `parallel_processing: false` | `--disable-parallel-processing` |
 
-如果某个账户失败，例如因为无法担任它的角色，InvenTag 会记录错误，并报告成功的那些账户。
+如果某个账户失败，例如因为无法代入它的角色，InvenTag 会记录错误，并报告成功的那些账户。
 它不会对该账户回退到你的默认凭证。**运行仍然以退出码 0 退出，而且报告不会指出缺少的账户。**
 请在日志中搜索 `Failed to establish context for account`。如果所有账户都失败，
 运行会以退出码 1 退出，并且不写出任何报告。

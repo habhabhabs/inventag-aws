@@ -66,7 +66,7 @@ $ echo $?
 **解決辦法：** 重新登入（`aws sso login --profile <name>`），或重新整理你的臨時金鑰。
 如果你使用存取金鑰，請用 `aws configure list` 檢查它們。
 
-### 無法 assume 角色 {#a-role-cannot-be-assumed}
+### 無法擔任角色 {#a-role-cannot-be-assumed}
 
 **你會看到：** 日誌中出現如下內容，並且報告中缺少該帳戶：
 
@@ -219,7 +219,7 @@ $ echo $?
 | 缺少 IAM、S3、CloudFront 或 Route 53 資源 | 它們被 `--account-services` 或 `--account-tags` 篩掉了，或者該身份缺少權限（在日誌中查詢每個服務一條的警告）。區域列表無關緊要：全域性服務始終從 `us-east-1` 讀取。 |
 | 某個資源沒有顯示標籤，或出現了兩次 | 用 `--debug` 執行，並把 ARN 欄與 AWS 控制檯中的 ARN 對比。如果不一致，請作為 issue 報告，並附上服務和資源型別。 |
 | 沒有報告檔案，且結束代碼為 0 | 掃描沒有找到任何內容，或者 `--account-services` 或 `--account-tags` 把所有內容都篩掉了。在日誌中查詢 `No resources to report`。 |
-| 報告中缺少某個帳戶 | 它的憑證或角色失敗了。見[無法 assume 角色](#a-role-cannot-be-assumed)。 |
+| 報告中缺少某個帳戶 | 它的憑證或角色失敗了。見[無法擔任角色](#a-role-cannot-be-assumed)。 |
 | 缺少變更報告 | 第一次執行不會寫出變更報告。它還要求狀態管理和差異檢測處於開啟狀態。見[跟蹤兩次執行之間的變更](./track-changes.md)。 |
 | 其他使用者無法開啟 `bom_output/` | 輸出檔案只對執行 InvenTag 的使用者私有。請有意識地共享它們。 |
 
@@ -231,7 +231,7 @@ $ echo $?
 |---|---|
 | ``Failed to render template vpc_vpc: 'cidr_block'``（使用 `--service-descriptions` 時） | VPC 描述範本需要一個該資源沒有的欄位。報告不受影響。 |
 | `No account specification method provided. Using default AWS credentials.` | 你沒有指定帳戶，所以 InvenTag 使用了你目前的憑證。這是正常情況。 |
-| `Cross-account role ... not usable ... trying default credentials` | InvenTag 嘗試了預設的角色名稱，無法 assume 它，於是用你自己的憑證繼續。每個帳戶只記錄一次。 |
+| `Cross-account role ... not usable ... trying default credentials` | InvenTag 嘗試了預設的角色名稱，無法擔任它，於是用你自己的憑證繼續。每個帳戶只記錄一次。 |
 
 ## 安裝問題 {#install-problems}
 

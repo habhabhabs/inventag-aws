@@ -90,7 +90,7 @@ aws sso-admin put-inline-policy-to-permission-set \
 ## 在每个账户中使用 IAM 角色 {#with-an-iam-role-in-each-account}
 
 对于跨多个账户的扫描，请在每个账户中创建同名的角色，例如 `InvenTagReadOnly`。
-附加该策略，并且只允许你的扫描身份来担任它。对应的信任策略如下：
+附加该策略，并且只允许你的扫描身份来代入它。对应的信任策略如下：
 
 ```json
 {

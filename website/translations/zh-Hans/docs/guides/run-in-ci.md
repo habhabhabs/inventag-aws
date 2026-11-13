@@ -17,7 +17,7 @@ sidebar_position: 7
 2. **一个配置模板**，包含你的区域、输出和标签策略。内置的 `ci-pipeline` 模板是个不错的起点。
 3. **一个构件**，用来保存 `bom_output/`。
 
-## 1. 让 GitHub 担任只读角色 {#1-let-github-assume-a-read-only-role}
+## 1. 让 GitHub 代入只读角色 {#1-let-github-assume-a-read-only-role}
 
 在 AWS 中，把 GitHub 添加为 OIDC 身份提供商（`token.actions.githubusercontent.com`），
 并创建一个角色，附加[设置只读访问](./read-only-access.md)中的只读策略。
