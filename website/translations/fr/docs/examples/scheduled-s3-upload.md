@@ -43,7 +43,6 @@ Issue d’une exécution hors ligne sur un AWS simulé (données d’exemple) :
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
-workmail list_organizations in us-east-1 failed (404); its resources there may be incomplete.
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```
 

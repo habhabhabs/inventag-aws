@@ -48,7 +48,6 @@ The same layout from an offline run in one region (sample data):
 
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
-redshift-serverless list_workgroups in us-east-1 failed (404); its resources there may be incomplete.
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```

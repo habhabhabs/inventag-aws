@@ -331,6 +331,10 @@ def prepare_project(workdir: Path) -> None:
 
 
 SPINNER = re.compile(r"[⣾⣽⣻⢿⡿⣟⣯⣷]")
+# Services moto does not implement answer 404; the warning says so. Which of
+# them is logged in a run changes (thread timing), and real accounts do not
+# show it, so it is dropped from the samples.
+MOTO_GAP = re.compile(r" failed \(404\); its resources there may be incomplete\.?$")
 LOG_PREFIX = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3} - ")
 
 
@@ -350,6 +354,8 @@ def clean_console(text: str, workdir: Path, keep: Optional[str] = None) -> str:
         elif " - DEBUG - " in line or " - INFO - " in line:
             continue
         line = LOG_PREFIX.sub("", line)
+        if MOTO_GAP.search(line):
+            continue  # moto has no such service (404); which one is logged varies
         if "No billing data available" in line:
             continue  # shown or not depending on log set-up; always true under moto
         lines.append(line)
