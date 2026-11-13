@@ -760,5 +760,26 @@
   },
   "menu.language": {
     "message": "Langue : {language}. Changer de langue"
+  },
+  "listen.starting": {
+    "message": "Démarrage…"
+  },
+  "listen.status.started": {
+    "message": "Lecture commencée."
+  },
+  "listen.status.paused": {
+    "message": "En pause."
+  },
+  "listen.status.finished": {
+    "message": "Lecture terminée."
+  },
+  "listen.noVoice": {
+    "message": "Aucune voix pour cette langue sur cet appareil."
+  },
+  "listen.failed": {
+    "message": "La lecture n’a pas pu démarrer sur cet appareil."
+  },
+  "listen.speedLabel": {
+    "message": "Vitesse de lecture {rate}×. Appuyez pour changer."
   }
 }

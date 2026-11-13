@@ -760,5 +760,26 @@
   },
   "menu.language": {
     "message": "語言：{language}。切換語言"
+  },
+  "listen.starting": {
+    "message": "正在開始…"
+  },
+  "listen.status.started": {
+    "message": "已開始朗讀。"
+  },
+  "listen.status.paused": {
+    "message": "已暫停。"
+  },
+  "listen.status.finished": {
+    "message": "朗讀結束。"
+  },
+  "listen.noVoice": {
+    "message": "此裝置沒有這種語言的語音。"
+  },
+  "listen.failed": {
+    "message": "此裝置無法開始朗讀。"
+  },
+  "listen.speedLabel": {
+    "message": "朗讀速度 {rate}×。點按可變更。"
   }
 }

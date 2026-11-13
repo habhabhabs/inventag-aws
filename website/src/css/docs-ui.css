@@ -1019,6 +1019,41 @@ textarea {
 .it-listen__btn--idle {
   color: var(--it-ink-2, inherit);
 }
+/* After a failed start the reason is shown beside the button for a few seconds */
+.it-listen__note {
+  align-self: center;
+  max-width: 16rem;
+  color: var(--it-ink-2);
+  font-size: 0.85rem;
+  line-height: 1.3;
+}
+[class*='docItemContainer'] .it-listen--idle .it-listen__note {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  width: max-content;
+  padding: 0.15rem 0.4rem;
+  text-align: right;
+  background: var(--it-bg);
+}
+/* While reading, the controls follow the reader (sticky) so Pause is always at hand */
+[class*='docItemContainer'] .it-listen:not(.it-listen--idle) {
+  position: sticky;
+  top: calc(var(--ifm-navbar-height) + 0.5rem);
+  right: auto;
+  z-index: 3;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 1rem auto;
+  padding: 0.25rem;
+  flex-wrap: wrap;
+  border: 1px solid var(--it-line-strong);
+  border-radius: var(--it-radius);
+  background: var(--it-bg);
+}
+html:has(.it-listen:not(.it-listen--idle)) .theme-doc-markdown :is(h2, h3, h4) {
+  scroll-margin-top: 3.5rem;
+}
 .it-listen__btn--idle:hover {
   color: var(--it-ink, inherit);
 }
