@@ -1,4 +1,4 @@
-"""All eight built-in templates: load, validate and run offline against moto."""
+"""All built-in templates: load, validate and run offline against moto."""
 
 import glob
 import json
@@ -21,6 +21,11 @@ ALL = {
     "finops-cost-report": "report",
     "finops-cost-allocation": "tag-policy",
     "security-baseline": "tag-policy",
+    "evidence-soc2": "tag-policy",
+    "evidence-hipaa": "tag-policy",
+    "evidence-pci-dss": "tag-policy",
+    "evidence-gdpr": "tag-policy",
+    "evidence-pdpa": "tag-policy",
     "ci-pipeline": "config",
     "single-account": "config",
     "org-multi-account": "config",
@@ -49,6 +54,11 @@ RUNS = {
     "finops-cost-report": (0, ("xlsx",), True),
     "finops-cost-allocation": (0, ("xlsx",), True),
     "security-baseline": (0, ("xlsx",), True),
+    "evidence-soc2": (0, ("xlsx",), True),
+    "evidence-hipaa": (0, ("xlsx",), True),
+    "evidence-pci-dss": (0, ("xlsx",), True),
+    "evidence-gdpr": (0, ("xlsx",), True),
+    "evidence-pdpa": (0, ("xlsx",), True),
     "ci-pipeline": (3, ("xlsx",), True),
     "single-account": (0, ("xlsx", "docx"), False),
     "org-multi-account": (0, ("xlsx", "docx"), True),
