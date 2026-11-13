@@ -52,21 +52,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: habhabhabs/inventag-aws
-          ref: v1.0.2            # pin a release
-          path: inventag
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
-      - run: pip install -r inventag/requirements.txt
+      - run: pip install "inventag-aws==1.1.3"   # pin a release
       - uses: aws-actions/configure-aws-credentials@<full-commit-SHA> # pin the current release
         with:
           role-to-assume: arn:aws:iam::123456789012:role/InvenTagGitHubReadOnly
           aws-region: us-east-1
       - name: Run InvenTag
-        run: python inventag/inventag_cli.py --template nightly
+        run: inventag --template nightly
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()          # keep the reports even when the tag check fails
         with:
@@ -114,7 +109,7 @@ $ echo $?
   并授予对该存储桶的 `s3:PutObject` 权限。参见
   [定时把报告上传到 S3](../examples/scheduled-s3-upload.md)。
 - 保持角色只读，并把它限定在需要它的仓库和分支。
-- 把 InvenTag 固定到某个发布标签，而不是 `main`。
+- 把 InvenTag 固定到某个发布版本（`inventag-aws==1.1.3`），而不是最新版本。想升级时再自己提高版本号。
 
 ## 下一步 {#next-steps}
 

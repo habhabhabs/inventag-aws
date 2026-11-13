@@ -201,8 +201,7 @@ $ echo $?
 
 ## 会让运行停止的参数 {#flags-that-stop-the-run}
 
-退出码 2 并带有 `not implemented yet`，表示该参数被接受但尚未实现。
-目前是 `--compliance-standard` 和 `--disable-production-safety`。见[功能状态与已知限制](../getting-started/status.md)。
+有两个参数会被接受，但会让运行以退出码 2 停止，并输出以参数名开头的消息。`--compliance-standard` 的消息是尚未实现；`--disable-production-safety` 的消息是只读保护无法关闭。见[功能状态与已知限制](../getting-started/status.md)。
 
 ## 退出码 3 {#exit-code-3}
 
@@ -240,5 +239,5 @@ $ echo $?
 
 ## 还是解决不了？ {#still-stuck}
 
-请提交一个 [issue](https://github.com/habhabhabs/inventag-aws/issues)，附上你运行的命令、版本（`git describe --tags`）和消息。
+请提交一个 [issue](https://github.com/habhabhabs/inventag-aws/issues)，附上你运行的命令、版本（`python -m pip show inventag-aws`；如果是克隆的仓库，则用 `git describe --tags`）和消息。
 请删除你不想分享的账户 ID 和名称。切勿粘贴凭证。

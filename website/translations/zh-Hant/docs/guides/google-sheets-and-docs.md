@@ -85,7 +85,7 @@ inventag --create-google-sheets --create-google-docs \
 
 - Google Sheets 的單元格最多容納 50,000 個字元，一個電子表格最多 1,000 萬個單元格。
   非常大的清單可能超出限制；此時執行會因 Google 的錯誤而失敗。
-- Word 報告的表格預設每個服務最多顯示 50 個資源（`max_rows`），Google Docs 文件也是如此。
+- Word 報告的表格預設每個服務最多顯示 50 個資源（報告模板中是 `max_rows_per_service`，佈局檔案中是 `max_rows`），Google Docs 文件也是如此。
 - 單元格的值以文字形式寫入，因此以 `=` 開頭的標籤值不會被當作公式執行。
 
 ## 尚未驗證的部分 {#what-is-not-verified}

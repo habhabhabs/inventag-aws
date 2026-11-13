@@ -110,7 +110,7 @@ porque pueden citar el archivo de clave.
   cálculo hasta 10 millones de celdas. Un inventario muy grande puede
   superarlos; la ejecución falla entonces con el error de Google.
 - Las tablas del informe de Word muestran hasta 50 recursos por servicio por
-  defecto (`max_rows`), y lo mismo ocurre con el Google Doc.
+  defecto (`max_rows_per_service` en una plantilla de informe, `max_rows` en un archivo de diseño), y lo mismo ocurre con el Google Doc.
 - Los valores de las celdas se escriben como texto, de modo que un valor de
   etiqueta que empieza por `=` no se ejecuta como fórmula.
 

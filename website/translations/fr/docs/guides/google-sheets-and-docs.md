@@ -104,7 +104,7 @@ sont réduits au type d’erreur, car ils peuvent citer le fichier de clé.
   10 millions de cellules. Un très grand inventaire peut les dépasser ; l’exécution échoue alors
   avec l’erreur de Google.
 - Les tableaux du rapport Word affichent par défaut jusqu’à 50 ressources par service
-  (`max_rows`), et il en va de même pour le document Google Docs.
+  (`max_rows_per_service` dans un modèle de rapport, `max_rows` dans un fichier de mise en page), et il en va de même pour le document Google Docs.
 - Les valeurs des cellules sont écrites comme du texte : une valeur d’étiquette qui commence par `=` n’est donc pas
   exécutée comme une formule.
 

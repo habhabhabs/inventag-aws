@@ -220,8 +220,7 @@ chaque compte `profile_name`, `role_arn` ou des clés d’accès.
 
 ## Options qui arrêtent l’exécution {#flags-that-stop-the-run}
 
-Un code de sortie 2 avec `not implemented yet` signifie que l’option est acceptée mais pas développée.
-C’est aujourd’hui le cas de `--compliance-standard` et de `--disable-production-safety`. Voir
+Deux options sont acceptées mais arrêtent l’exécution avec le code de sortie 2 et un message qui commence par le nom de l’option. `--compliance-standard` indique qu’elle n’est pas encore implémentée. `--disable-production-safety` indique que la protection en lecture seule ne peut pas être désactivée. Voir
 [État des fonctionnalités et limites connues](../getting-started/status.md).
 
 ## Code de sortie 3 {#exit-code-3}
@@ -262,5 +261,5 @@ Voir [Installer InvenTag](../getting-started/installation.md#fix-install-problem
 ## Toujours bloqué ? {#still-stuck}
 
 Ouvrez un [ticket (issue)](https://github.com/habhabhabs/inventag-aws/issues) avec la
-commande exécutée, la version (`git describe --tags`) et le message. Retirez
+commande exécutée, la version (`python -m pip show inventag-aws`, ou `git describe --tags` dans un clone) et le message. Retirez
 les ID et les noms de compte que vous ne voulez pas partager. Ne collez jamais d’identifiants.

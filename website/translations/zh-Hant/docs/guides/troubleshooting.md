@@ -201,8 +201,7 @@ $ echo $?
 
 ## 會讓執行停止的引數 {#flags-that-stop-the-run}
 
-退出碼 2 並帶有 `not implemented yet`，表示該引數被接受但尚未實現。
-目前是 `--compliance-standard` 和 `--disable-production-safety`。見[功能狀態與已知限制](../getting-started/status.md)。
+有兩個引數會被接受，但會讓執行以退出碼 2 停止，並輸出以引數名開頭的訊息。`--compliance-standard` 的訊息是尚未實現；`--disable-production-safety` 的訊息是隻讀保護無法關閉。見[功能狀態與已知限制](../getting-started/status.md)。
 
 ## 退出碼 3 {#exit-code-3}
 
@@ -240,5 +239,5 @@ $ echo $?
 
 ## 還是解決不了？ {#still-stuck}
 
-請提交一個 [issue](https://github.com/habhabhabs/inventag-aws/issues)，附上你執行的命令、版本（`git describe --tags`）和訊息。
+請提交一個 [issue](https://github.com/habhabhabs/inventag-aws/issues)，附上你執行的命令、版本（`python -m pip show inventag-aws`；如果是克隆的倉庫，則用 `git describe --tags`）和訊息。
 請刪除你不想分享的賬戶 ID 和名稱。切勿貼上憑證。
