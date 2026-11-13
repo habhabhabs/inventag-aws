@@ -61,6 +61,9 @@ export const RELATED: Record<string, {ids: string[]; icons?: string[]}> = {
     ids: ['templates/adapt-a-template', 'examples/branded-executive-report', 'templates/reference'],
     icons: ['code', 'file', 'book'],
   },
+  'templates/tag-evidence': {
+    ids: ['templates/catalogue', 'examples/evidence-soc2', 'templates/adapt-a-template'],
+  },
   'templates/adapt-a-template': {
     ids: ['templates/layout-flags', 'templates/reference', 'examples/custom-columns'],
     icons: ['sliders', 'book', 'file'],

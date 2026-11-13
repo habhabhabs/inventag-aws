@@ -223,6 +223,8 @@ KMS 別名不在範圍內。透過此策略並不意味著符合任何安全框�
 它們只檢查標籤證據。標籤值由資源所有者自行填寫，InvenTag 不會核實。檢查透過並不代表帳戶滿足
 SOC 2、HIPAA、PCI DSS、GDPR 或 PDPA。
 
+[標籤證據範本](./tag-evidence.md)頁面把每個標籤和值集中列在一處，並說明如何複製範本並修改其範圍。
+
 五個範本都適用的事項：
 
 - 每個範本都在 `security-baseline` 已檢查的三個標籤（`Owner`、`Environment`、`DataClassification`）之上再加標籤，

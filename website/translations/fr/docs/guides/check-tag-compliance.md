@@ -152,6 +152,10 @@ Règles pour chaque étiquette :
 Utilisez soit `allowed_values`, soit `pattern` pour une étiquette, pas les deux. Tous les champs sont
 décrits dans la [référence des modèles](../templates/reference.md).
 
+## Preuves par les étiquettes pour une discussion sur un référentiel {#tag-evidence-for-a-framework-conversation}
+
+Cinq politiques intégrées partent de `security-baseline` et ajoutent les étiquettes qui alimentent une discussion sur SOC 2, HIPAA, PCI DSS, le RGPD ou la PDPA ; par exemple `inventag --template evidence-soc2 --create-excel`. Elles vérifient uniquement les preuves par les étiquettes, les valeurs sont déclarées par le propriétaire de la ressource et un résultat positif ne signifie pas que le compte satisfait l’un de ces référentiels. Voir [Modèles de preuve par les étiquettes](../templates/tag-evidence.md).
+
 ## Faire échouer un pipeline en cas de violation {#fail-a-pipeline-on-violations}
 
 Ajoutez un modèle de configuration avec `fail_on_tag_violations: true`. InvenTag écrit quand même tous

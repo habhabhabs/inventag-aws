@@ -147,6 +147,10 @@ spec:
 每个标签使用 `allowed_values` 或 `pattern` 之一，不要两者同时使用。所有字段都列在
 [模板参考](../templates/reference.md)中。
 
+## 用于框架讨论的标签证据 {#tag-evidence-for-a-framework-conversation}
+
+有五个内置策略以 `security-baseline` 为起点，并加入支持 SOC 2、HIPAA、PCI DSS、GDPR 或 PDPA 相关讨论的标签，例如 `inventag --template evidence-soc2 --create-excel`。它们只检查标签证据，标签值由资源所有者自行填写，检查通过并不代表账户满足其中任何一个框架。见[标签证据模板](../templates/tag-evidence.md)。
+
 ## 发现违规时让流水线失败 {#fail-a-pipeline-on-violations}
 
 添加一个设置了 `fail_on_tag_violations: true` 的配置模板。InvenTag 仍会写出所有报告，

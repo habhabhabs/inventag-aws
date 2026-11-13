@@ -237,6 +237,8 @@ Solo comprueban la evidencia de las etiquetas. Los valores de las etiquetas los
 declara el propietario del recurso y InvenTag no los verifica. Un resultado
 correcto no significa que la cuenta cumpla SOC 2, HIPAA, PCI DSS, GDPR o PDPA.
 
+La página [plantillas de evidencia de etiquetas](./tag-evidence.md) lista todas las etiquetas y valores en un solo lugar y muestra cómo copiar una plantilla y cambiar su alcance.
+
 Lo que es cierto en las cinco:
 
 - Cada plantilla añade etiquetas a las tres que `security-baseline` ya

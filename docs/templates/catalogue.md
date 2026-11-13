@@ -274,6 +274,9 @@ They check tag evidence only. Tag values are stated by the resource owner and
 InvenTag does not verify them. A passing result does not mean the account
 meets SOC 2, HIPAA, PCI DSS, GDPR or PDPA.
 
+The [tag evidence templates](./tag-evidence.md) page lists every tag and value
+in one place and shows how to copy a template and change its scope.
+
 Things that are true for all five:
 
 - Each template adds tags to the three that `security-baseline` already

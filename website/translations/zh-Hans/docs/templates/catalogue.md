@@ -223,6 +223,8 @@ KMS 别名不在范围内。通过此策略并不意味着符合任何安全框�
 它们只检查标签证据。标签值由资源所有者自行填写，InvenTag 不会核实。检查通过并不代表账户满足
 SOC 2、HIPAA、PCI DSS、GDPR 或 PDPA。
 
+[标签证据模板](./tag-evidence.md)页面把每个标签和值集中列在一处，并说明如何复制模板并修改其范围。
+
 五个模板都适用的事项：
 
 - 每个模板都在 `security-baseline` 已检查的三个标签（`Owner`、`Environment`、`DataClassification`）之上再加标签，

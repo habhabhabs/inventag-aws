@@ -155,6 +155,10 @@ Reglas de cada etiqueta:
 Usa `allowed_values` o `pattern` en una etiqueta, no ambas. Todos los campos
 están en la [referencia de plantillas](../templates/reference.md).
 
+## Evidencia de etiquetas para una conversación sobre un marco {#tag-evidence-for-a-framework-conversation}
+
+Cinco políticas integradas parten de `security-baseline` y añaden las etiquetas que apoyan una conversación sobre SOC 2, HIPAA, PCI DSS, GDPR o PDPA; por ejemplo `inventag --template evidence-soc2 --create-excel`. Solo comprueban la evidencia de las etiquetas, los valores los declara el propietario del recurso y un resultado correcto no significa que la cuenta cumpla ninguno de esos marcos. Consulta [Plantillas de evidencia de etiquetas](../templates/tag-evidence.md).
+
 ## Haz fallar una canalización ante incumplimientos {#fail-a-pipeline-on-violations}
 
 Añade una plantilla de configuración con `fail_on_tag_violations: true`.

@@ -168,6 +168,15 @@ Rules for each tag:
 Use either `allowed_values` or `pattern` for a tag, not both. All fields are
 in the [template reference](../templates/reference.md).
 
+## Tag evidence for a framework conversation
+
+Five built-in policies start from `security-baseline` and add the tags that
+support a conversation about SOC 2, HIPAA, PCI DSS, GDPR or PDPA: for example
+`inventag --template evidence-soc2 --create-excel`. They check tag evidence
+only, the values are stated by the resource owner, and a passing result does
+not mean the account meets any of those frameworks. See
+[Tag evidence templates](../templates/tag-evidence.md).
+
 ## Fail a pipeline on violations
 
 Add a config template with `fail_on_tag_violations: true`. InvenTag still

@@ -235,6 +235,8 @@ Ils vérifient uniquement les preuves par les étiquettes. Les valeurs des
 vérifie pas. Un résultat positif ne signifie pas que le compte satisfait SOC 2,
 HIPAA, PCI DSS, le RGPD ou la PDPA.
 
+La page [modèles de preuve par les étiquettes](./tag-evidence.md) liste toutes les étiquettes et valeurs au même endroit et montre comment copier un modèle et changer son périmètre.
+
 Ce qui vaut pour les cinq :
 
 - Chaque modèle ajoute des étiquettes aux trois que `security-baseline`
