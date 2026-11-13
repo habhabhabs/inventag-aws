@@ -24,7 +24,9 @@ spec:                      # the settings for this kind
   title: Acme Cloud Inventory
 ```
 
-- 文件以 `.yaml` 或 `.yml` 结尾，必须是 UTF-8 文本，最大 256 KiB。
+- 文件以 `.yaml` 或 `.yml` 结尾，必须是 UTF-8 文本，最大 256 KiB。按路径给出的文件也可以是 JSON（`.json`），例如
+  `--template ./my.json`。在搜索文件夹中按名称查找的模板必须是 `.yaml` 或 `.yml`，
+  `templates init` 写出的是 `.yaml`。
 - 文件名应与 `name` 一致（`acme-bom.yaml` 的 `name: acme-bom`）。按名称查找时使用文件名。
 - 未知字段是错误，因此拼写错误不会被悄悄放过。
 - 重复的键是错误。
@@ -150,7 +152,12 @@ spec:                      # the settings for this kind
 | `tags.<Key>` | 单个标签的值，例如 `tags.Owner` |
 | `tagged` | `Yes` 或 `No` |
 | `discovered_via` | 由哪个 API 发现了该资源 |
+| `source` | 这一行来自哪里：`service-api`、`tagging-api` 或 `billing` |
+| `sources` | 报告过该资源的所有来源，用 `+` 连接，例如 `service-api+tagging-api` |
+| `detail_level` | 服务自己的 API 描述了该资源时为 `full`；只知道其身份（ARN 和标签）时为 `identity` |
 | `raw_data.<Name>` | AWS API 响应中的值，例如 `raw_data.VolumeType` |
+
+在写出任何报告之前，InvenTag 会把常含机密的字段的值替换为 `***REDACTED***`。例如 Lambda 环境变量的值、EC2 用户数据、CloudFormation 参数值和 Glue 连接密码。名称会保留，所以你仍能看到该变量存在。如果机密放在 InvenTag 列表之外的字段中，例如描述或标签，则不会被识别。
 
 缺失的值留空。要查看你的资源有哪些字段，请设置 `excel.include_all_fields: true`，然后查看多出来的列。
 

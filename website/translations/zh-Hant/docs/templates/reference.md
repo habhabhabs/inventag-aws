@@ -24,7 +24,9 @@ spec:                      # the settings for this kind
   title: Acme Cloud Inventory
 ```
 
-- 檔案以 `.yaml` 或 `.yml` 結尾，必須是 UTF-8 文字，最大 256 KiB。
+- 檔案以 `.yaml` 或 `.yml` 結尾，必須是 UTF-8 文字，最大 256 KiB。按路徑給出的檔案也可以是 JSON（`.json`），例如
+  `--template ./my.json`。在搜尋資料夾中按名稱查詢的範本必須是 `.yaml` 或 `.yml`，
+  `templates init` 寫出的是 `.yaml`。
 - 檔名應與 `name` 一致（`acme-bom.yaml` 的 `name: acme-bom`）。按名稱查詢時使用檔名。
 - 未知欄位是錯誤，因此拼寫錯誤不會被悄悄放過。
 - 重複的鍵是錯誤。
@@ -150,7 +152,12 @@ spec:                      # the settings for this kind
 | `tags.<Key>` | 單個標籤的值，例如 `tags.Owner` |
 | `tagged` | `Yes` 或 `No` |
 | `discovered_via` | 由哪個 API 發現了該資源 |
+| `source` | 這一行來自哪裡：`service-api`、`tagging-api` 或 `billing` |
+| `sources` | 報告過該資源的所有來源，用 `+` 連線，例如 `service-api+tagging-api` |
+| `detail_level` | 服務自己的 API 描述了該資源時為 `full`；只知道其身份（ARN 和標籤）時為 `identity` |
 | `raw_data.<Name>` | AWS API 回應中的值，例如 `raw_data.VolumeType` |
+
+在寫出任何報告之前，InvenTag 會把常含機密的欄位的值替換為 `***REDACTED***`。例如 Lambda 環境變數的值、EC2 使用者資料、CloudFormation 引數值和 Glue 連線密碼。名稱會保留，所以你仍能看到該變數存在。如果機密放在 InvenTag 列表之外的欄位中，例如描述或標籤，則不會被識別。
 
 缺失的值留空。要檢視你的資源有哪些欄位，請設定 `excel.include_all_fields: true`，然後檢視多出來的欄。
 

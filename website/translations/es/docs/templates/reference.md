@@ -27,7 +27,10 @@ spec:                      # the settings for this kind
 ```
 
 - Los archivos terminan en `.yaml` o `.yml` y deben ser texto UTF-8 de como
-  máximo 256 KiB.
+  máximo 256 KiB. Un archivo que indicas por ruta también puede ser JSON (`.json`),
+  por ejemplo `--template ./my.json`. Las plantillas que se buscan por nombre en
+  las carpetas de búsqueda deben ser `.yaml` o `.yml`, y `templates init` escribe
+  `.yaml`.
 - El nombre del archivo debería coincidir con `name` (`acme-bom.yaml` tiene
   `name: acme-bom`). Las búsquedas por nombre usan el nombre del archivo.
 - Los campos desconocidos son errores, así que los errores tipográficos nunca
@@ -160,7 +163,18 @@ presentes en los recursos de una ejecución normal:
 | `tags.<Key>` | El valor de una etiqueta, por ejemplo `tags.Owner` |
 | `tagged` | `Yes` o `No` |
 | `discovered_via` | Qué API encontró el recurso |
+| `source` | De dónde viene la fila: `service-api`, `tagging-api` o `billing` |
+| `sources` | Todas las fuentes que informaron del recurso, unidas con `+`, por ejemplo `service-api+tagging-api` |
+| `detail_level` | `full` si la API propia del servicio describió el recurso; `identity` si solo se conoce su identidad (ARN y etiquetas) |
 | `raw_data.<Name>` | Un valor de la respuesta de la API de AWS, por ejemplo `raw_data.VolumeType` |
+
+InvenTag sustituye por `***REDACTED***` los valores de los campos que suelen
+contener secretos antes de escribir cualquier informe. Por ejemplo, los valores
+de las variables de entorno de Lambda, los datos de usuario de EC2, los valores
+de los parámetros de CloudFormation y las contraseñas de las conexiones de Glue.
+Los nombres se conservan, así que sigues viendo que la variable existe. Un
+secreto en un campo que no está en la lista de InvenTag, como una descripción o
+una etiqueta, no se reconoce.
 
 Los valores que faltan se dejan en blanco. Para ver todos los campos que tienen
 tus recursos, establece `excel.include_all_fields: true` y mira las columnas

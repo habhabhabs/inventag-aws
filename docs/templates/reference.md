@@ -27,6 +27,9 @@ spec:                      # the settings for this kind
 ```
 
 - Files end in `.yaml` or `.yml` and must be UTF-8 text, at most 256 KiB.
+  A file passed by path can also be JSON (`.json`), for example
+  `--template ./my.json`. Templates found by name in the search folders must be
+  `.yaml` or `.yml`, and `templates init` writes `.yaml`.
 - The file name should match `name` (`acme-bom.yaml` has `name: acme-bom`).
   Lookups by name use the file name.
 - Unknown fields are errors, so typos never pass silently.
@@ -162,7 +165,17 @@ on resources from a normal run:
 | `tags.<Key>` | The value of one tag, for example `tags.Owner` |
 | `tagged` | `Yes` or `No` |
 | `discovered_via` | Which API found the resource |
+| `source` | Where the row came from: `service-api`, `tagging-api` or `billing` |
+| `sources` | Every source that reported the resource, joined with `+`, for example `service-api+tagging-api` |
+| `detail_level` | `full` when the service's own API described the resource, `identity` when only its identity (ARN and tags) is known |
 | `raw_data.<Name>` | A value from the AWS API response, for example `raw_data.VolumeType` |
+
+InvenTag replaces the values of fields that often hold secrets with
+`***REDACTED***` before it writes any report. Examples are Lambda environment
+variable values, EC2 user data, CloudFormation parameter values and Glue
+connection passwords. The names stay, so you still see that a variable exists.
+A secret in a field that is not on InvenTag's list, such as a description or a
+tag, is not recognized.
 
 Missing values are left blank. To see every field your resources have, set
 `excel.include_all_fields: true` and look at the extra columns.

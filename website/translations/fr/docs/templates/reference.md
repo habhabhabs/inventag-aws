@@ -27,7 +27,10 @@ spec:                      # the settings for this kind
 ```
 
 - Les fichiers se terminent par `.yaml` ou `.yml` et doivent être du texte UTF-8, de 256 Kio
-  au plus.
+  au plus. Un fichier donné par chemin peut aussi être du JSON (`.json`), par
+  exemple `--template ./my.json`. Les modèles cherchés par nom dans les dossiers
+  de recherche doivent être `.yaml` ou `.yml`, et `templates init` écrit du
+  `.yaml`.
 - Le nom du fichier doit correspondre à `name` (`acme-bom.yaml` a `name: acme-bom`).
   Les recherches par nom utilisent le nom du fichier.
 - Les champs inconnus sont des erreurs : les fautes de frappe ne passent donc jamais en silence.
@@ -159,7 +162,18 @@ ressources d’une exécution normale :
 | `tags.<Key>` | La valeur d’une étiquette, par exemple `tags.Owner` |
 | `tagged` | `Yes` ou `No` |
 | `discovered_via` | L’API qui a trouvé la ressource |
+| `source` | D’où vient la ligne : `service-api`, `tagging-api` ou `billing` |
+| `sources` | Toutes les sources qui ont signalé la ressource, jointes par `+`, par exemple `service-api+tagging-api` |
+| `detail_level` | `full` quand l’API du service a décrit la ressource, `identity` quand seule son identité (ARN et étiquettes) est connue |
 | `raw_data.<Name>` | Une valeur de la réponse de l’API AWS, par exemple `raw_data.VolumeType` |
+
+InvenTag remplace par `***REDACTED***` les valeurs des champs qui contiennent
+souvent des secrets avant d’écrire un rapport. Par exemple, les valeurs des
+variables d’environnement Lambda, les données utilisateur EC2, les valeurs des
+paramètres CloudFormation et les mots de passe des connexions Glue. Les noms
+restent, vous voyez donc que la variable existe. Un secret placé dans un champ
+absent de la liste d’InvenTag, comme une description ou une étiquette, n’est
+pas reconnu.
 
 Les valeurs manquantes sont laissées vides. Pour voir tous les champs de vos ressources,
 définissez `excel.include_all_fields: true` et regardez les colonnes supplémentaires.
