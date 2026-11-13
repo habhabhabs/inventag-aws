@@ -6,10 +6,10 @@
  *   node scripts/stamp-doc-version.mjs versioned_docs/version-1.1.0 1.1.0
  *
  * The docs at a release tag were not always updated for that release, so a
- * snapshot can say "This page describes InvenTag v1.0.2" in the 1.1.2 docs.
+ * snapshot can say "This page describes InvenTag v1.0.2" in the v1.1.2 docs.
  * This script rewrites the places where a page names a version of InvenTag as
  * "this" version, and nothing else. Each pattern below was reviewed by hand;
- * version numbers that are historical facts (changelog text, "since 1.0.1",
+ * version numbers that are historical facts (changelog text, "since v1.0.1",
  * Python, action and dependency versions) are not matched on purpose.
  *
  * The current docs write %INVENTAG_VERSION% where they name the release (see

@@ -5,7 +5,7 @@ InvenTag writes timestamps as ISO 8601 strings in UTC **with** an explicit
 offset, for example ``2026-11-12T10:42:47.647344+00:00``
 (``datetime.now(timezone.utc).isoformat()``).
 
-Releases up to 4.2.27 wrote some fields (``discovered_at`` on resources,
+Releases up to v4.2.27 wrote some fields (``discovered_at`` on resources,
 ``check_timestamp`` in compliance results) with the deprecated
 ``datetime.utcnow`` call, which produces the same instant **without** an offset:
 ``2026-11-12T10:42:47.647344``. Those strings are still present in existing

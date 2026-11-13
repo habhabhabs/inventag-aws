@@ -82,7 +82,7 @@ for tag in $(git tag -l | grep -E "$PATTERN" | sort -V); do
   [ -d "versioned_docs/version-$v" ] && [ -f "versioned_sidebars/version-$v-sidebars.json" ] \
     || { echo "snapshot of $tag was not created"; exit 1; }
   # The docs at a tag can still name an older release ("This page describes
-  # InvenTag v1.0.2" in the 1.1.2 docs): make the snapshot name its own version.
+  # InvenTag v1.0.2" in the v1.1.2 docs): make the snapshot name its own version.
   node scripts/stamp-doc-version.mjs "versioned_docs/version-$v" "$v"
   # Sidebar and version-label strings for the translated sites: start from the
   # current docs' strings (current.json) so the category labels stay translated.

@@ -3,7 +3,7 @@ Timestamp compatibility tests.
 
 InvenTag now writes UTC timestamps with an explicit offset
 (``2026-11-12T10:42:47.647344+00:00``). State snapshots written by releases up
-to 4.2.27 contain the same instants without an offset
+to v4.2.27 contain the same instants without an offset
 (``2026-11-12T10:42:47.647344``, from the deprecated ``datetime.utcnow()``).
 These tests pin down that old and new values can be parsed, compared and
 sorted together, and that an old snapshot compared with a new one does not
@@ -159,7 +159,7 @@ class TestOldAndNewStateSnapshots:
         ]
 
     def test_state_file_from_older_release_loads_and_compares(self, tmp_path):
-        """A snapshot written by 4.2.27 (naive timestamps) next to a new one."""
+        """A snapshot written by v4.2.27 (naive timestamps) next to a new one."""
         state_dir = tmp_path / "state"
         state_dir.mkdir()
         old_id = "20261001_081530"
