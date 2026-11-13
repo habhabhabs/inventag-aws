@@ -184,6 +184,12 @@ class AWSResourceInventory:
         try:
             logger = logging.getLogger(__name__)
 
+            # Under the CLI the "inventag" logger already has the handlers
+            # (format, redaction, --log-file). Adding a root handler here
+            # printed every later message a second time on stderr.
+            if logging.getLogger("inventag").handlers:
+                return logger
+
             # Avoid duplicate handlers if logger already configured
             if not logger.handlers:
                 # Only configure basicConfig if no root handlers exist

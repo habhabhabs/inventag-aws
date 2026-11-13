@@ -113,9 +113,12 @@ class ComprehensiveTagComplianceChecker:
 
     def _setup_logging(self) -> logging.Logger:
         """Set up logging configuration."""
-        logging.basicConfig(
-            level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-        )
+        # Not under the CLI, whose "inventag" logger already has handlers:
+        # a root handler would print every message a second time.
+        if not logging.getLogger("inventag").handlers:
+            logging.basicConfig(
+                level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+            )
         return logging.getLogger(__name__)
 
     def _get_available_regions(self) -> List[str]:

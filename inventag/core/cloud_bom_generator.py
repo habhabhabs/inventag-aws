@@ -411,7 +411,6 @@ class CloudBOMGenerator:
             # Step 6: Generate state management artifacts if enabled
             state_results = {}
             if self.config.enable_state_management:
-                self.logger.info("Generating state management artifacts")
                 state_results = self._generate_state_artifacts(consolidated_resources)
 
             self._finish_checkpoints()

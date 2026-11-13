@@ -431,8 +431,10 @@ class ComprehensiveAWSDiscovery:
         self.session = session or boto3.Session()
         # False: never call Cost Explorer (AWS charges for each request)
         self.enable_billing_validation = enable_billing_validation
+        # Propagates to the "inventag" logger the CLI configures (format,
+        # redaction, --log-file). It used to stop here, so its warnings went
+        # to Python's last-resort handler: unformatted and not in the log file.
         self.logger = logging.getLogger(__name__)
-        self.logger.propagate = False  # Prevent duplicate logging
         self.regions = regions or ["us-east-1"]
         # Where account-wide services are read: us-east-1 in the aws
         # partition, cn-north-1 in China, us-gov-west-1 in GovCloud.
