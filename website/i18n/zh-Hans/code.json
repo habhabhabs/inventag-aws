@@ -471,5 +471,215 @@
   "theme.tags.tagsPageTitle": {
     "message": "标签",
     "description": "The title of the tag list page"
+  },
+  "home.pageTitle": {
+    "message": "AWS 资源清单、标签检查与 BOM 报告"
+  },
+  "home.pageDescription": {
+    "message": "InvenTag 是一款开源的 Python 命令行工具。它列出你的 AWS 账户中的资源，显示每个资源的标签情况，并生成 Excel 或 Word 物料清单。"
+  },
+  "home.kicker": {
+    "message": "面向 AWS 的开源命令行工具"
+  },
+  "home.releaseNotes": {
+    "message": "发布说明"
+  },
+  "home.heroTitle": {
+    "message": "看清你的 AWS 账户里在运行什么。{emphasis}"
+  },
+  "home.heroTitleEm": {
+    "message": "然后把报告交出去。"
+  },
+  "home.heroLead": {
+    "message": "InvenTag 可以扫描一个或多个 AWS 账户，列出找到的资源及每个资源上的标签，然后生成任何人都能读懂的 Excel 或 Word 报告，也就是物料清单。"
+  },
+  "home.runQuickStart": {
+    "message": "运行快速开始"
+  },
+  "home.howItWorks": {
+    "message": "工作原理"
+  },
+  "home.heroNote": {
+    "message": "内置的防护只放行 {list}、{describe} 和 {get} 这类读取调用。也请同时使用只读的 IAM 角色：{link}。"
+  },
+  "home.heroNoteLink": {
+    "message": "查看它需要哪些权限"
+  },
+  "home.quickStartTitle": {
+    "message": "快速开始"
+  },
+  "home.snippetFootnote": {
+    "message": "用 pip 从 PyPI 安装 {pkg}。使用你当前的 AWS 凭证。写出 {file}。Cost Explorer 请求由 AWS 计费。"
+  },
+  "home.sheetCaption": {
+    "message": "示例 Summary 工作表"
+  },
+  "home.sheetTabs": {
+    "message": "工作簿中的工作表"
+  },
+  "home.sampleData": {
+    "message": "示例数据"
+  },
+  "home.sheetNote": {
+    "message": "{flag} 生成的 Summary 工作表版式。之后每个服务各有一个工作表，每个资源一行。"
+  },
+  "home.cap.eyebrow": {
+    "message": "01 · 你能得到什么"
+  },
+  "home.cap.title": {
+    "message": "一条命令，一份人人都能读的报告。"
+  },
+  "home.cap.lead": {
+    "message": "下面的一切在命令行中目前都能用。某项功能只完成了一部分时，文档会如实说明。"
+  },
+  "home.c1.title": {
+    "message": "Excel 和 Word 报告"
+  },
+  "home.c1.link": {
+    "message": "查看所有报告选项"
+  },
+  "home.c1.body": {
+    "message": "先是一张摘要工作表，然后每个服务一张工作表。想要文档形式的人，可以再加一份 Word 版本。文件保存在 {dir}。"
+  },
+  "home.c2.title": {
+    "message": "只读发现"
+  },
+  "home.c2.link": {
+    "message": "权限与安全"
+  },
+  "home.c2.caption": {
+    "message": "{dir} 中的部分 boto3 调用。"
+  },
+  "home.c2.body": {
+    "message": "通过 Resource Groups Tagging API、各服务自己的 list 和 describe 调用以及 Cost Explorer 来查找资源。防护机制会拦截任何可能改动内容的 AWS 调用。加上 {flag} 可保存每次调用的记录。"
+  },
+  "home.c3.title": {
+    "message": "一个账户或多个账户"
+  },
+  "home.c3.link": {
+    "message": "设置多个账户"
+  },
+  "home.c3.body": {
+    "message": "可使用 AWS 配置文件、访问密钥或要代入的角色。账户并行扫描，默认同时扫描四个。"
+  },
+  "home.c4.title": {
+    "message": "你的标签，你的列"
+  },
+  "home.c4.link": {
+    "message": "把标签映射为列"
+  },
+  "home.c4.body": {
+    "message": "把团队约定好的标签变成默认报告中有名称的列，还可以添加你自己的服务描述。"
+  },
+  "home.c5.title": {
+    "message": "与上次相比有什么变化"
+  },
+  "home.c5.link": {
+    "message": "快照如何工作"
+  },
+  "home.c5.body": {
+    "message": "每次运行都会保存快照。下一次运行会告诉你新增、移除或变化了什么。"
+  },
+  "home.c6.title": {
+    "message": "可复用的模板"
+  },
+  "home.c6.link": {
+    "message": "浏览模板"
+  },
+  "home.c6.list": {
+    "message": "内置模板"
+  },
+  "home.c6.layouts": {
+    "message": "报告版式"
+  },
+  "home.c6.policies": {
+    "message": "标签策略"
+  },
+  "home.c6.settings": {
+    "message": "运行设置"
+  },
+  "home.c6.body": {
+    "message": "从八个内置模板起步：报告版式、标签策略和运行设置。用 {cmd} 列出它们，把其中一个复制到你的项目里，只改你需要改的部分。"
+  },
+  "home.c7.title": {
+    "message": "网络与安全工作表"
+  },
+  "home.c7.link": {
+    "message": "网络分析"
+  },
+  "home.c7.body": {
+    "message": "可选的工作表，涵盖 VPC 和子网；加上 {flag} 还包括安全组。"
+  },
+  "home.c8.title": {
+    "message": "标签策略检查"
+  },
+  "home.c8.link": {
+    "message": "标签合规"
+  },
+  "home.c8.body": {
+    "message": "用标签策略模板检查必填标签和允许的取值。结果会写入一张工作表、Word 中的一节和一个 JSON 文件。"
+  },
+  "home.s1.title": {
+    "message": "凭证"
+  },
+  "home.s1.body": {
+    "message": "你的默认 AWS 凭证、命名的配置文件、账户文件中的密钥，或代入的角色。"
+  },
+  "home.s2.title": {
+    "message": "发现"
+  },
+  "home.s2.body": {
+    "message": "针对每个账户和区域：Tagging API、各服务的读取调用和 Cost Explorer。"
+  },
+  "home.s3.title": {
+    "message": "丰富信息"
+  },
+  "home.s3.body": {
+    "message": "服务属性、你的标签列和描述，以及可选的网络与安全分析。"
+  },
+  "home.s4.title": {
+    "message": "输出"
+  },
+  "home.s4.body": {
+    "message": "bom_output/ 中的 Excel 和 Word 文件，外加供下次运行对比的快照。"
+  },
+  "home.how.eyebrow": {
+    "message": "02 · 一次运行如何进行"
+  },
+  "home.how.title": {
+    "message": "四个步骤，从左到右。"
+  },
+  "home.honest.eyebrow": {
+    "message": "03 · 依赖它之前"
+  },
+  "home.honest.title": {
+    "message": "坦率说明它的边界。"
+  },
+  "home.honest.1": {
+    "message": "有些选项尚未实现。如果你用到了，运行会以明确的“尚未实现”提示停止，而不是悄悄忽略。{link}列出了目前可用的功能。"
+  },
+  "home.honest.1.link": {
+    "message": "当前状态页面"
+  },
+  "home.honest.2": {
+    "message": "默认情况下，发现过程会调用 Cost Explorer，而 AWS 会对每次 Cost Explorer 请求收费。扫描多个账户之前，请先阅读{link}。"
+  },
+  "home.honest.2.link": {
+    "message": "费用说明"
+  },
+  "home.honest.3": {
+    "message": "InvenTag 自带 24 种 AWS 服务的发现代码，目前只在模拟的 AWS 上测试过，没有在真实账户上测试。"
+  },
+  "home.honest.4": {
+    "message": "它收集的是证据，例如资源清单和标签规范程度。它不会证明你符合任何合规标准。"
+  },
+  "home.closing.title": {
+    "message": "从一个账户开始。大约十分钟。"
+  },
+  "home.sourceOnGitHub": {
+    "message": "GitHub 源码"
+  },
+  "home.disclaimer": {
+    "message": "InvenTag 是独立的开源项目，与 Amazon Web Services 无关联，也未获其认可或赞助。"
   }
 }

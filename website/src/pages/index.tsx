@@ -2,6 +2,7 @@ import React, {type ReactNode} from 'react';
 import Head from '@docusaurus/Head';
 import Link from '@docusaurus/Link';
 import Layout from '@theme/Layout';
+import Translate, {translate} from '@docusaurus/Translate';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import ThemedImage from '@theme/ThemedImage';
@@ -23,10 +24,13 @@ import styles from '@site/src/components/landing/landing.module.css';
 
 const VERSION = versionInfo.version;
 const REPO = 'https://github.com/habhabhabs/inventag-aws';
-const PAGE_TITLE = 'AWS inventory, tag checks and BOM reports';
-const PAGE_DESCRIPTION =
-  'InvenTag is an open-source Python CLI. It lists the resources in your AWS accounts, ' +
-  'shows how each one is tagged and writes an Excel or Word bill of materials.';
+const pageTitle = (): string => translate({id: 'home.pageTitle', message: 'AWS inventory, tag checks and BOM reports'});
+const pageDescription = (): string =>
+  translate({
+    id: 'home.pageDescription',
+    message:
+      'InvenTag is an open-source Python CLI. It lists the resources in your AWS accounts, shows how each one is tagged and writes an Excel or Word bill of materials.',
+  });
 
 // The templates guide: docs/templates/index.md
 const TEMPLATES_LINK = '/docs/templates/';
@@ -61,7 +65,7 @@ const API_CALLS = [
 ];
 
 function StructuredData(): ReactNode {
-  const {siteConfig} = useDocusaurusContext();
+  const {siteConfig, i18n} = useDocusaurusContext();
   const home = `${siteConfig.url}${siteConfig.baseUrl}`;
   const data = {
     '@context': 'https://schema.org',
@@ -70,7 +74,7 @@ function StructuredData(): ReactNode {
         '@type': 'SoftwareApplication',
         '@id': `${home}#software`,
         name: 'InvenTag',
-        description: PAGE_DESCRIPTION,
+        description: pageDescription(),
         url: home,
         applicationCategory: 'DeveloperApplication',
         applicationSubCategory: 'Command-line tool',
@@ -99,7 +103,7 @@ function StructuredData(): ReactNode {
         '@id': `${home}#website`,
         name: 'InvenTag',
         url: home,
-        inLanguage: 'en',
+        inLanguage: i18n.currentLocale,
       },
     ],
   };
@@ -115,7 +119,9 @@ function Hero(): ReactNode {
     <header className={styles.hero}>
       <div className={styles.heroCopy}>
         <p className={styles.kicker}>
-          <span>Open-source CLI for AWS</span>
+          <span>
+            <Translate id="home.kicker">Open-source CLI for AWS</Translate>
+          </span>
           <span aria-hidden="true" className={styles.kickerDot} />
           <span>Python</span>
           <span aria-hidden="true" className={styles.kickerDot} />
@@ -123,41 +129,63 @@ function Hero(): ReactNode {
           <span aria-hidden="true" className={styles.kickerDot} />
           <Link className={styles.kickerLink} href={`${REPO}/releases/tag/v${VERSION}`}>
             v{VERSION}
-            <span className="sr-only"> release notes</span>
+            <span className="sr-only">
+              {' '}
+              <Translate id="home.releaseNotes">release notes</Translate>
+            </span>
           </Link>
         </p>
         <h1 className={styles.heroTitle}>
-          See what runs in your AWS accounts. <em>Then hand over the&nbsp;report.</em>
+          <Translate
+            id="home.heroTitle"
+            values={{emphasis: <em>{translate({id: 'home.heroTitleEm', message: 'Then hand over the\u00a0report.'})}</em>}}>
+            {'See what runs in your AWS accounts. {emphasis}'}
+          </Translate>
         </h1>
         <p className={styles.heroLead}>
-          InvenTag scans one AWS account or many. It lists the resources it finds and the tags on
-          each one. Then it writes an Excel or Word report, a bill of materials, that anyone can read.
+          <Translate id="home.heroLead">
+            InvenTag scans one AWS account or many. It lists the resources it finds and the tags on each one. Then it writes an Excel or Word report, a bill of materials, that anyone can read.
+          </Translate>
         </p>
         <div className={styles.actions}>
           <Link className="button button--primary button--lg" to="/docs/getting-started/quick-start">
-            Run the quick start
+            <Translate id="home.runQuickStart">Run the quick start</Translate>
             <IconArrow />
           </Link>
           <Link className="button button--secondary button--lg" to="/docs/getting-started/introduction">
-            How it works
+            <Translate id="home.howItWorks">How it works</Translate>
           </Link>
         </div>
         <p className={styles.heroNote}>
-          A built-in guard lets through only read calls such as <code>List</code>, <code>Describe</code> and{' '}
-          <code>Get</code>. Run it with a read-only IAM role as well:{' '}
-          <Link to="/docs/user-guides/production-safety">see the permissions it needs</Link>.
+          <Translate
+            id="home.heroNote"
+            values={{
+              list: <code>List</code>,
+              describe: <code>Describe</code>,
+              get: <code>Get</code>,
+              link: (
+                <Link to="/docs/user-guides/production-safety">
+                  {translate({id: 'home.heroNoteLink', message: 'see the permissions it needs'})}
+                </Link>
+              ),
+            }}>
+            {'A built-in guard lets through only read calls such as {list}, {describe} and {get}. Run it with a read-only IAM role as well: {link}.'}
+          </Translate>
         </p>
       </div>
       <div className={styles.heroAside}>
         <CommandSnippet
-          title="Quick start"
+          title={translate({id: 'home.quickStartTitle', message: 'Quick start'})}
           lines={QUICK_START}
           footnote={
-            <>
-              Installs <code>inventag-aws</code> from PyPI with pip. Uses your current AWS credentials. Writes{' '}
-              <code>bom_output/multi_account_bom_&lt;timestamp&gt;.xlsx</code>. Cost Explorer requests
-              are billed by AWS.
-            </>
+            <Translate
+              id="home.snippetFootnote"
+              values={{
+                pkg: <code>inventag-aws</code>,
+                file: <code>bom_output/multi_account_bom_&lt;timestamp&gt;.xlsx</code>,
+              }}>
+              {'Installs {pkg} from PyPI with pip. Uses your current AWS credentials. Writes {file}. Cost Explorer requests are billed by AWS.'}
+            </Translate>
           }
         />
       </div>
@@ -170,7 +198,9 @@ function BomPreview(): ReactNode {
     <figure className={styles.preview} aria-labelledby="bom-preview-caption">
       <div className={styles.sheet}>
         <table className={styles.sheetTable}>
-          <caption className="sr-only">Sample Summary sheet</caption>
+          <caption className="sr-only">
+            <Translate id="home.sheetCaption">Sample Summary sheet</Translate>
+          </caption>
           <thead>
             <tr>
               <th scope="col">Service</th>
@@ -195,7 +225,7 @@ function BomPreview(): ReactNode {
             </tr>
           </tfoot>
         </table>
-        <ul className={styles.sheetTabs} aria-label="Worksheets in the workbook">
+        <ul className={styles.sheetTabs} aria-label={translate({id: 'home.sheetTabs', message: 'Worksheets in the workbook'})}>
           <li className={styles.sheetTabActive}>Summary</li>
           {SAMPLE_SUMMARY.map(([s]) => (
             <li key={s}>{s}</li>
@@ -203,8 +233,12 @@ function BomPreview(): ReactNode {
         </ul>
       </div>
       <figcaption id="bom-preview-caption" className={styles.previewCaption}>
-        <span className={styles.sampleBadge}>Sample data</span> The Summary sheet layout from{' '}
-        <code>--create-excel</code>. Each service then gets its own sheet with one row per resource.
+        <span className={styles.sampleBadge}>
+          <Translate id="home.sampleData">Sample data</Translate>
+        </span>{' '}
+        <Translate id="home.sheetNote" values={{flag: <code>--create-excel</code>}}>
+          {'The Summary sheet layout from {flag}. Each service then gets its own sheet with one row per resource.'}
+        </Translate>
       </figcaption>
     </figure>
   );
@@ -243,35 +277,40 @@ function Capabilities(): ReactNode {
   return (
     <section className={styles.section} aria-labelledby="capabilities">
       <div className={styles.sectionHead}>
-        <p className={styles.eyebrow}>01 · What you get</p>
+        <p className={styles.eyebrow}>
+          <Translate id="home.cap.eyebrow">01 · What you get</Translate>
+        </p>
         <h2 id="capabilities" className={styles.sectionTitle}>
-          One command. A report people can read.
+          <Translate id="home.cap.title">One command. A report people can read.</Translate>
         </h2>
         <p className={styles.sectionLead}>
-          Everything below works in the CLI today. Where a feature is only partly done, the docs say so.
+          <Translate id="home.cap.lead">
+            Everything below works in the CLI today. Where a feature is only partly done, the docs say so.
+          </Translate>
         </p>
       </div>
       <div className={styles.bento}>
         <Cell
           className={styles.span7}
           icon={<IconSheet />}
-          title="Excel and Word reports"
+          title={translate({id: 'home.c1.title', message: 'Excel and Word reports'})}
           flag="--create-excel  --create-word"
           link="/docs/reference/cli"
-          linkLabel="See every report option"
+          linkLabel={translate({id: 'home.c1.link', message: 'See every report option'})}
           preview={<BomPreview />}>
           <p>
-            A summary sheet, then one sheet per service. Add a Word version for people who prefer documents.
-            Files are saved in <code>bom_output/</code>.
+            <Translate id="home.c1.body" values={{dir: <code>bom_output/</code>}}>
+              {'A summary sheet, then one sheet per service. Add a Word version for people who prefer documents. Files are saved in {dir}.'}
+            </Translate>
           </p>
         </Cell>
         <Cell
           className={styles.span5}
           icon={<IconScan />}
-          title="Read-only discovery"
+          title={translate({id: 'home.c2.title', message: 'Read-only discovery'})}
           flag="--audit-output"
           link="/docs/user-guides/production-safety"
-          linkLabel="Permissions and safety"
+          linkLabel={translate({id: 'home.c2.link', message: 'Permissions and safety'})}
           preview={
             <figure className={styles.preview} aria-labelledby="api-caption">
               <ul className={styles.apiList}>
@@ -282,23 +321,25 @@ function Capabilities(): ReactNode {
                 ))}
               </ul>
               <figcaption id="api-caption" className={styles.previewCaption}>
-                Some of the boto3 calls in <code>inventag/discovery</code>.
+                <Translate id="home.c2.caption" values={{dir: <code>inventag/discovery</code>}}>
+                  {'Some of the boto3 calls in {dir}.'}
+                </Translate>
               </figcaption>
             </figure>
           }>
           <p>
-            Finds resources through the Resource Groups Tagging API, each service's own list and describe
-            calls, and Cost Explorer. A guard blocks any AWS call that could change something. Add{' '}
-            <code>--audit-output</code> to save a record of every call made.
+            <Translate id="home.c2.body" values={{flag: <code>--audit-output</code>}}>
+              {"Finds resources through the Resource Groups Tagging API, each service's own list and describe calls, and Cost Explorer. A guard blocks any AWS call that could change something. Add {flag} to save a record of every call made."}
+            </Translate>
           </p>
         </Cell>
         <Cell
           className={styles.span4}
           icon={<IconAccounts />}
-          title="One account or many"
+          title={translate({id: 'home.c3.title', message: 'One account or many'})}
           flag="--accounts-file"
           link="/docs/examples/accounts-setup"
-          linkLabel="Set up several accounts"
+          linkLabel={translate({id: 'home.c3.link', message: 'Set up several accounts'})}
           preview={
             <pre className={styles.snippet} tabIndex={0}>
               <code>{`{
@@ -312,17 +353,18 @@ function Capabilities(): ReactNode {
             </pre>
           }>
           <p>
-            Use AWS profiles, access keys or a role to assume. Accounts are scanned in parallel, four at a
-            time by default.
+            <Translate id="home.c3.body">
+              Use AWS profiles, access keys or a role to assume. Accounts are scanned in parallel, four at a time by default.
+            </Translate>
           </p>
         </Cell>
         <Cell
           className={styles.span4}
           icon={<IconTag />}
-          title="Your tags, your columns"
+          title={translate({id: 'home.c4.title', message: 'Your tags, your columns'})}
           flag="--tag-mappings"
           link="/docs/user-guides/configuration-examples"
-          linkLabel="Map tags to columns"
+          linkLabel={translate({id: 'home.c4.link', message: 'Map tags to columns'})}
           preview={
             <pre className={styles.snippet} tabIndex={0}>
               <code>{`tag_mappings:
@@ -332,14 +374,18 @@ function Capabilities(): ReactNode {
     name: "Cost Center"`}</code>
             </pre>
           }>
-          <p>Turn the tags your team agreed on into named columns in the default report. Add your own service descriptions too.</p>
+          <p>
+            <Translate id="home.c4.body">
+              Turn the tags your team agreed on into named columns in the default report. Add your own service descriptions too.
+            </Translate>
+          </p>
         </Cell>
         <Cell
           className={styles.span4}
           icon={<IconHistory />}
-          title="What changed since last time"
+          title={translate({id: 'home.c5.title', message: 'What changed since last time'})}
           link="/docs/architecture/state-management"
-          linkLabel="How snapshots work"
+          linkLabel={translate({id: 'home.c5.link', message: 'How snapshots work'})}
           preview={
             <pre className={styles.snippet} tabIndex={0}>
               <code>{`bom_output/
@@ -348,81 +394,109 @@ function Capabilities(): ReactNode {
    └─ state_<timestamp>.json`}</code>
             </pre>
           }>
-          <p>Each run saves a snapshot. The next run tells you what was added, removed or changed.</p>
+          <p>
+            <Translate id="home.c5.body">Each run saves a snapshot. The next run tells you what was added, removed or changed.</Translate>
+          </p>
         </Cell>
         <Cell
           className={styles.span6}
           icon={<IconTemplate />}
-          title="Reusable templates"
+          title={translate({id: 'home.c6.title', message: 'Reusable templates'})}
           link={TEMPLATES_LINK}
-          linkLabel="Browse the templates"
+          linkLabel={translate({id: 'home.c6.link', message: 'Browse the templates'})}
           preview={
-            <ul className={styles.fileList} aria-label="Built-in templates">
+            <ul className={styles.fileList} aria-label={translate({id: 'home.c6.list', message: 'Built-in templates'})}>
               <li>
-                <span>Report layouts</span>
+                <span>
+                  <Translate id="home.c6.layouts">Report layouts</Translate>
+                </span>
                 <code>standard-bom</code>
                 <code>executive-summary</code>
               </li>
               <li>
-                <span>Tag policies</span>
+                <span>
+                  <Translate id="home.c6.policies">Tag policies</Translate>
+                </span>
                 <code>finops-cost-allocation</code>
                 <code>security-baseline</code>
               </li>
               <li>
-                <span>Run settings</span>
+                <span>
+                  <Translate id="home.c6.settings">Run settings</Translate>
+                </span>
                 <code>single-account</code>
                 <code>ci-pipeline</code>
               </li>
             </ul>
           }>
           <p>
-            Start from eight built-in templates: report layouts, tag policies and run settings. List them with{' '}
-            <code>inventag templates list</code>, copy one into your project and change only what you need.
+            <Translate id="home.c6.body" values={{cmd: <code>inventag templates list</code>}}>
+              {'Start from eight built-in templates: report layouts, tag policies and run settings. List them with {cmd}, copy one into your project and change only what you need.'}
+            </Translate>
           </p>
         </Cell>
         <Cell
           className={styles.span3}
           icon={<IconNetwork />}
-          title="Network and security sheets"
+          title={translate({id: 'home.c7.title', message: 'Network and security sheets'})}
           flag="--enable-network-analysis"
           link="/docs/architecture/network-analysis"
-          linkLabel="Network analysis">
+          linkLabel={translate({id: 'home.c7.link', message: 'Network analysis'})}>
           <p>
-            Optional sheets for VPCs and subnets, and for security groups with{' '}
-            <code>--enable-security-analysis</code>.
+            <Translate id="home.c7.body" values={{flag: <code>--enable-security-analysis</code>}}>
+              {'Optional sheets for VPCs and subnets, and for security groups with {flag}.'}
+            </Translate>
           </p>
         </Cell>
         <Cell
           className={styles.span3}
           icon={<IconCheck />}
-          title="Tag policy checks"
+          title={translate({id: 'home.c8.title', message: 'Tag policy checks'})}
           link="/docs/architecture/tag-compliance"
-          linkLabel="Tag compliance">
-          <p>Check for required tags and allowed values with a tag-policy template. Results go to a sheet, a Word section and a JSON file.</p>
+          linkLabel={translate({id: 'home.c8.link', message: 'Tag compliance'})}>
+          <p>
+            <Translate id="home.c8.body">
+              Check for required tags and allowed values with a tag-policy template. Results go to a sheet, a Word section and a JSON file.
+            </Translate>
+          </p>
         </Cell>
       </div>
     </section>
   );
 }
 
-const STEPS = [
-  ['Credentials', 'Your default AWS credentials, a named profile, keys from an accounts file, or an assumed role.'],
-  ['Discovery', 'For each account and region: the Tagging API, per-service read calls and Cost Explorer.'],
-  ['Enrichment', 'Service attributes, your tag columns and descriptions, optional network and security analysis.'],
-  ['Output', 'Excel and Word files in bom_output/, plus a snapshot the next run compares against.'],
+const steps = (): [string, string][] => [
+  [
+    translate({id: 'home.s1.title', message: 'Credentials'}),
+    translate({id: 'home.s1.body', message: 'Your default AWS credentials, a named profile, keys from an accounts file, or an assumed role.'}),
+  ],
+  [
+    translate({id: 'home.s2.title', message: 'Discovery'}),
+    translate({id: 'home.s2.body', message: 'For each account and region: the Tagging API, per-service read calls and Cost Explorer.'}),
+  ],
+  [
+    translate({id: 'home.s3.title', message: 'Enrichment'}),
+    translate({id: 'home.s3.body', message: 'Service attributes, your tag columns and descriptions, optional network and security analysis.'}),
+  ],
+  [
+    translate({id: 'home.s4.title', message: 'Output'}),
+    translate({id: 'home.s4.body', message: 'Excel and Word files in bom_output/, plus a snapshot the next run compares against.'}),
+  ],
 ];
 
 function HowItWorks(): ReactNode {
   return (
     <section className={styles.section} aria-labelledby="how-it-works">
       <div className={styles.sectionHead}>
-        <p className={styles.eyebrow}>02 · How a run works</p>
+        <p className={styles.eyebrow}>
+          <Translate id="home.how.eyebrow">02 · How a run works</Translate>
+        </p>
         <h2 id="how-it-works" className={styles.sectionTitle}>
-          Four steps, left to right.
+          <Translate id="home.how.title">Four steps, left to right.</Translate>
         </h2>
       </div>
       <ol className={styles.steps}>
-        {STEPS.map(([title, text], i) => (
+        {steps().map(([title, text], i) => (
           <li key={title} className={styles.step}>
             <span className={styles.stepNo} aria-hidden="true">
               {String(i + 1).padStart(2, '0')}
@@ -441,28 +515,49 @@ function Honest(): ReactNode {
     <section className={`${styles.section} ${styles.honest}`} aria-labelledby="before-you-rely">
       <div className={styles.honestGrid}>
         <div>
-          <p className={styles.eyebrow}>03 · Before you rely on it</p>
+          <p className={styles.eyebrow}>
+            <Translate id="home.honest.eyebrow">03 · Before you rely on it</Translate>
+          </p>
           <h2 id="before-you-rely" className={styles.sectionTitle}>
-            Plain about the edges.
+            <Translate id="home.honest.title">Plain about the edges.</Translate>
           </h2>
         </div>
         <ul className={styles.honestList}>
           <li>
-            Some options are not built yet. If you use one, the run stops with a clear &ldquo;not implemented
-            yet&rdquo; message instead of ignoring it. The{' '}
-            <Link to="/docs/getting-started/status">current status page</Link> lists what works today.
+            <Translate
+              id="home.honest.1"
+              values={{
+                link: (
+                  <Link to="/docs/getting-started/status">
+                    {translate({id: 'home.honest.1.link', message: 'current status page'})}
+                  </Link>
+                ),
+              }}>
+              {'Some options are not built yet. If you use one, the run stops with a clear “not implemented yet” message instead of ignoring it. The {link} lists what works today.'}
+            </Translate>
           </li>
           <li>
-            By default, discovery calls Cost Explorer, and AWS charges for each Cost Explorer request. Read the{' '}
-            <Link to="/docs/getting-started/status#costs">notes on cost</Link> before you scan many accounts.
+            <Translate
+              id="home.honest.2"
+              values={{
+                link: (
+                  <Link to="/docs/getting-started/status#costs">
+                    {translate({id: 'home.honest.2.link', message: 'notes on cost'})}
+                  </Link>
+                ),
+              }}>
+              {'By default, discovery calls Cost Explorer, and AWS charges for each Cost Explorer request. Read the {link} before you scan many accounts.'}
+            </Translate>
           </li>
           <li>
-            InvenTag has its own discovery code for 24 AWS services and has only been tested against mocked AWS,
-            not a real account.
+            <Translate id="home.honest.3">
+              InvenTag has its own discovery code for 24 AWS services and has only been tested against mocked AWS, not a real account.
+            </Translate>
           </li>
           <li>
-            It gathers evidence, such as a list of resources and how well they are tagged. It does not certify
-            that you meet any compliance standard.
+            <Translate id="home.honest.4">
+              It gathers evidence, such as a list of resources and how well they are tagged. It does not certify that you meet any compliance standard.
+            </Translate>
           </li>
         </ul>
       </div>
@@ -484,20 +579,21 @@ function Closing(): ReactNode {
           height={56}
         />
         <h2 id="start" className={styles.closingTitle}>
-          Start with one account. It takes about ten minutes.
+          <Translate id="home.closing.title">Start with one account. It takes about ten minutes.</Translate>
         </h2>
         <div className={styles.actions}>
           <Link className="button button--primary button--lg" to="/docs/getting-started/quick-start">
-            Run the quick start
+            <Translate id="home.runQuickStart">Run the quick start</Translate>
             <IconArrow />
           </Link>
           <Link className="button button--secondary button--lg" href={REPO}>
-            Source on GitHub
+            <Translate id="home.sourceOnGitHub">Source on GitHub</Translate>
           </Link>
         </div>
         <p className={styles.disclaimer}>
-          InvenTag is an independent open-source project. It is not affiliated with, endorsed by, or sponsored
-          by Amazon Web Services.
+          <Translate id="home.disclaimer">
+            InvenTag is an independent open-source project. It is not affiliated with, endorsed by, or sponsored by Amazon Web Services.
+          </Translate>
         </p>
       </div>
     </section>
@@ -506,7 +602,7 @@ function Closing(): ReactNode {
 
 export default function Home(): ReactNode {
   return (
-    <Layout title={PAGE_TITLE} description={PAGE_DESCRIPTION}>
+    <Layout title={pageTitle()} description={pageDescription()}>
       <StructuredData />
       <main className={styles.page}>
         <Hero />

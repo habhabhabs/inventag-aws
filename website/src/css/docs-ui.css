@@ -679,13 +679,19 @@ a.it-search__hit:hover .it-search__hit-go {
   aside.theme-doc-sidebar-container[class*='docSidebarContainerHidden'] {
     width: 0 !important;
     min-width: 0;
-    border: 0;
+    border: 0 !important;
     overflow: visible;
+    clip-path: none;
+  }
+  /* with the menu hidden, keep the page centred between the same edges */
+  main[class*='docMainContainerEnhanced'] > .container {
+    max-width: 76rem;
+    margin-inline: auto;
   }
   .it-menubtn--rail {
     position: fixed;
     top: calc(var(--ifm-navbar-height) + 0.75rem);
-    left: 1rem;
+    left: max(1rem, calc((100vw - var(--it-grid-max)) / 2 + 1rem));
     width: auto;
     height: 2.25rem;
     padding: 0 0.8rem 0 0.65rem;
