@@ -24,6 +24,7 @@ import styles from '@site/src/components/landing/landing.module.css';
 
 const VERSION = versionInfo.version;
 const REPO = 'https://github.com/habhabhabs/inventag-aws';
+const PYPI = 'https://pypi.org/project/inventag-aws/';
 const pageTitle = (): string => translate({id: 'home.pageTitle', message: 'AWS inventory, tag checks and BOM reports'});
 const pageDescription = (): string =>
   translate({
@@ -86,6 +87,9 @@ function StructuredData(): ReactNode {
         offers: {'@type': 'Offer', price: '0', priceCurrency: 'USD'},
         image: `${home}img/social-card.png`,
         downloadUrl: REPO,
+        installUrl: PYPI, // pip install inventag-aws
+        sameAs: [REPO, PYPI],
+        author: {'@type': 'Organization', name: 'InvenTag contributors'},
         releaseNotes: `${REPO}/releases/tag/v${VERSION}`,
       },
       {
