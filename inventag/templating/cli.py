@@ -16,11 +16,21 @@ from typing import List, Optional, TextIO
 import yaml
 
 from ..cli.config_validator import ConfigValidator
+from ..cli.errors import InventagArgumentParser, UsageError, emit
 from .errors import TemplateError
 from .loader import load_template_file
 from .registry import TemplateRegistry, search_dirs
-from .runner import load_templates
+from .runner import detect_old_layout, load_templates, usage_errors_for
 from .schema import KINDS, NAME_PATTERN
+
+TEMPLATES_PAGE = "reference/cli#templates-subcommands"
+
+
+class _TemplatesParser(InventagArgumentParser):
+    """Parser of ``inventag templates``; its errors point at its docs."""
+
+    docs_page = TEMPLATES_PAGE
+
 
 EPILOG = """\
 Search order (first match wins):
@@ -39,7 +49,7 @@ Examples:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = _TemplatesParser(
         prog="inventag templates",
         description="Work with InvenTag templates: report layouts, tag policies "
         "and run settings.",
@@ -76,8 +86,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--output",
         "-o",
-        required=True,
-        help="File to write, or a folder (the file is then <name>.yaml)",
+        help="File to write, or a folder (the file is then <name>.yaml). "
+        "Default: ./<name>.yaml in the current folder",
     )
     p.add_argument(
         "--name", help="Name for the new template (default: from the file name)"
@@ -165,35 +175,50 @@ def _drop_nulls(value):
 
 
 def _derive_name(output: Path, explicit: Optional[str]) -> str:
-    if explicit:
-        return explicit
-    stem = output.stem.lower()
-    stem = re.sub(r"[^a-z0-9-]+", "-", stem).strip("-")
-    return stem or "my-template"
+    return explicit or output.stem
 
 
 def _cmd_init(args, registry: TemplateRegistry, out: TextIO, err: TextIO) -> int:
     source = registry.load(args.template)
     resolved = registry.resolve_file(source)
-    output = Path(args.output).expanduser()
-    if output.is_dir() or args.output.endswith(("/", "\\")):
-        name = args.name or (
-            f"my-{resolved.name}" if not args.extend else f"my-{resolved.name}"
-        )
+    target = args.output or "."
+    output = Path(target).expanduser()
+    if output.is_dir() or target.endswith(("/", "\\")):
+        name = args.name or f"my-{resolved.name}"
         output = output / f"{name}.yaml"
     name = _derive_name(output, args.name)
     if not NAME_PATTERN.fullmatch(name):
-        err.write(
-            f"error: '{name}' is not a valid template name (use lower-case letters, "
-            "digits and hyphens); choose another file name or pass --name\n"
+        return _stop(
+            err,
+            UsageError(
+                None,
+                f"'{name}' is not a valid template name: use lower-case letters, "
+                "digits and hyphens",
+                "choose a file name such as acme-bom.yaml, or pass --name acme-bom.",
+                "templates/reference#fields-in-every-template",
+            ),
         )
-        return 2
     if output.suffix not in (".yaml", ".yml"):
-        err.write("error: --output must end in .yaml or .yml, or be a folder\n")
-        return 2
+        return _stop(
+            err,
+            UsageError(
+                "--output",
+                "must end in .yaml or .yml, or be a folder",
+                "for example --output .inventag/templates/acme-bom.yaml",
+                TEMPLATES_PAGE,
+            ),
+        )
     if output.exists() and not args.force:
-        err.write(f"error: {output} already exists; use --force to overwrite it\n")
-        return 1
+        return _stop(
+            err,
+            UsageError(
+                str(output),
+                "already exists",
+                "add --force to overwrite it, or choose another file with --output.",
+                TEMPLATES_PAGE,
+                code=1,
+            ),
+        )
 
     reference = resolved.name if source.origin != "file" else source.source
     if args.extend:
@@ -232,6 +257,12 @@ def _cmd_init(args, registry: TemplateRegistry, out: TextIO, err: TextIO) -> int
     return 0
 
 
+def _stop(err: TextIO, *errors: UsageError) -> int:
+    """Print the errors on ``err`` and return their exit code (2 beats 1)."""
+    emit(errors, err)
+    return max(e.code for e in errors)
+
+
 def _validate_one(reference: str, registry: TemplateRegistry, out: TextIO) -> bool:
     try:
         template = registry.resolve(reference)
@@ -248,7 +279,7 @@ def _validate_one(reference: str, registry: TemplateRegistry, out: TextIO) -> bo
         if template.kind == "config" and template.spec.get("accounts"):
             _check_accounts(template, warnings)
     except TemplateError as error:
-        for issue in error.issues:
+        for issue in detect_old_layout(error).issues:
             out.write(f"ERROR {issue}\n")
         return False
     for warning in warnings:
@@ -293,9 +324,20 @@ def main(
             return _cmd_init(args, registry, out, err)
         if args.command == "validate":
             results = [_validate_one(ref, registry, out) for ref in args.templates]
-            return 0 if all(results) else 1
+            if all(results):
+                return 0
+            bad = results.count(False)
+            return _stop(
+                err,
+                UsageError(
+                    None,
+                    f"{bad} of {len(results)} template(s) are not valid; the ERROR "
+                    "lines above say where",
+                    "fix the lines named, then run the same command again.",
+                    "templates/reference#validation-messages",
+                    code=1,
+                ),
+            )
     except TemplateError as error:
-        for issue in error.issues:
-            err.write(f"error: {issue}\n")
-        return 1
+        return _stop(err, *usage_errors_for(detect_old_layout(error)))
     return 2

@@ -24,9 +24,10 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
+from ..cli.errors import UsageError, fail_all
 from ..core import CloudBOMGenerator
 from ..reporting import BOMDataProcessor
-from .errors import TemplateError, TemplateIssue
+from .errors import TemplateError, TemplateIssue, TemplateNotFoundError
 from .loader import safe_relative_path
 from .registry import ResolvedTemplate, TemplateRegistry
 from .schema import LOGO_SUFFIXES
@@ -39,6 +40,76 @@ from .tag_policy import ComplianceReport, evaluate
 from ..exit_codes import EXIT_NO_RESOURCES, EXIT_TAG_VIOLATIONS
 
 DEFAULT_REPORT = "standard-bom"
+
+_OLD_LAYOUT_KEYS = ("format", "sections")
+_OLD_LAYOUT_TEXT = (
+    "looks like a report layout file (the kind --word-template and "
+    "--excel-template read), not a template"
+)
+
+
+def detect_old_layout(error: TemplateError) -> TemplateError:
+    """Replace the unknown-field errors for an old layout file by one line.
+
+    A report layout file has ``format`` and ``sections`` at the top level. Given
+    to ``--template`` it fails with five unrelated errors; this says what the
+    file is and which option reads it.
+    """
+    unknown = {
+        issue.field
+        for issue in error.issues
+        if issue.field in _OLD_LAYOUT_KEYS and "unknown field" in issue.message
+    }
+    if not unknown:
+        return error
+    source = next((i.source for i in error.issues if i.source), None)
+    return TemplateError([TemplateIssue(_OLD_LAYOUT_TEXT, source)])
+
+
+def usage_errors_for(error: TemplateError) -> List[UsageError]:
+    """One contract error (exit 1: a template is not valid) for each issue."""
+    out: List[UsageError] = []
+    for issue in error.issues:
+        text = str(issue)
+        source = issue.source or "the template file"
+        if issue.message == _OLD_LAYOUT_TEXT:
+            out.append(
+                UsageError(
+                    issue.source,
+                    issue.message,
+                    "use it with --word-template or --excel-template, or create a "
+                    "template with: inventag templates init standard-bom "
+                    "--output my-template.yaml",
+                    "reference/cli#report-layout-files",
+                    code=1,
+                )
+            )
+        elif isinstance(error, TemplateNotFoundError) or "no template named" in text:
+            head, _, searched = issue.message.partition(" (searched: ")
+            head = head.split(". Run 'inventag templates list'")[0]
+            out.append(
+                UsageError(
+                    None,
+                    head,
+                    "run 'inventag templates list' to see the templates you can "
+                    "use, or give the path of a .yaml file.",
+                    "templates/index#where-inventag-looks-for-templates",
+                    why=f"searched: {searched.rstrip(')')}" if searched else None,
+                    code=1,
+                )
+            )
+        else:
+            out.append(
+                UsageError(
+                    None,
+                    text,
+                    "fix the line named above, then check the file with: "
+                    f"inventag templates validate {source}",
+                    "templates/reference#validation-messages",
+                    code=1,
+                )
+            )
+    return out
 
 
 def bom_result_is_empty(results: Dict[str, Any]) -> bool:
@@ -225,7 +296,10 @@ def load_templates(
     registry = registry or TemplateRegistry()
     by_kind: Dict[str, ResolvedTemplate] = {}
     for reference in references:
-        template = registry.resolve(reference)
+        try:
+            template = registry.resolve(reference)
+        except TemplateError as error:
+            raise detect_old_layout(error) from None
         if template.kind in by_kind:
             raise TemplateError(
                 f"--template given two {template.kind} templates "
@@ -320,17 +394,15 @@ def prepare_template_run(
 ) -> Optional[TemplateRun]:
     """Load ``--template`` values and apply a config template to ``args``.
 
-    Exits with status 1 and a clear message if a template is invalid.
+    Stops with exit 1 (``file:line: key: problem``, what to do, where to read)
+    if a template is invalid.
     """
     if not getattr(args, "template", None):
         return None
     try:
         run = load_templates(args.template)
     except TemplateError as error:
-        logger.error("Template problem:")
-        for issue in error.issues:
-            logger.error(f"  {issue}")
-        sys.exit(1)
+        fail_all(usage_errors_for(error))
     if run.config:
         apply_config(run, args, explicit_dests(parser_factory, argv), logger)
     for message in unused_option_warnings(args, run):

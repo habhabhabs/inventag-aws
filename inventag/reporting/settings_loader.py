@@ -109,6 +109,83 @@ def load_settings_file(
     return data
 
 
+class Locator:
+    """Say where a key is in a settings file: ``file:line: key``.
+
+    One helper for every configuration file the command line reads (accounts
+    file, tag mappings, service descriptions, ``--bom-config``), so each of
+    them prints a problem as ``file:line: key: problem``. A key is a path of
+    mapping keys and list positions, for example ``("accounts", 1,
+    "account_id")``, shown as ``accounts[1].account_id``. When the key is
+    missing the line is the one of the closest part that exists.
+    """
+
+    def __init__(self, source: Any, text: Optional[str] = None):
+        self.source = str(source)
+        self._root: Optional[yaml.Node] = None
+        if text is None:
+            try:
+                text = Path(self.source).expanduser().read_bytes().decode("utf-8-sig")
+            except (OSError, UnicodeDecodeError):
+                text = ""
+        try:
+            self._root = yaml.compose(text, Loader=yaml.SafeLoader)
+        except yaml.YAMLError:
+            self._root = None
+
+    @staticmethod
+    def key_text(path: Any) -> str:
+        out = ""
+        for part in path:
+            if isinstance(part, int):
+                out += f"[{part}]"
+            else:
+                out += f".{part}" if out else str(part)
+        return out
+
+    def line(self, path: Any) -> Optional[int]:
+        node = self._root
+        if node is None:
+            return None
+        line = node.start_mark.line + 1
+        for part in path:
+            if isinstance(node, yaml.MappingNode):
+                found = None
+                for key_node, value_node in node.value:
+                    if getattr(key_node, "value", None) == part:
+                        found = (key_node, value_node)
+                        break
+                if found is None:
+                    break
+                line = found[0].start_mark.line + 1
+                node = found[1]
+            elif isinstance(node, yaml.SequenceNode) and isinstance(part, int):
+                if not 0 <= part < len(node.value):
+                    break
+                node = node.value[part]
+                line = node.start_mark.line + 1
+            else:
+                break
+        return line
+
+    def where(self, path: Any) -> str:
+        line = self.line(path)
+        at = f"{self.source}:{line}" if line else self.source
+        key = self.key_text(path)
+        return f"{at}: {key}" if key else at
+
+    def message(self, path: Any, problem: str) -> str:
+        return f"{self.where(path)}: {problem}"
+
+
+def did_you_mean(name: Any, known: Any) -> str:
+    """``; did you mean 'x'?`` for the closest known name, or an empty string."""
+    import difflib
+
+    close = difflib.get_close_matches(str(name), sorted(known), n=1, cutoff=0.6)
+    return f"; did you mean '{close[0]}'?" if close else ""
+
+
 _BOOL_FIELDS = (
     "enable_network_analysis",
     "enable_security_analysis",
