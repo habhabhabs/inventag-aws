@@ -61,7 +61,7 @@ jobs:
           role-to-assume: arn:aws:iam::123456789012:role/InvenTagGitHubReadOnly
           aws-region: us-east-1
       - name: Run InvenTag
-        run: inventag --template nightly
+        run: inventag --template nightly --fail-on-account-error --fail-if-empty
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()          # keep the reports even when the tag check fails
         with:
@@ -77,6 +77,9 @@ jobs:
 更新版本時，請同時更新 SHA。
 
 InvenTag 從你儲存庫的資料夾執行，因此 `.inventag/templates/nightly.yaml` 可以按名稱找到。
+
+不加這兩個結束代碼引數時，即使有帳戶無法掃描或什麼都沒找到，作業也會成功。`--fail-on-account-error` 會讓前一種情況以結束代碼 5 使作業失敗，
+`--fail-if-empty` 會讓後一種情況以結束代碼 6 使作業失敗。報告仍會寫出，所以上傳構件的步驟可以保留它們。
 
 ## 發生違規時會怎樣 {#what-happens-on-a-violation}
 
@@ -96,11 +99,20 @@ $ echo $?
 3
 ```
 
+## 結束代碼 {#exit-codes}
+
 | 結束代碼 | 含義 |
 |---|---|
-| 0 | 報告已寫出，沒有標籤違規（或沒有會導致失敗的策略） |
-| 1 | 錯誤：範本無效、憑證問題、所有帳戶都失敗，或 S3 上傳失敗 |
-| 3 | 報告已寫出，發現標籤策略違規 |
+| 0 | 報告已寫出，沒有標籤違規（或沒有會導致失敗的策略）。有帳戶失敗或什麼都沒找到時也是 0，除非你傳了對應結束代碼 5 和 6 的引數 |
+| 1 | 錯誤：範本或設定檔無效、憑證問題、所有帳戶都失敗、某個報告格式無法寫出，或 S3 上傳失敗 |
+| 2 | 選項無效或相互衝突，例如 `--accounts-file` 與 `--accounts-prompt` 同用，或 `--compliance-standard`（未實現）。不會掃描任何內容 |
+| 3 | 報告已寫出，發現標籤策略違規（`fail_on_tag_violations: true`） |
+| 4 | 報告已寫出，有對網際網路開放的安全組規則達到或超過 `--risk-threshold` |
+| 5 | 報告已寫出，有帳戶無法掃描或只掃描了一部分（`--fail-on-account-error`） |
+| 6 | 沒有可報告的資源（`--fail-if-empty`） |
+
+如果同時滿足多個條件，先是 5，然後是 6，最後是 3 和 4，因為缺少帳戶時，標籤或風險結果背後的資料是不完整的。
+結束代碼 3、4 和 5 會寫出報告。對於結束代碼 6，帶 `--template` 的執行會寫出一份不列出任何資源的報告，不帶 `--template` 的執行則不寫檔案。
 
 ## 保持安全 {#keep-it-safe}
 

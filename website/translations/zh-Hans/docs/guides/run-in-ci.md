@@ -61,7 +61,7 @@ jobs:
           role-to-assume: arn:aws:iam::123456789012:role/InvenTagGitHubReadOnly
           aws-region: us-east-1
       - name: Run InvenTag
-        run: inventag --template nightly
+        run: inventag --template nightly --fail-on-account-error --fail-if-empty
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()          # keep the reports even when the tag check fails
         with:
@@ -77,6 +77,9 @@ jobs:
 更新版本时，请同时更新 SHA。
 
 InvenTag 从你仓库的文件夹运行，因此 `.inventag/templates/nightly.yaml` 可以按名称找到。
+
+不加这两个退出码参数时，即使有账户无法扫描或什么都没找到，作业也会成功。`--fail-on-account-error` 会让前一种情况以退出码 5 使作业失败，
+`--fail-if-empty` 会让后一种情况以退出码 6 使作业失败。报告仍会写出，所以上传构件的步骤可以保留它们。
 
 ## 发生违规时会怎样 {#what-happens-on-a-violation}
 
@@ -96,11 +99,20 @@ $ echo $?
 3
 ```
 
+## 退出码 {#exit-codes}
+
 | 退出码 | 含义 |
 |---|---|
-| 0 | 报告已写出，没有标签违规（或没有会导致失败的策略） |
-| 1 | 错误：模板无效、凭证问题、所有账户都失败，或 S3 上传失败 |
-| 3 | 报告已写出，发现标签策略违规 |
+| 0 | 报告已写出，没有标签违规（或没有会导致失败的策略）。有账户失败或什么都没找到时也是 0，除非你传了对应退出码 5 和 6 的参数 |
+| 1 | 错误：模板或配置文件无效、凭证问题、所有账户都失败、某个报告格式无法写出，或 S3 上传失败 |
+| 2 | 选项无效或相互冲突，例如 `--accounts-file` 与 `--accounts-prompt` 同用，或 `--compliance-standard`（未实现）。不会扫描任何内容 |
+| 3 | 报告已写出，发现标签策略违规（`fail_on_tag_violations: true`） |
+| 4 | 报告已写出，有对互联网开放的安全组规则达到或超过 `--risk-threshold` |
+| 5 | 报告已写出，有账户无法扫描或只扫描了一部分（`--fail-on-account-error`） |
+| 6 | 没有可报告的资源（`--fail-if-empty`） |
+
+如果同时满足多个条件，先是 5，然后是 6，最后是 3 和 4，因为缺少账户时，标签或风险结果背后的数据是不完整的。
+退出码 3、4 和 5 会写出报告。对于退出码 6，带 `--template` 的运行会写出一份不列出任何资源的报告，不带 `--template` 的运行则不写文件。
 
 ## 保持安全 {#keep-it-safe}
 

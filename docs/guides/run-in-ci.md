@@ -66,7 +66,7 @@ jobs:
           role-to-assume: arn:aws:iam::123456789012:role/InvenTagGitHubReadOnly
           aws-region: us-east-1
       - name: Run InvenTag
-        run: inventag --template nightly
+        run: inventag --template nightly --fail-on-account-error --fail-if-empty
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()          # keep the reports even when the tag check fails
         with:
@@ -84,6 +84,12 @@ for this page. Update the SHAs when you update the versions.
 
 InvenTag runs from your repository's folder, so `.inventag/templates/nightly.yaml`
 is found by name.
+
+Without the two exit-code flags, the job succeeds even when an account could
+not be scanned or nothing was found. `--fail-on-account-error` makes the job
+fail with exit code 5 in the first case, and `--fail-if-empty` with exit code 6
+in the second. The reports are still written, so the artifact step can keep
+them.
 
 ## What happens on a violation
 
@@ -108,11 +114,22 @@ $ echo $?
 
 <!-- END EXAMPLE OUTPUT: ci-console -->
 
+## Exit codes
+
 | Exit code | Meaning |
 |---|---|
-| 0 | Reports written, no tag violations (or no failing policy) |
-| 1 | Error: invalid template, credentials, every account failed, or a failed S3 upload |
-| 3 | Reports written, tag policy violations found |
+| 0 | Reports written, no tag violations (or no failing policy). Also when an account failed or nothing was found, unless you pass the flags for codes 5 and 6 |
+| 1 | Error: invalid template or configuration file, credentials, every account failed, a report format that could not be written, or a failed S3 upload |
+| 2 | Invalid or conflicting options, for example `--accounts-file` with `--accounts-prompt`, or `--compliance-standard` (not implemented). Nothing is scanned |
+| 3 | Reports written, tag policy violations found (`fail_on_tag_violations: true`) |
+| 4 | Reports written, a security group rule open to the internet at or above `--risk-threshold` |
+| 5 | Reports written, an account could not be scanned or only partly (`--fail-on-account-error`) |
+| 6 | No resources to report (`--fail-if-empty`) |
+
+If more than one applies, 5 comes first, then 6, then 3 and 4, because the data
+behind a tag or risk result is incomplete when an account is missing. Reports
+are written for codes 3, 4 and 5. With code 6, a run with `--template` writes
+a report that lists no resources, and a run without it writes no file.
 
 ## Keep it safe
 

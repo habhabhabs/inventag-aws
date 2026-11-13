@@ -66,7 +66,7 @@ jobs:
           role-to-assume: arn:aws:iam::123456789012:role/InvenTagGitHubReadOnly
           aws-region: us-east-1
       - name: Run InvenTag
-        run: inventag --template nightly
+        run: inventag --template nightly --fail-on-account-error --fail-if-empty
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()          # keep the reports even when the tag check fails
         with:
@@ -84,6 +84,10 @@ pour cette page. Mettez à jour les SHA lorsque vous mettez à jour les versions
 
 InvenTag s’exécute depuis le dossier de votre dépôt ; `.inventag/templates/nightly.yaml`
 est donc trouvé par son nom.
+
+Sans les deux options de code de sortie, le job réussit même si un compte n’a pas pu être analysé ou si rien n’a été trouvé.
+`--fail-on-account-error` fait échouer le job avec le code 5 dans le premier cas, et `--fail-if-empty` avec le code 6 dans le second.
+Les rapports sont quand même écrits, l’étape des artefacts peut donc les conserver.
 
 ## Ce qui se passe en cas de violation {#what-happens-on-a-violation}
 
@@ -104,11 +108,20 @@ $ echo $?
 3
 ```
 
+## Codes de sortie {#exit-codes}
+
 | Code de sortie | Signification |
 |---|---|
-| 0 | Rapports écrits, aucune violation d’étiquette (ou aucune politique bloquante) |
-| 1 | Erreur : modèle invalide, identifiants, échec de tous les comptes, ou échec d’un téléversement S3 |
-| 3 | Rapports écrits, violations de la politique d’étiquetage trouvées |
+| 0 | Rapports écrits, aucune violation d’étiquette (ou aucune politique bloquante). Aussi quand un compte a échoué ou que rien n’a été trouvé, sauf si vous passez les options des codes 5 et 6 |
+| 1 | Erreur : modèle ou fichier de configuration invalide, identifiants, échec de tous les comptes, format de rapport impossible à écrire, ou échec d’un téléversement S3 |
+| 2 | Options invalides ou en conflit, par exemple `--accounts-file` avec `--accounts-prompt`, ou `--compliance-standard` (non implémentée). Rien n’est analysé |
+| 3 | Rapports écrits, violations de la politique d’étiquetage trouvées (`fail_on_tag_violations: true`) |
+| 4 | Rapports écrits, une règle de groupe de sécurité ouverte à Internet atteint ou dépasse `--risk-threshold` |
+| 5 | Rapports écrits, un compte n’a pas pu être analysé, ou seulement en partie (`--fail-on-account-error`) |
+| 6 | Aucune ressource à signaler (`--fail-if-empty`) |
+
+Si plusieurs codes s’appliquent, le 5 passe en premier, puis le 6, puis le 3 et le 4, car les données derrière un résultat d’étiquettes ou de risque sont incomplètes quand un compte manque.
+Des rapports sont écrits pour les codes 3, 4 et 5. Avec le code 6, une exécution avec `--template` écrit un rapport qui ne liste aucune ressource, et une exécution sans elle n’écrit aucun fichier.
 
 ## Rester prudent {#keep-it-safe}
 

@@ -68,7 +68,7 @@ jobs:
           role-to-assume: arn:aws:iam::123456789012:role/InvenTagGitHubReadOnly
           aws-region: us-east-1
       - name: Run InvenTag
-        run: inventag --template nightly
+        run: inventag --template nightly --fail-on-account-error --fail-if-empty
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()          # keep the reports even when the tag check fails
         with:
@@ -87,6 +87,10 @@ página. Actualiza los SHA cuando actualices las versiones.
 
 InvenTag se ejecuta desde la carpeta de tu repositorio, así que
 `.inventag/templates/nightly.yaml` se encuentra por nombre.
+
+Sin las dos opciones de código de salida, el trabajo termina bien aunque una cuenta no se haya podido analizar o no se haya encontrado nada.
+`--fail-on-account-error` hace fallar el trabajo con el código 5 en el primer caso, y `--fail-if-empty` con el código 6 en el segundo.
+Los informes se escriben igualmente, así que el paso de artefactos puede conservarlos.
 
 ## Qué pasa ante un incumplimiento {#what-happens-on-a-violation}
 
@@ -108,11 +112,20 @@ $ echo $?
 3
 ```
 
+## Códigos de salida {#exit-codes}
+
 | Código de salida | Significado |
 |---|---|
-| 0 | Informes escritos, sin incumplimientos de etiquetas (o sin política que falle) |
-| 1 | Error: plantilla no válida, credenciales, todas las cuentas fallaron o una subida a S3 fallida |
-| 3 | Informes escritos, se encontraron incumplimientos de la política de etiquetas |
+| 0 | Informes escritos, sin incumplimientos de etiquetas (o sin política que falle). También cuando una cuenta falló o no se encontró nada, salvo que pases las opciones de los códigos 5 y 6 |
+| 1 | Error: plantilla o archivo de configuración no válido, credenciales, todas las cuentas fallaron, un formato de informe que no se pudo escribir o una subida a S3 fallida |
+| 2 | Opciones no válidas o en conflicto, por ejemplo `--accounts-file` con `--accounts-prompt`, o `--compliance-standard` (no implementada). No se analiza nada |
+| 3 | Informes escritos, se encontraron incumplimientos de la política de etiquetas (`fail_on_tag_violations: true`) |
+| 4 | Informes escritos, una regla de grupo de seguridad abierta a internet con nivel igual o superior a `--risk-threshold` |
+| 5 | Informes escritos, una cuenta no se pudo analizar o solo en parte (`--fail-on-account-error`) |
+| 6 | No hay recursos que informar (`--fail-if-empty`) |
+
+Si se aplica más de uno, primero va el 5, luego el 6 y después el 3 y el 4, porque los datos detrás de un resultado de etiquetas o de riesgo están incompletos cuando falta una cuenta.
+Se escriben informes con los códigos 3, 4 y 5. Con el código 6, una ejecución con `--template` escribe un informe que no lista ningún recurso, y una ejecución sin ella no escribe ningún archivo.
 
 ## Mantenlo seguro {#keep-it-safe}
 
