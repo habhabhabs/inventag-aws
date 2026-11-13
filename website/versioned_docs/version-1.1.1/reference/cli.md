@@ -11,7 +11,7 @@ sidebar_position: 1
 **What you can do after reading:** build any InvenTag command line, and know
 which flags work today.
 
-This page matches `inventag --help` on v5.0.0. The **Status** column
+This page matches `inventag --help` on v1.1.1. The **Status** column
 says what we saw when we ran the flag offline against mocked AWS. "Not
 re-tested" means we did not run it for this page. Details are on
 [Feature status](../getting-started/status.md).

@@ -1,6 +1,6 @@
 ---
 title: Feature status and known limitations
-description: Which InvenTag features work in v1.0.2, which are partial, which flags stop with an error, and the specific limits, costs and risks to know before you rely on it.
+description: Which InvenTag features work in v1.1.0, which are partial, which flags stop with an error, and the specific limits, costs and risks to know before you rely on it.
 sidebar_position: 5
 ---
 
@@ -11,7 +11,7 @@ sidebar_position: 5
 **What you will know after reading:** which features work, where they stop
 short, which flags stop with an error, and what to do about each limit.
 
-This page is deliberately blunt. This page describes InvenTag v1.0.2. We
+This page is deliberately blunt. This page describes InvenTag v1.1.0. We
 checked each item by running the code offline against mocked AWS (moto), or by
 reading the code path. **No test has run against a real AWS account.** Where a
 point below depends on how real AWS behaves, the page says so. If you fix or

@@ -4,6 +4,7 @@
 #   - every release tag vX.Y.Z that is on main's history and carries the docs/
 #     folder gets a snapshot in website/versioned_docs/version-X.Y.Z
 #   - the version in version.json is the current docs (docs/), so it is not archived
+#   - each new snapshot is stamped with its own version (scripts/stamp-doc-version.mjs)
 #   - versions.json is rebuilt from the snapshots that exist, newest first
 #
 # Tags that cannot be archived (not on main's history, or no docs/ in them) are
@@ -65,6 +66,9 @@ for tag in $(git tag -l | grep -E "$PATTERN" | sort -V); do
   git checkout -- ../docs sidebars.ts sidebars.js          # put the current docs back
   [ -d "versioned_docs/version-$v" ] && [ -f "versioned_sidebars/version-$v-sidebars.json" ] \
     || { echo "snapshot of $tag was not created"; exit 1; }
+  # The docs at a tag can still name an older release ("This page describes
+  # InvenTag v1.0.2" in the 1.1.2 docs): make the snapshot name its own version.
+  node scripts/stamp-doc-version.mjs "versioned_docs/version-$v" "$v"
   # Sidebar and version-label strings for the translated sites: start from the
   # current docs' strings (current.json) so the category labels stay translated.
   for cur in i18n/*/docusaurus-plugin-content-docs/current.json; do
