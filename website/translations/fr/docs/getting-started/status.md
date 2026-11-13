@@ -28,7 +28,7 @@ et ce que chacun vérifie se trouvent sur la page [Tests](../security/tests.md).
 | Option | Ce qui se passe réellement |
 |---|---|
 | `--service-descriptions` | Les descriptions personnalisées fonctionnent pour les services pour lesquels InvenTag n’a pas de description intégrée. Pour les ressources S3, EC2, RDS, Lambda et VPC, la description intégrée l’emporte, sauf si votre entrée indique aussi un `template`. Voir [Fichiers de configuration](../reference/configuration-files.md#service-descriptions). |
-| `--enable-cost-analysis` | Ajoute une feuille Cost Analysis et les quatre colonnes `forgotten_analysis.*`. Les coûts sont des estimations de l’API AWS Pricing, pas votre facture. Elle effectue de nombreux appels supplémentaires à Cost Explorer, Pricing et CloudWatch. Voir [Coûts](#costs). |
+| `--enable-cost-analysis` | Ajoute une feuille Cost Analysis et les quatre colonnes `forgotten_analysis.*`. Les coûts sont des estimations de l’API AWS Pricing, pas votre facture. Elle effectue des appels supplémentaires à Cost Explorer, Pricing et CloudWatch. Voir [Coûts](#costs). |
 | `--compliance-standard` | S’arrête avec le code de sortie 2. Une norme telle que SOC 2 ne peut pas être vérifiée à partir d’un inventaire, et une option qui n’afficherait qu’une étiquette vous induirait en erreur. Utilisez un modèle de politique d’étiquetage. |
 | `--create-google-docs`, `--create-google-sheets` | Ne fonctionnent qu’avec des clients Google simulés. Voir [Google Sheets et Docs](../guides/google-sheets-and-docs.md#what-is-not-verified). |
 | `--enable-production-safety`, `--security-validation`, `--enforce-read-only` | Conservées pour que les anciennes commandes fonctionnent encore. La protection en lecture seule est toujours active. |
@@ -107,9 +107,13 @@ Cost Explorer. Consultez les
 
 - `--no-billing-validation` arrête ces appels. Le rapport n’a alors aucune donnée de
   facturation à comparer.
-- `--enable-cost-analysis` fait davantage d’appels à Cost Explorer même avec
-  `--no-billing-validation` (cinq à huit de plus par compte dans nos tests hors ligne, selon les ressources trouvées), ainsi que
-  des appels à Pricing et CloudWatch.
+- `--enable-cost-analysis` fait davantage d’appels, même avec
+  `--no-billing-validation`. Dans notre test hors ligne (un compte, `us-east-1`),
+  elle a fait 5 appels à Cost Explorer, 3 à Pricing et 2 à CloudWatch. Les
+  estimations donnent un prix à chaque type d’instance (et à chaque autre taille
+  ou classe) séparément. Chaque recherche de prix distincte n’est faite qu’une fois
+  puis réutilisée ; le nombre d’appels à Pricing augmente donc avec le nombre de
+  types et de tailles de ressources différents, pas avec le nombre de ressources.
 
 Les autres appels sont gratuits, mais les grands comptes impliquent de nombreuses requêtes et une possible
 limitation de débit (AWS ralentit vos requêtes).

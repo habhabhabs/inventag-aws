@@ -28,7 +28,7 @@ and what each one checks is on the [Tests](../security/tests.md) page.
 | Flag | What actually happens |
 |---|---|
 | `--service-descriptions` | Custom descriptions work for services InvenTag has no built-in description for. For S3, EC2, RDS, Lambda and VPC resources, a built-in description wins unless your entry also names a `template`. See [Configuration files](../reference/configuration-files.md#service-descriptions). |
-| `--enable-cost-analysis` | Adds a Cost Analysis sheet and the four `forgotten_analysis.*` columns. The costs are estimates from the AWS Pricing API, not your invoice. It makes many extra Cost Explorer, Pricing and CloudWatch calls. See [Costs](#costs). |
+| `--enable-cost-analysis` | Adds a Cost Analysis sheet and the four `forgotten_analysis.*` columns. The costs are estimates from the AWS Pricing API, not your invoice. It makes extra Cost Explorer, Pricing and CloudWatch calls. See [Costs](#costs). |
 | `--compliance-standard` | Stops with exit code 2. A standard such as SOC 2 cannot be checked from an inventory, and a flag that only printed a label would mislead you. Use a tag-policy template. |
 | `--create-google-docs`, `--create-google-sheets` | Work against mocked Google clients only. See [Google Sheets and Docs](../guides/google-sheets-and-docs.md#what-is-not-verified). |
 | `--enable-production-safety`, `--security-validation`, `--enforce-read-only` | Kept so old commands still run. The read-only guard is always on. |
@@ -111,9 +111,13 @@ Explorer request. See the current
 
 - `--no-billing-validation` stops those calls. The report then has no billing
   data to compare with.
-- `--enable-cost-analysis` makes more Cost Explorer calls even with
-  `--no-billing-validation` (five to eight more per account in our offline tests, depending on the resources found), as well as
-  Pricing and CloudWatch calls.
+- `--enable-cost-analysis` makes more calls, even with
+  `--no-billing-validation`. In our offline test (one account, `us-east-1`) it
+  made 5 Cost Explorer, 3 Pricing and 2 CloudWatch calls. The estimates price
+  each instance type (and other size or class) separately. Each different
+  price lookup is made once and then reused, so the number of Pricing calls
+  grows with the number of different resource types and sizes, not with the
+  number of resources.
 
 Other calls are free, but large accounts mean many requests and possible
 throttling (AWS slowing down your requests).

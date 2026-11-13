@@ -26,7 +26,7 @@ sidebar_position: 5
 | 参数 | 实际会发生什么 |
 |---|---|
 | `--service-descriptions` | 自定义描述对 InvenTag 没有内置描述的服务有效。对于 S3、EC2、RDS、Lambda 和 VPC 资源，内置描述优先，除非你的条目同时指定了 `template`。参见[配置文件](../reference/configuration-files.md#service-descriptions)。 |
-| `--enable-cost-analysis` | 增加一个 Cost Analysis 工作表和四个 `forgotten_analysis.*` 列。其中的费用是根据 AWS Pricing API 得出的估算值，不是你的账单。它会额外发出许多 Cost Explorer、Pricing 和 CloudWatch 调用。参见[费用](#costs)。 |
+| `--enable-cost-analysis` | 增加一个 Cost Analysis 工作表和四个 `forgotten_analysis.*` 列。其中的费用是根据 AWS Pricing API 得出的估算值，不是你的账单。它会额外发出 Cost Explorer、Pricing 和 CloudWatch 调用。参见[费用](#costs)。 |
 | `--compliance-standard` | 以退出码 2 停止。像 SOC 2 这样的标准无法从资源清单中检查，而一个只打印标签的参数会误导你。请使用标签策略模板。 |
 | `--create-google-docs`、`--create-google-sheets` | 只针对模拟的 Google 客户端验证过。参见 [Google Sheets 和 Docs](../guides/google-sheets-and-docs.md#what-is-not-verified)。 |
 | `--enable-production-safety`、`--security-validation`、`--enforce-read-only` | 保留下来，让旧命令仍能运行。只读防护始终开启。 |
@@ -91,8 +91,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 [Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。
 
 - `--no-billing-validation` 会停止这些调用。此时报告里没有可供对比的计费数据。
-- `--enable-cost-analysis` 即使加上 `--no-billing-validation` 也会发出更多 Cost Explorer 调用
-  （在我们的离线测试中每个账户多出五到八次，取决于发现的资源），此外还有 Pricing 和 CloudWatch 调用。
+- `--enable-cost-analysis` 即使加上 `--no-billing-validation` 也会发出更多调用。在我们的离线测试中
+  （一个账户，`us-east-1`），它发出了 5 次 Cost Explorer、3 次 Pricing 和 2 次 CloudWatch 调用。
+  估算会对每种实例类型（以及其他规格或类别）分别定价。每个不同的价格查询只发出一次，之后重复使用，
+  因此 Pricing 调用次数随不同资源类型和规格的数量增长，而不是随资源数量增长。
 
 其他调用是免费的，但大型账户意味着请求很多，并可能遇到限流（AWS 放慢你的请求）。
 
