@@ -24,7 +24,7 @@ mocked AWS (sample data):
 bom_output/changelog_20261112_090000.md
 bom_output/state/metadata.json
 bom_output/state/state_20261112_090100.json
-bom_output/state/state_20261112_090200.json
+bom_output/state/state_20261112_090100.json
 ```
 
 <!-- END EXAMPLE OUTPUT: changes-tree -->
@@ -86,7 +86,7 @@ yet the changelog says:
 ## State Comparison
 
 - **from_state:** 20261112_090000
-- **to_state:** 20261112_090100
+- **to_state:** 20261112_090000
 - **comparison_timestamp:** 2026-11-12T09:00:00+00:00
 
 ## Summary

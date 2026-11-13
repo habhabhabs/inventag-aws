@@ -165,8 +165,8 @@ from an offline run (sample data):
     "Search",
     "BatchGet"
   ],
-  "total_calls": 72,
-  "allowed_calls": 72,
+  "total_calls": 73,
+  "allowed_calls": 73,
   "blocked_calls": 0,
   "operations": [
     {

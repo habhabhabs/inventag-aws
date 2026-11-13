@@ -86,10 +86,10 @@ for x in r['non_compliant_resources'][:10]:
 ```text title="Job summary"
 21 non-compliant resources
 - DYNAMODB acme-orders missing: CostCenter, Owner, Project, Environment
-- EC2 i-cf4299879ed16ba8b missing: CostCenter, Project
-- EC2 snap-3b5a6c4a6d9f4cf8f missing: CostCenter, Owner, Project, Environment
-- EC2 vol-02beb2a438f853481 missing: CostCenter, Owner, Project, Environment
-- EC2 vol-26213cf97a67a3e2a missing: CostCenter, Owner, Project, Environment
+- EC2 i-855a01aabe3d29d3a missing: CostCenter, Project
+- EC2 snap-3585ce88e25ef1196 missing: CostCenter, Owner, Project, Environment
+- EC2 vol-680d0e08d01dd52e7 missing: CostCenter, Owner, Project, Environment
+- EC2 vol-57d5df4cfc9884b48 missing: CostCenter, Owner, Project, Environment
 - EVENTS default missing: CostCenter, Owner, Project, Environment
 - IAM acme-orders-api-role missing: CostCenter, Owner, Project, Environment
 - LAMBDA acme-orders-api missing: CostCenter, Owner, Project, Environment

@@ -164,9 +164,9 @@ Command: `./inventag.sh --template executive-summary --create-excel --create-wor
 | Account | Region | Service | Type | Name | ID | ARN |
 |---|---|---|---|---|---|---|
 | 123456789012 | us-east-1 | DYNAMODB | Table | acme-orders | acme-orders | acme-orders |
-| 123456789012 | us-east-1 | EC2 | Instance | acme-web-1 | i-cf4299879ed16ba8b | arn:aws:ec2:us-east-1:123456789012:instance/i... |
-| 123456789012 | us-east-1 | EC2 | Snapshot |  | snap-3b5a6c4a6d9f4cf8f | arn:aws:ec2:us-east-1:123456789012:snapshot/s... |
-| 123456789012 | us-east-1 | EC2 | Volume |  | vol-02beb2a438f853481 | arn:aws:ec2:us-east-1:123456789012:volume/vol... |
+| 123456789012 | us-east-1 | EC2 | Instance | acme-web-1 | i-855a01aabe3d29d3a | arn:aws:ec2:us-east-1:123456789012:instance/i... |
+| 123456789012 | us-east-1 | EC2 | Snapshot |  | snap-3585ce88e25ef1196 | arn:aws:ec2:us-east-1:123456789012:snapshot/s... |
+| 123456789012 | us-east-1 | EC2 | Volume |  | vol-680d0e08d01dd52e7 | arn:aws:ec2:us-east-1:123456789012:volume/vol... |
 
 <!-- END EXAMPLE OUTPUT: exec-excel -->
 

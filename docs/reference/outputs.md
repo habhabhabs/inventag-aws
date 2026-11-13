@@ -128,7 +128,7 @@ screen readers. The logo, if any, carries alt text.
 bom_output/changelog_20261112_090000.md
 bom_output/state/metadata.json
 bom_output/state/state_20261112_090100.json
-bom_output/state/state_20261112_090200.json
+bom_output/state/state_20261112_090100.json
 ```
 
 <!-- END EXAMPLE OUTPUT: changes-tree -->

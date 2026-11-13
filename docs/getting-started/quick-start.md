@@ -60,7 +60,7 @@ sheets are wide:
 
 <!-- BEGIN EXAMPLE OUTPUT: quick-default-excel -->
 
-**Sheets:** `Summary`, `EC2`, `DYNAMODB`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`, `EVENTS`
+**Sheets:** `Summary`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`
 
 `S3` sheet, first rows:
 

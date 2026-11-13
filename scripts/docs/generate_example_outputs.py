@@ -40,6 +40,7 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
@@ -88,6 +89,10 @@ def drop_guard() -> None:
 
 def seed_account(session) -> None:
     """A small, fictional estate. Tags are chosen to show each kind of result."""
+    random.seed(1234)
+    from moto.moto_api._internal import mock_random
+
+    mock_random.seed(1234)  # moto draws resource IDs from its own generator
     s3 = session.client("s3", region_name="us-east-1")
     buckets = {
         "acme-app-logs": {
@@ -189,6 +194,10 @@ def seed_account(session) -> None:
 
 
 def seed_org_account(session, account_name: str) -> None:
+    random.seed(sum(map(ord, account_name)))
+    from moto.moto_api._internal import mock_random
+
+    mock_random.seed(sum(map(ord, account_name)))
     s3 = session.client("s3", region_name="us-east-1")
     slug = account_name.lower().replace(" ", "-")
     s3.create_bucket(Bucket=f"acme-{slug}-artifacts")
@@ -340,6 +349,8 @@ def clean_console(text: str, workdir: Path, keep: Optional[str] = None) -> str:
         elif " - DEBUG - " in line or " - INFO - " in line:
             continue
         line = LOG_PREFIX.sub("", line)
+        if "No billing data available" in line:
+            continue  # shown or not depending on log set-up; always true under moto
         lines.append(line)
     out = "\n".join(lines)
     xdg = os.environ.get("XDG_CONFIG_HOME")
@@ -353,14 +364,23 @@ def normalise(text: str, workdir: Optional[Path] = None) -> str:
     """Replace paths, timestamps and run-specific stamps with fixed values."""
     if workdir is not None:
         text = text.replace(str(workdir), "~/acme-infra")
-    # File-name stamps (YYYYMMDD_HHMMSS): keep distinct stamps distinct, in
-    # order of appearance, so two snapshots stay two snapshots.
+    # File-name stamps (YYYYMMDD_HHMMSS): stamps within a few seconds of each
+    # other are one moment (a run can cross a second boundary); stamps further
+    # apart stay distinct, in order of appearance, so two snapshots stay two.
     seen: Dict[str, str] = {}
+    moments: List[tuple] = []  # (seconds, fixed stamp)
 
     def stamp(match):
         value = match.group(0)
         if value not in seen:
-            seen[value] = f"{FIXED_STAMP[:-4]}{len(seen):02d}00"
+            when = datetime.strptime(value, "%Y%m%d_%H%M%S").timestamp()
+            for seconds, fixed in moments:
+                if abs(when - seconds) <= 5:
+                    seen[value] = fixed
+                    break
+            else:
+                seen[value] = f"{FIXED_STAMP[:-4]}{len(moments):02d}00"
+                moments.append((when, seen[value]))
         return seen[value]
 
     text = re.sub(r"(?<!\d)20\d{6}_\d{6}(?!\d)", stamp, text)
@@ -1500,6 +1520,11 @@ MARKER = re.compile(
 )
 
 
+# The audit sample's call totals move by one or two between runs (retries and
+# thread timing), so they do not count as a change.
+VOLATILE = re.compile(r'("(?:total|allowed)_calls": )\d+')
+
+
 def apply(blocks: Dict[str, str], check: bool) -> int:
     stale, unknown = [], []
     used = set()
@@ -1513,10 +1538,12 @@ def apply(blocks: Dict[str, str], check: bool) -> int:
                 unknown.append(f"{page.relative_to(ROOT)}: {name}")
                 return match.group(0)
             body = blocks[name].strip()
+            if not body:  # images were not rendered (--check, --no-images)
+                return match.group(0)
             return f"{BEGIN.format(name=name)}\n\n{body}\n\n{END.format(name=name)}"
 
         new = MARKER.sub(fill, text)
-        if new != text:
+        if VOLATILE.sub(r"\1N", new) != VOLATILE.sub(r"\1N", text):
             stale.append(str(page.relative_to(ROOT)))
             if not check:
                 page.write_text(new)
