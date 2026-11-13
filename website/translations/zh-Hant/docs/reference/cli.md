@@ -11,7 +11,7 @@ sidebar_position: 1
 **讀完後你可以：** 寫出任意 InvenTag 命令列，並知道哪些引數現在可用。
 
 本頁與這一版文件所描述的發行版的 `inventag --help` 一致。執行 `inventag --help` 可檢視你已安裝的發行版的引數。**狀態**欄說明我們針對模擬 AWS 離線執行該引數時看到的結果。
-“未重新測試”表示我們沒有為本頁執行它。詳情見[功能狀態](../getting-started/status.md)。
+「未重新測試」表示我們沒有為本頁執行它。詳情見[功能狀態](../getting-started/status.md)。
 
 ## 命令 {#commands}
 

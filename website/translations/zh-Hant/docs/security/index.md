@@ -15,7 +15,7 @@ sidebar_position: 1
 請不要把漏洞利用的細節發佈在公開的 issue 中。
 
 本儲存庫目前還沒有 `SECURITY.md` 檔案，也沒有設定 GitHub 的私密漏洞報告（2026 年 11 月檢查）。
-在設定之前，請開一個標題為“Security contact request”的
+在設定之前，請開一個標題為「Security contact request」的
 [issue](https://github.com/habhabhabs/inventag-aws/issues)，不要寫任何技術細節，
 並向維護者索取一個私密的聯絡渠道。
 

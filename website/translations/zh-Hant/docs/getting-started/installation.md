@@ -26,7 +26,7 @@ InvenTag 以
 用虛擬環境安裝最整潔，但 InvenTag 並不要求使用虛擬環境，它就是一個普通的 Python 包。
 虛擬環境能讓它的依賴（boto3、openpyxl 等）與你其他的 Python 工具互不干擾；
 而且許多較新的系統（Debian、Ubuntu、Homebrew 的 Python）會拒絕向系統 Python 執行
-`pip install`，並報出“externally-managed-environment”錯誤。
+`pip install`，並報出「externally-managed-environment」錯誤。
 在這些系統上可行的兩種辦法是虛擬環境，或者 `pipx`：
 
 ```bash title="Terminal"

@@ -24,7 +24,7 @@ sidebar_position: 3
 同一次建置還會向本節新增一個摘要頁面，**Software Bill of Materials (SBOM)**，
 因此它出現線上上網站中，但不會出現在本地建置中。
 
-Python 依賴項宣告的是最低版本，而不是精確固定，所以“已安裝版本”的檔案才能顯示，
+Python 依賴項宣告的是最低版本，而不是精確固定，所以「已安裝版本」的檔案才能顯示，
 在建置當天一次真實安裝會得到什麼。
 
 ## 為你自己的安裝生成 SBOM {#produce-an-sbom-for-your-own-installation}

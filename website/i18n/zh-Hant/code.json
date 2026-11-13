@@ -73,7 +73,7 @@
     "message": "搜尋結果"
   },
   "search.noResults": {
-    "message": "沒有找到“{query}”的結果。請嘗試更少或不同的關鍵字。"
+    "message": "沒有找到「{query}」的結果。請嘗試更少或不同的關鍵字。"
   },
   "search.suggested": {
     "message": "推薦"
@@ -115,7 +115,7 @@
     "message": "顯示選單"
   },
   "theme.ErrorPageContent.title": {
-    "message": "頁面已崩潰。",
+    "message": "此頁面發生錯誤。",
     "description": "The title of the fallback page when the page crashed"
   },
   "theme.BackToTopButton.buttonAriaLabel": {
@@ -179,7 +179,7 @@
     "description": "The ARIA label for the breadcrumbs"
   },
   "theme.docs.paginator.navAriaLabel": {
-    "message": "檔案選項卡",
+    "message": "文件分頁導覽",
     "description": "The ARIA label for the docs pagination"
   },
   "theme.docs.paginator.previous": {
@@ -210,7 +210,7 @@
     "description": "The label used to tell the user that he's browsing an unmaintained doc version"
   },
   "theme.docs.versions.latestVersionSuggestionLabel": {
-    "message": "最新的文件請參閱 {latestVersionLink} ({versionLabel})。",
+    "message": "最新的文件請參閱 {latestVersionLink}（{versionLabel}）。",
     "description": "The label used to tell the user to check the latest version"
   },
   "theme.docs.versions.latestVersionLinkLabel": {
@@ -290,7 +290,7 @@
     "description": "The ARIA label to collapse the sidebar category"
   },
   "theme.IconExternalLink.ariaLabel": {
-    "message": "（在新標籤頁開啟）",
+    "message": "（在新分頁開啟）",
     "description": "The ARIA label for the external link icon"
   },
   "theme.NavBar.navAriaLabel": {
@@ -322,7 +322,7 @@
     "description": "The ARIA label for the link to full blog posts from excerpts"
   },
   "theme.blog.post.readingTime.plurals": {
-    "message": "閱讀需 {readingTime} 分鐘",
+    "message": "閱讀約需 {readingTime} 分鐘",
     "description": "Pluralized label for \"{readingTime} min read\". Use as much plural forms (separated by \"|\") as your language support (see https://www.unicode.org/cldr/cldr-aux/charts/34/supplemental/language_plural_rules.html)"
   },
   "theme.CodeBlock.copy": {
@@ -389,16 +389,16 @@
     "message": "沒有找到任何文件"
   },
   "theme.SearchBar.seeAllOutsideContext": {
-    "message": "查看“{context}”以外的全部結果"
+    "message": "查看「{context}」以外的全部結果"
   },
   "theme.SearchBar.searchInContext": {
-    "message": "查看“{context}”以內的全部結果"
+    "message": "查看「{context}」以內的全部結果"
   },
   "theme.SearchBar.seeAll": {
     "message": "查看全部結果"
   },
   "theme.SearchPage.existingResultsTitle": {
-    "message": "“{query}”的搜尋結果",
+    "message": "「{query}」的搜尋結果",
     "description": "The search page title for non-empty query"
   },
   "theme.SearchPage.emptyResultsTitle": {
@@ -457,7 +457,7 @@
     "description": "The draft content banner message"
   },
   "theme.docs.DocCard.categoryDescription.plurals": {
-    "message": "{count} 個專案",
+    "message": "{count} 個項目",
     "description": "The default description for a category card in the generated index about how many items this category includes"
   },
   "theme.ErrorPageContent.tryAgain": {
@@ -521,7 +521,7 @@
     "message": "範例資料"
   },
   "home.sheetNote": {
-    "message": "{flag} 生成的 Summary 工作表版面設定。之後每個服務各有一個工作表，每個資源一行。"
+    "message": "{flag} 生成的 Summary 工作表版面配置。之後每個服務各有一個工作表，每個資源一列。"
   },
   "home.cap.eyebrow": {
     "message": "01 · 你能得到什麼"
@@ -563,7 +563,7 @@
     "message": "可使用 AWS 設定檔、存取金鑰或要擔任的角色。帳戶平行掃描，預設同時掃描四個。"
   },
   "home.c4.title": {
-    "message": "你的標籤，你的欄位"
+    "message": "你的標籤，你的欄"
   },
   "home.c4.link": {
     "message": "把標籤對應為欄"
@@ -587,10 +587,10 @@
     "message": "瀏覽範本"
   },
   "home.c6.list": {
-    "message": "內建模板"
+    "message": "內建範本"
   },
   "home.c6.layouts": {
-    "message": "報告版面設定"
+    "message": "報告版面配置"
   },
   "home.c6.policies": {
     "message": "標籤策略"
@@ -599,7 +599,7 @@
     "message": "執行設定"
   },
   "home.c6.body": {
-    "message": "從八個內建範本起步：報告版面設定、標籤策略和執行設定。用 {cmd} 列出它們，把其中一個複製到你的專案裡，只改你需要改的部分。"
+    "message": "從八個內建範本起步：報告版面配置、標籤策略和執行設定。用 {cmd} 列出它們，把其中一個複製到你的專案裡，只改你需要改的部分。"
   },
   "home.c7.title": {
     "message": "網路與安全工作表"
@@ -656,7 +656,7 @@
     "message": "坦率說明它的邊界。"
   },
   "home.honest.1": {
-    "message": "有些選項尚未實現。如果你用到了，執行會以明確的“尚未實現”提示停止，而不是悄悄忽略。{link}列出了目前可用的功能。"
+    "message": "有些選項尚未實現。如果你用到了，執行會以明確的「尚未實現」提示停止，而不是悄悄忽略。{link}列出了目前可用的功能。"
   },
   "home.honest.1.link": {
     "message": "目前狀態頁面"

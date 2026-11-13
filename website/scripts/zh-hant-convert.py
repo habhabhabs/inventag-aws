@@ -5,7 +5,8 @@ Steps for each page:
   1. OpenCC `s2twp` (Simplified to Traditional, Taiwan standard, with phrases).
   2. A Taiwan term glossary (GLOSSARY below) fixes terms that s2twp leaves in
      Mainland form, for example 賬戶 -> 帳戶, 許可權 -> 權限, 模板 -> 範本.
-  3. Table "column" and "row" words are swapped to the Taiwan words
+  3. Curly quotes “ ” become 「 」 (Taiwan convention).
+  4. Table "column" and "row" words are swapped to the Taiwan words
      (column = 欄, row = 列) by a few conservative rules (see fix_columns).
 
 These parts are never changed, they are copied from the zh-Hans file:
@@ -122,6 +123,8 @@ def convert_text(s):
     s = cc.convert(mark(s))
     for a, b in GLOSSARY:
         s = s.replace(a, b)
+    s = re.sub(r'“([^”\n]*)”', r'「\1」', s)
+    s = re.sub(r'‘([^’\n]*)’', r'『\1』', s)
     s = s.replace(COL, '欄').replace(ROW, '列').replace(LINE, '行')
     return re.sub('(\\d+)', lambda m: saved[int(m.group(1))], s)
 
