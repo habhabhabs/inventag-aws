@@ -108,7 +108,7 @@ jobs:
         # Get the second-to-last release (the one before the current release)
         # First ensure we have all tags
         git fetch --tags
-        PREVIOUS_RELEASE=$(git tag --sort=-version:refname | grep "^v[0-9]" | head -2 | tail -1)
+        PREVIOUS_RELEASE=$(git tag --merged "$VERSION" --sort=-version:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | grep -vx "$VERSION" | head -1)
         
         if [ ! -z "$PREVIOUS_RELEASE" ] && [ "$PREVIOUS_RELEASE" != "$VERSION" ]; then
           ARCHIVE_VERSION="${PREVIOUS_RELEASE#v}"   # versions.json and versioned_docs use the number without "v"
@@ -150,8 +150,10 @@ jobs:
               git checkout "v$ARCHIVE_VERSION" -- ../docs sidebars.ts sidebars.js
             fi
             npm run docusaurus -- docs:version "$ARCHIVE_VERSION"
+            # Put the new release's docs back, and leave nothing from the old tag staged.
+            git reset -q HEAD -- ../docs sidebars.ts sidebars.js
             rm -rf ../docs
-            git checkout HEAD -- ../docs sidebars.ts sidebars.js
+            git checkout -- ../docs sidebars.ts sidebars.js
             
             # Verify the version was created
             if [ ! -d "versioned_docs/version-$ARCHIVE_VERSION" ]; then
@@ -239,7 +241,7 @@ jobs:
         
         # Get the second-to-last release (same logic as creation step)
         git fetch --tags
-        PREVIOUS_RELEASE=$(git tag --sort=-version:refname | grep "^v[0-9]" | head -2 | tail -1)
+        PREVIOUS_RELEASE=$(git tag --merged "$VERSION" --sort=-version:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | grep -vx "$VERSION" | head -1)
         
         if [ ! -z "$PREVIOUS_RELEASE" ] && [ "$PREVIOUS_RELEASE" != "$VERSION" ]; then
           EXPECTED_N1_VERSION="${PREVIOUS_RELEASE#v}"
@@ -277,10 +279,10 @@ jobs:
         
         # Determine N-1 version for file counting using same logic as creation
         git fetch --tags
-        PREVIOUS_RELEASE=$(git tag --sort=-version:refname | grep "^v[0-9]" | head -2 | tail -1)
+        PREVIOUS_RELEASE=$(git tag --merged "$VERSION" --sort=-version:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | grep -vx "$VERSION" | head -1)
         
         if [ ! -z "$PREVIOUS_RELEASE" ] && [ "$PREVIOUS_RELEASE" != "$VERSION" ]; then
-          N1_VERSION="$PREVIOUS_RELEASE"
+          N1_VERSION="${PREVIOUS_RELEASE#v}"
         else
           N1_VERSION=""
         fi
@@ -344,10 +346,10 @@ jobs:
         
         # Determine N-1 version for git operations using same logic as creation
         git fetch --tags
-        PREVIOUS_RELEASE=$(git tag --sort=-version:refname | grep "^v[0-9]" | head -2 | tail -1)
+        PREVIOUS_RELEASE=$(git tag --merged "$VERSION" --sort=-version:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | grep -vx "$VERSION" | head -1)
         
         if [ ! -z "$PREVIOUS_RELEASE" ] && [ "$PREVIOUS_RELEASE" != "$VERSION" ]; then
-          N1_VERSION="$PREVIOUS_RELEASE"
+          N1_VERSION="${PREVIOUS_RELEASE#v}"
           echo "Adding N-1 version files: $N1_VERSION"
         else
           N1_VERSION=""

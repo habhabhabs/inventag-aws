@@ -1,0 +1,6 @@
+{
+  "label": "Security",
+  "position": 7,
+  "link": { "type": "doc", "id": "security/index" },
+  "collapsed": true
+}
