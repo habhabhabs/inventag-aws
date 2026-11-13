@@ -13,7 +13,7 @@ Writes to website/static/:
   img/logo-on-brand.svg                one-colour ink mark for a vermilion field
   img/logo-small*.svg                  pixel-aligned mark for 16-32 px
   img/logo-wordmark*.svg, img/logo-mono*.svg   lockups and one-colour marks
-  img/favicon.svg                      small mark, follows the OS colour scheme
+  img/favicon.svg                      small mark, follows the OS colour scheme (ink/paper, vermilion/#F0623F)
   img/favicon.ico                      16, 32 and 48 px (paper halo: readable on dark tab bars)
   img/favicon-32.png, img/logo-192.png, img/logo-512.png, img/logo-maskable-512.png
   img/apple-touch-icon.png             180 px on an opaque paper tile
@@ -104,7 +104,7 @@ def main():
     print("PNG / ICO:")
     small, big = SRC / "logo-small.svg", SRC / "logo.svg"
     save_png(with_halo(render(small, 32, 32)), OUT / "favicon-32.png")
-    icons = [with_halo(render(small, s, s)) for s in (16, 32)] + [with_halo(render(big, 48, 48))]
+    icons = [with_halo(render(small, s, s)) for s in (16, 32, 48)]   # 16 px grid: crisp at 1x, 2x, 3x
     icons[2].save(OUT / "favicon.ico", sizes=[(16, 16), (32, 32), (48, 48)], append_images=icons[:2])
     print("  website/static/img/favicon.ico  16/32/48")
 
@@ -146,8 +146,9 @@ def preview():
     sheet = (SRC / "preview-sheet.svg").read_text()
     fav_svg = (SRC / "favicon.svg").read_text()
     # what a browser shows for favicon.svg in light and dark mode
-    dark_variant = fav_svg.replace(".t{fill:#141413}", ".t{fill:#F2F0EC}", 1)
-    assert dark_variant != fav_svg, "favicon.svg colours changed: update preview()"
+    dark_variant = fav_svg.replace(".t{fill:#141413}", ".t{fill:#F9F8F6}", 1).replace(".a{fill:#E04F33}", ".a{fill:#F0623F}", 1)
+    assert dark_variant.count("#F9F8F6") > fav_svg.count("#F9F8F6") and "#F0623F}" in dark_variant.split("@media")[0], \
+        "favicon.svg colours changed: update preview()"
     tokens = {
         "favicon-16-light.png": render(SRC / "favicon.svg", 16, 16),
         "favicon-16-dark.png": render(dark_variant, 16, 16),

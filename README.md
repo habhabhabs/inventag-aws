@@ -1,6 +1,6 @@
 <p align="center">
-  <img src="website/static/img/logo-wordmark.svg#gh-light-mode-only" alt="InvenTag" width="366" height="96">
-  <img src="website/static/img/logo-wordmark-dark.svg#gh-dark-mode-only" alt="InvenTag" width="366" height="96">
+  <img src="website/static/img/logo-wordmark.svg#gh-light-mode-only" alt="InvenTag" width="331" height="96">
+  <img src="website/static/img/logo-wordmark-dark.svg#gh-dark-mode-only" alt="InvenTag" width="331" height="96">
 </p>
 
 <p align="center">

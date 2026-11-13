@@ -221,14 +221,15 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'InvenTag',
+      // The logo is the lockup (mark + outlined "InvenTag" wordmark), so there is no live title text.
+      // Light and dark files come from website/brand (npm run brand).
       hideOnScroll: false,
       logo: {
-        alt: '',
-        src: 'img/logo.svg',
-        srcDark: 'img/logo-dark.svg',
-        width: 28,
-        height: 28,
+        alt: 'InvenTag',
+        src: 'img/logo-wordmark.svg',
+        srcDark: 'img/logo-wordmark-dark.svg',
+        width: 138,
+        height: 40,
       },
       items: [
         {type: 'doc', docId: 'index', label: 'Docs', position: 'left'},

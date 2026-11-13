@@ -11,18 +11,19 @@ Requirements (design step only):
 Fonts: the site's own self-hosted files in website/static/fonts (SIL OFL 1.1),
 so the logo, the social card and the website use exactly the same type.
 
-Concept: a luggage tag (the "Tag") whose body carries three inventory lines
-(the "Inven"tory). The last line ends in a terminal block cursor, because
-InvenTag is a CLI. Lines, cursor and eyelet are true cut-outs, so the mark
-works in one colour on any background; the full-colour version fills the
-cursor with vermilion. Below ~40px use the simplified `logo-small.svg`
-(two lines and the cursor, every edge on the 16px pixel grid).
+Concept ("refined classic"): a luggage tag (the "Tag") whose body carries
+three inventory lines (the "Inven"tory). A small accent square ends the third
+line, and the eyelet sits at the tag's point. Lines, eyelet and accent are
+true cut-outs in the one-colour versions, so the mark works in one colour on
+any background; the full-colour version fills the accent with vermilion.
+Up to 48px use the simplified `logo-small.svg` (every edge on the 16px pixel
+grid; the favicons use it).
 
 Identity rules shared with the site (src/css/custom.css):
-  ink #141413 / paper #F9F8F6 / dark paper #111110 / text-on-dark #F2F0EC,
-  one accent: International Vermilion #E04F33, used once per lockup.
-  Corner radius 4px on a 28px mark = the 4px UI radius on 28-44px controls.
-  Instrument Sans SemiBold, tracking -0.03em, like the site's display headings.
+  ink #141413 / paper #F9F8F6 / dark paper #111110,
+  one accent: International Vermilion #E04F33 (#F0623F on dark),
+  used twice per lockup at most: the accent square and the "Tag" half of the word.
+  Wordmark: Outfit SemiBold (600), "Inven" in ink, "Tag" in vermilion, outlined.
 """
 import io
 import math
@@ -32,6 +33,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 FONTS = HERE.parent / "static" / "fonts"
 SANS = FONTS / "instrument-sans-latin-wght-normal.woff2"
 MONO = FONTS / "jetbrains-mono-latin-wght-normal.woff2"
+OUTFIT = HERE / "fonts" / "outfit-latin-600-normal.woff2"   # wordmark face (OFL, see fonts/OFL-Outfit.txt)
 
 # ---------------------------------------------------------------- palette
 INK = "#141413"
@@ -46,6 +48,7 @@ DARK_LINE = "#2A2A27"
 DARK_TEXT = "#F2F0EC"
 DARK_TEXT_2 = "#A8A59E"
 VERMILION = "#E04F33"
+VERMILION_DARK = "#F0623F"   # accent on dark backgrounds
 ACCENT_INK = "#B83A21"
 
 
@@ -56,6 +59,8 @@ def rounded_polygon(points, radii):
     for i in range(n):
         p0, p1, p2 = points[i - 1], points[i], points[(i + 1) % n]
         r = radii[i]
+        if r == 0:
+            r = 1e-6
         v1 = (p0[0] - p1[0], p0[1] - p1[1]); v2 = (p2[0] - p1[0], p2[1] - p1[1])
         l1 = math.hypot(*v1); l2 = math.hypot(*v2)
         u1 = (v1[0] / l1, v1[1] / l1); u2 = (v2[0] / l2, v2[1] / l2)
@@ -86,30 +91,32 @@ def circle(cx, cy, r):
 
 
 # ---------------------------------------------------------------- geometry (64 grid)
-# Tag body 36 units tall; at the 28px navbar size a 9-unit corner = 4px,
-# the same radius as the site's buttons and inputs.
-TAG = [(5, 14), (39, 14), (59, 32), (39, 50), (5, 50)]
-TAG_R = [8, 7, 3.5, 7, 8]
-ROWS = [rect(13, 21.5, 22, 4, 1), rect(13, 29.5, 14, 4, 1), rect(13, 37.5, 7, 4, 1)]
-CURSOR = rect(23, 36, 5, 7, 0.75)          # block cursor after the last line
-EYELET = circle(46, 32, 3.75)
+# Tag silhouette: 40 units tall (y 12..52), left corners r8, point rounded r4.
+TAG = "M14 12H36.5A8 8 0 0 1 42 14.2L58.6 29.4A4 4 0 0 1 58.6 34.6L42 49.8A8 8 0 0 1 36.5 52H14A8 8 0 0 1 6 44V20A8 8 0 0 1 14 12Z"
+ROWS = [rect(14, 20, 22, 4, 2), rect(14, 30, 15, 4, 2), rect(14, 40, 8, 4, 2)]
+EYELET = circle(48, 32, 3.6)
+ACCENT = rect(26, 40, 4, 4, 2)             # ends the third line (a 4x4 unit with r2)
 
-# small-size variant: every edge on the 16px pixel grid (multiples of 4)
+# small-size variant: every edge on the 16px pixel grid (1px = 4 units at 16px)
 TAG_SMALL = [(4, 12), (40, 12), (60, 32), (40, 52), (4, 52)]
 TAG_SMALL_R = [4, 4, 2, 4, 4]
-ROWS_SMALL = [rect(12, 20, 24, 8, 1), rect(12, 36, 12, 8, 1)]
-CURSOR_SMALL = rect(28, 36, 8, 8, 1)
-EYELET_SMALL = rect(40, 28, 8, 8, 1)
+ROWS_SMALL = [rect(12, 24, 24, 4, 0), rect(12, 32, 16, 4, 0), rect(12, 40, 8, 4, 0)]
+ACCENT_SMALL = rect(24, 40, 4, 4, 0)
+EYELET_SMALL = rect(44, 28, 8, 8, 2)
 
 
-def mark_path(small=False):
+def mark_path(small=False, accent_cutout=False):
+    """Tag with lines and eyelet cut out (fill-rule evenodd). In one-colour
+    versions the accent square is a cut-out too (accent_cutout=True)."""
     if small:
-        return rounded_polygon(TAG_SMALL, TAG_SMALL_R) + "".join(ROWS_SMALL) + CURSOR_SMALL + EYELET_SMALL
-    return rounded_polygon(TAG, TAG_R) + "".join(ROWS) + CURSOR + EYELET
+        d = rounded_polygon(TAG_SMALL, TAG_SMALL_R) + "".join(ROWS_SMALL) + EYELET_SMALL
+        return d + (ACCENT_SMALL if accent_cutout else "")
+    d = TAG + "".join(ROWS) + EYELET
+    return d + (ACCENT if accent_cutout else "")
 
 
-def cursor_path(small=False):
-    return CURSOR_SMALL if small else CURSOR
+def accent_path(small=False):
+    return ACCENT_SMALL if small else ACCENT
 
 
 def svg(view_w, view_h, body, w=None, h=None, title="InvenTag"):
@@ -180,65 +187,61 @@ def text_path(path, wght, text, size, x, baseline, fill, tracking=0.0, anchor="s
 # ---------------------------------------------------------------- lockups
 WORD_SIZE = 34
 WORD_WGHT = 600
-WORD_TRACK = -0.03
+WORD_TRACK = -0.01          # em
 
 
 def wordmark():
-    """'InvenTag' outlined, cap height centred on the tag body (y=32)."""
-    cap = cap_height(SANS, WORD_WGHT) * WORD_SIZE
+    """'InvenTag' outlined in Outfit SemiBold, cap height centred on the tag body
+    (y=32). Returns (ink_path_d for 'Inven', accent_path_d for 'Tag', advance)."""
+    cap = cap_height(OUTFIT, WORD_WGHT) * WORD_SIZE
     baseline = 32 + cap / 2
-    glyphs, adv = shape(SANS, WORD_WGHT, "InvenTag", WORD_SIZE, 76, baseline, WORD_TRACK)
-    return "".join(glyphs), adv
+    glyphs, adv = shape(OUTFIT, WORD_WGHT, "InvenTag", WORD_SIZE, 76, baseline, WORD_TRACK)
+    return "".join(glyphs[:5]), "".join(glyphs[5:]), adv
 
 
-def mark_group(fill, cursor_fill=None, small=False):
-    extra = f'<path fill="{cursor_fill}" d="{cursor_path(small)}"/>' if cursor_fill else ""
-    return f'<path fill="{fill}" fill-rule="evenodd" d="{mark_path(small)}"/>{extra}'
+def mark_group(fill, accent=None, small=False):
+    """Full-colour mark if `accent` is a colour, otherwise one-colour (accent is a cut-out)."""
+    d = mark_path(small, accent_cutout=accent is None)
+    extra = f'<path fill="{accent}" d="{accent_path(small)}"/>' if accent else ""
+    return f'<path fill="{fill}" fill-rule="evenodd" d="{d}"/>{extra}'
+
+
+def lockup_group(ink, accent):
+    """Mark plus wordmark. accent=None gives the one-colour lockup."""
+    ink_d, tag_d, _ = wordmark()
+    return (mark_group(ink, accent) + f'<path fill="{ink}" d="{ink_d}"/>'
+            f'<path fill="{accent or ink}" d="{tag_d}"/>')
 
 
 # ---------------------------------------------------------------- social card
-def social_card(word_d, word_adv):
-    """1200x630 Open Graph card. Paper, hairline grid, one vermilion accent.
-    All text is outlined, so the PNG renders the same everywhere."""
+def social_card():
+    """1200x630 Open Graph card. Flat paper background, no gradients, glow or
+    shadows. All text is outlined, so the PNG renders the same everywhere."""
     W, H = 1200, 630
-    M = 56                     # outer margin
-    TOP, BOTTOM = 112, 470     # hairline bands
-    SPLIT = 812                # vertical hairline
+    M = 72
     p = [f'<rect width="{W}" height="{H}" fill="{PAPER}"/>']
-    # architectural grid lines (1px at 1x)
-    p.append(f'<path stroke="{LINE}" stroke-width="2" fill="none" '
-             f'd="M0 {TOP}H{W}M0 {BOTTOM}H{W}M{SPLIT} {TOP}V{BOTTOM}"/>')
-    # header band: lockup left, label right
-    s = 0.75
-    p.append(f'<g transform="translate({M - 4} {TOP / 2 - 32 * s}) scale({s})">'
-             f'{mark_group(INK, VERMILION)}<path fill="{INK}" d="{word_d}"/></g>')
-    t, _ = text_path(MONO, 500, "OPEN-SOURCE CLI  ·  MIT", 18, W - M, TOP / 2 + 6, INK_2, 0.04, "end")
+    s = 1.5
+    p.append(f'<g transform="translate({M - 6 * s} {64 - 12 * s}) scale({s})">{lockup_group(INK, VERMILION)}</g>')
+    t, _ = text_path(MONO, 500, "OPEN-SOURCE CLI  ·  MIT", 18, W - M, 112, INK_2, 0.04, "end")
     p.append(t)
-    # headline
-    y = TOP + 112
-    t, _ = text_path(SANS, 600, "See what runs in your", 66, M, y, INK, -0.03); p.append(t)
-    t, _ = text_path(SANS, 600, "AWS accounts.", 66, M, y + 76, INK, -0.03); p.append(t)
-    t, _ = text_path(SANS, 500, "Check the tags. Hand over the report.", 32, M, y + 150, INK_2, -0.01); p.append(t)
-    # right panel: the mark, large and quiet
-    ms = 3.6
-    cx = SPLIT + (W - SPLIT) / 2; cy = TOP + (BOTTOM - TOP) / 2
-    p.append(f'<g transform="translate({cx - 32 * ms} {cy - 32 * ms}) scale({ms})">'
-             f'{mark_group(INK, VERMILION)}</g>')
-    # bottom band: command and URL
-    yb = BOTTOM + 66
+    y = 292
+    t, _ = text_path(SANS, 600, "See what runs in your", 72, M, y, INK, -0.03); p.append(t)
+    t, _ = text_path(SANS, 600, "AWS accounts.", 72, M, y + 82, INK, -0.03); p.append(t)
+    t, _ = text_path(SANS, 500, "Check the tags. Hand over the report.", 32, M, y + 158, INK_2, -0.01); p.append(t)
+    yb = 520
     p.append(f'<rect x="{M}" y="{yb - 36}" width="{560}" height="56" rx="4" fill="{SURFACE}" '
              f'stroke="{LINE}" stroke-width="2"/>')
     t, w = text_path(MONO, 600, "$", 22, M + 20, yb, ACCENT_INK); p.append(t)
     t, _ = text_path(MONO, 500, "./inventag.sh --create-excel", 22, M + 20 + w + 14, yb, INK); p.append(t)
     t, _ = text_path(MONO, 500, "habhabhabs.github.io/inventag-aws", 20, W - M, yb, INK, 0, "end"); p.append(t)
     t, _ = text_path(SANS, 500, "Independent open-source project. Not affiliated with or endorsed by "
-                     "Amazon Web Services.", 17, M, H - 30, INK_2); p.append(t)
+                     "Amazon Web Services.", 17, M, H - 36, INK_2); p.append(t)
     return svg(W, H, "".join(p), title="InvenTag: see what runs in your AWS accounts. "
                "Check the tags. Hand over the report.")
 
 
 # ---------------------------------------------------------------- preview sheet
-def preview_sheet(word_d, word_adv, lock_w):
+def preview_sheet(lock_w):
     """Logo in context: navbar (light/dark), browser tab with the favicon,
     sizes, one-colour versions and the social card. {{name}} tokens are
     replaced with data URIs of the rendered PNGs by generate_brand_assets.py."""
@@ -252,13 +255,13 @@ def preview_sheet(word_d, word_adv, lock_w):
     def navbar(x, y, w, dark):
         bg, line, ink, ink2 = ((DARK_BG, DARK_LINE, DARK_TEXT, DARK_TEXT_2) if dark
                                else (PAPER, LINE, INK, INK_2))
+        acc = VERMILION_DARK if dark else VERMILION
         p.append(f'<rect x="{x}" y="{y}" width="{w}" height="60" fill="{bg}"/>'
                  f'<path d="M{x} {y + 59.5}H{x + w}" stroke="{line}"/>')
-        s = 28 / 64
-        p.append(f'<g transform="translate({x + 24} {y + 16}) scale({s})">'
-                 f'{mark_group(ink, VERMILION)}</g>')
-        t, adv = text_path(SANS, 650, "InvenTag", 18, x + 24 + 28 + 9, y + 36, ink, -0.03); p.append(t)
-        nx = x + 24 + 28 + 9 + adv + 34
+        s = NAV_H / 64
+        p.append(f'<g transform="translate({x + 21} {y + (60 - NAV_H) / 2}) scale({s})">'
+                 f'{lockup_group(PAPER if dark else INK, acc)}</g>')
+        nx = x + 24 + lock_w * s + 28
         for i, item in enumerate(["Docs", "Quick start", "CLI reference"]):
             t, a = text_path(SANS, 500, item, 15, nx, y + 35, ink if i == 0 else ink2); p.append(t)
             if i == 0:
@@ -274,7 +277,6 @@ def preview_sheet(word_d, word_adv, lock_w):
     label("Navbar, dark", 60, 194)
     navbar(60, 208, 1480, True)
 
-    # browser tab mock with the favicon (light and dark browser chrome)
     def tab(x, y, dark, fav):
         chrome, tabbg, ink = (("#202124", "#35363A", "#E8EAED") if dark else ("#DEE1E6", "#FFFFFF", "#202124"))
         p.append(f'<rect x="{x}" y="{y}" width="700" height="56" fill="{chrome}"/>'
@@ -285,28 +287,25 @@ def preview_sheet(word_d, word_adv, lock_w):
     tab(60, 344, False, "favicon-16-light.png")
     tab(840, 344, True, "favicon-16-dark.png")
 
-    # sizes and versions
     label("Mark sizes", 60, 470)
     x = 60
     for size in (16, 24, 32, 48, 64, 128):
-        small = size <= 32
+        small = size <= 48
         s = size / 64
         p.append(f'<g transform="translate({x} {490 + (128 - size)})  scale({s})">{mark_group(INK, VERMILION, small)}</g>')
         label(f"{size}", x, 640)
         x += max(size, 40) + 40
     label("Lockups", 700, 470)
-    p.append(f'<g transform="translate(700 500)">{mark_group(INK, VERMILION)}<path fill="{INK}" d="{word_d}"/></g>')
+    p.append(f'<g transform="translate(700 500)">{lockup_group(INK, VERMILION)}</g>')
     p.append(f'<rect x="1080" y="490" width="{lock_w + 40}" height="84" fill="{DARK_BG}"/>'
-             f'<g transform="translate(1100 500)">{mark_group(DARK_TEXT, VERMILION)}'
-             f'<path fill="{DARK_TEXT}" d="{word_d}"/></g>')
-    p.append(f'<g transform="translate(700 590) scale(0.75)">{mark_group(INK)}<path fill="{INK}" d="{word_d}"/></g>')
+             f'<g transform="translate(1100 500)">{lockup_group(PAPER, VERMILION_DARK)}</g>')
+    p.append(f'<g transform="translate(700 590) scale(0.75)">{lockup_group(INK, None)}</g>')
     p.append(f'<rect x="1080" y="584" width="64" height="64" fill="{VERMILION}"/>'
              f'<g transform="translate(1080 584)">{mark_group(INK)}</g>')
     p.append(f'<rect x="1160" y="584" width="64" height="64" fill="{INK}"/>'
              f'<g transform="translate(1160 584)">{mark_group(PAPER)}</g>')
     label("one colour", 1240, 622)
 
-    # app icons + social card
     label("Touch icon 180, manifest icon 192", 60, 700)
     p.append('<image x="60" y="716" width="180" height="180" href="{{apple-touch-icon.png}}"/>')
     p.append(f'<rect x="60" y="716" width="180" height="180" fill="none" stroke="{LINE}"/>')
@@ -315,10 +314,9 @@ def preview_sheet(word_d, word_adv, lock_w):
     p.append('<image x="700" y="716" width="600" height="315" href="{{social-card.png}}"/>')
     p.append(f'<rect x="700" y="716" width="600" height="315" fill="none" stroke="{LINE}"/>')
 
-    # palette strip
     label("Palette", 60, 1100)
     sw = [("Ink", INK), ("Paper", PAPER), ("Surface", SURFACE), ("Hairline", LINE),
-          ("Vermilion", VERMILION), ("Accent ink", ACCENT_INK), ("Dark", DARK_BG), ("Text on dark", DARK_TEXT)]
+          ("Vermilion", VERMILION), ("Vermilion dark", VERMILION_DARK), ("Dark", DARK_BG), ("Accent ink", ACCENT_INK)]
     for i, (name, hexv) in enumerate(sw):
         x = 60 + i * 185
         p.append(f'<rect x="{x}" y="1116" width="165" height="96" fill="{hexv}" stroke="{LINE}"/>')
@@ -330,37 +328,39 @@ def preview_sheet(word_d, word_adv, lock_w):
     return svg(W, H, "".join(p), title="InvenTag brand preview")
 
 
-def main():
-    big, small = mark_path(False), mark_path(True)
-    word_d, word_adv = wordmark()
-    lock_w = math.ceil(76 + word_adv + 2)
+NAV_H = 40   # navbar lockup height in px (docusaurus.config.ts / custom.css use the same)
 
-    def mark_svg(fill, cursor=None, is_small=False, size=64):
-        return svg(64, 64, mark_group(fill, cursor, is_small), size, size)
+
+def main():
+    _, _, word_adv = wordmark()
+    lock_w = math.ceil(76 + word_adv + 6)
+
+    def mark_svg(fill, accent=None, is_small=False, size=64):
+        return svg(64, 64, mark_group(fill, accent, is_small), size, size)
 
     files = {
-        "logo.svg": mark_svg(INK, VERMILION),                 # light backgrounds
-        "logo-dark.svg": mark_svg(DARK_TEXT, VERMILION),      # dark backgrounds
-        "logo-on-brand.svg": mark_svg(INK),                   # one colour on a vermilion field
+        "logo.svg": mark_svg(INK, VERMILION),                  # light backgrounds
+        "logo-dark.svg": mark_svg(PAPER, VERMILION_DARK),      # dark backgrounds
+        "logo-on-brand.svg": mark_svg(INK),                    # one colour on a vermilion field
         "logo-mono.svg": mark_svg("currentColor"),
         "logo-mono-black.svg": mark_svg("#000"),
         "logo-mono-white.svg": mark_svg("#fff"),
         "logo-small.svg": mark_svg(INK, VERMILION, True),
-        "logo-small-dark.svg": mark_svg(DARK_TEXT, VERMILION, True),
+        "logo-small-dark.svg": mark_svg(PAPER, VERMILION_DARK, True),
     }
-    # favicon.svg: small geometry; ink tag in light browsers, paper tag in dark ones
+    # favicon.svg: small geometry; ink in light browsers, paper in dark ones
     files["favicon.svg"] = svg(64, 64,
-        '<style>.t{fill:%s}@media (prefers-color-scheme:dark){.t{fill:%s}}</style>'
-        '<path class="t" fill-rule="evenodd" d="%s"/><path fill="%s" d="%s"/>'
-        % (INK, DARK_TEXT, small, VERMILION, CURSOR_SMALL), 64, 64)
+        '<style>.t{fill:%s}.a{fill:%s}@media (prefers-color-scheme:dark){.t{fill:%s}.a{fill:%s}}</style>'
+        '<path class="t" fill-rule="evenodd" d="%s"/><path class="a" d="%s"/>'
+        % (INK, VERMILION, PAPER, VERMILION_DARK, mark_path(True), accent_path(True)), 64, 64)
 
-    def lockup(mark_fill, word_fill, cursor=None):
-        return svg(lock_w, 64, mark_group(mark_fill, cursor) + f'<path fill="{word_fill}" d="{word_d}"/>')
-    files["logo-wordmark.svg"] = lockup(INK, INK, VERMILION)
-    files["logo-wordmark-dark.svg"] = lockup(DARK_TEXT, DARK_TEXT, VERMILION)
-    files["logo-wordmark-mono.svg"] = lockup("currentColor", "currentColor")
-    files["social-card.svg"] = social_card(word_d, word_adv)
-    files["preview-sheet.svg"] = preview_sheet(word_d, word_adv, lock_w)
+    def lockup(ink, accent):
+        return svg(lock_w, 64, lockup_group(ink, accent))
+    files["logo-wordmark.svg"] = lockup(INK, VERMILION)
+    files["logo-wordmark-dark.svg"] = lockup(PAPER, VERMILION_DARK)
+    files["logo-wordmark-mono.svg"] = lockup("currentColor", None)
+    files["social-card.svg"] = social_card()
+    files["preview-sheet.svg"] = preview_sheet(lock_w)
 
     src = HERE / "src"; src.mkdir(exist_ok=True)
     for name, body in files.items():

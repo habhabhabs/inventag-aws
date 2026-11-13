@@ -34,8 +34,10 @@ The files were copied unchanged from the packages' `files/` folders
 48bc8861b9b2ca9300747cad4fd6a3b4ac3028d364df00bd1b72097baa75e509  newsreader-latin-wght-italic.woff2
 ```
 
-The logo wordmark and the social card are outlined from the same Instrument
-Sans and JetBrains Mono files (`website/brand/build_logo_sources.py`).
+The social card text is outlined from the same Instrument Sans and
+JetBrains Mono files (`website/brand/build_logo_sources.py`). The logo wordmark
+is outlined from Outfit SemiBold, which is not served by the site: its file and
+licence live in `website/brand/fonts/`.
 
 ## No layout shift while fonts load
 

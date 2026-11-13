@@ -380,14 +380,15 @@ kbd {
 .navbar__brand:hover {
   color: var(--it-ink);
 }
+/* The logo is the lockup (viewBox 223 x 64, rendered 40px tall); the wordmark is outlined in the SVG */
 .navbar__logo {
-  height: 28px;
-  width: 28px;
+  height: 40px;
+  width: auto;
   margin-right: 0;
 }
 .navbar__logo img {
-  height: 28px;
-  width: 28px;
+  height: 40px;
+  width: auto;
 }
 .navbar__title {
   font-weight: 650;
