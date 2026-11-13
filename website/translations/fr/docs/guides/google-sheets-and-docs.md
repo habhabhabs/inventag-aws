@@ -1,6 +1,6 @@
 ---
 title: Sortie Google Sheets et Docs
-description: "Écrivez l’inventaire InvenTag dans Google Sheets et Google Docs : connexion, qui peut ouvrir les fichiers, et ce qui n’a pas été vérifié avec le vrai Google."
+description: "Écrivez l’inventaire InvenTag dans Google Sheets et Google Docs : connexion, qui peut ouvrir les fichiers, comment le tester avec votre propre compte Google, et ce qui n’a pas été vérifié avec le vrai Google."
 sidebar_position: 9
 ---
 
@@ -10,7 +10,7 @@ sidebar_position: 9
 Word, ou en plus.
 
 **Ce que vous saurez après lecture :** comment installer les bibliothèques Google,
-vous connecter, quelles options utiliser, qui peut ouvrir les fichiers et ce qui n’a pas été
+vous connecter, quelles options utiliser, qui peut ouvrir les fichiers, comment tester la sortie avec votre propre compte Google, et ce qui n’a pas été
 vérifié.
 
 ## Ce que vous obtenez {#what-you-get}
@@ -21,7 +21,9 @@ vérifié.
   document Google Docs.
 - InvenTag construit d’abord les rapports Excel et Word, puis les copie ; un
   `--template` modifie donc les fichiers Google exactement comme il modifie les fichiers locaux.
-- L’exécution affiche l’URL de chaque fichier.
+- L’exécution affiche l’URL de chaque fichier, par exemple `Google Sheet: https://docs.google.com/spreadsheets/d/...` et `Google Doc: https://docs.google.com/document/d/...`.
+- Avec `--per-account-reports`, InvenTag crée une paire de fichiers par compte. Le titre se termine par ` - ` et l’ID du compte, et chaque ligne d’URL commence par `[123456789012]`.
+- Si une exécution ne trouve aucune ressource, elle ne crée aucun fichier Google.
 
 ## Installer le module complémentaire Google {#install-the-google-add-on}
 
@@ -62,6 +64,8 @@ Choisissez l’une des méthodes :
 Activez les API Google Sheets, Google Docs et Google Drive dans le projet Google
 Cloud des identifiants.
 
+InvenTag lit le fichier de clé ou le fichier client OAuth avant d’analyser AWS ; un fichier incorrect arrête donc l’exécution aussitôt avec le code de sortie 2 et un message qui commence par `inventag: error: Google:`.
+
 Le périmètre est `drive.file` : InvenTag ne peut toucher que les fichiers qu’il a créés. Avec
 `--google-folder-id`, il demande le périmètre Drive complet, car il doit placer
 un fichier dans un dossier qui existe déjà.
@@ -100,9 +104,16 @@ sont réduits au type d’erreur, car ils peuvent citer le fichier de clé.
 
 ## Limites {#limits}
 
-- Une cellule Google Sheets contient au plus 50 000 caractères, et une feuille de calcul au plus
-  10 millions de cellules. Un très grand inventaire peut les dépasser ; l’exécution échoue alors
-  avec l’erreur de Google.
+- Une cellule Google Sheets peut contenir jusqu’à 50 000 caractères. InvenTag coupe les textes plus longs à 49 000 caractères. Une feuille de calcul peut contenir jusqu’à 10 millions de cellules et une feuille jusqu’à 18 278 colonnes.
+- InvenTag compte les cellules avant d’appeler Google. Si le rapport est trop grand, il ne crée rien et le dit, et l’exécution se termine avec le code 1. Les fichiers Excel et Word sont tout de même écrits. Par exemple :
+  `The report has 12,000,000 cells; a Google spreadsheet allows 10,000,000. No
+  spreadsheet was created. Send fewer resources (filters or an account subset)
+  or use the Excel report.`
+- InvenTag envoie une grande feuille en plusieurs requêtes, chacune de 2 000 lignes au plus et d’environ 1 million de caractères.
+- Si Google répond « 429 too many requests », InvenTag consigne `Google rate limit
+  reached; waiting 5 seconds` et réessaie. Il attend 5, 10, 20, 40 puis 60 secondes avant la dernière tentative.
+- Si un appel échoue après la création du fichier, l’exécution se termine avec le code 1 et le message donne l’URL du fichier à moitié écrit : `The spreadsheet was already
+  created and may be incomplete: <url> (delete it in Google Drive).` Il en va de même pour un Google Doc. Supprimez ce fichier et relancez.
 - Les tableaux du rapport Word affichent par défaut jusqu’à 50 ressources par service
   (`max_rows_per_service` dans un modèle de rapport, `max_rows` dans un fichier de mise en page), et il en va de même pour le document Google Docs.
 - Les valeurs des cellules sont écrites comme du texte : une valeur d’étiquette qui commence par `=` n’est donc pas
@@ -110,11 +121,53 @@ sont réduits au type d’erreur, car ils peuvent citer le fichier de clé.
 
 ## Ce qui n’est pas vérifié {#what-is-not-verified}
 
-Tous les tests utilisent des clients Google simulés. **Aucun test n’a été exécuté avec les vraies API
-Google**, car cela demande un compte Google. En particulier, les positions
-qu’InvenTag calcule lorsqu’il remplit les tableaux d’un document Google Docs sont vérifiées par rapport aux
-règles de l’API Docs telles que nous les comprenons, et non par rapport au vrai service. Essayez
-d’abord avec un petit compte, et signalez tout problème de mise en page du document dans un problème (issue).
+La plupart des tests utilisent des clients Google simulés. **Nous n’avons pas enregistré d’exécution avec les vraies API Google**, car cela demande un compte Google. En particulier, les positions qu’InvenTag calcule pour remplir les tableaux d’un Google Doc sont vérifiées d’après les règles de l’API Docs telles que nous les comprenons, et non avec le vrai service. Essayez d’abord avec un petit compte, et signalez tout problème de mise en page du Doc dans un problème (issue).
+
+## Le vérifier avec votre propre compte Google {#check-it-against-your-own-google-account}
+
+Le dépôt contient un script qui fait pour vous le test avec le vrai Google. Il construit un parc fictif avec moto (une simulation d’AWS) ; il n’a donc pas besoin de compte AWS et ne touche que Google. Il exécute InvenTag avec `--create-google-sheets` et `--create-google-docs`, relit les fichiers depuis Google et les compare aux fichiers Excel et Word créés lors de la même exécution. Il affiche un tableau PASS ou FAIL, les deux URL et `RESULT: PASS` ou `RESULT: FAIL`. Le code de sortie est 0 en cas de réussite.
+
+Exécutez-le depuis une copie du dépôt.
+
+1. Installez les bibliothèques Google et moto :
+
+   ```bash title="Terminal"
+   pip install "inventag-aws[google]"
+   pip install moto
+   ```
+
+2. Dans le projet Google Cloud de vos identifiants, activez l’API Google Sheets, l’API Google Docs et l’API Google Drive. Si l’une est désactivée, Google répond HTTP 403 et le script nomme l’API à activer.
+3. Créez un client OAuth de type « Desktop app », téléchargez-le sous le nom `client_secret.json`, puis exécutez :
+
+   ```bash title="Terminal"
+   python scripts/google_live_test.py --google-oauth-client client_secret.json --large
+   ```
+
+   Un navigateur s’ouvre une seule fois. Si l’application est en état « Testing », ajoutez votre compte sous OAuth consent screen, Test users.
+
+Pour utiliser une clé de compte de service, passez `--google-credentials key.json`. Le compte de service possède les fichiers dans son propre Drive ; ajoutez donc `--share-with you@example.com` si vous voulez les ouvrir.
+
+| Option | Ce qu’elle fait |
+|---|---|
+| `--large` | Teste aussi une feuille de 20 000 lignes et un tableau de 300 lignes dans le Doc. Il compte les appels d’API et injecte deux réponses « 429 » pour prouver la nouvelle tentative. Cela ajoute environ une minute. |
+| `--share-with EMAIL` | Partage les fichiers (reader) avec cette adresse et vérifie que seules cette adresse et le propriétaire peuvent les ouvrir. Répétez-la pour en ajouter. |
+| `--keep` | Laisse les fichiers dans Drive. Par défaut, le script déplace à la fin tous les fichiers qu’il a créés vers la corbeille de Drive. |
+| `--folder-id ID` | Crée aussi une paire de fichiers dans ce dossier Drive. Cela demande le périmètre complet de Drive. Avec `--google-oauth-client`, supprimez d’abord `~/.config/inventag/google-token.json`, pour qu’il redemande l’autorisation. |
+
+Sans option de connexion, le script utilise les identifiants par défaut de l’application (ADC). Google bloque le client de connexion de `gcloud` pour les périmètres Drive, Docs et Sheets ; il vous faut donc ici aussi votre propre fichier client OAuth. Exécutez `python
+scripts/google_live_test.py --help` pour voir la commande `gcloud` exacte. Nous n’avons pas vérifié cette voie. Préférez le client OAuth.
+
+Le script vérifie ceci :
+
+- La feuille de calcul et le Doc existent et correspondent à l’URL affichée.
+- Les noms et l’ordre des feuilles, les lignes et les colonnes, et chaque cellule correspondent au fichier Excel.
+- Le texte qui commence par `=` revient comme texte, pas comme formule.
+- Les textes longs, accentués et CJK, et une feuille vide, sont conservés.
+- La ligne d’en-tête est en gras et colorée, et les premières lignes sont figées.
+- Les titres et chaque cellule de tableau du Doc correspondent au fichier Word.
+- Les deux fichiers sont privés pour le compte (et pour les adresses de `--share-with`).
+
+Si vous l’exécutez, envoyez-nous le tableau final. Nous ne modifierons cette page qu’après une réussite sur un vrai compte.
 
 ## Pour aller plus loin {#where-to-next}
 

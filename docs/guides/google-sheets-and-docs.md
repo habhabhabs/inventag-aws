@@ -1,6 +1,6 @@
 ---
 title: Google Sheets and Docs output
-description: "Write the InvenTag inventory to Google Sheets and Google Docs: how to sign in, who can open the files, and what has not been verified against real Google."
+description: "Write the InvenTag inventory to Google Sheets and Google Docs: how to sign in, who can open the files, how to test it against your own Google account, and what has not been verified against real Google."
 sidebar_position: 9
 ---
 
@@ -10,8 +10,8 @@ sidebar_position: 9
 well as, an Excel or Word file.
 
 **What you will know after reading:** how to install the Google libraries,
-how to sign in, which flags to use, who can open the files, and what has not
-been verified.
+how to sign in, which flags to use, who can open the files, how to test the
+output against your own Google account, and what has not been verified.
 
 ## What you get
 
@@ -21,7 +21,12 @@ been verified.
   Doc.
 - InvenTag builds the Excel and Word reports first and copies them, so a
   `--template` changes the Google files exactly as it changes the local ones.
-- The run prints the URL of each file.
+- The run prints the URL of each file, for example `Google Sheet: https://docs.google.com/spreadsheets/d/...`
+  and `Google Doc: https://docs.google.com/document/d/...`.
+- With `--per-account-reports`, InvenTag makes one pair of files for each
+  account. The title ends with ` - ` and the account ID, and each URL line
+  starts with `[123456789012]`.
+- If a run finds no resources, it makes no Google file.
 
 ## Install the Google add-on
 
@@ -62,6 +67,10 @@ Pick one:
 Enable the Google Sheets, Google Docs and Google Drive APIs in the Google
 Cloud project of the credentials.
 
+InvenTag reads the key file or the OAuth client file before it scans AWS, so a
+wrong file stops the run at once with exit code 2 and a message that starts
+`inventag: error: Google:`.
+
 The scope is `drive.file`: InvenTag can touch only files it created. With
 `--google-folder-id` it asks for the full Drive scope, because it has to put
 a file into a folder that already exists.
@@ -100,9 +109,24 @@ shortened to the error type, because they can quote the key file.
 
 ## Limits
 
-- A Google Sheets cell holds up to 50,000 characters, and a spreadsheet up to
-  10 million cells. A very large inventory can exceed them; the run then fails
-  with the Google error.
+- A Google Sheets cell holds up to 50,000 characters. InvenTag cuts longer
+  text at 49,000 characters. A spreadsheet holds up to 10 million cells and a
+  sheet up to 18,278 columns.
+- InvenTag counts the cells before it calls Google. If the report is too big,
+  it creates nothing and says so, and the run exits with code 1. The Excel and
+  Word files are still written. For example:
+  `The report has 12,000,000 cells; a Google spreadsheet allows 10,000,000. No
+  spreadsheet was created. Send fewer resources (filters or an account subset)
+  or use the Excel report.`
+- InvenTag sends a big sheet in several requests, each with at most 2,000 rows
+  and about 1 million characters.
+- If Google answers "429 too many requests", InvenTag logs `Google rate limit
+  reached; waiting 5 seconds` and tries again. It waits 5, 10, 20, 40 and then
+  60 seconds before the last try.
+- If a call fails after the file was created, the run exits with code 1 and the
+  message gives the URL of the half-written file: `The spreadsheet was already
+  created and may be incomplete: <url> (delete it in Google Drive).` The same
+  holds for a Google Doc. Delete that file and run again.
 - The Word report's tables show up to 50 resources per service by default
   (`max_rows_per_service` in a report template, `max_rows` in a layout file),
   and so does the Google Doc.
@@ -111,11 +135,74 @@ shortened to the error type, because they can quote the key file.
 
 ## What is not verified
 
-All tests use mocked Google clients. **No test has run against real Google
-APIs**, because that needs a Google account. In particular, the positions
-InvenTag computes when it fills the tables of a Google Doc are checked against
-the rules of the Docs API as we read them, not against the real service. Try
-a small account first, and report a problem with the Doc layout as an issue.
+Most tests use mocked Google clients. **We have not recorded a run against real
+Google APIs**, because that needs a Google account. In particular, the
+positions InvenTag computes when it fills the tables of a Google Doc are
+checked against the rules of the Docs API as we read them, not against the
+real service. Try a small account first, and report a problem with the Doc
+layout as an issue.
+
+## Check it against your own Google account
+
+The repository has a script that does the real-Google test for you. It builds
+a fictional estate with moto (a mock of AWS), so it needs no AWS account and
+touches only Google. It runs InvenTag with `--create-google-sheets` and
+`--create-google-docs`, reads the files back from Google and compares them
+with the Excel and Word files made in the same run. It prints a PASS or FAIL
+table, the two URLs and `RESULT: PASS` or `RESULT: FAIL`. The exit code is 0
+for a pass.
+
+Run it from a checkout of the repository.
+
+1. Install the Google libraries and moto:
+
+   ```bash title="Terminal"
+   pip install "inventag-aws[google]"
+   pip install moto
+   ```
+
+2. In the Google Cloud project of your credentials, enable the Google Sheets
+   API, the Google Docs API and the Google Drive API. If one is off, Google
+   answers HTTP 403 and the script names the API to enable.
+3. Create an OAuth client of type "Desktop app", download it as
+   `client_secret.json`, and run:
+
+   ```bash title="Terminal"
+   python scripts/google_live_test.py --google-oauth-client client_secret.json --large
+   ```
+
+   A browser opens once. If the app is in "Testing" status, add your account
+   under OAuth consent screen, Test users.
+
+To use a service account key, pass `--google-credentials key.json`. The service
+account owns the files in its own Drive, so add `--share-with you@example.com`
+if you want to open them.
+
+| Flag | What it does |
+|---|---|
+| `--large` | Also tests a 20,000-row sheet and a 300-row Doc table. It counts the API calls and injects two "429" answers to prove the retry. It adds about a minute. |
+| `--share-with EMAIL` | Shares the files (reader) with this address and checks that only that address and the owner can open them. Repeat it for more. |
+| `--keep` | Leaves the files in Drive. By default the script moves every file it made to the Drive trash at the end. |
+| `--folder-id ID` | Also creates a pair of files in this Drive folder. This needs the full Drive scope. With `--google-oauth-client`, delete `~/.config/inventag/google-token.json` first, so that it asks again. |
+
+With no sign-in flag, the script uses Application Default Credentials. Google
+blocks the sign-in client of `gcloud` for the Drive, Docs and Sheets scopes, so
+you need your own OAuth client file here too. Run `python
+scripts/google_live_test.py --help` for the exact `gcloud` command. We have not
+verified that route. Prefer the OAuth client.
+
+The script checks these things:
+
+- The spreadsheet and the Doc exist and match the printed URL.
+- Sheet names and order, rows and columns, and every cell match the Excel file.
+- Text that starts with `=` comes back as text, not as a formula.
+- Long, accented and CJK text and an empty sheet survive.
+- The header row is bold and colored, and the top rows are frozen.
+- The headings and every table cell of the Doc match the Word file.
+- Both files are private to the account (and to the `--share-with` addresses).
+
+If you run it, please send us the final table. We will change this page only
+after a pass on a real account.
 
 ## Where to next
 
