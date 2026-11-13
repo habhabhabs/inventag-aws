@@ -81,3 +81,38 @@ def test_same_route_raw_data_change_is_reported():
     new["raw_data"]["type"] = "EXPRESS"
     report = _report(old, new)
     assert len(report.modified_resources) == 1
+
+
+def _fn(layers, policies=None, behaviors=None):
+    row = _v120_service_row({})
+    row["raw_data"] = {
+        "Layers": [{"Arn": a} for a in layers],
+        "TerminationPolicies": policies or [],
+        "CacheBehaviors": {"Quantity": 2, "Items": behaviors or []},
+        "SecurityGroups": ["sg-1", "sg-2"],
+    }
+    return row
+
+
+def test_order_of_lambda_layers_is_a_change():
+    report = _report(_fn(["l1", "l2"]), _fn(["l2", "l1"]))
+    assert len(report.modified_resources) == 1
+
+
+def test_order_of_termination_policies_and_cache_behaviors_is_a_change():
+    a = _fn(
+        [], ["OldestInstance", "Default"], [{"PathPattern": "/a"}, {"PathPattern": "*"}]
+    )
+    b = _fn(
+        [], ["Default", "OldestInstance"], [{"PathPattern": "/a"}, {"PathPattern": "*"}]
+    )
+    assert len(_report(a, b).modified_resources) == 1
+    c = _fn([], [], [{"PathPattern": "*"}, {"PathPattern": "/a"}])
+    d = _fn([], [], [{"PathPattern": "/a"}, {"PathPattern": "*"}])
+    assert len(_report(c, d).modified_resources) == 1
+
+
+def test_other_lists_stay_unordered():
+    a, b = _fn(["l1"]), _fn(["l1"])
+    b["raw_data"]["SecurityGroups"] = ["sg-2", "sg-1"]
+    assert not _report(a, b).modified_resources

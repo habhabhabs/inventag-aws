@@ -153,6 +153,13 @@ _ROUTE_FIELDS = {
 }
 
 
+# Lists whose order is part of the configuration (and that carry no priority
+# field of their own): Lambda layers are applied in order, Auto Scaling
+# termination policies are tried in order, CloudFront cache behaviors match
+# in order (their ``Items``). Every other list is compared as unordered.
+_ORDERED_LISTS = {"Layers", "TerminationPolicies", "CacheBehaviors"}
+
+
 def _found_by_tagging_only(resource: Dict) -> bool:
     """True for a row only the Tagging API returned (v1.1.4 and v1.2.0 shapes)."""
     if resource.get("source"):
@@ -705,7 +712,12 @@ class DeltaDetector:
     def _ignored_names(self) -> Set[str]:
         return set(self.ignore_metadata_fields) | set(self.volatile_fields)
 
-    def _canonical(self, value: Any, ignored: Optional[Set[str]] = None) -> Any:
+    def _canonical(
+        self,
+        value: Any,
+        ignored: Optional[Set[str]] = None,
+        keep_order: bool = False,
+    ) -> Any:
         """A copy of ``value`` that compares equal when only noise differs.
 
         Drops volatile fields at every depth, treats lists as unordered (so a
@@ -717,7 +729,12 @@ class DeltaDetector:
             ignored = self._ignored_names()
         if isinstance(value, dict):
             return {
-                k: self._canonical(v, ignored)
+                k: self._canonical(
+                    v,
+                    ignored,
+                    keep_order=k in _ORDERED_LISTS
+                    or (keep_order and k == "Items" and isinstance(v, list)),
+                )
                 for k, v in value.items()
                 if k not in ignored
             }
@@ -732,6 +749,8 @@ class DeltaDetector:
                     for i in items
                 }
             canon = [self._canonical(i, ignored) for i in items]
+            if keep_order:
+                return canon
             return sorted(
                 canon, key=lambda i: json.dumps(i, sort_keys=True, default=str)
             )

@@ -63,7 +63,9 @@ def test_list_order_only_is_not_a_change():
     new = _lam()
     new["raw_data"] = {
         "Runtime": "python3.12",
-        "Layers": ["l2", "l1"],
+        # Layers keep their order (Lambda applies them in order); see
+        # test_delta_upgrade_noise.py::test_order_of_lambda_layers_is_a_change
+        "Layers": ["l1", "l2"],
         "SecurityGroupIds": ["sg-2", "sg-1"],
     }
     report = _detect([_lam()], [new])
