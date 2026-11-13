@@ -70,7 +70,7 @@ jobs:
             echo "Nothing to commit: documentation versions already match the tags."
           else
             git commit -m "docs: sync archived documentation versions with release tags [skip release]"
-            git pull --rebase origin main
+            git pull --rebase --autostash origin main
             git push origin main
           fi
 
