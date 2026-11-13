@@ -192,17 +192,30 @@ function auditInPage(isTouch) {
     if (!visible(el) || el.closest('[aria-hidden="true"]')) continue;
     // icon-only controls identified by their icon, and text-styled buttons
     if (el.matches('.clean-btn.menu__caret, .navbar__toggle, .navbar-sidebar__close, [class*="collapseSidebarButton"], [class*="expandButton"], .footer__button, .menu__link, .hash-link')) continue;
-    const cs = getComputedStyle(el);
-    const behind = backgrounds(el.parentElement)[0];
-    const own = parse(cs.backgroundColor);
-    const fill = own && own.a > 0 ? over(own, behind) : behind;
-    let best = ratio(fill, behind);
-    for (const side of ['Top', 'Right', 'Bottom', 'Left']) {
-      const w = parseFloat(cs[`border${side}Width`]);
-      const c = parse(cs[`border${side}Color`]);
-      if (w >= 1 && c && c.a > 0 && cs[`border${side}Style`] !== 'none') {
-        best = Math.max(best, Math.min(ratio(over(c, behind), behind), 21));
+    // the boundary can be the control's own border or fill, or the frame of a
+    // tight wrapper (e.g. the prev/next grid, the mobile "On this page" box)
+    const boundaryOf = (node) => {
+      const cs = getComputedStyle(node);
+      const behind = backgrounds(node.parentElement)[0];
+      const own = parse(cs.backgroundColor);
+      const fill = own && own.a > 0 ? over(own, behind) : behind;
+      let b = ratio(fill, behind);
+      for (const side of ['Top', 'Right', 'Bottom', 'Left']) {
+        const w = parseFloat(cs[`border${side}Width`]);
+        const c = parse(cs[`border${side}Color`]);
+        if (w >= 1 && c && c.a > 0 && cs[`border${side}Style`] !== 'none') {
+          b = Math.max(b, Math.min(ratio(over(c, behind), behind), 21));
+        }
       }
+      return b;
+    };
+    let best = boundaryOf(el);
+    const er = el.getBoundingClientRect();
+    for (let n = el.parentElement, i = 0; n && i < 2 && best < 3; n = n.parentElement, i++) {
+      const nr = n.getBoundingClientRect();
+      // only a wrapper that hugs the control counts (within 2px on three sides)
+      const hugs = [er.left - nr.left, nr.right - er.right, er.top - nr.top].filter((d) => Math.abs(d) <= 2).length >= 2;
+      if (hugs) best = Math.max(best, boundaryOf(n));
     }
     if (best < 3) {
       boundary.push(`${el.tagName.toLowerCase()} "${(el.getAttribute('aria-label') || el.innerText || '').trim().slice(0, 30)}" boundary ${Math.round(best * 100) / 100}:1`);
@@ -767,7 +780,7 @@ for (const theme of ['light', 'dark']) {
   await page.getByRole('button', {name: 'Allow analytics'}).click();
   await page.waitForTimeout(800);
   if (!ga.length) fail('Google Analytics not loaded after "Allow analytics"');
-  await page.context().addCookies([{name: '_ga', value: 'GA1.1.test', url: page.url()}]);
+  await page.context().addCookies([{name: '_ga', value: 'GA1.1.test', domain: new URL(page.url()).hostname, path: '/'}]);
   await page.getByRole('button', {name: 'Cookie preferences'}).click();
   await page.getByRole('button', {name: 'Just the essentials'}).click();
   const left = (await page.context().cookies()).filter((c) => c.name === '_ga' || c.name.startsWith('_ga_'));

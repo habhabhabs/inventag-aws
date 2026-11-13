@@ -836,7 +836,7 @@ kbd {
   font-weight: 600;
 }
 .theme-doc-toc-mobile {
-  border: 1px solid var(--it-line);
+  border: 1px solid var(--it-line-strong);
   border-radius: var(--it-radius);
   background: var(--it-surface);
 }

@@ -77,11 +77,18 @@ function sendPageView(): void {
 
 function clearAnalyticsCookies(): void {
   const host = window.location.hostname;
+  // GA sets its cookies on path "/"; also try every prefix of this page's
+  // path and the host with and without a leading dot, to catch them all.
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  const paths = ['/', ...parts.map((_, i) => `/${parts.slice(0, i + 1).join('/')}`)];
+  const domains = ['', `; domain=${host}`, `; domain=.${host}`];
   for (const c of document.cookie.split(';')) {
     const name = c.split('=')[0].trim();
     if (name === '_ga' || name.startsWith('_ga_')) {
-      for (const domain of ['', `; domain=${host}`, `; domain=.${host}`]) {
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/${domain}`;
+      for (const path of paths) {
+        for (const domain of domains) {
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0; path=${path}${domain}`;
+        }
       }
     }
   }
