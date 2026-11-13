@@ -589,7 +589,7 @@ for (const theme of ['light', 'dark']) {
       for (const sc of document.querySelectorAll('.table-scroll')) {
         if (sc.scrollWidth <= sc.clientWidth + 1) continue;
         out.overflowing++;
-        if (sc.getAttribute('tabindex') !== '0' || sc.getAttribute('role') !== 'region' || !sc.getAttribute('aria-label')) out.bad.push('unnamed or not focusable');
+        if (sc.getAttribute('tabindex') !== '0' || sc.getAttribute('role') !== 'group' || !sc.getAttribute('aria-label')) out.bad.push('unnamed or not focusable');
         const frame = sc.parentElement;
         if (!frame.querySelector('.table-frame__edge--end')) out.noCue++;
       }

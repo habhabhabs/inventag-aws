@@ -1141,6 +1141,9 @@ html.docs-version-current .theme-doc-version-badge {
   background: var(--it-line);
   transition-duration: 0s;
 }
+.breadcrumbs__link:active {
+  background: var(--it-line) !important;
+}
 a.it-card:is(:active, [data-nav-pending]) {
   border-color: var(--it-ink);
   transform: none;
