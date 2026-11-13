@@ -104,7 +104,8 @@ shortened to the error type, because they can quote the key file.
   10 million cells. A very large inventory can exceed them; the run then fails
   with the Google error.
 - The Word report's tables show up to 50 resources per service by default
-  (`max_rows`), and so does the Google Doc.
+  (`max_rows_per_service` in a report template, `max_rows` in a layout file),
+  and so does the Google Doc.
 - Cell values are written as text, so a tag value that starts with `=` is not
   run as a formula.
 
