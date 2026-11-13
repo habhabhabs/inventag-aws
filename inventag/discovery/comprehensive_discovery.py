@@ -17,18 +17,23 @@ import logging
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta, timezone
 import boto3
 from botocore.exceptions import ClientError
 
 from .aws_clients import create_client
+from .regions import cost_explorer_region, global_home_region
+from .sensitive_fields import mask_secret_values
+from .service_filter import canonical_service
 from .arn_utils import (
     ResourceArnIndex,
+    arn_service,
     build_arn,
     dedupe_key,
     extract_arn,
     parse_arn,
+    partition_for_region,
 )
 
 # Services whose resources belong to the account, not to a region. They are
@@ -59,6 +64,9 @@ class ComprehensiveAWSDiscovery:
         self.logger = logging.getLogger(__name__)
         self.logger.propagate = False  # Prevent duplicate logging
         self.regions = regions or ["us-east-1"]
+        # Where account-wide services are read: us-east-1 in the aws
+        # partition, cn-north-1 in China, us-gov-west-1 in GovCloud.
+        self.home_region = global_home_region(self.regions)
 
         # Handle legacy parameter
         if hide_fallback_resources and fallback_display_mode == "auto":
@@ -242,7 +250,18 @@ class ComprehensiveAWSDiscovery:
             "ecs": {
                 "operations": [
                     ("list_clusters", "clusterArns", "Cluster"),
-                    ("list_services", "serviceArns", "Service"),
+                    {
+                        # Without a cluster, ListServices reads only the
+                        # cluster named "default".
+                        "op": "list_services",
+                        "key": "serviceArns",
+                        "type": "Service",
+                        "per_parent": {
+                            "op": "list_clusters",
+                            "key": "clusterArns",
+                            "param": "cluster",
+                        },
+                    },
                 ],
                 "regional": True,
                 "critical": False,
@@ -396,7 +415,7 @@ class ComprehensiveAWSDiscovery:
     def _discover_billing_services(self):
         """Discover services with billing usage for validation."""
         try:
-            ce_client = self._client("ce", "us-east-1")
+            ce_client = self._client("ce", cost_explorer_region(self.regions))
 
             response = ce_client.get_cost_and_usage(
                 TimePeriod={
@@ -467,7 +486,7 @@ class ComprehensiveAWSDiscovery:
                 discovery_tasks.append(
                     {
                         "service": service_name,
-                        "region": GLOBAL_HOME_REGION,
+                        "region": self.home_region,
                         "config": config,
                         "priority": 1 if config.get("critical", False) else 2,
                     }
@@ -475,7 +494,8 @@ class ComprehensiveAWSDiscovery:
 
         # Certificates CloudFront uses must be in us-east-1. Read them even
         # when us-east-1 is not one of the requested regions.
-        if GLOBAL_HOME_REGION not in self.regions:
+        # (CloudFront certificates exist only in the aws partition.)
+        if self.home_region not in self.regions and self.home_region == "us-east-1":
             self._discover_cloudfront_certificates()
 
         # Sort by priority (critical services first)
@@ -495,7 +515,9 @@ class ComprehensiveAWSDiscovery:
 
             # Collect results
             completed = 0
-            for future in as_completed(future_to_task, timeout=600):
+            # No overall timeout: a TimeoutError here threw away every
+            # result of a long scan. Each call has botocore's own timeouts.
+            for future in as_completed(future_to_task):
                 task = future_to_task[future]
                 try:
                     resources_found = future.result()
@@ -520,7 +542,7 @@ class ComprehensiveAWSDiscovery:
         """ACM certificates in us-east-1 that a CloudFront distribution uses."""
         found = 0
         try:
-            acm = self._client("acm", GLOBAL_HOME_REGION)
+            acm = self._client("acm", self.home_region)
             for page in acm.get_paginator("list_certificates").paginate():
                 for summary in page.get("CertificateSummaryList", []):
                     arn = summary.get("CertificateArn", "")
@@ -531,7 +553,7 @@ class ComprehensiveAWSDiscovery:
                     resource = self._normalize_resource(
                         summary,
                         "acm",
-                        GLOBAL_HOME_REGION,
+                        self.home_region,
                         "Certificate",
                         "list_certificates",
                     )
@@ -544,7 +566,7 @@ class ComprehensiveAWSDiscovery:
             if code in self.DENIED_CODES:
                 self._warn_once(
                     "denied:acm",
-                    f"No permission for acm in {GLOBAL_HOME_REGION} ({code}); "
+                    f"No permission for acm in {self.home_region} ({code}); "
                     "CloudFront certificates are skipped.",
                 )
             else:
@@ -594,58 +616,135 @@ class ComprehensiveAWSDiscovery:
 
         return resources_found
 
+    @staticmethod
+    def _op_spec(operation_config) -> Dict[str, Any]:
+        """One operation of ``service_discovery_patterns`` as a dict.
+
+        Entries are either the short tuple ``(operation, result_key,
+        resource_type[, params])`` or a dict with these keys:
+
+        - ``op``, ``key``, ``type``: operation (snake_case), result key
+          (dots for nesting) and the resource type shown in the report.
+        - ``params``: fixed request parameters (read-only filters only).
+        - ``id`` / ``name`` / ``arn``: response fields with the resource ID,
+          name and ARN. Without them the generic field guessing is used.
+        - ``arn_template``: ARN to build when the response has none, with
+          ``{partition}``, ``{region}``, ``{account}`` and ``{id}``.
+        - ``per_parent``: ``{"op", "key", "param"}``: list the parents first
+          (for example ECS clusters) and call ``op`` once per parent.
+        - ``token``: ``(request_param, response_field)`` for operations that
+          botocore cannot paginate (for example Firehose's
+          ``ExclusiveStartDeliveryStreamName``).
+        """
+        if isinstance(operation_config, dict):
+            spec = dict(operation_config)
+            spec.setdefault("params", {})
+            return spec
+        spec = {
+            "op": operation_config[0],
+            "key": operation_config[1],
+            "type": operation_config[2],
+            "params": operation_config[3] if len(operation_config) > 3 else {},
+        }
+        return spec
+
+    _TOKEN_FIELDS = (
+        ("NextToken", "NextToken"),
+        ("nextToken", "nextToken"),
+        ("Marker", "NextMarker"),
+        ("NextMarker", "NextMarker"),
+        ("Marker", "Marker"),
+    )
+
+    def _pages(self, client, operation_name: str, params: Dict[str, Any]):
+        """Every page of a list/describe call.
+
+        botocore's paginator when it has one. Otherwise follow the operation's
+        own continuation token, so a second page is never silently dropped.
+        A failing page raises; pages already returned are kept by the caller.
+        """
+        if client.can_paginate(operation_name):
+            yield from client.get_paginator(operation_name).paginate(**params)
+            return
+        operation = getattr(client, operation_name)
+        api_name = client.meta.method_to_api_mapping.get(operation_name)
+        input_members, output_members = set(), set()
+        if api_name:
+            model = client.meta.service_model.operation_model(api_name)
+            if model.input_shape is not None:
+                input_members = set(model.input_shape.members)
+            if model.output_shape is not None:
+                output_members = set(model.output_shape.members)
+        token = next(
+            (
+                (req, resp)
+                for req, resp in self._TOKEN_FIELDS
+                if req in input_members and resp in output_members
+            ),
+            None,
+        )
+        request = dict(params)
+        seen = set()
+        while True:
+            page = operation(**request)
+            yield page
+            if not token:
+                return
+            next_token = page.get(token[1])
+            if not next_token or next_token in seen:
+                return
+            seen.add(next_token)
+            request[token[0]] = next_token
+
+    def _pages_with_token(self, client, spec: Dict[str, Any], params: Dict):
+        """Pages of an operation that uses a custom token (see ``_op_spec``)."""
+        operation = getattr(client, spec["op"])
+        request_param, more_field = spec["token"]
+        request = dict(params)
+        while True:
+            page = operation(**request)
+            yield page
+            items = page.get(spec["key"]) or []
+            if not page.get(more_field) or not items:
+                return
+            last = items[-1]
+            request[request_param] = (
+                last if isinstance(last, str) else last.get(spec.get("id", ""))
+            )
+
     def _execute_discovery_operation(
-        self, client, service_name: str, region: str, operation_config: Tuple
+        self, client, service_name: str, region: str, operation_config
     ) -> int:
         """Execute a single discovery operation and extract resources."""
-        operation_name, response_key, resource_type = operation_config[:3]
-        operation_params = operation_config[3] if len(operation_config) > 3 else {}
+        spec = self._op_spec(operation_config)
+        operation_name = spec["op"]
 
         try:
-            # Get the operation method
-            operation = getattr(client, operation_name)
+            param_sets = [dict(spec["params"])]
+            parent = spec.get("per_parent")
+            if parent:
+                param_sets = []
+                for page in self._pages(client, parent["op"], {}):
+                    for value in page.get(parent["key"], []) or []:
+                        param_sets.append({**spec["params"], parent["param"]: value})
 
-            # Execute with pagination if available
             resources_found = 0
-
-            if hasattr(client, "get_paginator"):
-                try:
-                    paginator = client.get_paginator(operation_name)
-                    pages = paginator.paginate(**operation_params)
-
-                    for page in pages:
-                        resources_found += self._extract_resources_from_response(
-                            page,
-                            response_key,
-                            service_name,
-                            region,
-                            resource_type,
-                            operation_name,
-                        )
-
-                except Exception:
-                    # Fallback to direct call if pagination fails
-                    response = operation(**operation_params)
+            for params in param_sets:
+                pages = (
+                    self._pages_with_token(client, spec, params)
+                    if spec.get("token")
+                    else self._pages(client, operation_name, params)
+                )
+                for page in pages:
                     resources_found += self._extract_resources_from_response(
-                        response,
-                        response_key,
+                        page,
+                        spec["key"],
                         service_name,
                         region,
-                        resource_type,
+                        spec["type"],
                         operation_name,
+                        spec,
                     )
-            else:
-                # Direct operation call
-                response = operation(**operation_params)
-                resources_found += self._extract_resources_from_response(
-                    response,
-                    response_key,
-                    service_name,
-                    region,
-                    resource_type,
-                    operation_name,
-                )
-
             return resources_found
 
         except ClientError as e:
@@ -685,6 +784,7 @@ class ComprehensiveAWSDiscovery:
         region: str,
         resource_type: str,
         operation_name: str,
+        spec: Optional[Dict[str, Any]] = None,
     ) -> int:
         """Extract resources from AWS API response."""
         try:
@@ -713,7 +813,12 @@ class ComprehensiveAWSDiscovery:
             for item in data:
                 if isinstance(item, dict):
                     resource = self._normalize_resource(
-                        item, service_name, region, resource_type, operation_name
+                        item,
+                        service_name,
+                        region,
+                        resource_type,
+                        operation_name,
+                        spec,
                     )
                     if resource:
                         self.resources.append(resource)
@@ -723,7 +828,7 @@ class ComprehensiveAWSDiscovery:
                 elif isinstance(item, str):
                     # Handle string responses (like SQS queue URLs)
                     resource = self._create_string_resource(
-                        item, service_name, region, resource_type, operation_name
+                        item, service_name, region, resource_type, operation_name, spec
                     )
                     if resource:
                         self.resources.append(resource)
@@ -744,20 +849,31 @@ class ComprehensiveAWSDiscovery:
         region: str,
         resource_type: str,
         operation_name: str,
+        spec: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict]:
         """Normalize a resource into standard format."""
+        spec = spec or {}
         try:
             # Extract resource identifier
-            resource_id = self._extract_resource_id(raw_data, resource_type)
+            resource_id = (
+                raw_data.get(spec["id"]) if spec.get("id") else None
+            ) or self._extract_resource_id(raw_data, resource_type)
             if not resource_id:
                 return None
+            resource_id = str(resource_id)
 
             # Extract resource name
-            resource_name = self._extract_resource_name(raw_data)
+            resource_name = (
+                raw_data.get(spec["name"]) if spec.get("name") else None
+            ) or self._extract_resource_name(raw_data)
 
             # Extract ARN if available
-            arn = self._construct_arn(
-                service_name, region, resource_type, resource_id, raw_data
+            arn = (raw_data.get(spec["arn"]) if spec.get("arn") else None) or (
+                self._arn_from_template(spec, region, resource_id)
+                if spec.get("arn_template") and not extract_arn(raw_data)
+                else self._construct_arn(
+                    service_name, region, resource_type, resource_id, raw_data
+                )
             )
 
             # Extract tags
@@ -782,7 +898,8 @@ class ComprehensiveAWSDiscovery:
                 ),
                 "account_id": self._extract_account_id(arn) or raw_data.get("OwnerId"),
                 "tags": tags,
-                "raw_data": raw_data,
+                # Values such as Lambda environment variables are masked
+                "raw_data": mask_secret_values(raw_data),
                 "discovered_via": f"ServiceAPI:{operation_name}",
                 "discovered_at": datetime.now(timezone.utc).isoformat(),
                 "tagged": bool(tags),
@@ -802,13 +919,20 @@ class ComprehensiveAWSDiscovery:
         region: str,
         resource_type: str,
         operation_name: str,
+        spec: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict]:
         """Create a resource from a string a list call returns.
 
         The string is a queue URL (SQS), an ARN (ECS) or a name (EKS).
         """
+        spec = spec or {}
         try:
-            arn = self._construct_arn(service_name, region, resource_type, value, {})
+            if spec.get("arn_template") and not value.startswith("arn:"):
+                arn = self._arn_from_template(spec, region, value)
+            else:
+                arn = self._construct_arn(
+                    service_name, region, resource_type, value, {}
+                )
             name = re.split(r"[/]", value)[-1] if value else value
             resource = {
                 "service": service_name.upper(),
@@ -939,12 +1063,9 @@ class ComprehensiveAWSDiscovery:
         return tags
 
     def _extract_account_id(self, arn: str) -> Optional[str]:
-        """Extract account ID from ARN."""
-        if arn and arn.startswith("arn:aws:"):
-            parts = arn.split(":")
-            if len(parts) >= 5:
-                return parts[4]
-        return None
+        """Account ID from an ARN of any partition (aws, aws-cn, aws-us-gov)."""
+        parsed = parse_arn(arn)
+        return (parsed or {}).get("account") or None
 
     def _get_account_id(self) -> str:
         """Account ID of the session. One STS call, then cached.
@@ -984,14 +1105,26 @@ class ComprehensiveAWSDiscovery:
             raw_data,
         )
 
+    def _arn_from_template(
+        self, spec: Dict[str, Any], region: str, resource_id: str
+    ) -> str:
+        """Build an ARN from ``arn_template`` (see ``_op_spec``)."""
+        return spec["arn_template"].format(
+            partition=partition_for_region(region),
+            region=region,
+            account=self._get_account_id(),
+            id=resource_id,
+            id_noslash=resource_id.lstrip("/"),
+        )
+
     def _tagging_regions(self) -> List[str]:
         """Regions to read tags from: the requested ones, plus the home region.
 
         Tags of global services (IAM, Route 53, CloudFront) live in us-east-1.
         """
         regions = list(self.regions)
-        if GLOBAL_HOME_REGION not in regions:
-            regions.append(GLOBAL_HOME_REGION)
+        if self.home_region not in regions:
+            regions.append(self.home_region)
         return regions
 
     def _prefetch_tagging_resources(self) -> Dict[str, List[Dict[str, Any]]]:
@@ -1133,15 +1266,17 @@ class ComprehensiveAWSDiscovery:
         if self.fallback_display_mode == "never":
             return False
         service = self._extract_service_from_arn(arn)
-        return service not in self.services_with_primary_resources
+        covered = {
+            self.service_discovery_patterns.get(key, {}).get("arn_service")
+            or arn_service(key)
+            for key in self.services_with_primary_resources
+        }
+        return service not in covered
 
     def _extract_service_from_arn(self, arn: str) -> Optional[str]:
-        """Extract service name from ARN."""
-        if arn and arn.startswith("arn:aws:"):
-            parts = arn.split(":")
-            if len(parts) >= 3:
-                return parts[2]
-        return None
+        """ARN service code, for ARNs of any partition (aws, aws-cn, aws-us-gov)."""
+        parsed = parse_arn(arn)
+        return (parsed or {}).get("service") or None
 
     def _validate_with_billing(self):
         """Comprehensive validation of discovered resources against billing data."""
@@ -1248,8 +1383,11 @@ class ComprehensiveAWSDiscovery:
             return 0
 
         found = {r["service"].lower() for r in self.resources}
+        found_keys = {canonical_service(d) for d in found}
 
         def covered(billed: str) -> bool:
+            if canonical_service(billed) in found_keys:
+                return True
             return any(
                 d == billed
                 or (len(d) >= 3 and d in billed)
@@ -1389,6 +1527,7 @@ class ComprehensiveAWSDiscovery:
                             FunctionName=function_name
                         )
                         config.pop("ResponseMetadata", None)
+                        config = mask_secret_values(config)
 
                         resource["raw_data"]["boto3_config"] = config
                         resource["raw_data"]["runtime"] = config.get("Runtime")
@@ -1427,7 +1566,9 @@ class ComprehensiveAWSDiscovery:
 
                         if instances:
                             instance = instances[0]
-                            resource["raw_data"]["boto3_instance"] = instance
+                            resource["raw_data"]["boto3_instance"] = mask_secret_values(
+                                instance
+                            )
                             resource["raw_data"]["engine"] = instance.get("Engine")
                             resource["raw_data"]["engine_version"] = instance.get(
                                 "EngineVersion"
@@ -1470,7 +1611,9 @@ class ComprehensiveAWSDiscovery:
 
                         if stacks:
                             stack = stacks[0]
-                            resource["raw_data"]["boto3_stack"] = stack
+                            resource["raw_data"]["boto3_stack"] = mask_secret_values(
+                                stack
+                            )
                             resource["raw_data"]["stack_status"] = stack.get(
                                 "StackStatus"
                             )
@@ -1571,6 +1714,11 @@ class ComprehensiveAWSDiscovery:
             "NetworkAcl",
             "ElasticIP",
         ]
+
+        # Only EC2 resources can be VPC resources. A Lambda function or an S3
+        # bucket named "vpc-..." or "nat-..." stays in its own service.
+        if service_name.lower() not in ("ec2", "vpc"):
+            return service_name
 
         # Check resource ID prefixes
         if any(
