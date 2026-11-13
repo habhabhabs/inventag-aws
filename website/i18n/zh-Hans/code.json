@@ -730,5 +730,26 @@
   },
   "consent.saved.on": {
     "message": "已保存：分析已开启。"
+  },
+  "search.loading": {
+    "message": "正在加载搜索索引…"
+  },
+  "search.searching": {
+    "message": "正在搜索…"
+  },
+  "search.failed": {
+    "message": "搜索无法加载。请检查网络连接，然后重试。"
+  },
+  "search.retry": {
+    "message": "重试"
+  },
+  "search.count": {
+    "message": "{count} 条结果"
+  },
+  "search.count.one": {
+    "message": "1 条结果"
+  },
+  "search.close": {
+    "message": "关闭"
   }
 }

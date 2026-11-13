@@ -730,5 +730,26 @@
   },
   "consent.saved.on": {
     "message": "Guardado: la analítica está activada."
+  },
+  "search.loading": {
+    "message": "Cargando el índice de búsqueda…"
+  },
+  "search.searching": {
+    "message": "Buscando…"
+  },
+  "search.failed": {
+    "message": "No se pudo cargar la búsqueda. Comprueba tu conexión e inténtalo de nuevo."
+  },
+  "search.retry": {
+    "message": "Reintentar"
+  },
+  "search.count": {
+    "message": "{count} resultados"
+  },
+  "search.count.one": {
+    "message": "1 resultado"
+  },
+  "search.close": {
+    "message": "Cerrar"
   }
 }

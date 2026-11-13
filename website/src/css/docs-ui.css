@@ -414,6 +414,47 @@ a.it-card:hover .it-card__go {
   border-radius: 6px;
   cursor: pointer;
 }
+.it-search__esc-word {
+  display: none;
+}
+.it-retry {
+  min-height: 2.75rem;
+  padding: 0.3rem 1rem;
+  border: 1px solid var(--it-line-strong);
+  border-radius: 8px;
+  background: var(--it-surface);
+  color: var(--it-ink);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .it-retry:hover {
+    background: var(--it-hover);
+    border-color: var(--it-ink);
+  }
+}
+.it-retry:focus-visible {
+  outline: 2px solid var(--it-accent);
+  outline-offset: 2px;
+}
+/* On a phone there is no Esc key: show a labelled, 44px Close button */
+@media (max-width: 640px) {
+  .it-search__esc {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    font-family: inherit;
+    font-size: 0.875rem;
+    padding: 0.3rem 0.75rem;
+    color: var(--it-ink);
+  }
+  .it-search__esc-key {
+    display: none;
+  }
+  .it-search__esc-word {
+    display: inline;
+  }
+}
 .it-search__body {
   overflow-y: auto;
   padding: 0.5rem;
@@ -509,6 +550,9 @@ a.it-search__hit:hover .it-search__hit-go {
   padding: 2rem 1rem;
   text-align: center;
   color: var(--it-ink-2);
+}
+div.it-search__empty p {
+  margin: 0 0 0.9rem;
 }
 .it-search__foot {
   display: flex;

@@ -730,5 +730,26 @@
   },
   "consent.saved.on": {
     "message": "已儲存：分析已開啟。"
+  },
+  "search.loading": {
+    "message": "正在載入搜尋索引…"
+  },
+  "search.searching": {
+    "message": "正在搜尋…"
+  },
+  "search.failed": {
+    "message": "搜尋無法載入。請檢查網路連線，然後再試一次。"
+  },
+  "search.retry": {
+    "message": "重試"
+  },
+  "search.count": {
+    "message": "{count} 筆結果"
+  },
+  "search.count.one": {
+    "message": "1 筆結果"
+  },
+  "search.close": {
+    "message": "關閉"
   }
 }
