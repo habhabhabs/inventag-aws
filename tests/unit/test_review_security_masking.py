@@ -20,6 +20,13 @@ S = "planted-review-secret-7f3a"
         {"Endpoint": {"ConnectionString": S}},
         {"Input": json.dumps({"db": {"Password": S}})},
         {"Input": "  " + json.dumps([{"name": "n", "AuthToken": S}])},
+        {"Settings": {"HlsAkamaiSettings": {"Token": S}}},
+        {"Splunk": {"HECToken": S}},
+        {"environments": [{"activationCode": S}]},
+        {"ImportJobs": [{"PreSignedUrl": S}]},
+        {"Certificates": [{"CertificateWallet": S}]},
+        {"jobDriver": {"sparkSubmitJobDriver": {"entryPointArguments": ["--pw", S]}}},
+        {"taxDocumentMetadatas": [{"taxDocumentAccessToken": S}]},
         {"Nested": {"Deeper": [{"Payload": json.dumps({"Variables": {"A": S}})}]}},
     ],
 )
@@ -55,6 +62,9 @@ def test_tags_named_like_secrets_stay_visible():
 
 def test_unknown_keys_pass_and_deep_nesting_fails_closed():
     assert mask_secret_values({"SomeNewField": S}) == {"SomeNewField": S}
+    # Pagination and idempotency tokens are not secrets and stay.
+    kept = {"NextToken": "n", "ClientRequestToken": "c", "UpdateToken": "u"}
+    assert mask_secret_values(kept) == kept
     deep = cur = {}
     for _ in range(250):
         cur["n"] = {}

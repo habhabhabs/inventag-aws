@@ -53,6 +53,10 @@ Field                                     Where it comes from
                                           passed out through an output)
 ``Arguments.*``                           Glue trigger actions and job runs
 ``TemplateBody``                          CloudFormation stack sets (template text)
+``Token``, ``HECToken``, ``JoinToken``,   MediaLive, Firehose Splunk, Grafana, Chime,
+``PresignedUrl``, ``ActivationCode``,     Mail Manager, WorkSpaces Thin Client, DMS
+``CertificateWallet``,                    Oracle wallets, EMR on EKS job arguments
+``entryPointArguments``
 ``DefaultArguments.*``,                   Glue jobs
 ``NonOverridableArguments.*``
 ``ConnectionProperties.*``                Glue connections
@@ -105,13 +109,22 @@ SECRET_VALUE_KEYS = frozenset(
         "resolvedvalue",
         "outputvalue",
         "templatebody",
+        # Found by sweeping the operations dynamic discovery may call
+        "token",
+        "hectoken",
+        "grafanatoken",
+        "jointoken",
+        "presignedurl",
+        "activationcode",
+        "certificatewallet",
+        "entrypointarguments",
     }
 )
 # Normalised names that END like this are secret too (DbPassword, api_key...).
 _SECRET_SUFFIX = re.compile(
     r"(password|passwd|secretstring|secretbinary|secretaccesskey|clientsecret|"
     r"sharedsecret|privatekey|apikey|authtoken|sessiontoken|securitytoken|"
-    r"bearertoken|connectionstring|credentials?)$"
+    r"bearertoken|accesstoken|refreshtoken|connectionstring|credentials?)$"
 )
 # Mappings of name -> value whose names stay and whose values go.
 SECRET_MAPPING_KEYS = frozenset(
