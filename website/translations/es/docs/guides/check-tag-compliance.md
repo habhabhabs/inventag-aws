@@ -171,6 +171,10 @@ registra una advertencia y los lista en `summary.ignored_policy_fields` de su in
 porque las crea AWS, así que un recurso con solo etiquetas `aws:` cuenta como sin etiquetar, y una clave de etiqueta obligatoria que empiece por `aws:` es un error.
 Aparte de eso, esta documentación no lo cubre. Es preferible usar plantillas de política de etiquetas.
 
+Los scripts antiguos de `scripts/legacy/` se ejecutan con la protección de solo lectura y escriben
+archivos que solo puede leer su propietario. `aws_resource_inventory.py --s3-bucket` sube los archivos
+con cifrado SSE-S3.
+
 ## Siguientes pasos {#next-steps}
 
 - [Políticas de etiquetas integradas](../templates/catalogue.md#tag-policy-templates)

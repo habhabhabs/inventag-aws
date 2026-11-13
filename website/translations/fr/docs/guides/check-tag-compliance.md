@@ -167,6 +167,10 @@ il journalise un avertissement et les liste dans `summary.ignored_policy_fields`
 car AWS les crée : une ressource qui n’a que des étiquettes `aws:` compte donc comme non étiquetée, et une clé d’étiquette obligatoire qui commence par `aws:` est une erreur.
 Au-delà, il n’est pas couvert par cette documentation. Préférez les modèles de politique d’étiquetage.
 
+Les anciens scripts de `scripts/legacy/` s’exécutent sous la protection en lecture seule et écrivent
+des fichiers réservés à leur propriétaire. `aws_resource_inventory.py --s3-bucket` téléverse avec le
+chiffrement SSE-S3.
+
 ## Étapes suivantes {#next-steps}
 
 - [Politiques d’étiquetage intégrées](../templates/catalogue.md#tag-policy-templates)

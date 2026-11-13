@@ -32,7 +32,14 @@ mainteneur un canal privé.
   opérations autorisées quand un paramètre demande un secret (clés d’API avec
   `includeValue`, `ec2:DescribeInstanceAttribute` pour `userData`), et elle vérifie
   les URL présignées et les jetons d’authentification de base de données, qui sont
-  signés sans appel à AWS. Elle est toujours active.
+  signés sans appel à AWS. Elle bloque aussi les lectures qui fournissent une URL
+  signée, le corps d’un fichier ou d’un document, la sortie d’une commande ou une
+  définition enregistrée contenant des secrets (par exemple `ssm:GetDocument`,
+  `ssm:GetCommandInvocation`, les exports API Gateway, les définitions Data
+  Pipeline et les pièces jointes Support et Connect), ainsi que
+  `cognito-identity:GetId`, qui crée une identité. Chaque entrée de la liste de
+  refus est vérifiée par rapport à la liste des opérations du SDK AWS. Elle est
+  toujours active.
 - **La connexion fonctionne toujours.** La protection laisse le SDK AWS échanger un
   jeton IAM Identity Center (SSO), d’identité web ou `aws login` contre des
   identifiants. Elle n’autorise que ces quatre appels non signés :

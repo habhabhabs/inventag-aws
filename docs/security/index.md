@@ -32,7 +32,13 @@ maintainer for a private channel.
   allowed operations when a parameter asks for a secret (API keys with
   `includeValue`, `ec2:DescribeInstanceAttribute` for `userData`), and it
   checks presigned URLs and database auth tokens, which are signed without a
-  call to AWS. It is always on.
+  call to AWS. It also blocks reads that hand out a signed URL, a file or
+  document body, command output or a stored definition with secrets (for
+  example `ssm:GetDocument`, `ssm:GetCommandInvocation`, API Gateway exports,
+  Data Pipeline definitions, and support and Connect attachments), and
+  `cognito-identity:GetId`, which creates an identity. Every entry of the
+  deny-list is checked against the AWS SDK's list of operations. It is always
+  on.
 - **Sign-in still works.** The guard lets the AWS SDK exchange an IAM Identity
   Center (SSO), web-identity or `aws login` token for credentials. It allows
   only these four unsigned calls: `sso:GetRoleCredentials`,

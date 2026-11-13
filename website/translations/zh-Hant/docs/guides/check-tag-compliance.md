@@ -161,6 +161,9 @@ spec:
 它會記錄一條警告，並把這些欄位列在其報告的 `summary.ignored_policy_fields` 中。它會忽略鍵以 `aws:` 開頭的標籤，因為這些標籤由 AWS 建立，
 所以只有 `aws:` 標籤的資源算作未打標籤，而以 `aws:` 開頭的必需標籤鍵會報錯。除此之外，本文件不涵蓋它。請優先使用標籤策略範本。
 
+`scripts/legacy/` 中的舊指令碼在唯讀防護下執行，寫出的檔案只有所有者可讀寫。
+`aws_resource_inventory.py --s3-bucket` 上傳時使用 SSE-S3 加密。
+
 ## 下一步 {#next-steps}
 
 - [內建標籤策略](../templates/catalogue.md#tag-policy-templates)

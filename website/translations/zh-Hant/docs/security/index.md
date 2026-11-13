@@ -26,6 +26,9 @@ sidebar_position: 1
   `cloudformation:GetTemplate` 或 `ec2:GetLaunchTemplateData`。當引數要求返回機密時
   （帶 `includeValue` 的 API 金鑰、針對 `userData` 的 `ec2:DescribeInstanceAttribute`），
   它也會攔截原本允許的操作；它還會檢查預簽名 URL 和資料庫認證權杖，這些在簽名時不會呼叫 AWS。
+  它還會攔截返回簽名 URL、檔案或文件正文、命令輸出或含有機密的已儲存定義的讀取（例如 `ssm:GetDocument`、
+  `ssm:GetCommandInvocation`、API Gateway 匯出、Data Pipeline 定義，以及 Support 和 Connect 附件），
+  以及會建立身份的 `cognito-identity:GetId`。拒絕列表中的每個條目都會與 AWS SDK 的操作列表進行核對。
   它始終開啟。
 - **登入仍然可用。** 防護允許 AWS SDK 把 IAM Identity Center（SSO）、Web 身份或 `aws login`
   權杖換成憑證。它只允許以下四個未簽名的呼叫：`sso:GetRoleCredentials`、

@@ -188,6 +188,10 @@ tags counts as untagged, and a required tag key that starts with `aws:` is an
 error. Beyond that it is not covered by this documentation. Prefer tag-policy
 templates.
 
+The legacy scripts in `scripts/legacy/` run under the read-only guard and write
+owner-only files. `aws_resource_inventory.py --s3-bucket` uploads with SSE-S3
+encryption.
+
 ## Next steps
 
 - [Built-in tag policies](../templates/catalogue.md#tag-policy-templates)
