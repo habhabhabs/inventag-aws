@@ -271,3 +271,49 @@ def test_templated_generator_reports_empty_result(registry, tmp_path, caplog):
     assert "No resources to report" in caplog.text
     full = {"success": True, "bom_generation": out}
     assert bom_result_is_empty(full)
+
+
+# ------------------------------------------------------ JSON templates
+
+
+def test_json_template_with_tabs_and_surrogate_escapes(tmp_path, registry):
+    f = tmp_path / "t.json"
+    f.write_text(
+        '{\n\t"format_version": 1,\n\t"kind": "report",\n\t"name": "t",\n'
+        '\t"spec": {"title": "T\\u00e9 \\ud83d\\ude00"}\n}\n',
+        encoding="utf-8",
+    )
+    resolved = registry.resolve(str(f))
+    assert resolved.spec["title"] == "Té 😀"
+    assert templates_cli.main(["validate", str(f)]) == 0
+
+
+def test_json_errors_name_the_file_and_key(tmp_path, registry):
+    f = write(tmp_path / "d.json", '{"kind": "report", "kind": "config"}')
+    with pytest.raises(TemplateError, match="duplicate key 'kind'"):
+        registry.resolve(str(f))
+    f = write(tmp_path / "s.json", "{")
+    with pytest.raises(TemplateError, match="invalid JSON") as error:
+        registry.resolve(str(f))
+    assert "s.json" in str(error.value)
+    f = write(
+        tmp_path / "u.json",
+        '{"kind": "report", "name": "u", "spec": {"titel": "x"}}',
+    )
+    with pytest.raises(TemplateError, match="did you mean 'title'") as error:
+        registry.resolve(str(f))
+    assert "u.json" in str(error.value)
+    f = write(tmp_path / "deep.json", "[" * 5000 + "]" * 5000)
+    with pytest.raises(TemplateError):
+        registry.resolve(str(f))
+
+
+def test_deeply_nested_yaml_is_an_error_not_a_crash(tmp_path, registry):
+    f = write(tmp_path / "deep.yaml", "kind: report\nname: d\nspec: " + "[" * 5000)
+    with pytest.raises(TemplateError):
+        registry.resolve(str(f))
+    f = write(
+        tmp_path / "deep2.yaml", "kind: report\nname: d\nspec: " + "[" * 40 + "]" * 40
+    )
+    with pytest.raises(TemplateError, match="nested too deeply"):
+        registry.resolve(str(f))

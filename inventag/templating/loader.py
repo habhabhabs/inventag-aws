@@ -13,6 +13,7 @@ Templates are data, never code:
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -125,6 +126,15 @@ def _walk(node: yaml.Node, path: PathKey, lines: Dict[PathKey, int], source: str
                 stack.append((item, child_path, depth + 1))
 
 
+def _no_duplicate_keys(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate key '{key}'")
+        result[key] = value
+    return result
+
+
 def parse_template_text(
     text: str,
     source: str = "<template>",
@@ -141,36 +151,86 @@ def parse_template_text(
                 )
             ]
         )
-    try:
-        root = yaml.compose(text, Loader=yaml.SafeLoader)
-    except yaml.YAMLError as error:
-        problem = getattr(error, "problem", None) or str(error)
-        raise TemplateError(
-            [TemplateIssue(f"invalid YAML: {problem}", source, _mark_line(error))]
-        ) from None
-    if root is None:
-        raise TemplateError([TemplateIssue("template file is empty", source, 1)])
+    stripped = text.lstrip("\ufeff").lstrip()
+    is_json_file = source.lower().endswith(".json")
+    data: Any = None
+    parsed_as_json = False
+    if is_json_file or stripped.startswith("{"):
+        # JSON allows tabs and \u escapes that YAML does not, so read it as JSON.
+        try:
+            data = json.loads(stripped, object_pairs_hook=_no_duplicate_keys)
+            parsed_as_json = True
+        except json.JSONDecodeError as error:
+            if is_json_file:
+                raise TemplateError(
+                    [
+                        TemplateIssue(
+                            f"invalid JSON: {error.msg} (column {error.colno})",
+                            source,
+                            error.lineno,
+                        )
+                    ]
+                ) from None
+        except ValueError as error:  # a key written twice
+            raise TemplateError([TemplateIssue(str(error), source)]) from None
+        except RecursionError:
+            raise TemplateError(
+                [
+                    TemplateIssue(
+                        f"template is nested too deeply (more than {MAX_DEPTH} "
+                        "levels)",
+                        source,
+                    )
+                ]
+            ) from None
 
     lines: Dict[PathKey, int] = {}
-    _walk(root, (), lines, source)
+    if parsed_as_json:
+        # Line numbers are a courtesy; a tab-indented file cannot give them.
+        try:
+            _walk(yaml.compose(text, Loader=yaml.SafeLoader), (), lines, source)
+        except (yaml.YAMLError, TemplateError, RecursionError):
+            lines = {}
+    else:
+        try:
+            root = yaml.compose(text, Loader=yaml.SafeLoader)
+        except RecursionError:
+            raise TemplateError(
+                [
+                    TemplateIssue(
+                        f"template is nested too deeply (more than {MAX_DEPTH} "
+                        "levels)",
+                        source,
+                    )
+                ]
+            ) from None
+        except yaml.YAMLError as error:
+            problem = getattr(error, "problem", None) or str(error)
+            raise TemplateError(
+                [TemplateIssue(f"invalid YAML: {problem}", source, _mark_line(error))]
+            ) from None
+        if root is None:
+            raise TemplateError([TemplateIssue("template file is empty", source, 1)])
 
-    try:
-        data = yaml.load(text, Loader=yaml.SafeLoader)  # noqa: S506 - SafeLoader
-    except yaml.constructor.ConstructorError as error:
-        raise TemplateError(
-            [
-                TemplateIssue(
-                    f"unsupported YAML tag: {error.problem}. Templates are plain "
-                    "data; tags such as !!python/object are not allowed",
-                    source,
-                    _mark_line(error),
-                )
-            ]
-        ) from None
-    except yaml.YAMLError as error:
-        raise TemplateError(
-            [TemplateIssue(f"invalid YAML: {error}", source, _mark_line(error))]
-        ) from None
+        _walk(root, (), lines, source)
+
+        try:
+            data = yaml.load(text, Loader=yaml.SafeLoader)  # noqa: S506 - SafeLoader
+        except yaml.constructor.ConstructorError as error:
+            raise TemplateError(
+                [
+                    TemplateIssue(
+                        f"unsupported YAML tag: {error.problem}. Templates are "
+                        "plain data; tags such as !!python/object are not allowed",
+                        source,
+                        _mark_line(error),
+                    )
+                ]
+            ) from None
+        except yaml.YAMLError as error:
+            raise TemplateError(
+                [TemplateIssue(f"invalid YAML: {error}", source, _mark_line(error))]
+            ) from None
 
     if not isinstance(data, dict):
         raise TemplateError(
