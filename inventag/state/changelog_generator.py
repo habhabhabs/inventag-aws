@@ -339,15 +339,22 @@ class ChangelogGenerator:
                 historical_reports + [delta_report]
             )
 
+        state_comparison = {
+            "from_state": delta_report.state1_id,
+            "to_state": delta_report.state2_id,
+            "comparison_timestamp": delta_report.timestamp,
+        }
+        skipped = getattr(delta_report, "skipped_accounts", None)
+        if skipped:
+            state_comparison["accounts_not_compared"] = "; ".join(
+                f"{account} ({reason})" for account, reason in sorted(skipped.items())
+            )
+
         # Create changelog
         changelog = Changelog(
             title=title,
             generation_timestamp=datetime.now(timezone.utc).isoformat(),
-            state_comparison={
-                "from_state": delta_report.state1_id,
-                "to_state": delta_report.state2_id,
-                "comparison_timestamp": delta_report.timestamp,
-            },
+            state_comparison=state_comparison,
             summary=summary,
             sections=sections,
             trend_analysis=trend_analysis,
@@ -1072,6 +1079,10 @@ class ChangelogGenerator:
         lines.append(
             f"**State Comparison:** {changelog.state_comparison['from_state']} → {changelog.state_comparison['to_state']}"
         )
+        if changelog.state_comparison.get("accounts_not_compared"):
+            lines.append(
+                f"**Accounts not compared:** {changelog.state_comparison['accounts_not_compared']}"
+            )
         lines.append("")
 
         # Summary

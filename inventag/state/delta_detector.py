@@ -9,10 +9,13 @@ and change impact analysis.
 import json
 import hashlib
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Set, Any, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Set, Any, Tuple, Union
 from dataclasses import dataclass, field
 from enum import Enum
 import logging
+
+from ..discovery.arn_utils import arn_service, id_tail, normalize_arn
+from .state_manager import StateLoadError
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +101,56 @@ class DeltaReport:
     network_changes: Dict[str, Any]
     impact_analysis: Dict[str, Any]
     change_statistics: Dict[str, Any]
+    # Accounts left out of the comparison (account ID -> reason), for example
+    # because one of the two runs could not scan them. Their resources are not
+    # reported as added or removed.
+    skipped_accounts: Dict[str, str] = field(default_factory=dict)
+
+
+# Fields that vary from run to run without the resource changing: how it was
+# found, spend figures and counters that move with usage. Ignored at every
+# depth, in addition to ``ignore_metadata_fields``.
+DEFAULT_VOLATILE_FIELDS = [
+    "discovered_via",
+    "data_sources",
+    "api_operation",
+    "priority",
+    "billing_validated",
+    "billing_cost_30d",
+    "monthly_spend",
+    "service_monthly_spend",
+    "cost_last_30_days",
+    # Usage counters returned by list/describe calls
+    "ItemCount",
+    "TableSizeBytes",
+    "ApproximateNumberOfMessages",
+    "ApproximateNumberOfMessagesNotVisible",
+    "ApproximateNumberOfMessagesDelayed",
+    "SubscriptionsConfirmed",
+    "SubscriptionsPending",
+    "SubscriptionsDeleted",
+    "RoleLastUsed",
+    "PasswordLastUsed",
+    "LastUsedDate",
+]
+
+# On a resource that two runs found by different routes (Tagging API in one,
+# the service API in the other) these describe the route, not the resource.
+_ROUTE_FIELDS = {
+    "service",
+    "arn",
+    "id",
+    "resource_id",
+    "name",
+    "resource_name",
+    "type",
+    "resource_type",
+    "raw_data",
+}
+
+
+def _is_arn(key: Any) -> bool:
+    return isinstance(key, str) and key.startswith("arn:")
 
 
 class DeltaDetector:
@@ -110,6 +163,7 @@ class DeltaDetector:
         self,
         ignore_metadata_fields: Optional[List[str]] = None,
         severity_rules: Optional[Dict[str, ChangeSeverity]] = None,
+        volatile_fields: Optional[List[str]] = None,
     ):
         """
         Initialize DeltaDetector with configuration options.
@@ -117,7 +171,14 @@ class DeltaDetector:
         Args:
             ignore_metadata_fields: List of fields to ignore during comparison
             severity_rules: Custom rules for determining change severity
+            volatile_fields: Extra field names ignored at every depth (default:
+                DEFAULT_VOLATILE_FIELDS). Pass [] to compare them too.
         """
+        self.volatile_fields = (
+            list(DEFAULT_VOLATILE_FIELDS)
+            if volatile_fields is None
+            else list(volatile_fields)
+        )
         # Fields that describe the scan, not the resource. They differ on every
         # run, so comparing them would report every resource as modified.
         self.ignore_metadata_fields = ignore_metadata_fields or [
@@ -189,6 +250,7 @@ class DeltaDetector:
         new_resources: List[Dict],
         state1_id: str,
         state2_id: str,
+        skip_accounts: Optional[Dict[str, str]] = None,
     ) -> DeltaReport:
         """
         Detect comprehensive changes between two resource states.
@@ -198,15 +260,32 @@ class DeltaDetector:
             new_resources: Resources from the current state
             state1_id: ID of the previous state
             state2_id: ID of the current state
+            skip_accounts: Accounts (ID -> reason) to leave out of the
+                comparison on both sides, so an account that could not be
+                scanned in one run does not show all its resources as removed.
 
         Returns:
             DeltaReport with comprehensive change analysis
         """
         logger.info(f"Detecting changes between states {state1_id} and {state2_id}")
 
+        skipped = dict(skip_accounts or {})
+        if skipped:
+            old_resources = [
+                r for r in old_resources if self._account_of(r) not in skipped
+            ]
+            new_resources = [
+                r for r in new_resources if self._account_of(r) not in skipped
+            ]
+
         # Create resource lookup maps by ARN
         old_resources_map = self._create_resource_map(old_resources)
         new_resources_map = self._create_resource_map(new_resources)
+        # A resource found by another route or ARN spelling in the new run is
+        # the same resource, not one removed plus one added.
+        new_resources_map, route_changed = self._align_keys(
+            old_resources_map, new_resources_map
+        )
 
         # Detect different types of changes
         added_resources = self._detect_added_resources(
@@ -216,7 +295,7 @@ class DeltaDetector:
             old_resources_map, new_resources_map
         )
         modified_resources, unchanged_resources = self._detect_modified_resources(
-            old_resources_map, new_resources_map
+            old_resources_map, new_resources_map, route_changed
         )
 
         # Analyze compliance changes
@@ -280,7 +359,77 @@ class DeltaDetector:
             network_changes=network_changes,
             impact_analysis=impact_analysis,
             change_statistics=change_statistics,
+            skipped_accounts=skipped,
         )
+
+    @staticmethod
+    def _account_of(resource: Dict) -> str:
+        """Account a resource belongs to ("" when the record does not say)."""
+        return str(
+            resource.get("source_account_id") or resource.get("account_id") or ""
+        )
+
+    def _align_keys(
+        self, old_map: Dict[str, Dict], new_map: Dict[str, Dict]
+    ) -> Tuple[Dict[str, Dict], Set[str]]:
+        """Re-key ``new_map`` so the same resource has the same key in both.
+
+        Pass 1 matches ARNs that differ only in spelling (case, ``vpc``/``ec2``,
+        ``function/x`` and ``function:x``). Pass 2 matches a resource that has
+        an ARN in one run and none in the other (Tagging API route against the
+        service route) by service, region and ID. Only keys missing from the
+        other side are touched, and ambiguous matches are left alone.
+        """
+        old_only = [k for k in old_map if k not in new_map]
+        new_only = [k for k in new_map if k not in old_map]
+        if not old_only or not new_only:
+            return new_map, set()
+
+        rename: Dict[str, str] = {}
+
+        def unique(items):
+            seen: Dict[Any, List[str]] = {}
+            for key in items:
+                seen.setdefault(key[0], []).append(key[1])
+            return {k: v[0] for k, v in seen.items() if len(v) == 1}
+
+        old_norm = unique((normalize_arn(k), k) for k in old_only if _is_arn(k))
+        for key in new_only:
+            if _is_arn(key):
+                match = old_norm.get(normalize_arn(key))
+                if match is not None:
+                    rename[key] = match
+                    del old_norm[normalize_arn(key)]
+
+        matched_old = set(rename.values())
+        old_left = [k for k in old_only if k not in matched_old]
+        new_left = [k for k in new_only if k not in rename]
+        old_loose = unique((self._loose_key(k, old_map[k]), k) for k in old_left)
+        new_loose = unique((self._loose_key(k, new_map[k]), k) for k in new_left)
+        for loose, new_key in new_loose.items():
+            old_key = old_loose.get(loose)
+            if old_key is None or loose[2] == "":
+                continue
+            # Two ARNs that differ are two resources; only match when at least
+            # one side has no ARN.
+            if _is_arn(old_key) and _is_arn(new_key):
+                continue
+            rename[new_key] = old_key
+
+        if not rename:
+            return new_map, set()
+        aligned = {rename.get(k, k): v for k, v in new_map.items()}
+        return aligned, set(rename.values())
+
+    @staticmethod
+    def _loose_key(key: str, resource: Dict) -> Tuple[str, str, str]:
+        service = arn_service(resource.get("service"))
+        region = str(resource.get("region") or "").lower()
+        rid = id_tail(key) if _is_arn(key) else ""
+        if not rid:
+            rid = str(resource.get("id") or resource.get("resource_id") or "")
+            rid = rid.rstrip("/").rsplit("/", 1)[-1]
+        return (service, region, rid.lower())
 
     def detect_changes_by_state_id(
         self, state_manager, previous_state_id: str, current_state_id: str
@@ -296,45 +445,83 @@ class DeltaDetector:
         Returns:
             DeltaReport with comprehensive change analysis
         """
-        # Load the states
-        previous_state = state_manager.load_state(previous_state_id)
-        current_state = state_manager.load_state(current_state_id)
+        # Load the states. A snapshot that cannot be read stops the comparison
+        # with a message that names the file; it is never read as "empty".
+        previous_state = self._load(state_manager, previous_state_id)
+        current_state = self._load(state_manager, current_state_id)
 
-        if not previous_state or not current_state:
-            logger.warning(
-                f"Could not load states {previous_state_id} or {current_state_id}"
-            )
-            # Return empty delta report
-            return DeltaReport(
-                state1_id=previous_state_id,
-                state2_id=current_state_id,
-                comparison_timestamp=datetime.now(timezone.utc).isoformat(),
-                changes_detected=False,
-                change_summary={
-                    "total_changes": 0,
-                    "added": 0,
-                    "removed": 0,
-                    "modified": 0,
-                    "unchanged": 0,
-                },
-                added_resources=[],
-                removed_resources=[],
-                modified_resources=[],
-                unchanged_resources=[],
-                change_impact={},
-                recommendations=[],
-            )
-
-        # Extract resources and call the main detect_changes method
-        old_resources = previous_state.resources
-        new_resources = current_state.resources
+        # Leave out accounts that were not scanned in both runs.
+        skip = self.accounts_to_skip(previous_state, current_state)
+        for account, reason in skip.items():
+            logger.warning(f"Account {account} left out of the comparison: {reason}")
 
         return self.detect_changes(
-            old_resources=old_resources,
-            new_resources=new_resources,
+            old_resources=previous_state.resources,
+            new_resources=current_state.resources,
             state1_id=previous_state_id,
             state2_id=current_state_id,
+            skip_accounts=skip,
         )
+
+    @staticmethod
+    def _load(state_manager, state_id: str):
+        """Load a snapshot or raise StateLoadError saying why not."""
+        try:
+            snapshot = state_manager.load_state(state_id, strict=True)
+        except TypeError:
+            # A state manager without the strict option.
+            snapshot = state_manager.load_state(state_id)
+        if snapshot is None:
+            raise StateLoadError(
+                f"Snapshot {state_id} could not be loaded (not found or unreadable); "
+                "no comparison was made"
+            )
+        return snapshot
+
+    @staticmethod
+    def scanned_accounts(snapshot) -> Optional[Set[str]]:
+        """Accounts a snapshot covers completely (None when it does not say).
+
+        Uses the scope recorded in the snapshot. Older snapshots have none, so
+        the accounts named by ``source_account_id`` in the resources are used.
+        """
+        meta = snapshot.metadata
+        recorded = getattr(meta, "accounts_scanned", None)
+        failed = set(getattr(meta, "accounts_failed", None) or [])
+        if recorded is not None:
+            return set(recorded) - failed
+        derived = {
+            DeltaDetector._account_of(r)
+            for r in snapshot.resources
+            if DeltaDetector._account_of(r)
+        }
+        return (derived - failed) if derived else None
+
+    @classmethod
+    def accounts_to_skip(cls, previous_state, current_state) -> Dict[str, str]:
+        """Accounts that must not be compared, with the reason for each."""
+        old_scope = cls.scanned_accounts(previous_state)
+        new_scope = cls.scanned_accounts(current_state)
+        if old_scope is None or new_scope is None:
+            return {}
+        failed_old = set(
+            getattr(previous_state.metadata, "accounts_failed", None) or []
+        )
+        failed_new = set(getattr(current_state.metadata, "accounts_failed", None) or [])
+        skip: Dict[str, str] = {}
+        for account in sorted(old_scope | new_scope | failed_old | failed_new):
+            if account in old_scope and account in new_scope:
+                continue
+            if account in failed_new:
+                reason = "the current run could not scan it"
+            elif account in failed_old:
+                reason = "the previous run could not scan it"
+            elif account in old_scope:
+                reason = "it is not in the current run (not scanned, or scan failed)"
+            else:
+                reason = "it is new, so there is nothing to compare with"
+            skip[account] = reason
+        return skip
 
     def _create_resource_map(self, resources: List[Dict]) -> Dict[str, Dict]:
         """Create a map of resources keyed by ARN for efficient lookup"""
@@ -346,7 +533,16 @@ class DeltaDetector:
                 resource_map[key] = resource
             else:
                 # Generate a synthetic key for resources without ARN or ID
-                synthetic_key = f"{resource.get('service', 'unknown')}:{resource.get('type', 'unknown')}:{resource.get('region', 'unknown')}:{hash(json.dumps(resource, sort_keys=True))}"
+                # Not hash(): that changes from one Python process to the next.
+                stable = {
+                    k: v
+                    for k, v in self._canonical(resource).items()
+                    if k not in ("tags",)
+                }
+                digest = hashlib.sha256(
+                    json.dumps(stable, sort_keys=True, default=str).encode()
+                ).hexdigest()[:16]
+                synthetic_key = f"{resource.get('service', 'unknown')}:{resource.get('type', 'unknown')}:{resource.get('region', 'unknown')}:{digest}"
                 resource_map[synthetic_key] = resource
         return resource_map
 
@@ -417,7 +613,10 @@ class DeltaDetector:
         return removed_resources
 
     def _detect_modified_resources(
-        self, old_resources_map: Dict[str, Dict], new_resources_map: Dict[str, Dict]
+        self,
+        old_resources_map: Dict[str, Dict],
+        new_resources_map: Dict[str, Dict],
+        route_changed: Optional[Set[str]] = None,
     ) -> Tuple[List[ResourceChange], List[ResourceChange]]:
         """Detect resources that were modified between states"""
         modified_resources = []
@@ -429,7 +628,11 @@ class DeltaDetector:
                 new_resource = new_resources_map[arn]
 
                 # Compare resources and detect changes
-                attribute_changes = self._compare_resources(old_resource, new_resource)
+                attribute_changes = self._compare_resources(
+                    old_resource,
+                    new_resource,
+                    skip_fields=_ROUTE_FIELDS if arn in (route_changed or ()) else (),
+                )
 
                 if attribute_changes:
                     change = ResourceChange(
@@ -476,18 +679,61 @@ class DeltaDetector:
         )
         return modified_resources, unchanged_resources
 
+    def _ignored_names(self) -> Set[str]:
+        return set(self.ignore_metadata_fields) | set(self.volatile_fields)
+
+    def _canonical(self, value: Any, ignored: Optional[Set[str]] = None) -> Any:
+        """A copy of ``value`` that compares equal when only noise differs.
+
+        Drops volatile fields at every depth, treats lists as unordered (so a
+        re-ordered security-group list or tag list is not a change), and turns
+        ``[{"Key": k, "Value": v}]`` tag lists into the same ``{k: v}`` map the
+        other discovery routes produce.
+        """
+        if ignored is None:
+            ignored = self._ignored_names()
+        if isinstance(value, dict):
+            return {
+                k: self._canonical(v, ignored)
+                for k, v in value.items()
+                if k not in ignored
+            }
+        if isinstance(value, (list, tuple)):
+            items = list(value)
+            if items and all(
+                isinstance(i, dict) and set(i) in ({"Key", "Value"}, {"key", "value"})
+                for i in items
+            ):
+                return {
+                    str(i.get("Key", i.get("key"))): i.get("Value", i.get("value"))
+                    for i in items
+                }
+            canon = [self._canonical(i, ignored) for i in items]
+            return sorted(
+                canon, key=lambda i: json.dumps(i, sort_keys=True, default=str)
+            )
+        return value
+
     def _compare_resources(
-        self, old_resource: Dict, new_resource: Dict
+        self,
+        old_resource: Dict,
+        new_resource: Dict,
+        skip_fields: Iterable[str] = (),
     ) -> List[AttributeChange]:
         """Compare two resources and return list of attribute changes"""
         changes = []
+        skip = set(skip_fields)
+
+        ignored = self._ignored_names()
+        old_resource = self._canonical(old_resource, ignored)
+        new_resource = self._canonical(new_resource, ignored)
 
         # Get all unique keys from both resources
         all_keys = set(old_resource.keys()) | set(new_resource.keys())
 
-        for key in all_keys:
+        for key in sorted(all_keys):
             # Skip ignored metadata fields
-            if key in self.ignore_metadata_fields:
+            if key in ignored or key in skip:
                 continue
 
             old_value = old_resource.get(key)
