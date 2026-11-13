@@ -22,6 +22,7 @@ from datetime import datetime, timedelta, timezone
 import boto3
 from botocore.exceptions import ClientError
 
+from .aws_clients import create_client
 from .arn_utils import (
     ResourceArnIndex,
     build_arn,
@@ -347,6 +348,10 @@ class ComprehensiveAWSDiscovery:
         # Global services that should only be called from us-east-1
         self.global_services = {"s3", "iam", "cloudfront", "route53"}
 
+    def _client(self, service_name: str, region: Optional[str] = None):
+        """A client with the shared retry settings (see aws_clients.py)."""
+        return create_client(self.session, service_name, region)
+
     def discover_all_resources(self, max_workers: int = 15) -> List[Dict[str, Any]]:
         """
         Comprehensive discovery of ALL AWS resources regardless of tags.
@@ -391,7 +396,7 @@ class ComprehensiveAWSDiscovery:
     def _discover_billing_services(self):
         """Discover services with billing usage for validation."""
         try:
-            ce_client = self.session.client("ce", region_name="us-east-1")
+            ce_client = self._client("ce", "us-east-1")
 
             response = ce_client.get_cost_and_usage(
                 TimePeriod={
@@ -515,7 +520,7 @@ class ComprehensiveAWSDiscovery:
         """ACM certificates in us-east-1 that a CloudFront distribution uses."""
         found = 0
         try:
-            acm = self.session.client("acm", region_name=GLOBAL_HOME_REGION)
+            acm = self._client("acm", GLOBAL_HOME_REGION)
             for page in acm.get_paginator("list_certificates").paginate():
                 for summary in page.get("CertificateSummaryList", []):
                     arn = summary.get("CertificateArn", "")
@@ -558,7 +563,7 @@ class ComprehensiveAWSDiscovery:
         try:
             # Create service client (handle special cases like VPC using EC2 client)
             client_service = config.get("client_service", service_name)
-            client = self.session.client(client_service, region_name=region)
+            client = self._client(client_service, region)
 
             # Execute all operations for this service
             for operation_config in config["operations"]:
@@ -949,7 +954,7 @@ class ComprehensiveAWSDiscovery:
         account_id = getattr(self, "_cached_account_id", None)
         if account_id is None:
             try:
-                sts = self.session.client("sts")
+                sts = self._client("sts")
                 account_id = sts.get_caller_identity()["Account"]
             except Exception:
                 account_id = "000000000000"  # Placeholder
@@ -996,15 +1001,9 @@ class ComprehensiveAWSDiscovery:
         the regions are fetched concurrently and the results are merged by the
         caller on a single thread. A region that fails is logged and left out.
         """
-        from concurrent.futures import ThreadPoolExecutor
-        from botocore.config import Config
-
-        cfg = Config(retries={"max_attempts": 10, "mode": "adaptive"})
 
         def fetch(region: str) -> List[Dict[str, Any]]:
-            client = self.session.client(
-                "resourcegroupstaggingapi", region_name=region, config=cfg
-            )
+            client = self._client("resourcegroupstaggingapi", region)
             items: List[Dict[str, Any]] = []
             for page in client.get_paginator("get_resources").paginate(
                 ResourcesPerPage=100
@@ -1316,7 +1315,7 @@ class ComprehensiveAWSDiscovery:
     def _enhance_s3_buckets(self):
         """Use boto3 APIs to get correct regions and metadata for all services."""
         # S3 bucket region detection
-        s3_client = self.session.client("s3")
+        s3_client = self._client("s3")
 
         for resource in self.resources:
             if (
@@ -1357,20 +1356,28 @@ class ComprehensiveAWSDiscovery:
         # CloudFormation stack region/status enhancement
         self._enhance_cloudformation_stacks()
 
+    def _resources_by_region(self, service: str, type_test) -> Dict[str, List[Dict]]:
+        """Group discovered resources of one service by the region they were
+        found in, so each detail call goes to that region only."""
+        grouped: Dict[str, List[Dict]] = {}
+        for r in self.resources:
+            if r.get("service") == service and type_test(r.get("resource_type", "")):
+                region = r.get("region")
+                if region and region != GLOBAL_REGION_LABEL:
+                    grouped.setdefault(region, []).append(r)
+        return grouped
+
     def _enhance_lambda_functions(self):
-        """Enhance Lambda functions with detailed metadata from boto3 API."""
-        for region in self.regions:
-            lambda_functions = [
-                r
-                for r in self.resources
-                if r.get("service") == "LAMBDA" and r.get("resource_type") == "Function"
-            ]
+        """Enhance Lambda functions with detailed metadata from boto3 API.
 
-            if not lambda_functions:
-                continue
-
+        Each function is read in the region it was listed in. Reading every
+        function in every region gave a function the region (and settings) of
+        a same-named function in another region.
+        """
+        grouped = self._resources_by_region("LAMBDA", lambda t: t == "Function")
+        for region, lambda_functions in grouped.items():
             try:
-                lambda_client = self.session.client("lambda", region_name=region)
+                lambda_client = self._client("lambda", region)
 
                 for resource in lambda_functions:
                     function_name = resource.get("resource_id")
@@ -1383,8 +1390,6 @@ class ComprehensiveAWSDiscovery:
                         )
                         config.pop("ResponseMetadata", None)
 
-                        # Update with accurate region and metadata
-                        resource["region"] = region
                         resource["raw_data"]["boto3_config"] = config
                         resource["raw_data"]["runtime"] = config.get("Runtime")
                         resource["raw_data"]["memory_size"] = config.get("MemorySize")
@@ -1405,20 +1410,11 @@ class ComprehensiveAWSDiscovery:
                 continue
 
     def _enhance_rds_resources(self):
-        """Enhance RDS resources with detailed metadata from boto3 API."""
-        for region in self.regions:
-            rds_instances = [
-                r
-                for r in self.resources
-                if r.get("service") == "RDS"
-                and "Instance" in r.get("resource_type", "")
-            ]
-
-            if not rds_instances:
-                continue
-
+        """Enhance RDS instances with detailed metadata, read in their own region."""
+        grouped = self._resources_by_region("RDS", lambda t: t == "DBInstance")
+        for region, rds_instances in grouped.items():
             try:
-                rds_client = self.session.client("rds", region_name=region)
+                rds_client = self._client("rds", region)
 
                 for resource in rds_instances:
                     instance_id = resource.get("resource_id")
@@ -1431,8 +1427,6 @@ class ComprehensiveAWSDiscovery:
 
                         if instances:
                             instance = instances[0]
-                            # Update with accurate region and metadata
-                            resource["region"] = region
                             resource["raw_data"]["boto3_instance"] = instance
                             resource["raw_data"]["engine"] = instance.get("Engine")
                             resource["raw_data"]["engine_version"] = instance.get(
@@ -1460,20 +1454,12 @@ class ComprehensiveAWSDiscovery:
                 continue
 
     def _enhance_cloudformation_stacks(self):
-        """Enhance CloudFormation stacks with detailed metadata from boto3 API."""
-        for region in self.regions:
-            cf_stacks = [
-                r
-                for r in self.resources
-                if r.get("service") == "CLOUDFORMATION"
-                and r.get("resource_type") == "Stack"
-            ]
-
-            if not cf_stacks:
-                continue
-
+        """Enhance CloudFormation stacks with detailed metadata, read in their
+        own region."""
+        grouped = self._resources_by_region("CLOUDFORMATION", lambda t: t == "Stack")
+        for region, cf_stacks in grouped.items():
             try:
-                cf_client = self.session.client("cloudformation", region_name=region)
+                cf_client = self._client("cloudformation", region)
 
                 for resource in cf_stacks:
                     stack_name = resource.get("resource_id")
@@ -1484,8 +1470,6 @@ class ComprehensiveAWSDiscovery:
 
                         if stacks:
                             stack = stacks[0]
-                            # Update with accurate region and metadata
-                            resource["region"] = region
                             resource["raw_data"]["boto3_stack"] = stack
                             resource["raw_data"]["stack_status"] = stack.get(
                                 "StackStatus"

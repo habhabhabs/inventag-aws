@@ -23,6 +23,7 @@ from .intelligent_discovery import IntelligentAWSDiscovery
 from .optimized_discovery import OptimizedAWSDiscovery
 from .comprehensive_discovery import ComprehensiveAWSDiscovery
 from .arn_utils import build_arn, normalize_arn
+from .aws_clients import create_client
 from .service_filter import (
     canonical_service,
     canonical_service_set,
@@ -879,7 +880,7 @@ class AWSResourceInventory:
 
         try:
             # Cost Explorer is only available in us-east-1
-            ce = self.session.client("ce", region_name="us-east-1")
+            ce = create_client(self.session, "ce", "us-east-1")
 
             # Get cost data for the last 30 days to identify active services
             end_date = datetime.now().date()
@@ -1246,8 +1247,8 @@ class AWSResourceInventory:
 
         for region in self.regions:
             try:
-                rgt_client = self.session.client(
-                    "resourcegroupstaggingapi", region_name=region
+                rgt_client = create_client(
+                    self.session, "resourcegroupstaggingapi", region
                 )
 
                 # Get all resources (paginated)
@@ -1513,7 +1514,7 @@ class AWSResourceInventory:
     ):
         """Dynamically discover resources for a service using its AWS API."""
         try:
-            client = self.session.client(client_name, region_name=region)
+            client = create_client(self.session, client_name, region)
 
             # Get all available operations for this client
             available_operations = client._service_model.operation_names

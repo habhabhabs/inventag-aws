@@ -20,6 +20,8 @@ from dataclasses import dataclass
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 
+from .aws_clients import create_client
+
 
 @dataclass
 class DiscoveryResult:
@@ -332,7 +334,7 @@ class OptimizedDynamicDiscovery:
         try:
             # Map service name to client name
             client_name = self._get_client_name(service_name)
-            client = self.session.client(client_name, region_name=region)
+            client = create_client(self.session, client_name, region)
 
             with self._cache_lock:
                 self._client_cache[cache_key] = client
