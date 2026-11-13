@@ -1454,14 +1454,21 @@ class CloudBOMGenerator:
                 raise Exception("No valid session available for compliance analysis")
 
             # Initialize compliance checker
+            # The regions are passed so that the checker makes no AWS call:
+            # it checks the resources it is given, it does not discover.
+            regions = sorted(
+                {
+                    region
+                    for ctx in self.account_contexts.values()
+                    for region in ctx.accessible_regions
+                }
+            ) or ["us-east-1"]
             compliance_checker = ComprehensiveTagComplianceChecker(
-                session=session, policies=compliance_policies
+                regions=regions, session=session, policy=compliance_policies
             )
 
             # Run compliance analysis
-            compliance_results = compliance_checker.check_resources_compliance(
-                resources
-            )
+            compliance_results = compliance_checker.check_compliance(resources)
 
             # Add multi-account context to results
             compliance_results["multi_account_analysis"] = {
