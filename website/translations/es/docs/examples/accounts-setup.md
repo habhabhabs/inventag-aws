@@ -112,6 +112,12 @@ La hoja tiene 9 columnas; se muestran las 7 primeras.
 
 - Si una cuenta falla, InvenTag registra el error, informa de las demás y aun
   así termina con el código 0, así que revisa el registro. La causa habitual es
-  la política de confianza del rol.
+  la política de confianza del rol. Añade `--fail-on-account-error` para que
+  termine con el código 5, una vez escritos los informes. Si fallan todas las
+  cuentas, la ejecución termina con el código 1.
+- Una cuenta que se queda sin tiempo conserva los recursos encontrados antes del
+  límite. Tras una ejecución en la que fallaron algunas cuentas, vuelve a ejecutar
+  el mismo comando con `--resume` para analizar solo las demás (las cuentas que
+  terminaron se reutilizan).
 - [Analizar varias cuentas](../guides/scan-multiple-accounts.md) explica las
   opciones de ajuste.

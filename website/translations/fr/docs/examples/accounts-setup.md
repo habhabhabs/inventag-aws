@@ -112,6 +112,12 @@ La feuille compte 9 colonnes ; les 7 premières sont affichées.
 
 - Si un compte échoue, InvenTag journalise l’erreur, rend compte des autres comptes et
   se termine tout de même avec le code 0 ; consultez donc le journal. La cause habituelle
-  est la politique d’approbation du rôle.
+  est la politique d’approbation du rôle. Ajoutez `--fail-on-account-error` pour
+  obtenir le code 5, une fois les rapports écrits. Si tous les comptes échouent,
+  l’exécution se termine avec le code 1.
+- Un compte qui dépasse son délai conserve les ressources trouvées avant la
+  limite. Après une exécution où certains comptes ont échoué, relancez la même
+  commande avec `--resume` pour n’analyser que les autres (les comptes terminés
+  sont réutilisés).
 - [Analyser plusieurs comptes](../guides/scan-multiple-accounts.md) explique les
   options de réglage.

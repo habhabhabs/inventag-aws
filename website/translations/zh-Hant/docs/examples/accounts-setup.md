@@ -109,5 +109,8 @@ Tag policy 'finops-cost-allocation': 0 of 39 resources compliant (0.0%), 39 non-
 ## 下一步 {#next-steps}
 
 - 如果某個帳戶失敗，InvenTag 會記錄錯誤、報告其他帳戶，並仍以結束代碼 0 結束，
-  所以請檢查日誌。常見原因是角色的信任策略。
+  所以請檢查日誌。常見原因是角色的信任策略。加上 `--fail-on-account-error`
+  則會在寫出報告之後以結束代碼 5 結束。如果所有帳戶都失敗，執行會以結束代碼 1 結束。
+- 超時的帳戶會保留時限之前已找到的資源。在有帳戶失敗的執行之後，用同一條命令再加上
+  `--resume` 執行，只掃描其餘帳戶（已完成的帳戶會被複用）。
 - [掃描多個帳戶](../guides/scan-multiple-accounts.md)介紹了調優選項。

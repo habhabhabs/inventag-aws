@@ -109,5 +109,8 @@ Tag policy 'finops-cost-allocation': 0 of 39 resources compliant (0.0%), 39 non-
 ## 下一步 {#next-steps}
 
 - 如果某个账户失败，InvenTag 会记录错误、报告其他账户，并仍以退出码 0 结束，
-  所以请检查日志。常见原因是角色的信任策略。
+  所以请检查日志。常见原因是角色的信任策略。加上 `--fail-on-account-error`
+  则会在写出报告之后以退出码 5 结束。如果所有账户都失败，运行会以退出码 1 结束。
+- 超时的账户会保留时限之前已找到的资源。在有账户失败的运行之后，用同一条命令再加上
+  `--resume` 运行，只扫描其余账户（已完成的账户会被复用）。
 - [扫描多个账户](../guides/scan-multiple-accounts.md)介绍了调优选项。

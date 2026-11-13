@@ -128,6 +128,10 @@ The sheet has 9 columns; the first 7 are shown.
 
 - If an account fails, InvenTag logs the error, reports the others and still
   exits with code 0, so check the log. The usual cause is the role's trust
-  policy.
+  policy. Add `--fail-on-account-error` to exit with code 5 instead, after the
+  reports are written. If every account fails, the run exits with code 1.
+- An account that runs out of time keeps the resources found before the limit.
+  After a run where some accounts failed, run the same command again with
+  `--resume` to scan only the others (the finished accounts are reused).
 - [Scan several accounts](../guides/scan-multiple-accounts.md) explains the
   tuning options.
