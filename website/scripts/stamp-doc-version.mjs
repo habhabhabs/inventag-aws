@@ -74,7 +74,7 @@ for (const file of walk(dir).sort()) {
       const n = next.split(VERSION_TOKEN).length - 1;
       count += n;
       changed = true;
-      console.log(`${path.relative(dir, file)}:${i + 1}: version token x${n} -> ${version}`);
+      console.log(`${path.relative(dir, file)}:${i + 1}: version token x${n} -> v${version}`);
       next = next.split(VERSION_TOKEN).join(version);
     }
     for (const [what, re] of PATTERNS) {
@@ -82,7 +82,7 @@ for (const file of walk(dir).sort()) {
         if (found === version) return m;
         count++;
         changed = true;
-        console.log(`${path.relative(dir, file)}:${i + 1}: ${what}: ${found} -> ${version}`);
+        console.log(`${path.relative(dir, file)}:${i + 1}: ${what}: v${found} -> v${version}`);
         return `${before}${version}${after}`;
       });
     }

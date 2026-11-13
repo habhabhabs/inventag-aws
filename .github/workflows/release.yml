@@ -507,7 +507,7 @@ jobs:
         GH_TOKEN: ${{ secrets.VERSION_BUMP_WORKFLOW }}
       run: |
         gh release create ${{ steps.version.outputs.tag_name }} \
-          --title "🏷️ InvenTag Release ${{ steps.version.outputs.new_version }}" \
+          --title "🏷️ InvenTag Release v${{ steps.version.outputs.new_version }}" \
           --notes-file release_notes.md \
           --latest
 

@@ -435,6 +435,15 @@ title: ${title}
           return match;
         }
         
+        // A relative image that exists next to the page is left alone: Docusaurus
+        // bundles it, GitHub renders it, and the translated pages use the same path.
+        if (linkText.startsWith('![') && !src.startsWith('/') && filePath) {
+          const target = path.resolve(path.dirname(filePath), src.split(/[?#\s]/)[0]);
+          if (fs.existsSync(target)) {
+            return match;
+          }
+        }
+
         // Handle images (move to /img/ for Docusaurus)
         if (linkText.startsWith('![') && (src.includes('assets/images/') || src.includes('.svg') || src.includes('.png') || src.includes('.jpg'))) {
           const fileName = path.basename(src);

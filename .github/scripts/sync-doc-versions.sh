@@ -102,10 +102,11 @@ for f in versioned_sidebars/version-*-sidebars.json; do
 done
 
 echo
+vlist() { if [ "$#" -eq 0 ]; then echo none; else printf 'v%s ' "$@" | sed 's/ $//'; fi; }
 echo "Current docs:  v$CURRENT (docs/)"
-echo "Archived now:  ${archived[*]:-none}"
-echo "Already there: ${present[*]:-none}"
-echo "versions.json: $(jq -c . versions.json)"
+echo "Archived now:  $(vlist "${archived[@]}")"
+echo "Already there: $(vlist "${present[@]}")"
+echo "Archived docs: $(jq -r 'map("v" + .) | join(" ")' versions.json)"
 if [ "${#dropped[@]}" -gt 0 ]; then
   echo "Duplicate pages in tags:"; printf '  - %s\n' "${dropped[@]}"
 fi
