@@ -61,7 +61,6 @@ const PAGES = [
   ['status', '/docs/getting-started/status'],
   ['cli-guide', '/docs/user-guides/cli-user-guide'],
   ['production-safety', '/docs/user-guides/production-safety'],
-  ['archived-intro', '/docs/v4.2.26/getting-started/introduction'],
   ['not-found', '/this-page-does-not-exist'],
 ];
 const VIEWPORTS = [
@@ -386,13 +385,16 @@ for (const theme of ['light', 'dark']) {
     // version dropdown
     await page.reload({waitUntil: 'networkidle'});
     await hydrated(page);
+    // Docusaurus shows the version dropdown only when there are archived versions
     const dd = page.locator('.navbar__item.dropdown > .navbar__link').first();
-    await dd.focus();
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(150);
-    await page.keyboard.press('Tab');
-    const inMenu = await page.evaluate(() => !!document.activeElement.closest('.dropdown__menu'));
-    if (!inMenu) fail(`version dropdown: Tab after Enter does not reach the menu [${theme}]`);
+    if ((await dd.count()) > 0) {
+      await dd.focus();
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(150);
+      await page.keyboard.press('Tab');
+      const inMenu = await page.evaluate(() => !!document.activeElement.closest('.dropdown__menu'));
+      if (!inMenu) fail(`version dropdown: Tab after Enter does not reach the menu [${theme}]`);
+    }
     await ctx.close();
   }
   // phone: mobile menu

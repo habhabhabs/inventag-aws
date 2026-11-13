@@ -251,8 +251,8 @@ each account `profile_name`, `role_arn` or access keys.
 
 ## Flags that stop the run
 
-Exit code 2 with `not implemented yet` means the flag was removed in v5. See
-[Upgrade from v4 to v5](../getting-started/upgrade-to-v5.md#flags-that-now-stop-with-an-error).
+Exit code 2 with `not implemented yet` means the flag is accepted but not built. See
+[Feature status and known limitations](../getting-started/status.md).
 
 ## Exit code 3
 
@@ -273,7 +273,7 @@ the JSON file to see which resources.
 | No report file, and the exit code is 0 | The scan found nothing, or `--account-services` or `--account-tags` removed everything. Check the log for `No resources to report`. |
 | An account is missing from the report | Its credentials or role failed. See [A role cannot be assumed](#a-role-cannot-be-assumed). |
 | The change report is missing | The first run writes none. It also needs state management and delta detection to be on. See [Track changes between runs](./track-changes.md). |
-| Another user can't open `bom_output/` | Since v5, output files are private to the user who ran InvenTag. Share them on purpose. |
+| Another user can't open `bom_output/` | Output files are private to the user who ran InvenTag. Share them on purpose. |
 
 ## Install problems
 

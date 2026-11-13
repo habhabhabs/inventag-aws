@@ -25,7 +25,6 @@ who owns it and how it is tagged.
 | Install it | [Install InvenTag](./getting-started/installation.md) |
 | Produce my first report in about ten minutes | [Generate your first report](./getting-started/quick-start.md) |
 | Know which features work today | [Feature status and known limitations](./getting-started/status.md) |
-| Upgrade from InvenTag v4 | [Upgrade from v4 to v5](./getting-started/upgrade-to-v5.md) |
 | Reuse a report layout or a tag policy | [Templates](./templates/index.md) |
 | Copy a ready-made recipe | [Examples](./examples/index.md) |
 | Look up a flag, a file format or a permission | [Reference](./reference/cli.md) |

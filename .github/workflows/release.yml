@@ -15,7 +15,7 @@ on:
           - minor
           - major
       publish_existing_tag:
-        description: 'Only publish this existing release tag to PyPI (e.g. v5.0.0). Leave empty for a normal release. Ignores "Version bump type".'
+        description: 'Only publish this existing release tag to PyPI (e.g. v1.0.0). Leave empty for a normal release. Ignores "Version bump type".'
         required: false
         default: ''
         type: string

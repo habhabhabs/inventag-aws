@@ -81,5 +81,4 @@ These are tracked on [Feature status](../getting-started/status.md) and in the
   `branding_system.py`, `word_builder.py`, `excel_builder.py`,
   `document_generator.py` and `configuration_manager.py`.
 
-Older design notes, which may be out of date, are kept in the repository under
-`development/docs-archive/`. They are not published on this site.
+Older design notes were removed from the repository. Use the pages on this site.

@@ -121,7 +121,6 @@ Every flag: [Command-line reference](https://habhabhabs.github.io/inventag-aws/d
 |---|---|
 | Quick start | [docs/getting-started/quick-start.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/getting-started/quick-start.md) |
 | Current status and known limitations | [docs/getting-started/status.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/getting-started/status.md) |
-| Upgrade from v4 | [docs/getting-started/upgrade-to-v5.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/getting-started/upgrade-to-v5.md) |
 | Choose what to scan | [docs/guides/run-a-scan.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/guides/run-a-scan.md) |
 | Command-line reference | [docs/reference/cli.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/reference/cli.md) |
 | Configuration files | [docs/reference/configuration-files.md](https://github.com/habhabhabs/inventag-aws/blob/main/docs/reference/configuration-files.md) |

@@ -136,10 +136,6 @@ jobs:
           echo "🚀 CI/CD integration modified - test multi-account workflows"
         fi
         
-        if grep -q "scripts/production/" changed_files.txt; then
-          echo "🛡️ Production scripts modified - validate security and monitoring features"
-        fi
-        
         if grep -q "inventag/" changed_files.txt; then
           echo "📦 Core package modified - run comprehensive tests"
         fi

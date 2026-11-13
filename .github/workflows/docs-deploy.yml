@@ -7,7 +7,6 @@ name: Documentation Deployment
       - 'docs/**'
       - 'website/**'
       - 'version.json'
-      - 'create_version.sh'
       - '.github/workflows/docs-deploy.yml'
   pull_request:
     branches: [ main ]
@@ -15,7 +14,6 @@ name: Documentation Deployment
       - 'docs/**'
       - 'website/**'
       - 'version.json'
-      - 'create_version.sh'
       - '.github/workflows/docs-deploy.yml'
   workflow_dispatch: # Allow manual triggering
 

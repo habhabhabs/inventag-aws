@@ -40,7 +40,7 @@ This gives you an `inventag` command. Everything in these docs that shows
 included in the package.
 
 To upgrade, run `pip install --upgrade inventag-aws`. To install a specific
-release, run `pip install inventag-aws==5.1.0`. Prefer to keep it out of your
+release, run `pip install inventag-aws==1.0.0`. Prefer to keep it out of your
 project environments? `pipx install inventag-aws` installs it on its own.
 
 ## Install from source
@@ -61,10 +61,9 @@ Run `pip install -e .` in the cloned folder to get the `inventag` command from
 your source checkout. You can also run `python inventag_cli.py --help` directly.
 
 To use a fixed release from source instead of the newest code, check out its tag, for
-example `git checkout v5.1.0`. The
+example `git checkout v1.0.0`. The
 [releases page](https://github.com/habhabhabs/inventag-aws/releases) lists
-every release. Upgrading from v4? Read
-[Upgrade from v4 to v5](./upgrade-to-v5.md) first.
+every release.
 
 ## Connect your AWS credentials
 
