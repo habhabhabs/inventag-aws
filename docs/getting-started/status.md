@@ -1,221 +1,108 @@
 ---
-title: Current status and known limitations
-description: What the InvenTag CLI does today, which flags stop with an error, and the costs and risks to know about.
-sidebar_position: 3
+title: Feature status and known limitations
+description: Which InvenTag features work today, which flags stop with an error, known bugs, and the costs and risks to know before you rely on it.
+sidebar_position: 5
 ---
 
-# Current status and known limitations
+# Feature status and known limitations
 
-This page describes release 5.0.0 (November 2026). Each row comes from a code review and from offline test runs.
-The offline test runs use a simulated AWS backend (`moto`), not a real AWS
-account. If you change the behavior of a flag, update this page in the same
-pull request.
+**Who this is for:** anyone about to rely on InvenTag for real work.
 
-## Works today
+**What you will know after reading:** which features you can trust, which
+flags stop with an error, which known bugs remain, and what to do instead.
 
-| Feature | How |
+This page is deliberately blunt. We checked each item by running the code
+offline against mocked AWS (moto), or by reading the exact code path. If you
+fix one of these, update this page in the same pull request.
+
+## Works
+
+| Feature | How to use it |
 |---|---|
-| Resource discovery in one account or in many accounts | `./inventag.sh`, `--accounts-file`, `--accounts-prompt`, `--cross-account-role` |
-| Excel BOM | `--create-excel` writes `bom_output/multi_account_bom_<timestamp>.xlsx`. Excel is the default format. |
-| Word BOM | `--create-word` writes `bom_output/multi_account_bom_<timestamp>.docx`. Each service table shows a maximum of 50 resources. |
-| Named templates for reports, tag policies and run configurations | `inventag templates list`, `show`, `init`, `validate`, and `--template NAME` or `--template PATH`. See [Templates](../templates/index.md). |
-| Layout file for one Word or Excel report | `--word-template PATH`, `--excel-template PATH`. See [Report templates](#report-templates). |
-| Custom tag columns and service descriptions | `--tag-mappings`, `--service-descriptions`. For the file formats, see [Configuration files](../reference/configuration-files.md). |
-| Snapshots between runs | On by default. The CLI writes each snapshot to `bom_output/state/`. |
-| Change report between runs | On by default. The CLI writes `bom_output/changelog_<timestamp>.md` when a previous snapshot exists. Use `--no-generate-changelog` to stop this output. |
+| Find resources in one or more accounts | Your current credentials, `--accounts-file`, `--accounts-prompt` or `--cross-account-role` |
+| Excel report | `--create-excel` writes `bom_output/multi_account_bom_<timestamp>.xlsx` |
+| Word report | `--create-word` writes `bom_output/multi_account_bom_<timestamp>.docx` |
+| Report layouts and tag columns | `--template` with a [report template](../templates/index.md) |
+| Tag-policy checks | `--template` with a tag-policy template: adds a Tag Compliance sheet, a Word section and a JSON file |
+| Fail a CI job on tag problems | A config template with `fail_on_tag_violations: true` (exit code 3) |
+| Read-only guard | Always on. Every AWS call that is not a read is blocked before it is sent. |
+| Audit of AWS calls | `--audit-output audit.json` lists every AWS operation the run called |
+| Check operations against the guard | `--validate-operations ec2:DescribeInstances s3:PutObject` |
+| Upload reports to S3 | `--s3-bucket` (server-side encrypted; the run fails if an upload fails) |
+| Credential check | `--validate-credentials` |
 | Region filter | `--account-regions us-east-1,eu-west-1` |
-| Service filter | `--account-services EC2,S3`. See [Service and tag filters](#service-and-tag-filters). |
-| Tag filter | `--account-tags '{"env":"prod"}'`. See [Service and tag filters](#service-and-tag-filters). |
-| Upload of reports to Amazon S3 | `--s3-bucket`, `--s3-key-prefix`, `--s3-encryption`, `--s3-kms-key-id`. See [S3 upload](#s3-upload). |
-| Network analysis sheet and security analysis sheet | `--enable-network-analysis` adds the `Network Analysis` sheet to the Excel report. `--enable-security-analysis` adds the `Security Analysis` sheet. The CLI writes a sheet only if the account has VPC or security-group resources. |
-| Read-only guard | Always on. See [Read-only guard](#read-only-guard). |
-| Check of operation names against the guard | `--validate-operations ec2:DescribeInstances s3:PutObject`. Exit code `0` if the guard allows all names, `1` if not. This flag makes no AWS call. |
-| Audit of AWS API calls | `--audit-output audit.json` writes one JSON file with each operation, its call count, and each blocked call. |
-| Cost Explorer switch | `--no-billing-validation`. See [Costs](#costs). |
-| Private output files | The CLI creates files with mode `0600` and new directories with mode `0700`. |
-| Tag-policy compliance | Separate script: `python3 scripts/legacy/tag_compliance_checker.py --config policy.yaml` |
+| Snapshots of each run | Saved in `bom_output/state/` |
+| Private output files | Reports, snapshots and logs are created readable by your user only |
 
-## Flags that stop with an error
+## Partly working
 
-These features are not implemented. If you use one of these flags, the CLI
-prints `inventag: error: <flag>: <reason>` and stops with exit code `2`. The
-CLI makes no AWS call before it stops.
-
-| Flag | Status |
+| Feature | What actually happens |
 |---|---|
-| `--create-google-docs` | Not implemented. The package contains no Google API code. Use `--create-excel` or `--create-word`. |
-| `--per-account-reports` | Not implemented. The CLI writes one consolidated report. To get one report for each account, run the CLI one time for each account. |
-| `--compliance-standard` | Not implemented. InvenTag does not certify or assess compliance with SOC 2, PCI DSS, HIPAA or GDPR. |
-| `--risk-threshold` | Not implemented. The read-only guard blocks each operation that is not a read operation. |
-| `--disable-production-safety` | Not supported. You cannot set the read-only guard to off. |
+| `--account-services`, `--account-tags` | Applied in one discovery path only, so resources from other services, or with other tags, can still appear. |
+| Change reports between runs | `changelog_<timestamp>.md` is written from the second run on, but it compares the newest snapshot with itself, so it always reports 0 changes. See [Track changes between runs](../guides/track-changes.md). |
+| Discovery coverage | In our offline tests, EC2 instances did not appear (volumes did), and Lambda and DynamoDB tags were not collected. Not yet checked against a real AWS account. |
+| Error messages for AWS failures during discovery | If Cost Explorer is denied or a call fails, the run continues and the report has less data. The reason only shows with `--debug`. |
 
-## Flags that have no effect
+## Accepted but with no effect
 
-| Flag | Detail |
-|---|---|
-| `--enable-production-safety`, `--enforce-read-only`, `--security-validation` | The CLI accepts these flags for compatibility. The read-only guard is always on, with or without these flags. |
-| `--generate-changelog` | The changelog is on by default. Only `--no-generate-changelog` changes the behavior. |
+| Flag | What actually happens | What to do instead |
+|---|---|---|
+| `--tag-mappings`, `--service-descriptions` | The files are checked and loaded, but a bug stops the columns and descriptions reaching the report. | Use a report template's `tag_columns`. |
+| `--enable-network-analysis`, `--enable-security-analysis` | No network or security sheets are added to the reports. | See [Network and security analysis](../guides/network-and-security-analysis.md). |
+| `--generate-changelog` | Changelogs are always written; the flag cannot turn them off. | Use `--disable-state-management`. |
+| `--enable-production-safety`, `--security-validation`, `--enforce-read-only` | Kept so old commands still run. The read-only guard is always on. | Nothing to do. |
 
-## Read-only guard
+## Stop with an error
 
-The CLI installs a guard on each AWS client before the first AWS call. The
-guard examines each API operation before the request goes to AWS.
+These flags used to be accepted and silently ignored. They now stop the run
+with exit code 2 and say why:
 
-- The guard allows operations with these name prefixes: `List`, `Describe`,
-  `Get`, `Head`, `Lookup`, `Search`, `BatchGet`.
-- The guard allows `sts:AssumeRole`. InvenTag uses it to get access to other
-  accounts.
-- The guard blocks read operations that return secrets or data. Examples are
-  `secretsmanager:GetSecretValue`, `ssm:GetParameter`, `s3:GetObject`,
-  `lambda:GetFunction` and `dynamodb:GetItem`.
-- The guard blocks all other operations. A blocked operation causes a
-  `ReadOnlyViolationError`, and AWS does not receive the request.
-- If you use `--s3-bucket`, the guard allows `s3:PutObject` on the upload
-  client only.
+<!-- BEGIN EXAMPLE OUTPUT: failing-flags -->
 
-The guard is a second layer. Use a read-only IAM policy as the first layer.
-See [Read-only access](../guides/read-only-access.md).
+```text title="Terminal"
+$ ./inventag.sh --create-google-docs
+inventag: error: --create-google-docs: Google Docs/Sheets output is not implemented yet (InvenTag has no Google API integration). Use --create-excel or --create-word.
+(exit code 2)
 
-## Cross-account role
+$ ./inventag.sh --per-account-reports
+inventag: error: --per-account-reports: Per-account reports are not implemented yet; InvenTag writes one consolidated report. Run once per account to get separate reports.
+(exit code 2)
 
-`--cross-account-role` accepts a role name or a full role ARN.
+$ ./inventag.sh --compliance-standard soc2
+inventag: error: --compliance-standard: Compliance-standard enforcement is not implemented yet; the option has never changed InvenTag's behaviour.
+(exit code 2)
 
-- If you give a full ARN, the CLI assumes that role. For example:
-  `--cross-account-role arn:aws:iam::123456789012:role/InvenTagReadOnly`.
-- If you give a role name, also give `--accounts-file`. The CLI makes one role
-  ARN for each account ID in the file.
-- If you give a role name without `--accounts-file`, the CLI stops with exit
-  code `2`.
-- If the role name or the ARN is not valid, the CLI stops with exit code `2`.
+$ ./inventag.sh --disable-production-safety
+inventag: error: --disable-production-safety: The read-only guard cannot be disabled from the CLI: InvenTag only needs read access, so non-read AWS calls are always blocked.
+(exit code 2)
+```
 
-## Service and tag filters
+<!-- END EXAMPLE OUTPUT: failing-flags -->
 
-`--account-services` and `--account-tags` filter the final resource list. The
-result is the same for all discovery paths.
-
-- `--account-services` compares each name with the `Service` column of the
-  report. The comparison ignores case, spaces, and the prefixes `Amazon` and
-  `AWS`. For example, `s3`, `S3` and `Amazon S3` are the same service.
-- `--account-tags` keeps a resource only if it has each tag in the JSON
-  object. A string value must be equal to the tag value. A list value matches
-  if the tag value is in the list.
-- The filters apply to the results. The CLI continues to make most discovery
-  API calls. Thus a filter does not make a run much faster. In an offline test,
-  a run with `--account-services` made 1398 API calls and a run with no filter
-  made 1400.
-- If no resource stays after the filters, the CLI writes no report file. The
-  CLI then prints `No data to export` and stops with exit code `0`.
-
-## S3 upload
-
-`--s3-bucket` uploads each generated report to
-`s3://<bucket>/<prefix>/<UTC timestamp>/<file name>`.
-
-- The default prefix is `bom-reports/`. Use `--s3-key-prefix` to change it.
-- Each object has server-side encryption. The default is `AES256`. Use
-  `--s3-encryption aws:kms` for SSE-KMS.
-- `--s3-kms-key-id` is optional. If you use `aws:kms` without a key ID, Amazon
-  S3 uses the AWS managed key for the bucket.
-- The upload uses the default AWS credentials, not the role of a scanned
-  account. These credentials must have `s3:PutObject` on the bucket.
-- The CLI refuses public ACLs.
-- If an upload fails, the run stops with exit code `1`.
-- The CLI does not change the lifecycle configuration of the bucket.
-
-## Report templates
-
-A template is a YAML or JSON file that controls the structure of a report.
-For the keys, see [Layout files for one report](../templates/layout-flags.md).
-
-- A template controls the title and subtitle, the company name, the sections
-  or sheets and their order, the columns, and the header and footer text.
-- A template can use variables, for example `{{ company_name }}` and
-  `{{ total_resources }}`. InvenTag accepts only a fixed list of variable
-  names. InvenTag does not evaluate expressions.
-- `--print-default-template word` and `--print-default-template excel` print
-  the default templates.
-- `--validate-templates` validates the template files and makes no AWS call.
-- The CLI validates each template before the first AWS call. If a template is
-  not valid, the CLI prints the file, the key path and the reason for each
-  problem. The CLI then stops with exit code `1`.
-- If you give no template, the report has the same structure as before.
-
-Limits:
-
-- A template cannot change fonts, heading colors, or the page size.
-- A template cannot add a table of contents or charts.
-- A logo is available only in the Word report.
-- A template cannot change the columns of the network analysis sheet and the
-  security analysis sheet.
-- The Python classes in `inventag/reporting/template_framework.py`,
-  `branding_system.py`, `word_builder.py`, `excel_builder.py` and
-  `document_generator.py` are library code. The CLI does not use them, and the
-  template flags do not change their output.
-- The `templates`, `branding` and `document_generation` keys in a
-  `--bom-config` file have no effect.
+`--risk-threshold` also stops with exit code 2.
 
 ## Costs
 
-AWS bills each Cost Explorer API request. See the current
+Each run calls the Cost Explorer `GetCostAndUsage` API, and AWS charges per
+Cost Explorer request. See the current
 [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
-
-- By default, discovery makes two `GetCostAndUsage` requests for each account
-  in each run.
-- With `--no-billing-validation`, discovery makes no Cost Explorer request.
-  The `billing_validated` column is then `False`, and the `monthly_spend`
-  column is `0.0`.
-- `--enable-cost-analysis` makes its own Cost Explorer requests. In an offline
-  test, `--no-billing-validation --enable-cost-analysis` made one
-  `GetCostAndUsage` request.
-- If the identity has no permission for Cost Explorer, discovery continues
-  without billing data.
-
-The other API calls are free of charge. A large account causes many API
-requests, and AWS can throttle them.
+Other calls are free, but large accounts mean many requests and possible
+throttling (AWS slowing down your requests).
 
 ## Security notes
 
-- **`--debug` writes a detailed log.** Debug mode sets the AWS SDK log level
-  to DEBUG. InvenTag removes these values from the log before it writes a
-  line: secret access keys, session tokens, `Authorization` headers,
-  `X-Amz-Security-Token` headers, presigned URL signatures, and the secret
-  part of Slack and Microsoft Teams webhook URLs. The replacement text is
-  `***REDACTED***`.
-- **The debug log is not anonymous.** InvenTag does not remove account IDs,
-  user IDs, ARNs, resource names, tag values, or API request and response
-  bodies. Do not publish a debug log. Do not upload a debug log as a
-  public CI artifact.
-- **Use a read-only IAM policy.** The shipped policy
-  `config/defaults/iam-policy-read-only.json` lists 106 discovery actions by
-  name and uses no wildcard action. See
-  [Read-only access](../guides/read-only-access.md).
-- **`--accounts-prompt` hides secrets.** The prompt does not show the secret
-  access key or the session token while you type.
-- **Spreadsheet formulas.** The Excel builder stores each discovered value as
-  text. A resource name that starts with `=` does not run as a formula.
-
-Two library functions write to AWS if you call them from your own code. The
-CLI does not call them.
-
-- `CredentialManager.setup_cross_account_roles()` creates an IAM role, creates
-  a managed policy with the same read actions, and attaches the policy to the
-  role. The function does this in each target account.
-- `CICDIntegration` uploads reports to Amazon S3 with server-side encryption
-  and refuses public ACLs. The `lifecycle_days` setting has the default `0`,
-  and then `CICDIntegration` does not change the bucket lifecycle. If
-  `lifecycle_days` is more than `0`, `CICDIntegration` adds or updates one
-  rule with the ID `InvenTagBOMLifecycle`. It keeps all other rules of the
-  bucket.
-
-The read-only guard is part of the CLI. If you call the library from your own
-code, install the guard with `inventag.security.install_global_guard()`.
+- **Use a read-only IAM identity anyway.** The guard blocks write calls, and
+  your IAM (Identity and Access Management) policy is a second, independent
+  safety net. See [Set up read-only access](../guides/read-only-access.md).
+- **Debug logs are redacted** since v5: session tokens, keys and signatures
+  are masked. Still treat debug logs as sensitive.
+- **Two library functions write to AWS** when called from your own Python
+  code (the CLI does not call them): `CredentialManager.setup_cross_account_roles()`
+  creates IAM roles, and the S3 helper can change bucket lifecycle rules
+  (off by default, and it merges with existing rules).
 
 ## Tests
 
-Run the unit tests with `python -m pytest tests/unit -q`. The tests use a
-simulated AWS backend and need no AWS credentials.
-
-On 2026-11-12, `python -m pytest tests` gave 1315 passed and 9 deselected on
-Python 3.13. The 9 deselected tests are the performance benchmarks. Run them
-with `python -m pytest tests -m performance`. The CI workflow fails if a test
-fails.
+The template tests (`tests/unit/templating`, `tests/integration/templating`)
+all pass. The rest of the suite still has older failing tests that no longer
+match the code; they are being fixed.

@@ -20,8 +20,9 @@ On Windows, use `inventag.bat` wherever this page says `./inventag.sh`.
 | You want to scan... | Use |
 |---|---|
 | The account of your current credentials | Nothing extra |
-| One other account, through a role | `--cross-account-role arn:aws:iam::123456789012:role/InvenTagReadOnly` (a full ARN, not a role name) |
+| One other account, through a role | `--cross-account-role arn:aws:iam::123456789012:role/InvenTagReadOnly` (a full role ARN) |
 | Several accounts | `--accounts-file accounts.yaml` or a config template: [Scan several accounts](./scan-multiple-accounts.md) |
+| Several accounts, same role name in each | `--accounts-file accounts.yaml --cross-account-role InvenTagReadOnly` |
 | Accounts you type in when asked | `--accounts-prompt` |
 
 ## Choose the regions
@@ -43,7 +44,22 @@ such as IAM and S3 are found whichever regions you choose.
 | `--template <name>` | The same files, laid out by a [report template](../templates/index.md) |
 | `--output-directory reports` | Writes everything to `reports/` instead of `bom_output/` |
 
-If you give no output flag, InvenTag writes Excel only.
+If you give no output flag, InvenTag writes Excel only. Add `--s3-bucket` to
+also upload the files: see
+[Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
+
+Sample output of a run with `--template standard-bom --create-excel
+--create-word --account-regions us-east-1` (offline, sample data):
+
+<!-- BEGIN EXAMPLE OUTPUT: standard-console -->
+
+```text title="Terminal"
+inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+Wrote bom_output/multi_account_bom_20261112_090000.docx
+Wrote bom_output/multi_account_bom_20261112_090000.xlsx
+```
+
+<!-- END EXAMPLE OUTPUT: standard-console -->
 
 ## Combine several settings in one file
 
@@ -66,14 +82,30 @@ Flags you type still win over the template.
 | (none) | Warnings, errors and where the files were written |
 | `--verbose` or `-v` | Each step of the run |
 | `--log-file run.log` | Writes a detailed log to a file as well |
-| `--debug` or `-d` | Every AWS request. **Avoid with temporary credentials**: the log contains your session token. |
+| `--debug` or `-d` | Every AWS request. Secrets are masked, but treat the log as sensitive. |
+| `--audit-output audit.json` | A JSON list of every AWS operation the run called |
 
 ## Validate configuration files without scanning
 
-```bash
+```bash title="Terminal"
 ./inventag.sh --accounts-file accounts.yaml --validate-config-only --skip-credential-validation
 ./inventag.sh templates validate my-scan
 ```
+
+Exit code 0 means the files are valid. A broken accounts file looks like
+this (sample data):
+
+<!-- BEGIN EXAMPLE OUTPUT: error-bad-accounts -->
+
+```text title="Terminal"
+inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
+inventag.cli.main - ERROR - Invalid accounts configuration:
+inventag.cli.main - ERROR -   - Account 1: 'account_id' must be a non-empty string
+$ echo $?
+1
+```
+
+<!-- END EXAMPLE OUTPUT: error-bad-accounts -->
 
 ## Next steps
 

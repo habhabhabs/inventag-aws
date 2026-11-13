@@ -14,10 +14,10 @@ and confirm it cannot change your resources.
 
 ## Why this matters
 
-InvenTag only needs to read. Its discovery code calls `List*`, `Describe*`
-and `Get*` APIs and Cost Explorer. A read-only guard in the CLI blocks each
-call that is not a read operation. The IAM policy is the second layer of
-protection. Give InvenTag nothing more than it needs.
+InvenTag only needs to read. It has its own read-only guard, which blocks
+every AWS call that is not a read before it is sent. Your IAM policy is a
+second, independent safety net: if a bug ever got past the guard, AWS would
+still refuse the call. Give InvenTag nothing more than it needs.
 
 ## Option 1: AWS managed ReadOnlyAccess plus three extras (simplest)
 
@@ -48,7 +48,8 @@ protection. Give InvenTag nothing more than it needs.
 | `ce:GetCostAndUsage` | Finds services that have spend. AWS charges per request. |
 | `ec2:DescribeRegions` | Lists the regions enabled in the account. |
 
-Add `pricing:GetProducts` only if you use `--enable-cost-analysis`.
+Add `pricing:GetProducts` only if you use `--enable-cost-analysis`, and
+`s3:PutObject` on your reports bucket if you use `--s3-bucket`.
 
 `ReadOnlyAccess` is broad: it can read data such as S3 object listings and
 some configuration that InvenTag never looks at. If that is too much for your
@@ -56,12 +57,14 @@ organisation, use option 2.
 
 ## Option 2: the narrower policy in the repository
 
-`config/defaults/iam-policy-read-only.json` lists specific read actions for the
-services InvenTag knows. Before you use it:
+`config/defaults/iam-policy-read-only.json` lists 106 specific read actions,
+including `tag:GetResources`, `ce:GetCostAndUsage` and `pricing:GetProducts`.
+It is generated from the same list the code uses, so it matches what InvenTag
+calls.
 
-- Add `ce:GetCostAndUsage` (it is missing from the file today).
-- Remove the `OptionalS3ReportUpload` statement unless you upload reports
-  yourself. The CLI does not upload on the current release.
+Its `OptionalS3ReportUpload` statement allows `s3:PutObject` with server-side
+encryption, for `--s3-bucket`. Replace `YOUR-REPORTS-BUCKET-NAME` with your
+bucket, or remove the statement if you don't upload reports.
 
 Where an action is missing, discovery carries on and that detail is left
 empty.
@@ -116,9 +119,9 @@ roles.
 
 ## Check that it cannot write
 
-Use the IAM policy simulator to confirm a write is denied, for example:
+Use the IAM policy simulator to confirm a write is denied:
 
-```bash
+```bash title="Terminal"
 aws iam simulate-principal-policy \
   --policy-source-arn arn:aws:iam::123456789012:role/InvenTagReadOnly \
   --action-names s3:PutObject ec2:TerminateInstances \
@@ -126,6 +129,89 @@ aws iam simulate-principal-policy \
 ```
 
 Both should show `implicitDeny` or `explicitDeny`.
+
+You can also ask InvenTag's guard which operations it would allow (sample
+output from an offline run):
+
+<!-- BEGIN EXAMPLE OUTPUT: validate-operations -->
+
+```text title="Terminal"
+ALLOWED  ec2:DescribeInstances (read-only prefix)
+ALLOWED  s3:GetBucketTagging (read-only prefix)
+BLOCKED  s3:PutObject (operation is not on the read-only allowlist)
+BLOCKED  secretsmanager:GetSecretValue (operation returns secrets, signed URLs or customer data)
+$ echo $?
+1
+```
+
+<!-- END EXAMPLE OUTPUT: validate-operations -->
+
+To see what a real run called, add `--audit-output audit.json`. An excerpt
+from an offline run (sample data):
+
+<!-- BEGIN EXAMPLE OUTPUT: audit-json -->
+
+```json title="audit.json (first operations shown)"
+{
+  "read_only_enforced": true,
+  "started_at": "2026-11-12T09:00:00+00:00",
+  "generated_at": "2026-11-12T09:00:00+00:00",
+  "allowed_prefixes": [
+    "List",
+    "Describe",
+    "Get",
+    "Head",
+    "Lookup",
+    "Search",
+    "BatchGet"
+  ],
+  "total_calls": 105,
+  "allowed_calls": 105,
+  "blocked_calls": 0,
+  "operations": [
+    {
+      "service": "acm",
+      "operation": "ListCertificates",
+      "allowed": true,
+      "count": 1
+    },
+    {
+      "service": "apigateway",
+      "operation": "GetRestApis",
+      "allowed": true,
+      "count": 1
+    },
+    {
+      "service": "ce",
+      "operation": "GetCostAndUsage",
+      "allowed": true,
+      "count": 2
+    },
+    {
+      "service": "cloudformation",
+      "operation": "DescribeStacks",
+      "allowed": true,
+      "count": 1
+    },
+    {
+      "service": "cloudformation",
+      "operation": "ListStackSets",
+      "allowed": true,
+      "count": 1
+    },
+    {
+      "service": "cloudfront",
+      "operation": "ListDistributions",
+      "allowed": true,
+      "count": 1
+    },
+    "..."
+  ],
+  "blocked": []
+}
+```
+
+<!-- END EXAMPLE OUTPUT: audit-json -->
 
 ## After a security incident
 

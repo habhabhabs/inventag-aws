@@ -22,14 +22,19 @@ Pick a built-in policy, or your own:
 ```
 
 InvenTag scans as usual, then checks every resource in scope. Sample output
-from an offline run (sample data):
+from an offline run with `--template finops-cost-report` (sample data):
 
-```text
-Wrote bom_output/tag_compliance_20261112_130930.json
-Wrote bom_output/multi_account_bom_20261112_130930.docx
-Wrote bom_output/multi_account_bom_20261112_130930.xlsx
-Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-compliant, 14 out of scope.
+<!-- BEGIN EXAMPLE OUTPUT: finops-console -->
+
+```text title="Terminal"
+inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+Wrote bom_output/tag_compliance_20261112_090000.json
+Wrote bom_output/multi_account_bom_20261112_090000.docx
+Wrote bom_output/multi_account_bom_20261112_090000.xlsx
+Tag policy 'finops-cost-allocation': 1 of 21 resources compliant (4.8%), 20 non-compliant, 14 out of scope.
 ```
+
+<!-- END EXAMPLE OUTPUT: finops-console -->
 
 ## Read the results
 
@@ -43,9 +48,79 @@ Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-
 A resource is **compliant** when it has every required tag and every value
 passes its rule. Problems are spelled out, for example:
 
-- `CostCenter: '1234' does not match CC-[0-9]{4}`
+- `CostCenter: '1234' does not match CC-[0-9]{4}` (wrong format)
 - `Environment: 'Production' is not one of prod, staging, dev, test, sandbox`
 - `Owner: found 'owner' instead (tag keys are case-sensitive)`
+
+The Tag Compliance sheet in the same sample:
+
+<!-- BEGIN EXAMPLE OUTPUT: finops-excel-compliance -->
+
+**Sheets:** `Summary`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`, `Tag Compliance`
+
+`Tag Compliance` sheet, first rows:
+
+| Account | Region | Service | Type | Resource | ARN | Status | Missing tags | Problems |
+|---|---|---|---|---|---|---|---|---|
+| 123456789012 | us-east-1 | DYNAMODB | Table | acme-orders | acme-orders | Non-compliant | CostCenter, Owner, Project, Environment |  |
+| 123456789012 | us-east-1 | EC2 | Volume | acme-build-cache | arn:aws:ec2:us-east-1:123456789012:volume/vol... | Non-compliant | CostCenter, Owner, Project, Environment |  |
+| 123456789012 | us-east-1 | IAM | Role | acme-orders-api-role | arn:aws:iam::123456789012:role/acme-orders-ap... | Non-compliant | CostCenter, Owner, Project, Environment |  |
+| 123456789012 | us-east-1 | LAMBDA | Function | acme-orders-api | arn:aws:lambda:us-east-1:123456789012:functio... | Non-compliant | CostCenter, Owner, Project, Environment |  |
+
+<!-- END EXAMPLE OUTPUT: finops-excel-compliance -->
+
+The Word section:
+
+<!-- BEGIN EXAMPLE OUTPUT: finops-word -->
+
+**Document outline:**
+
+- **Cost Allocation Tag Report** (title)
+- Summary
+- Tag compliance
+  - Required tags
+  - Non-compliant resources
+- Resources by service
+- About this report
+
+A table from the document:
+
+| Tag key | Rule | Missing | Invalid value |
+|---|---|---|---|
+| CostCenter | Matches: CC-[0-9]&#123;4&#125; | 18 | 1 |
+| Owner | Any value | 18 | 0 |
+| Project | Any value | 19 | 0 |
+| Environment | One of: prod, staging, dev, test, sandbox (an... | 18 | 1 |
+
+<!-- END EXAMPLE OUTPUT: finops-word -->
+
+The `summary` part of the JSON file:
+
+<!-- BEGIN EXAMPLE OUTPUT: finops-json-summary -->
+
+```json title="summary"
+{
+  "checked": 21,
+  "compliant": 1,
+  "non_compliant": 20,
+  "out_of_scope": 14,
+  "percent_compliant": 4.8,
+  "missing_by_key": {
+    "CostCenter": 18,
+    "Owner": 18,
+    "Project": 19,
+    "Environment": 18
+  },
+  "invalid_by_key": {
+    "CostCenter": 1,
+    "Owner": 0,
+    "Project": 0,
+    "Environment": 1
+  }
+}
+```
+
+<!-- END EXAMPLE OUTPUT: finops-json-summary -->
 
 **Out of scope** resources are counted but not checked: the policy's `scope`
 excludes them, for example KMS aliases, which cannot carry tags.

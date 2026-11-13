@@ -50,7 +50,7 @@ On Windows use `inventag.bat`, or run `python inventag_cli.py` anywhere.
 |---|---|---|---|
 | `--accounts-file FILE` | none | Works | Read accounts from a JSON or YAML file. See [Configuration files](./configuration-files.md#accounts-file). |
 | `--accounts-prompt` | off | Not re-tested | Ask for accounts and credentials interactively. |
-| `--cross-account-role NAME_OR_ARN` | none | Works | Assume this role. Give a full role ARN, or a role name together with `--accounts-file`. An invalid value stops the CLI with exit code 2. |
+| `--cross-account-role ARN\|NAME` | none | Works | A full role ARN is assumed directly. A role name is combined with each account ID in `--accounts-file`. A name without `--accounts-file` stops with exit code 2. |
 
 ## Output
 
@@ -58,18 +58,17 @@ On Windows use `inventag.bat`, or run `python inventag_cli.py` anywhere.
 |---|---|---|---|
 | `--create-excel` | on if no other output flag | Works | Write `multi_account_bom_<timestamp>.xlsx`. |
 | `--create-word` | off | Works | Write `multi_account_bom_<timestamp>.docx`. |
-| `--create-google-docs` | off | Not implemented | Stops the CLI with exit code 2 and a message. |
+| `--create-google-docs` | off | Stops with exit code 2 | Not implemented. |
 | `--output-directory DIR` | `bom_output` | Works | Folder for all output files. |
-| `--per-account-reports` | off | Not implemented | Stops the CLI with exit code 2 and a message. |
+| `--per-account-reports` | off | Stops with exit code 2 | Not implemented. |
 
 ## What to scan
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
 | `--account-regions LIST` | every enabled region | Works | Comma-separated region codes, for example `us-east-1,eu-west-1`. |
-| `--account-services LIST` | all | Works | Comma-separated service names, for example `EC2,S3`. Keeps only these services in the report. The match uses the Service column and ignores case and spaces. The scan still calls the other services, so the run is not much faster. |
-| `--billing-validation` / `--no-billing-validation` | on | Works | Cost Explorer finds the services that have spend. AWS charges for each Cost Explorer request. `--no-billing-validation` makes no Cost Explorer call. |
-| `--account-tags JSON` | none | Works | Tag filter, for example `'{"Environment":"prod"}'`. Keeps only resources that have these tag values. |
+| `--account-services LIST` | all | Partial | Comma-separated service names. Applied in one discovery path only. |
+| `--account-tags JSON` | none | Partial | Tag filter, for example `'{"Environment":"prod"}'`. Applied in one discovery path only. |
 | `--fallback-display auto\|always\|never` | `auto` | Not re-tested | Whether to show resources found only through fallback methods. `auto` shows them only for services with no other results. |
 | `--hide-fallback-resources` | off | Not re-tested | Same as `--fallback-display never`. Deprecated. |
 
@@ -77,16 +76,16 @@ On Windows use `inventag.bat`, or run `python inventag_cli.py` anywhere.
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--enable-network-analysis` | off | Works | Adds the `Network Analysis` sheet to the Excel report: each VPC, its CIDR block, its IP use and its subnets. |
-| `--enable-security-analysis` | off | Works | Adds the `Security Analysis` sheet to the Excel report: each security group, its rules and its risk level. |
+| `--enable-network-analysis` | off | No effect on reports | No sheets are added. |
+| `--enable-security-analysis` | off | No effect on reports | No sheets are added. |
 | `--enable-cost-analysis` | off | Not verified | Turns on cost estimation in processing. Needs `pricing:GetProducts`. |
 
 ## Configuration files
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--tag-mappings FILE` | none | Works | Adds one column for each mapping. See [Configuration files](./configuration-files.md#tag-mappings). |
-| `--service-descriptions FILE` | none | Works | Adds the `service_description` column. See [Configuration files](./configuration-files.md#service-descriptions). |
+| `--tag-mappings FILE` | none | Loaded, not applied | See [Configuration files](./configuration-files.md#tag-mappings). |
+| `--service-descriptions FILE` | none | Loaded, not applied | See [Configuration files](./configuration-files.md#service-descriptions). |
 | `--bom-config FILE` | none | Not re-tested | Sets fields of the BOM processing configuration from a YAML or JSON file. |
 | `--validate-config` | off | Works | Load and check the configuration, then exit. |
 | `--validate-config-only` | off | Works | Check only the files you name, then exit. Add `--skip-credential-validation` to skip the AWS check. |
@@ -105,15 +104,15 @@ On Windows use `inventag.bat`, or run `python inventag_cli.py` anywhere.
 |---|---|---|---|
 | `--enable-state-management` | on | Works | Save a snapshot in `<output>/state/`. |
 | `--disable-state-management` | off | Works | Don't save snapshots or changelogs. |
-| `--enable-delta-detection` / `--disable-delta-detection` | on | Works | Compare the new snapshot with the one before it. |
-| `--generate-changelog` / `--no-generate-changelog` | on | Works | Write `changelog_<timestamp>.md` when a previous snapshot exists. `--no-generate-changelog` stops this output. |
+| `--enable-delta-detection` / `--disable-delta-detection` | on | Partial | Compare snapshots. The comparison currently uses the newest snapshot twice. |
+| `--generate-changelog` | on | Cannot be turned off | Changelogs are always written when state management is on. |
 
 ## Logging
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
 | `--verbose`, `-v` | off | Works | Show each step. |
-| `--debug`, `-d` | off | Works | Show every AWS request. Secret keys, session tokens and request signatures are removed from the log. Account IDs, ARNs and resource names stay in the log. |
+| `--debug`, `-d` | off | Works | Show every AWS request. Secrets are masked. |
 | `--log-file FILE` | none | Works | Also write a detailed log to this file. |
 | `--disable-account-logging` | off | Not re-tested | Don't prefix log lines with the account. |
 
@@ -121,34 +120,71 @@ On Windows use `inventag.bat`, or run `python inventag_cli.py` anywhere.
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--validate-credentials` | off | Not re-tested | Check the credentials of each account, then exit. |
-| `--credential-timeout SECONDS` | `30` | Not re-tested | Timeout for credential checks. |
+| `--validate-credentials` | off | Works | Check every account's credentials, then exit (0 if all work, 1 if not). |
+| `--credential-timeout SECONDS` | `30` | Not re-tested | Timeout for each credential check. |
 | `--skip-credential-validation` | off | Works | Skip the credential check at the start of a run. |
 
-## Production safety
+## Read-only guard and audit
 
-The read-only guard is always on. It blocks each AWS call that is not a read
-operation.
+The read-only guard is always on. It blocks every AWS call that is not a
+read, and reads that return secrets or data.
 
-| Flag | Status | What it does |
-|---|---|---|
-| `--validate-operations SERVICE:OPERATION ...` | Works | Shows if the guard allows each operation, then exits. Exit code 0 if the guard allows all of them, 1 if not. Makes no AWS call. |
-| `--audit-output FILE` | Works | Writes a JSON list of the AWS operations that the run used. |
-| `--enable-production-safety`, `--enforce-read-only`, `--security-validation` | No effect | Accepted for compatibility. The guard is on with or without them. |
-| `--disable-production-safety`, `--compliance-standard`, `--risk-threshold` | Not implemented | Each one stops the CLI with exit code 2 and a message. |
+| Flag | Default | Status | What it does |
+|---|---|---|---|
+| `--audit-output FILE` | none | Works | Write a JSON list of every AWS operation the run called, allowed and blocked. |
+| `--validate-operations SERVICE:OPERATION ...` | none | Works | Check operations against the guard, then exit (0 if all allowed, 1 if not). |
+| `--enforce-read-only`, `--security-validation`, `--enable-production-safety` | on | No effect | Kept so old commands still run. The guard is always on. |
+| `--disable-production-safety` | off | Stops with exit code 2 | The guard cannot be turned off. |
+| `--compliance-standard ...` | none | Stops with exit code 2 | Not implemented. Use a tag-policy template. |
+| `--risk-threshold ...` | none | Stops with exit code 2 | Not implemented. |
 
-InvenTag does not certify compliance with a standard. Use a read-only IAM
-policy also: [Set up read-only access](../guides/read-only-access.md).
+<!-- BEGIN EXAMPLE OUTPUT: validate-operations -->
+
+```text title="Terminal"
+ALLOWED  ec2:DescribeInstances (read-only prefix)
+ALLOWED  s3:GetBucketTagging (read-only prefix)
+BLOCKED  s3:PutObject (operation is not on the read-only allowlist)
+BLOCKED  secretsmanager:GetSecretValue (operation returns secrets, signed URLs or customer data)
+$ echo $?
+1
+```
+
+<!-- END EXAMPLE OUTPUT: validate-operations -->
+
+What the flags that stop with exit code 2 print:
+
+<!-- BEGIN EXAMPLE OUTPUT: failing-flags -->
+
+```text title="Terminal"
+$ ./inventag.sh --create-google-docs
+inventag: error: --create-google-docs: Google Docs/Sheets output is not implemented yet (InvenTag has no Google API integration). Use --create-excel or --create-word.
+(exit code 2)
+
+$ ./inventag.sh --per-account-reports
+inventag: error: --per-account-reports: Per-account reports are not implemented yet; InvenTag writes one consolidated report. Run once per account to get separate reports.
+(exit code 2)
+
+$ ./inventag.sh --compliance-standard soc2
+inventag: error: --compliance-standard: Compliance-standard enforcement is not implemented yet; the option has never changed InvenTag's behaviour.
+(exit code 2)
+
+$ ./inventag.sh --disable-production-safety
+inventag: error: --disable-production-safety: The read-only guard cannot be disabled from the CLI: InvenTag only needs read access, so non-read AWS calls are always blocked.
+(exit code 2)
+```
+
+<!-- END EXAMPLE OUTPUT: failing-flags -->
 
 ## S3 upload
 
-`--s3-bucket`, `--s3-key-prefix`, `--s3-encryption AES256|aws:kms` and
-`--s3-kms-key-id` are accepted, but nothing is uploaded on the current
-release. Upload `bom_output/` yourself, for example:
+| Flag | Default | Status | What it does |
+|---|---|---|---|
+| `--s3-bucket BUCKET` | none | Works | Upload the reports to this bucket after the run. The run fails if an upload fails. Needs `s3:PutObject`. |
+| `--s3-key-prefix PREFIX` | `bom-reports/` | Works | Folder (key prefix) in the bucket. |
+| `--s3-encryption AES256\|aws:kms` | `AES256` | Works | Server-side encryption for the uploads. |
+| `--s3-kms-key-id KEY` | none | Works | KMS key for `aws:kms`. |
 
-```bash
-aws s3 cp bom_output/ s3://my-reports-bucket/inventag/ --recursive --sse AES256
-```
+See [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
 
 ## Exit codes
 
@@ -156,5 +192,5 @@ aws s3 cp bom_output/ s3://my-reports-bucket/inventag/ --recursive --sse AES256
 |---|---|
 | 0 | Success |
 | 1 | An error: invalid arguments, configuration or template, failed credentials, or a failed run |
-| 2 | Invalid command-line syntax (from the argument parser) |
+| 2 | Invalid command line: unknown or badly formed options, flags that are not implemented, or a role name without `--accounts-file` |
 | 3 | Reports written, but a config template with `fail_on_tag_violations: true` found tag policy violations |

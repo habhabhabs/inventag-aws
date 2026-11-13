@@ -23,6 +23,37 @@ open an [issue](https://github.com/habhabhabs/inventag-aws/issues) titled
 "Security contact request", with no technical details, and ask the
 maintainer for a private channel.
 
+## What InvenTag does with your accounts
+
+- **It only reads.** A read-only guard checks every AWS call before it is
+  sent. It blocks anything that is not a read, and reads that return secrets
+  or data, such as `secretsmanager:GetSecretValue` or `s3:GetObject`. It is
+  always on.
+- **It sends no usage data.** InvenTag has no telemetry. The command-line tool
+  only talks to AWS. The optional CI helper in the Python library can post to
+  Slack, Microsoft Teams or a Prometheus Pushgateway, but only to addresses
+  you configure yourself.
+- **Its files are private.** Reports, snapshots and logs are created readable
+  by your user only.
+- **Its logs hide secrets.** Session tokens, keys and request signatures are
+  masked, even with `--debug`.
+
+You can check what a run did with `--audit-output audit.json`, and what the
+guard allows with `--validate-operations`:
+
+<!-- BEGIN EXAMPLE OUTPUT: validate-operations -->
+
+```text title="Terminal"
+ALLOWED  ec2:DescribeInstances (read-only prefix)
+ALLOWED  s3:GetBucketTagging (read-only prefix)
+BLOCKED  s3:PutObject (operation is not on the read-only allowlist)
+BLOCKED  secretsmanager:GetSecretValue (operation returns secrets, signed URLs or customer data)
+$ echo $?
+1
+```
+
+<!-- END EXAMPLE OUTPUT: validate-operations -->
+
 ## Use a supported Python version
 
 Use Python 3.11 or later. Python 3.10 and older no longer receive security
@@ -58,8 +89,8 @@ than the tool itself.
   [Set up read-only access](../guides/read-only-access.md).
 - **Short-lived credentials.** Use IAM Identity Center or an assumed role,
   not access keys on disk or in CI secrets. In GitHub Actions, use OIDC.
-- **No debug logs in CI.** `--debug` removes secret keys and session tokens
-  from the log, but account IDs, ARNs and resource names stay in it.
+- **Keep logs private.** Secrets are masked in logs, but logs still describe
+  your accounts.
 - **Pin what you run.** Check out a release tag of InvenTag, and pin GitHub
   Actions to commit SHAs.
 

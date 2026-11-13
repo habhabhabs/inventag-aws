@@ -16,15 +16,14 @@ file. Word cannot embed SVG logos.
 
 Put the logo next to the template, in the same folder or a subfolder:
 
-```text
+```text title="Project layout"
 .inventag/templates/
   board-report.yaml
   brand/
     acme-logo.png
 ```
 
-```yaml
-# .inventag/templates/board-report.yaml
+```yaml title=".inventag/templates/board-report.yaml"
 format_version: 1
 kind: report
 name: board-report
@@ -37,7 +36,7 @@ spec:
   logo: brand/acme-logo.png
   logo_alt_text: Acme Ltd logo        # read by screen readers
   colors:
-    header_fill: "4B2E83"             # white text on this purple passes WCAG AA
+    header_fill: "4B2E83"             # 10.4:1 contrast with white text
   tag_policy: security-baseline
   word:
     orientation: landscape
@@ -45,44 +44,83 @@ spec:
 
 ## Command
 
-```bash
+```bash title="Terminal"
 ./inventag.sh templates validate board-report
 ./inventag.sh --template board-report --create-word --account-regions us-east-1
 ```
 
-## Expected output
+## Output
 
-Sample data from an offline run:
+<!-- BEGIN EXAMPLE OUTPUT: board-validate -->
 
-```text
+```text title="Terminal"
 OK    ~/acme-infra/.inventag/templates/board-report.yaml (report 'board-report')
-Wrote bom_output/tag_compliance_20261112_132421.json
-Wrote bom_output/multi_account_bom_20261112_132421.docx
-Tag policy 'security-baseline': 0 of 23 resources compliant (0.0%), 23 non-compliant, 14 out of scope.
 ```
 
-The document is in landscape and reads, in order:
+<!-- END EXAMPLE OUTPUT: board-validate -->
 
-1. **Cover:** the logo, "Cloud Estate Summary", "Quarterly review",
-   "Prepared for Acme Ltd" and the date.
-2. **Summary:** resources, services, accounts and regions.
-3. **Resources by service:** a table with purple header rows that repeat on
-   each page.
-4. **Tag compliance:** the policy, the counts, the rules and the non-compliant
-   resources.
-5. **About this report:** how it was made, and the note that InvenTag is not
-   affiliated with AWS.
+<!-- BEGIN EXAMPLE OUTPUT: board-console -->
 
-If the logo is missing or is not an image Word supports, the run stops before
+```text title="Terminal"
+inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+Wrote bom_output/tag_compliance_20261112_090000.json
+Wrote bom_output/multi_account_bom_20261112_090000.docx
+Tag policy 'security-baseline': 1 of 21 resources compliant (4.8%), 20 non-compliant, 14 out of scope.
+```
+
+<!-- END EXAMPLE OUTPUT: board-console -->
+
+<!-- BEGIN EXAMPLE OUTPUT: board-word -->
+
+**Document outline:**
+
+- **Cloud Estate Summary** (title)
+- Summary
+- Resources by service
+- Tag compliance
+  - Required tags
+  - Non-compliant resources
+- About this report
+
+A table from the document:
+
+| Tag key | Rule | Missing | Invalid value |
+|---|---|---|---|
+| Owner | Any value | 18 | 0 |
+| Environment | One of: prod, staging, dev, test, sandbox (an... | 18 | 1 |
+| DataClassification | One of: public, internal, confidential, restr... | 20 | 0 |
+
+<!-- END EXAMPLE OUTPUT: board-word -->
+
+<!-- BEGIN EXAMPLE OUTPUT: board-image -->
+
+<img src={require("../assets/examples/img/board-report-word-page1.png").default} alt="First page of the branded landscape Word report: a purple square logo, the title Cloud Estate Summary, Quarterly review, Prepared for Acme Ltd and the summary list (sample data)" width="977" height="736" loading="lazy" />
+
+<!-- END EXAMPLE OUTPUT: board-image -->
+
+<!-- BEGIN EXAMPLE OUTPUT: board-downloads -->
+
+[Download the sample Word report](../assets/examples/downloads/board-report-sample.docx) (38 KB, sample data)
+
+<!-- END EXAMPLE OUTPUT: board-downloads -->
+
+If the logo is missing, or is not an image Word supports, the run stops before
 scanning:
 
-```text
-board-report.yaml:10: spec.logo: logo file not found: ~/acme-infra/.inventag/templates/brand/acme-logo.png
+<!-- BEGIN EXAMPLE OUTPUT: board-missing-logo -->
+
+```text title="Terminal"
+inventag - ERROR - Template problem:
+inventag - ERROR -   ~/acme-infra/.inventag/templates/board-report.yaml:10: spec.logo: logo file not found: ~/acme-infra/.inventag/templates/brand/acme-logo.png
+$ echo $?
+1
 ```
+
+<!-- END EXAMPLE OUTPUT: board-missing-logo -->
 
 ## Next steps
 
 - Keep colours readable: pick a header colour with a contrast ratio of at
   least 4.5:1 against the header text.
-- Add the full inventory as an Excel attachment:
+- Add the full inventory as an Excel file:
   `./inventag.sh --template board-report --create-word --create-excel`.

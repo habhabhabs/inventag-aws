@@ -176,13 +176,31 @@ print problems as:
 <file>:<line>: <field>: <what is wrong>
 ```
 
-For example:
+For example, a template with `header_fill: blue`, used in a run:
 
-```text
-acme-bom.yaml:13: spec.excel.layuot: unknown field 'layuot'; did you mean 'layout'? ...
-org.yaml:9: spec.accounts[0].account_id: must be text, got a number. Put account IDs in quotes, for example "012345678901".
-org.yaml:12: spec.accounts[1].access_key_id: templates must not contain credentials; use profile_name or role_arn
+<!-- BEGIN EXAMPLE OUTPUT: error-bad-template -->
+
+```text title="Terminal"
+inventag - ERROR - Template problem:
+inventag - ERROR -   bad.yaml:5: spec.colors.header_fill: must be a six-digit hex colour such as 1F3A5F (got 'blue')
+$ echo $?
+1
 ```
+
+<!-- END EXAMPLE OUTPUT: error-bad-template -->
+
+And a misspelt template name:
+
+<!-- BEGIN EXAMPLE OUTPUT: error-unknown-template -->
+
+```text title="Terminal"
+inventag - ERROR - Template problem:
+inventag - ERROR -   no template named 'acme-bomm'. Run 'inventag templates list' to see what is available (searched: ~/acme-infra/.inventag/templates, ~/.config/inventag/templates, ~/inventag-aws/inventag/templating/builtin)
+$ echo $?
+1
+```
+
+<!-- END EXAMPLE OUTPUT: error-unknown-template -->
 
 When a template `extends` another, problems are reported against the file
 that contains them.

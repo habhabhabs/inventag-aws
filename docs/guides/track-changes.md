@@ -15,16 +15,52 @@ change report contains, and how to compare runs today.
 
 ## Snapshots
 
-Every run saves what it found in the output folder:
+Every run saves what it found in the output folder. After two runs against
+mocked AWS (sample data):
 
-```text
-bom_output/
-  state/
-    metadata.json                  # index of saved snapshots
-    state_20261112_050918.json     # one file per run
-    state_20261112_051625.json
-  changelog_20261112_131625.md     # written from the second run on
+<!-- BEGIN EXAMPLE OUTPUT: changes-tree -->
+
+```text title="bom_output/ after two runs (reports omitted)"
+bom_output/changelog_20261112_090000.md
+bom_output/state/metadata.json
+bom_output/state/state_20261112_090100.json
+bom_output/state/state_20261112_090200.json
 ```
+
+<!-- END EXAMPLE OUTPUT: changes-tree -->
+
+Each snapshot holds every resource the run found:
+
+<!-- BEGIN EXAMPLE OUTPUT: changes-snapshot -->
+
+```json title="state/state_<timestamp>.json (structure)"
+{
+  "top_level_keys": [
+    "compliance_data",
+    "metadata",
+    "network_analysis",
+    "resources",
+    "security_analysis"
+  ],
+  "one_resource": {
+    "service": "S3",
+    "resource_type": "Bucket",
+    "resource_id": "acme-app-logs",
+    "arn": "arn:aws:s3:::acme-app-logs",
+    "region": "us-east-1",
+    "tags": {
+      "Environment": "prod",
+      "Owner": "platform",
+      "CostCenter": "CC-1001",
+      "Project": "storefront",
+      "DataClassification": "internal"
+    },
+    "source_account_id": "123456789012"
+  }
+}
+```
+
+<!-- END EXAMPLE OUTPUT: changes-snapshot -->
 
 Keep the `state/` folder between runs, for example as a CI cache or in a
 bucket, if you want history. Turn snapshots off with
@@ -33,16 +69,41 @@ bucket, if you want history. Turn snapshots off with
 ## The change report: known limitation
 
 From the second run on, InvenTag writes `changelog_<timestamp>.md`. On the
-current release, it compares the newest snapshot with **itself**, so it
-always reports zero changes. We checked this by adding a bucket between two
-runs against mocked AWS. The changelog said:
+current release it compares the newest snapshot with **itself**, so it always
+reports zero changes. In this sample a bucket was added between the two runs,
+yet the changelog says:
 
-```text
-- **from_state:** 20261112_051625
-- **to_state:** 20261112_051625
-...
+<!-- BEGIN EXAMPLE OUTPUT: changes-changelog -->
+
+<details>
+<summary>changelog_20261112_090000.md (first 30 lines)</summary>
+
+```markdown
+# Multi-Account Infrastructure Changes
+
+**Generated:** 2026-11-12T09:00:00+00:00
+
+## State Comparison
+
+- **from_state:** 20261112_090000
+- **to_state:** 20261112_090000
+- **comparison_timestamp:** 2026-11-12T09:00:00+00:00
+
+## Summary
+
+| Metric | Count |
+|--------|-------|
 | Total Changes | 0 |
+| Critical Changes | 0 |
+| High Severity | 0 |
+| Security Changes | 0 |
+| Compliance Changes | 0 |
+| Network Changes | 0 |
 ```
+
+</details>
+
+<!-- END EXAMPLE OUTPUT: changes-changelog -->
 
 Until this is fixed, don't rely on the changelog.
 
@@ -62,13 +123,16 @@ print("Removed:", sorted(a - b))
 EOF
 ```
 
-Sample output after adding one bucket between two runs (mocked AWS, sample
-data):
+Sample output after adding one bucket between two runs (sample data):
 
-```text
+<!-- BEGIN EXAMPLE OUTPUT: changes-diff -->
+
+```text title="Terminal"
 Added: ['arn:aws:s3:::acme-new-bucket']
 Removed: []
 ```
+
+<!-- END EXAMPLE OUTPUT: changes-diff -->
 
 ## Next steps
 

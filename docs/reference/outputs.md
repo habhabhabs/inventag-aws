@@ -13,8 +13,15 @@ reports to others.
 file InvenTag writes.
 
 Everything goes into the output folder: `bom_output/` unless you set
-`--output-directory` or `output_directory` in a config template. InvenTag
-writes nothing else, and nothing to AWS.
+`--output-directory` or `output_directory` in a config template. The only
+other places InvenTag writes are the files you name (`--log-file`,
+`--audit-output`) and, with `--s3-bucket`, your S3 bucket.
+
+Output files are created readable and writable by your user only, and new
+output folders are private to your user too.
+
+The samples on this page come from offline runs against mocked AWS (sample
+data).
 
 ## File list
 
@@ -26,6 +33,7 @@ writes nothing else, and nothing to AWS.
 | `state/state_<timestamp>.json` | Every run, unless `--disable-state-management` | Snapshot of every resource found |
 | `state/metadata.json` | With snapshots | Index of snapshots: time, account, regions, resource count, checksum |
 | `changelog_<timestamp>.md` | Second and later runs | Change report. Currently always reports 0 changes; see [Track changes](../guides/track-changes.md). |
+| The file you name with `--audit-output` | When you ask for it | Every AWS operation the run called |
 
 `<timestamp>` is `YYYYMMDD_HHMMSS`.
 
@@ -50,7 +58,11 @@ writes nothing else, and nothing to AWS.
 
 Sheet names follow Excel's rules: at most 31 characters, without
 `[ ] : * ? / \`. Duplicate names get a number. Cell values that start with `=`
-are stored as text, never as formulas.
+are stored as text, never as formulas. Rows are sorted by service, type,
+name and ID.
+
+Previews of each layout, made from real files, are in
+[Built-in templates](../templates/catalogue.md).
 
 ## Word report
 
@@ -63,18 +75,30 @@ screen readers. The logo, if any, carries alt text.
 
 ## Tag compliance JSON
 
-```json
+<!-- BEGIN EXAMPLE OUTPUT: outputs-json -->
+
+```json title="tag_compliance_20261112_090000.json (one resource shown)"
 {
   "policy": "finops-cost-allocation",
   "description": "Requires CostCenter, Owner, Project and Environment so spend can be allocated.",
   "summary": {
-    "checked": 23,
+    "checked": 21,
     "compliant": 1,
-    "non_compliant": 22,
+    "non_compliant": 20,
     "out_of_scope": 14,
-    "percent_compliant": 4.3,
-    "missing_by_key": {"CostCenter": 20, "Owner": 20, "Project": 21, "Environment": 20},
-    "invalid_by_key": {"CostCenter": 1, "Owner": 0, "Project": 0, "Environment": 1}
+    "percent_compliant": 4.8,
+    "missing_by_key": {
+      "CostCenter": 18,
+      "Owner": 18,
+      "Project": 19,
+      "Environment": 18
+    },
+    "invalid_by_key": {
+      "CostCenter": 1,
+      "Owner": 0,
+      "Project": 0,
+      "Environment": 1
+    }
   },
   "non_compliant_resources": [
     {
@@ -94,7 +118,130 @@ screen readers. The logo, if any, carries alt text.
 }
 ```
 
-Sample data from an offline run, with one resource shown.
+<!-- END EXAMPLE OUTPUT: outputs-json -->
+
+## Snapshots
+
+<!-- BEGIN EXAMPLE OUTPUT: changes-tree -->
+
+```text title="bom_output/ after two runs (reports omitted)"
+bom_output/changelog_20261112_090000.md
+bom_output/state/metadata.json
+bom_output/state/state_20261112_090100.json
+bom_output/state/state_20261112_090200.json
+```
+
+<!-- END EXAMPLE OUTPUT: changes-tree -->
+
+<!-- BEGIN EXAMPLE OUTPUT: changes-snapshot -->
+
+```json title="state/state_<timestamp>.json (structure)"
+{
+  "top_level_keys": [
+    "compliance_data",
+    "metadata",
+    "network_analysis",
+    "resources",
+    "security_analysis"
+  ],
+  "one_resource": {
+    "service": "S3",
+    "resource_type": "Bucket",
+    "resource_id": "acme-app-logs",
+    "arn": "arn:aws:s3:::acme-app-logs",
+    "region": "us-east-1",
+    "tags": {
+      "Environment": "prod",
+      "Owner": "platform",
+      "CostCenter": "CC-1001",
+      "Project": "storefront",
+      "DataClassification": "internal"
+    },
+    "source_account_id": "123456789012"
+  }
+}
+```
+
+<!-- END EXAMPLE OUTPUT: changes-snapshot -->
+
+## Audit JSON
+
+<!-- BEGIN EXAMPLE OUTPUT: audit-json -->
+
+```json title="audit.json (first operations shown)"
+{
+  "read_only_enforced": true,
+  "started_at": "2026-11-12T09:00:00+00:00",
+  "generated_at": "2026-11-12T09:00:00+00:00",
+  "allowed_prefixes": [
+    "List",
+    "Describe",
+    "Get",
+    "Head",
+    "Lookup",
+    "Search",
+    "BatchGet"
+  ],
+  "total_calls": 105,
+  "allowed_calls": 105,
+  "blocked_calls": 0,
+  "operations": [
+    {
+      "service": "acm",
+      "operation": "ListCertificates",
+      "allowed": true,
+      "count": 1
+    },
+    {
+      "service": "apigateway",
+      "operation": "GetRestApis",
+      "allowed": true,
+      "count": 1
+    },
+    {
+      "service": "ce",
+      "operation": "GetCostAndUsage",
+      "allowed": true,
+      "count": 2
+    },
+    {
+      "service": "cloudformation",
+      "operation": "DescribeStacks",
+      "allowed": true,
+      "count": 1
+    },
+    {
+      "service": "cloudformation",
+      "operation": "ListStackSets",
+      "allowed": true,
+      "count": 1
+    },
+    {
+      "service": "cloudfront",
+      "operation": "ListDistributions",
+      "allowed": true,
+      "count": 1
+    },
+    "..."
+  ],
+  "blocked": []
+}
+```
+
+<!-- END EXAMPLE OUTPUT: audit-json -->
+
+## S3 objects
+
+With `--s3-bucket acme-inventory-reports --s3-key-prefix inventag/`, each run
+puts its files under a folder named after the run:
+
+<!-- BEGIN EXAMPLE OUTPUT: s3-keys -->
+
+```text title="Objects in s3://acme-inventory-reports"
+inventag/20261112_090000/multi_account_bom_20261112_090100.xlsx
+```
+
+<!-- END EXAMPLE OUTPUT: s3-keys -->
 
 ## Terminal output
 

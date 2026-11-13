@@ -29,20 +29,29 @@ For step-by-step setup, see [Set up read-only access](../guides/read-only-access
 |---|---|
 | Scanning other accounts through a role | `sts:AssumeRole` on those roles, and a trust policy in each account that allows your identity |
 | `--enable-cost-analysis` | `pricing:GetProducts` |
+| `--s3-bucket` | `s3:PutObject` on that bucket (and `kms:GenerateDataKey` on the key if you use `aws:kms`) |
 
 ## What InvenTag never needs
 
-Any write, create, delete, put or tag action. If a reviewer finds one in your
-InvenTag policy, remove it. Two library functions in the code can write to
+Any write, create, delete or tag action, apart from `s3:PutObject` on a reports
+bucket if you upload reports. If a reviewer finds another one in your
+InvenTag policy, remove it. InvenTag's read-only guard blocks such calls
+anyway. Two library functions in the code can write to
 AWS when called from your own Python code (the CLI does not call them); see
 [Feature status](../getting-started/status.md#security-notes).
 
-## Policies in the repository
+## The policy in the repository
 
-- `config/defaults/iam-policy-read-only.json` lists specific read actions per
-  service. It does not include `ce:GetCostAndUsage` or `pricing:GetProducts`.
-  Its `OptionalS3ReportUpload` statement grants `s3:PutObject` to a reports
-  bucket; remove it unless you upload reports yourself.
+`config/defaults/iam-policy-read-only.json` is generated from an explicit list
+of 106 read actions in the code (`inventag/security/iam_policy.py`), so it
+matches what InvenTag calls. It includes `tag:GetResources`,
+`ce:GetCostAndUsage`, `pricing:GetProducts` and
+`lambda:GetFunctionConfiguration`.
+
+Its `OptionalS3ReportUpload` statement allows `s3:PutObject`, but only with
+server-side encryption. Put your bucket name in place of
+`YOUR-REPORTS-BUCKET-NAME`, or remove the statement if you don't use
+`--s3-bucket`.
 
 ## Check a policy
 

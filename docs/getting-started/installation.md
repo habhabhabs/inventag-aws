@@ -10,22 +10,23 @@ sidebar_position: 2
 runner.
 
 **What you can do after reading:** run `./inventag.sh --help` and confirm that
-InvenTag can see your AWS account.
+InvenTag can reach your AWS account.
 
 ## What you need
 
-- **Python 3.11 or later.** Python 3.10 reached end of life in October 2026,
-  so use a supported version. Check yours with `python3 --version`.
+- **Python 3.11 or later.** Python 3.10 stopped getting security fixes in
+  October 2026. Check your version with `python3 --version`.
 - **Git**, to download the code.
 - **AWS credentials** for a read-only identity. The
-  [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+  [AWS Command Line Interface (AWS CLI)](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
   is optional, but it is the easiest way to set them up.
 
-InvenTag is not on PyPI. You install it from the GitHub repository.
+InvenTag is not on PyPI (the Python Package Index). You install it from the
+GitHub repository.
 
 ## Download and install
 
-```bash
+```bash title="Terminal"
 git clone https://github.com/habhabhabs/inventag-aws.git
 cd inventag-aws
 python3 -m venv .venv
@@ -38,15 +39,17 @@ pip install -r requirements.txt
 `inventag.sh` and `inventag.bat` find a Python interpreter and run
 `inventag_cli.py`. You can also run `python inventag_cli.py --help` directly.
 
-To use a fixed release instead of the latest code, check out a tag, for
-example `git checkout v4.2.27`. All releases are listed on the
-[releases page](https://github.com/habhabhabs/inventag-aws/releases).
+To use a fixed release instead of the newest code, check out its tag, for
+example `git checkout v5.0.0`. The
+[releases page](https://github.com/habhabhabs/inventag-aws/releases) lists
+every release. Upgrading from v4? Read
+[Upgrade from v4 to v5](./upgrade-to-v5.md) first.
 
 ## Connect your AWS credentials
 
 InvenTag uses the standard AWS credential chain, so any of these work:
 
-```bash
+```bash title="Terminal"
 aws sso login --profile my-readonly     # IAM Identity Center (recommended)
 export AWS_PROFILE=my-readonly
 
@@ -58,22 +61,33 @@ role, over access keys stored on disk.
 
 ## Check that it works
 
-```bash
-aws sts get-caller-identity
+```bash title="Terminal"
+./inventag.sh --validate-credentials --verbose
 ```
 
-This prints the account ID and the identity ARN that InvenTag will use. If it
-fails, fix your credentials before you run InvenTag.
+Exit code 0 means InvenTag could sign in. With `--verbose` you also see the
+steps. Sample output from an offline run against mocked AWS (sample data):
 
-InvenTag also checks your credentials at the start of every run and explains
-the most likely cause when they fail, such as an expired SSO session.
+<!-- BEGIN EXAMPLE OUTPUT: validate-credentials -->
 
-:::note
-`./inventag.sh --validate-credentials` currently reports every account as
-invalid because of a bug, even when the credentials work. Use
-`aws sts get-caller-identity` until it is fixed. See
-[Feature status](./status.md).
-:::
+```text title="Terminal"
+inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+inventag.cli.main - INFO - 🔐 Validating AWS credentials...
+inventag.cli.main - INFO - ✅ AWS credentials are valid!
+inventag.cli.main - INFO - Using default AWS credentials
+inventag.cli.main - INFO - Validating credentials for all accounts...
+inventag.cli.main - INFO - Validating credentials for account: AWS Account 123456789012 (moto)
+inventag.core.credential_manager.CredentialManager - INFO - Validating credentials for account 123456789012
+inventag.core.credential_manager.CredentialManager - INFO - Successfully validated credentials for account 123456789012
+inventag.cli.main - INFO - ✓ All account credentials are valid
+$ echo $?
+0
+```
+
+<!-- END EXAMPLE OUTPUT: validate-credentials -->
+
+If the credentials don't work, InvenTag says why and suggests a fix. See
+[Fix common problems](../guides/troubleshooting.md#credentials).
 
 ## Give InvenTag read-only permissions
 
@@ -82,24 +96,25 @@ Before your first real scan, give the identity a read-only policy:
 
 ## Install for development
 
-```bash
+```bash title="Terminal"
 pip install -r requirements.txt -r requirements-dev.txt
 python -m pytest tests/unit/templating tests/integration/templating
 ```
 
-The [Contributing guide](../development/CONTRIBUTING.md) explains the full test
-suite and its current state.
+The [contributing guide](../development/CONTRIBUTING.md) explains the full test
+suite.
 
 ## Fix install problems
 
 | What you see | What to do |
 |---|---|
-| `No suitable Python interpreter found` | Install Python 3.11 or later and check that `python3 --version` works. |
+| `InvenTag requires Python 3.8 or later.` | Install Python 3.11 or later and check that `python3 --version` works. |
 | `Permission denied: ./inventag.sh` | Run `chmod +x inventag.sh`. |
 | `ModuleNotFoundError` | Activate the virtual environment and run `pip install -r requirements.txt` again. |
-| `Unable to locate credentials` | Run `aws sts get-caller-identity`. Set `AWS_PROFILE` or run `aws sso login`. |
+| `No AWS credentials found!` | Run `aws sso login` or `aws configure`, or set `AWS_PROFILE`. |
 
-More help: [Fix common problems](../guides/troubleshooting.md).
+The launcher's message still says 3.8 because it only checks for that old
+minimum; use 3.11 or later anyway.
 
 ## Next step
 

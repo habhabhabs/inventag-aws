@@ -65,9 +65,18 @@ spec:
 ./inventag.sh --template network-review --create-excel --account-regions us-east-1
 ```
 
-The VPC sheet then has columns such as `raw_data.CidrBlock`,
-`raw_data.IpPermissions` and `raw_data.MapPublicIpOnLaunch`. These come
-straight from the AWS API, so they are detailed but not summarised.
+The VPC sheet then has a column for every field the AWS API returned. They
+are detailed but not summarised. In an offline run (sample data):
+
+<!-- BEGIN EXAMPLE OUTPUT: network-columns -->
+
+The VPC sheet has 53 columns. The `raw_data.*` columns in this sample are:
+
+```text
+raw_data.AssignIpv6AddressOnCreation, raw_data.Associations, raw_data.AvailabilityZone, raw_data.AvailabilityZoneId, raw_data.AvailableIpAddressCount, raw_data.CidrBlock, raw_data.CidrBlockAssociationSet, raw_data.DefaultForAz, raw_data.Description, raw_data.DhcpOptionsId, raw_data.Entries, raw_data.GroupId, raw_data.GroupName, raw_data.InstanceTenancy, raw_data.IpPermissions, raw_data.IpPermissionsEgress, raw_data.Ipv6CidrBlockAssociationSet, raw_data.Ipv6Native, raw_data.IsDefault, raw_data.MapPublicIpOnLaunch, raw_data.NetworkAclId, raw_data.OwnerId, raw_data.PrivateDnsNameOptionsOnLaunch.EnableResourceNameDnsAAAARecord, raw_data.PrivateDnsNameOptionsOnLaunch.EnableResourceNameDnsARecord, raw_data.PrivateDnsNameOptionsOnLaunch.HostnameType, raw_data.Routes, raw_data.RouteTableId, raw_data.SecurityGroupArn, raw_data.State, raw_data.SubnetArn, raw_data.SubnetId, raw_data.Tags, raw_data.VpcId
+```
+
+<!-- END EXAMPLE OUTPUT: network-columns -->
 
 ## Next steps
 

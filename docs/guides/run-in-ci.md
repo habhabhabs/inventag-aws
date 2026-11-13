@@ -60,7 +60,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: habhabhabs/inventag-aws
-          ref: v4.2.27           # pin a release
+          ref: v5.0.0            # pin a release
           path: inventag
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -93,6 +93,23 @@ With `fail_on_tag_violations: true`, InvenTag writes every report first, then
 exits with code 3. The job fails, and the artifact still holds the Excel file
 and `tag_compliance_<timestamp>.json` with every non-compliant resource.
 
+Sample output of `./inventag.sh --template ci-pipeline` from an offline run
+(sample data):
+
+<!-- BEGIN EXAMPLE OUTPUT: ci-console -->
+
+```text title="Terminal"
+inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+Wrote bom_output/tag_compliance_20261112_090000.json
+Wrote bom_output/multi_account_bom_20261112_090000.xlsx
+Tag policy 'finops-cost-allocation': 1 of 21 resources compliant (4.8%), 20 non-compliant, 14 out of scope.
+Tag policy violations found and fail_on_tag_violations is true (exit code 3).
+$ echo $?
+3
+```
+
+<!-- END EXAMPLE OUTPUT: ci-console -->
+
 | Exit code | Meaning |
 |---|---|
 | 0 | Reports written, no tag violations (or no failing policy) |
@@ -101,7 +118,11 @@ and `tag_compliance_<timestamp>.json` with every non-compliant resource.
 
 ## Keep it safe
 
-- Don't use `--debug` in CI. Debug logs contain the temporary session token.
+- Avoid `--debug` in CI. Secrets are masked in debug logs, but the logs are
+  long and still describe your accounts.
+- To keep reports in S3 instead of (or as well as) artifacts, add
+  `--s3-bucket` and grant `s3:PutObject` on that bucket. See
+  [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
 - Keep the role read-only and scoped to the repository and branch that need
   it.
 - Pin InvenTag to a release tag, not `main`.

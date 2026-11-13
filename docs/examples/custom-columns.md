@@ -13,8 +13,7 @@ you want.
 
 ## Template
 
-```yaml
-# .inventag/templates/team-sheet.yaml
+```yaml title=".inventag/templates/team-sheet.yaml"
 format_version: 1
 kind: report
 name: team-sheet
@@ -40,38 +39,66 @@ spec:
 - `tag_columns` adds one column per tag key, after `columns`. Use `all` for
   every tag found, or `none`.
 - `raw_data.<Name>` reads a value straight from the AWS API response. It is
-  blank for resources that don't have it. To discover the names, run once
-  with `excel.include_all_fields: true`.
+  blank for resources that don't have it. To find the names, run once with
+  `excel.include_all_fields: true`.
 
 ## Command
 
-```bash
+```bash title="Terminal"
 ./inventag.sh templates validate team-sheet
 ./inventag.sh --template team-sheet --create-excel --account-regions us-east-1
 ```
 
-## Expected output
+## Output
 
-Sample data from an offline run:
+<!-- BEGIN EXAMPLE OUTPUT: columns-validate -->
 
-```text
+```text title="Terminal"
 OK    ~/acme-infra/.inventag/templates/team-sheet.yaml (report 'team-sheet')
-Wrote bom_output/multi_account_bom_20261112_132609.xlsx
 ```
 
-The workbook has two sheets, `Summary` and `Inventory`. The Inventory header
-row is frozen and has filter buttons. A few rows from the sample:
+<!-- END EXAMPLE OUTPUT: columns-validate -->
+
+<!-- BEGIN EXAMPLE OUTPUT: columns-console -->
+
+```text title="Terminal"
+inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+Wrote bom_output/multi_account_bom_20261112_090000.xlsx
+```
+
+<!-- END EXAMPLE OUTPUT: columns-console -->
+
+<!-- BEGIN EXAMPLE OUTPUT: columns-excel -->
+
+**Sheets:** `Summary`, `Inventory`
+
+`Inventory` sheet, first rows:
 
 | Account | Service | Type | Name | Region | Volume type | Tag: Owner | Tag: CostCenter | Tag: Environment |
 |---|---|---|---|---|---|---|---|---|
-| 123456789012 | EC2 | Volume | | us-east-1 | gp2 | | | |
-| 123456789012 | S3 | Bucket | acme-app-logs | us-east-1 | | platform | CC-1001 | prod |
-| 123456789012 | S3 | Bucket | acme-reports | us-east-1 | | finance | 1234 | Production |
+| 123456789012 | EC2 | Volume |  | us-east-1 | gp2 |  |  |  |
+| 123456789012 | EC2 | Volume | acme-build-cache | us-east-1 | gp3 |  |  |  |
+| 123456789012 | S3 | Bucket | acme-app-logs | us-east-1 |  | platform | CC-1001 | prod |
+| 123456789012 | S3 | Bucket | acme-data-lake | us-east-1 |  | data | CC-2002 | prod |
+| 123456789012 | S3 | Bucket | acme-reports | us-east-1 |  | finance | 1234 | Production |
+| 123456789012 | S3 | Bucket | acme-scratch | us-east-1 |  |  |  |  |
+
+<!-- END EXAMPLE OUTPUT: columns-excel -->
+
+<!-- BEGIN EXAMPLE OUTPUT: columns-image -->
+
+<img src={require("../assets/examples/img/team-sheet-inventory.png").default} alt="Inventory sheet with the columns chosen in the team-sheet template: Account, Service, Type, Name, Region, Volume type and three tag columns (sample data)" width="1075" height="600" loading="lazy" />
+
+<!-- END EXAMPLE OUTPUT: columns-image -->
+
+The header row is frozen and has filter buttons.
 
 ## Tag mappings and service descriptions
 
-`--tag-mappings` and `--service-descriptions` also add custom columns. See
-[Configuration files](../reference/configuration-files.md#tag-mappings).
+`--tag-mappings` and `--service-descriptions` are meant to add custom columns
+too, but a known bug stops them reaching the report (see
+[Feature status](../getting-started/status.md)). Use `tag_columns` in a report
+template instead.
 
 ## Next steps
 

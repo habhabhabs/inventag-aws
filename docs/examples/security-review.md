@@ -26,25 +26,41 @@ The built-in `security-baseline` tag policy requires:
 
 ## Command
 
-```bash
+```bash title="Terminal"
 ./inventag.sh --template standard-bom --template security-baseline \
   --create-excel --create-word --account-regions us-east-1
 ```
 
-## Expected output
+## Output
 
-Sample data from an offline run:
+<!-- BEGIN EXAMPLE OUTPUT: security-console -->
 
-```text
-Wrote bom_output/tag_compliance_20261112_130934.json
-Wrote bom_output/multi_account_bom_20261112_130934.docx
-Wrote bom_output/multi_account_bom_20261112_130934.xlsx
-Tag policy 'security-baseline': 0 of 22 resources compliant (0.0%), 22 non-compliant, 14 out of scope.
+```text title="Terminal"
+inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+Wrote bom_output/tag_compliance_20261112_090000.json
+Wrote bom_output/multi_account_bom_20261112_090000.docx
+Wrote bom_output/multi_account_bom_20261112_090000.xlsx
+Tag policy 'security-baseline': 1 of 21 resources compliant (4.8%), 20 non-compliant, 14 out of scope.
 ```
 
-None of the sample resources had a `DataClassification` tag, so none were
-compliant. In the Tag Compliance sheet, filter the "Missing tags" column for
-`Owner` to find unowned resources first.
+<!-- END EXAMPLE OUTPUT: security-console -->
+
+<!-- BEGIN EXAMPLE OUTPUT: security-excel-compliance -->
+
+**Sheets:** `Summary`, `DYNAMODB`, `EC2`, `EVENTS`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`, `Tag Compliance`
+
+`Tag Compliance` sheet, first rows:
+
+| Account | Region | Service | Type | Resource | ARN | Status | Missing tags | Problems |
+|---|---|---|---|---|---|---|---|---|
+| 123456789012 | us-east-1 | DYNAMODB | Table | acme-orders | acme-orders | Non-compliant | Owner, Environment, DataClassification |  |
+| 123456789012 | us-east-1 | EC2 | Volume | acme-build-cache | arn:aws:ec2:us-east-1:123456789012:volume/vol... | Non-compliant | Owner, Environment, DataClassification |  |
+| 123456789012 | us-east-1 | IAM | Role | acme-orders-api-role | arn:aws:iam::123456789012:role/acme-orders-ap... | Non-compliant | Owner, Environment, DataClassification |  |
+| 123456789012 | us-east-1 | LAMBDA | Function | acme-orders-api | arn:aws:lambda:us-east-1:123456789012:functio... | Non-compliant | Owner, Environment, DataClassification |  |
+
+<!-- END EXAMPLE OUTPUT: security-excel-compliance -->
+
+Filter the "Missing tags" column for `Owner` to find unowned resources first.
 
 ## Next steps
 
@@ -52,8 +68,7 @@ compliant. In the Tag Compliance sheet, filter the "Missing tags" column for
   infrastructure code.
 - Narrow the check to data stores only:
 
-```yaml
-# .inventag/templates/data-stores.yaml
+```yaml title=".inventag/templates/data-stores.yaml"
 format_version: 1
 kind: tag-policy
 name: data-stores

@@ -10,11 +10,14 @@ sidebar_position: 3
 read-only AWS credentials.
 
 **What you can do after reading:** scan one account, open the Excel and Word
-reports, and choose a nicer layout with a template.
+reports, and choose a clearer layout with a template.
+
+All sample output on this page comes from an offline run against mocked AWS
+(sample data). Account `123456789012` and the `acme-*` resources are made up.
 
 ## 1. Check which account you are in
 
-```bash
+```bash title="Terminal"
 aws sts get-caller-identity
 ```
 
@@ -22,9 +25,9 @@ InvenTag scans the account these credentials belong to.
 
 ## 2. Scan one region
 
-Start small: one region is quick and cheap.
+Start small. One region is quick and cheap.
 
-```bash
+```bash title="Terminal"
 ./inventag.sh --create-excel --create-word --account-regions us-east-1
 ```
 
@@ -34,59 +37,128 @@ Start small: one region is quick and cheap.
   commas. Without it, InvenTag scans every region enabled in the account,
   which takes longer.
 
-While it runs you see progress messages. At the end you see where the files
-went. Sample output from an offline run against mocked AWS (sample data):
+At the end you see where the files went:
 
-```text
-WARNING -   - No account specification method provided. Using default AWS credentials.
-Word document saved: bom_output/multi_account_bom_20261112_125543.docx
-Data exported to bom_output/multi_account_bom_20261112_125543.xlsx
+<!-- BEGIN EXAMPLE OUTPUT: quick-default-console -->
+
+```text title="Terminal"
+inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+Word document saved: bom_output/multi_account_bom_20261112_090000.docx
+Data exported to bom_output/multi_account_bom_20261112_090100.xlsx
 ```
 
-The warning only says that you did not name an account, so InvenTag used your
+<!-- END EXAMPLE OUTPUT: quick-default-console -->
+
+The warning only says you didn't name an account, so InvenTag used your
 current credentials. Add `--verbose` to see each step.
 
 ## 3. Open the reports
 
-| File | What is in it |
-|---|---|
-| `bom_output/multi_account_bom_<timestamp>.xlsx` | A Summary sheet with resource counts per service, then one sheet per service with every field InvenTag found |
-| `bom_output/multi_account_bom_<timestamp>.docx` | A summary, a table of services, and up to 50 resources per service |
-| `bom_output/state/` | A snapshot of this run, used to compare runs later |
+The Excel workbook has a **Summary** sheet and one sheet per service. Without
+a template, each service sheet lists every field InvenTag found, so the
+sheets are wide:
+
+<!-- BEGIN EXAMPLE OUTPUT: quick-default-excel -->
+
+**Sheets:** `Summary`, `IAM`, `EC2`, `KMS`, `EVENTS`, `DYNAMODB`, `LAMBDA`, `S3`, `VPC`
+
+`S3` sheet, first rows:
+
+| service | id | arn | account_id | source_account_id | source_account_name | region | discovery_timestamp | ... |
+|---|---|---|---|---|---|---|---|---|
+| S3 | acme-app-logs | arn:aws:s3:::acme-app-logs |  | 123456789012 | AWS Account 123456789012 (moto) | us-east-1 | 2026-11-12T09:00:00+00:00 | ... |
+| S3 | acme-data-lake | arn:aws:s3:::acme-data-lake |  | 123456789012 | AWS Account 123456789012 (moto) | us-east-1 | 2026-11-12T09:00:00+00:00 | ... |
+| S3 | acme-reports | arn:aws:s3:::acme-reports |  | 123456789012 | AWS Account 123456789012 (moto) | us-east-1 | 2026-11-12T09:00:00+00:00 | ... |
+
+The sheet has 28 columns; the first 8 are shown.
+
+<!-- END EXAMPLE OUTPUT: quick-default-excel -->
+
+The Word document has a summary, a table of services and up to 50 resources
+per service:
+
+<!-- BEGIN EXAMPLE OUTPUT: quick-default-word -->
+
+**Document outline:**
+
+- **AWS Resource Inventory - BOM Report** (title)
+- Executive Summary
+  - Service Summary
+- Detailed Resource Inventory
+  - DYNAMODB Resources (1)
+  - EC2 Resources (3)
+  - EVENTS Resources (1)
+  - IAM Resources (1)
+  - KMS Resources (14)
+  - LAMBDA Resources (1)
+  - S3 Resources (4)
+  - VPC Resources (10)
+- Report Information
+
+A table from the document:
+
+| Service | Resource Count | Percentage |
+|---|---|---|
+| DYNAMODB | 1 | 2.9% |
+| EC2 | 3 | 8.6% |
+| EVENTS | 1 | 2.9% |
+| IAM | 1 | 2.9% |
+
+(8 rows in total; 4 shown.)
+
+<!-- END EXAMPLE OUTPUT: quick-default-word -->
+
+InvenTag also saves a snapshot of the run in `bom_output/state/`.
 
 ## 4. Choose a layout with a template
 
-The default workbook includes every raw field, which makes wide sheets. A
-[report template](../templates/index.md) gives you readable columns, one
-column per tag, frozen headers and filters:
+A [report template](../templates/index.md) gives you readable column names,
+one column per tag, a frozen header row and filter buttons:
 
-```bash
+```bash title="Terminal"
 ./inventag.sh --template standard-bom --create-excel --create-word --account-regions us-east-1
 ```
 
-```text
-Wrote bom_output/multi_account_bom_20261112_130917.docx
-Wrote bom_output/multi_account_bom_20261112_130917.xlsx
+<!-- BEGIN EXAMPLE OUTPUT: standard-console -->
+
+```text title="Terminal"
+inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+Wrote bom_output/multi_account_bom_20261112_090000.docx
+Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```
 
-Want to know whether your resources carry the right tags? Add a tag policy:
+<!-- END EXAMPLE OUTPUT: standard-console -->
 
-```bash
-./inventag.sh --template standard-bom --template finops-cost-allocation \
-  --create-excel --account-regions us-east-1
+See what the result looks like in
+[Built-in templates](../templates/catalogue.md#standard-bom).
+
+## 5. Check your tags
+
+Add a tag policy to see which resources are missing tags:
+
+```bash title="Terminal"
+./inventag.sh --template finops-cost-report --create-excel --create-word --account-regions us-east-1
 ```
 
-```text
-Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-compliant, 14 out of scope.
+<!-- BEGIN EXAMPLE OUTPUT: finops-console -->
+
+```text title="Terminal"
+inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+Wrote bom_output/tag_compliance_20261112_090000.json
+Wrote bom_output/multi_account_bom_20261112_090000.docx
+Wrote bom_output/multi_account_bom_20261112_090000.xlsx
+Tag policy 'finops-cost-allocation': 1 of 21 resources compliant (4.8%), 20 non-compliant, 14 out of scope.
 ```
 
-The workbook now has a Tag Compliance sheet listing what is missing on each
-resource.
+<!-- END EXAMPLE OUTPUT: finops-console -->
 
-## What it cost
+The workbook now has a **Tag Compliance** sheet that lists what is missing on
+each resource. More in [Check tags against a policy](../guides/check-tag-compliance.md).
 
-Each run makes read-only API calls, which are free, plus Cost Explorer
-`GetCostAndUsage` requests, which AWS charges per request. Check the current
+## What a run costs
+
+The read-only calls InvenTag makes are free. Cost Explorer
+`GetCostAndUsage` calls are not: AWS charges per request. See the current
 [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 
 ## Next steps

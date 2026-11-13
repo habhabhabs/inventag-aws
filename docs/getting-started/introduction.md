@@ -47,22 +47,26 @@ your AWS credentials
 1. **Credentials.** InvenTag uses the normal AWS credential chain: a profile,
    environment variables, an IAM Identity Center (SSO) session or an IAM role.
    It can also assume a role in other accounts.
-2. **Discovery.** For each account and region it calls read-only AWS APIs.
-   It also calls Cost Explorer `GetCostAndUsage` to spot services that have
-   spend. AWS charges for Cost Explorer API requests.
+2. **Discovery.** For each account and region it calls read-only AWS
+   application programming interfaces (APIs). It also calls Cost Explorer
+   `GetCostAndUsage` to spot services that have spend. AWS charges for Cost
+   Explorer API requests.
 3. **Processing.** It standardises service names and IDs and collects tags.
 4. **Output.** It writes files to the output folder (`bom_output/` by default)
    and a snapshot to `bom_output/state/`.
 
 ## What it changes
 
-Only files on your disk. During discovery InvenTag calls `List*`,
-`Describe*` and `Get*` APIs and Cost Explorer. It does not create, change or
-delete AWS resources.
+Only files on your disk. InvenTag reads your AWS accounts; it never changes
+them.
 
-On the current release nothing inside InvenTag *stops* a write call, so run
-it with a read-only IAM identity. That is your real safety net:
-[Set up read-only access](../guides/read-only-access.md).
+A **read-only guard** checks every AWS call before it is sent. Calls that
+are not reads (`List`, `Describe`, `Get` and similar) are blocked, and so are
+reads that would return secrets or file contents, such as reading a secret
+value or downloading an S3 object. You cannot switch the guard off.
+
+Still give InvenTag a read-only IAM identity. Two independent safety nets are
+better than one: [Set up read-only access](../guides/read-only-access.md).
 
 ## What it is not
 
@@ -72,8 +76,8 @@ it with a read-only IAM identity. That is your real safety net:
 - **Not a cost tool.** It lists resources and tags. It does not calculate
   what they cost.
 - **Not affiliated with AWS.**
-- **Not finished.** Some flags are not implemented. They stop the CLI with a
-  message. [Feature status and known limitations](./status.md) lists them.
+- **Not finished.** Some features have known bugs.
+  [Feature status and known limitations](./status.md) lists them.
 
 ## Next steps
 

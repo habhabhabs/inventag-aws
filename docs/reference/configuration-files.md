@@ -56,6 +56,24 @@ Each account needs **one** way to get credentials:
 
 Values in `settings` override the matching command-line flags.
 
+To use the same role name in every account, leave out `role_arn` and add
+`--cross-account-role InvenTagReadOnly` to the command.
+
+A broken accounts file stops the run before scanning. For example, an
+unquoted account ID (sample data):
+
+<!-- BEGIN EXAMPLE OUTPUT: error-bad-accounts -->
+
+```text title="Terminal"
+inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
+inventag.cli.main - ERROR - Invalid accounts configuration:
+inventag.cli.main - ERROR -   - Account 1: 'account_id' must be a non-empty string
+$ echo $?
+1
+```
+
+<!-- END EXAMPLE OUTPUT: error-bad-accounts -->
+
 Ready-made examples are in the repository's
 [`examples/`](https://github.com/habhabhabs/inventag-aws/tree/main/examples)
 folder, for example `accounts_cross_account_roles.json` and

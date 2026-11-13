@@ -50,8 +50,7 @@ A few rules decide what wins when settings overlap:
    `finops-cost-report` names.
 3. **Without a report template, InvenTag uses `standard-bom`.**
 
-Runs without `--template` behave exactly as before, with the original report
-layout.
+Runs without `--template` use the original report layout.
 
 ## What a tag policy adds to your reports
 
@@ -62,8 +61,22 @@ adds:
   is missing or wrong;
 - a **Tag compliance** section in the Word document;
 - a `tag_compliance_<timestamp>.json` file you can use in scripts or CI;
-- a one-line summary in the terminal, for example
-  `Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%)`.
+- a one-line summary in the terminal.
+
+Sample output from an offline run with `--template finops-cost-report`
+(sample data):
+
+<!-- BEGIN EXAMPLE OUTPUT: finops-console -->
+
+```text title="Terminal"
+inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+Wrote bom_output/tag_compliance_20261112_090000.json
+Wrote bom_output/multi_account_bom_20261112_090000.docx
+Wrote bom_output/multi_account_bom_20261112_090000.xlsx
+Tag policy 'finops-cost-allocation': 1 of 21 resources compliant (4.8%), 20 non-compliant, 14 out of scope.
+```
+
+<!-- END EXAMPLE OUTPUT: finops-console -->
 
 A config template can set `fail_on_tag_violations: true` to make InvenTag exit
 with code 3 when something breaks the policy. The built-in `ci-pipeline`
