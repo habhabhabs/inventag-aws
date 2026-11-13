@@ -10,7 +10,7 @@ from docx import Document
 from openpyxl import load_workbook
 
 from inventag.reporting.converter import BOMConverter
-from inventag.reporting.masking import (
+from inventag.security.secret_values import (
     MASK,
     count_masked,
     mask_resource,

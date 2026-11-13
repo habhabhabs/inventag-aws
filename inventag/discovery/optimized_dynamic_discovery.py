@@ -21,7 +21,7 @@ import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 
 from .aws_clients import create_client
-from .sensitive_fields import mask_secret_values
+from ..security.secret_values import mask_secret_values
 
 
 @dataclass

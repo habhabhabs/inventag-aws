@@ -12,7 +12,7 @@ from inventag.discovery.comprehensive_discovery import (
     TABLE_DRIVEN_SERVICES,
     ComprehensiveAWSDiscovery,
 )
-from inventag.discovery.sensitive_fields import MASK
+from inventag.security.secret_values import MASK
 from inventag.security.read_only_guard import (
     ReadOnlyGuard,
     install_global_guard,
@@ -343,4 +343,7 @@ def test_regions_without_the_service_are_skipped():
 
 
 def test_masked_constant_is_used_for_secrets():
-    assert MASK == "***MASKED***"
+    # One text for every place that hides a secret (reports, snapshots, logs)
+    from inventag.security.redaction import REDACTED
+
+    assert MASK == REDACTED == "***REDACTED***"

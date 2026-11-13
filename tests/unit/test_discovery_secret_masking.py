@@ -8,7 +8,7 @@ import boto3
 import pytest
 from moto import mock_aws
 
-from inventag.discovery.sensitive_fields import MASK, mask_secret_values
+from inventag.security.secret_values import MASK, mask_secret_values
 
 PLANTED = "planted-secret-value-7f3a"
 

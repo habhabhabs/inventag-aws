@@ -10,7 +10,7 @@ import boto3
 import logging
 from typing import Dict, List, Any, Optional
 from botocore.exceptions import ClientError
-from .sensitive_fields import mask_secret_values
+from ..security.secret_values import mask_secret_values
 from .service_enrichment import ServiceHandler
 
 

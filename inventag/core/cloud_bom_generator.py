@@ -51,7 +51,8 @@ from ..security.arn import (
     partition_from_arn,
     validate_role_arn,
 )
-from ..security.redaction import register_secrets, scrub_secret_values
+from ..security.redaction import register_secrets
+from ..security.secret_values import mask_secret_values
 from .._version import __version__
 
 try:  # account-level checkpoints (inventag.state.partial_results)
@@ -1223,7 +1224,7 @@ class CloudBOMGenerator:
         # (Lambda environment variables, passwords in Describe output ...)
         # are removed here, before any report, snapshot or log sees them.
         resources = [
-            scrub_secret_values(resource)
+            mask_secret_values(resource)
             for resource in inventory.discover_all_resources()
         ]
 

@@ -18,6 +18,7 @@ from dataclasses import dataclass, asdict, fields
 import logging
 
 from ..security.safe_output import ensure_private_dir, open_private, write_safe_csv
+from ..security.secret_values import MASK, mask_secret_values
 
 logger = logging.getLogger(__name__)
 
@@ -37,62 +38,18 @@ STATE_FILE_RE = re.compile(r"^state_(\d{8}_\d{6})(?:_(\d{3}))?\.json$")
 _TEMP_FILE_RE = re.compile(r"^\.state_[\w.]+\.tmp$")
 _STALE_TEMP_SECONDS = 24 * 3600
 
-REDACTED = "[REDACTED]"
-# Keys whose value is a secret wherever they appear in a resource record.
-_SECRET_KEY_RE = re.compile(
-    r"(password|passwd|secretstring|secretbinary|secret_?access_?key|"
-    r"client_?secret|private_?key|api_?key|auth_?token|session_?token|"
-    r"security_?token|bearer|credentials?)$",
-    re.IGNORECASE,
-)
-# Lists of name/value environment settings (ECS, CodeBuild).
-_ENV_LIST_KEYS = {"environment", "environmentvariables"}
+# Secret values are hidden with the shared deny-list (one mechanism for
+# discovery, reports, snapshots and checkpoints).
+REDACTED = MASK
 
 
 class StateLoadError(Exception):
     """A snapshot could not be read. The message says why and names the file."""
 
 
-def _redact(value: Any, key: str = "", in_env: bool = False, in_tags: bool = False):
-    """Copy of ``value`` with secret values replaced by ``[REDACTED]``.
-
-    Redacts Lambda ``Environment.Variables`` values, ``name``/``value`` pairs
-    in ECS and CodeBuild environment lists, and any scalar stored under a key
-    that names a secret (password, token, secret key, private key,
-    credentials...). Keys stay, so the shape is still visible. Tag maps are
-    left alone: tags are metadata the tag checks need.
-    """
-    lower = key.lower()
-    if isinstance(value, dict):
-        in_env = in_env or lower == "environment"
-        in_tags = in_tags or lower in ("tags", "tagset")
-        out = {}
-        for k, v in value.items():
-            ks = str(k)
-            scalar = not isinstance(v, (dict, list)) and v not in (None, "")
-            if scalar and in_env and lower == "variables":
-                out[k] = REDACTED
-            elif scalar and not in_tags and _SECRET_KEY_RE.search(ks):
-                out[k] = REDACTED
-            else:
-                out[k] = _redact(v, ks, in_env, in_tags)
-        return out
-    if isinstance(value, list):
-        env_list = lower in _ENV_LIST_KEYS
-        out_list = []
-        for item in value:
-            if env_list and isinstance(item, dict):
-                # [{"name": "A", "value": "x"}] form (ECS, CodeBuild)
-                out_list.append(
-                    {
-                        k: (REDACTED if str(k).lower() == "value" and v else v)
-                        for k, v in item.items()
-                    }
-                )
-            else:
-                out_list.append(_redact(item, key, in_env, in_tags))
-        return out_list
-    return value
+def _redact(value: Any) -> Any:
+    """Copy of ``value`` with secret values replaced (see ``secret_values``)."""
+    return mask_secret_values(value)
 
 
 def _atomic_write_json(path: Path, data: Any, **dump_kwargs) -> None:

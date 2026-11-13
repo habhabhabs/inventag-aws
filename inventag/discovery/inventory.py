@@ -25,7 +25,7 @@ from .comprehensive_discovery import ComprehensiveAWSDiscovery
 from .arn_utils import build_arn, normalize_arn
 from .aws_clients import create_client
 from .coverage import outcome_for_error
-from .sensitive_fields import mask_secret_values
+from ..security.secret_values import mask_secret_values
 from .service_filter import (
     canonical_service,
     canonical_service_set,
@@ -481,7 +481,7 @@ class AWSResourceInventory:
             self._ensure_consistent_results()
 
         # Step 12: no secret-bearing value leaves discovery, whichever path
-        # found the resource (see sensitive_fields.py)
+        # found the resource (see inventag/security/secret_values.py)
         self._mask_secret_values()
 
         # Step 13: every row says which API returned it
@@ -529,11 +529,13 @@ class AWSResourceInventory:
                 )
 
     def _mask_secret_values(self):
-        """Mask secret-bearing values in every resource's copied AWS data."""
-        for resource in self.resources:
-            for key in ("raw_data", "service_attributes"):
-                if isinstance(resource.get(key), (dict, list)):
-                    resource[key] = mask_secret_values(resource[key])
+        """Mask secret-bearing values in every resource (tags are left alone).
+
+        Uses the shared deny-list in ``inventag.security.secret_values``; the
+        same function runs again in core, the report writers and the state
+        snapshot as a second line.
+        """
+        self.resources = [mask_secret_values(r) for r in self.resources]
 
     def _perform_intelligent_discovery(self):
         """Perform AI-capable intelligent resource discovery with standardized output."""

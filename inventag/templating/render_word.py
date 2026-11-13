@@ -12,7 +12,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, RGBColor
 
-from ..reporting.masking import mask_resources
+from ..security.secret_values import mask_resources
 from ..reporting.safe_save import save_atomically
 from .columns import (
     build_columns,

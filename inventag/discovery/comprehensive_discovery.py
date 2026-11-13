@@ -28,7 +28,7 @@ from . import coverage as coverage_mod
 from .aws_clients import create_client
 from .coverage import CoverageLedger
 from .regions import cost_explorer_region, global_home_region, partition_of
-from .sensitive_fields import mask_secret_values
+from ..security.secret_values import mask_secret_values
 from .service_filter import canonical_service
 from .arn_utils import (
     ResourceArnIndex,

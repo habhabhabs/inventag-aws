@@ -29,7 +29,7 @@ from ..discovery.service_enrichment import ServiceAttributeEnricher
 from ..discovery.service_descriptions import ServiceDescriptionManager
 from ..discovery.arn_utils import id_tail, parse_arn
 from ..discovery.tag_mapping import TagMappingEngine
-from .masking import mask_resource, mask_resources
+from ..security.secret_values import mask_resource, mask_resources
 from ..discovery.cost_analyzer import CostAnalyzer, CostThresholds, CostAnalysisSummary
 
 
@@ -218,6 +218,9 @@ class BOMDataProcessor:
                 enriched_resources = self._sequential_enrichment_processing(
                     processed_resources
                 )
+            # Enrichment may copy more of a Describe response into the
+            # resource (service attributes): hide secret values again.
+            enriched_resources = mask_resources(enriched_resources)
 
             cost_analysis = (
                 self._generate_cost_analysis(enriched_resources)

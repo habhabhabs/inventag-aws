@@ -14,7 +14,8 @@ from moto import mock_aws
 
 from inventag.security import redaction
 from inventag.security.read_only_guard import uninstall_global_guard
-from inventag.security.redaction import REDACTED, redact, scrub_secret_values
+from inventag.security.redaction import REDACTED, redact
+from inventag.security.secret_values import mask_secret_values as scrub_secret_values
 
 cli_main = importlib.import_module("inventag.cli.main")
 

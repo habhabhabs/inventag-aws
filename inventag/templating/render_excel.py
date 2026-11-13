@@ -9,7 +9,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from ..reporting.masking import mask_resources
+from ..security.secret_values import mask_resources
 from ..reporting.safe_save import save_atomically
 from .columns import (
     EXCEL_CELL_LIMIT,

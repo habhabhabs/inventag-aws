@@ -19,7 +19,7 @@ from ..security.safe_output import (
     open_private,
     write_safe_csv,
 )
-from .masking import mask_resources
+from ..security.secret_values import mask_resources
 from .safe_save import save_atomically
 from .report_template import (
     ReportTemplate,

@@ -471,7 +471,7 @@ class TestLambdaHandler:
         assert attributes["package_type"] == "Zip"
         assert attributes["reserved_concurrency_executions"] == 100
         # Environment variable names are kept, values are masked
-        assert attributes["environment"] == {"Variables": {"ENV": "***MASKED***"}}
+        assert attributes["environment"] == {"Variables": {"ENV": "***REDACTED***"}}
         assert "code_location" not in attributes
         assert mock_code["Location"] not in str(result)
 
