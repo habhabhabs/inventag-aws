@@ -1028,17 +1028,20 @@ pre code,
   background: var(--it-code-bg);
 }
 @media (max-width: 576px) {
-  .table-frame[data-scrollable] .table-scroll th:first-child,
-  .table-frame[data-scrollable] .table-scroll td:first-child,
-  .table-frame[data-scrollable] .table-scroll td:first-child code {
+  /* These rules apply to every table, not only scrollable ones: they change
+     whether a table overflows, so they must not depend on the overflow flag
+     (that would flip it back and forth). */
+  .table-frame .table-scroll th:first-child,
+  .table-frame .table-scroll td:first-child,
+  .table-frame .table-scroll td:first-child code {
     max-width: 42vw;
     white-space: normal;
     /* break-word (not anywhere): a column of one-letter lines would be the result,
        because anywhere also lowers the minimum width the table can shrink to */
     overflow-wrap: break-word;
   }
-  .table-frame[data-scrollable] .table-scroll th:first-child,
-  .table-frame[data-scrollable] .table-scroll td:first-child {
+  .table-frame .table-scroll th:first-child,
+  .table-frame .table-scroll td:first-child {
     min-width: 6rem;
   }
   .table-frame[data-wide] .table-scroll td:last-child {

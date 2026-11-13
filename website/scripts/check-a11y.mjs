@@ -292,7 +292,9 @@ for (const [vName, viewport, dpr, touch] of viewports) {
         continue;
       }
       await hydrated(page);
-      await page.waitForTimeout(150);
+      // layout settles once the fonts are in; tables set their scroll state then
+      await page.evaluate(() => document.fonts.ready);
+      await page.waitForTimeout(400);
       const tag = `${pName} [${vName}, ${theme}]`;
       const r = await page.evaluate(auditInPage, touch);
       for (const f of r.contrast) fail(`${tag} contrast ${f.ratio}:1 "${f.text}" (${f.color}; ${f.where})`);
@@ -583,7 +585,8 @@ for (const theme of ['light', 'dark']) {
     const page = await ctx.newPage();
     await page.goto(BASE + '/docs/reference/cli', {waitUntil: 'networkidle'});
     await hydrated(page);
-    await page.waitForTimeout(300);
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(600);
     const r = await page.evaluate(() => {
       const out = {overflowing: 0, bad: [], noCue: 0, noLabelAfter: []};
       for (const sc of document.querySelectorAll('.table-scroll')) {
