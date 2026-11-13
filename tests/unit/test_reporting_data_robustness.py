@@ -86,6 +86,8 @@ def test_excel_survives_control_characters_and_odd_service_names(tmp_path):
     c.export_to_excel(str(out))
     wb = load_workbook(out)
     assert "Bad-Name-1-" in wb.sheetnames
-    assert wb["S3"]["D2"].value == "xy" or "xy" in [x.value for x in wb["S3"][2]]
+    assert wb["S3"]["D2"].value == "x\ufffdy" or "x\ufffdy" in [
+        x.value for x in wb["S3"][2]
+    ]
     big = [x.value for x in wb["Bad-Name-1-"][2] if x.value and len(x.value) > 100]
-    assert len(big[0]) == 32767
+    assert len(big[0]) == 32767 and "cut" in big[0]

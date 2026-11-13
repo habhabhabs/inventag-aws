@@ -29,6 +29,7 @@ from ..discovery.service_enrichment import ServiceAttributeEnricher
 from ..discovery.service_descriptions import ServiceDescriptionManager
 from ..discovery.arn_utils import id_tail, parse_arn
 from ..discovery.tag_mapping import TagMappingEngine
+from .masking import mask_resource, mask_resources
 from ..discovery.cost_analyzer import CostAnalyzer, CostThresholds, CostAnalysisSummary
 
 
@@ -78,6 +79,7 @@ class ProcessingStatistics:
     service_enriched: int = 0
     description_enriched: int = 0
     tag_mapped: int = 0
+    masked_values: int = 0
     processing_time_seconds: float = 0.0
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
@@ -265,6 +267,16 @@ class BOMDataProcessor:
             resources = self._fix_id_and_name_parsing(resources)
             resources = self._fix_account_id_from_arn(resources)
             resources = self._deduplicate_resources(resources)
+
+            # Secret values never go into a report (names stay, values are hidden)
+            masked = sum(mask_resource(r)[1] for r in resources)
+            if masked:
+                resources = mask_resources(resources)
+                self.statistics.masked_values = masked
+                self.logger.info(
+                    f"Hid {masked} secret value(s) (such as environment variable "
+                    "values and user data) before writing reports"
+                )
 
             self.logger.info(f"Standardized {len(resources)} resources")
             return resources

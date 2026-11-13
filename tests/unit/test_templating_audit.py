@@ -83,7 +83,7 @@ def test_control_characters_and_huge_values_do_not_break_files(registry, tmp_pat
     compliance = evaluate(resources, registry.resolve("finops-cost-allocation"))
     path = render_excel(str(tmp_path / "a.xlsx"), resources, template, compliance)
     wb = load_workbook(path)
-    assert wb["S3"]["E2"].value == "ab"
+    assert wb["S3"]["E2"].value == "a\ufffdb"
     path = render_word(str(tmp_path / "a.docx"), resources, template, compliance)
     assert Document(path)
 

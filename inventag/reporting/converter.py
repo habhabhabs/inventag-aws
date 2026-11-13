@@ -7,6 +7,7 @@ Extracted from scripts/bom_converter.py and enhanced for the unified inventag pa
 """
 
 import json
+import logging
 import re
 import yaml
 import boto3
@@ -16,9 +17,10 @@ from botocore.exceptions import ClientError
 from ..security.safe_output import (
     neutralize_workbook_formulas,
     open_private,
-    precreate_private,
     write_safe_csv,
 )
+from .masking import mask_resources
+from .safe_save import save_atomically
 from .report_template import (
     ReportTemplate,
     build_context,
@@ -61,14 +63,44 @@ def _cell_text(value: Any) -> str:
     and at most 32,767 characters (the Excel limit)."""
     text = "" if value is None else str(value)
     if ILLEGAL_CHARACTERS_RE is not None:
-        text = ILLEGAL_CHARACTERS_RE.sub("", text)
-    return text[:_EXCEL_CELL_LIMIT]
+        text = ILLEGAL_CHARACTERS_RE.sub("\ufffd", text)
+    if len(text) > _EXCEL_CELL_LIMIT:
+        note = f"... [cut, {len(text)} characters in total]"
+        text = text[: _EXCEL_CELL_LIMIT - len(note)] + note
+    return text
 
 
-def _sheet_name(name: Any) -> str:
-    """An Excel sheet name: no []:*?/\\, not empty, at most 31 characters."""
-    cleaned = _SHEET_NAME_ILLEGAL.sub("-", _cell_text(name)).strip("'")
-    return (cleaned or "Sheet")[:31]
+_XML_ILLEGAL = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]")
+_RESERVED_SHEET_NAMES = {"history"}  # Excel keeps this one for itself
+logger = logging.getLogger(__name__)
+
+
+def _xml_safe(text: Any) -> str:
+    """Text for a Word cell or heading: characters XML cannot hold become U+FFFD."""
+    return _XML_ILLEGAL.sub("\ufffd", "" if text is None else str(text))
+
+
+def _sheet_name(name: Any, used: Optional[List[str]] = None) -> str:
+    """An Excel sheet name: valid, at most 31 characters, and, when ``used``
+    (the names already in the workbook) is given, different from all of them
+    ignoring case. A name that is changed is reported in the log."""
+    original = "" if name is None else str(name)
+    cleaned = _SHEET_NAME_ILLEGAL.sub("-", _cell_text(original)).strip("'")
+    candidate = (cleaned or "Sheet")[:31]
+    if used is not None:
+        taken = {u.lower() for u in used} | _RESERVED_SHEET_NAMES
+        counter = 2
+        base = candidate
+        while candidate.lower() in taken:
+            suffix = f" ({counter})"
+            candidate = base[: 31 - len(suffix)] + suffix
+            counter += 1
+    if candidate != original:
+        logger.warning(
+            f"Excel sheet name '{original}' is not allowed or is already used; "
+            f"the sheet is called '{candidate}'"
+        )
+    return candidate
 
 
 def _group_by_service(resources: List[Dict[str, Any]]) -> Dict[str, List[Dict]]:
@@ -140,7 +172,7 @@ class BOMConverter:
                             raise ValueError("Unable to parse file as JSON or YAML")
 
             # Handle different data structures
-            self.data = self._extract_resources(raw_data)
+            self.data = mask_resources(self._extract_resources(raw_data))
 
             # Reclassify VPC-related resources
             self._reclassify_vpc_resources()
@@ -424,6 +456,7 @@ class BOMConverter:
             print("No data to export")
             return
 
+        self.data = mask_resources(self.data)
         # Flatten the data for CSV export
         flattened_data = []
         for item in self.data:
@@ -439,8 +472,11 @@ class BOMConverter:
         sorted_headers = self._get_logical_column_order(all_headers)
 
         # Write CSV
-        with open_private(filename, "w", newline="", encoding="utf-8") as csvfile:
-            write_safe_csv(csvfile, sorted_headers, flattened_data)
+        def write(temp_path):
+            with open_private(temp_path, "w", newline="", encoding="utf-8") as csvfile:
+                write_safe_csv(csvfile, sorted_headers, flattened_data)
+
+        save_atomically(filename, write)
 
         print(f"Data exported to {filename}")
 
@@ -465,13 +501,13 @@ class BOMConverter:
 
         # Save workbook (no data value may become a live formula; owner-only file)
         neutralize_workbook_formulas(wb)
-        precreate_private(filename)
-        wb.save(filename)
+        save_atomically(filename, wb.save)
         print(f"Data exported to {filename}")
 
     def build_excel_workbook(self, template: Optional[ReportTemplate] = None):
         """Build the report workbook in memory (one pipeline for Excel and Google Sheets)."""
         template = self._resolve_template(template, "excel")
+        self.data = mask_resources(self.data)
         context = build_context(template, self.data)
 
         # Group resources by service (sorted, so repeated runs match)
@@ -670,7 +706,7 @@ class BOMConverter:
 
         def values_for(service, count, percentage_text):
             values = {
-                "service": service,
+                "service": _cell_text(service) if isinstance(service, str) else service,
                 "resource_count": count,
                 "percentage": percentage_text,
             }
@@ -716,7 +752,7 @@ class BOMConverter:
             template.data["branding"]["header_color"] if template else "366092"
         )
         # Sanitize sheet name (Excel has restrictions)
-        sheet_name = _sheet_name(service)
+        sheet_name = _sheet_name(service, wb.sheetnames)
 
         ws = wb.create_sheet(sheet_name)
         flattened_rows = [self._flatten_dict(resource) for resource in resources]
@@ -1508,8 +1544,8 @@ class BOMConverter:
             # Try to iterate over it
             resources = list(bom_data)
 
-        # Load the data first
-        self.data = resources
+        # Load the data first (secret values hidden, whatever the caller passed)
+        self.data = resources = mask_resources(resources)
         self.cost_analysis = getattr(bom_data, "cost_analysis", None) or {}
         self.headers = set()
         for item in resources:
@@ -1542,7 +1578,7 @@ class BOMConverter:
         else:
             resources = list(bom_data)
 
-        self.data = resources
+        self.data = resources = mask_resources(resources)
         self.headers = set()
         for item in resources:
             if isinstance(item, dict):
@@ -1566,8 +1602,8 @@ class BOMConverter:
             # Try to iterate over it
             resources = list(bom_data)
 
-        # Load the data first
-        self.data = resources
+        # Load the data first (secret values hidden, whatever the caller passed)
+        self.data = resources = mask_resources(resources)
         self.headers = set()
         for item in resources:
             if isinstance(item, dict):
@@ -1597,13 +1633,13 @@ class BOMConverter:
         doc = self.build_word_document(template)
 
         # Save the document (owner-only file)
-        precreate_private(filename)
-        doc.save(filename)
+        save_atomically(filename, doc.save)
         print(f"Word document saved: {filename}")
 
     def build_word_document(self, template: Optional[ReportTemplate] = None):
         """Build the Word document in memory (one pipeline for Word and Google Docs)."""
         template = self._resolve_template(template, "word")
+        self.data = mask_resources(self.data)
         context = build_context(template, self.data)
 
         # Group resources by service (sorted, so repeated runs match)
@@ -1691,7 +1727,7 @@ class BOMConverter:
             count = len(resources)
             percentage = (count / total_resources * 100) if total_resources > 0 else 0
             values = {
-                "service": service,
+                "service": _xml_safe(service),
                 "resource_count": str(count),
                 "percentage": f"{percentage:.1f}%",
             }
@@ -1743,13 +1779,14 @@ class BOMConverter:
             if header == "tags" and value:
                 # Format tags nicely
                 tag_str = ", ".join([f"{k}={v}" for k, v in value.items()])
-                return tag_str[:100] + ("..." if len(tag_str) > 100 else "")
-            return str(value)[:50] + ("..." if len(str(value)) > 50 else "")
+                return _xml_safe(tag_str[:100] + ("..." if len(tag_str) > 100 else ""))
+            return _xml_safe(str(value)[:50] + ("..." if len(str(value)) > 50 else ""))
         if isinstance(value, list):
-            return ", ".join(str(v) for v in value)[:100] + (
-                "..." if len(str(value)) > 100 else ""
+            return _xml_safe(
+                ", ".join(str(v) for v in value)[:100]
+                + ("..." if len(str(value)) > 100 else "")
             )
-        return str(value)
+        return _xml_safe(value)
 
     def _add_word_resources(self, doc, section, services, context):
         """Heading, then one heading and one table for each service."""
@@ -1771,7 +1808,7 @@ class BOMConverter:
             service_context = dict(context)
             service_context.update(
                 {
-                    "service": str(service),
+                    "service": _xml_safe(service),
                     "service_resource_count": str(len(resources)),
                     "shown_resource_count": str(len(shown)),
                 }
@@ -1831,9 +1868,17 @@ class BOMConverter:
                         row_cells[i].text = self._format_word_value(header, value)
                 self._set_word_column_widths(resource_table, columns)
 
-                if len(resources) > max_resources and section["truncation_note"]:
+                if len(resources) > max_resources:
+                    if section["truncation_note"]:
+                        doc.add_paragraph(
+                            substitute(section["truncation_note"], service_context)
+                        )
+                    # Always say how many are missing and where the full list is,
+                    # whatever the template's own note says.
                     doc.add_paragraph(
-                        substitute(section["truncation_note"], service_context)
+                        f"{len(resources) - len(shown)} {_xml_safe(service)} "
+                        "resources are not listed here. The Excel report lists all "
+                        "of them (use --create-excel)."
                     )
 
             if section["page_break_after_service"]:

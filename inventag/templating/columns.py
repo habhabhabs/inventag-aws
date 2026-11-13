@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -14,7 +15,7 @@ EXCEL_CELL_LIMIT = 32767
 
 def clean_text(value: str) -> str:
     """Remove control characters that Word and Excel files cannot hold."""
-    return CONTROL_CHARS.sub("", value)
+    return CONTROL_CHARS.sub("\ufffd", value)
 
 
 def normalize_tags(tags: Any) -> Dict[str, str]:
@@ -67,7 +68,7 @@ def format_value(value: Any, field_name: str = "") -> str:
     if isinstance(value, (list, tuple, set)):
         return ", ".join(format_value(v) for v in value)
     text = str(value)
-    return CONTROL_CHARS.sub("", text)
+    return CONTROL_CHARS.sub("\ufffd", text)
 
 
 def humanize(field_name: str) -> str:
@@ -155,11 +156,17 @@ def unique_sheet_name(name: str, used: set) -> str:
     base = base[:31]
     candidate = base
     counter = 2
-    while candidate.lower() in used:
+    # "History" is kept by Excel for itself
+    while candidate.lower() in used or candidate.lower() == "history":
         suffix = f" ({counter})"
         candidate = base[: 31 - len(suffix)] + suffix
         counter += 1
     used.add(candidate.lower())
+    if candidate != name:
+        logging.getLogger(__name__).warning(
+            f"Excel sheet name '{name}' is not allowed or is already used; the "
+            f"sheet is called '{candidate}'"
+        )
     return candidate
 
 

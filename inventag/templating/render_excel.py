@@ -9,6 +9,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from ..reporting.masking import mask_resources
+from ..reporting.safe_save import save_atomically
 from .columns import (
     EXCEL_CELL_LIMIT,
     build_columns,
@@ -51,8 +53,9 @@ def _write(ws, row: int, col: int, value: Any):
         # 32,767 characters.
         value = clean_text(value)[:EXCEL_CELL_LIMIT]
     cell = ws.cell(row=row, column=col, value=value)
-    # Never let data from AWS become a formula (CSV/formula injection).
-    if isinstance(value, str) and value.startswith("="):
+    # Never let data from AWS become a formula (CSV/formula injection): a text
+    # that starts with = + - or @ is stored as text.
+    if isinstance(value, str) and value:
         cell.data_type = "s"
     return cell
 
@@ -194,6 +197,7 @@ def render_excel(
     metadata: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Write the workbook to ``path`` and return the path."""
+    resources = mask_resources(resources)  # no secret value goes into a file
     spec = template.spec
     excel = spec["excel"]
     metadata = dict(metadata or {})
@@ -230,5 +234,5 @@ def render_excel(
     if not wb.sheetnames:
         wb.create_sheet("Resources")
     wb.active = 0
-    wb.save(path)
+    save_atomically(path, wb.save)
     return path

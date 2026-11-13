@@ -12,6 +12,8 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, RGBColor
 
+from ..reporting.masking import mask_resources
+from ..reporting.safe_save import save_atomically
 from .columns import (
     build_columns,
     clean_text,
@@ -198,7 +200,7 @@ def _service_tables(doc, spec, resources) -> None:
         return
     limit = word["max_rows_per_service"]
     for service, items in groups.items():
-        doc.add_heading(f"{service} ({len(items)})", level=2)
+        doc.add_heading(clean_text(f"{service} ({len(items)})"), level=2)
         columns = build_columns(spec, items, columns=columns_spec, with_tags=False)
         rows = [
             [format_value(get_field(r, c[0]), c[0]) for c in columns]
@@ -207,8 +209,9 @@ def _service_tables(doc, spec, resources) -> None:
         _table(doc, spec, [c[1] for c in columns], rows)
         if len(items) > limit:
             doc.add_paragraph(
-                f"Showing {limit} of {len(items)} {service} resources. The Excel "
-                "report lists all of them."
+                f"Showing {limit} of {len(items)} {service} resources; "
+                f"{len(items) - limit} are not listed here. The Excel report "
+                "lists all of them (use --create-excel)."
             )
 
 
@@ -229,6 +232,7 @@ def render_word(
     metadata: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Write the document to ``path`` and return the path."""
+    resources = mask_resources(resources)  # no secret value goes into a file
     spec = template.spec
     metadata = dict(metadata or {})
     metadata.setdefault(
@@ -255,5 +259,5 @@ def render_word(
     for section_name in spec["word"]["sections"]:
         renderers[section_name]()
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    doc.save(path)
+    save_atomically(path, doc.save)
     return path
