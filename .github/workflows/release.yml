@@ -26,8 +26,15 @@ permissions:
 # One release run at a time. A running release is never cancelled; GitHub keeps
 # only the newest queued run, which is enough because a release covers every
 # commit on main since the previous tag.
+# Runs that can never release ([skip release] or [skip ci] pushes, and the manual
+# publish-only run) get a group of their own: in the shared group they would
+# replace a queued release run, and the commit of that run would not be released.
 concurrency:
-  group: release-main
+  group: >-
+    ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.publish_existing_tag != '') ||
+    contains(github.event.head_commit.message, '[skip release]') ||
+    contains(github.event.head_commit.message, '[skip ci]')) &&
+    format('release-noop-{0}', github.run_id) || 'release-main' }}
   cancel-in-progress: false
 
 jobs:

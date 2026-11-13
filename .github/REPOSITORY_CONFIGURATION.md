@@ -13,6 +13,8 @@ What you can do after reading: create the token, variable and environment that r
 3. It tags that commit `vX.Y.Z`, creates the GitHub release and attaches a `.tar.gz` and a `.zip` of the source.
 4. It builds the sdist and wheel and uploads them to PyPI through trusted publishing (no API token).
 
+Release runs wait for each other (concurrency group `release-main`), and a release covers every commit on `main` since the previous tag. If two pushes arrive while a release is running, GitHub keeps only the newer queued run; it releases both commits with the bump of the newer one. So push a `Release-As: minor` or `release:minor` change only after the running release has finished. Pushes with `[skip release]` run in a group of their own and never replace a queued release.
+
 The GitHub release starts `release-docs-versioning.yml`. The docs site is built and deployed by `docs-deploy.yml` whenever `docs/`, `website/` or `version.json` changes on `main`.
 
 ## Secret: VERSION_BUMP_WORKFLOW
