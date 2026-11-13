@@ -83,7 +83,6 @@ A run across the three sample accounts:
 <!-- BEGIN EXAMPLE OUTPUT: org-console -->
 
 ```text title="Terminal"
-💸 No billing data available - cannot validate discovery completeness
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx

@@ -73,7 +73,7 @@ inventag - WARNING -   - No account specification method provided. Using default
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
-Tag policy 'finops-cost-allocation': 1 of 21 resources compliant (4.8%), 20 non-compliant, 14 out of scope.
+Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-compliant, 14 out of scope.
 ```
 
 <!-- END EXAMPLE OUTPUT: finops-console -->

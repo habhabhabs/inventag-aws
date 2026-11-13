@@ -86,19 +86,29 @@ yet the changelog says:
 ## State Comparison
 
 - **from_state:** 20261112_090000
-- **to_state:** 20261112_090000
+- **to_state:** 20261112_090100
 - **comparison_timestamp:** 2026-11-12T09:00:00+00:00
 
 ## Summary
 
 | Metric | Count |
 |--------|-------|
-| Total Changes | 0 |
+| Total Changes | 1 |
 | Critical Changes | 0 |
 | High Severity | 0 |
 | Security Changes | 0 |
 | Compliance Changes | 0 |
 | Network Changes | 0 |
+
+**Most Impacted Services:**
+- S3: 1 changes
+
+## S3 Service Changes
+
+Changes detected in S3 service resources
+
+### New Bucket 'acme-new-bucket' was created in S3
+- **Type:** added
 ```
 
 </details>

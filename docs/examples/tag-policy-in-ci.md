@@ -47,7 +47,7 @@ echo $?
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
-Tag policy 'finops-cost-allocation': 1 of 21 resources compliant (4.8%), 20 non-compliant, 14 out of scope.
+Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-compliant, 14 out of scope.
 Tag policy violations found and fail_on_tag_violations is true (exit code 3).
 $ echo $?
 3
@@ -84,17 +84,17 @@ for x in r['non_compliant_resources'][:10]:
 <!-- BEGIN EXAMPLE OUTPUT: ci-summary-output -->
 
 ```text title="Job summary"
-20 non-compliant resources
+21 non-compliant resources
 - DYNAMODB acme-orders missing: CostCenter, Owner, Project, Environment
-- EC2 snap-58a420d872c73639c missing: CostCenter, Owner, Project, Environment
-- EC2 vol-245026054e813168c missing: CostCenter, Owner, Project, Environment
-- EC2 vol-b3c88c760ff652d97 missing: CostCenter, Owner, Project, Environment
+- EC2 i-cf4299879ed16ba8b missing: CostCenter, Project
+- EC2 snap-3b5a6c4a6d9f4cf8f missing: CostCenter, Owner, Project, Environment
+- EC2 vol-02beb2a438f853481 missing: CostCenter, Owner, Project, Environment
+- EC2 vol-26213cf97a67a3e2a missing: CostCenter, Owner, Project, Environment
 - EVENTS default missing: CostCenter, Owner, Project, Environment
 - IAM acme-orders-api-role missing: CostCenter, Owner, Project, Environment
 - LAMBDA acme-orders-api missing: CostCenter, Owner, Project, Environment
 - S3 acme-data-lake missing: Project
-- S3 acme-reports missing: 
-- S3 acme-scratch missing: CostCenter, Owner, Project, Environment
+- S3 acme-reports missing:
 ```
 
 <!-- END EXAMPLE OUTPUT: ci-summary-output -->

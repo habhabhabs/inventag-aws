@@ -65,7 +65,7 @@ OK    ~/acme-infra/.inventag/templates/board-report.yaml (report 'board-report')
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
-Tag policy 'security-baseline': 1 of 21 resources compliant (4.8%), 20 non-compliant, 14 out of scope.
+Tag policy 'security-baseline': 1 of 22 resources compliant (4.5%), 21 non-compliant, 14 out of scope.
 ```
 
 <!-- END EXAMPLE OUTPUT: board-console -->
@@ -88,7 +88,7 @@ A table from the document:
 |---|---|---|---|
 | Owner | Any value | 18 | 0 |
 | Environment | One of: prod, staging, dev, test, sandbox (an... | 18 | 1 |
-| DataClassification | One of: public, internal, confidential, restr... | 20 | 0 |
+| DataClassification | One of: public, internal, confidential, restr... | 21 | 0 |
 
 <!-- END EXAMPLE OUTPUT: board-word -->
 

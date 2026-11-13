@@ -58,7 +58,7 @@ inventag - WARNING -   - No account specification method provided. Using default
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
-Tag policy 'finops-cost-allocation': 1 of 21 resources compliant (4.8%), 20 non-compliant, 14 out of scope.
+Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-compliant, 14 out of scope.
 ```
 
 <!-- END EXAMPLE OUTPUT: finops-console -->
@@ -72,15 +72,15 @@ Tag policy 'finops-cost-allocation': 1 of 21 resources compliant (4.8%), 20 non-
 | Account | Region | Service | Type | Resource | ARN | Status | Missing tags | Problems |
 |---|---|---|---|---|---|---|---|---|
 | 123456789012 | us-east-1 | DYNAMODB | Table | acme-orders | acme-orders | Non-compliant | CostCenter, Owner, Project, Environment |  |
+| 123456789012 | us-east-1 | EC2 | Instance | acme-web-1 | arn:aws:ec2:us-east-1:123456789012:instance/i... | Non-compliant | CostCenter, Project |  |
 | 123456789012 | us-east-1 | EC2 | Volume | acme-build-cache | arn:aws:ec2:us-east-1:123456789012:volume/vol... | Non-compliant | CostCenter, Owner, Project, Environment |  |
 | 123456789012 | us-east-1 | IAM | Role | acme-orders-api-role | arn:aws:iam::123456789012:role/acme-orders-ap... | Non-compliant | CostCenter, Owner, Project, Environment |  |
-| 123456789012 | us-east-1 | LAMBDA | Function | acme-orders-api | arn:aws:lambda:us-east-1:123456789012:functio... | Non-compliant | CostCenter, Owner, Project, Environment |  |
 
 <!-- END EXAMPLE OUTPUT: finops-excel-compliance -->
 
 <!-- BEGIN EXAMPLE OUTPUT: finops-compliance-image -->
 
-<img src={require("../assets/examples/img/finops-tag-compliance-sheet.png").default} alt="Tag Compliance sheet: one row per resource with account, region, service, type, resource, ARN, status, missing tags and problems, followed by the policy rules table (sample data)" width="1074" height="286" loading="lazy" />
+<img src={require("../assets/examples/img/finops-tag-compliance-sheet.png").default} alt="Tag Compliance sheet: one row per resource with account, region, service, type, resource, ARN, status, missing tags and problems, followed by the policy rules table (sample data)" width="1074" height="295" loading="lazy" />
 
 <!-- END EXAMPLE OUTPUT: finops-compliance-image -->
 
@@ -102,9 +102,9 @@ A table from the document:
 
 | Tag key | Rule | Missing | Invalid value |
 |---|---|---|---|
-| CostCenter | Matches: CC-[0-9]&#123;4&#125; | 18 | 1 |
+| CostCenter | Matches: CC-[0-9]&#123;4&#125; | 19 | 1 |
 | Owner | Any value | 18 | 0 |
-| Project | Any value | 19 | 0 |
+| Project | Any value | 20 | 0 |
 | Environment | One of: prod, staging, dev, test, sandbox (an... | 18 | 1 |
 
 <!-- END EXAMPLE OUTPUT: finops-word -->
@@ -118,15 +118,15 @@ The JSON file:
   "policy": "finops-cost-allocation",
   "description": "Requires CostCenter, Owner, Project and Environment so spend can be allocated.",
   "summary": {
-    "checked": 21,
+    "checked": 22,
     "compliant": 1,
-    "non_compliant": 20,
+    "non_compliant": 21,
     "out_of_scope": 14,
-    "percent_compliant": 4.8,
+    "percent_compliant": 4.5,
     "missing_by_key": {
-      "CostCenter": 18,
+      "CostCenter": 19,
       "Owner": 18,
-      "Project": 19,
+      "Project": 20,
       "Environment": 18
     },
     "invalid_by_key": {

@@ -102,7 +102,7 @@ Sample output of `./inventag.sh --template ci-pipeline` from an offline run
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
-Tag policy 'finops-cost-allocation': 1 of 21 resources compliant (4.8%), 20 non-compliant, 14 out of scope.
+Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-compliant, 14 out of scope.
 Tag policy violations found and fail_on_tag_violations is true (exit code 3).
 $ echo $?
 3

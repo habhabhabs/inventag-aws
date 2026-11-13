@@ -40,7 +40,7 @@ inventag - WARNING -   - No account specification method provided. Using default
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
-Tag policy 'security-baseline': 1 of 21 resources compliant (4.8%), 20 non-compliant, 14 out of scope.
+Tag policy 'security-baseline': 1 of 22 resources compliant (4.5%), 21 non-compliant, 14 out of scope.
 ```
 
 <!-- END EXAMPLE OUTPUT: security-console -->
@@ -54,9 +54,9 @@ Tag policy 'security-baseline': 1 of 21 resources compliant (4.8%), 20 non-compl
 | Account | Region | Service | Type | Resource | ARN | Status | Missing tags | Problems |
 |---|---|---|---|---|---|---|---|---|
 | 123456789012 | us-east-1 | DYNAMODB | Table | acme-orders | acme-orders | Non-compliant | Owner, Environment, DataClassification |  |
+| 123456789012 | us-east-1 | EC2 | Instance | acme-web-1 | arn:aws:ec2:us-east-1:123456789012:instance/i... | Non-compliant | DataClassification |  |
 | 123456789012 | us-east-1 | EC2 | Volume | acme-build-cache | arn:aws:ec2:us-east-1:123456789012:volume/vol... | Non-compliant | Owner, Environment, DataClassification |  |
 | 123456789012 | us-east-1 | IAM | Role | acme-orders-api-role | arn:aws:iam::123456789012:role/acme-orders-ap... | Non-compliant | Owner, Environment, DataClassification |  |
-| 123456789012 | us-east-1 | LAMBDA | Function | acme-orders-api | arn:aws:lambda:us-east-1:123456789012:functio... | Non-compliant | Owner, Environment, DataClassification |  |
 
 <!-- END EXAMPLE OUTPUT: security-excel-compliance -->
 

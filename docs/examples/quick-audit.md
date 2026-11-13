@@ -67,15 +67,15 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 
 | Service | Resources | Share |
 |---|---|---|
-| DYNAMODB | 1 | 2.9% |
-| EC2 | 3 | 8.6% |
-| EVENTS | 1 | 2.9% |
-| IAM | 1 | 2.9% |
-| KMS | 14 | 40.0% |
-| LAMBDA | 1 | 2.9% |
-| S3 | 4 | 11.4% |
-| VPC | 10 | 28.6% |
-| Total | 35 | 100.0% |
+| DYNAMODB | 1 | 2.8% |
+| EC2 | 4 | 11.1% |
+| EVENTS | 1 | 2.8% |
+| IAM | 1 | 2.8% |
+| KMS | 14 | 38.9% |
+| LAMBDA | 1 | 2.8% |
+| S3 | 4 | 11.1% |
+| VPC | 10 | 27.8% |
+| Total | 36 | 100.0% |
 
 <!-- END EXAMPLE OUTPUT: standard-excel-summary -->
 

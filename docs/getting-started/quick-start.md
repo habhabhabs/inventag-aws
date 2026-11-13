@@ -44,7 +44,7 @@ At the end you see where the files went:
 ```text title="Terminal"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Word document saved: bom_output/multi_account_bom_20261112_090000.docx
-Data exported to bom_output/multi_account_bom_20261112_090100.xlsx
+Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
 ```
 
 <!-- END EXAMPLE OUTPUT: quick-default-console -->
@@ -60,17 +60,17 @@ sheets are wide:
 
 <!-- BEGIN EXAMPLE OUTPUT: quick-default-excel -->
 
-**Sheets:** `Summary`, `IAM`, `EC2`, `KMS`, `EVENTS`, `DYNAMODB`, `LAMBDA`, `S3`, `VPC`
+**Sheets:** `Summary`, `EC2`, `DYNAMODB`, `IAM`, `KMS`, `LAMBDA`, `S3`, `VPC`, `EVENTS`
 
 `S3` sheet, first rows:
 
-| service | id | arn | account_id | source_account_id | source_account_name | region | discovery_timestamp | ... |
+| service | type | id | name | arn | account_id | source_account_id | source_account_name | ... |
 |---|---|---|---|---|---|---|---|---|
-| S3 | acme-app-logs | arn:aws:s3:::acme-app-logs |  | 123456789012 | AWS Account 123456789012 (moto) | us-east-1 | 2026-11-12T09:00:00+00:00 | ... |
-| S3 | acme-data-lake | arn:aws:s3:::acme-data-lake |  | 123456789012 | AWS Account 123456789012 (moto) | us-east-1 | 2026-11-12T09:00:00+00:00 | ... |
-| S3 | acme-reports | arn:aws:s3:::acme-reports |  | 123456789012 | AWS Account 123456789012 (moto) | us-east-1 | 2026-11-12T09:00:00+00:00 | ... |
+| S3 | Bucket | acme-app-logs | acme-app-logs | arn:aws:s3:::acme-app-logs |  | 123456789012 | AWS Account 123456789012 (moto) | ... |
+| S3 | Bucket | acme-data-lake | acme-data-lake | arn:aws:s3:::acme-data-lake |  | 123456789012 | AWS Account 123456789012 (moto) | ... |
+| S3 | Bucket | acme-reports | acme-reports | arn:aws:s3:::acme-reports |  | 123456789012 | AWS Account 123456789012 (moto) | ... |
 
-The sheet has 28 columns; the first 8 are shown.
+The sheet has 30 columns; the first 8 are shown.
 
 <!-- END EXAMPLE OUTPUT: quick-default-excel -->
 
@@ -86,7 +86,7 @@ per service:
   - Service Summary
 - Detailed Resource Inventory
   - DYNAMODB Resources (1)
-  - EC2 Resources (3)
+  - EC2 Resources (4)
   - EVENTS Resources (1)
   - IAM Resources (1)
   - KMS Resources (14)
@@ -99,10 +99,10 @@ A table from the document:
 
 | Service | Resource Count | Percentage |
 |---|---|---|
-| DYNAMODB | 1 | 2.9% |
-| EC2 | 3 | 8.6% |
-| EVENTS | 1 | 2.9% |
-| IAM | 1 | 2.9% |
+| DYNAMODB | 1 | 2.8% |
+| EC2 | 4 | 11.1% |
+| EVENTS | 1 | 2.8% |
+| IAM | 1 | 2.8% |
 
 (8 rows in total; 4 shown.)
 
@@ -147,7 +147,7 @@ inventag - WARNING -   - No account specification method provided. Using default
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
-Tag policy 'finops-cost-allocation': 1 of 21 resources compliant (4.8%), 20 non-compliant, 14 out of scope.
+Tag policy 'finops-cost-allocation': 1 of 22 resources compliant (4.5%), 21 non-compliant, 14 out of scope.
 ```
 
 <!-- END EXAMPLE OUTPUT: finops-console -->

@@ -82,15 +82,15 @@ screen readers. The logo, if any, carries alt text.
   "policy": "finops-cost-allocation",
   "description": "Requires CostCenter, Owner, Project and Environment so spend can be allocated.",
   "summary": {
-    "checked": 21,
+    "checked": 22,
     "compliant": 1,
-    "non_compliant": 20,
+    "non_compliant": 21,
     "out_of_scope": 14,
-    "percent_compliant": 4.8,
+    "percent_compliant": 4.5,
     "missing_by_key": {
-      "CostCenter": 18,
+      "CostCenter": 19,
       "Owner": 18,
-      "Project": 19,
+      "Project": 20,
       "Environment": 18
     },
     "invalid_by_key": {
@@ -182,8 +182,8 @@ bom_output/state/state_20261112_090200.json
     "Search",
     "BatchGet"
   ],
-  "total_calls": 105,
-  "allowed_calls": 105,
+  "total_calls": 72,
+  "allowed_calls": 72,
   "blocked_calls": 0,
   "operations": [
     {
