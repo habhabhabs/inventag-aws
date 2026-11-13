@@ -8,6 +8,24 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Upgrade notes
+
+- The new listings need more read-only IAM actions (see
+  `config/defaults/iam-policy-read-only.json`). With a v1.1.4 policy the run
+  still works: each denied listing is a warning, and those resources are found
+  through the Tagging API as before, when they are tagged.
+- The first change report after the upgrade compares with a v1.1.4 snapshot.
+  Resources of the newly listed services show as added, although they existed
+  before. Values that are now masked (`***REDACTED***`) show as changed.
+- Exit codes 5 and 6 are opt-in (`--fail-on-account-error`,
+  `--fail-if-empty`). Conflicting options now stop with exit code 2, and a
+  report format that cannot be written exits with code 1 (see "Changed").
+- Resources that v1.1.4 found only through the Tagging API keep their service
+  name and sheet (for example `ELASTICFILESYSTEM`, `STATES`, `COGNITO-IDP`,
+  `ELASTICMAPREDUCE`, `KAFKA`, `ES`). Their rows now carry the details of the
+  service API, and the ID column of Secrets Manager secrets and MSK clusters
+  holds the name instead of the last part of the ARN.
+
 ### Added
 
 - InvenTag lists 22 more services with their own read-only calls: ElastiCache,
@@ -25,6 +43,9 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 - `--resume` reuses the results of accounts that finished in an earlier run of
   the same command that did not complete, and scans only the others.
   `--resume-max-age-hours` sets how old those results may be (default 24).
+  After a run with failed accounts, the finished accounts are saved under
+  `<output directory>/state/partial/`; a run where every account finished
+  removes them.
 - `--state-retention-days` and `--state-max-snapshots` set how many state
   snapshots are kept (defaults 30 days and 100 snapshots; `0` or `none` keeps
   all).
@@ -35,7 +56,9 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 - When `ec2:DescribeRegions` fails, InvenTag reads the enabled regions with
   `account:ListRegions`, and then tries every region of the partition, instead
   of four fixed regions. China and GovCloud accounts use their own home
-  regions for global services, Cost Explorer and the Tagging API.
+  regions for global services, Cost Explorer and the Tagging API. When
+  `ec2:DescribeRegions` is denied in every region, every region is scanned
+  (before, none were).
 
 ### Changed
 
@@ -44,7 +67,9 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   failed and the other accounts are kept. The resources it found before the
   limit stay in the report, and the report says the account is incomplete.
   Discovery's own listing limit follows this setting instead of a fixed 10
-  minutes.
+  minutes. If every account failed but some found resources before their
+  limit, the reports are written, no snapshot is saved, and the run exits
+  with code 1.
 - A failed listing call (throttled after the retries, or any error other than
   access denied) is logged as a warning for that service and region, instead
   of looking like "no resources". Throttled calls are retried up to 10 times
@@ -56,8 +81,12 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   save leaves no partial file and keeps the previous report.
 - Word tables that are cut say how many resources are not listed and that the
   Excel report lists all of them.
-- Change tracking treats lists as unordered and ignores fields that change on
-  every run (discovery route, cost figures, usage counters). Accounts that
+- Change tracking treats lists as unordered, except lists whose order is
+  configuration (Lambda layers, Auto Scaling termination policies, CloudFront
+  cache behaviors), and ignores fields that change on every run (discovery
+  route, cost figures, usage counters). A resource that one run found only
+  through the Tagging API and the other through its service API is compared
+  by its tags only. Accounts that
   failed in either of the two runs are left out of the comparison, and the
   change report names them.
 - Conflicting options now stop with exit code 2: `--accounts-file` with
@@ -68,6 +97,14 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   naming the key. Accounts files, tag-mapping files, service-description files
   and `--bom-config` are read as UTF-8 with or without a byte order mark, and
   a key written twice is an error.
+- With `--enable-network-analysis` or `--enable-security-analysis`, the
+  resource sheets of EC2, VPC, load balancers and RDS get the network columns
+  (`vpc_id`, `subnet_id`, `security_groups`, `max_security_risk` ...), because
+  the analysis now reads the IDs from the API data.
+- An API field that is a map keyed by IDs (for example Secrets Manager
+  `SecretVersionsToStages`) is one JSON cell, not one column per ID.
+- Every log line is printed once, and warnings from discovery (for example a
+  failed listing) use the normal log format and are written to `--log-file`.
 - With `--template`, a warning says when the columns added by `--tag-mappings`
   or `--service-descriptions` are not shown by the template.
 - A description in a `--service-descriptions` file replaces the built-in one,
@@ -119,11 +156,27 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   recognised. Reports and snapshots written by earlier versions may contain
   such values: delete or restrict old `bom_output/` folders and shared copies.
   The first run after the upgrade shows changed values in the change report.
+  Also masked: Glue trigger and job-run arguments, CloudFormation output
+  values, stack set template bodies, connection strings, tokens (including
+  access, refresh and join tokens), presigned and other signed URLs,
+  activation codes, and secret fields inside JSON text.
 - The read-only guard blocks more calls that return secrets or contents (for
   example `cloudformation:GetTemplate`, Athena query results,
   `ec2:GetLaunchTemplateData`, API keys with their values), checks presigned
   URLs and database auth tokens, and blocks `ec2:DescribeInstanceAttribute`
-  for user data.
+  for user data. It also blocks reads whose purpose is a signed URL, a file or
+  document body, command output or a stored definition with secrets (for
+  example SSM `GetDocument` and `GetCommandInvocation`, API Gateway exports,
+  Data Pipeline definitions), and `cognito-identity:GetId`, which creates an
+  identity. Operations that InvenTag chooses by name at run time are checked
+  against the same rules, also when InvenTag is used as a library.
+- The older scripts in `scripts/legacy/` run under the read-only guard, write
+  owner-only files and redact their logs. The legacy inventory script uploads
+  with `--s3-bucket` through a client that can only call `PutObject`, with
+  SSE-S3.
+- The read-only IAM policy no longer includes `cloudtrail:LookupEvents` (no
+  code calls it, and it returns request parameters). It lists 122 read
+  actions.
 - `CredentialManager.setup_cross_account_roles()` and the S3 lifecycle helper
   write to AWS only when called with an explicit opt-in
   (`allow_iam_writes=True`, `allow_bucket_writes=True`); the read-only guard
