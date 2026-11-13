@@ -24,7 +24,7 @@
     "description": "The label of footer link with label=Quick start linking to /docs/getting-started/quick-start"
   },
   "link.item.label.What works today": {
-    "message": "當前可用功能",
+    "message": "目前可用功能",
     "description": "The label of footer link with label=What works today linking to /docs/getting-started/status"
   },
   "link.item.label.CLI reference": {
@@ -32,15 +32,15 @@
     "description": "The label of footer link with label=CLI reference linking to /docs/reference/cli"
   },
   "link.item.label.Account setup": {
-    "message": "賬戶設定",
+    "message": "帳戶設定",
     "description": "The label of footer link with label=Account setup linking to /docs/examples/accounts-setup"
   },
   "link.item.label.Configuration examples": {
-    "message": "配置示例",
+    "message": "設定範例",
     "description": "The label of footer link with label=Configuration examples linking to /docs/templates/"
   },
   "link.item.label.Permissions and safety": {
-    "message": "許可權與安全",
+    "message": "權限與安全",
     "description": "The label of footer link with label=Permissions and safety linking to /docs/user-guides/production-safety"
   },
   "link.item.label.Install from PyPI": {
@@ -52,7 +52,7 @@
     "description": "The label of footer link with label=Source on GitHub linking to https://github.com/habhabhabs/inventag-aws"
   },
   "link.item.label.Report an issue": {
-    "message": "報告問題",
+    "message": "回報問題",
     "description": "The label of footer link with label=Report an issue linking to https://github.com/habhabhabs/inventag-aws/issues"
   },
   "link.item.label.Discussions": {
@@ -64,7 +64,7 @@
     "description": "The label of footer link with label=Contributing linking to /docs/development/CONTRIBUTING"
   },
   "link.item.label.MIT licence": {
-    "message": "MIT 許可證",
+    "message": "MIT 授權條款",
     "description": "The label of footer link with label=MIT licence linking to https://github.com/habhabhabs/inventag-aws/blob/main/LICENSE"
   },
   "link.item.label.Privacy and cookies": {
@@ -72,7 +72,7 @@
     "description": "The label of footer link with label=Privacy and cookies linking to /privacy"
   },
   "copyright": {
-    "message": "© 2026 InvenTag 貢獻者。以 MIT 許可證釋出。<br/>AWS 是 Amazon.com, Inc. 或其關聯公司的商標。InvenTag 是獨立專案，與 Amazon Web Services 無關聯，也未獲其認可或贊助。",
+    "message": "© 2026 InvenTag 貢獻者。以 MIT 授權條款發佈。<br/>AWS 是 Amazon.com, Inc. 或其關聯公司的商標。InvenTag 是獨立專案，與 Amazon Web Services 無關聯，也未獲其認可或贊助。",
     "description": "The footer copyright"
   }
 }
