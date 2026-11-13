@@ -88,12 +88,24 @@ inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Skipping account
 ```
 
 If other accounts worked, InvenTag still writes their report and **exits with
-code 0**. If every account fails, it exits with code 1. (Message text from an
-offline run with a simulated AWS error.)
+code 0**, or with code 5 if you pass `--fail-on-account-error`. The `Summary`
+sheet and the Word report have a "Run notes" section that names the account,
+and the log ends with this list:
+
+```text
+1 of 2 account(s) finished and were saved. Run the same command with --resume within 24 hours to scan only the other 1.
+1 account(s) were not scanned, or only partly. The report does not include them:
+  - 222222222222 (Dev): Context establishment failed: Role assumption failed for account 222222222222: ...
+```
+
+If every account fails, it exits with code 1 and writes no report:
+`Resource discovery failed for all 1 configured account(s); no report was
+generated`. (Message text from an offline run with a simulated AWS error.)
 
 **Fix:** check the role ARN, and check that the role's trust policy allows
 your identity. InvenTag does not fall back to other credentials, so that
-account is skipped until it works.
+account is skipped until it works. Then run the same command with `--resume`
+to scan only the accounts that are missing.
 
 ### A role name without an accounts file
 
@@ -138,9 +150,16 @@ is missing.
 ### A service or column is empty
 
 **Cause:** the identity lacks a `List*`, `Describe*` or `Get*` permission for
-that service. Discovery carries on without it and prints no message. The AWS
-error is logged only at debug level, where it is hard to find in the long
-output. Run the matching AWS CLI call with the same identity to check.
+that service. For a listing call, InvenTag logs one warning for the service
+and carries on without its resources:
+
+```text
+No permission for sqs (list_queues in us-east-1: AccessDenied). Resources of sqs are skipped; add the read permission to see them.
+```
+
+For a call that fills in one detail of a resource, discovery carries on without
+a message and leaves that detail empty. The AWS error is logged only at debug
+level. Run the matching AWS CLI call with the same identity to check.
 
 **Fix:** use the policy in `config/defaults/iam-policy-read-only.json`, which
 covers every call InvenTag makes. See [IAM permissions](../reference/iam-permissions.md).
@@ -150,8 +169,11 @@ covers every call InvenTag makes. See [IAM permissions](../reference/iam-permiss
 **What you see:** `Read-only guard blocked <service>:<Operation>` in the log,
 and an error that starts `Blocked AWS operation <service>:<Operation>`.
 
-**Cause:** a call that is not a read reached the guard. InvenTag itself
-doesn't make such calls, so this usually means custom code or a plug-in.
+**Cause:** a call that is not a read, or a read that returns secrets or
+customer data (for example `cloudformation:GetTemplate` or
+`ssm:GetParameter`), reached the guard. InvenTag itself doesn't make such
+calls, so this usually means custom code or a plug-in. See
+[What the read-only guard blocks](./read-only-access.md#what-the-read-only-guard-blocks).
 
 **Fix:** check which operation it was with
 `inventag --validate-operations <service>:<Operation>`. The guard cannot
@@ -178,15 +200,72 @@ The run carries on with the regions that work.
 **Fix:** remove the region from `--account-regions`, or enable it for the
 account in the AWS console (Account settings, AWS Regions).
 
+### The list of regions cannot be read
+
+If `ec2:DescribeRegions` fails, InvenTag asks `account:ListRegions`, and then
+tries every region of the partition:
+
+```text
+ec2:DescribeRegions failed (An error occurred (UnauthorizedOperation) when calling the DescribeRegions operation: ...); trying account:ListRegions instead.
+account:ListRegions failed (An error occurred (AccessDeniedException) when calling the ListRegions operation: ...).
+Could not read the account's enabled regions. Trying all 34 regions of the aws partition known to botocore; regions the account has not enabled will fail the access check and be skipped. Use --account-regions to choose.
+```
+
+The access check of each region also uses `ec2:DescribeRegions`. If it is
+denied in every region, InvenTag cannot tell which regions work:
+
+```text
+ec2:DescribeRegions is denied in every region, so region access cannot be checked; scanning all 34 regions.
+```
+
+**Fix:** allow `ec2:DescribeRegions`, or name the regions with
+`--account-regions`.
+
 ## Throttling
 
 When too many requests arrive at once, AWS slows them down. The AWS SDK
-(software development kit) retries automatically. We have not tested how
-InvenTag reports throttling that persists after retries.
+(software development kit) retries automatically, up to 10 attempts in total.
+If a listing still fails after that, InvenTag logs a warning for the service
+and region, and its resources there may be missing from the report:
+
+```text
+sqs list_queues in us-east-1 failed (ThrottlingException); its resources there may be incomplete.
+```
 
 **Fix:** scan fewer accounts at once (`--max-concurrent-accounts 2`), scan
 fewer regions, or give big accounts more time
 (`--account-processing-timeout 3600`).
+
+## Time limits and partial results
+
+### An account runs out of time
+
+```text
+Resource discovery failed for account 123456789012: timed out after 60 seconds (--account-processing-timeout); the 1302 resource(s) found before the limit are in the report, other resources of this account may be missing (45 service/region listing(s) did not finish)
+```
+
+The account counts as failed, but the resources found before the limit are in
+the report, and the "Run notes" name the account. The other accounts are kept.
+If no account finishes, InvenTag still writes the report, logs `No account
+finished within its time limit (--account-processing-timeout)` and exits with
+code 1. (Message text from an offline run with a 60-second limit.)
+
+**Fix:** raise `--account-processing-timeout` (default 1800), scan fewer
+regions or services, or scan fewer accounts at the same time. Run the same
+command with `--resume` to scan only the accounts that did not finish.
+
+### Saved results are not reused
+
+| Message | Meaning |
+|---|---|
+| `1 account(s) have saved results from an earlier run of this command that did not finish. They are scanned again; add --resume to reuse them.` | The saved results exist, but you did not pass `--resume`. |
+| `123456789012: reusing results scanned 2026-11-14 06:13 UTC (--resume)` | The saved result is reused. The report's notes list the account and the scan time. |
+| `inventag: error: --resume: needs state management ...` | State management is off. `--resume` with `--disable-state-management` stops with exit code 2. |
+
+InvenTag reuses a saved result only when the command has the same accounts,
+regions, services and filters, and the result is at most
+`--resume-max-age-hours` old (default 24, at most 168). Otherwise it scans the
+account again.
 
 ## Templates and configuration files
 
@@ -240,6 +319,21 @@ $ echo $?
 **Fix:** put account IDs in quotes (`account_id: "123456789012"`), and give
 each account `profile_name`, `role_arn` or access keys.
 
+The file itself can also be wrong. Each of these stops with exit code 1:
+
+| Message contains | Cause |
+|---|---|
+| `the file is empty` | The file has no content. |
+| `duplicate key 'accounts'` | A key is written twice. The message gives the line, for example `accounts file accounts.yaml:3: duplicate key 'accounts'`. |
+| `the top level must be a mapping of key: value pairs, but the file holds a list` | The file starts with a list. Put the list under `accounts:`. |
+| `unsupported file type '.txt'. Use .json, .yaml or .yml` | The file name has another extension. |
+| `the file is ... bytes; the maximum is 1048576 bytes` | The file is larger than 1 MiB. |
+| `Accounts file not found` | The path is wrong. |
+
+InvenTag warns when a file with `secret_access_key` or `session_token` can be
+read by other users: `<file> contains secret access keys and other users can
+read it (mode 0644). Run: chmod 600 <file>.`
+
 ### Other template messages
 
 | Message contains | Fix |
@@ -252,17 +346,50 @@ each account `profile_name`, `role_arn` or access keys.
 
 ## Flags that stop the run
 
-Two flags are accepted but stop the run with exit code 2 and a message that
-starts with the flag name. `--compliance-standard` says it is not implemented
-yet. `--disable-production-safety` says the read-only guard cannot be
-disabled. See
-[Feature status and known limitations](../getting-started/status.md).
+Some options stop the run with exit code 2 and a message `inventag: error: ...`
+before anything is scanned:
+
+- `--compliance-standard` says it is not implemented yet.
+- `--disable-production-safety` says the read-only guard cannot be disabled.
+- Options that cannot work together:
+
+```text
+inventag: error: --accounts-file and --accounts-prompt: give one of them, not both.
+inventag: error: --cross-account-role: a full role ARN names one account and cannot be combined with --accounts-file or --accounts-prompt. Give a role name to use in every account, or put role_arn in the accounts file.
+inventag: error: --s3-kms-key-id: needs --s3-encryption aws:kms.
+inventag: error: --resume: needs state management (saved results live in the state folder); remove --disable-state-management.
+```
+
+A value that is out of range stops with exit code 1 and names the option:
+`--max-concurrent-accounts must be a positive integer`,
+`--account-processing-timeout must be at least 60 seconds`,
+`--resume-max-age-hours must be above 0 and at most 168`. A value that is not
+a number for `--state-retention-days` or `--state-max-snapshots` stops with
+exit code 2: `expected a whole number or 'none'`.
+
+See [Feature status and known limitations](../getting-started/status.md).
 
 ## Exit code 3
 
 Not an error in InvenTag. A tag policy found violations and the config
 template has `fail_on_tag_violations: true`. Open the Tag Compliance sheet or
 the JSON file to see which resources.
+
+## Exit codes 4, 5 and 6
+
+These exist only when you ask for them.
+
+- **4:** a security group rule open to the internet is at or above
+  `--risk-threshold`. The log lists the rules. See
+  [Network and security analysis](./network-and-security-analysis.md#fail-a-pipeline-on-risky-rules).
+- **5:** `--fail-on-account-error` is set and an account could not be scanned,
+  or only partly. The log says `N account(s) failed and
+  --fail-on-account-error is set (exit code 5)`.
+- **6:** `--fail-if-empty` is set and there is nothing to report. The log says
+  `No resources in the report and --fail-if-empty is set (exit code 6)`.
+
+The reports are written first. If more than one applies, 5 comes first, then
+6, then 3 and 4. See [Run InvenTag in CI/CD](./run-in-ci.md#exit-codes).
 
 ## Reports look wrong
 
@@ -272,11 +399,14 @@ the JSON file to see which resources.
 | Tag mapping columns are missing | Tag mappings add columns only to the default workbook. With `--template`, use `tag_columns`. See [Configuration files](../reference/configuration-files.md#tag-mappings). |
 | A custom service description is ignored | S3, EC2, RDS, Lambda and VPC have built-in descriptions that win unless your entry names a `template`. See [Configuration files](../reference/configuration-files.md#service-descriptions). |
 | No network or security sheets | Add `--enable-network-analysis` or `--enable-security-analysis`, and make sure the scan found VPCs or security groups. The flags add nothing with `--template`. See [Network and security analysis](./network-and-security-analysis.md). |
-| IAM, S3, CloudFront or Route 53 resources are missing | `--account-services` or `--account-tags` removed them, or the identity lacks the permission (look for one warning per service in the log). The region list does not matter: global services are always read from `us-east-1`. |
+| IAM, S3, CloudFront or Route 53 resources are missing | `--account-services` or `--account-tags` removed them, or the identity lacks the permission (look for one warning per service in the log). The region list does not matter: global services are always read from the home region (`us-east-1`, or `cn-north-1` in China and `us-gov-west-1` in GovCloud). |
 | A resource shows no tags, or appears twice | Run with `--debug` and compare the ARN column with the ARN in the AWS console. Report a mismatch as an issue with the service and resource type. |
-| No report file, and the exit code is 0 | The scan found nothing, or `--account-services` or `--account-tags` removed everything. Check the log for `No resources to report`. |
-| An account is missing from the report | Its credentials or role failed. See [A role cannot be assumed](#a-role-cannot-be-assumed). |
+| No report file, and the exit code is 0 | The scan found nothing, or `--account-services` or `--account-tags` removed everything. Check the log for `No resources to report`. With `--template`, InvenTag writes a report that lists no resources instead. |
+| An account is missing from the report | Its credentials or role failed, or it ran out of time. The "Run notes" on the `Summary` sheet name it. See [A role cannot be assumed](#a-role-cannot-be-assumed) and [An account runs out of time](#an-account-runs-out-of-time). |
 | The change report is missing | The first run writes none. It also needs state management and delta detection to be on. See [Track changes between runs](./track-changes.md). |
+| `Skipped unreadable snapshot 20261113_222847: Snapshot ... is corrupt or truncated (...). The file was not changed or deleted` | The latest snapshot is damaged, so InvenTag compares with the one before it. The file stays in `state/`. Delete it if you do not need it. |
+| `Account 222222222222 left out of the comparison: the previous run could not scan it` | One of the two runs could not scan that account. The change report names it under `accounts_not_compared`. |
+| `Excel sheet name 'x' is not allowed or is already used; the sheet is called 'y'` | Excel does not allow some characters in sheet names (they become `-`), and names must be unique and at most 31 characters. The report is still complete. |
 | Another user can't open `bom_output/` | Output files are private to the user who ran InvenTag. Share them on purpose. |
 
 ## Noise you can ignore
@@ -287,7 +417,7 @@ Some messages look like errors but change nothing in your report.
 |---|---|
 | ``Failed to render template vpc_vpc: 'cidr_block'`` (with `--service-descriptions`) | The VPC description template wants a field the resource does not have. The report is not affected. |
 | `No account specification method provided. Using default AWS credentials.` | You did not name an account, so InvenTag used your current credentials. This is the normal case. |
-| `Cross-account role ... not usable ... trying default credentials` | InvenTag tried the default role name, could not assume it, and carried on with your own credentials. It is logged once per account. |
+| `Cross-account role not usable for account ... trying default credentials` | InvenTag tried the default role name, could not assume it, and carried on with your own credentials. It is logged once per account, only with `--verbose`. |
 
 ## Install problems
 
@@ -296,6 +426,5 @@ See [Install InvenTag](../getting-started/installation.md#fix-install-problems).
 ## Still stuck?
 
 Open an [issue](https://github.com/habhabhabs/inventag-aws/issues) with the
-command you ran, the version (`python -m pip show inventag-aws`, or
-`git describe --tags` in a clone) and the message. Remove
+command you ran, the version (`inventag --version`) and the message. Remove
 account IDs and names you don't want to share. Never paste credentials.
