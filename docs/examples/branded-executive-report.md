@@ -100,7 +100,7 @@ A table from the document:
 
 <!-- BEGIN EXAMPLE OUTPUT: board-downloads -->
 
-[Download the sample Word report](../assets/examples/downloads/board-report-sample.docx) (38 KB, sample data)
+[Download the sample Word report](pathname:///inventag-aws/downloads/board-report-sample.docx) (38 KB, sample data)
 
 <!-- END EXAMPLE OUTPUT: board-downloads -->
 

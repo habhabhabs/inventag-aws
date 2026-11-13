@@ -147,3 +147,6 @@ transform.log
 # Local AI-assistant and IDE working files
 .kiro/
 .claude/
+
+# Sample files the docs offer for download are committed on purpose
+!website/static/downloads/

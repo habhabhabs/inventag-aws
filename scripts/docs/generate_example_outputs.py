@@ -47,6 +47,7 @@ from typing import Callable, Dict, List, Optional
 ROOT = Path(__file__).resolve().parents[2]
 DOCS = ROOT / "docs"
 ASSETS = DOCS / "assets" / "examples"
+DOWNLOADS = ROOT / "website" / "static" / "downloads"
 FIXED_STAMP = "20261112_090000"
 FIXED_ISO = "2026-11-12T09:00:00+00:00"
 FIXED_HUMAN = "2026-11-12 09:00 UTC"
@@ -708,15 +709,15 @@ def image_md(png: Optional[Path], alt: str, page: Path) -> str:
 
 
 def download_md(path: Path, label: str, page: Path) -> str:
-    rel = os.path.relpath(path, page.parent).replace(os.sep, "/")
+    # Served from website/static/downloads, so the link never depends on the page's folder
     size = path.stat().st_size
-    return f"[{label}]({rel}) ({max(1, round(size / 1024))} KB, sample data)"
+    return f"[{label}](pathname:///inventag-aws/downloads/{path.name}) ({max(1, round(size / 1024))} KB, sample data)"
 
 
 def publish_download(src: Path, name: str) -> Optional[Path]:
     if src.stat().st_size > MAX_DOWNLOAD_BYTES:
         return None
-    dest = ASSETS / "downloads" / name
+    dest = DOWNLOADS / name
     dest.parent.mkdir(parents=True, exist_ok=True)
     if src.suffix == ".json":
         dest.write_text(normalise(src.read_text()))

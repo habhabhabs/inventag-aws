@@ -158,7 +158,7 @@ The JSON file:
 
 <!-- BEGIN EXAMPLE OUTPUT: finops-downloads -->
 
-[Download the sample tag-compliance JSON](../assets/examples/downloads/tag-compliance-sample.json) (8 KB, sample data)
+[Download the sample tag-compliance JSON](pathname:///inventag-aws/downloads/tag-compliance-sample.json) (8 KB, sample data)
 
 <!-- END EXAMPLE OUTPUT: finops-downloads -->
 

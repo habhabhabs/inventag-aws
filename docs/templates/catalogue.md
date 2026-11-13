@@ -147,7 +147,7 @@ A table from the document:
 
 <!-- BEGIN EXAMPLE OUTPUT: standard-downloads -->
 
-[Download the sample workbook](../assets/examples/downloads/standard-bom-sample.xlsx) (13 KB, sample data) and [the sample Word report](../assets/examples/downloads/standard-bom-sample.docx) (37 KB, sample data)
+[Download the sample workbook](pathname:///inventag-aws/downloads/standard-bom-sample.xlsx) (13 KB, sample data) and [the sample Word report](pathname:///inventag-aws/downloads/standard-bom-sample.docx) (37 KB, sample data)
 
 <!-- END EXAMPLE OUTPUT: standard-downloads -->
 

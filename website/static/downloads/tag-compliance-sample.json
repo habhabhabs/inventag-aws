@@ -1,0 +1,333 @@
+{
+  "policy": "finops-cost-allocation",
+  "description": "Requires CostCenter, Owner, Project and Environment so spend can be allocated.",
+  "summary": {
+    "checked": 22,
+    "compliant": 1,
+    "non_compliant": 21,
+    "out_of_scope": 14,
+    "percent_compliant": 4.5,
+    "missing_by_key": {
+      "CostCenter": 19,
+      "Owner": 18,
+      "Project": 20,
+      "Environment": 18
+    },
+    "invalid_by_key": {
+      "CostCenter": 1,
+      "Owner": 0,
+      "Project": 0,
+      "Environment": 1
+    }
+  },
+  "non_compliant_resources": [
+    {
+      "account": "123456789012",
+      "service": "DYNAMODB",
+      "resource_type": "Table",
+      "resource_id": "acme-orders",
+      "arn": "acme-orders",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "EC2",
+      "resource_type": "Instance",
+      "resource_id": "i-855a01aabe3d29d3a",
+      "arn": "arn:aws:ec2:us-east-1:123456789012:instance/i-855a01aabe3d29d3a",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Project"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "EC2",
+      "resource_type": "Snapshot",
+      "resource_id": "snap-3585ce88e25ef1196",
+      "arn": "arn:aws:ec2:us-east-1:123456789012:snapshot/snap-3585ce88e25ef1196",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "EC2",
+      "resource_type": "Volume",
+      "resource_id": "vol-680d0e08d01dd52e7",
+      "arn": "arn:aws:ec2:us-east-1:123456789012:volume/vol-680d0e08d01dd52e7",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "EC2",
+      "resource_type": "Volume",
+      "resource_id": "vol-57d5df4cfc9884b48",
+      "arn": "arn:aws:ec2:us-east-1:123456789012:volume/vol-57d5df4cfc9884b48",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "EVENTS",
+      "resource_type": "EventBus",
+      "resource_id": "default",
+      "arn": "arn:aws:events:us-east-1:123456789012:event-bus/default",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "IAM",
+      "resource_type": "Role",
+      "resource_id": "acme-orders-api-role",
+      "arn": "arn:aws:iam::123456789012:role/acme-orders-api-role",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "LAMBDA",
+      "resource_type": "Function",
+      "resource_id": "acme-orders-api",
+      "arn": "arn:aws:lambda:us-east-1:123456789012:function/acme-orders-api",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "S3",
+      "resource_type": "Bucket",
+      "resource_id": "acme-data-lake",
+      "arn": "arn:aws:s3:::acme-data-lake",
+      "region": "us-east-1",
+      "missing": [
+        "Project"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "S3",
+      "resource_type": "Bucket",
+      "resource_id": "acme-reports",
+      "arn": "arn:aws:s3:::acme-reports",
+      "region": "us-east-1",
+      "missing": [],
+      "invalid": [
+        "CostCenter: '1234' does not match CC-[0-9]{4}",
+        "Environment: 'Production' is not one of prod, staging, dev, test, sandbox"
+      ]
+    },
+    {
+      "account": "123456789012",
+      "service": "S3",
+      "resource_type": "Bucket",
+      "resource_id": "acme-scratch",
+      "arn": "arn:aws:s3:::acme-scratch",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "VPC",
+      "resource_type": "NetworkAcl",
+      "resource_id": "acl-3118daa9d5cc099a7",
+      "arn": "arn:aws:vpc:us-east-1:123456789012:networkacl/acl-3118daa9d5cc099a7",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "VPC",
+      "resource_type": "RouteTable",
+      "resource_id": "rtb-43ff34872ac9bc6fe",
+      "arn": "arn:aws:vpc:us-east-1:123456789012:routetable/rtb-43ff34872ac9bc6fe",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "VPC",
+      "resource_type": "SecurityGroup",
+      "resource_id": "sg-46eeda8dc8fa7955d",
+      "arn": "arn:aws:vpc:us-east-1:123456789012:securitygroup/sg-46eeda8dc8fa7955d",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "VPC",
+      "resource_type": "Subnet",
+      "resource_id": "subnet-2a42af822e0b163e5",
+      "arn": "arn:aws:vpc:us-east-1:123456789012:subnet/subnet-2a42af822e0b163e5",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "VPC",
+      "resource_type": "Subnet",
+      "resource_id": "subnet-61dc3d552b572c148",
+      "arn": "arn:aws:vpc:us-east-1:123456789012:subnet/subnet-61dc3d552b572c148",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "VPC",
+      "resource_type": "Subnet",
+      "resource_id": "subnet-9ae290544cd5493fa",
+      "arn": "arn:aws:vpc:us-east-1:123456789012:subnet/subnet-9ae290544cd5493fa",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "VPC",
+      "resource_type": "Subnet",
+      "resource_id": "subnet-bd0ce262babcb3044",
+      "arn": "arn:aws:vpc:us-east-1:123456789012:subnet/subnet-bd0ce262babcb3044",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "VPC",
+      "resource_type": "Subnet",
+      "resource_id": "subnet-c6646ad0b6700be70",
+      "arn": "arn:aws:vpc:us-east-1:123456789012:subnet/subnet-c6646ad0b6700be70",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "VPC",
+      "resource_type": "Subnet",
+      "resource_id": "subnet-e585d909a6519f0d5",
+      "arn": "arn:aws:vpc:us-east-1:123456789012:subnet/subnet-e585d909a6519f0d5",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    },
+    {
+      "account": "123456789012",
+      "service": "VPC",
+      "resource_type": "VPC",
+      "resource_id": "vpc-b790a8316b5a9b85e",
+      "arn": "arn:aws:vpc:us-east-1:123456789012:vpc/vpc-b790a8316b5a9b85e",
+      "region": "us-east-1",
+      "missing": [
+        "CostCenter",
+        "Owner",
+        "Project",
+        "Environment"
+      ],
+      "invalid": []
+    }
+  ]
+}
