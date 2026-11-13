@@ -15,14 +15,17 @@ _DATA_KEY = re.compile(
         [0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}
         |[0-9a-fA-F]{16,}
         |[0-9].*
-        |.*[:/].*
+        |arn:.*
     )$""",
     re.VERBOSE,
 )
 
 
 def is_data_keyed(value: Mapping[Any, Any]) -> bool:
-    """True when any key of ``value`` is an ID, ARN, path or number."""
+    """True when any key of ``value`` is a UUID, a long hex ID, an ARN or
+    starts with a digit (a CIDR, an account ID). Tag keys such as
+    ``aws:cloudformation:stack-name`` or ``kubernetes.io/cluster/x`` are
+    names, not data, and keep their columns."""
     return any(not isinstance(k, str) or _DATA_KEY.match(k) for k in value)
 
 

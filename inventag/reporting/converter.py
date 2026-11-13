@@ -990,7 +990,7 @@ class BOMConverter:
         items = []
         for k, v in d.items():
             new_key = f"{parent_key}{sep}{k}" if parent_key else k
-            if isinstance(v, dict) and is_data_keyed(v):
+            if isinstance(v, dict) and new_key != "tags" and is_data_keyed(v):
                 items.append((new_key, as_cell(v)))
             elif isinstance(v, dict):
                 items.extend(self._flatten_dict(v, new_key, sep=sep).items())

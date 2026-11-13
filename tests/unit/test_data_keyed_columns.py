@@ -48,9 +48,18 @@ def test_id_keyed_map_is_one_json_cell(flat):
         ({V1: 1}, True),
         ({"arn:aws:s3:::b": 1}, True),
         ({"0.0.0.0/0": 1}, True),
+        ({"aws:cloudformation:stack-name": 1}, False),
+        ({"kubernetes.io/cluster/x": 1}, False),
         ({"123": 1}, True),
         ({"a" * 0 + "0123456789abcdef0123": 1}, True),
     ],
 )
 def test_is_data_keyed(keys, expected):
     assert is_data_keyed(keys) is expected
+
+
+@pytest.mark.parametrize("flat", list(_flatteners())[:3])
+def test_tags_keep_one_column_per_key(flat):
+    out = flat({"tags": {"Name": "a", "123": "b", "inventag:remarks": "c"}})
+    assert out["tags.Name"] == "a" and out["tags.123"] == "b"
+    assert out["tags.inventag:remarks"] == "c"
