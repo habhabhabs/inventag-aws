@@ -86,6 +86,15 @@ class ServiceHandler(ABC):
             )
             return None
 
+        from ..security.read_only_guard import check_client_call
+
+        allowed, reason = check_client_call(client, operation_name)
+        if not allowed:
+            self.logger.warning(
+                f"Operation {operation_name} refused by the read-only policy: {reason}"
+            )
+            return None
+
         try:
             operation = getattr(client, operation_name)
             return operation(**kwargs)
