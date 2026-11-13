@@ -281,7 +281,7 @@ Claves de sección:
 | `service_title` | cadena | Word | `resources` | `{{ service }} Resources ({{ service_resource_count }})` | Encabezado de cada tabla de servicio. |
 | `max_rows` | entero | Word | `resources` | `50` | Número máximo de filas de cada tabla de servicio, de 1 a 100000. |
 | `max_columns` | entero | Word | `resources` | `6` | Número máximo de columnas si `columns` es `auto`, de 1 a 100. |
-| `truncation_note` | cadena | Word | `resources` | `Note: Showing first {{ shown_resource_count }} of {{ service_resource_count }} {{ service }} resources.` | Párrafo bajo una tabla que no muestra todos los recursos. |
+| `truncation_note` | cadena | Word | `resources` | `Note: Showing first {{ shown_resource_count }} of {{ service_resource_count }} {{ service }} resources.` | Párrafo bajo una tabla que no muestra todos los recursos. InvenTag añade un segundo párrafo que indica cuántos recursos no se muestran y que el informe de Excel los incluye todos. |
 | `page_break_after_service` | booleano | Word | `resources` | `true` | Empieza una página nueva después de cada tabla de servicio. |
 | `sheet_name` | cadena | Excel | `service_summary`, `resources` | `Summary` para `service_summary` | Nombre de la hoja, de 1 a 31 caracteres. Necesaria en una sección `resources` con `group_by_service: false`. |
 | `group_by_service` | booleano | Excel | `resources` | `true` | `true`: una hoja por servicio. `false`: una hoja para todos los recursos. |
@@ -291,7 +291,10 @@ Notas:
 
 - Un documento de Word muestra las secciones en el orden de la lista.
 - Un libro muestra las hojas en el orden de la lista.
-- Con `group_by_service: true`, cada hoja tiene el nombre de su servicio.
+- Con `group_by_service: true`, cada hoja tiene el nombre de su servicio. Si
+  Excel no acepta un nombre, InvenTag lo cambia: los caracteres que Excel no
+  permite pasan a `-`, un nombre de más de 31 caracteres se corta y `History`
+  pasa a `History (2)`. El registro nombra cada hoja que se cambió.
 - Una sección `resources` de Word ordena los servicios por nombre, salvo que
   indiques `services`.
 - Los valores válidos de `table_style` son los estilos de tabla del documento de
@@ -339,7 +342,7 @@ Campos de una sección `resources`:
 | Descubrimiento y cumplimiento | `compliance_status`, `compliance_score`, `discovery_timestamp`, `consolidation_timestamp`, `total_accounts_in_consolidation`, `discovered_at`, `discovered_via`, `priority`, `tagged`, `tags`, `service_description`, `resource_id`, `resource_name`, `resource_type` |
 | Una etiqueta | `tags.<key>`, por ejemplo `tags.Owner` |
 | Un atributo sin procesar de la API | `raw_data.<key>`, por ejemplo `raw_data.InstanceType` |
-| Tus propios campos | Cada nombre de `extra_fields` |
+| Tus propios campos | Cada nombre de `extra_fields`. Los campos de procedencia `source`, `sources` y `detail_level` no están en las listas anteriores; añádelos en `extra_fields` para usarlos como columnas. |
 
 Si un recurso no tiene un campo, la celda queda vacía. El campo `tags` muestra
 todas las etiquetas de un recurso en una celda.
@@ -376,6 +379,7 @@ inventag: error: my_word_template.yaml: sections[1].columns[2].field: unknown co
 | Una plantilla antigua con `template_version: "1.0"` | `unsupported version '1.0'` |
 | Una ruta de logotipo que sale del directorio de la plantilla | `the path must stay in the directory of the template file` |
 | Un archivo que no es YAML ni JSON | `YAML syntax error at line ...` o `JSON syntax error at line ...` |
+| Una clave escrita dos veces en el mismo mapeo | `duplicate key 'name'` |
 | Un archivo con otra extensión | `unsupported file type` |
 | Un archivo demasiado grande | `The maximum is 262144 bytes` |
 
@@ -431,5 +435,9 @@ Otros límites:
 - Una plantilla no puede incluir otro archivo. La única referencia a un archivo
   es `branding.logo_path`, y ese archivo debe estar en el directorio de la
   plantilla.
+- InvenTag sustituye por `***REDACTED***` los valores de los campos que suelen
+  contener secretos, como las variables de entorno de Lambda, los datos de
+  usuario de EC2 y los valores de parámetros de CloudFormation, antes de escribir
+  un informe. Un secreto en un campo de texto libre no se reconoce.
 - El generador de Excel guarda cada valor como texto. Un valor que empieza por
   `=` no se ejecuta como fórmula.

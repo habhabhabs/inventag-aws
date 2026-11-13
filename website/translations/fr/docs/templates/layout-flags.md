@@ -277,7 +277,7 @@ Clés de section :
 | `service_title` | chaîne | Word | `resources` | `{{ service }} Resources ({{ service_resource_count }})` | Titre de chaque tableau de service. |
 | `max_rows` | entier | Word | `resources` | `50` | Nombre maximal de lignes dans chaque tableau de service, de 1 à 100000. |
 | `max_columns` | entier | Word | `resources` | `6` | Nombre maximal de colonnes si `columns` vaut `auto`, de 1 à 100. |
-| `truncation_note` | chaîne | Word | `resources` | `Note: Showing first {{ shown_resource_count }} of {{ service_resource_count }} {{ service }} resources.` | Paragraphe sous un tableau qui n’affiche pas toutes les ressources. |
+| `truncation_note` | chaîne | Word | `resources` | `Note: Showing first {{ shown_resource_count }} of {{ service_resource_count }} {{ service }} resources.` | Paragraphe sous un tableau qui n’affiche pas toutes les ressources. InvenTag ajoute un second paragraphe qui indique combien de ressources ne sont pas listées et que le rapport Excel les liste toutes. |
 | `page_break_after_service` | booléen | Word | `resources` | `true` | Commence une nouvelle page après chaque tableau de service. |
 | `sheet_name` | chaîne | Excel | `service_summary`, `resources` | `Summary` pour `service_summary` | Nom de la feuille, de 1 à 31 caractères. Obligatoire pour une section `resources` avec `group_by_service: false`. |
 | `group_by_service` | booléen | Excel | `resources` | `true` | `true` : une feuille par service. `false` : une feuille pour toutes les ressources. |
@@ -287,7 +287,10 @@ Remarques :
 
 - Un document Word affiche les sections dans l’ordre de la liste.
 - Un classeur affiche les feuilles dans l’ordre de la liste.
-- Avec `group_by_service: true`, chaque feuille porte le nom de son service.
+- Avec `group_by_service: true`, chaque feuille porte le nom de son service. Si
+  Excel n’accepte pas un nom, InvenTag le modifie : les caractères interdits par
+  Excel deviennent `-`, un nom de plus de 31 caractères est coupé et `History`
+  devient `History (2)`. Le journal nomme chaque feuille modifiée.
 - Une section Word `resources` trie les services par nom, sauf si vous donnez
   `services`.
 - Les valeurs valides pour `table_style` sont les styles de tableau du document Word par
@@ -335,7 +338,7 @@ Champs d’une section `resources` :
 | Découverte et conformité | `compliance_status`, `compliance_score`, `discovery_timestamp`, `consolidation_timestamp`, `total_accounts_in_consolidation`, `discovered_at`, `discovered_via`, `priority`, `tagged`, `tags`, `service_description`, `resource_id`, `resource_name`, `resource_type` |
 | Une étiquette | `tags.<key>`, par exemple `tags.Owner` |
 | Un attribut brut de l’API | `raw_data.<key>`, par exemple `raw_data.InstanceType` |
-| Vos propres champs | Chaque nom de `extra_fields` |
+| Vos propres champs | Chaque nom de `extra_fields`. Les champs de provenance `source`, `sources` et `detail_level` ne figurent pas dans les listes ci-dessus ; ajoutez-les sous `extra_fields` pour les utiliser comme colonnes. |
 
 Si une ressource n’a pas un champ, la cellule est vide. Le champ `tags` affiche toutes les
 étiquettes d’une ressource dans une seule cellule.
@@ -372,6 +375,7 @@ inventag: error: my_word_template.yaml: sections[1].columns[2].field: unknown co
 | Un ancien modèle avec `template_version: "1.0"` | `unsupported version '1.0'` |
 | Un chemin de logo qui sort du répertoire du modèle | `the path must stay in the directory of the template file` |
 | Un fichier qui n’est ni YAML ni JSON | `YAML syntax error at line ...` ou `JSON syntax error at line ...` |
+| Une clé écrite deux fois dans le même mappage | `duplicate key 'name'` |
 | Un fichier avec une autre extension | `unsupported file type` |
 | Un fichier trop volumineux | `The maximum is 262144 bytes` |
 
@@ -423,5 +427,9 @@ Autres limites :
 - InvenTag ne remplace pas les variables dans les données de ressources venant d’AWS.
 - Un modèle ne peut pas inclure un autre fichier. La seule référence de fichier est
   `branding.logo_path`, et ce fichier doit se trouver dans le répertoire du modèle.
+- InvenTag remplace par `***REDACTED***` les valeurs des champs qui contiennent
+  souvent des secrets, comme les variables d’environnement Lambda, les données
+  utilisateur EC2 et les valeurs de paramètres CloudFormation, avant d’écrire un
+  rapport. Un secret dans un champ de texte libre n’est pas reconnu.
 - Le générateur Excel stocke chaque valeur comme du texte. Une valeur qui commence par `=`
   ne s’exécute pas comme une formule.

@@ -263,7 +263,7 @@ Excel 的列印頁首和列印頁尾只會在頁面佈局檢視和紙張上顯�
 | `service_title` | 字串 | Word | `resources` | `{{ service }} Resources ({{ service_resource_count }})` | 每個服務表的標題。 |
 | `max_rows` | 整數 | Word | `resources` | `50` | 每個服務表的最大列數，1 到 100000。 |
 | `max_columns` | 整數 | Word | `resources` | `6` | 當 `columns` 為 `auto` 時的最大欄數，1 到 100。 |
-| `truncation_note` | 字串 | Word | `resources` | `Note: Showing first {{ shown_resource_count }} of {{ service_resource_count }} {{ service }} resources.` | 未顯示全部資源的表格下方的段落。 |
+| `truncation_note` | 字串 | Word | `resources` | `Note: Showing first {{ shown_resource_count }} of {{ service_resource_count }} {{ service }} resources.` | 未顯示全部資源的表格下方的段落。InvenTag 會再加一個段落，說明有多少資源未列出，以及 Excel 報告列出了全部資源。 |
 | `page_break_after_service` | 布林值 | Word | `resources` | `true` | 在每個服務表之後另起一頁。 |
 | `sheet_name` | 字串 | Excel | `service_summary`、`resources` | `service_summary` 為 `Summary` | 工作表名稱，1 到 31 個字元。對於 `group_by_service: false` 的 `resources` 章節，此項必填。 |
 | `group_by_service` | 布林值 | Excel | `resources` | `true` | `true`：每個服務一個工作表。`false`：所有資源共用一個工作表。 |
@@ -273,7 +273,7 @@ Excel 的列印頁首和列印頁尾只會在頁面佈局檢視和紙張上顯�
 
 - Word 文件按列表的順序顯示章節。
 - 工作簿按列表的順序顯示工作表。
-- 使用 `group_by_service: true` 時，每個工作表以其服務的名稱命名。
+- 使用 `group_by_service: true` 時，每個工作表以其服務的名稱命名。如果 Excel 不接受某個名稱，InvenTag 會修改它：Excel 不允許的字元變為 `-`，超過 31 個字元的名稱會被截斷，`History` 變為 `History (2)`。日誌會列出每個被修改的工作表。
 - Word 的 `resources` 章節按名稱對服務排序，除非你給出 `services`。
 - `table_style` 的有效值是預設 Word 文件中的表格樣式。例如 `Table Grid`、`Light List Accent 1`、
   `Light Grid Accent 1` 和 `Medium Shading 1 Accent 1`。
@@ -318,7 +318,7 @@ Excel 的列印頁首和列印頁尾只會在頁面佈局檢視和紙張上顯�
 | 發現與合規 | `compliance_status`, `compliance_score`, `discovery_timestamp`, `consolidation_timestamp`, `total_accounts_in_consolidation`, `discovered_at`, `discovered_via`, `priority`, `tagged`, `tags`, `service_description`, `resource_id`, `resource_name`, `resource_type` |
 | 單個標籤 | `tags.<key>`，例如 `tags.Owner` |
 | 單個原始 API 屬性 | `raw_data.<key>`，例如 `raw_data.InstanceType` |
-| 你自己的欄位 | `extra_fields` 中的每個名稱 |
+| 你自己的欄位 | `extra_fields` 中的每個名稱。來源欄位 `source`、`sources` 和 `detail_level` 不在上面的列表中；把它們加到 `extra_fields` 才能用作欄。 |
 
 如果資源沒有某個欄位，單元格為空。`tags` 欄位會在一個單元格中顯示資源的所有標籤。
 
@@ -353,6 +353,7 @@ inventag: error: my_word_template.yaml: sections[1].columns[2].field: unknown co
 | 帶有 `template_version: "1.0"` 的舊範本 | `unsupported version '1.0'` |
 | 超出範本目錄的徽標路徑 | `the path must stay in the directory of the template file` |
 | 不是 YAML 或 JSON 的檔案 | `YAML syntax error at line ...` 或 `JSON syntax error at line ...` |
+| 同一個對應中重複寫了一個鍵 | `duplicate key 'name'` |
 | 副檔名不同的檔案 | `unsupported file type` |
 | 過大的檔案 | `The maximum is 262144 bytes` |
 
@@ -399,4 +400,5 @@ inventag: error: my_word_template.yaml: sections[1].columns[2].field: unknown co
 - InvenTag 不會替換來自 AWS 的資源資料中的變數。
 - 範本不能包含另一個檔案。唯一的檔案引用是 `branding.logo_path`，
   而且該檔案必須位於範本目錄中。
+- 在寫出報告之前，InvenTag 會把常含機密的欄位的值（例如 Lambda 環境變數、EC2 使用者資料和 CloudFormation 引數值）替換為 `***REDACTED***`。自由文字欄位中的機密不會被識別。
 - Excel 建置器把每個值都存為文字。以 `=` 開頭的值不會作為公式執行。

@@ -277,7 +277,7 @@ Section keys:
 | `service_title` | string | Word | `resources` | `{{ service }} Resources ({{ service_resource_count }})` | Heading of each service table. |
 | `max_rows` | integer | Word | `resources` | `50` | Maximum number of rows in each service table, 1 to 100000. |
 | `max_columns` | integer | Word | `resources` | `6` | Maximum number of columns if `columns` is `auto`, 1 to 100. |
-| `truncation_note` | string | Word | `resources` | `Note: Showing first {{ shown_resource_count }} of {{ service_resource_count }} {{ service }} resources.` | Paragraph below a table that does not show all resources. |
+| `truncation_note` | string | Word | `resources` | `Note: Showing first {{ shown_resource_count }} of {{ service_resource_count }} {{ service }} resources.` | Paragraph below a table that does not show all resources. InvenTag adds a second paragraph that says how many resources are not listed and that the Excel report lists all of them. |
 | `page_break_after_service` | boolean | Word | `resources` | `true` | Start a new page after each service table. |
 | `sheet_name` | string | Excel | `service_summary`, `resources` | `Summary` for `service_summary` | Sheet name, 1 to 31 characters. Necessary for a `resources` section with `group_by_service: false`. |
 | `group_by_service` | boolean | Excel | `resources` | `true` | `true`: one sheet for each service. `false`: one sheet for all resources. |
@@ -287,7 +287,10 @@ Notes:
 
 - A Word document shows the sections in the order of the list.
 - A workbook shows the sheets in the order of the list.
-- With `group_by_service: true`, each sheet has the name of its service.
+- With `group_by_service: true`, each sheet has the name of its service. If
+  Excel does not accept a name, InvenTag changes it: characters Excel does not
+  allow become `-`, a name over 31 characters is cut, and `History` becomes
+  `History (2)`. The log names each sheet that was changed.
 - A Word `resources` section sorts the services by name, unless you give
   `services`.
 - Valid values for `table_style` are the table styles of the default Word
@@ -335,7 +338,7 @@ Fields for a `resources` section:
 | Discovery and compliance | `compliance_status`, `compliance_score`, `discovery_timestamp`, `consolidation_timestamp`, `total_accounts_in_consolidation`, `discovered_at`, `discovered_via`, `priority`, `tagged`, `tags`, `service_description`, `resource_id`, `resource_name`, `resource_type` |
 | One tag | `tags.<key>`, for example `tags.Owner` |
 | One raw API attribute | `raw_data.<key>`, for example `raw_data.InstanceType` |
-| Your own fields | Each name in `extra_fields` |
+| Your own fields | Each name in `extra_fields`. The provenance fields `source`, `sources` and `detail_level` are not in the lists above; add them under `extra_fields` to use them as columns. |
 
 If a resource does not have a field, the cell is empty. The `tags` field
 shows all tags of a resource in one cell.
@@ -372,6 +375,7 @@ inventag: error: my_word_template.yaml: sections[1].columns[2].field: unknown co
 | An old template with `template_version: "1.0"` | `unsupported version '1.0'` |
 | A logo path that leaves the template directory | `the path must stay in the directory of the template file` |
 | A file that is not YAML or JSON | `YAML syntax error at line ...` or `JSON syntax error at line ...` |
+| A key written twice in one mapping | `duplicate key 'name'` |
 | A file with a different extension | `unsupported file type` |
 | A file that is too large | `The maximum is 262144 bytes` |
 
@@ -423,5 +427,9 @@ Other limits:
 - InvenTag does not replace variables in resource data from AWS.
 - A template cannot include a different file. The only file reference is
   `branding.logo_path`, and that file must be in the template directory.
+- InvenTag replaces the values of fields that often hold secrets, such as Lambda
+  environment variables, EC2 user data and CloudFormation parameter values, with
+  `***REDACTED***` before it writes a report. A secret in a free-text field is
+  not recognized.
 - The Excel builder stores each value as text. A value that starts with `=`
   does not run as a formula.
