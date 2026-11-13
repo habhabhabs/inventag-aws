@@ -529,43 +529,49 @@ class ServiceDescriptionManager:
         else:
             return f"AWS {service} - Amazon Web Services cloud service"
 
+    @staticmethod
+    def _lookup(
+        table: Dict[str, Dict[str, ServiceDescription]],
+        service: str,
+        resource_type: str,
+    ) -> Optional[ServiceDescription]:
+        """Return the exact resource-type entry, else the service default."""
+        entries = table.get(service)
+        if not entries:
+            return None
+        if resource_type and resource_type in entries:
+            return entries[resource_type]
+        return entries.get("default")
+
+    def _select_entry(
+        self, service: str, resource_type: str
+    ) -> Optional[ServiceDescription]:
+        """Pick the entry that describes a resource: user file first, then built-in."""
+        return self._lookup(self.descriptions, service, resource_type) or self._lookup(
+            self._default_descriptions, service, resource_type
+        )
+
     def get_dynamic_description(self, resource: Dict[str, Any]) -> str:
-        """Generate dynamic description using templates and resource attributes."""
+        """Generate the description for a resource.
+
+        A user entry always wins over a built-in one. If the user entry names a
+        template, that template is rendered; otherwise the entry's own
+        description is returned as written. Built-in entries are used only when
+        the user file has no entry for the service.
+        """
         service = resource.get("service", "").upper()
         resource_type = resource.get("type", "")
 
-        # Try to find a description with template
-        template_name = None
-
-        # Check custom descriptions first
-        if service in self.descriptions:
-            if resource_type and resource_type in self.descriptions[service]:
-                desc = self.descriptions[service][resource_type]
-                if desc.template:
-                    template_name = desc.template
-            elif "default" in self.descriptions[service]:
-                desc = self.descriptions[service]["default"]
-                if desc.template:
-                    template_name = desc.template
-
-        # Check default descriptions
-        if not template_name and service in self._default_descriptions:
-            if resource_type and resource_type in self._default_descriptions[service]:
-                desc = self._default_descriptions[service][resource_type]
-                if desc.template:
-                    template_name = desc.template
-            elif "default" in self._default_descriptions[service]:
-                desc = self._default_descriptions[service]["default"]
-                if desc.template:
-                    template_name = desc.template
-
-        # Render template if found
-        if template_name:
-            rendered = self.template_engine.render_template(template_name, resource)
+        entry = self._select_entry(service, resource_type)
+        if entry and entry.template:
+            rendered = self.template_engine.render_template(entry.template, resource)
             if rendered:
                 return rendered
 
-        # Fall back to static description
+        if entry:
+            return entry.description
+
+        # Generic fallback
         return self.get_service_description(service, resource_type)
 
     def apply_descriptions_to_resources(
@@ -619,24 +625,10 @@ class ServiceDescriptionManager:
 
     def _get_template_name(self, resource: Dict[str, Any]) -> Optional[str]:
         """Get template name used for resource description."""
-        service = resource.get("service", "").upper()
-        resource_type = resource.get("type", "")
-
-        # Check custom descriptions
-        if service in self.descriptions:
-            if resource_type and resource_type in self.descriptions[service]:
-                return self.descriptions[service][resource_type].template
-            elif "default" in self.descriptions[service]:
-                return self.descriptions[service]["default"].template
-
-        # Check default descriptions
-        if service in self._default_descriptions:
-            if resource_type and resource_type in self._default_descriptions[service]:
-                return self._default_descriptions[service][resource_type].template
-            elif "default" in self._default_descriptions[service]:
-                return self._default_descriptions[service]["default"].template
-
-        return None
+        entry = self._select_entry(
+            resource.get("service", "").upper(), resource.get("type", "")
+        )
+        return entry.template if entry else None
 
     def reload_descriptions(self, config_path: Optional[str] = None) -> bool:
         """Reload descriptions from updated config file."""
