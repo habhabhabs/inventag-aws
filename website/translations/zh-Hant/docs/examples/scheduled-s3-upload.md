@@ -26,7 +26,9 @@ inventag --template standard-bom --create-excel --account-regions us-east-1 \
 
 - `--s3-bucket` 會上傳本次執行寫出的每份報告。上傳使用伺服器端加密
   （預設為 `AES256`；若要使用 KMS 金鑰，請用 `--s3-encryption aws:kms` 和
-  `--s3-kms-key-id`）。
+  `--s3-kms-key-id`）。`--s3-kms-key-id` 只能與 `--s3-encryption aws:kms`
+  一起使用；否則執行會以結束代碼 2 停止。使用 `aws:kms` 但不給金鑰 ID 時，S3 使用 AWS
+  託管金鑰 `aws/s3`。
 - 每個檔案會放到 `<prefix><UTC timestamp>/<file name>`，因此各次執行不會互相覆蓋。
   如果有標籤合規 JSON 檔案，也會一併上傳。
 - 如果上傳失敗，執行會以結束代碼 1 結束，排程器因此可以察覺。報告仍然保留在你的磁碟上。

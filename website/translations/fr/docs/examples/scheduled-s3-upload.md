@@ -28,7 +28,10 @@ inventag --template standard-bom --create-excel --account-regions us-east-1 \
 
 - `--s3-bucket` envoie chaque rapport écrit par l’exécution. Les envois utilisent le chiffrement
   côté serveur (`AES256` par défaut ; utilisez `--s3-encryption aws:kms` et
-  `--s3-kms-key-id` pour une clé KMS).
+  `--s3-kms-key-id` pour une clé KMS). `--s3-kms-key-id` ne fonctionne qu’avec
+  `--s3-encryption aws:kms` ; sans elle, l’exécution s’arrête avec le code de
+  sortie 2. Avec `aws:kms` et sans ID de clé, S3 utilise la clé gérée par AWS
+  `aws/s3`.
 - Chaque fichier est placé sous `<prefix><UTC timestamp>/<file name>`, de sorte que les exécutions ne
   s’écrasent pas. Le fichier JSON de conformité des étiquettes est envoyé aussi, lorsqu’il
   en existe un.

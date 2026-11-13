@@ -28,7 +28,9 @@ inventag --template standard-bom --create-excel --account-regions us-east-1 \
 
 - `--s3-bucket` uploads every report the run wrote. Uploads use server-side
   encryption (`AES256` by default; use `--s3-encryption aws:kms` and
-  `--s3-kms-key-id` for a KMS key).
+  `--s3-kms-key-id` for a KMS key). `--s3-kms-key-id` works only with
+  `--s3-encryption aws:kms`; without it the run stops with exit code 2. With
+  `aws:kms` and no key ID, S3 uses the AWS managed key `aws/s3`.
 - Each file goes to `<prefix><UTC timestamp>/<file name>`, so runs do not
   overwrite each other. The tag-compliance JSON file is uploaded too, when
   there is one.

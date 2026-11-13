@@ -29,6 +29,9 @@ inventag --template standard-bom --create-excel --account-regions us-east-1 \
 - `--s3-bucket` sube todos los informes que escribió la ejecución. Las subidas
   usan cifrado en el servidor (`AES256` de forma predeterminada; usa
   `--s3-encryption aws:kms` y `--s3-kms-key-id` para una clave de KMS).
+  `--s3-kms-key-id` solo funciona con `--s3-encryption aws:kms`; sin ella la
+  ejecución se detiene con el código de salida 2. Con `aws:kms` y sin ID de clave,
+  S3 usa la clave administrada por AWS `aws/s3`.
 - Cada archivo va a `<prefix><UTC timestamp>/<file name>`, de modo que las
   ejecuciones no se sobrescriben entre sí. El archivo JSON de cumplimiento de
   etiquetas también se sube, cuando existe.
