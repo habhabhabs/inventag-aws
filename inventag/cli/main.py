@@ -8,6 +8,7 @@ compliance checking, and advanced reporting capabilities.
 
 import argparse
 import getpass
+import re
 import sys
 import json
 import yaml
@@ -1389,6 +1390,30 @@ def main():
             logger.info(f"Wrote AWS API audit to {path}")
 
 
+def _log_run_notes(results, logger):
+    """Print the run notes of the result (what the reader of the report must
+    know) as warnings, once each. Lines that the "not scanned" block above
+    already printed are left out. A clean run has no notes and prints nothing."""
+    failed = results.get("failed_accounts") or []
+    printed = {
+        f"{item['account_id']} ({item['account_name']}): "
+        f"{'; '.join(item['errors'])[:300]}"
+        for item in failed
+    }
+    pending = []
+    for note in results.get("run_notes") or []:
+        if note in printed:
+            continue
+        if failed and re.match(r"\d+ of \d+ account\(s\) (were|failed)", note):
+            continue  # the header of the block printed above
+        pending.append(note)
+    if not pending:
+        return
+    logger.warning("Notes about this run:")
+    for note in pending:
+        logger.warning(f"  - {note}")
+
+
 def _run(args, logger):
     """Validate arguments and run the requested CLI action."""
     logger.info("InvenTag CLI started")
@@ -1560,6 +1585,8 @@ def _run(args, logger):
                 logger.info(
                     f"  - Processing time: {processing_stats.get('processing_time_seconds', 0):.2f}s"
                 )
+
+            _log_run_notes(results, logger)
 
             opt_in_exit = _opt_in_exit_code(args, results, logger)
 
