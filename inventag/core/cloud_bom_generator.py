@@ -467,6 +467,8 @@ class CloudBOMGenerator:
                 },
                 "failed_accounts": self._failed_accounts(),
                 "reused_accounts": dict(self.reused_accounts),
+                # What the reader must know; printed once by the CLI.
+                "run_notes": self._run_notes(),
                 "bom_generation": bom_results,
                 "compliance_analysis": compliance_results,
                 "state_management": state_results,
@@ -489,6 +491,7 @@ class CloudBOMGenerator:
                 "success": False,
                 "error": str(e),
                 "failed_accounts": self._failed_accounts(),
+                "run_notes": self._run_notes(),
                 "processing_statistics": self._processing_stats,
                 "account_contexts": {
                     acc_id: {
