@@ -115,7 +115,7 @@ function LanguageSwitch({open, setPanel}: {open: boolean; setPanel: (p: Panel) =
  * all versions. A choice goes to the same page in that version when it exists,
  * else to that version's start page (the rule of the navbar's version menu).
  */
-function VersionSwitch({open, setPanel}: {open: boolean; setPanel: (p: Panel) => void}): ReactNode {
+function VersionSwitch({open, langOpen, setPanel}: {open: boolean; langOpen: boolean; setPanel: (p: Panel) => void}): ReactNode {
   const mobileSidebar = useNavbarMobileSidebar();
   const versions = useVersions(undefined);
   const active = useActiveDocContext(undefined);
@@ -143,7 +143,7 @@ function VersionSwitch({open, setPanel}: {open: boolean; setPanel: (p: Panel) =>
 
   return (
     <>
-      <div className="navbar-sidebar__version">
+      <div className="navbar-sidebar__version" inert={langOpen}>
         <button
           ref={buttonRef}
           type="button"
@@ -215,7 +215,7 @@ export default function NavbarMobileSidebarHeader(): ReactNode {
         <LanguageSwitch open={panel === 'lang'} setPanel={setPanel} />
         <CloseButton />
       </div>
-      <VersionSwitch open={panel === 'version'} setPanel={setPanel} />
+      <VersionSwitch open={panel === 'version'} langOpen={panel === 'lang'} setPanel={setPanel} />
     </>
   );
 }
