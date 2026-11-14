@@ -1,12 +1,11 @@
 """Fixtures of the failure regression suite.
 
 The top-level ``tests/conftest.py`` already gives every test fake credentials, a
-scratch HOME, no real log files and no outbound network. This file adds:
+scratch HOME, no real log files and no outbound network, and its session setup
+switches off moto's default AMIs (``MOTO_EC2_LOAD_DEFAULT_AMIS=false``), imports
+moto's service modules before any thread starts and serialises moto's requests.
+This file adds:
 
-* ``MOTO_EC2_LOAD_DEFAULT_AMIS=false`` (moto ships ~1300 default AMIs and snapshots)
-* moto's service modules imported before any thread starts (a first import from
-  15 discovery threads raised "deadlock detected by _ModuleLock" once, and the
-  engine recorded it as a failed listing)
 * ``moto_estate``, ``fault_injector``, ``never_answering_endpoint``,
   ``closed_port_endpoint``, ``fake_clock``, ``signal_driver``
 """
@@ -24,40 +23,9 @@ from moto import mock_aws
 
 from tests.regression.faults import FaultInjector, faults_to_json
 
-os.environ.setdefault("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
-
-# Import every moto backend the scan touches, once, on the main thread.
-_MOTO_MODULES = (
-    "moto.ec2",
-    "moto.s3",
-    "moto.sqs",
-    "moto.sns",
-    "moto.dynamodb",
-    "moto.kms",
-    "moto.awslambda",
-    "moto.ecs",
-    "moto.iam",
-    "moto.rds",
-    "moto.events",
-    "moto.athena",
-    "moto.cloudformation",
-    "moto.resourcegroupstaggingapi",
-    "moto.ce",
-)
-for _name in _MOTO_MODULES:
-    try:
-        __import__(_name)
-    except Exception:  # a module that is not in this moto version is not needed
-        pass
-
-
-@pytest.fixture(autouse=True)
-def _small_moto(monkeypatch):
-    monkeypatch.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
-
 
 @pytest.fixture
-def moto_estate(_small_moto):
+def moto_estate():
     """moto AWS with the standard estate of the e2e tests; yields its ids."""
     from tests.e2e.estate import seed_estate
 

@@ -114,8 +114,9 @@ def test_a_monitor_thread_left_running_is_stopped():
 
 TESTS_DIR = Path(__file__).resolve().parents[1]
 REPO = TESTS_DIR.parent
-# Runs in a child process of its own: its environment never reaches the test run.
-SUBPROCESS_SCRIPTS = {"_moto_runner.py"}
+# Run in a child process of their own: their environment never reaches the test
+# run (tests/e2e/_moto_runner.py, tests/regression/child.py).
+SUBPROCESS_SCRIPTS = {"_moto_runner.py", "child.py"}
 
 _ENV_WRITE_CALLS = {
     "os.putenv",
