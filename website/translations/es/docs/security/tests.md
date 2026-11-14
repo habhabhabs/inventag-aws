@@ -25,6 +25,8 @@ CI ejecuta el conjunto en Python 3.11, 3.12, 3.13, 3.14 y 3.15, además de
 trabajos de lint, integración y seguridad básica, en cada push a `main` o `develop`
 y en cada pull request a `main`.
 
+No verificado contra un runner de GitHub Actions: los trabajos de CI; se leen del archivo de flujo de trabajo.
+
 **Ninguna prueba se ejecuta contra una cuenta de AWS real.** Cuando un
 resultado depende de cómo se comporta AWS real, [Estado de las funciones](../getting-started/status.md)
 lo indica.
@@ -51,10 +53,12 @@ Tagging de moto es la referencia para los ARN y las etiquetas.
 | Protección de solo lectura, auditoría, `--validate-operations`, subida a S3, archivos privados | `tests/unit/test_cli_security.py`, `tests/unit/test_security_read_only_guard.py` |
 | Ocultación de secretos, incluidos los de Google | `tests/unit/test_security_redaction.py`, `tests/unit/test_google_output.py` |
 | Salida a Google Sheets y Docs (clientes de Google simulados) | `tests/unit/test_google_output.py` |
-| Valores secretos ocultos en todos los informes, instantáneas, puntos de control y registros (siete secretos plantados) | `tests/unit/test_integration_secrets_end_to_end.py` |
+| Valores secretos ocultos en todos los informes, instantáneas, puntos de control y registros (diez secretos plantados) | `tests/unit/test_integration_secrets_end_to_end.py` |
 | `--resume`, retención, alternativa de regiones, límite de tiempo por cuenta | `tests/unit/test_integration_wiring.py` |
 | Cada operación de listado lee una segunda página; cada fila nombra su API de origen | `tests/unit/test_integration_two_pages.py`, `tests/unit/test_integration_row_sources.py` |
 | Análisis de red y de seguridad de principio a fin | `tests/unit/test_integration_analysis_end_to_end.py` |
+
+En AWS simulado, el descubrimiento no lee los valores de ECS, CodeBuild, los datos de usuario de EC2 ni las conexiones de Glue, así que para esos cuatro la prueba solo demuestra que no se filtran.
 
 ## Ejecuta las pruebas tú mismo {#run-the-tests-yourself}
 
@@ -73,7 +77,7 @@ de desarrollo completo: [Contribuir a InvenTag](../development/CONTRIBUTING.md).
 
 - **El sitio de documentación** se compila en CI. La compilación falla ante un
   enlace roto y se ejecuta una comprobación de accesibilidad sobre las páginas
-  compiladas.
+  compiladas. No verificado contra un runner de GitHub Actions: la compilación de la documentación y sus comprobaciones; se leen del archivo de flujo de trabajo.
 - **Las dependencias** se analizan en busca de vulnerabilidades conocidas.
   Consulta [Seguridad](./index.md#how-dependencies-are-checked) y la
   [lista de materiales de software](./sbom.md).

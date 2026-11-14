@@ -24,6 +24,8 @@ for the repository and its dependencies and publishes them with the site:
 | Python, from a fresh install | The versions that were actually installed | CycloneDX JSON and a `pip freeze` list |
 | Documentation website | The Node.js packages used to build this site | CycloneDX JSON |
 
+Not verified against a GitHub Actions runner: the SBOM files the documentation build publishes; this page is read from the workflow file.
+
 A summary page, **Software Bill of Materials (SBOM)**, is added to this
 section by the same build, so it appears on the live site but not in a local
 build.
@@ -38,6 +40,8 @@ the day of the build.
 pip install inventag-aws cyclonedx-bom
 cyclonedx-py environment --output-format json --output-file inventag-sbom.json
 ```
+
+Not verified against the cyclonedx-bom release you install: the cyclonedx-py environment options.
 
 Run it in the virtual environment where you installed InvenTag, so the file
 lists exactly what you run.

@@ -24,6 +24,8 @@ CI runs the suite on Python 3.11, 3.12, 3.13, 3.14 and 3.15, plus lint,
 integration and basic security jobs, on every push to `main` or `develop` and
 on every pull request to `main`.
 
+Not verified against a GitHub Actions runner: the CI jobs; they are read from the workflow file.
+
 **No test runs against a real AWS account.** Where a result depends on how
 real AWS behaves, [Feature status](../getting-started/status.md) says so.
 
@@ -49,10 +51,12 @@ reference for ARNs and tags.
 | Read-only guard, audit, `--validate-operations`, S3 upload, private files | `tests/unit/test_cli_security.py`, `tests/unit/test_security_read_only_guard.py` |
 | Redaction of secrets, including Google secrets | `tests/unit/test_security_redaction.py`, `tests/unit/test_google_output.py` |
 | Google Sheets and Docs output (mocked Google clients) | `tests/unit/test_google_output.py` |
-| Secret values masked in every report, snapshot, checkpoint and log (seven planted secrets) | `tests/unit/test_integration_secrets_end_to_end.py` |
+| Secret values masked in every report, snapshot, checkpoint and log (ten planted secrets) | `tests/unit/test_integration_secrets_end_to_end.py` |
 | `--resume`, retention, region fallback, per-account time limit | `tests/unit/test_integration_wiring.py` |
 | Every listing operation reads a second page; every row names its source API | `tests/unit/test_integration_two_pages.py`, `tests/unit/test_integration_row_sources.py` |
 | Network and security analysis end to end | `tests/unit/test_integration_analysis_end_to_end.py` |
+
+Under mocked AWS, discovery does not read the ECS, CodeBuild, EC2 user data and Glue connection values, so for those four the test shows only that they are not leaked.
 
 ## Run the tests yourself
 
@@ -70,7 +74,7 @@ environment: [Contribute to InvenTag](../development/CONTRIBUTING.md).
 ## What else is checked
 
 - **The documentation site** is built in CI. The build fails on a broken link,
-  and an accessibility check runs on the built pages.
+  and an accessibility check runs on the built pages. Not verified against a GitHub Actions runner: the documentation build and its checks; they are read from the workflow file.
 - **Dependencies** are scanned for known vulnerabilities. See
   [Security](./index.md#how-dependencies-are-checked) and the
   [software bill of materials](./sbom.md).

@@ -21,7 +21,7 @@ sidebar_position: 1
 
 ## InvenTag 如何处理你的账户 {#what-inventag-does-with-your-accounts}
 
-- **它只读取。** 只读防护会在每个 AWS 调用发出之前检查它。它会拦截所有非读取的调用，
+- **它只读取，除了一次由你要求的上传。** 只读防护会在每个 AWS 调用发出之前检查它。唯一的例外是把它自己的报告文件上传到你的 S3 存储桶，而且仅在你传入 `--s3-bucket` 时才会这样做。它会拦截所有非读取的调用，
   以及会返回机密或数据的读取，例如 `secretsmanager:GetSecretValue`、`s3:GetObject`、
   `cloudformation:GetTemplate` 或 `ec2:GetLaunchTemplateData`。当参数要求返回机密时
   （带 `includeValue` 的 API 密钥、针对 `userData` 的 `ec2:DescribeInstanceAttribute`），
@@ -33,14 +33,14 @@ sidebar_position: 1
 - **登录仍然可用。** 防护允许 AWS SDK 把 IAM Identity Center（SSO）、Web 身份或 `aws login`
   令牌换成凭证。它只允许以下四个未签名的调用：`sso:GetRoleCredentials`、
   `sso-oidc:CreateToken`、`sts:AssumeRoleWithWebIdentity` 和 `signin:CreateOAuth2Token`。
-  已签名的客户端发出同样的调用会被拦截。
+  已签名的客户端发出同样的调用会被拦截。未针对 AWS IAM Identity Center 验证：真实 SDK 发出的登录调用。
 - **它会遮盖允许的响应中的机密值。** 常用于存放机密的字段（例如 Lambda 环境变量、EC2 用户数据或
   CloudFormation 参数值）的值，在报告、快照和日志中会变成 `***REDACTED***`。名称会保留。
   参见[功能状态](../getting-started/status.md#what-inventag-finds-and-what-it-does-not)。
-- **它不发送使用数据。** InvenTag 没有遥测。命令行工具只与 AWS 通信。
+- **它不发送使用数据。** InvenTag 没有遥测。命令行工具只与 AWS 通信，使用 Google 选项时也会与 Google 通信。
   Python 库中可选的 CI 辅助功能可以向 Slack、Microsoft Teams 或 Prometheus Pushgateway 发送消息，
   但只会发送到你自己配置的地址。
-- **它的文件是私有的。** 报告、快照和日志创建时只有你的用户可读。
+- **它的文件是私有的。** 报告、快照和日志创建时只有你的用户可读。未针对 Windows 验证：文件只有你的用户可读。
 - **它的日志会隐藏机密。** 会话令牌、密钥、请求签名以及上面提到的被遮盖的值都会被隐藏，即使使用 `--debug` 也是如此。
 
 你可以用 `--audit-output audit.json` 检查一次运行做了什么，用 `--validate-operations`
@@ -77,6 +77,8 @@ echo $?
 | CI 中的依赖项检查 | CI 工作流运行 `pip-audit -r requirements.txt`，发现问题就失败。它也运行 Bandit 和 `npm audit`，但它们的发现不会导致失败。 |
 | 定时扫描 | 另一个工作流在推送到 `main` 和 `develop`、指向 `main` 的拉取请求以及每周（周日 02:00 UTC）时运行。它运行 Bandit、Safety、pip-audit、`npm audit` 和 detect-secrets。发现的问题会被报告，但不会让该工作流失败。 |
 | 软件物料清单 | 文档构建会为 Python 和网站的依赖项生成 SBOM 文件。 |
+
+未针对 GitHub Actions Runner 验证：CI、定时和文档工作流的行为；此表读自工作流文件。
 
 要检查你自己的安装：
 
