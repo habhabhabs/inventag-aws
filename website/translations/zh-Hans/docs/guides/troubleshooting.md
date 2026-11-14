@@ -170,7 +170,7 @@ No permission for sqs (list_queues in us-east-1: AccessDenied). Resources of sqs
 **你会看到：** 日志中有 `Read-only guard blocked <service>:<Operation>`，
 以及以 `Blocked AWS operation <service>:<Operation>` 开头的错误。
 
-**原因：** 一个不是读取的调用，或者会返回密钥或客户数据的读取（例如 `cloudformation:GetTemplate` 或 `ssm:GetParameter`），到达了防护。正常运行中不应出现这种情况。如果出现，请提交 issue 并附上操作名称。见[只读防护会阻止什么](./read-only-access.md#what-the-read-only-guard-blocks)。
+**原因：** 一个不是读取的调用，或者会返回密钥或客户数据的读取（例如 `cloudformation:GetTemplate` 或 `ssm:GetParameter`），到达了防护。正常运行中不应出现这种情况。如果出现，InvenTag 会记录一条错误行，指出被阻止的操作并说明这是 InvenTag 的缺陷（如果阻止发生在扫描期间，报告的“Run notes”也会这样说），运行仍以退出码 0 结束。请提交 issue 并附上操作名称。见[只读防护会阻止什么](./read-only-access.md#what-the-read-only-guard-blocks)。
 
 **解决办法：** 用 `inventag --validate-operations <service>:<Operation>` 检查是哪个操作。防护无法关闭。
 
@@ -349,6 +349,8 @@ inventag: error: --resume: needs state management (saved results live in the sta
 ```
 
 超出范围的值会以退出码 1 停止，并写出选项名称：`--max-concurrent-accounts must be a positive integer`、`--account-processing-timeout must be at least 60 seconds`、`--resume-max-age-hours must be above 0 and at most 168`。`--state-retention-days` 或 `--state-max-snapshots` 的值如果不是数字，则以退出码 2 停止：`expected a whole number or 'none'`。
+
+用于 `--audit-output`、`--log-file` 或 `--output-directory` 的路径如果无法写入，运行会在开始时（任何 AWS 调用之前）停止，给出指明该选项的消息，退出码为 1。
 
 见[功能状态](../getting-started/status.md)。
 

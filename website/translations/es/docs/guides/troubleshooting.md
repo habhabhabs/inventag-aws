@@ -178,7 +178,7 @@ cubre todas las llamadas que hace InvenTag. Consulta [Permisos de IAM](../refere
 **Lo que ves:** `Read-only guard blocked <service>:<Operation>` en el registro,
 y un error que empieza por `Blocked AWS operation <service>:<Operation>`.
 
-**Causa:** una llamada que no es de lectura, o una lectura que devuelve secretos o datos de clientes (por ejemplo `cloudformation:GetTemplate` o `ssm:GetParameter`), llegó a la protección. Esto no debería ocurrir en una ejecución normal. Si ocurre, abre un issue con el nombre de la operación. Consulta [Qué bloquea la protección de solo lectura](./read-only-access.md#what-the-read-only-guard-blocks).
+**Causa:** una llamada que no es de lectura, o una lectura que devuelve secretos o datos de clientes (por ejemplo `cloudformation:GetTemplate` o `ssm:GetParameter`), llegó a la protección. Esto no debería ocurrir en una ejecución normal. Si ocurre, InvenTag registra una línea de error que nombra la operación bloqueada y dice que es un defecto de InvenTag (las «Run notes» del informe también lo dicen si el bloqueo ocurrió durante el análisis), y la ejecución sigue terminando con el código 0. Abre un issue con el nombre de la operación. Consulta [Qué bloquea la protección de solo lectura](./read-only-access.md#what-the-read-only-guard-blocks).
 
 **Solución:** comprueba de qué operación se trataba con
 `inventag --validate-operations <service>:<Operation>`. La protección no se puede
@@ -366,6 +366,8 @@ inventag: error: --resume: needs state management (saved results live in the sta
 ```
 
 Un valor fuera de rango se detiene con el código de salida 1 y nombra la opción: `--max-concurrent-accounts must be a positive integer`, `--account-processing-timeout must be at least 60 seconds`, `--resume-max-age-hours must be above 0 and at most 168`. Un valor que no es un número en `--state-retention-days` o `--state-max-snapshots` se detiene con el código de salida 2: `expected a whole number or 'none'`.
+
+Una ruta de `--audit-output`, `--log-file` o `--output-directory` en la que no se puede escribir detiene la ejecución al principio, antes de cualquier llamada a AWS, con un mensaje que nombra la opción y el código de salida 1.
 
 Consulta [Estado de las funciones](../getting-started/status.md).
 

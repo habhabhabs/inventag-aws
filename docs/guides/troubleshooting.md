@@ -205,7 +205,11 @@ and an error that starts `Blocked AWS operation <service>:<Operation>`.
 
 **Cause:** a call that is not a read, or a read that returns secrets or
 customer data (for example `cloudformation:GetTemplate` or
-`ssm:GetParameter`), reached the guard. This should not happen in a normal run. If it does, please open an issue with the operation name. See
+`ssm:GetParameter`), reached the guard. This should not happen in a normal run. If it does, InvenTag logs one error line
+that names the blocked operation and says it is a defect in InvenTag (the
+report's "Run notes" say it too when the block happened during the scan), and
+the run still exits with code 0. Please open an issue with the operation name.
+See
 [What the read-only guard blocks](./read-only-access.md#what-the-read-only-guard-blocks).
 
 **Fix:** check which operation it was with
@@ -431,6 +435,10 @@ A value that is out of range stops with exit code 1 and names the option:
 `--resume-max-age-hours must be above 0 and at most 168`. A value that is not
 a number for `--state-retention-days` or `--state-max-snapshots` stops with
 exit code 2: `expected a whole number or 'none'`.
+
+A path for `--audit-output`, `--log-file` or `--output-directory` that cannot
+be written stops the run at the start, before any AWS call, with a message that
+names the option and exit code 1.
 
 See [Feature status](../getting-started/status.md).
 

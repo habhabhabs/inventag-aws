@@ -178,7 +178,7 @@ couvre chaque appel qu’InvenTag effectue. Voir [Autorisations IAM](../referenc
 **Ce que vous voyez :** `Read-only guard blocked <service>:<Operation>` dans le journal,
 et une erreur qui commence par `Blocked AWS operation <service>:<Operation>`.
 
-**Cause :** un appel qui n’est pas une lecture, ou une lecture qui renvoie des secrets ou des données de clients (par exemple `cloudformation:GetTemplate` ou `ssm:GetParameter`), a atteint la protection. Cela ne devrait pas arriver lors d’une exécution normale. Si c’est le cas, ouvrez un ticket (issue) avec le nom de l’opération. Voir [Ce que bloque la protection en lecture seule](./read-only-access.md#what-the-read-only-guard-blocks).
+**Cause :** un appel qui n’est pas une lecture, ou une lecture qui renvoie des secrets ou des données de clients (par exemple `cloudformation:GetTemplate` ou `ssm:GetParameter`), a atteint la protection. Cela ne devrait pas arriver lors d’une exécution normale. Si c’est le cas, InvenTag journalise une ligne d’erreur qui nomme l’opération bloquée et dit qu’il s’agit d’un défaut d’InvenTag (les « Run notes » du rapport le disent aussi si le blocage a eu lieu pendant l’analyse), et l’exécution se termine toujours avec le code 0. Ouvrez un ticket (issue) avec le nom de l’opération. Voir [Ce que bloque la protection en lecture seule](./read-only-access.md#what-the-read-only-guard-blocks).
 
 **Correction :** vérifiez de quelle opération il s’agit avec
 `inventag --validate-operations <service>:<Operation>`. La protection ne peut pas être
@@ -366,6 +366,8 @@ inventag: error: --resume: needs state management (saved results live in the sta
 ```
 
 Une valeur hors limites arrête l’exécution avec le code de sortie 1 et nomme l’option : `--max-concurrent-accounts must be a positive integer`, `--account-processing-timeout must be at least 60 seconds`, `--resume-max-age-hours must be above 0 and at most 168`. Une valeur qui n’est pas un nombre pour `--state-retention-days` ou `--state-max-snapshots` arrête l’exécution avec le code de sortie 2 : `expected a whole number or 'none'`.
+
+Un chemin `--audit-output`, `--log-file` ou `--output-directory` où l’on ne peut pas écrire arrête l’exécution dès le début, avant tout appel à AWS, avec un message qui nomme l’option et le code de sortie 1.
 
 Voir [État des fonctionnalités](../getting-started/status.md).
 
