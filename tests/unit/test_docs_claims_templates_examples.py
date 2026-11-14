@@ -1,0 +1,609 @@
+"""Docs claim check for docs/templates/*.md and docs/examples/*.md (v1.2.1).
+
+Claims that the pages state and that no other test proved, run for real.
+Rendering tests use the captured sample data (``sample_resources.json``);
+the CLI tests run the whole ``inventag`` command under moto.
+
+T1   every YAML template block on the example pages is a valid template
+T2   example pages: the ci-pipeline / single-account blocks equal the built-in files
+T3   executive-summary: Excel sheets and Word outline; no tag columns
+T4   finops-cost-report: Word section order
+T5   standard-bom: one tag column per key found on that sheet
+T6   standard-bom Word: at most 50 rows per service table, with a note
+T7   all three report templates: header colour 1F3A5F, text FFFFFF
+T8   tag policies: scope (Alias out of scope), case-insensitive Environment, pattern
+T9   resource field table: tags, tags.<Key>, tagged, source_account_name, raw_data
+T10  include_all_fields adds columns after the listed ones
+T11  word.columns default: first max_columns of columns, no tag columns
+T12  logo alt text defaults to "<company_name> logo"
+T13  templates init exit codes (1 exists, 2 bad name or extension)
+T14  validation message format "<file>:<line>: <field>: <message>"
+T15  the job-summary snippet of the CI example runs on a real JSON file
+T16  single-account, ci-pipeline: what they write (files, exit code)
+T17  config template spec keys map to CLI flags
+T18  the docs claim "--template with a tag policy wins" and "flags win"
+"""
+
+import glob
+import json
+import logging
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+import yaml
+from docx import Document
+from openpyxl import load_workbook
+
+from inventag.cli.main import create_parser
+from inventag.templating import cli as templates_cli
+from inventag.templating.registry import BUILTIN_DIR, SearchDir, TemplateRegistry
+from inventag.templating.render_excel import render_excel
+from inventag.templating.render_word import render_word
+from inventag.templating.runner import apply_config, explicit_dests, load_templates
+from inventag.templating.tag_policy import evaluate
+
+from tests.integration.templating.test_report_templates import (  # noqa: F401
+    aws,
+    run_inventag,
+    tiny_png,
+)
+
+ROOT = Path(__file__).resolve().parents[2]
+SAMPLE = ROOT / "tests" / "unit" / "templating" / "sample_resources.json"
+DOCS = ROOT / "docs"
+
+
+@pytest.fixture(scope="module")
+def resources():
+    return json.loads(SAMPLE.read_text())["resources"]
+
+
+@pytest.fixture
+def registry():
+    return TemplateRegistry([SearchDir("builtin", BUILTIN_DIR)])
+
+
+def headings(doc):
+    return [
+        (p.style.name, p.text)
+        for p in doc.paragraphs
+        if p.style.name.startswith(("Heading", "Title"))
+    ]
+
+
+def render(tmp_path, registry, resources, name, policy=None):
+    template = registry.resolve(name)
+    ref = policy or template.spec.get("tag_policy")
+    compliance = evaluate(resources, registry.resolve(ref)) if ref else None
+    wb = load_workbook(
+        render_excel(str(tmp_path / "r.xlsx"), resources, template, compliance)
+    )
+    doc = Document(
+        render_word(str(tmp_path / "r.docx"), resources, template, compliance)
+    )
+    return template, wb, doc
+
+
+def yaml_blocks(page):
+    text = (DOCS / page).read_text()
+    return re.findall(r'```yaml title="([^"]+)"\n(.*?)```', text, re.S)
+
+
+# ------------------------------------------------------------------ T1, T2
+EXAMPLE_TEMPLATES = [
+    ("examples/quick-audit.md", ".inventag/templates/audit.yaml"),
+    ("examples/accounts-setup.md", ".inventag/templates/our-org.yaml"),
+    ("examples/custom-columns.md", ".inventag/templates/team-sheet.yaml"),
+    ("examples/finops-cost-allocation.md", ".inventag/templates/our-cost-tags.yaml"),
+    ("examples/security-review.md", ".inventag/templates/data-stores.yaml"),
+    ("examples/branded-executive-report.md", ".inventag/templates/board-report.yaml"),
+]
+
+
+@pytest.mark.parametrize("page,title", EXAMPLE_TEMPLATES)
+def test_t1_template_blocks_on_example_pages_validate(
+    page, title, monkeypatch, tmp_path, capsys
+):
+    blocks = dict(yaml_blocks(page))
+    assert title in blocks
+    target = tmp_path / title
+    target.parent.mkdir(parents=True)
+    target.write_text(blocks[title])
+    if "board-report" in title:  # the page puts the logo in brand/
+        (target.parent / "brand").mkdir()
+        (target.parent / "brand" / "acme-logo.png").write_bytes(tiny_png())
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    code = templates_cli.main(["validate", str(target)])
+    out = capsys.readouterr()
+    assert code == 0, out.err + out.out
+    assert "OK" in out.out
+
+
+def test_t2_ci_pipeline_block_equals_builtin_file():
+    block = yaml.safe_load(
+        dict(yaml_blocks("examples/tag-policy-in-ci.md"))["ci-pipeline (built-in)"]
+    )
+    builtin = yaml.safe_load((BUILTIN_DIR / "ci-pipeline.yaml").read_text())
+    assert block == builtin
+
+
+def test_t2_single_account_block_is_the_builtin_with_regions_and_name_changed():
+    block = yaml.safe_load(
+        dict(yaml_blocks("examples/quick-audit.md"))[".inventag/templates/audit.yaml"]
+    )
+    builtin = yaml.safe_load((BUILTIN_DIR / "single-account.yaml").read_text())
+    assert block["spec"].pop("regions") == ["us-east-1", "eu-west-1"]
+    builtin["spec"].pop("regions")
+    block.pop("name")
+    builtin.pop("name")
+    assert block == builtin
+
+
+def test_t2_org_example_block_is_the_builtin_with_name_and_description_changed():
+    block = yaml.safe_load(
+        dict(yaml_blocks("examples/accounts-setup.md"))[
+            ".inventag/templates/our-org.yaml"
+        ]
+    )
+    builtin = yaml.safe_load((BUILTIN_DIR / "org-multi-account.yaml").read_text())
+    for data in (block, builtin):
+        data.pop("name")
+        data.pop("description")
+    builtin["spec"].pop("output_directory")  # the page leaves out the default
+    assert block == builtin
+
+
+# ---------------------------------------------------------------------- T3
+def test_t3_executive_summary_excel_and_word(tmp_path, registry, resources):
+    _, wb, doc = render(tmp_path, registry, resources, "executive-summary")
+    assert wb.sheetnames == ["Summary", "Resources"]
+    header = [c.value for c in wb["Resources"][1]]
+    assert header == ["Account", "Region", "Service", "Type", "Name", "ID", "ARN"]
+    assert wb["Resources"].max_row == 1 + len(resources)  # every resource, one sheet
+    names = headings(doc)
+    assert names[0] == ("Title", "AWS Inventory Summary")
+    assert [h for _, h in names[1:]] == [
+        "Summary",
+        "Resources by service",
+        "About this report",
+    ]
+    assert len(doc.tables) == 1  # only the service table, no per-resource tables
+
+
+# ---------------------------------------------------------------------- T4
+def test_t4_finops_cost_report_sections_and_tag_columns(tmp_path, registry, resources):
+    _, wb, doc = render(tmp_path, registry, resources, "finops-cost-report")
+    assert wb.sheetnames[-1] == "Tag Compliance"
+    header = [c.value for c in wb["S3"][1]]
+    assert header[7:] == [
+        "Tag: CostCenter",
+        "Tag: Owner",
+        "Tag: Project",
+        "Tag: Environment",
+    ]
+    h1 = [h for s, h in headings(doc) if s == "Heading 1"]
+    assert h1 == [
+        "Summary",
+        "Tag compliance",
+        "Resources by service",
+        "About this report",
+    ]
+
+
+# ---------------------------------------------------------------------- T5
+def test_t5_one_tag_column_per_key_found_on_the_sheet(tmp_path, registry, resources):
+    _, wb, _ = render(tmp_path, registry, resources, "standard-bom")
+    for ws in wb.worksheets[1:]:
+        keys = set()
+        for r in resources:
+            if r["service"] == ws.title:
+                keys |= set((r.get("tags") or {}).keys())
+        found = {c.value[5:] for c in ws[1] if str(c.value).startswith("Tag: ")}
+        assert found == keys, ws.title
+    assert wb["Summary"]["A1"].value == "AWS Resource Inventory"
+
+
+# ---------------------------------------------------------------------- T6
+def test_t6_word_service_table_stops_at_50_rows_with_a_note(tmp_path, registry):
+    many = [
+        {
+            "service": "S3",
+            "resource_type": "Bucket",
+            "resource_id": f"b{i}",
+            "resource_name": f"b{i}",
+            "region": "us-east-1",
+            "source_account_id": "123456789012",
+            "tags": {},
+        }
+        for i in range(60)
+    ]
+    template = registry.resolve("standard-bom")
+    doc = Document(render_word(str(tmp_path / "m.docx"), many, template))
+    sizes = sorted(len(t.rows) for t in doc.tables)
+    assert sizes[-1] == 51  # header + 50 rows
+    text = "\n".join(p.text for p in doc.paragraphs)
+    assert "10" in text and "50" in text  # the note says how many were left out
+
+
+# ---------------------------------------------------------------------- T7
+@pytest.mark.parametrize(
+    "name", ["standard-bom", "executive-summary", "finops-cost-report"]
+)
+def test_t7_header_colours_of_all_three_report_templates(registry, name):
+    colors = registry.resolve(name).spec["colors"]
+    assert colors["header_fill"] == "1F3A5F" and colors["header_text"] == "FFFFFF"
+
+
+# ---------------------------------------------------------------------- T8
+def _res(rtype, tags, service="S3"):
+    return {
+        "service": service,
+        "resource_type": rtype,
+        "resource_id": "x",
+        "arn": "arn:aws:s3:::x",
+        "tags": tags,
+        "source_account_id": "123456789012",
+    }
+
+
+FULL = {"CostCenter": "CC-1234", "Owner": "a", "Project": "p", "Environment": "prod"}
+
+
+def test_t8_alias_is_out_of_scope_and_environment_ignores_case(registry):
+    items = [
+        _res("Alias", {}, "KMS"),
+        _res("Bucket", dict(FULL, Environment="PROD")),
+        _res("Bucket", dict(FULL, CostCenter="CC-12345")),
+        _res("Bucket", dict(FULL, Environment="production")),
+    ]
+    report = evaluate(items, registry.resolve("finops-cost-allocation"))
+    assert report.out_of_scope == 1
+    assert report.compliant == 1
+    assert report.non_compliant == 2
+
+
+def test_t8_security_baseline_values_and_scope(registry):
+    ok = dict(Owner="a", Environment="Dev", DataClassification="RESTRICTED")
+    bad = dict(ok, DataClassification="secret")
+    items = [_res("Alias", {}, "KMS"), _res("Bucket", ok), _res("Bucket", bad)]
+    report = evaluate(items, registry.resolve("security-baseline"))
+    assert report.out_of_scope == 1
+    assert report.compliant == 1
+
+
+def test_t8_extending_policy_with_pattern_and_scope_services(tmp_path):
+    reg = TemplateRegistry(
+        [SearchDir("p", tmp_path), SearchDir("builtin", BUILTIN_DIR)]
+    )
+    for page, title in (
+        (
+            "examples/finops-cost-allocation.md",
+            ".inventag/templates/our-cost-tags.yaml",
+        ),
+        ("examples/security-review.md", ".inventag/templates/data-stores.yaml"),
+    ):
+        (tmp_path / Path(title).name).write_text(dict(yaml_blocks(page))[title])
+    five = reg.resolve("our-cost-tags")
+    keys = {t["key"]: t for t in five.spec["required_tags"]}
+    assert keys["CostCenter"]["pattern"] == "[0-9]{5}"
+    assert set(keys) == {"CostCenter", "Owner", "Project", "Environment"}
+    items = [_res("Bucket", dict(FULL, CostCenter="12345"))]
+    assert evaluate(items, five).compliant == 1
+    stores = reg.resolve("data-stores")
+    items = [_res("Instance", {}, "EC2"), _res("Bucket", {}, "S3")]
+    summary = evaluate(items, stores)
+    assert summary.out_of_scope == 1 and summary.non_compliant == 1
+
+
+# ---------------------------------------------------------------------- T9
+def test_t9_resource_field_table_values(tmp_path, registry):
+    items = [
+        {
+            "service": "EC2",
+            "resource_type": "Volume",
+            "resource_id": "vol-1",
+            "resource_name": "v",
+            "region": "us-east-1",
+            "source_account_id": "123456789012",
+            "source_account_name": "Prod",
+            "tags": {"Owner": "me", "Env": "x"},
+            "tagged": True,
+            "raw_data": {"VolumeType": "gp3"},
+        },
+        {
+            "service": "EC2",
+            "resource_type": "Volume",
+            "resource_id": "vol-2",
+            "tagged": False,
+        },
+    ]
+    path = tmp_path / "t.yaml"
+    path.write_text(
+        "kind: report\nname: t\nspec:\n  tag_columns: none\n  columns:\n"
+        "    - {field: source_account_name, header: AN}\n"
+        "    - {field: tags, header: T}\n"
+        "    - {field: tags.Owner, header: O}\n"
+        "    - {field: tagged, header: G}\n"
+        "    - {field: raw_data.VolumeType, header: V}\n"
+    )
+    wb = load_workbook(
+        render_excel(str(tmp_path / "t.xlsx"), items, registry.resolve(str(path)))
+    )
+    rows = list(wb["EC2"].iter_rows(min_row=2, values_only=True))
+    tagged = [r for r in rows if r[0] == "Prod"][0]
+    other = [r for r in rows if r[0] != "Prod"][0]
+    assert tagged == ("Prod", "Env=x, Owner=me", "me", "Yes", "gp3")
+    assert other[3] == "No"  # not tagged
+    assert other[4] in (None, "")  # missing values are left blank
+
+
+# --------------------------------------------------------------------- T10
+def test_t10_include_all_fields_adds_columns_after_the_listed_ones(
+    tmp_path, registry, resources
+):
+    path = tmp_path / "all.yaml"
+    path.write_text(
+        "kind: report\nname: all\nextends: standard-bom\nspec:\n"
+        "  excel: {include_all_fields: true}\n"
+    )
+    wb = load_workbook(
+        render_excel(str(tmp_path / "a.xlsx"), resources, registry.resolve(str(path)))
+    )
+    header = [c.value for c in wb["EC2"][1]]
+    assert header[:7] == ["Account", "Region", "Service", "Type", "Name", "ID", "ARN"]
+    plain = load_workbook(
+        render_excel(
+            str(tmp_path / "b.xlsx"), resources, registry.resolve("standard-bom")
+        )
+    )
+    assert len(header) > len([c.value for c in plain["EC2"][1]])
+
+
+# --------------------------------------------------------------------- T11
+def test_t11_word_columns_default_is_first_max_columns_without_tags(
+    tmp_path, registry, resources
+):
+    path = tmp_path / "w.yaml"
+    path.write_text(
+        "kind: report\nname: w\nspec:\n  tag_columns: all\n"
+        "  columns:\n"
+        "    - {field: service}\n    - {field: resource_type}\n    - {field: region}\n"
+        "  word: {max_columns: 2, sections: [service-tables]}\n"
+    )
+    doc = Document(
+        render_word(str(tmp_path / "w.docx"), resources, registry.resolve(str(path)))
+    )
+    widths = {len(t.columns) for t in doc.tables}
+    assert widths == {2}
+    first = [c.text for c in doc.tables[0].rows[0].cells]
+    assert first == ["Service", "Resource type"]
+
+
+# --------------------------------------------------------------------- T12
+def test_t12_logo_alt_text_defaults_to_company_name_logo(tmp_path, registry, resources):
+    (tmp_path / "logo.png").write_bytes(tiny_png())
+    path = tmp_path / "b.yaml"
+    path.write_text(
+        "kind: report\nname: b\nextends: executive-summary\nspec:\n"
+        "  company_name: Acme Ltd\n  logo: logo.png\n"
+    )
+    doc = Document(
+        render_word(str(tmp_path / "b.docx"), resources, registry.resolve(str(path)))
+    )
+    assert 'descr="Acme Ltd logo"' in doc.element.body.xml
+
+
+# --------------------------------------------------------------------- T13
+def run_templates(args, monkeypatch, tmp_path, capsys):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    code = templates_cli.main(args)
+    out = capsys.readouterr()
+    return code, out.out, out.err
+
+
+def test_t13_init_exit_codes_and_messages(monkeypatch, tmp_path, capsys):
+    args = [
+        "init",
+        "standard-bom",
+        "--output",
+        ".inventag/templates/acme-bom.yaml",
+        "--extend",
+    ]
+    code, out, _ = run_templates(args, monkeypatch, tmp_path, capsys)
+    assert code == 0
+    assert out.splitlines() == [
+        "Created .inventag/templates/acme-bom.yaml (kind: report, name: acme-bom).",
+        "Next: edit it, then run 'inventag templates validate "
+        ".inventag/templates/acme-bom.yaml'.",
+    ]
+    assert run_templates(args, monkeypatch, tmp_path, capsys)[0] == 1  # exists
+    assert run_templates(args + ["--force"], monkeypatch, tmp_path, capsys)[0] == 0
+    bad_ext = ["init", "standard-bom", "-o", "x.txt"]
+    assert run_templates(bad_ext, monkeypatch, tmp_path, capsys)[0] == 2
+    bad_name = ["init", "standard-bom", "-o", "n.yaml", "--name", "Bad_Name"]
+    assert run_templates(bad_name, monkeypatch, tmp_path, capsys)[0] == 2
+
+
+def test_t13_without_extend_the_copy_keeps_comments(monkeypatch, tmp_path, capsys):
+    run_templates(
+        ["init", "standard-bom", "-o", "c.yaml"], monkeypatch, tmp_path, capsys
+    )
+    text = (tmp_path / "c.yaml").read_text()
+    assert "#" in text and "extends" not in text
+
+
+def test_t13_name_option_and_extended_file_content(monkeypatch, tmp_path, capsys):
+    code, _, _ = run_templates(
+        ["init", "standard-bom", "-o", "f.yaml", "--extend", "--name", "other"],
+        monkeypatch,
+        tmp_path,
+        capsys,
+    )
+    assert code == 0
+    data = yaml.safe_load((tmp_path / "f.yaml").read_text())
+    assert data["name"] == "other" and data["extends"] == "standard-bom"
+    assert data["spec"] == {} and data["description"] == "Adapted from standard-bom"
+
+
+# --------------------------------------------------------------------- T14
+def test_t14_validation_message_format_and_list_all(monkeypatch, tmp_path, capsys):
+    (tmp_path / "bad.yaml").write_text(
+        "kind: report\nname: bad\nspec:\n  title: x\n  colors:\n    header_fill: blue\n"
+    )
+    code, out, err = run_templates(
+        ["validate", "bad.yaml"], monkeypatch, tmp_path, capsys
+    )
+    assert code == 1
+    text = out + err
+    assert re.search(
+        r"bad\.yaml:6: spec\.colors\.header_fill: must be a six-digit hex colour "
+        r"such as 1F3A5F \(got 'blue'\)",
+        text,
+    )
+
+
+def test_t14_unknown_template_message_lists_search_folders(monkeypatch, tmp_path):
+    from inventag.templating.errors import TemplateError
+
+    reg = TemplateRegistry(
+        [SearchDir("project", tmp_path), SearchDir("builtin", BUILTIN_DIR)]
+    )
+    with pytest.raises(TemplateError) as info:
+        load_templates(["acme-bomm"], reg)
+    message = str(info.value)
+    assert "no template named 'acme-bomm'" in message
+    assert "Run 'inventag templates list' to see what is available" in message
+    assert "searched:" in message
+
+
+# --------------------------------------------------------------------- T15
+JOB_SUMMARY = re.search(
+    r'```bash title="Workflow step"\npython3 -c "\n(.*?)" >> "\$GITHUB_STEP_SUMMARY"',
+    (DOCS / "examples" / "tag-policy-in-ci.md").read_text(),
+    re.S,
+).group(1)
+
+
+@pytest.mark.usefixtures("aws")
+def test_t15_ci_job_summary_snippet_runs_on_real_output(monkeypatch, tmp_path):
+    code = run_inventag(monkeypatch, tmp_path, "--template", "ci-pipeline")
+    assert code == 3  # the page: exit code 3 on violations
+    files = sorted(p.name for p in (tmp_path / "bom_output").iterdir())
+    assert [f.split(".")[-1] for f in files if not f.startswith("state")] == [
+        "xlsx",
+        "json",
+    ] or (
+        sorted(f.split(".")[-1] for f in files if not f.startswith("state"))
+        == ["json", "xlsx"]
+    )
+    assert "state" in files  # the page's file listing shows the state folder
+    script = JOB_SUMMARY.replace('\\"', '"').replace("\\$", "$")
+    result = subprocess.run(
+        [sys.executable, "-I", "-c", script],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    lines = result.stdout.splitlines()
+    assert re.fullmatch(r"\d+ non-compliant resources", lines[0])
+    assert all(re.match(r"- \S+ \S+ missing: ", line) for line in lines[1:])
+
+
+# --------------------------------------------------------------------- T16
+@pytest.mark.usefixtures("aws")
+def test_t16_single_account_writes_excel_and_word_only(monkeypatch, tmp_path):
+    code = run_inventag(monkeypatch, tmp_path, "--template", "single-account")
+    assert code == 0
+    out = tmp_path / "bom_output"
+    assert glob.glob(str(out / "multi_account_bom_*.xlsx"))
+    assert glob.glob(str(out / "multi_account_bom_*.docx"))
+    assert not glob.glob(str(out / "tag_compliance_*.json"))  # no tag policy
+
+
+@pytest.mark.usefixtures("aws")
+def test_t16_report_template_alone_adds_no_tag_policy_files(monkeypatch, tmp_path):
+    code = run_inventag(
+        monkeypatch,
+        tmp_path,
+        "--template",
+        "executive-summary",
+        "--create-word",
+        "--account-regions",
+        "us-east-1",
+    )
+    assert code == 0
+    assert not glob.glob(str(tmp_path / "bom_output" / "tag_compliance_*.json"))
+    assert glob.glob(str(tmp_path / "bom_output" / "*.docx"))
+
+
+# --------------------------------------------------------------------- T17
+def test_t17_config_spec_keys_set_the_flags_the_reference_names(registry, tmp_path):
+    path = tmp_path / "cfg.yaml"
+    path.write_text(
+        "kind: config\nname: cfg\nspec:\n"
+        "  regions: [us-east-1, eu-west-1]\n  services: [S3]\n"
+        "  outputs: [excel, word]\n  output_directory: out\n"
+        "  max_concurrent_accounts: 7\n  account_processing_timeout: 900\n"
+        "  parallel_processing: false\n"
+    )
+    argv = ["--template", str(path)]
+    args = create_parser().parse_args(argv)
+    run = load_templates(args.template, registry)
+    apply_config(run, args, explicit_dests(create_parser, argv), logging.getLogger("t"))
+    assert args.account_regions == "us-east-1,eu-west-1"
+    assert args.account_services == "S3"
+    assert args.create_excel and args.create_word
+    assert args.output_directory == "out"
+    assert args.max_concurrent_accounts == 7
+    assert args.account_processing_timeout == 900
+    assert args.disable_parallel_processing is True
+
+
+def test_t17_defaults_when_the_config_leaves_keys_out(registry, tmp_path):
+    path = tmp_path / "cfg.yaml"
+    path.write_text("kind: config\nname: cfg\nspec: {}\n")
+    run = load_templates([str(path)], registry)
+    spec = run.config.spec
+    assert spec["outputs"] == ["excel"]
+    assert spec["output_directory"] == "bom_output"
+    assert spec["report_template"] == "standard-bom"
+    assert spec["fail_on_tag_violations"] is False
+    assert spec["max_concurrent_accounts"] == 4
+    assert spec["account_processing_timeout"] == 1800
+    assert spec["parallel_processing"] is True
+
+
+# --------------------------------------------------------------------- T18
+def test_t18_FALSE_claim_typed_flag_replaces_config_outputs(registry, tmp_path):
+    """docs/templates/index.md says outputs [excel] plus --create-word gives both
+    files. FALSE: a typed --create-excel or --create-word makes InvenTag ignore
+    the config's ``outputs`` completely, so only the typed formats are written."""
+    path = tmp_path / "cfg.yaml"
+    path.write_text("kind: config\nname: cfg\nspec:\n  outputs: [excel]\n")
+    argv = ["--template", str(path), "--create-word"]
+    args = create_parser().parse_args(argv)
+    run = load_templates(args.template, registry)
+    apply_config(run, args, explicit_dests(create_parser, argv), logging.getLogger("t"))
+    assert args.create_word and not args.create_excel
+
+
+def test_t18_command_line_policy_replaces_the_one_named_by_the_report(registry):
+    run = load_templates(["finops-cost-report", "security-baseline"], registry)
+    assert run.policy.name == "security-baseline"
+    run = load_templates(["finops-cost-report"], registry)
+    assert run.policy.name == "finops-cost-allocation"
+    run = load_templates(["finops-cost-allocation"], registry)
+    assert run.report.name == "standard-bom"  # without a report template
+
+
+def test_t18_fail_on_tag_violations_default_and_two_of_a_kind(registry):
+    from inventag.templating.errors import TemplateError
+
+    with pytest.raises(TemplateError):
+        load_templates(["standard-bom", "executive-summary"], registry)
