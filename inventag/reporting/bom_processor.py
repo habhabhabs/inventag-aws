@@ -51,6 +51,20 @@ class BOMProcessingConfig:
     cost_thresholds: Optional[CostThresholds] = None
     processing_timeout: int = 300  # seconds
 
+    def __post_init__(self) -> None:
+        # From here on, a later assignment to enable_service_enrichment is the
+        # user's (the --bom-config file is applied that way); the default and
+        # the constructor argument are not.
+        object.__setattr__(self, "_enrichment_key_set_by_user", False)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if (
+            name == "enable_service_enrichment"
+            and "_enrichment_key_set_by_user" in self.__dict__
+        ):
+            object.__setattr__(self, "_enrichment_key_set_by_user", bool(value))
+        object.__setattr__(self, name, value)
+
 
 @dataclass
 class BOMData:
@@ -136,12 +150,21 @@ class BOMDataProcessor:
             else:
                 self.security_analyzer = None
 
-            # Service attribute enricher
+            # Service attribute enricher. It is built, but no step calls it:
+            # it has no per-resource method, so enrichment never ran. Whether
+            # to make it run is the owner's decision. Tell a user who
+            # switched it on that it has no effect.
             if self.config.enable_service_enrichment:
                 self.service_enricher = ServiceAttributeEnricher(self.session)
                 self.logger.info("Initialized ServiceAttributeEnricher")
             else:
                 self.service_enricher = None
+            if getattr(self.config, "_enrichment_key_set_by_user", False):
+                self.logger.warning(
+                    "enable_service_enrichment is set to true, but service "
+                    "attribute enrichment is not available in this version: "
+                    "the setting has no effect and the report is unchanged"
+                )
 
             # Service description manager
             if self.config.enable_service_descriptions:
@@ -632,12 +655,6 @@ class BOMDataProcessor:
         enriched_resource = resource.copy()
 
         try:
-            # Service attribute enrichment
-            if self.service_enricher:
-                enriched_resource = self._enrich_with_service_attributes(
-                    enriched_resource
-                )
-
             # Service descriptions
             if self.service_desc_manager:
                 enriched_resource = self._apply_service_descriptions(enriched_resource)
@@ -700,23 +717,6 @@ class BOMDataProcessor:
                 )
             resources = mapped
         return resources
-
-    def _enrich_with_service_attributes(
-        self, resource: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Enrich resource with service-specific attributes."""
-        try:
-            if self.service_enricher:
-                enriched = self.service_enricher.enrich_resource(resource)
-                if enriched != resource:
-                    self._count("service_enriched")
-                return enriched
-        except Exception as e:
-            self.logger.debug(
-                f"Service enrichment failed for {resource.get('id', 'unknown')}: {e}"
-            )
-
-        return resource
 
     def _apply_service_descriptions(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         """Add the service description from --service-descriptions to a resource.
