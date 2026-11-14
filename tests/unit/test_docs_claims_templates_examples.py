@@ -800,3 +800,168 @@ def test_t25_word_logo_formats_named_on_the_pages_are_embedded(
     template = reg.resolve("t")
     path = render_word(str(tmp_path / "r.docx"), resources, template, None)
     assert len(Document(path).inline_shapes) == 1
+
+
+# ------------------------------------------------- claims3: rows of the sheet
+def _sheet_names(path):
+    return load_workbook(path, read_only=True).sheetnames
+
+
+def test_t26_services_in_a_config_template_leave_one_sheet_a49(
+    aws, monkeypatch, tmp_path
+):
+    """reference.md spec.services (register A-49): a config template with
+    ``services: [S3]`` over an estate with S3, SQS and DynamoDB gives the
+    Summary sheet and one S3 sheet, and no other service sheet. The page says
+    the filter is applied in one discovery path only, so other services can
+    still appear."""
+    import boto3
+
+    boto3.client("sqs", region_name="us-east-1").create_queue(QueueName="q-1")
+    boto3.client("dynamodb", region_name="us-east-1").create_table(
+        TableName="t-1",
+        KeySchema=[{"AttributeName": "k", "KeyType": "HASH"}],
+        AttributeDefinitions=[{"AttributeName": "k", "AttributeType": "S"}],
+        BillingMode="PAY_PER_REQUEST",
+    )
+
+    def run(sub, *argv):
+        out = tmp_path / sub
+        out.mkdir()
+        code = run_inventag(monkeypatch, out, *argv)
+        assert code == 0
+        return _sheet_names(glob.glob(str(out / "bom_output" / "*.xlsx"))[0])
+
+    cfg = tmp_path / "only-s3.yaml"
+    cfg.write_text(
+        yaml.safe_dump(
+            {
+                "format_version": 1,
+                "kind": "config",
+                "name": "only-s3",
+                "spec": {
+                    "regions": ["us-east-1"],
+                    "services": ["S3"],
+                    "outputs": ["excel"],
+                },
+            }
+        )
+    )
+    unfiltered = run("all", "--create-excel", "--account-regions", "us-east-1")
+    assert {"S3", "SQS", "DYNAMODB"} <= set(unfiltered)  # the estate has all three
+    filtered = run("filtered", "--template", str(cfg))
+    assert filtered == ["Summary", "S3"]
+
+
+def test_t27_source_and_detail_level_values_of_the_three_kinds_of_row(monkeypatch):
+    """reference.md: a service-API row is service-api/full, a tagging-only
+    resource is tagging-api/identity, a billing-only service is billing/identity."""
+    import boto3
+    from moto import mock_aws
+
+    from inventag.discovery.comprehensive_discovery import (
+        ComprehensiveAWSDiscovery,
+    )
+    from inventag.discovery.inventory import AWSResourceInventory
+
+    for key in ("AWS_PROFILE", "AWS_ENDPOINT_URL", "AWS_SESSION_TOKEN"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+    monkeypatch.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
+    vault = "arn:aws:backup:us-east-1:123456789012:backup-vault:v1"
+
+    def tagging_only(self):
+        return {
+            "us-east-1": [{"ResourceARN": vault, "Tags": [{"Key": "k", "Value": "v"}]}]
+        }
+
+    def billed(self):
+        self.billing_services.add("lightsail")
+
+    monkeypatch.setattr(
+        ComprehensiveAWSDiscovery, "_prefetch_tagging_resources", tagging_only
+    )
+    monkeypatch.setattr(ComprehensiveAWSDiscovery, "_discover_billing_services", billed)
+    with mock_aws():
+        boto3.client("s3", region_name="us-east-1").create_bucket(Bucket="bucket-one")
+        rows = AWSResourceInventory(
+            regions=["us-east-1"], enable_billing_validation=True
+        ).discover_resources()
+    kinds = {
+        r["service"]: (r["source"], r["detail_level"])
+        for r in rows
+        if r["service"] in {"S3", "BACKUP", "LIGHTSAIL"}
+    }
+    assert kinds == {
+        "S3": ("service-api", "full"),
+        "BACKUP": ("tagging-api", "identity"),
+        "LIGHTSAIL": ("billing", "identity"),
+    }
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="possible defect: a layout file with templates, document_templates or "
+    "default_template is refused (exit 1, 'unknown key'), it does not ignore them",
+)
+def test_t28_old_layout_keys_have_no_effect(aws, monkeypatch, tmp_path):
+    """layout-flags.md: templates, document_templates and default_template in a
+    layout file change nothing and give no error."""
+    layout = {
+        "template_version": "2.0",
+        "format_type": "excel",
+        "sections": [
+            {
+                "id": "all",
+                "content_type": "resources",
+                "group_by_service": False,
+                "sheet_name": "All",
+                "columns": [
+                    {"field": "id", "heading": "ID"},
+                    {"field": "service", "heading": "Service"},
+                ],
+            }
+        ],
+    }
+    old = dict(
+        layout, templates={"x": "y"}, document_templates={}, default_template="x"
+    )
+    results = []
+    for sub, data in (("plain", layout), ("old", old)):
+        out = tmp_path / sub
+        out.mkdir()
+        lay = out / "layout.json"
+        lay.write_text(json.dumps(data))
+        code = run_inventag(
+            monkeypatch,
+            out,
+            "--excel-template",
+            str(lay),
+            "--account-regions",
+            "us-east-1",
+        )
+        assert code == 0
+        wb = load_workbook(glob.glob(str(out / "bom_output" / "*.xlsx"))[0])
+        results.append(
+            {ws.title: [list(r) for r in ws.iter_rows(values_only=True)] for ws in wb}
+        )
+    assert "All" in results[0]
+    assert results[0] == results[1]
+
+
+def test_t29_reports_stay_on_disk_after_a_failed_upload(aws, monkeypatch, tmp_path):
+    """scheduled-s3-upload.md: a missing bucket stops the upload with exit 1;
+    the report files are already written."""
+    code = run_inventag(
+        monkeypatch,
+        tmp_path,
+        "--create-excel",
+        "--account-regions",
+        "us-east-1",
+        "--s3-bucket",
+        "no-such-bucket",
+    )
+    assert code == 1
+    assert glob.glob(str(tmp_path / "bom_output" / "*.xlsx"))
