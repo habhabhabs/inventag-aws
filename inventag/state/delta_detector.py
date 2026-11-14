@@ -744,48 +744,13 @@ class DeltaDetector:
         for account, reason in skip.items():
             logger.warning(f"Account {account} left out of the comparison: {reason}")
 
-        report = self.detect_changes(
+        return self.detect_changes(
             old_resources=previous_state.resources,
             new_resources=current_state.resources,
             state1_id=previous_state_id,
             state2_id=current_state_id,
             skip_accounts=skip,
             current_run=current_run,
-        )
-        caveat = self.previous_run_caveat(previous_state, skip)
-        if caveat:
-            report.change_statistics["previous_run_incomplete"] = caveat
-        return report
-
-    @staticmethod
-    def previous_run_caveat(previous_state, skip: Dict[str, str]) -> Optional[str]:
-        """One line when the previous run could not read every listing.
-
-        Resources that run missed are in the current run only, so they show
-        as added. Read from the previous snapshot's ``coverage_summary``
-        (accounts left out of the comparison are not counted).
-        """
-        tags = getattr(previous_state.metadata, "tags", None) or {}
-        summary = tags.get("coverage_summary") if isinstance(tags, dict) else None
-        if not isinstance(summary, dict):
-            return None
-        parts = []
-        for account in sorted(summary, key=str):
-            counts = summary[account]
-            if str(account) in skip or not isinstance(counts, dict):
-                continue
-            missed = [
-                f"{counts[o]} {o}"
-                for o in _FAILED_OUTCOMES
-                if isinstance(counts.get(o), int) and counts[o] > 0
-            ]
-            if missed:
-                parts.append(f"account {account}: {', '.join(missed)}")
-        if not parts:
-            return None
-        return (
-            f"The previous run could not read every listing ({'; '.join(parts)}); "
-            "resources it missed may show as added."
         )
 
     @staticmethod
