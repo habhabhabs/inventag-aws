@@ -122,6 +122,27 @@ def _validate_specific_configs(args, logger, check_credentials=True):
                 logger.error(f"   - {error}")
             all_valid = False
 
+    # Validate the --bom-config file as a real run reads it
+    if args.bom_config:
+        logger.info(f"Validating BOM settings: {args.bom_config}")
+        try:
+            ignored = read_bom_settings(args.bom_config, BOMProcessingConfig())
+        except SettingsFileError as e:
+            # The exit code of this mode is unchanged (0): the problem is a
+            # warning that says what a real run does with the file.
+            logger.warning(
+                f"--bom-config {args.bom_config} is invalid: {e} A real run "
+                "stops with exit code 1 on this file."
+            )
+        else:
+            if ignored:
+                logger.warning(
+                    f"--bom-config {args.bom_config}: unknown key(s) "
+                    f"{', '.join(sorted(ignored))} would be ignored. Valid keys: "
+                    f"{', '.join(valid_bom_setting_names())}"
+                )
+            logger.info("✅ BOM settings are valid")
+
     # Validate accounts file if specified
     if args.accounts_file:
         logger.info(f"Validating accounts file: {args.accounts_file}")
