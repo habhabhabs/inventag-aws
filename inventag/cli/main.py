@@ -1507,16 +1507,29 @@ def main():
             logger.info(f"Wrote AWS API audit to {path}")
 
 
-def _log_run_notes(results, logger):
+class _LoggedMessages(logging.Handler):
+    """The text of each WARNING or ERROR line a logger wrote during a run."""
+
+    def __init__(self):
+        super().__init__(logging.WARNING)
+        self.messages = set()
+
+    def emit(self, record):
+        self.messages.add(record.getMessage())
+
+
+def _log_run_notes(results, logger, already_logged=frozenset()):
     """Print the run notes of the result (what the reader of the report must
     know) as warnings, once each. Lines that the "not scanned" block above
-    already printed are left out. A clean run has no notes and prints nothing."""
+    already printed, and notes the generator already logged during the run
+    (``already_logged``), are left out. A clean run has no notes and prints
+    nothing."""
     failed = results.get("failed_accounts") or []
     printed = {
         f"{item['account_id']} ({item['account_name']}): "
         f"{'; '.join(item['errors'])[:300]}"
         for item in failed
-    }
+    } | set(already_logged)
     pending = []
     for note in results.get("run_notes") or []:
         if note in printed:
@@ -1653,10 +1666,18 @@ def _run(args, logger):
         logger.info("Starting BOM generation process...")
         start_time = datetime.now()
 
-        # Generate BOM documents
-        results = generator.generate_comprehensive_bom(
-            output_formats=output_formats, s3_upload_config=s3_config
-        )
+        # Generate BOM documents. The generator logs some run notes itself
+        # (expired session, nothing read, guard block); they are not printed
+        # a second time below.
+        generator_log = logging.getLogger("inventag.core.cloud_bom_generator")
+        generator_lines = _LoggedMessages()
+        generator_log.addHandler(generator_lines)
+        try:
+            results = generator.generate_comprehensive_bom(
+                output_formats=output_formats, s3_upload_config=s3_config
+            )
+        finally:
+            generator_log.removeHandler(generator_lines)
 
         end_time = datetime.now()
         processing_time = (end_time - start_time).total_seconds()
@@ -1711,7 +1732,7 @@ def _run(args, logger):
                     f"  - Processing time: {processing_stats.get('processing_time_seconds', 0):.2f}s"
                 )
 
-            _log_run_notes(results, logger)
+            _log_run_notes(results, logger, generator_lines.messages)
 
             opt_in_exit = _opt_in_exit_code(args, results, logger)
 
