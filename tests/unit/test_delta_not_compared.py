@@ -309,3 +309,15 @@ def test_by_state_id_passes_the_current_run_on(tmp_path):
     )
     assert _removed(report) == ["b1", "vpc-1"]
     assert report.summary["not_compared_count"] == 1
+
+
+# ------------------------------------- only listings decide, never billing
+
+
+@pytest.mark.parametrize("outcome", ["denied", "error", "throttled"])
+def test_a_failed_cost_explorer_call_does_not_make_resources_not_compared(outcome):
+    """Billing entries of the ledger (source "billing") are not listings."""
+    billing = _entry("sqs", outcome, region="global", source="billing")
+    report = _detect([_queue()], [], _run([billing]))
+    assert _removed(report) == ["q1"]
+    assert "not_compared_count" not in report.summary

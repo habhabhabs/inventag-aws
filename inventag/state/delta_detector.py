@@ -269,9 +269,13 @@ class _RunScope:
             region = str(entry.get("region") or "")
             outcome = str(entry.get("outcome") or "")
             failed = outcome in _FAILED_OUTCOMES
-            if entry.get("source") == "tagging-api":
+            source = entry.get("source")
+            if source == "tagging-api":
                 if failed:
                     self.tagging_failed.setdefault((account, region), outcome)
+                continue
+            if source != "service-api":
+                # Billing (Cost Explorer) and anything else is not a listing.
                 continue
             unit = (account, canonical_service(entry.get("service")), region)
             self.listed.add(unit)
