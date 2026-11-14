@@ -211,5 +211,5 @@ echo $?
 | `templates init` | 2 | 輸出名稱或副檔名不被允許 |
 | `inventag --template ...` | 1 | 範本無效，或執行失敗 |
 | `inventag --template ...` | 3 | 報告已寫出，但資源違反標籤策略，且 `fail_on_tag_violations` 為 `true` |
-| `inventag --template ...` | 5 | 報告已寫出，但有帳戶失敗或只掃描了一部分，且你傳入了 `--fail-on-account-error` |
+| `inventag --template ...` | 5 | 報告已寫出，但有帳戶無法掃描或超出時間限制，且你傳入了 `--fail-on-account-error` |
 | `inventag --template ...` | 6 | 沒有找到任何資源，且你傳入了 `--fail-if-empty` |
