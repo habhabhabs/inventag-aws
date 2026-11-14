@@ -195,7 +195,7 @@ echo $?
 
 **解決辦法：** 從 `--account-regions` 中刪除該區域，或在 AWS 控制檯中為該帳戶啟用它（Account settings，AWS Regions）。
 
-未針對 真實的 AWS 驗證：在控制檯中啟用區域的路徑。
+未針對真實的 AWS 驗證：在控制檯中啟用區域的路徑。
 
 ### 無法讀取區域列表 {#the-list-of-regions-cannot-be-read}
 
@@ -228,7 +228,7 @@ sqs list_queues in us-east-1 failed (ThrottlingException); its resources there m
 **解決辦法：** 減少同時掃描的帳戶數（`--max-concurrent-accounts 2`），掃描更少的區域，
 或給大型帳戶更多時間（`--account-processing-timeout 3600`）。
 
-未針對 真實的 AWS 驗證：同時掃描更少的帳戶或區域可以減少限流。
+未針對真實的 AWS 驗證：同時掃描更少的帳戶或區域可以減少限流。
 
 ## 時間限制和部分結果 {#time-limits-and-partial-results}
 

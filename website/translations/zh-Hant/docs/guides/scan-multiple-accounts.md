@@ -38,7 +38,7 @@ aws organizations list-accounts \
   --query "Accounts[?Status=='ACTIVE'].[Id,Name]" --output text
 ```
 
-未針對 真實的 AWS 驗證：`aws organizations list-accounts` 命令及其列出的帳戶。
+未針對真實的 AWS 驗證：`aws organizations list-accounts` 命令及其列出的帳戶。
 
 ## 3. 把列表寫成設定範本 {#3-write-the-list-as-a-config-template}
 

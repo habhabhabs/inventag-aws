@@ -17,7 +17,7 @@ InvenTag 只需要讀取權限；如果用 `--s3-bucket` 上傳報告，還需�
 你的 IAM 策略是第二道獨立的安全網：即使某個缺陷繞過了防護，AWS 仍會拒絕該呼叫。
 只給 InvenTag 它所需要的權限，不要更多。
 
-未針對 真實的 AWS 驗證：唯讀 IAM 策略會拒絕繞過防護的呼叫。
+未針對真實的 AWS 驗證：唯讀 IAM 策略會拒絕繞過防護的呼叫。
 
 ## 方案 1：AWS 託管的 ReadOnlyAccess 加三項額外權限（最簡單） {#option-1-aws-managed-readonlyaccess-plus-three-extras-simplest}
 
@@ -70,7 +70,7 @@ InvenTag 還會呼叫 `account:ListRegions`，但僅在 `ec2:DescribeRegions` �
 [網路與安全分析](./network-and-security-analysis.md#permissions)所需的 `ec2:DescribeRouteTables` 和 `ec2:DescribeNetworkInterfaces`。
 如果你複製過舊版本的檔案，請重新複製。缺少某個操作不會讓執行停止，但該服務或細節會缺失。
 
-未針對 真實的 AWS 驗證：`apigateway:GET` 語句讓 API 金鑰的值無法被讀取。
+未針對真實的 AWS 驗證：`apigateway:GET` 語句讓 API 金鑰的值無法被讀取。
 
 其中的 `OptionalS3ReportUpload` 語句允許帶服務端加密的 `s3:PutObject`，用於 `--s3-bucket`。
 請把 `YOUR-REPORTS-BUCKET-NAME` 替換為你的儲存貯體；如果不上傳報告，就刪除這條語句。
@@ -125,7 +125,7 @@ aws sso-admin put-inline-policy-to-permission-set \
   --inline-policy file://inventag-extras.json
 ```
 
-未針對 真實的 AWS 驗證：`aws sso-admin` 命令及其建立的權限集。
+未針對真實的 AWS 驗證：`aws sso-admin` 命令及其建立的權限集。
 
 未針對 AWS 驗證：AWS 託管策略 `ReadOnlyAccess` 目前允許什麼，以及它覆蓋其中哪些呼叫。
 
@@ -154,7 +154,7 @@ aws sso-admin put-inline-policy-to-permission-set \
 請把 `999999999999:role/InvenTagScanner` 替換為執行 InvenTag 的身份。
 掃描身份本身只需要對這些角色擁有 `sts:AssumeRole` 權限。
 
-未針對 真實的 AWS 驗證：僅憑信任策略和 `sts:AssumeRole` 就足以完成掃描。
+未針對真實的 AWS 驗證：僅憑信任策略和 `sts:AssumeRole` 就足以完成掃描。
 
 ## 確認它無法寫入 {#check-that-it-cannot-write}
 
@@ -169,7 +169,7 @@ aws iam simulate-principal-policy \
 
 兩者都應顯示 `implicitDeny` 或 `explicitDeny`。
 
-未針對 真實的 AWS 驗證：這兩個操作在策略模擬器中的結果。
+未針對真實的 AWS 驗證：這兩個操作在策略模擬器中的結果。
 
 你也可以問 InvenTag 的防護，它會允許哪些操作（來自離線執行的範例輸出）：
 

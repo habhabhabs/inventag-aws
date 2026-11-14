@@ -39,7 +39,7 @@ inventag --account-regions us-east-1,eu-west-1 --create-excel
 如果它也失败，InvenTag 会记录一条警告，并尝试你的 AWS SDK 所知的该分区的每个区域。
 账户未启用的区域会通不过访问检查而被跳过。可以用 `--account-regions` 自己选择区域。
 
-未针对 真实的 AWS 验证：AWS 对未启用的区域返回的错误。
+未针对真实的 AWS 验证：AWS 对未启用的区域返回的错误。
 
 访问检查失败的区域会被跳过，并给出警告。如果检查在每个区域都失败（因为该身份缺少 `ec2:DescribeRegions`），
 InvenTag 无法判断哪些区域可用，会扫描全部区域。
@@ -57,7 +57,7 @@ InvenTag 无法判断哪些区域可用，会扫描全部区域。
   S3 存储桶显示它自己所在的区域，例如 `eu-west-1`。
 - 它们的标签来自主区域的 Resource Groups Tagging API，AWS 在那里保存全局资源的标签。
 
-  未针对 真实的 AWS 验证：AWS 把全局资源的标签保存在主区域。
+  未针对真实的 AWS 验证：AWS 把全局资源的标签保存在主区域。
 - 离线测试覆盖了仅 `eu-west-1`、所有区域，以及包含 `us-east-1` 的列表。
   真实 AWS 会如何响应，没有测试过。
 
@@ -73,7 +73,7 @@ InvenTag 为 46 个 AWS 服务提供了自己的只读列举调用。其他服�
 `<service> <operation> in <region> failed (<error>); its resources there may be incomplete.`
 状态快照会统计每个账户的各次列举如何结束，位置在 `metadata.tags.coverage_summary`。被拒绝的权限对每个服务只记录一次。
 
-未针对 真实的 AWS 验证：AWS 如何对调用限流，以及 SDK 重试如何应对。
+未针对真实的 AWS 验证：AWS 如何对调用限流，以及 SDK 重试如何应对。
 
 ## 时间限制与并行账户 {#time-limit-and-parallel-accounts}
 

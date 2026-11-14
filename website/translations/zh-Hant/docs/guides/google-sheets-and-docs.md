@@ -19,7 +19,7 @@ sidebar_position: 9
 - 使用 `--per-account-reports` 時，InvenTag 為每個帳戶生成一對檔案。標題以 ` - ` 和帳戶 ID 結尾，URL 行形如 `Google Sheet: [123456789012] https://...` 和 `Google Doc: [123456789012] https://...`。
 - 如果執行沒有找到任何資源，就不會生成 Google 檔案。
 
-未針對 真實的 Google 驗證：這些檔案與 Excel 和 Word 報告外觀一致，且 URL 為這種形式。
+未針對真實的 Google 驗證：這些檔案與 Excel 和 Word 報告外觀一致，且 URL 為這種形式。
 
 ## 安裝 Google 附加包 {#install-the-google-add-on}
 
@@ -97,7 +97,7 @@ inventag --create-google-sheets --create-google-docs \
 
 - Google Sheets 的單元格最多容納 50,000 個字元。InvenTag 會把更長的文字在 49,000 個字元處截斷。一個電子表格最多 1,000 萬個單元格，一個工作表最多 18,278 欄。
 
-  未針對 真實的 Google 驗證：單元格、大小和欄數的限制。
+  未針對真實的 Google 驗證：單元格、大小和欄數的限制。
 - InvenTag 會在呼叫 Google 之前先數單元格。如果報告太大，它不會建立任何內容並說明原因，執行以結束代碼 1 結束。Excel 和 Word 檔案仍會寫出。例如：
   `The report has 12,000,000 cells; a Google spreadsheet allows 10,000,000. No
   spreadsheet was created. Send fewer resources (filters or an account subset)
@@ -106,13 +106,13 @@ inventag --create-google-sheets --create-google-docs \
 - 如果 Google 返回「429 too many requests」，InvenTag 會記錄 `Google rate limit
   reached; waiting 5 seconds` 並重試。在最後一次嘗試之前，它依次等待 5、10、20、40 和 60 秒。
 
-  未針對 真實的 Google 驗證：請求大小，以及 429 的等待時間是否足夠長。
+  未針對真實的 Google 驗證：請求大小，以及 429 的等待時間是否足夠長。
 - 如果檔案建立之後某個呼叫失敗，執行會以結束代碼 1 結束，訊息中會給出寫到一半的檔案的 URL：`The spreadsheet was already
   created and may be incomplete: <url> (delete it in Google Drive).` Google Docs 文件同理。請刪除該檔案，然後重新執行。
 - Word 報告的表格預設每個服務最多顯示 50 個資源（報告範本中是 `max_rows_per_service`，佈局檔案中是 `max_rows`），Google Docs 文件也是如此。
 - 單元格的值以文字形式寫入，因此以 `=` 開頭的標籤值不會被當作公式執行。
 
-未針對 真實的 Google 驗證：以 `=` 開頭的文字會被存為文字。
+未針對真實的 Google 驗證：以 `=` 開頭的文字會被存為文字。
 
 ## 尚未驗證的部分 {#what-is-not-verified}
 
