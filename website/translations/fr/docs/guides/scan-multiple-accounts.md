@@ -42,6 +42,8 @@ aws organizations list-accounts \
   --query "Accounts[?Status=='ACTIVE'].[Id,Name]" --output text
 ```
 
+Non vérifié sur un vrai AWS : la commande `aws organizations list-accounts` et les comptes qu’elle liste.
+
 ## 3. Écrire la liste sous forme de modèle de configuration {#3-write-the-list-as-a-config-template}
 
 ```bash
@@ -132,8 +134,7 @@ inventag --accounts-file accounts.yaml --create-excel
 | Un compte à la fois | `parallel_processing: false` | `--disable-parallel-processing` |
 
 Si un compte échoue, par exemple parce que son rôle ne peut pas être assumé,
-InvenTag journalise l’erreur et rapporte les comptes qui ont fonctionné. Il ne
-se rabat pas sur vos identifiants par défaut pour ce compte. La feuille `Summary`
+InvenTag journalise l’erreur et rapporte les comptes qui ont fonctionné. Il n’analyse pas ce compte avec vos identifiants par défaut, sauf s’ils appartiennent à ce compte. La feuille `Summary`
 du rapport Excel et le rapport Word ont une section « Run notes » (notes d’exécution) qui nomme chaque compte non analysé et la raison.
 Le journal contient la même liste :
 
@@ -143,7 +144,7 @@ Le journal contient la même liste :
 ```
 
 L’exécution se termine toujours avec le code 0. Ajoutez `--fail-on-account-error` pour terminer avec le code 5
-quand un compte n’a pas pu être analysé complètement. Les rapports sont quand même écrits.
+quand un compte n’a pas pu être analysé ou a dépassé son délai. Les rapports sont quand même écrits.
 Si tous les comptes échouent, l’exécution se termine avec le code 1 et n’écrit aucun rapport.
 
 Un compte qui manque de temps (`--account-processing-timeout`) compte comme en échec, mais les ressources qu’il a trouvées
@@ -160,7 +161,7 @@ inventag --accounts-file accounts.yaml --create-excel --resume
 
 InvenTag réutilise les résultats enregistrés de la même commande (mêmes comptes, régions, services et filtres) qui ne sont pas
 plus anciens que `--resume-max-age-hours` (24 par défaut, 168 au maximum).
-Voir [Reprendre après une exécution en échec](./run-a-scan.md#continue-after-a-failed-run).
+Voir [Reprendre après une exécution en échec](./run-a-scan.md#continue-after-a-failed-run). Un compte dont la session a expiré en cours d’analyse est aussi enregistré, et `--resume` le réutilise comme s’il était complet.
 
 ## Dans un pipeline GitLab CI/CD {#in-a-gitlab-cicd-pipeline}
 

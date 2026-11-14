@@ -42,6 +42,8 @@ aws organizations list-accounts \
   --query "Accounts[?Status=='ACTIVE'].[Id,Name]" --output text
 ```
 
+No verificado contra AWS real: el comando `aws organizations list-accounts` y las cuentas que lista.
+
 ## 3. Escribe la lista como plantilla de configuración {#3-write-the-list-as-a-config-template}
 
 ```bash
@@ -132,8 +134,7 @@ inventag --accounts-file accounts.yaml --create-excel
 | Una cuenta cada vez | `parallel_processing: false` | `--disable-parallel-processing` |
 
 Si una cuenta falla, por ejemplo porque no se puede asumir su rol, InvenTag
-registra el error e informa de las cuentas que funcionaron. No recurre a tus
-credenciales predeterminadas para esa cuenta. La hoja `Summary` del informe de
+registra el error e informa de las cuentas que funcionaron. No analiza esa cuenta con tus credenciales predeterminadas, salvo que esas credenciales pertenezcan a esa cuenta. La hoja `Summary` del informe de
 Excel y el informe de Word tienen una sección «Run notes» (notas de la ejecución) que nombra cada cuenta que no se analizó y por qué.
 El registro tiene la misma lista:
 
@@ -143,7 +144,7 @@ El registro tiene la misma lista:
 ```
 
 La ejecución sigue terminando con el código 0. Añade `--fail-on-account-error` para terminar con el código 5
-cuando alguna cuenta no se haya podido analizar por completo. Los informes se escriben igualmente.
+cuando una cuenta no se haya podido analizar o se haya quedado sin tiempo. Los informes se escriben igualmente.
 Si todas las cuentas fallan, la ejecución termina con el código 1 y no escribe ningún informe.
 
 Una cuenta que se queda sin tiempo (`--account-processing-timeout`) cuenta como fallida, pero los recursos que encontró
@@ -160,7 +161,7 @@ inventag --accounts-file accounts.yaml --create-excel --resume
 
 InvenTag reutiliza los resultados guardados del mismo comando (mismas cuentas, regiones, servicios y filtros) que no sean
 más antiguos que `--resume-max-age-hours` (por defecto 24, como máximo 168).
-Consulta [Continúa tras una ejecución fallida](./run-a-scan.md#continue-after-a-failed-run).
+Consulta [Continúa tras una ejecución fallida](./run-a-scan.md#continue-after-a-failed-run). También se guarda una cuenta cuya sesión caducó a mitad del análisis, y `--resume` la reutiliza como si estuviera completa.
 
 ## En un pipeline de GitLab CI/CD {#in-a-gitlab-cicd-pipeline}
 

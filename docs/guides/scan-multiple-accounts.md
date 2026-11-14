@@ -42,6 +42,8 @@ aws organizations list-accounts \
   --query "Accounts[?Status=='ACTIVE'].[Id,Name]" --output text
 ```
 
+Not verified against real AWS: the `aws organizations list-accounts` command and the accounts it lists.
+
 ## 3. Write the list as a config template
 
 ```bash
@@ -145,7 +147,7 @@ inventag --accounts-file accounts.yaml --create-excel
 
 If one account fails, for example because its role cannot be assumed,
 InvenTag logs the error and reports the accounts that worked. It does not
-fall back to your default credentials for that account. The `Summary` sheet
+scan that account with your default credentials, unless those credentials belong to that account. The `Summary` sheet
 of the Excel report and the Word report have a "Run notes" section that names
 each account that was not scanned, and why. The log has the same list:
 
@@ -155,7 +157,7 @@ each account that was not scanned, and why. The log has the same list:
 ```
 
 The run still exits with code 0. Add `--fail-on-account-error` to exit with
-code 5 when any account could not be scanned completely. The reports are
+code 5 when an account could not be scanned or ran out of time. The reports are
 still written. If every account fails, the run exits with code 1 and writes
 no report.
 
@@ -176,6 +178,7 @@ inventag --accounts-file accounts.yaml --create-excel --resume
 InvenTag reuses saved results of the same command (same accounts, regions,
 services and filters) that are not older than `--resume-max-age-hours` (default
 24, at most 168). See [Continue after a failed run](./run-a-scan.md#continue-after-a-failed-run).
+An account whose session expired part-way is saved too, and `--resume` reuses it as if it were complete.
 
 ## In a GitLab CI/CD pipeline
 
