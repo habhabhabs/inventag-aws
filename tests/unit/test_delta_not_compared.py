@@ -13,10 +13,10 @@ snapshot that is missing now is left out of "removed" when:
 A resource that is still there but came back only through the Tagging API
 because its service listing failed is "not compared", not "modified" (S1 D14).
 
-When the previous snapshot's ``coverage_summary`` counts denied, throttled,
-error or timeout listings, the change report carries one caveat line.
-
-A run with complete coverage gives the same report as before, byte for byte.
+No caveat line about the previous run: ``coverage_summary`` counts Cost
+Explorer calls with the listings, so it cannot tell them apart (owner
+decision 6). A run with complete coverage gives the same report as v1.2.0,
+byte for byte.
 """
 
 import json
@@ -281,17 +281,15 @@ def _two_snapshots(tmp_path, previous_summary):
     return sm, first, second
 
 
-def test_caveat_when_the_previous_run_missed_listings(tmp_path):
-    sm, first, second = _two_snapshots(
-        tmp_path, {ACC: {"ok": 3, "denied": 2, "throttled": 1}}
-    )
+def test_no_caveat_while_the_snapshot_cannot_tell_listings_from_billing(tmp_path):
+    """coverage_summary counts Cost Explorer calls with the listings: a denied
+    GetCostAndUsage (2 entries per account per run) looks like 2 denied
+    listings, so the caveat would show on every run. Left out until the
+    snapshot records which units failed (owner decision 6)."""
+    sm, first, second = _two_snapshots(tmp_path, {ACC: {"ok": 3, "denied": 2}})
     report = DeltaDetector().detect_changes_by_state_id(sm, first, second)
-    caveat = (
-        f"The previous run could not read every listing (account {ACC}: 2 denied, "
-        "1 throttled); resources it missed may show as added."
-    )
-    assert report.change_statistics["previous_run_incomplete"] == caveat
-    assert f"- **previous_run_incomplete:** {caveat}" in _markdown(report)
+    assert "previous_run_incomplete" not in report.change_statistics
+    assert "previous_run_incomplete" not in _markdown(report)
 
 
 def test_no_caveat_after_a_complete_previous_run(tmp_path):
@@ -321,3 +319,15 @@ def test_a_failed_cost_explorer_call_does_not_make_resources_not_compared(outcom
     report = _detect([_queue()], [], _run([billing]))
     assert _removed(report) == ["q1"]
     assert "not_compared_count" not in report.summary
+
+
+def test_by_state_id_with_complete_coverage_equals_v120(tmp_path):
+    """Previous run with failed counts, current run read everything: the
+    report equals the one v1.2.0 made (no current_run, no extra line)."""
+    sm, first, second = _two_snapshots(tmp_path, {ACC: {"ok": 3, "error": 6}})
+    run = _run([_entry("sqs", "ok"), _entry("vpc", "ok"), _entry("s3", "empty")])
+    detector = DeltaDetector()
+    before = detector.detect_changes_by_state_id(sm, first, second)
+    after = detector.detect_changes_by_state_id(sm, first, second, current_run=run)
+    assert _without_clocks(after) == _without_clocks(before)
+    assert _markdown(after) == _markdown(before)
