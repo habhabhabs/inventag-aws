@@ -10,8 +10,8 @@ sidebar_position: 1
 
 **读完后你可以：** 写出任意 InvenTag 命令行，并知道哪些参数现在可用。
 
-本页与这一版文档所描述的发行版的 `inventag --help` 一致。运行 `inventag --help` 可查看你已安装的发行版的参数。**状态**列说明我们针对模拟 AWS 离线运行该参数时看到的结果。
-“未重新测试”表示我们没有为本页运行它。详情见[功能状态](../getting-started/status.md)。
+本页与这一版文档所描述的发行版的 `inventag --help` 一致。运行 `inventag --help` 可查看你已安装的发行版的参数。**状态**列说明针对模拟 AWS 的离线测试显示的结果。
+“未测试”表示还没有测试覆盖该行所述的内容。“仅限模拟的 Google”表示测试使用的是模拟的 Google 客户端。详情见[功能状态](../getting-started/status.md)。
 
 ## 命令 {#commands}
 
@@ -25,6 +25,9 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 ```
 
 `inventag` 命令在 Linux、macOS 和 Windows 上的用法相同。
+
+未针对 Windows 或 macOS 验证：`inventag` 命令的行为与在 Linux 上相同。
+
 `templates` 必须是程序名之后的第一个词。
 
 ## 模板 {#templates}
@@ -56,17 +59,19 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 |---|---|---|---|
 | `--create-excel` | 没有其他输出参数时为开 | 可用 | 写出 `multi_account_bom_<timestamp>.xlsx`。 |
 | `--create-word` | 关 | 可用 | 写出 `multi_account_bom_<timestamp>.docx`。 |
-| `--create-google-docs` | 关 | 可用（仅限模拟客户端） | 把 Word 报告创建为 Google 文档。需要 Google 附加组件（`pip install "inventag-aws[google]"`）。见 [Google Sheets 和 Docs](../guides/google-sheets-and-docs.md)。 |
-| `--create-google-sheets` | 关 | 可用（仅限模拟客户端） | 把 Excel 报告创建为 Google Sheets 电子表格。 |
-| `--google-credentials FILE` | 无 | 可用（仅限模拟客户端） | 服务账号密钥文件。不给出时使用应用默认凭证（Application Default Credentials）。 |
-| `--google-oauth-client FILE` | 无 | 可用（仅限模拟客户端） | OAuth 客户端文件；你在浏览器中登录。 |
-| `--google-folder-id ID` | 无 | 可用（仅限模拟客户端） | 存放文件的 Drive 文件夹。 |
-| `--google-share-with EMAIL` | 无 | 可用（仅限模拟客户端） | 与该地址共享。可重复指定以添加更多地址。 |
-| `--google-share-role ROLE` | `reader` | 可用（仅限模拟客户端） | `reader`、`commenter` 或 `writer`。 |
-| `--google-share-anyone` | 关 | 可用（仅限模拟客户端） | 任何拿到链接的人都可以读取。不加此参数时文件是私有的。 |
-| `--google-title TITLE` | 带日期的名称 | 可用（仅限模拟客户端） | Google 文件的标题。 |
+| `--create-google-docs` | 关 | 仅限模拟的 Google | 把 Word 报告创建为 Google 文档。需要 Google 附加组件（`pip install "inventag-aws[google]"`）。见 [Google Sheets 和 Docs](../guides/google-sheets-and-docs.md)。 |
+| `--create-google-sheets` | 关 | 仅限模拟的 Google | 把 Excel 报告创建为 Google Sheets 电子表格。 |
+| `--google-credentials FILE` | 无 | 仅限模拟的 Google | 服务账号密钥文件。不给出时使用应用默认凭证（Application Default Credentials）。 |
+| `--google-oauth-client FILE` | 无 | 仅限模拟的 Google | OAuth 客户端文件；你在浏览器中登录。 |
+| `--google-folder-id ID` | 无 | 仅限模拟的 Google | 存放文件的 Drive 文件夹。 |
+| `--google-share-with EMAIL` | 无 | 仅限模拟的 Google | 与该地址共享。可重复指定以添加更多地址。 |
+| `--google-share-role ROLE` | `reader` | 仅限模拟的 Google | `reader`、`commenter` 或 `writer`。 |
+| `--google-share-anyone` | 关 | 仅限模拟的 Google | 任何拿到链接的人都可以读取。不加此参数时文件是私有的。 |
+| `--google-title TITLE` | 带日期的名称 | 仅限模拟的 Google | Google 文件的标题。 |
 | `--output-directory DIR` | `bom_output` | 可用 | 存放所有输出文件的文件夹。 |
 | `--per-account-reports` | 关 | 可用 | 每个账户写出一个 `<account-id>_bom_<timestamp>` 文件，而不是一份合并的报告。 |
+
+未针对真实的 Google 验证：此表中的 Google 参数会创建、共享和输出什么。
 
 ## 扫描什么 {#what-to-scan}
 
@@ -76,7 +81,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | `--account-services LIST` | 全部 | 可用 | 以逗号分隔的服务名称，只有这些服务会保留在报告中，与 Service 列匹配，例如 `EC2,S3`。 |
 | `--account-tags JSON` | 无 | 可用 | 标签筛选，例如 `'{"Environment":"prod"}'`。只保留带有这些标签的资源。 |
 | `--fallback-display auto\|always\|never` | `auto` | 可用 | 是否显示只通过 Resource Groups Tagging API 找到的资源。`auto` 只对自身发现代码没有返回结果的服务显示它们。 |
-| `--hide-fallback-resources` | 关 | 未重新测试 | 等同于 `--fallback-display never`。已弃用。 |
+| `--hide-fallback-resources` | 关 | 可用 | 等同于 `--fallback-display never`。已弃用。 |
 
 ## 分析 {#analysis}
 
@@ -85,7 +90,9 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | `--enable-network-analysis` | 关 | 可用 | 找到 VPC 时，在 Excel 报告中添加 `Network Analysis` 工作表。与 `--template` 一起使用时不添加任何内容。见[网络与安全分析](../guides/network-and-security-analysis.md)。 |
 | `--enable-security-analysis` | 关 | 可用 | 找到安全组时，在 Excel 报告中添加 `Security Analysis` 工作表。与 `--template` 一起使用时不添加任何内容。 |
 | `--enable-cost-analysis` | 关 | 可用 | 在默认工作簿中添加 Cost Analysis 工作表（以及四个 `forgotten_analysis.*` 列）。会额外调用 Cost Explorer、Pricing 和 CloudWatch，即使加了 `--no-billing-validation` 也一样。需要 `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`。费用是根据 AWS Pricing API 得出的估算值，不是你的账单。 |
-| `--billing-validation`, `--no-billing-validation` | 开 | 可用 | 在发现阶段使用 Cost Explorer 找出有支出的服务。AWS 对每次 Cost Explorer 请求收费。`--no-billing-validation` 会停止这些调用。 |
+| `--billing-validation`, `--no-billing-validation` | 开 | 可用 | 在发现阶段使用 Cost Explorer 找出有支出的服务。AWS 对每次 Cost Explorer 请求收费。详见[Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。`--no-billing-validation` 会停止这些调用。 |
+
+未针对真实的 AWS 验证：`--enable-cost-analysis` 只需要这两项额外权限，并且估算值与 AWS 价格一致。
 
 ## 配置文件 {#configuration-files}
 
@@ -95,7 +102,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | `--service-descriptions FILE` | 无 | 可用 | 添加 `service_description` 列。你的条目会替换内置描述。见[配置文件](./configuration-files.md#service-descriptions)。 |
 | `--bom-config FILE` | 无 | 可用 | 从 YAML 或 JSON 文件设置 BOM 处理配置的字段。其他键会被忽略，并给出指明这些键的警告。类型错误的值会以退出码 1 停止，并指明该键。 |
 | `--validate-config` | 关 | 可用 | 加载并检查配置，然后退出。 |
-| `--validate-config-only` | 关 | 可用 | 只检查你指定的文件，然后退出。不会进行任何 AWS 调用。 |
+| `--validate-config-only` | 关 | 可用 | 检查 `--accounts-file`、`--tag-mappings` 和 `--service-descriptions`，然后退出。不会读取 `--bom-config`。不会进行任何 AWS 调用。 |
 
 ## 报告版式文件 {#report-layout-files}
 
@@ -133,7 +140,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 
 | 参数 | 默认值 | 状态 | 功能 |
 |---|---|---|---|
-| `--fail-on-account-error` | 关 | 可用 | 有账户未能完整扫描时以退出码 5 结束。报告仍会写出。 |
+| `--fail-on-account-error` | 关 | 可用 | 有账户无法扫描或超出时限时，以退出码 5 结束。报告仍会写出。 |
 | `--fail-if-empty` | 关 | 可用 | 没有找到资源或筛选条件把它们全部去掉时，以退出码 6 结束。 |
 
 如果同时满足多个条件，先是 5，然后是 6，然后是 3，最后是 4。退出码 3、4 和 5 会写出报告。
@@ -144,7 +151,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | 参数 | 默认值 | 状态 | 功能 |
 |---|---|---|---|
 | `--verbose`, `-v` | 关 | 可用 | 显示每一步。 |
-| `--debug`, `-d` | 关 | 可用 | 显示每个 AWS 请求。密钥会被遮蔽。 |
+| `--debug`, `-d` | 关 | 可用 | 显示 AWS 请求。密钥会被遮蔽。 |
 | `--log-file FILE` | 无 | 可用 | 同时把详细日志写入该文件。 |
 | `--disable-account-logging` | 关 | 可用 | 不在日志行前加账户前缀。 |
 
@@ -232,6 +239,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 | `--s3-encryption AES256\|aws:kms` | `AES256` | 可用 | 上传文件使用的服务器端加密。 |
 | `--s3-kms-key-id KEY` | 无 | 可用 | 用于 `aws:kms` 的 KMS 密钥。不给出时，S3 使用 AWS 托管密钥 `aws/s3`。需要 `--s3-encryption aws:kms`，否则退出码 2。 |
 
+未针对真实的 AWS 验证：上传只需要 `s3:PutObject`（使用 `aws:kms` 时还需要 `kms:GenerateDataKey`）。
+
+未针对 AWS 验证：`aws:kms` 没有密钥 ID 时，S3 是否使用 AWS 托管密钥 `aws/s3`。
+
 见[按计划把报告上传到 S3](../examples/scheduled-s3-upload.md)。
 
 ## 退出码 {#exit-codes}
@@ -239,9 +250,9 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 | 代码 | 含义 |
 |---|---|
 | 0 | 成功。部分账户失败但其他账户正常，以及没有找到任何资源时，也是 0，除非你传入 `--fail-on-account-error` 或 `--fail-if-empty`。见[功能状态](../getting-started/status.md#when-a-run-goes-wrong)。 |
-| 1 | 出错：参数、配置或模板无效，凭证失败，所有账户都失败（包括有些只扫描了一部分），S3 上传失败，或某种报告格式无法写出 |
+| 1 | 出错：参数、配置或模板无效，数值超出范围（例如 `--max-concurrent-accounts 0`），凭证失败，所有账户都失败（无法扫描或超出时限），S3 上传失败，或某种报告格式无法写出 |
 | 2 | 命令行无效：未知、格式错误或相互冲突的选项，尚未实现的参数，Google 选项有误，版式文件参数缺少它所需的报告，或给了角色名称但没有 `--accounts-file` |
 | 3 | 报告已写出，但带有 `fail_on_tag_violations: true` 的配置模板发现了标签策略违规 |
 | 4 | 报告已写出，但 `--risk-threshold` 发现有安全组规则达到或超过该级别 |
-| 5 | 报告已写出，但有账户未能完整扫描，并且你传入了 `--fail-on-account-error` |
+| 5 | 报告已写出，但有账户无法扫描或超出时限，并且你传入了 `--fail-on-account-error` |
 | 6 | 没有可报告的资源，并且你传入了 `--fail-if-empty` |

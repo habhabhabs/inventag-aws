@@ -14,8 +14,9 @@ InvenTag et savoir quelles options fonctionnent aujourd’hui.
 Cette page correspond à `inventag --help` de la version que décrit cette version
 de la documentation. Exécutez `inventag --help` pour voir les options de la version
 installée chez vous. La colonne **État**
-indique ce que nous avons observé en exécutant l’option hors ligne sur un AWS simulé.
-« Non retesté » signifie que nous ne l’avons pas exécutée pour cette page. Les détails
+indique ce que montre un test hors ligne sur un AWS simulé.
+« Non testé » signifie qu’aucun test ne couvre encore ce que dit la ligne. « Google simulé
+uniquement » signifie que les tests utilisent des clients Google simulés. Les détails
 se trouvent sur la page [État des fonctionnalités](../getting-started/status.md).
 
 ## Commandes {#commands}
@@ -30,6 +31,9 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 ```
 
 La commande `inventag` fonctionne de la même façon sous Linux, macOS et Windows.
+
+Non vérifié sur Windows ni sur macOS : la commande `inventag` fonctionne comme sous Linux.
+
 `templates` doit être le premier mot après le nom du programme.
 
 ## Modèles {#templates}
@@ -61,17 +65,19 @@ La commande `inventag` fonctionne de la même façon sous Linux, macOS et Window
 |---|---|---|---|
 | `--create-excel` | activé si aucune autre option de sortie | Fonctionne | Écrit `multi_account_bom_<timestamp>.xlsx`. |
 | `--create-word` | désactivé | Fonctionne | Écrit `multi_account_bom_<timestamp>.docx`. |
-| `--create-google-docs` | désactivé | Fonctionne (clients simulés uniquement) | Crée le rapport Word sous forme de Google Doc. Nécessite le module complémentaire Google (`pip install "inventag-aws[google]"`). Voir [Google Sheets et Docs](../guides/google-sheets-and-docs.md). |
-| `--create-google-sheets` | désactivé | Fonctionne (clients simulés uniquement) | Crée le rapport Excel sous forme de feuille de calcul Google Sheets. |
-| `--google-credentials FILE` | aucun | Fonctionne (clients simulés uniquement) | Fichier de clé de compte de service. Sans lui, les identifiants par défaut de l’application (Application Default Credentials) sont utilisés. |
-| `--google-oauth-client FILE` | aucun | Fonctionne (clients simulés uniquement) | Fichier de client OAuth ; vous vous connectez dans le navigateur. |
-| `--google-folder-id ID` | aucun | Fonctionne (clients simulés uniquement) | Dossier Drive pour les fichiers. |
-| `--google-share-with EMAIL` | aucun | Fonctionne (clients simulés uniquement) | Partage avec cette adresse. À répéter pour en ajouter d’autres. |
-| `--google-share-role ROLE` | `reader` | Fonctionne (clients simulés uniquement) | `reader`, `commenter` ou `writer`. |
-| `--google-share-anyone` | désactivé | Fonctionne (clients simulés uniquement) | Toute personne disposant du lien peut lire. Sans cette option, les fichiers sont privés. |
-| `--google-title TITLE` | nom daté | Fonctionne (clients simulés uniquement) | Titre des fichiers Google. |
+| `--create-google-docs` | désactivé | Google simulé uniquement | Crée le rapport Word sous forme de Google Doc. Nécessite le module complémentaire Google (`pip install "inventag-aws[google]"`). Voir [Google Sheets et Docs](../guides/google-sheets-and-docs.md). |
+| `--create-google-sheets` | désactivé | Google simulé uniquement | Crée le rapport Excel sous forme de feuille de calcul Google Sheets. |
+| `--google-credentials FILE` | aucun | Google simulé uniquement | Fichier de clé de compte de service. Sans lui, les identifiants par défaut de l’application (Application Default Credentials) sont utilisés. |
+| `--google-oauth-client FILE` | aucun | Google simulé uniquement | Fichier de client OAuth ; vous vous connectez dans le navigateur. |
+| `--google-folder-id ID` | aucun | Google simulé uniquement | Dossier Drive pour les fichiers. |
+| `--google-share-with EMAIL` | aucun | Google simulé uniquement | Partage avec cette adresse. À répéter pour en ajouter d’autres. |
+| `--google-share-role ROLE` | `reader` | Google simulé uniquement | `reader`, `commenter` ou `writer`. |
+| `--google-share-anyone` | désactivé | Google simulé uniquement | Toute personne disposant du lien peut lire. Sans cette option, les fichiers sont privés. |
+| `--google-title TITLE` | nom daté | Google simulé uniquement | Titre des fichiers Google. |
 | `--output-directory DIR` | `bom_output` | Fonctionne | Dossier de tous les fichiers de sortie. |
 | `--per-account-reports` | désactivé | Fonctionne | Un fichier `<account-id>_bom_<timestamp>` par compte au lieu d’un rapport consolidé. |
+
+Non vérifié sur un vrai Google : ce que les options Google de ce tableau créent, partagent et affichent.
 
 ## Ce qu’il faut analyser {#what-to-scan}
 
@@ -81,7 +87,7 @@ La commande `inventag` fonctionne de la même façon sous Linux, macOS et Window
 | `--account-services LIST` | tous | Fonctionne | Noms de services séparés par des virgules qui sont conservés dans le rapport, comparés à la colonne Service, par exemple `EC2,S3`. |
 | `--account-tags JSON` | aucun | Fonctionne | Filtre d’étiquettes, par exemple `'{"Environment":"prod"}'`. Seules les ressources portant ces étiquettes sont conservées. |
 | `--fallback-display auto\|always\|never` | `auto` | Fonctionne | Indique s’il faut afficher les ressources trouvées uniquement par l’API Resource Groups Tagging. `auto` ne les affiche que pour les services dont leur propre code de découverte n’a donné aucun résultat. |
-| `--hide-fallback-resources` | désactivé | Non retesté | Identique à `--fallback-display never`. Obsolète. |
+| `--hide-fallback-resources` | désactivé | Fonctionne | Identique à `--fallback-display never`. Obsolète. |
 
 ## Analyse {#analysis}
 
@@ -90,7 +96,9 @@ La commande `inventag` fonctionne de la même façon sous Linux, macOS et Window
 | `--enable-network-analysis` | désactivé | Fonctionne | Ajoute une feuille `Network Analysis` au rapport Excel lorsque des VPC sont trouvés. N’ajoute rien avec `--template`. Voir [Analyse du réseau et de la sécurité](../guides/network-and-security-analysis.md). |
 | `--enable-security-analysis` | désactivé | Fonctionne | Ajoute une feuille `Security Analysis` au rapport Excel lorsque des groupes de sécurité sont trouvés. N’ajoute rien avec `--template`. |
 | `--enable-cost-analysis` | désactivé | Fonctionne | Ajoute une feuille Cost Analysis (et les quatre colonnes `forgotten_analysis.*`) au classeur par défaut. Effectue des appels supplémentaires à Cost Explorer, Pricing et CloudWatch, y compris avec `--no-billing-validation`. Nécessite `pricing:GetProducts` et `cloudwatch:GetMetricStatistics`. Les coûts sont des estimations de l’API AWS Pricing, pas votre facture. |
-| `--billing-validation`, `--no-billing-validation` | activé | Fonctionne | Utilise Cost Explorer pendant la découverte pour repérer les services qui génèrent des dépenses. AWS facture chaque requête Cost Explorer. `--no-billing-validation` arrête ces appels. |
+| `--billing-validation`, `--no-billing-validation` | activé | Fonctionne | Utilise Cost Explorer pendant la découverte pour repérer les services qui génèrent des dépenses. AWS facture chaque requête Cost Explorer. Voir les [tarifs de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). `--no-billing-validation` arrête ces appels. |
+
+Non vérifié sur un vrai AWS : `--enable-cost-analysis` nécessite uniquement ces deux autorisations supplémentaires, et les estimations correspondent aux prix AWS.
 
 ## Fichiers de configuration {#configuration-files}
 
@@ -100,7 +108,7 @@ La commande `inventag` fonctionne de la même façon sous Linux, macOS et Window
 | `--service-descriptions FILE` | aucun | Fonctionne | Ajoute une colonne `service_description`. Votre entrée remplace la description intégrée. Voir [Fichiers de configuration](./configuration-files.md#service-descriptions). |
 | `--bom-config FILE` | aucun | Fonctionne | Définit des champs de la configuration de traitement de la nomenclature (BOM) à partir d’un fichier YAML ou JSON. Les autres clés sont ignorées, avec un avertissement qui les nomme. Une valeur du mauvais type s’arrête avec le code de sortie 1 et nomme la clé. |
 | `--validate-config` | désactivé | Fonctionne | Charge et vérifie la configuration, puis s’arrête. |
-| `--validate-config-only` | désactivé | Fonctionne | Vérifie uniquement les fichiers que vous indiquez, puis s’arrête. N’effectue aucun appel AWS. |
+| `--validate-config-only` | désactivé | Fonctionne | Vérifie `--accounts-file`, `--tag-mappings` et `--service-descriptions`, puis s’arrête. Ne lit pas `--bom-config`. N’effectue aucun appel AWS. |
 
 ## Fichiers de mise en page des rapports {#report-layout-files}
 
@@ -139,7 +147,7 @@ un fichier YAML ou JSON. Voir [Fichiers de mise en page pour un rapport](../temp
 
 | Option | Par défaut | État | Ce qu’elle fait |
 |---|---|---|---|
-| `--fail-on-account-error` | désactivé | Fonctionne | Se termine avec le code 5 quand un compte n’a pas pu être analysé entièrement. Les rapports sont quand même écrits. |
+| `--fail-on-account-error` | désactivé | Fonctionne | Se termine avec le code 5 quand un compte n’a pas pu être analysé ou a dépassé le temps imparti. Les rapports sont quand même écrits. |
 | `--fail-if-empty` | désactivé | Fonctionne | Se termine avec le code 6 quand aucune ressource n’a été trouvée ou que les filtres les ont toutes retirées. |
 
 Si plusieurs codes s’appliquent, le 5 passe en premier, puis le 6, puis le 3,
@@ -152,7 +160,7 @@ et une exécution sans elle n’écrit aucun fichier.
 | Option | Par défaut | État | Ce qu’elle fait |
 |---|---|---|---|
 | `--verbose`, `-v` | désactivé | Fonctionne | Affiche chaque étape. |
-| `--debug`, `-d` | désactivé | Fonctionne | Affiche chaque requête AWS. Les secrets sont masqués. |
+| `--debug`, `-d` | désactivé | Fonctionne | Affiche les requêtes AWS. Les secrets sont masqués. |
 | `--log-file FILE` | aucun | Fonctionne | Écrit aussi un journal détaillé dans ce fichier. |
 | `--disable-account-logging` | désactivé | Fonctionne | Ne préfixe pas les lignes du journal avec le compte. |
 
@@ -241,6 +249,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 | `--s3-encryption AES256\|aws:kms` | `AES256` | Fonctionne | Chiffrement côté serveur des fichiers téléversés. |
 | `--s3-kms-key-id KEY` | aucun | Fonctionne | Clé KMS pour `aws:kms`. Sans elle, S3 utilise la clé gérée par AWS `aws/s3`. Nécessite `--s3-encryption aws:kms`, sinon code de sortie 2. |
 
+Non vérifié sur un vrai AWS : le téléversement nécessite uniquement `s3:PutObject` (et `kms:GenerateDataKey` avec `aws:kms`).
+
+Non vérifié sur AWS : que S3 utilise la clé gérée par AWS `aws/s3` lorsque `aws:kms` n’a pas d’ID de clé.
+
 Voir [Téléverser des rapports vers S3 selon un calendrier](../examples/scheduled-s3-upload.md).
 
 ## Codes de sortie {#exit-codes}
@@ -248,9 +260,9 @@ Voir [Téléverser des rapports vers S3 selon un calendrier](../examples/schedul
 | Code | Signification |
 |---|---|
 | 0 | Succès. Vaut aussi 0 lorsque certains comptes ont échoué mais que d’autres ont fonctionné, et lorsqu’aucune ressource n’a été trouvée, sauf si vous passez `--fail-on-account-error` ou `--fail-if-empty`. Voir [État des fonctionnalités](../getting-started/status.md#when-a-run-goes-wrong). |
-| 1 | Une erreur : arguments, configuration ou modèle non valides, échec des identifiants, échec de tous les comptes (y compris quand certains n’ont été analysés qu’en partie), échec d’un téléversement S3, ou format de rapport impossible à écrire |
+| 1 | Une erreur : arguments, configuration ou modèle non valides, un nombre hors limites (par exemple `--max-concurrent-accounts 0`), échec des identifiants, échec de tous les comptes (impossible à analyser ou temps imparti dépassé), échec d’un téléversement S3, ou format de rapport impossible à écrire |
 | 2 | Ligne de commande non valide : options inconnues, mal formées ou incompatibles, options non implémentées, options Google incorrectes, option de fichier de mise en page sans le rapport dont elle a besoin, ou nom de rôle sans `--accounts-file` |
 | 3 | Rapports écrits, mais un modèle de configuration avec `fail_on_tag_violations: true` a trouvé des violations de la politique d’étiquetage |
 | 4 | Rapports écrits, mais `--risk-threshold` a trouvé une règle de groupe de sécurité égale ou supérieure à ce niveau |
-| 5 | Rapports écrits, mais un compte n’a pas pu être analysé entièrement, et vous avez passé `--fail-on-account-error` |
+| 5 | Rapports écrits, mais un compte n’a pas pu être analysé ou a dépassé le temps imparti, et vous avez passé `--fail-on-account-error` |
 | 6 | Aucune ressource à signaler, et vous avez passé `--fail-if-empty` |
