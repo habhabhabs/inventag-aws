@@ -21,7 +21,7 @@ avec la trace de chaque appel AWS qu’elle a effectué.
   aussi la valeur par défaut de `--s3-key-prefix`. Avec un autre préfixe, modifiez
   la ressource ;
 
-  Non vérifié sur un vrai AWS : l’instruction n’autorise l’envoi qu’avec le chiffrement côté serveur.
+  Non vérifié sur un vrai AWS : que l’instruction n’autorise le téléversement qu’avec le chiffrement côté serveur.
 
 - un planificateur : cron, une planification CI ou équivalent.
 

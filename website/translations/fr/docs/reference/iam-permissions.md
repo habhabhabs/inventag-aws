@@ -66,7 +66,7 @@ un chiffrement côté serveur. Remplacez `YOUR-REPORTS-BUCKET-NAME` par le nom d
 ou supprimez l’instruction si vous n’utilisez pas
 `--s3-bucket`. Si vous utilisez un autre `--s3-key-prefix`, modifiez aussi la ressource.
 
-Non vérifié sur un vrai AWS : l’instruction n’autorise le téléversement qu’avec un chiffrement côté serveur.
+Non vérifié sur un vrai AWS : que l’instruction n’autorise le téléversement qu’avec le chiffrement côté serveur.
 
 ## Vérifier une politique {#check-a-policy}
 

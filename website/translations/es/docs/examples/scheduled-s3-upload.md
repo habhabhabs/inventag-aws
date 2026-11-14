@@ -21,7 +21,7 @@ S3, cifrados, con un registro de cada llamada a AWS que hizo.
   también el valor predeterminado de `--s3-key-prefix`. Si usas otro prefijo, cambia
   el recurso;
 
-  No verificado contra AWS real: la declaración solo permite la subida con cifrado en el servidor.
+  No verificado contra AWS real: que la instrucción permita la carga solo con cifrado del lado del servidor.
 
 - un programador: cron, una programación de CI o similar.
 

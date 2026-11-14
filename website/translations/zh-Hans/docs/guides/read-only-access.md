@@ -75,7 +75,7 @@ InvenTag 还会调用 `account:ListRegions`，但仅在 `ec2:DescribeRegions` �
 其中的 `OptionalS3ReportUpload` 语句允许带服务端加密的 `s3:PutObject`，用于 `--s3-bucket`。
 请把 `YOUR-REPORTS-BUCKET-NAME` 替换为你的存储桶；如果不上传报告，就删除这条语句。
 
-未针对 真实的 AWS 验证：该语句只在使用服务端加密时才允许上传。
+未针对真实的 AWS 验证：该语句仅在使用服务器端加密时才允许上传。
 
 如果缺少某个列举操作，InvenTag 会为该服务记录一条警告，并在没有它的资源的情况下继续：
 

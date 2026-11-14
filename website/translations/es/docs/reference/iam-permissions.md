@@ -66,7 +66,7 @@ cifrado del lado del servidor. Pon el nombre de tu bucket en lugar de
 `YOUR-REPORTS-BUCKET-NAME`, o quita la instrucción si no usas
 `--s3-bucket`. Si usas otro `--s3-key-prefix`, cambia también el recurso.
 
-No verificado contra AWS real: la instrucción permite la carga solo con cifrado del lado del servidor.
+No verificado contra AWS real: que la instrucción permita la carga solo con cifrado del lado del servidor.
 
 ## Comprueba una política {#check-a-policy}
 
