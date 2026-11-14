@@ -1366,6 +1366,15 @@ def test_word_report_six_columns_name_or_source_account_name(tmp_path):
         "Service",
         "Source Account Name",
     ]
+    # Mixed: one resource of the service has a name, so Name stays.
+    assert _word_headers(tmp_path, named + unnamed)[-1] == [
+        "Name",
+        "Id",
+        "Type",
+        "Region",
+        "Tags",
+        "Service",
+    ]
 
 
 def test_config_template_gives_the_same_accounts_as_an_accounts_file(

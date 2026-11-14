@@ -719,8 +719,8 @@ def test_associated_resources_counts_ec2_lambda_and_rds_in_a_subnet_and_load_bal
 
 
 def test_associated_resources_does_not_count_an_elasticache_cluster(empty_aws):
-    # Register defect: a cache cluster names only its subnet group, so it is
-    # counted in neither the VPC nor the subnet. The page does not list it.
+    # Register row A-59: a cache cluster names only its subnet group, so it is
+    # counted in neither the VPC nor the subnet. The status page lists it.
     analyzer, vpc, sub, _ = _subnet_estate_in_moto()
     counted = (
         analyzer.subnet_cache[sub].associated_resources
