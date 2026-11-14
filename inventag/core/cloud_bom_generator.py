@@ -643,9 +643,9 @@ class CloudBOMGenerator:
 
     def _read_nothing_notes(self) -> List[str]:
         return [
-            f"Account {acc_id}: every service listing was denied or failed; "
-            "nothing was read from its service APIs. It is left out of change "
-            "tracking."
+            f"Every service listing of account {acc_id} was denied or failed, "
+            "so nothing was read from its service APIs and it is left out of "
+            "change tracking."
             for acc_id in self._accounts_that_read_nothing()
         ]
 
