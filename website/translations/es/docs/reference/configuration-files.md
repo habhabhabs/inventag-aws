@@ -68,12 +68,18 @@ Para usar el mismo nombre de rol en todas las cuentas, omite `role_arn` y añade
 Un archivo de cuentas roto detiene la ejecución antes de analizar. Por ejemplo, un
 ID de cuenta sin comillas (datos de ejemplo):
 
-```text title="Terminal"
+```text title="Salida"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
 inventag - ERROR - ❌ Some configuration files have validation errors
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Salida"
 1
 ```
 

@@ -62,12 +62,18 @@ settings:                              # optional
 
 損壞的帳戶檔案會在掃描之前就讓執行停止。例如，沒有加引號的帳戶 ID（範例資料）：
 
-```text title="Terminal"
+```text title="輸出"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
 inventag - ERROR - ❌ Some configuration files have validation errors
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="輸出"
 1
 ```
 
