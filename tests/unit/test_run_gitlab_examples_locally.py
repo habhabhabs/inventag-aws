@@ -98,3 +98,24 @@ def test_expected_status_follows_gitlab_allow_failure_rules():
 
 def test_missing_gitlab_ci_local_is_reported_for_a_clean_skip():
     assert any("gitlab-ci-local" in m for m in runner.missing_prerequisites(None))
+
+
+# --- work folder names ----------------------------------------------------
+
+
+def test_two_pages_with_a_block_on_the_same_line_get_different_work_folders():
+    a = runner.work_name({"path": "docs/guides/a.md", "line": 12})
+    b = runner.work_name({"path": "docs/guides/b.md", "line": 12})
+    c = runner.work_name({"path": "docs/guides/a.md", "line": 40})
+    assert len({a, b, c}) == 3
+
+
+def test_work_folder_names_differ_when_slugs_of_two_paths_are_equal():
+    a = runner.work_name({"path": "docs/a-b/c.md", "line": 3})
+    b = runner.work_name({"path": "docs/a/b-c.md", "line": 3})
+    assert a != b
+
+
+def test_work_folder_name_is_one_safe_path_segment():
+    name = runner.work_name({"path": "docs/a b/ü.md", "line": 3})
+    assert "/" not in name and " " not in name and name.isascii()

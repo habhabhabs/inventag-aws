@@ -37,6 +37,7 @@ artifacts were collected; 1 otherwise.
 """
 
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -76,6 +77,16 @@ class JobResult(NamedTuple):
     job: str
     label: str  # PASS, WARN or FAIL, as gitlab-ci-local printed it
     exit_code: int
+
+
+def work_name(block: Dict[str, Any]) -> str:
+    """A folder-name part that is unique per page path and line: the readable
+    slug of the path, the line, and a short hash of the exact path (two paths
+    can have the same slug)."""
+    path = str(block["path"])
+    slug = re.sub(r"[^A-Za-z0-9]+", "-", path).strip("-")[-60:]
+    digest = hashlib.sha1(path.encode("utf-8")).hexdigest()[:8]
+    return f"{slug}-{digest}-{block['line']}"
 
 
 def rewrite_install(doc: Dict[Any, Any], install_cmd: str) -> Dict[Any, Any]:
@@ -212,8 +223,8 @@ def _artifacts(project: Path, job: str) -> List[str]:
 
 def _prepare_project(block: Dict[str, Any], doc: Dict[Any, Any], work: Path) -> Path:
     """A git repository holding the rewritten block and its config templates."""
-    project = work / f"block-{block['line']}"
-    site = work / f"site-{block['line']}"
+    project = work / f"block-{work_name(block)}"
+    site = work / f"site-{work_name(block)}"
     project.mkdir()
     install = (
         f'"{sys.executable}" -m pip install --quiet --no-deps --target "{site}" '
@@ -317,10 +328,10 @@ def run_block(block: Dict[str, Any], gcl: str, endpoint: str, work: Path) -> boo
     doc = yaml.safe_load(block["body"])
     tokens = id_token_names(doc)
     project = _prepare_project(block, doc, work)
-    site = work / f"site-{block['line']}"
+    site = work / f"site-{work_name(block)}"
     _seed(endpoint)
     output = _run_gitlab_ci_local(project, site, gcl, endpoint, tokens)
-    log = work / f"block-{block['line']}.log"
+    log = work / f"block-{work_name(block)}.log"
     log.write_text(output)
     roles = _assumed_roles(endpoint)
     title = block["info"] or "(no title)"
