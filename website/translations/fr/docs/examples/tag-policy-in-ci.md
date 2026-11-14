@@ -36,7 +36,6 @@ spec:
 
 ```bash title="Terminal"
 inventag --template ci-pipeline
-echo $?
 ```
 
 ## Sortie {#output}
@@ -95,6 +94,105 @@ for x in r['non_compliant_resources'][:10]:
 
 `acme-reports` possède toutes les étiquettes, mais deux valeurs sont erronées. La liste `invalid`
 du fichier JSON et la colonne Problems du classeur indiquent lesquelles.
+
+## GitLab CI/CD {#gitlab-cicd}
+
+La même vérification peut s’exécuter comme un job GitLab CI/CD dans les pipelines de requêtes de fusion. **La vérification lit AWS tel qu’il est maintenant. Elle ne lit pas les modifications de la requête de fusion.**
+
+Configurez d’abord le rôle et la variable CI/CD : voir [Exécuter InvenTag en CI/CD](../guides/run-in-ci.md#gitlab-cicd). Les jobs de requêtes de fusion ont besoin d’un second rôle, comme l’explique le troisième point ci-dessous.
+
+Non vérifié sur un runner GitLab ni sur un vrai compte AWS : ce pipeline n’a pas été exécuté sur GitLab. Son YAML et sa ligne de commande `inventag` sont vérifiés à la construction de la documentation. Son job a été exécuté en local avec gitlab-ci-local 4.77.1 (avec un substitut de rsync) contre un AWS simulé, avec un jeton factice.
+
+```yaml
+# .gitlab-ci.yml
+stages:
+  - check
+
+tag-policy:
+  stage: check
+  image: python:3.12
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  timeout: 1 hour                             # the ID token expires with the job
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: sts.amazonaws.com
+  variables:
+    AWS_DEFAULT_REGION: us-east-1
+  script:
+    - pip install "inventag-aws==%INVENTAG_VERSION%"   # pin a release
+    - export AWS_WEB_IDENTITY_TOKEN_FILE="$(mktemp)"
+    - printf '%s' "$GITLAB_OIDC_TOKEN" > "$AWS_WEB_IDENTITY_TOKEN_FILE"
+    # Exit code 3 (tag policy violations) fails this job.
+    # Exit code 5 (an account could not be scanned) and 6 (no resources found) fail it too.
+    - inventag --template ci-pipeline --fail-on-account-error --fail-if-empty
+  artifacts:
+    when: always                              # keep the reports when the job fails
+    paths:
+      - bom_output/
+    expire_in: 1 week
+
+security-groups:
+  stage: check
+  image: python:3.12
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  timeout: 1 hour
+  allow_failure:
+    exit_codes: 4                             # warn only; delete these two lines to block on exit code 4
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: sts.amazonaws.com
+  variables:
+    AWS_DEFAULT_REGION: us-east-1
+  script:
+    - pip install "inventag-aws==%INVENTAG_VERSION%"
+    - export AWS_WEB_IDENTITY_TOKEN_FILE="$(mktemp)"
+    - printf '%s' "$GITLAB_OIDC_TOKEN" > "$AWS_WEB_IDENTITY_TOKEN_FILE"
+    - inventag --create-excel --enable-security-analysis --risk-threshold HIGH --fail-on-account-error --fail-if-empty
+  artifacts:
+    when: always
+    paths:
+      - bom_output/
+    expire_in: 1 week
+```
+
+### Ce que fait chaque code de sortie {#what-each-exit-code-does}
+
+Ce que GitLab fait de chaque code de sortie d’InvenTag dans ce fichier :
+
+| Code de sortie | Job `tag-policy` | Job `security-groups` |
+|---|---|---|
+| 0 | réussit | réussit |
+| 3 (violations de la politique d’étiquetage) | **échoue**, comme l’exemple GitHub Actions | ne se produit pas (cette commande n’a pas de politique d’étiquetage) |
+| 4 (règle de groupe de sécurité à `HIGH` ou au-dessus) | ne se produit pas (pas de `--risk-threshold`) | « autorisé à échouer » : le job affiche un avertissement, le pipeline continue et compte comme réussi ([GitLab](https://docs.gitlab.com/ci/yaml/#allow_failureexit_codes)) |
+| 5 (un compte n’a pas pu être analysé ; `--fail-on-account-error`), 6 (aucune ressource trouvée ; `--fail-if-empty`) | échoue | échoue : le code n’est pas dans `exit_codes`, donc `allow_failure` est faux pour lui |
+| 1, 2 | échoue | échoue |
+
+### Ce que fait chaque partie {#what-each-part-does}
+
+Les lignes que tous les exemples GitLab ont en commun (`image`, `timeout`, `id_tokens`, les deux lignes du jeton et `artifacts`) sont dans le tableau de [Exécuter InvenTag en CI/CD](../guides/run-in-ci.md#gitlab-cicd). Ce tableau donne les parties propres à cet exemple :
+
+| Partie | Ce qu’elle fait |
+|---|---|
+| `rules: - if: $CI_PIPELINE_SOURCE == "merge_request_event"` | Le job s’exécute uniquement dans les pipelines de requêtes de fusion ([GitLab](https://docs.gitlab.com/ci/pipelines/merge_request_pipelines/)). |
+| `inventag --template ci-pipeline --fail-on-account-error --fail-if-empty` | La commande de cette page plus les deux options à activer. Les codes de sortie 5 et 6 l’emportent sur 3 (l’ordre est 5, 6, 3, 4) : une exécution avec un compte qui n’a pas pu être analysé, ou sans ressource, n’est donc jamais présentée comme « sans violation ». Un appel de service qui échoue dans un compte atteint ne donne pas 5. Dans l’exécution locale, ce job s’est terminé en échec avec le code de sortie 3 et ses fichiers de rapport ont été collectés. |
+| `allow_failure: exit_codes: 4` | Seul le code de sortie 4 est toléré. Avec tout autre code non nul, le job échoue comme d’habitude. Pour bloquer la requête de fusion avec le code 4, supprimez les deux lignes. Pour lancer le job `tag-policy` en mode avertissement, donnez-lui `allow_failure:` avec `exit_codes: 3` de la même façon, ou gardez `fail_on_tag_violations: false`, comme le dit « Étapes suivantes » ([GitLab](https://docs.gitlab.com/ci/yaml/#allow_failureexit_codes)). Dans l’exécution locale, `security-groups` s’est terminé avec un avertissement et le code de sortie 4. |
+| `inventag --create-excel --enable-security-analysis --risk-threshold HIGH ...` | Code de sortie 4 quand une règle de groupe de sécurité est à `HIGH` ou au-dessus. `--risk-threshold` a besoin de `--enable-security-analysis`, sinon le code de sortie est 2. Il n’y a pas de `--template` ici, car `--enable-security-analysis` n’ajoute rien avec `--template` (voir la [référence de la CLI](../reference/cli.md)). Ce job analyse toutes les régions activées. |
+
+Ce qui n’est pas vérifié :
+
+- Non vérifié sur GitLab ou AWS : l’émission du jeton d’ID par GitLab et son acceptation par AWS pour le rôle, avec les conditions de la politique de confiance sur `aud` et `sub`.
+- Non vérifié sur GitLab : `image`, `timeout`, `expire_in` et `cache` (gitlab-ci-local les ignore).
+- Non vérifié sur GitLab : l’effet d’un job en échec, ou d’un job autorisé à échouer, sur les jobs suivants, l’état du pipeline et la requête de fusion.
+
+### Trois choses à savoir {#three-things-to-know}
+
+1. **La vérification lit AWS tel qu’il est maintenant. Elle ne lit pas les modifications de la requête de fusion.** Les commandes ne donnent à InvenTag rien du dépôt, hormis ses fichiers de modèle. Chaque job analyse le compte une fois : un pipeline de requête de fusion fait donc deux analyses. Par défaut, chaque exécution utilise aussi Cost Explorer, et AWS facture chaque requête Cost Explorer ; `--no-billing-validation` arrête ces appels (voir la [référence de la CLI](../reference/cli.md)).
+2. **Un job en échec ne bloque la fusion que si le projet l’exige.** Activez **Settings > Merge requests > Merge checks > Pipelines must succeed**. Il faut le rôle Maintainer ou Owner ([GitLab](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)).
+3. **Dans un pipeline de requête de fusion, le jeton d’ID nomme la branche source, pas `main`** ([GitLab](https://docs.gitlab.com/ci/secrets/id_token_authentication/)). Un rôle dont la politique de confiance n’autorise que `ref:main` refuse ces jobs. Créez pour eux un second rôle en lecture seule, sans l’instruction de téléversement (`s3:PutObject`). La politique de confiance de ce cas est dans [Exécuter InvenTag en CI/CD](../guides/run-in-ci.md#gitlab-cicd). Toute personne qui peut pousser une branche dans le projet et ouvrir une requête de fusion peut exécuter un job avec ce rôle, et peut modifier le script du job dans sa branche. Le rôle est en lecture seule : elle peut donc lire ce qu’InvenTag peut lire. Ne réutilisez pas le rôle de vos jobs planifiés.
+   - Une variable CI/CD protégée n’est transmise à un pipeline de requête de fusion que si la branche source et la branche cible sont toutes deux protégées, sont dans le même projet, et que l’utilisateur peut fusionner dans la branche cible. Elle n’est jamais transmise depuis un fork ([GitLab](https://docs.gitlab.com/ci/pipelines/merge_request_pipelines/)). Ne protégez donc pas `AWS_ROLE_ARN` pour ces jobs.
+   - L’exemple lit `AWS_ROLE_ARN`, ce qui convient à un projet qui n’a que ces jobs de requête de fusion. Un projet qui exécute aussi des jobs planifiés avec le premier rôle a besoin d’un second nom de variable pour le second rôle. Cet exemple ne montre pas comment l’associer.
 
 ## Étapes suivantes {#next-steps}
 
