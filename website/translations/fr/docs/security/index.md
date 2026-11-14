@@ -46,7 +46,9 @@ mainteneur un canal privé.
   identifiants. Elle n’autorise que ces quatre appels non signés :
   `sso:GetRoleCredentials`, `sso-oidc:CreateToken`,
   `sts:AssumeRoleWithWebIdentity` et `signin:CreateOAuth2Token`. Un client signé qui
-  fait le même appel est bloqué. Non vérifié sur AWS IAM Identity Center : les appels de connexion qu’envoie un vrai SDK.
+  fait le même appel est bloqué.
+
+  Non vérifié sur AWS IAM Identity Center : les appels de connexion qu’envoie un vrai SDK.
 - **Il masque les valeurs secrètes des réponses autorisées.** Les valeurs des
   champs qui contiennent souvent des secrets, comme les variables d’environnement
   Lambda, les données utilisateur EC2 ou les valeurs de paramètres CloudFormation,
@@ -58,7 +60,9 @@ mainteneur un canal privé.
   Slack, Microsoft Teams ou une Prometheus Pushgateway, mais uniquement vers des adresses
   que vous configurez vous-même.
 - **Ses fichiers sont privés.** Les rapports, instantanés et journaux sont créés lisibles
-  par votre seul utilisateur. Non vérifié sur Windows : fichiers lisibles uniquement par votre utilisateur.
+  par votre seul utilisateur.
+
+  Non vérifié sur Windows : fichiers lisibles uniquement par votre utilisateur.
 - **Ses journaux masquent les secrets.** Les jetons de session, les clés, les signatures de requête et les
   valeurs masquées ci-dessus sont cachés, même avec `--debug`.
 

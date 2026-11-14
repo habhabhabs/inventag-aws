@@ -45,7 +45,9 @@ your AWS credentials
 
 1. **Credentials.** InvenTag uses the normal AWS credential chain: a profile,
    environment variables, an IAM Identity Center (SSO) session or an IAM role.
-   It can also assume a role in other accounts. Not verified against AWS IAM Identity Center: sign-in with a real SSO session.
+   It can also assume a role in other accounts.
+
+   Not verified against AWS IAM Identity Center: sign-in with a real SSO session.
 2. **Discovery.** For each account and region it calls read-only AWS
    application programming interfaces (APIs). By default it also calls Cost
    Explorer `GetCostAndUsage` to spot services that have spend. AWS charges for

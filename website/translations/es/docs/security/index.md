@@ -46,7 +46,9 @@ persona mantenedora un canal privado.
   `aws login` por credenciales. Solo permite estas cuatro llamadas sin firmar:
   `sso:GetRoleCredentials`, `sso-oidc:CreateToken`,
   `sts:AssumeRoleWithWebIdentity` y `signin:CreateOAuth2Token`. Un cliente
-  firmado que haga la misma llamada queda bloqueado. No verificado contra AWS IAM Identity Center: las llamadas de inicio de sesión que envía un SDK real.
+  firmado que haga la misma llamada queda bloqueado.
+
+  No verificado contra AWS IAM Identity Center: las llamadas de inicio de sesión que envía un SDK real.
 - **Oculta los valores secretos de las respuestas permitidas.** Los valores de
   los campos que suelen contener secretos, como las variables de entorno de
   Lambda, los datos de usuario de EC2 o los valores de parámetros de
@@ -58,7 +60,9 @@ persona mantenedora un canal privado.
   biblioteca de Python puede publicar en Slack, Microsoft Teams o un
   Prometheus Pushgateway, pero solo en las direcciones que configures tú.
 - **Sus archivos son privados.** Los informes, las instantáneas y los registros
-  se crean legibles solo para tu usuario. No verificado contra Windows: archivos legibles solo por tu usuario.
+  se crean legibles solo para tu usuario.
+
+  No verificado contra Windows: archivos legibles solo por tu usuario.
 - **Sus registros ocultan los secretos.** Los tokens de sesión, las claves, las
   firmas de solicitud y los valores ocultos indicados arriba se enmascaran,
   incluso con `--debug`.

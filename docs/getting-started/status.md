@@ -266,9 +266,11 @@ InvenTag retries a throttled call up to 10 times (standard retry mode);
   scan.** Use only templates you trust.
 - **Assumed-role sessions are not refreshed**, so an account scan that outlasts
   the session runs into an expired token.
+
   Not verified against real AWS: assumed-role sessions last one hour.
 - **MFA works only through AWS profiles** (`mfa_serial`), not for `role_arn`
   entries in an accounts file.
+
   Not verified against a real MFA device: MFA through an AWS profile with `mfa_serial`.
 
 ## Tests and the software bill of materials

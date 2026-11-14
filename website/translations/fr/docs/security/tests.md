@@ -74,7 +74,9 @@ développement complet : [Contribuer à InvenTag](../development/CONTRIBUTING.md
 ## Ce qui est vérifié par ailleurs {#what-else-is-checked}
 
 - **Le site de documentation** est construit en CI. La construction échoue sur un lien cassé,
-  et une vérification d’accessibilité s’exécute sur les pages construites. Non vérifié sur un runner GitHub Actions : la construction de la documentation et ses vérifications ; elles sont lues dans le fichier de workflow.
+  et une vérification d’accessibilité s’exécute sur les pages construites.
+
+  Non vérifié sur un runner GitHub Actions : la construction de la documentation et ses vérifications ; elles sont lues dans le fichier de workflow.
 - **Les dépendances** sont analysées à la recherche de vulnérabilités connues. Voir
   [Sécurité](./index.md#how-dependencies-are-checked) et la
   [nomenclature logicielle](./sbom.md).

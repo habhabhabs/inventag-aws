@@ -284,9 +284,11 @@ standard) ; `AWS_RETRY_MODE` et `AWS_MAX_ATTEMPTS` modifient ce réglage.
   comptes et rôles à analyser.** N’utilisez que des modèles de confiance.
 - **Les sessions de rôle assumé ne sont pas renouvelées**, donc l’analyse d’un
   compte qui dépasse la durée de la session rencontre un jeton expiré.
+
   Non vérifié sur un vrai AWS : les sessions de rôle assumé durent une heure.
 - **La MFA ne fonctionne que par les profils AWS** (`mfa_serial`), pas pour les
   entrées `role_arn` d’un fichier de comptes.
+
   Non vérifié sur un vrai dispositif MFA : la MFA par un profil AWS avec `mfa_serial`.
 
 ## Tests et nomenclature logicielle {#tests-and-the-software-bill-of-materials}

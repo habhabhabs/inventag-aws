@@ -68,6 +68,8 @@ pytest
 
 ## 還檢查什麼 {#what-else-is-checked}
 
-- **文件網站**在 CI 中建置。遇到失效連結時建置會失敗，並且會對建置出的頁面執行無障礙檢查。未針對 GitHub Actions Runner 驗證：文件建置及其檢查；它們讀自工作流檔案。
+- **文件網站**在 CI 中建置。遇到失效連結時建置會失敗，並且會對建置出的頁面執行無障礙檢查。
+
+  未針對 GitHub Actions Runner 驗證：文件建置及其檢查；它們讀自工作流檔案。
 - **依賴項**會被掃描已知漏洞。參見[安全](./index.md#how-dependencies-are-checked)和
   [軟體物料清單](./sbom.md)。

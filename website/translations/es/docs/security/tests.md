@@ -77,7 +77,9 @@ de desarrollo completo: [Contribuir a InvenTag](../development/CONTRIBUTING.md).
 
 - **El sitio de documentación** se compila en CI. La compilación falla ante un
   enlace roto y se ejecuta una comprobación de accesibilidad sobre las páginas
-  compiladas. No verificado contra un runner de GitHub Actions: la compilación de la documentación y sus comprobaciones; se leen del archivo de flujo de trabajo.
+  compiladas.
+
+  No verificado contra un runner de GitHub Actions: la compilación de la documentación y sus comprobaciones; se leen del archivo de flujo de trabajo.
 - **Las dependencias** se analizan en busca de vulnerabilidades conocidas.
   Consulta [Seguridad](./index.md#how-dependencies-are-checked) y la
   [lista de materiales de software](./sbom.md).

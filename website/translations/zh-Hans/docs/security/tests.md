@@ -68,6 +68,8 @@ pytest
 
 ## 还检查什么 {#what-else-is-checked}
 
-- **文档网站**在 CI 中构建。遇到失效链接时构建会失败，并且会对构建出的页面运行无障碍检查。未针对 GitHub Actions Runner 验证：文档构建及其检查；它们读自工作流文件。
+- **文档网站**在 CI 中构建。遇到失效链接时构建会失败，并且会对构建出的页面运行无障碍检查。
+
+  未针对 GitHub Actions Runner 验证：文档构建及其检查；它们读自工作流文件。
 - **依赖项**会被扫描已知漏洞。参见[安全](./index.md#how-dependencies-are-checked)和
   [软件物料清单](./sbom.md)。

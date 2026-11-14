@@ -33,14 +33,18 @@ sidebar_position: 1
 - **登入仍然可用。** 防護允許 AWS SDK 把 IAM Identity Center（SSO）、Web 身份或 `aws login`
   權杖換成憑證。它只允許以下四個未簽名的呼叫：`sso:GetRoleCredentials`、
   `sso-oidc:CreateToken`、`sts:AssumeRoleWithWebIdentity` 和 `signin:CreateOAuth2Token`。
-  已簽名的客戶端發出同樣的呼叫會被攔截。未針對 AWS IAM Identity Center 驗證：真實 SDK 發出的登入呼叫。
+  已簽名的客戶端發出同樣的呼叫會被攔截。
+
+  未針對 AWS IAM Identity Center 驗證：真實 SDK 發出的登入呼叫。
 - **它會遮蓋允許的回應中的機密值。** 常用於存放機密的欄位（例如 Lambda 環境變數、EC2 使用者資料或
   CloudFormation 引數值）的值，在報告、快照和日誌中會變成 `***REDACTED***`。名稱會保留。
   參見[功能狀態](../getting-started/status.md#what-inventag-finds-and-what-it-does-not)。
 - **它不傳送使用資料。** InvenTag 沒有遙測。命令列工具只與 AWS 通訊，使用 Google 選項時也會與 Google 通訊。
   Python 庫中可選的 CI 輔助功能可以向 Slack、Microsoft Teams 或 Prometheus Pushgateway 傳送訊息，
   但只會傳送到你自己設定的地址。
-- **它的檔案是私有的。** 報告、快照和日誌建立時只有你的使用者可讀。未針對 Windows 驗證：檔案只有你的使用者可讀。
+- **它的檔案是私有的。** 報告、快照和日誌建立時只有你的使用者可讀。
+
+  未針對 Windows 驗證：檔案只有你的使用者可讀。
 - **它的日誌會隱藏機密。** 會話權杖、金鑰、請求籤名以及上面提到的被遮蓋的值都會被隱藏，即使使用 `--debug` 也是如此。
 
 你可以用 `--audit-output audit.json` 檢查一次執行做了什麼，用 `--validate-operations`

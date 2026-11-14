@@ -74,7 +74,9 @@ environment: [Contribute to InvenTag](../development/CONTRIBUTING.md).
 ## What else is checked
 
 - **The documentation site** is built in CI. The build fails on a broken link,
-  and an accessibility check runs on the built pages. Not verified against a GitHub Actions runner: the documentation build and its checks; they are read from the workflow file.
+  and an accessibility check runs on the built pages.
+
+  Not verified against a GitHub Actions runner: the documentation build and its checks; they are read from the workflow file.
 - **Dependencies** are scanned for known vulnerabilities. See
   [Security](./index.md#how-dependencies-are-checked) and the
   [software bill of materials](./sbom.md).

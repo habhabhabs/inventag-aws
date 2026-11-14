@@ -42,7 +42,9 @@ your AWS credentials
 ```
 
 1. **憑證。** InvenTag 使用標準的 AWS 憑證鏈：設定檔、環境變數、
-   IAM Identity Center（SSO）會話或 IAM 角色。它也可以在其他帳戶中擔任角色。未針對 AWS IAM Identity Center 驗證：使用真實 SSO 會話登入。
+   IAM Identity Center（SSO）會話或 IAM 角色。它也可以在其他帳戶中擔任角色。
+
+   未針對 AWS IAM Identity Center 驗證：使用真實 SSO 會話登入。
 2. **發現。** 對每個帳戶和區域，它呼叫唯讀的 AWS 應用程式程式設計介面（API）。
    預設情況下，它還會呼叫 Cost Explorer 的 `GetCostAndUsage`，找出產生費用的服務。
    AWS 會對 Cost Explorer API 請求收費；`--no-billing-validation` 可關閉這些呼叫。

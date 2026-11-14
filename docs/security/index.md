@@ -46,7 +46,9 @@ maintainer for a private channel.
   only these four unsigned calls: `sso:GetRoleCredentials`,
   `sso-oidc:CreateToken`, `sts:AssumeRoleWithWebIdentity` and
   `signin:CreateOAuth2Token`. A signed client that makes the same call is
-  blocked. Not verified against AWS IAM Identity Center: the sign-in calls a real SDK sends.
+  blocked.
+
+  Not verified against AWS IAM Identity Center: the sign-in calls a real SDK sends.
 - **It masks secret values in allowed answers.** Values of fields that often
   hold secrets, such as Lambda environment variables, EC2 user data or
   CloudFormation parameter values, become `***REDACTED***` in reports,
@@ -57,7 +59,9 @@ maintainer for a private channel.
   Slack, Microsoft Teams or a Prometheus Pushgateway, but only to addresses
   you configure yourself.
 - **Its files are private.** Reports, snapshots and logs are created readable
-  by your user only. Not verified against Windows: files readable by your user only.
+  by your user only.
+
+  Not verified against Windows: files readable by your user only.
 - **Its logs hide secrets.** Session tokens, keys, request signatures and the
   masked values above are hidden, even with `--debug`.
 
