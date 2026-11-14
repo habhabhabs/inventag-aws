@@ -1,0 +1,405 @@
+#!/usr/bin/env python3
+"""Run the GitLab CI/CD examples in docs/ locally with gitlab-ci-local and moto.
+
+For every GitLab block that scripts/docs/check_ci_examples.py finds, this:
+  - writes the block as .gitlab-ci.yml in a new git repository in a temp dir;
+  - replaces `pip install "inventag-aws..."` with a pip install of this
+    checkout (into a private --target dir, so your environment is untouched);
+  - creates each `--template NAME` that is not built in with
+    `inventag templates init ci-pipeline` (step 2 of the CI guides);
+  - starts a moto server on 127.0.0.1, seeds an EC2 instance and an S3 bucket,
+    and points the job at it with AWS_ENDPOINT_URL;
+  - gives every id_tokens variable an unsigned dummy JWT (gitlab-ci-local
+    leaves id_tokens variables unset), so the AWS SDK's web identity path
+    (AWS_ROLE_ARN + AWS_WEB_IDENTITY_TOKEN_FILE) calls moto's
+    sts:AssumeRoleWithWebIdentity;
+  - runs the pipeline with `gitlab-ci-local --force-shell-executor` as a
+    scheduled pipeline (image: is ignored; jobs run on this host).
+
+It prints, in the per-block form of `check_ci_examples.py --report`, one line
+per job: result, exit code, collected artifacts and the role moto issued.
+
+What this does NOT prove (gitlab-ci-local ignores or emulates it): GitLab
+signing the token, AWS checking its claims, retry, timeout, cache, expire_in,
+the image, and artifact passing between jobs. gitlab-ci-local 4.77.1 also
+treats any `allow_failure: {exit_codes: [...]}` job as allowed at pipeline
+level, so this script reads each job's own PASS/WARN/FAIL line, not
+gitlab-ci-local's exit status.
+
+Needs: gitlab-ci-local (on PATH or --gitlab-ci-local), rsync, and moto with
+its server extra (`pip install "moto[server]"`) in the Python running this.
+Without them it prints SKIP and exits 0. Not wired into any workflow.
+
+Exit status: 0 when every job ended as its YAML says it should (PASS for exit
+0, WARN for an exit code listed in allow_failure, FAIL otherwise), the exit
+code is one InvenTag documents for a pipeline (0, 3, 4, 5, 6) and declared
+artifacts were collected; 1 otherwise.
+"""
+
+import argparse
+import json
+import logging
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import urllib.request
+from pathlib import Path
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple
+
+import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import check_ci_examples  # noqa: E402
+
+REPO = Path(__file__).resolve().parents[2]
+BUILTIN_TEMPLATES = REPO / "inventag" / "templating" / "builtin"
+PIPELINE_EXIT_CODES = {0, 3, 4, 5, 6}
+JOB_TIMEOUT_S = 900
+# header.payload.signature with alg "none": moto does not check the signature.
+DUMMY_JWT = "eyJhbGciOiJub25lIn0.eyJzdWIiOiJwcm9qZWN0X3BhdGg6ZG9jcy9leGFtcGxlIn0."
+
+_PIP_INSTALL = re.compile(
+    r"""(?:python3?\s+-m\s+)?pip3?\s+install\s+(?:-\S+\s+)*"""
+    r"""["']?inventag-aws(?:\[[^\]]*\])?(?:[=<>~!]=?[^"'\s]*)?["']?"""
+)
+_TEMPLATE_ARG = re.compile(r"--template[ =](\S+)")
+_JOB_FINISHED = re.compile(
+    r"^(?P<job>\S+)\s+finished in .*?(?:\s(?P<label>FAIL|WARN)\s+(?P<code>\d+))?\s*$"
+)
+_JOB_SUMMARY = re.compile(r"^\s(?P<label>PASS|WARN|FAIL)\s+(?P<job>\S+)")
+
+
+class JobResult(NamedTuple):
+    job: str
+    label: str  # PASS, WARN or FAIL, as gitlab-ci-local printed it
+    exit_code: int
+
+
+def rewrite_install(doc: Dict[Any, Any], install_cmd: str) -> Dict[Any, Any]:
+    """Copy of doc with each `pip install inventag-aws...` in a script list
+    (script, before_script, after_script of jobs and default) replaced."""
+
+    def fix(lines: Any) -> Any:
+        if isinstance(lines, str):
+            return _PIP_INSTALL.sub(lambda _m: install_cmd, lines)
+        if isinstance(lines, list):
+            return [fix(line) for line in lines]
+        return lines
+
+    out: Dict[Any, Any] = {}
+    for key, value in doc.items():
+        if isinstance(value, dict):
+            value = {
+                k: fix(v) if k in ("script", "before_script", "after_script") else v
+                for k, v in value.items()
+            }
+        out[key] = value
+    return out
+
+
+def template_names(body: str) -> List[str]:
+    """Names given to --template in the block, in order, without duplicates."""
+    names: List[str] = []
+    for name in _TEMPLATE_ARG.findall(body):
+        name = name.strip("\"'")
+        if name not in names:
+            names.append(name)
+    return names
+
+
+def id_token_names(doc: Dict[Any, Any]) -> List[str]:
+    """Variable names declared under id_tokens in any job or in default."""
+    names: List[str] = []
+    for key, job in doc.items():
+        if isinstance(job, dict) and isinstance(job.get("id_tokens"), dict):
+            names += [n for n in job["id_tokens"] if n not in names]
+    return names
+
+
+def parse_results(output: str) -> List[JobResult]:
+    """Per job: gitlab-ci-local's PASS/WARN/FAIL label and the job's exit code."""
+    codes: Dict[str, int] = {}
+    labels: Dict[str, str] = {}
+    for line in output.splitlines():
+        m = _JOB_FINISHED.match(line)
+        if m:
+            codes[m["job"]] = int(m["code"]) if m["code"] else 0
+            continue
+        m = _JOB_SUMMARY.match(line)
+        if m:
+            labels[m["job"]] = m["label"]
+    return [JobResult(job, labels[job], codes.get(job, -1)) for job in labels]
+
+
+def expected_label(job: Dict[Any, Any], exit_code: int) -> str:
+    """The job status GitLab documents for this exit code and allow_failure."""
+    if exit_code == 0:
+        return "PASS"
+    allow = job.get("allow_failure", False)
+    if allow is True:
+        return "WARN"
+    if isinstance(allow, dict):
+        codes = allow.get("exit_codes", [])
+        codes = codes if isinstance(codes, list) else [codes]
+        if exit_code in codes:
+            return "WARN"
+    return "FAIL"
+
+
+def missing_prerequisites(gcl: Optional[str]) -> List[str]:
+    missing = []
+    if not gcl:
+        missing.append(
+            "gitlab-ci-local not found (npm install gitlab-ci-local in a scratch "
+            "directory, then pass --gitlab-ci-local or put it on PATH)"
+        )
+    if not shutil.which("rsync"):
+        missing.append("rsync not found (gitlab-ci-local needs it for every job run)")
+    try:
+        import flask  # noqa: F401
+        import moto.server  # noqa: F401
+    except ImportError:
+        missing.append('moto server mode not installed (pip install "moto[server]")')
+    return missing
+
+
+def _seed(endpoint: str) -> None:
+    import boto3
+
+    kw = dict(
+        endpoint_url=endpoint,
+        region_name="us-east-1",
+        aws_access_key_id="testing",
+        aws_secret_access_key="testing",
+    )
+    urllib.request.urlopen(urllib.request.Request(f"{endpoint}/moto-api/reset", b""))
+    ec2 = boto3.client("ec2", **kw)
+    image = ec2.describe_images(Owners=["amazon"])["Images"][0]["ImageId"]
+    ec2.run_instances(
+        ImageId=image,
+        MinCount=1,
+        MaxCount=1,
+        InstanceType="t3.micro",
+        TagSpecifications=[
+            {"ResourceType": "instance", "Tags": [{"Key": "Name", "Value": "web-1"}]}
+        ],
+    )
+    boto3.client("s3", **kw).create_bucket(Bucket="inventag-docs-example")
+
+
+def _assumed_roles(endpoint: str) -> List[str]:
+    with urllib.request.urlopen(f"{endpoint}/moto-api/data.json") as resp:
+        data = json.load(resp)
+    return sorted(
+        {r.get("role_arn", "?") for r in data.get("sts", {}).get("AssumedRole", [])}
+    )
+
+
+def _artifacts(project: Path, job: str) -> List[str]:
+    safe = re.sub(r"[^\w-]+", "-", job)
+    root = project / ".gitlab-ci-local" / "artifacts" / safe
+    if not root.is_dir():
+        return []
+    return sorted(
+        str(p.relative_to(root))
+        for p in root.rglob("*")
+        if p.is_file() and ".gitlab-ci-reports" not in p.parts
+    )
+
+
+def _prepare_project(block: Dict[str, Any], doc: Dict[Any, Any], work: Path) -> Path:
+    """A git repository holding the rewritten block and its config templates."""
+    project = work / f"block-{block['line']}"
+    site = work / f"site-{block['line']}"
+    project.mkdir()
+    install = (
+        f'"{sys.executable}" -m pip install --quiet --no-deps --target "{site}" '
+        f'"{REPO}"'
+    )
+    (project / ".gitlab-ci.yml").write_text(
+        yaml.safe_dump(rewrite_install(doc, install), sort_keys=False)
+    )
+    builtin = {p.stem for p in BUILTIN_TEMPLATES.glob("*.yaml")}
+    for name in template_names(block["body"]):
+        if name not in builtin:
+            subprocess.run(
+                [sys.executable, "-m", "inventag.cli.main", "templates", "init"]
+                + ["ci-pipeline", "--output", f".inventag/templates/{name}.yaml"],
+                cwd=project,
+                check=True,
+                capture_output=True,
+            )
+    git = ["git", "-c", "user.name=docs", "-c", "user.email=docs@example.invalid"]
+    for cmd in (["init", "-q"], ["add", "-A"], ["commit", "-qm", "example"]):
+        subprocess.run(git + cmd, cwd=project, check=True)
+    return project
+
+
+def _run_gitlab_ci_local(
+    project: Path, gcl: str, endpoint: str, tokens: List[str]
+) -> str:
+    """Run the pipeline as a scheduled one, with a controlled environment.
+
+    gitlab-ci-local passes the host environment into shell jobs, so only the
+    variables below reach a job: no local AWS credentials or config.
+    """
+    site = project.parent / project.name.replace("block-", "site-")
+    env = {
+        "PATH": os.pathsep.join(
+            [
+                str(site / "bin"),
+                str(Path(sys.executable).parent),
+                str(Path(gcl).resolve().parent),
+                os.environ.get("PATH", "/usr/bin:/bin"),
+            ]
+        ),
+        "HOME": str(project.parent),
+        "PYTHONPATH": str(site),
+        "AWS_CONFIG_FILE": os.devnull,
+        "AWS_SHARED_CREDENTIALS_FILE": os.devnull,
+        "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+        "LANG": "C.UTF-8",
+    }
+    variables = {"CI_PIPELINE_SOURCE": "schedule", "AWS_ENDPOINT_URL": endpoint}
+    variables.update({n: DUMMY_JWT for n in tokens})
+    if not tokens:
+        variables.update(AWS_ACCESS_KEY_ID="testing", AWS_SECRET_ACCESS_KEY="testing")
+    args = [gcl, "--force-shell-executor", "--no-color"]
+    args += ["--ignore-predefined-vars", "CI_PIPELINE_SOURCE"]
+    for k, v in variables.items():
+        args += ["--variable", f"{k}={v}"]
+    proc = subprocess.run(
+        args,
+        cwd=project,
+        env=env,
+        capture_output=True,
+        text=True,
+        errors="replace",
+        timeout=JOB_TIMEOUT_S,
+    )
+    return proc.stdout + proc.stderr
+
+
+def _job_line(
+    r: JobResult, job: Dict[str, Any], files: List[str], roles: List[str], tokens
+) -> Tuple[bool, str]:
+    """One evidence line for a job, and whether it ended as its YAML says."""
+    problems = []
+    want = expected_label(job, r.exit_code)
+    if r.label != want:
+        problems.append(f"expected {want} for exit {r.exit_code}")
+    if r.exit_code not in PIPELINE_EXIT_CODES:
+        problems.append("exit code is not a documented pipeline outcome")
+    if job.get("artifacts", {}).get("paths") and not files:
+        problems.append("no artifacts collected")
+    if tokens and not roles:
+        problems.append("no role assumed through web identity")
+    if tokens:
+        creds = "web identity, moto role " + (", ".join(roles) or "none")
+    else:
+        creds = "dummy static keys"
+    shown = ", ".join(files[:4]) + (", ..." if len(files) > 4 else "")
+    evidence = (
+        f"result {r.label}, exit {r.exit_code}; artifacts {len(files)} file(s)"
+        f"{': ' + shown if files else ''}; credentials: {creds}"
+    )
+    if problems:
+        evidence += "; PROBLEM: " + "; ".join(problems)
+    return (
+        not problems,
+        f"  {'FAIL' if problems else 'PASS'} local-run:{r.job}  {evidence}",
+    )
+
+
+def run_block(block: Dict[str, Any], gcl: str, endpoint: str, work: Path) -> bool:
+    doc = yaml.safe_load(block["body"])
+    tokens = id_token_names(doc)
+    project = _prepare_project(block, doc, work)
+    _seed(endpoint)
+    output = _run_gitlab_ci_local(project, gcl, endpoint, tokens)
+    log = work / f"block-{block['line']}.log"
+    log.write_text(output)
+    roles = _assumed_roles(endpoint)
+    title = block["info"] or "(no title)"
+    print(f"block {block['path']}:{block['line']} [gitlab] {title}")
+    results = parse_results(output)
+    if not results:
+        print(f"  FAIL local-run  no job ran; log {log}")
+        return False
+    ok = True
+    source = f"<{_gcl_version(gcl)}, shell executor, moto server>"
+    for r in results:
+        job_ok, line = _job_line(
+            r, doc.get(r.job, {}), _artifacts(project, r.job), roles, tokens
+        )
+        ok = ok and job_ok
+        print(f"{line}  {source}")
+    return ok
+
+
+_VERSIONS: Dict[str, str] = {}
+
+
+def _gcl_version(gcl: str) -> str:
+    if gcl not in _VERSIONS:
+        out = subprocess.run([gcl, "--version"], capture_output=True, text=True)
+        _VERSIONS[gcl] = f"gitlab-ci-local {out.stdout.strip()}"
+    return _VERSIONS[gcl]
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--docs", type=Path, default=REPO / "docs")
+    ap.add_argument(
+        "--gitlab-ci-local",
+        default=os.environ.get("GITLAB_CI_LOCAL") or shutil.which("gitlab-ci-local"),
+        help="path to the gitlab-ci-local executable (default: env "
+        "GITLAB_CI_LOCAL, else PATH)",
+    )
+    ap.add_argument("--keep", action="store_true", help="keep the work directory")
+    ns = ap.parse_args(argv)
+    missing = missing_prerequisites(ns.gitlab_ci_local)
+    if missing:
+        for m in missing:
+            print(f"SKIP: {m}")
+        return 0
+    blocks = []
+    for md in sorted(ns.docs.rglob("*.md")):
+        for block in check_ci_examples.find_blocks(md.read_text("utf-8")):
+            if check_ci_examples.classify(block) == "gitlab":
+                block["path"] = str(md.relative_to(ns.docs.parent))
+                blocks.append(block)
+    if not blocks:
+        print(f"SKIP: no GitLab example blocks under {ns.docs}")
+        return 0
+    from moto.server import ThreadedMotoServer
+
+    # moto answers unknown requests with a 500 and a traceback: keep it quiet.
+    logging.getLogger("werkzeug").setLevel(logging.CRITICAL)
+    server = ThreadedMotoServer(ip_address="127.0.0.1", port=0, verbose=False)
+    server.start()
+    host, port = server.get_host_and_port()
+    work = Path(tempfile.mkdtemp(prefix="gl-examples-"))
+    try:
+        ok = all(
+            [
+                run_block(b, ns.gitlab_ci_local, f"http://{host}:{port}", work)
+                for b in blocks
+            ]
+        )
+    finally:
+        server.stop()
+        if ns.keep:
+            print(f"work directory kept: {work}")
+        else:
+            shutil.rmtree(work, ignore_errors=True)
+    verdict = "all as expected" if ok else "PROBLEMS above"
+    print(f"{len(blocks)} GitLab example block(s) run locally, {verdict}.")
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
