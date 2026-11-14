@@ -40,6 +40,7 @@ from botocore.exceptions import (
 
 # Import InvenTag components
 from ..discovery import AWSResourceInventory
+from ..discovery.coverage import EMPTY, FAILED_OUTCOMES, OK
 from ..discovery.regions import discover_regions
 from .log_context import account_log_context
 from ..compliance import ComprehensiveTagComplianceChecker
@@ -385,6 +386,9 @@ class CloudBOMGenerator:
                 # run still fails and no snapshot is saved.
                 only_partial = True
 
+            for note in self._read_nothing_notes():
+                self.logger.warning(note)
+
             # Step 3: Consolidate resources if configured
             if self.config.consolidate_accounts:
                 self.logger.info("Consolidating resources from all accounts")
@@ -595,6 +599,34 @@ class CloudBOMGenerator:
                 )
         return failed
 
+    def _accounts_that_read_nothing(self) -> List[str]:
+        """Accounts in which no service-API listing succeeded and at least
+        one was denied or failed (rows of the Tagging API alone do not
+        count). Failed accounts are not included: they are reported as
+        failed."""
+        failed_ids = {item["account_id"] for item in self._failed_accounts()}
+        accounts = []
+        for acc_id, ctx in self.account_contexts.items():
+            if acc_id in failed_ids:
+                continue
+            entries = _coverage_of(ctx)
+            if any(
+                e.get("source") == "service-api" and e.get("outcome") in (OK, EMPTY)
+                for e in entries
+            ):
+                continue
+            if any(e.get("outcome") in FAILED_OUTCOMES for e in entries):
+                accounts.append(acc_id)
+        return accounts
+
+    def _read_nothing_notes(self) -> List[str]:
+        return [
+            f"Account {acc_id}: every service listing was denied or failed; "
+            "nothing was read from its service APIs. It is left out of change "
+            "tracking."
+            for acc_id in self._accounts_that_read_nothing()
+        ]
+
     def _run_notes(self) -> List[str]:
         """Lines for the report: which accounts are missing and why, and
         which accounts come from an earlier, interrupted run (``--resume``)."""
@@ -629,6 +661,7 @@ class CloudBOMGenerator:
             for item in failed:
                 reason = "; ".join(item["errors"])[:300]
                 notes.append(f"{item['account_id']} ({item['account_name']}): {reason}")
+        notes.extend(self._read_nothing_notes())
         if self.reused_accounts:
             notes.append(
                 f"{len(self.reused_accounts)} account(s) were not scanned again: "
@@ -1807,6 +1840,20 @@ class CloudBOMGenerator:
             )
             primary_account = next(iter(self.account_contexts.keys()), "multi-account")
             failed_ids = {item["account_id"] for item in self._failed_accounts()}
+            # An account that read nothing is not a baseline: it is left out
+            # of the comparison like a failed one.
+            read_nothing = set(self._accounts_that_read_nothing())
+            failed_ids |= read_nothing
+            if (
+                read_nothing
+                and not resources
+                and set(self.account_contexts) <= failed_ids
+            ):
+                self.logger.warning(
+                    "No state snapshot was saved: nothing was read in this run. "
+                    "The next change report compares with the last saved one."
+                )
+                return {"state_saved": False, "reason": "nothing was read"}
 
             state_id = state_manager.save_state(
                 resources=resources,
