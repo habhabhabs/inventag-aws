@@ -151,12 +151,18 @@ aws iam simulate-principal-policy \
 
 你也可以问 InvenTag 的防护，它会允许哪些操作（来自离线运行的示例输出）：
 
-```text title="Terminal"
+```text title="输出"
 ALLOWED  ec2:DescribeInstances (read-only prefix)
 ALLOWED  s3:GetBucketTagging (read-only prefix)
 BLOCKED  s3:PutObject (operation is not on the read-only allowlist)
 BLOCKED  secretsmanager:GetSecretValue (operation returns secrets, signed URLs or customer data)
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="输出"
 1
 ```
 

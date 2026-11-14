@@ -162,12 +162,18 @@ Les deux doivent afficher `implicitDeny` ou `explicitDeny`.
 Vous pouvez aussi demander à la protection d’InvenTag quelles opérations elle autoriserait (exemple de
 sortie d’une exécution hors ligne) :
 
-```text title="Terminal"
+```text title="Sortie"
 ALLOWED  ec2:DescribeInstances (read-only prefix)
 ALLOWED  s3:GetBucketTagging (read-only prefix)
 BLOCKED  s3:PutObject (operation is not on the read-only allowlist)
 BLOCKED  secretsmanager:GetSecretValue (operation returns secrets, signed URLs or customer data)
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Sortie"
 1
 ```
 

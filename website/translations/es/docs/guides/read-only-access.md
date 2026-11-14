@@ -166,12 +166,18 @@ Ambas deberían mostrar `implicitDeny` o `explicitDeny`.
 También puedes preguntar a la protección de InvenTag qué operaciones
 permitiría (ejemplo de salida de una ejecución sin conexión):
 
-```text title="Terminal"
+```text title="Salida"
 ALLOWED  ec2:DescribeInstances (read-only prefix)
 ALLOWED  s3:GetBucketTagging (read-only prefix)
 BLOCKED  s3:PutObject (operation is not on the read-only allowlist)
 BLOCKED  secretsmanager:GetSecretValue (operation returns secrets, signed URLs or customer data)
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Salida"
 1
 ```
 
