@@ -166,6 +166,17 @@ _ROUTE_FIELDS = {
 _ORDERED_LISTS = {"Layers", "TerminationPolicies", "CacheBehaviors"}
 
 
+# Fields by which two resources count as related in impact analysis, in the
+# order they are checked.
+_RELATIONSHIP_FIELDS = (
+    "vpc_id",
+    "subnet_id",
+    "security_groups",
+    "iam_role",
+    "kms_key_id",
+)
+
+
 def _found_by_tagging_only(resource: Dict) -> bool:
     """True for a row only the Tagging API returned (v1.1.4 and v1.2.0 shapes)."""
     if resource.get("source"):
@@ -1526,8 +1537,10 @@ class DeltaDetector:
         if not resource_data:
             return related_resources
 
+        rows = new_resources_map.items()
+
         # Check resources that depend on this one
-        for arn, resource in new_resources_map.items():
+        for arn, resource in rows:
             if arn == change.resource_arn:
                 continue
 
@@ -1545,7 +1558,7 @@ class DeltaDetector:
 
         # Check resources that this one affects
         affects = dependency_patterns.get("affects", [])
-        for arn, resource in new_resources_map.items():
+        for arn, resource in rows:
             if arn == change.resource_arn:
                 continue
 
@@ -1559,15 +1572,7 @@ class DeltaDetector:
     def _resources_are_related(self, resource1: Dict, resource2: Dict) -> bool:
         """Check if two resources are actually related"""
         # Check common relationship indicators
-        relationship_fields = [
-            "vpc_id",
-            "subnet_id",
-            "security_groups",
-            "iam_role",
-            "kms_key_id",
-        ]
-
-        for field in relationship_fields:
+        for field in _RELATIONSHIP_FIELDS:
             value1 = resource1.get(field)
             value2 = resource2.get(field)
 
