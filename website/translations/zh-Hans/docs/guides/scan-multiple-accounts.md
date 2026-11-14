@@ -150,6 +150,69 @@ inventag --accounts-file accounts.yaml --create-excel --resume
 InvenTag 会复用同一条命令（相同的账户、区域、服务和筛选条件）保存的、不早于 `--resume-max-age-hours`（默认 24，最多 168）的结果。
 见[失败的运行之后继续](./run-a-scan.md#continue-after-a-failed-run)。
 
+## 在 GitLab CI/CD 流水线中 {#in-a-gitlab-cicd-pipeline}
+
+未针对 GitLab Runner 或真实的 AWS 账户验证：这条流水线尚未在 GitLab 上运行。它的 YAML 和 `inventag` 命令行会在构建文档时检查。它的作业已在本地用 gitlab-ci-local 4.77.1（使用 rsync 的替代程序）针对模拟的 AWS 运行，使用的是虚设令牌。
+
+这个作业按流水线计划扫描 `accounts.yaml` 中的每个账户。它通过 OIDC 登录到一个角色，然后 InvenTag 在每个账户中担任 `InvenTagReadOnly` 角色。该作业使用 `--resume`，所以缓存加上一次 **Retry** 就能完成之前缺少的账户。`accounts.yaml` 会提交到仓库，因此它只能包含账户 ID 和名称，不能包含访问密钥。使用之前：
+
+- 按照[在 CI/CD 中运行 InvenTag](../guides/run-in-ci.md#gitlab-cicd)中的说明，创建 GitLab 用来登录的角色和 CI/CD 变量 `AWS_ROLE_ARN`。该部分也说明了如何创建流水线计划。
+- 给该角色授予对每个账户中 `InvenTagReadOnly` 角色的 `sts:AssumeRole` 权限，并让这些角色都信任它：见[设置只读访问](./read-only-access.md#with-an-iam-role-in-each-account)。策略文件 `config/defaults/iam-policy-read-only.json` 中没有 `sts:AssumeRole` 语句，所以需要你自己添加。
+
+```yaml
+# .gitlab-ci.yml
+stages:
+  - inventory
+
+org-inventory:
+  stage: inventory
+  image: python:3.12
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+  timeout: 3 hours                            # the ID token expires with the job
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: sts.amazonaws.com
+  variables:
+    AWS_DEFAULT_REGION: us-east-1
+  cache:
+    key: inventag-state
+    paths:
+      - bom_output/state/                     # saved results of finished accounts, for --resume
+    when: always                              # save them when the job fails, too
+  script:
+    - pip install "inventag-aws==%INVENTAG_VERSION%"   # pin a release
+    - export AWS_WEB_IDENTITY_TOKEN_FILE="$(mktemp)"
+    - printf '%s' "$GITLAB_OIDC_TOKEN" > "$AWS_WEB_IDENTITY_TOKEN_FILE"
+    - |
+      inventag --accounts-file accounts.yaml --cross-account-role InvenTagReadOnly \
+        --create-excel --resume --resume-max-age-hours 12 \
+        --fail-on-account-error --fail-if-empty
+  artifacts:
+    when: always                              # keep the reports of the accounts that worked
+    paths:
+      - bom_output/
+    expire_in: 30 days
+```
+
+所有 GitLab 示例共有的行，在[在 CI/CD 中运行 InvenTag](../guides/run-in-ci.md#gitlab-cicd)中说明。下表只说明这个示例特有的部分。
+
+| 部分 | 作用 |
+|---|---|
+| `--accounts-file accounts.yaml --cross-account-role InvenTagReadOnly` | 作业通过 OIDC 登录到一个角色。InvenTag 再从该角色出发，在文件中的每个账户里担任 `InvenTagReadOnly` 角色。 |
+| `cache:`，带 `key: inventag-state`、`paths: - bom_output/state/`、`when: always` | InvenTag 会把已完成的账户保存在 `bom_output/state/partial/`（[失败的运行之后继续](./run-a-scan.md#continue-after-a-failed-run)）。新的作业从空文件夹开始，所以由缓存把 `bom_output/state/` 带给下一个作业。`when: always` 让作业失败时也保存缓存；默认只在成功时保存（[GitLab：`cache:when`](https://docs.gitlab.com/ci/yaml/#cachewhen)、[GitLab：缓存](https://docs.gitlab.com/ci/caching/)）。 |
+| `--resume --resume-max-age-hours 12` | 运行失败后，在作业上点击 **Retry**（或等待下一次运行）：只会扫描缺少的账户。选择 `12` 是有意的。若使用默认的 24 小时，下一个夜间运行可能会重用上一晚失败那次运行的结果。没有已保存的结果时，`--resume` 不起任何作用。如果缓存不在，就会重新扫描每个账户：更慢，但不会出错。重用已保存结果的规则见[失败的运行之后继续](./run-a-scan.md#continue-after-a-failed-run)。 |
+| `--fail-on-account-error --fail-if-empty` | 有账户无法扫描时，退出码为 5；没有找到任何资源时，退出码为 6。其他账户的报告会被写出，并由 `artifacts: when: always` 保留（[GitLab：`artifacts:when`](https://docs.gitlab.com/ci/yaml/#artifactswhen)）。 |
+| `timeout: 3 hours` | 作业在 GitLab.com 的 GitLab 托管 Runner 上最长可以运行的时间（[GitLab：托管 Runner](https://docs.gitlab.com/ci/runners/hosted_runners/)）。 |
+
+本地运行没有覆盖的部分：
+
+- 未针对 GitLab 或 AWS 验证：GitLab 签发 ID 令牌，以及 AWS 为该角色接受它，包括信任策略中对 `aud` 和 `sub` 的条件。
+- 未针对 GitLab 验证：`image`、`timeout`、`expire_in` 和 `cache`（gitlab-ci-local 会忽略它们）。
+- 未针对 GitLab 流水线计划验证：本地运行是手动设定流水线来源的。
+- 未针对 AWS 验证：OIDC 角色在每个账户中担任 `InvenTagReadOnly` 角色，使用真实的信任策略。
+
 ## 检查账户文件 {#check-the-accounts-file}
 
 InvenTag 以 UTF-8 文本读取账户文件（有无字节顺序标记均可），文件不能超过 1 MiB。出现以下情况时，它会以退出码 1 停止并指出问题：

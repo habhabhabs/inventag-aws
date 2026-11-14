@@ -162,6 +162,69 @@ InvenTag reutiliza los resultados guardados del mismo comando (mismas cuentas, r
 más antiguos que `--resume-max-age-hours` (por defecto 24, como máximo 168).
 Consulta [Continúa tras una ejecución fallida](./run-a-scan.md#continue-after-a-failed-run).
 
+## En un pipeline de GitLab CI/CD {#in-a-gitlab-cicd-pipeline}
+
+No verificado contra un runner de GitLab ni una cuenta real de AWS: este pipeline no se ha ejecutado en GitLab. Su YAML y su línea de comandos `inventag` se comprueban cuando se compila la documentación. Su job se ejecutó en local con gitlab-ci-local 4.77.1 (con un sustituto de rsync) contra un AWS simulado, con un token ficticio.
+
+Este job analiza todas las cuentas de `accounts.yaml` en una programación de pipelines. Inicia sesión en un solo rol mediante OIDC, y después InvenTag asume el rol `InvenTagReadOnly` en cada cuenta. El job usa `--resume`, así que la caché y un **Retry** pueden terminar las cuentas que faltaban. `accounts.yaml` está en el repositorio, por lo que solo debe contener IDs y nombres de cuenta, y ninguna clave de acceso. Antes de usarlo:
+
+- Crea el rol con el que GitLab inicia sesión y la variable de CI/CD `AWS_ROLE_ARN`, como se describe en [Ejecutar InvenTag en CI/CD](../guides/run-in-ci.md#gitlab-cicd). Esa misma sección explica cómo crear la programación del pipeline.
+- Da a ese rol `sts:AssumeRole` sobre el rol `InvenTagReadOnly` de cada cuenta, y haz que cada uno de esos roles confíe en él: consulta [Configurar el acceso de solo lectura](./read-only-access.md#with-an-iam-role-in-each-account). El archivo de política `config/defaults/iam-policy-read-only.json` no tiene ninguna declaración `sts:AssumeRole`, así que la añades tú.
+
+```yaml
+# .gitlab-ci.yml
+stages:
+  - inventory
+
+org-inventory:
+  stage: inventory
+  image: python:3.12
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+  timeout: 3 hours                            # the ID token expires with the job
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: sts.amazonaws.com
+  variables:
+    AWS_DEFAULT_REGION: us-east-1
+  cache:
+    key: inventag-state
+    paths:
+      - bom_output/state/                     # saved results of finished accounts, for --resume
+    when: always                              # save them when the job fails, too
+  script:
+    - pip install "inventag-aws==%INVENTAG_VERSION%"   # pin a release
+    - export AWS_WEB_IDENTITY_TOKEN_FILE="$(mktemp)"
+    - printf '%s' "$GITLAB_OIDC_TOKEN" > "$AWS_WEB_IDENTITY_TOKEN_FILE"
+    - |
+      inventag --accounts-file accounts.yaml --cross-account-role InvenTagReadOnly \
+        --create-excel --resume --resume-max-age-hours 12 \
+        --fail-on-account-error --fail-if-empty
+  artifacts:
+    when: always                              # keep the reports of the accounts that worked
+    paths:
+      - bom_output/
+    expire_in: 30 days
+```
+
+Las líneas que comparten todos los ejemplos de GitLab se explican en [Ejecutar InvenTag en CI/CD](../guides/run-in-ci.md#gitlab-cicd). Esta tabla cubre lo que es propio de este ejemplo.
+
+| Parte | Qué hace |
+|---|---|
+| `--accounts-file accounts.yaml --cross-account-role InvenTagReadOnly` | El job inicia sesión en un solo rol mediante OIDC. Desde ahí, InvenTag asume el rol `InvenTagReadOnly` en cada cuenta del archivo. |
+| `cache:` con `key: inventag-state`, `paths: - bom_output/state/`, `when: always` | InvenTag guarda las cuentas que terminaron en `bom_output/state/partial/` ([Continúa tras una ejecución fallida](./run-a-scan.md#continue-after-a-failed-run)). Un job nuevo empieza con una carpeta vacía, así que la caché lleva `bom_output/state/` al job siguiente. `when: always` guarda la caché cuando el job falla; por defecto solo se guarda si tiene éxito ([GitLab: `cache:when`](https://docs.gitlab.com/ci/yaml/#cachewhen), [GitLab: caching](https://docs.gitlab.com/ci/caching/)). |
+| `--resume --resume-max-age-hours 12` | Tras una ejecución fallida, pulsa **Retry** en el job (o espera a la siguiente ejecución): solo se analizan las cuentas que faltan. El `12` es a propósito. Con el valor predeterminado de 24 horas, la ejecución de la noche siguiente podría reutilizar los resultados de la noche anterior de una ejecución que falló. Sin resultados guardados, `--resume` no cambia nada. Si la caché no está, se vuelven a analizar todas las cuentas: más lento, nunca incorrecto. Las reglas para reutilizar resultados guardados están en [Continúa tras una ejecución fallida](./run-a-scan.md#continue-after-a-failed-run). |
+| `--fail-on-account-error --fail-if-empty` | Código de salida 5 cuando no se pudo analizar una cuenta; código de salida 6 cuando no se encontró ningún recurso. Los informes de las demás cuentas se escriben y los conserva `artifacts: when: always` ([GitLab: `artifacts:when`](https://docs.gitlab.com/ci/yaml/#artifactswhen)). |
+| `timeout: 3 hours` | Lo máximo que puede durar un job en los runners alojados por GitLab de GitLab.com ([GitLab: hosted runners](https://docs.gitlab.com/ci/runners/hosted_runners/)). |
+
+Partes que la ejecución local no cubrió:
+
+- No verificado contra GitLab ni AWS: que GitLab emita el token de ID y que AWS lo acepte para el rol, con las condiciones de la política de confianza sobre `aud` y `sub`.
+- No verificado contra GitLab: `image`, `timeout`, `expire_in` y `cache` (gitlab-ci-local los ignora).
+- No verificado contra una programación de pipelines de GitLab: la ejecución local fijó a mano el origen del pipeline.
+- No verificado contra AWS: que el rol de OIDC asuma el rol `InvenTagReadOnly` en cada cuenta, con políticas de confianza reales.
+
 ## Comprueba el archivo de cuentas {#check-the-accounts-file}
 
 InvenTag lee el archivo de cuentas como texto UTF-8, con o sin marca de orden de bytes, de hasta 1 MiB.

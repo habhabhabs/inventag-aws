@@ -177,6 +177,69 @@ InvenTag reuses saved results of the same command (same accounts, regions,
 services and filters) that are not older than `--resume-max-age-hours` (default
 24, at most 168). See [Continue after a failed run](./run-a-scan.md#continue-after-a-failed-run).
 
+## In a GitLab CI/CD pipeline
+
+Not verified against a GitLab runner or a real AWS account: this pipeline has not run on GitLab. Its YAML and its `inventag` command line are checked when the docs are built. Its job ran locally with gitlab-ci-local 4.77.1 (with a stand-in for rsync) against mocked AWS, with a dummy token.
+
+This job scans every account of `accounts.yaml` on a pipeline schedule. It signs in to one role through OIDC, and InvenTag then assumes the role `InvenTagReadOnly` in each account. The job uses `--resume`, so the cache and a **Retry** can finish the accounts that were missing. `accounts.yaml` is committed to the repository, so it must hold account IDs and names and no access keys. Before you use it:
+
+- Create the role that GitLab signs in to and the CI/CD variable `AWS_ROLE_ARN`, as described in [Run InvenTag in CI/CD](../guides/run-in-ci.md#gitlab-cicd). The same section explains how to create the pipeline schedule.
+- Give that role `sts:AssumeRole` on the `InvenTagReadOnly` role of each account, and let each of those roles trust it: see [Set up read-only access](./read-only-access.md#with-an-iam-role-in-each-account). The policy file `config/defaults/iam-policy-read-only.json` has no `sts:AssumeRole` statement, so you add one.
+
+```yaml
+# .gitlab-ci.yml
+stages:
+  - inventory
+
+org-inventory:
+  stage: inventory
+  image: python:3.12
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+  timeout: 3 hours                            # the ID token expires with the job
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: sts.amazonaws.com
+  variables:
+    AWS_DEFAULT_REGION: us-east-1
+  cache:
+    key: inventag-state
+    paths:
+      - bom_output/state/                     # saved results of finished accounts, for --resume
+    when: always                              # save them when the job fails, too
+  script:
+    - pip install "inventag-aws==%INVENTAG_VERSION%"   # pin a release
+    - export AWS_WEB_IDENTITY_TOKEN_FILE="$(mktemp)"
+    - printf '%s' "$GITLAB_OIDC_TOKEN" > "$AWS_WEB_IDENTITY_TOKEN_FILE"
+    - |
+      inventag --accounts-file accounts.yaml --cross-account-role InvenTagReadOnly \
+        --create-excel --resume --resume-max-age-hours 12 \
+        --fail-on-account-error --fail-if-empty
+  artifacts:
+    when: always                              # keep the reports of the accounts that worked
+    paths:
+      - bom_output/
+    expire_in: 30 days
+```
+
+The lines that every GitLab example shares are explained in [Run InvenTag in CI/CD](../guides/run-in-ci.md#gitlab-cicd). This table covers what is specific to this example.
+
+| Part | What it does |
+|---|---|
+| `--accounts-file accounts.yaml --cross-account-role InvenTagReadOnly` | The job signs in to one role through OIDC. From there InvenTag assumes the role `InvenTagReadOnly` in each account of the file. |
+| `cache:` with `key: inventag-state`, `paths: - bom_output/state/`, `when: always` | InvenTag saves the accounts that finished in `bom_output/state/partial/` ([Continue after a failed run](./run-a-scan.md#continue-after-a-failed-run)). A new job starts with an empty folder, so the cache carries `bom_output/state/` to the next job. `when: always` saves the cache when the job fails; the default saves it only on success ([GitLab: `cache:when`](https://docs.gitlab.com/ci/yaml/#cachewhen), [GitLab: caching](https://docs.gitlab.com/ci/caching/)). |
+| `--resume --resume-max-age-hours 12` | After a failed run, press **Retry** on the job (or wait for the next run): only the accounts that are missing are scanned. `12` is on purpose. With the default of 24 hours, the next night's run could reuse last night's results of a run that failed. With no saved results, `--resume` changes nothing. If the cache is not there, every account is scanned again: slower, never wrong. The rules for reusing saved results are in [Continue after a failed run](./run-a-scan.md#continue-after-a-failed-run). |
+| `--fail-on-account-error --fail-if-empty` | Exit code 5 when an account could not be scanned; exit code 6 when no resources were found. The reports of the other accounts are written and kept by `artifacts: when: always` ([GitLab: `artifacts:when`](https://docs.gitlab.com/ci/yaml/#artifactswhen)). |
+| `timeout: 3 hours` | The longest a job can run on GitLab-hosted runners of GitLab.com ([GitLab: hosted runners](https://docs.gitlab.com/ci/runners/hosted_runners/)). |
+
+Parts that the local run did not cover:
+
+- Not verified against GitLab or AWS: GitLab issuing the ID token and AWS accepting it for the role, with the trust policy conditions on `aud` and `sub`.
+- Not verified against GitLab: `image`, `timeout`, `expire_in` and `cache` (gitlab-ci-local ignores them).
+- Not verified against a GitLab pipeline schedule: the local run set the pipeline source by hand.
+- Not verified against AWS: the OIDC role assuming the `InvenTagReadOnly` role in each account, with real trust policies.
+
 ## Check the accounts file
 
 InvenTag reads the accounts file as UTF-8 text, with or without a byte order
