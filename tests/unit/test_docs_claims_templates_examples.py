@@ -607,3 +607,196 @@ def test_t18_fail_on_tag_violations_default_and_two_of_a_kind(registry):
 
     with pytest.raises(TemplateError):
         load_templates(["standard-bom", "executive-summary"], registry)
+
+
+# --------------------------------------------------------------------- T19
+def test_t19_layout_flags_error_example_is_what_the_cli_prints(
+    monkeypatch, tmp_path, capsys
+):
+    """The two hand-written error lines in layout-flags.md are real output."""
+    import importlib
+
+    cli_main = importlib.import_module("inventag.cli.main")
+    (tmp_path / "my_word_template.yaml").write_text(
+        'template_version: "2.0"\nformat_type: word\ncolour: red\nsections:\n'
+        "  - id: a\n    content_type: title\n"
+        "  - id: b\n    content_type: resources\n    columns:\n"
+        "      - field: name\n      - field: id\n      - field: owner_name\n"
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "inventag",
+            "--validate-templates",
+            "--word-template",
+            "my_word_template.yaml",
+        ],
+    )
+    with pytest.raises(SystemExit) as stop:
+        cli_main.main()
+    assert stop.value.code == 1
+    shown = (DOCS / "templates" / "layout-flags.md").read_text()
+    for line in capsys.readouterr().err.strip().splitlines():
+        assert line in shown
+
+
+# --------------------------------------------------------------------- T20
+def _s3_upload_run(aws_fixture, monkeypatch, tmp_path, *extra):
+    import boto3
+
+    boto3.client("s3", region_name="us-east-1").create_bucket(Bucket="reports-out")
+    code = run_inventag(
+        monkeypatch,
+        tmp_path,
+        "--template",
+        "ci-pipeline",
+        "--account-regions",
+        "us-east-1",
+        "--s3-bucket",
+        "reports-out",
+        "--s3-key-prefix",
+        "bom-reports/",
+        "--audit-output",
+        "audit.json",
+        *extra,
+    )
+    keys = [
+        o["Key"]
+        for o in boto3.client("s3", region_name="us-east-1").list_objects_v2(
+            Bucket="reports-out"
+        )["Contents"]
+    ]
+    return code, keys
+
+
+def test_t20_s3_upload_key_layout_json_uploaded_and_audit_shows_a_write(
+    aws, monkeypatch, tmp_path
+):
+    """scheduled-s3-upload.md: key layout, the compliance JSON goes too, AES256 by
+    default. FALSE: 'blocked_calls is 0: the run only made read calls' - the audit
+    lists PutObject (an allowed write) when an upload ran."""
+    import boto3
+
+    code, keys = _s3_upload_run(aws, monkeypatch, tmp_path)
+    assert code == 3  # ci-pipeline: the sample estate breaks the policy
+    assert len(keys) == 2
+    for key in keys:
+        assert re.fullmatch(r"bom-reports/\d{8}_\d{6}/[^/]+", key), key
+    assert any(k.endswith(".xlsx") for k in keys)
+    assert any(
+        "tag_compliance_" in k and k.endswith(".json") for k in keys
+    )  # the JSON is uploaded too
+    head = boto3.client("s3", region_name="us-east-1").head_object(
+        Bucket="reports-out", Key=keys[0]
+    )
+    assert head["ServerSideEncryption"] == "AES256"
+    audit = json.loads((tmp_path / "audit.json").read_text())
+    assert audit["blocked_calls"] == 0
+    assert any(
+        o["operation"] == "PutObject" and o["allowed"] for o in audit["operations"]
+    )
+    assert (tmp_path / "bom_output").exists()
+
+
+def test_t20_kms_without_a_key_id_is_sent_as_aws_kms(aws, monkeypatch, tmp_path):
+    """The request InvenTag sends: aws:kms and no key id. What S3 then does (use
+    aws/s3) is AWS behaviour and is not proven here."""
+    import boto3
+
+    code, keys = _s3_upload_run(
+        aws, monkeypatch, tmp_path, "--s3-encryption", "aws:kms"
+    )
+    assert code == 3 and keys
+    head = boto3.client("s3", region_name="us-east-1").head_object(
+        Bucket="reports-out", Key=keys[0]
+    )
+    assert head["ServerSideEncryption"] == "aws:kms"
+
+
+# --------------------------------------------------------------------- T21
+def test_t21_zero_in_scope_resources_print_100_percent(registry):
+    """No page says what happens with zero in-scope resources: the summary line
+    reads '0 of 0 resources compliant (100.0%)' and the JSON has 100.0."""
+    policy = registry.resolve("finops-cost-allocation")
+    only_alias = [
+        {"service": "KMS", "resource_type": "Alias", "resource_id": "a", "tags": {}}
+    ]
+    for resources in ([], only_alias):
+        result = evaluate(resources, policy)
+        assert result.checked == 0
+        assert result.percent_compliant == 100.0
+        assert result.compliant == 0 and result.non_compliant == 0
+
+
+# --------------------------------------------------------------------- T22
+def test_t22_header_fill_contrast_claim_of_the_branded_example():
+    """branded-executive-report.md: '4B2E83 has 10.4:1 contrast with white'."""
+
+    def lum(hex_colour):
+        channels = [int(hex_colour[i : i + 2], 16) / 255 for i in (0, 2, 4)]
+        lin = [
+            c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+            for c in channels
+        ]
+        return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+
+    ratio = (lum("FFFFFF") + 0.05) / (lum("4B2E83") + 0.05)
+    assert round(ratio, 1) == 10.4
+
+
+# --------------------------------------------------------------------- T23
+def test_t23_untitled_adapt_example_validates_and_renders_as_described(
+    tmp_path, registry, resources
+):
+    """adapt-a-template.md step 2: single sheet, green header, three tag columns."""
+    text = (DOCS / "templates" / "adapt-a-template.md").read_text()
+    block = re.search(
+        r"```yaml\nformat_version: 1\nkind: report\nname: acme-bom\n(.*?)```",
+        text,
+        re.S,
+    )
+    body = "format_version: 1\nkind: report\nname: acme-bom\n" + block.group(1)
+    folder = tmp_path / "tpl"
+    folder.mkdir()
+    (folder / "acme-bom.yaml").write_text(body)
+    reg = TemplateRegistry(
+        [SearchDir("project", folder), SearchDir("builtin", BUILTIN_DIR)]
+    )
+    template = reg.resolve("acme-bom")
+    wb = load_workbook(
+        render_excel(str(tmp_path / "r.xlsx"), resources, template, None)
+    )
+    assert wb.sheetnames == ["Summary", "Resources"]
+    header = [c.value for c in wb["Resources"][1]]
+    assert header[-3:] == ["Tag: Owner", "Tag: CostCenter", "Tag: Environment"]
+    assert wb["Resources"]["A1"].fill.start_color.rgb.endswith("0B5D1E")
+
+
+# --------------------------------------------------------------------- T24
+def test_t24_cron_example_command_line_is_accepted_by_the_parser():
+    text = (DOCS / "examples" / "scheduled-s3-upload.md").read_text()
+    line = re.search(
+        r"^17 2 \* \* 1-5\s+cd \S+ && \S+ inventag_cli\.py (.*?) >>", text, re.M
+    )
+    import shlex
+
+    create_parser().parse_args(shlex.split(line.group(1)))
+    assert (ROOT / "inventag_cli.py").exists()
+
+
+# --------------------------------------------------------------------- T25
+@pytest.mark.parametrize("fmt", ["PNG", "JPEG", "GIF", "BMP"])
+def test_t25_word_logo_formats_named_on_the_pages_are_embedded(
+    tmp_path, registry, resources, fmt
+):
+    from PIL import Image
+
+    name = "logo." + {"JPEG": "jpg"}.get(fmt, fmt.lower())
+    Image.new("RGB", (20, 20), "purple").save(tmp_path / name, fmt)
+    (tmp_path / "t.yaml").write_text(f"kind: report\nname: t\nspec:\n  logo: {name}\n")
+    reg = TemplateRegistry([SearchDir("p", tmp_path), SearchDir("b", BUILTIN_DIR)])
+    template = reg.resolve("t")
+    path = render_word(str(tmp_path / "r.docx"), resources, template, None)
+    assert len(Document(path).inline_shapes) == 1
