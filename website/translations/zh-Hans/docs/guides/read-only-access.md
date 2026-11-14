@@ -13,9 +13,11 @@ slug: /user-guides/production-safety
 
 ## 为什么这很重要 {#why-this-matters}
 
-InvenTag 只需要读取。它有自己的只读防护，会在发送前拦截所有非读取的 AWS 调用。
+InvenTag 只需要读取权限；如果用 `--s3-bucket` 上传报告，还需要 `s3:PutObject`。它有自己的只读防护，会在发送前拦截所有非读取的 AWS 调用。
 你的 IAM 策略是第二道独立的安全网：即使某个缺陷绕过了防护，AWS 仍会拒绝该调用。
 只给 InvenTag 它所需要的权限，不要更多。
+
+未针对真实的 AWS 验证：只读 IAM 策略会拒绝绕过防护的调用。
 
 ## 方案 1：AWS 托管的 ReadOnlyAccess 加三项额外权限（最简单） {#option-1-aws-managed-readonlyaccess-plus-three-extras-simplest}
 
@@ -43,8 +45,10 @@ InvenTag 只需要读取。它有自己的只读防护，会在发送前拦截�
 | 操作 | InvenTag 为什么需要它 |
 |---|---|
 | `tag:GetResources` | 通过 Resource Groups Tagging API 查找带标签的资源（它的 IAM 前缀是 `tag`）。 |
-| `ce:GetCostAndUsage` | 查找有支出的服务。AWS 按请求收费。 |
+| `ce:GetCostAndUsage` | 查找有支出的服务。 |
 | `ec2:DescribeRegions` | 列出账户中已启用的区域。 |
+
+AWS 对每次 Cost Explorer 请求收费：见 [Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。
 
 InvenTag 还会调用 `account:ListRegions`，但仅在 `ec2:DescribeRegions` 失败时，用它读取已启用的区域。如果你想要这个回退，就添加它。
 
@@ -55,6 +59,8 @@ InvenTag 还会调用 `account:ListRegions`，但仅在 `ec2:DescribeRegions` �
 `ReadOnlyAccess` 范围很宽：它可以读取 S3 对象列表等数据，以及 InvenTag 从不查看的某些配置。
 如果这对你的组织来说太宽，请使用方案 2。
 
+未针对 AWS 验证：AWS 托管策略 `ReadOnlyAccess` 当前允许什么，以及它覆盖其中哪些调用。
+
 ## 方案 2：仓库中范围更窄的策略 {#option-2-the-narrower-policy-in-the-repository}
 
 `config/defaults/iam-policy-read-only.json` 列出了 122 个具体的读取操作，
@@ -64,8 +70,12 @@ InvenTag 还会调用 `account:ListRegions`，但仅在 `ec2:DescribeRegions` �
 [网络与安全分析](./network-and-security-analysis.md#permissions)所需的 `ec2:DescribeRouteTables` 和 `ec2:DescribeNetworkInterfaces`。
 如果你复制过旧版本的文件，请重新复制。缺少某个操作不会让运行停止，但该服务或细节会缺失。
 
+未针对真实的 AWS 验证：`apigateway:GET` 语句让 API 密钥的值无法被读取。
+
 其中的 `OptionalS3ReportUpload` 语句允许带服务端加密的 `s3:PutObject`，用于 `--s3-bucket`。
 请把 `YOUR-REPORTS-BUCKET-NAME` 替换为你的存储桶；如果不上传报告，就删除这条语句。
+
+未针对真实的 AWS 验证：该语句仅在使用服务器端加密时才允许上传。
 
 如果缺少某个列举操作，InvenTag 会为该服务记录一条警告，并在没有它的资源的情况下继续：
 
@@ -84,9 +94,11 @@ InvenTag 会在进程中的每一次 AWS 调用发出之前检查它。它只允
 例如：`secretsmanager:GetSecretValue`、`ssm:GetParameter`、`s3:GetObject`、`dynamodb:GetItem`、`lambda:GetFunction`（它会返回代码的下载链接）、
 `cloudformation:GetTemplate`、`ec2:GetLaunchTemplateData`、`glue:GetConnection` 和 Athena 查询结果。
 它还会拦截带值的 API 密钥以及用于获取用户数据的 `ec2:DescribeInstanceAttribute`，并按同样的规则检查预签名 URL 和数据库认证令牌。
-可以用 `inventag --validate-operations <service>:<Operation>` 检查某个名称。
+可以用 `inventag --validate-operations <service>:<Operation>` 检查某个名称。它只按名称回答：`apigateway:GetApiKeys` 和 `ec2:DescribeInstanceAttribute` 在这里显示 ALLOWED，只有在带 `includeValues` 或 `Attribute=userData` 调用它们时，保护机制才会拦截。
 
 IAM Identity Center（SSO）和 web identity 配置文件在保护机制下可以正常工作。保护机制只允许登录步骤用令牌换取凭证，别的都不允许。
+
+未针对 AWS IAM Identity Center 验证：使用真实的 SSO 或 web identity 配置文件登录。
 
 Python 库中有两个函数，在你自己的代码里调用时可以写入 AWS。`inventag` 命令从不调用它们，在命令运行中保护机制也会拦截它们。
 `CredentialManager.setup_cross_account_roles()` 会创建 IAM 角色，只有带 `allow_iam_writes=True` 时才会运行。
@@ -113,7 +125,13 @@ aws sso-admin put-inline-policy-to-permission-set \
   --inline-policy file://inventag-extras.json
 ```
 
+未针对真实的 AWS 验证：`aws sso-admin` 命令及其创建的权限集。
+
+未针对 AWS 验证：AWS 托管策略 `ReadOnlyAccess` 当前允许什么，以及它覆盖其中哪些调用。
+
 然后用 `aws sso login --profile <profile>` 登录，并以 `AWS_PROFILE=<profile>` 运行 InvenTag。
+
+未针对 AWS CLI 验证：本节中的登录命令。
 
 ## 在每个账户中使用 IAM 角色 {#with-an-iam-role-in-each-account}
 
@@ -136,6 +154,8 @@ aws sso-admin put-inline-policy-to-permission-set \
 请把 `999999999999:role/InvenTagScanner` 替换为运行 InvenTag 的身份。
 扫描身份本身只需要对这些角色拥有 `sts:AssumeRole` 权限。
 
+未针对真实的 AWS 验证：仅凭信任策略和 `sts:AssumeRole` 就足以完成扫描。
+
 ## 确认它无法写入 {#check-that-it-cannot-write}
 
 用 IAM 策略模拟器确认写入操作会被拒绝：
@@ -148,6 +168,8 @@ aws iam simulate-principal-policy \
 ```
 
 两者都应显示 `implicitDeny` 或 `explicitDeny`。
+
+未针对真实的 AWS 验证：这两个操作在策略模拟器中的结果。
 
 你也可以问 InvenTag 的防护，它会允许哪些操作（来自离线运行的示例输出）：
 

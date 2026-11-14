@@ -15,10 +15,14 @@ file InvenTag writes.
 Everything goes into the output folder: `bom_output/` unless you set
 `--output-directory` or `output_directory` in a config template. The only
 other places InvenTag writes are the files you name (`--log-file`,
-`--audit-output`) and, with `--s3-bucket`, your S3 bucket.
+`--audit-output`, `templates init --output`), your S3 bucket with `--s3-bucket`,
+and with the Google options your Google Drive and, for `--google-oauth-client`,
+a sign-in token file at `~/.config/inventag/google-token.json`.
 
 Output files are created readable and writable by your user only, and new
 output folders are private to your user too.
+
+Not verified against Windows: files and folders private to your user.
 
 The samples on this page come from offline runs against mocked AWS (sample
 data).
@@ -37,7 +41,7 @@ data).
 | The file you name with `--audit-output` | When you ask for it | Every AWS operation the run called |
 | `state/partial/<key>/<account-id>.json` | A run in which some accounts failed | Results of the accounts that finished, reused by `--resume` and removed after a complete run |
 
-`<timestamp>` is `YYYYMMDD_HHMMSS`.
+`<timestamp>` is `YYYYMMDD_HHMMSS`. Report, Word, changelog and tag compliance names use your computer's local time. The snapshot and the S3 folder use UTC.
 
 ## Excel report
 
@@ -83,7 +87,7 @@ Previews of each layout, made from real files, are in
 ## Word report
 
 **Without a template:** a title, an executive summary, a service table, and
-up to 50 resources per service in six columns.
+up to 50 resources per service in six columns: Name, Id, Type, Region, Tags and Service. If no resource of the service has a name, the columns are Id, Type, Region, Tags, Service and Source Account Name.
 
 **With a report template:** the sections listed in `word.sections`. Tables
 have a header row that repeats on each page and is marked as a header for
@@ -263,7 +267,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 
 Without `--verbose`, a run prints warnings, errors and the files written. With
 a template, each file is printed as `Wrote <path>`, followed by a one-line tag
-policy summary when a policy is active.
+policy summary when a policy is active. Without a template, the default report is printed as `Data exported to <path>`.
 
 ## Exit codes
 

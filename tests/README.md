@@ -137,41 +137,39 @@ Comprehensive unit testing for all extracted `inventag` modules with mock AWS re
   - Multi-format data compatibility
 - **Requirements**: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6
 
-### Regression Tests (`regression/`)
+### Failure regression suite (`regression/`)
 
-These two files are scripts, not pytest tests: their classes are not named `Test*`,
-so `pytest` collects nothing from them, and no CI workflow runs them. Run them by
-hand as shown under "Run Specific Test Categories".
+What InvenTag does when a run goes wrong: denied, throttled or missing AWS answers, failed
+accounts, empty results, signals. One table row per scenario, run against moto with real AWS
+error codes injected. The two old scripts that lived here (`test_quick_regression.py`,
+`test_full_regression.py`) were not pytest tests, collected nothing and ran in no workflow; they
+are deleted.
 
-Comprehensive regression test suites to validate full InvenTag functionality and prevent regressions.
+- `scenarios.py`: the table. Every scenario ID of `failure-regression-plan.md` once, plus `S1-` rows.
+  Each row says where its test lives; matrix rows carry the injection and two sets of checks.
+  `current` is what the published release does today (exit code, files, messages): it is asserted
+  and must pass, right or wrong. `target` is what the accepted plan wants later: it is data, never
+  asserted, never xfail. `wp` names the package that would make it true. A row that cannot be made
+  deterministic gets `skip="reason"`. When a fix lands, change the row's `current` (the test fails
+  and shows the change) and drop `wp`.
+- `faults.py`: the injector. It replaces `BaseClient._make_api_call` and raises real `ClientError`
+  codes (`AccessDenied`, `Throttling`, `ExpiredToken`, ...), connection and read errors, slow calls,
+  and edited answers. A rule can target one account (by access key) or the n-th call (page 2).
+- `conftest.py`: moto estate, `fault_injector`, a socket that never answers, a closed port, a fake
+  clock, a child-process signal driver, `MOTO_EC2_LOAD_DEFAULT_AMIS=false`, moto modules imported
+  before any thread starts.
+- `checks.py`, `runner.py`, `child.py`: the checks, the in-process and child-process runners.
+- `test_failure_matrix.py`: tier 2 (the whole CLI). Two tests per row: current and invariants. `INVENTAG_REGRESSION_DUMP=<folder>` writes what each row did and which target checks do not hold.
+- `test_scenario_table.py`: the table covers the plan (IDs read from the plan; a snapshot in
+  `plan_ids.txt` is used when the plan file is not on the machine).
 
-#### `test_quick_regression.py`
-- **Purpose**: Rapid validation of core functionality without AWS credentials
-- **Coverage**:
-  - CLI help and validation systems
-  - Fallback display options (auto/always/never)
-  - Configuration file validation
-  - Core module imports and initialization
-  - Intelligent fallback logic implementation
-  - AWS Prescriptive Guidance templates
-  - Documentation completeness
-- **Execution Time**: < 30 seconds
-- **Requirements**: No AWS credentials required
+```bash
+python -m pytest tests/regression -q              # about 2.5 minutes, no real AWS; skips slow rows
+python -m pytest tests/regression -m slow -q      # B3, B5, B10, K1: 15 to 50 s each
+python -m pytest tests/regression -k "D4 or F3"   # single rows
+```
 
-#### `test_full_regression.py`
-- **Purpose**: Comprehensive end-to-end functionality validation
-- **Coverage**:
-  - Complete BOM generation workflows (Excel, Word, combined)
-  - Fallback display mode testing (auto/always/never)
-  - AWS Prescriptive Guidance template integration
-  - Analysis features (network, security, cost)
-  - Production safety features and security validation
-  - State management and change detection
-  - Service-specific and multi-region discovery
-  - Error handling and edge cases
-  - Output file verification
-- **Execution Time**: 30-45 minutes
-- **Requirements**: Valid AWS credentials for full testing
+Tier 1 (pure functions, `tests/unit/outcome/`) arrives with the outcome model.
 
 ### Integration Tests (`integration/`)
 
@@ -254,11 +252,8 @@ python -m pytest tests/unit/ -v
 # Integration tests
 python -m pytest tests/integration/ -v
 
-# Regression tests (quick validation)
-python3 tests/regression/test_quick_regression.py
-
-# Regression tests (comprehensive with AWS)
-python3 tests/regression/test_full_regression.py
+# Failure regression suite (moto only)
+python -m pytest tests/regression -q
 
 # Dynamic service handler tests
 python -m pytest tests/unit/test_dynamic_service_handler.py -v

@@ -40,7 +40,8 @@ inventag --template standard-bom --template security-baseline --create-excel
 设置发生重叠时，由以下规则决定哪个生效：
 
 1. **你输入的参数优先。** 如果 config 模板写了 `outputs: [excel]`，
-   而你又输入了 `--create-word`，那么两种文件都会生成。
+   而你输入了 `--create-word`，那么你只会得到 Word 文件：你输入的 `--create-excel` 或
+   `--create-word` 会完全替换 `outputs`。
 2. **命令行上的模板优先于另一个模板内部的引用。**
    `--template security-baseline` 会替换 `finops-cost-report` 所指定的标签策略。
 3. **没有报告模板时，InvenTag 使用 `standard-bom`。**
@@ -71,7 +72,7 @@ Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-
 config 模板可以设置 `fail_on_tag_violations: true`，让 InvenTag 在有资源违反策略时以退出码 3 结束。
 内置的 `ci-pipeline` 模板就是这样做的。
 
-有两个可选标志使用各自的退出码：`--fail-on-account-error` 在有账户无法扫描时以退出码 5 结束，`--fail-if-empty` 在没有找到任何资源时以退出码 6 结束。两者都优先于退出码 3。报告仍然会写出。
+有两个可选标志使用各自的退出码：`--fail-on-account-error` 在有账户无法扫描或超出时间限制时以退出码 5 结束，`--fail-if-empty` 在没有找到任何资源时以退出码 6 结束。两者都优先于退出码 3。报告仍然会写出。
 
 ## InvenTag 在哪里查找模板 {#where-inventag-looks-for-templates}
 
@@ -82,6 +83,8 @@ config 模板可以设置 `fail_on_tag_violations: true`，让 InvenTag 在有�
 2. 你运行 InvenTag 所在文件夹中的 `.inventag/templates/`（你的项目）。
 3. `~/.config/inventag/templates/`（或 `$XDG_CONFIG_HOME/inventag/templates/`）。
 4. 内置模板。
+
+未针对 Windows 验证：`INVENTAG_TEMPLATE_PATH` 中的 `;` 分隔符。
 
 因此，一个名为 `.inventag/templates/standard-bom.yaml` 的文件会在该项目中替换内置的
 `standard-bom`。它仍然可以用 `extends: standard-bom` 在原模板的基础上构建。

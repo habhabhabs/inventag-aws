@@ -500,7 +500,7 @@
     "message": "工作原理"
   },
   "home.heroNote": {
-    "message": "内置的防护只放行 {list}、{describe} 和 {get} 这类读取调用。也请同时使用只读的 IAM 角色：{link}。"
+    "message": "内置的防护只放行 {list}、{describe} 和 {get} 这类读取调用，以及在你要求时把报告上传到你自己的 S3 存储桶。也请同时使用只读的 IAM 角色：{link}。"
   },
   "home.heroNoteLink": {
     "message": "查看它需要哪些权限"
@@ -530,7 +530,7 @@
     "message": "一条命令，一份人人都能读的报告。"
   },
   "home.cap.lead": {
-    "message": "下面的一切在命令行中目前都能用。某项功能只完成了一部分时，文档会如实说明。"
+    "message": "下面的一切目前都已在命令行中实现，并有针对模拟 AWS 的离线测试。某项功能只完成了一部分或未经验证时，文档会如实说明。"
   },
   "home.c1.title": {
     "message": "Excel 和 Word 报告"
@@ -635,7 +635,7 @@
     "message": "丰富信息"
   },
   "home.s3.body": {
-    "message": "服务属性、你的标签列和描述，以及可选的网络与安全分析。"
+    "message": "你的标签列和描述，以及可选的网络与安全分析。"
   },
   "home.s4.title": {
     "message": "输出"

@@ -12,6 +12,8 @@ minutes.
 **Ce qu’il vous faut :** les identifiants du compte, par exemple
 `aws sso login --profile prod-readonly` et `export AWS_PROFILE=prod-readonly`.
 
+Non vérifié sur l’AWS CLI : les commandes de connexion de cette section.
+
 ## Modèle {#template}
 
 Le modèle de configuration intégré `single-account` analyse `us-east-1` et écrit
@@ -42,7 +44,7 @@ inventag --template audit
 
 ## Sortie {#output}
 
-La même mise en page, issue d’une exécution hors ligne dans une région (données d’exemple) :
+La même mise en page, issue d’une exécution hors ligne avec un argument de région (données d’exemple ; IAM figure sous la région `global`, donc le résumé compte 2 régions) :
 
 ```text title="Sortie"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.

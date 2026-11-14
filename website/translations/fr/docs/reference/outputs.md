@@ -15,10 +15,14 @@ fichier qu’InvenTag écrit.
 Tout est placé dans le dossier de sortie : `bom_output/`, sauf si vous définissez
 `--output-directory` ou `output_directory` dans un modèle de configuration. Les seuls
 autres endroits où InvenTag écrit sont les fichiers que vous nommez (`--log-file`,
-`--audit-output`) et, avec `--s3-bucket`, votre bucket S3.
+`--audit-output`, `templates init --output`), votre bucket S3 avec `--s3-bucket` et,
+avec les options Google, votre Google Drive et, avec `--google-oauth-client`, un fichier
+de jeton de connexion dans `~/.config/inventag/google-token.json`.
 
 Les fichiers de sortie sont créés avec un accès en lecture et en écriture réservé à votre
 utilisateur, et les nouveaux dossiers de sortie lui sont également privés.
+
+Non vérifié sur Windows : fichiers et dossiers privés pour votre utilisateur.
 
 Les exemples de cette page proviennent d’exécutions hors ligne sur un AWS simulé (données
 d’exemple).
@@ -37,7 +41,7 @@ d’exemple).
 | Le fichier que vous nommez avec `--audit-output` | Quand vous le demandez | Chaque opération AWS appelée pendant l’exécution |
 | `state/partial/<key>/<account-id>.json` | Une exécution où certains comptes ont échoué | Résultats des comptes terminés, réutilisés par `--resume` et supprimés après une exécution complète |
 
-`<timestamp>` s’écrit `YYYYMMDD_HHMMSS`.
+`<timestamp>` s’écrit `YYYYMMDD_HHMMSS`. Les noms du rapport, du fichier Word, du journal des modifications et du fichier de conformité des étiquettes utilisent l’heure locale de votre ordinateur. L’instantané et le dossier S3 utilisent UTC.
 
 ## Rapport Excel {#excel-report}
 
@@ -84,7 +88,7 @@ Des aperçus de chaque mise en page, réalisés à partir de vrais fichiers, se 
 ## Rapport Word {#word-report}
 
 **Sans modèle :** un titre, une synthèse, un tableau des services, et
-jusqu’à 50 ressources par service sur six colonnes.
+jusqu’à 50 ressources par service sur six colonnes : Name, Id, Type, Region, Tags et Service. Si aucune ressource du service n’a de nom, les colonnes sont Id, Type, Region, Tags, Service et Source Account Name.
 
 **Avec un modèle de rapport :** les sections listées dans `word.sections`. Les tableaux
 ont une ligne d’en-tête qui se répète sur chaque page et qui est signalée comme en-tête aux
@@ -244,7 +248,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 
 Sans `--verbose`, une exécution affiche les avertissements, les erreurs et les fichiers écrits. Avec
 un modèle, chaque fichier est affiché sous la forme `Wrote <path>`, suivi d’un résumé d’une ligne de la
-politique d’étiquetage lorsqu’une politique est active.
+politique d’étiquetage lorsqu’une politique est active. Sans modèle, le rapport par défaut est affiché sous la forme `Data exported to <path>`.
 
 ## Codes de sortie {#exit-codes}
 

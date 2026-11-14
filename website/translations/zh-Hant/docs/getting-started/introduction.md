@@ -32,7 +32,7 @@ your AWS credentials
   1. find resources   --> List/Describe/Get calls per service,
         |                 the Resource Groups Tagging API, Cost Explorer
         v
-  2. tidy and enrich  --> service names, IDs, tags
+  2. tidy             --> service names, IDs, tags
         |
         v
   3. check tags       --> only when a tag policy is active
@@ -43,16 +43,19 @@ your AWS credentials
 
 1. **憑證。** InvenTag 使用標準的 AWS 憑證鏈：設定檔、環境變數、
    IAM Identity Center（SSO）會話或 IAM 角色。它也可以在其他帳戶中擔任角色。
+
+   未針對 AWS IAM Identity Center 驗證：使用真實 SSO 會話登入。
 2. **發現。** 對每個帳戶和區域，它呼叫唯讀的 AWS 應用程式程式設計介面（API）。
    預設情況下，它還會呼叫 Cost Explorer 的 `GetCostAndUsage`，找出產生費用的服務。
    AWS 會對 Cost Explorer API 請求收費；`--no-billing-validation` 可關閉這些呼叫。
+   請參閱最新的 [Cost Explorer 定價](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。
 3. **處理。** 它統一服務名稱和 ID，並收集標籤。
 4. **輸出。** 它把檔案寫入輸出資料夾（預設為 `bom_output/`），
    並把快照寫入 `bom_output/state/`。
 
 ## 它會改動什麼 {#what-it-changes}
 
-只有你磁碟上的檔案。InvenTag 讀取你的 AWS 帳戶，絕不會修改它們。
+你磁碟上的檔案。`inventag` 命令只會讀取你的 AWS 帳戶。唯一的例外是把它自己的報告檔案上傳到你的 S3 儲存貯體，而且僅在你傳入 `--s3-bucket` 時才會這樣做。使用 Google 選項時，它還會在你的 Google Drive 中建立檔案。
 
 **唯讀防護**會在每次 AWS 呼叫發出前進行檢查。不屬於讀取的呼叫
 （`List`、`Describe`、`Get` 等以外的呼叫）會被攔截，會返回金鑰或檔案內容的讀取

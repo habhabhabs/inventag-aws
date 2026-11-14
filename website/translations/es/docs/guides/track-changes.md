@@ -127,8 +127,8 @@ Qué debes saber:
 - `--no-generate-changelog` detiene el informe pero conserva las instantáneas.
   `--disable-delta-detection` también lo detiene. `--disable-state-management`
   detiene las instantáneas y los informes.
-- Si una cuenta no se pudo analizar, o solo en parte, en cualquiera de las dos ejecuciones, sus recursos se dejan fuera de la comparación.
-  Si no, todos aparecerían como añadidos o eliminados. El informe de cambios nombra la cuenta en su sección State Comparison (`accounts_not_compared`).
+- Si una cuenta no se pudo analizar o se quedó sin tiempo en cualquiera de las dos ejecuciones, sus recursos se dejan fuera de la comparación.
+  Si no, todos aparecerían como añadidos o eliminados. El informe de cambios nombra la cuenta en su sección State Comparison (`accounts_not_compared`). Una cuenta cuya sesión caducó a mitad del análisis se compara como si estuviera completa.
 - InvenTag compara las listas sin tener en cuenta el orden, así que mover elementos dentro de una lista no es un cambio, salvo en las capas de Lambda, las políticas de terminación de Auto Scaling y los comportamientos de caché de CloudFront, cuyo orden es configuración.
   También ignora los campos que cambian en cada ejecución: la vía de descubrimiento, las cifras de coste y los contadores de uso
   como `ItemCount`, `ApproximateNumberOfMessages` o el tamaño de EFS.

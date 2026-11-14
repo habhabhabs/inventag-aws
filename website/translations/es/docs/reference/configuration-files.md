@@ -14,8 +14,8 @@ asignaciones de etiquetas y un archivo de descripciones de servicios que los car
 
 Para las plantillas (diseños de informe, políticas de etiquetas, ajustes de ejecución), consulta la
 [Referencia de plantillas](../templates/reference.md). Una plantilla de configuración puede hacer
-todo lo que hace un archivo de cuentas salvo contener claves de acceso, y se
-valida con más rigor, así que prefiérela para las configuraciones nuevas.
+todo lo que hace un archivo de cuentas, salvo que no puede contener claves de acceso
+y cada cuenta necesita `profile_name` o `role_arn`. Se valida con más rigor, así que prefiérela para las configuraciones nuevas.
 
 Todos los archivos pueden ser YAML (`.yaml`, `.yml`) o JSON (`.json`). Compruébalos sin
 analizar nada:
@@ -52,7 +52,7 @@ settings:                              # optional
   output_directory: bom_output
 ```
 
-Cada cuenta necesita **una** forma de obtener credenciales:
+Una cuenta puede indicar una forma de obtener credenciales. Una cuenta sin ninguna usa tus credenciales actuales si pertenecen a esa cuenta; si no, InvenTag intenta asumir en ella el rol `InvenTagCrossAccountRole` (o el nombre que des con `--cross-account-role`).
 
 | Campo | Uso |
 |---|---|
@@ -113,13 +113,6 @@ Usa la clave de nivel superior `tag_mappings` con una **lista** de entradas. Inv
 acepta el diseño anterior, que usa cada clave de etiqueta como clave de nivel superior con un
 valor `column_name`.
 
-Resultado de ejemplo de la entrada anterior, en la hoja de EC2:
-
-| service | type | id | Cost Center |
-|---|---|---|---|
-| EC2 | Instance | i-0abc1234def567890 | CC-1042 |
-| EC2 | Volume | vol-0abc1234def567890 | Unknown |
-
 ## Descripciones de servicios {#service-descriptions}
 
 Se usa con `--service-descriptions`. Añade la columna `service_description`
@@ -141,7 +134,7 @@ templates:
 ```
 
 La clave de nivel superior `service_descriptions` es obligatoria. Bajo cada servicio,
-cada tipo de recurso (o `default`) necesita una `description`.
+cada tipo de recurso (o `default`) necesita una `description`. InvenTag no comprueba esto al validar ni al iniciar una ejecución. Un archivo sin la clave se ignora, con un error en el registro, y se usan las descripciones integradas.
 
 **Tu entrada sustituye a la descripción integrada**, en todos los servicios. Una
 entrada con `template` usa esa plantilla, definida en `templates`; una entrada sin
@@ -151,7 +144,7 @@ las tablas de DynamoDB). Una plantilla puede usar `{resource_id}`,
 entrada en tu archivo conservan el texto integrado.
 
 Si una plantilla no se puede rellenar, InvenTag registra una advertencia como
-`Failed to render template vpc_vpc: 'cidr_block'` y usa el texto de respaldo.
+`Failed to render template vpc_vpc: 'cidr_block'` y usa el texto de respaldo integrado. Para una plantilla de tu propio archivo, usa la `description` de esa entrada.
 
 ## Configuración de procesamiento de la BOM {#bom-processing-configuration}
 

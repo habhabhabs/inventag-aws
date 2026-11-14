@@ -46,8 +46,9 @@ inventag --template standard-bom --template security-baseline --create-excel
 Unas pocas reglas deciden qué prevalece cuando los ajustes se solapan:
 
 1. **Las opciones que escribes prevalecen.** Si una plantilla de configuración
-   dice `outputs: [excel]` y tú también escribes `--create-word`, obtienes los
-   dos archivos.
+   dice `outputs: [excel]` y tú escribes `--create-word`, obtienes solo el archivo
+   de Word: un `--create-excel` o `--create-word` escrito reemplaza `outputs`
+   por completo.
 2. **Una plantilla en la línea de comandos prevalece sobre una referencia
    dentro de otra plantilla.** `--template security-baseline` sustituye la
    política de etiquetas que nombra `finops-cost-report`.
@@ -88,8 +89,8 @@ para que InvenTag termine con el código 3 cuando algo incumpla la política. La
 plantilla integrada `ci-pipeline` lo hace.
 
 Dos opciones opcionales tienen sus propios códigos de salida:
-`--fail-on-account-error` termina con el código 5 cuando no se pudo analizar una
-cuenta, y `--fail-if-empty` termina con el código 6 cuando no se encontró ningún
+`--fail-on-account-error` termina con el código 5 cuando una cuenta no se pudo analizar o se quedó sin
+tiempo, y `--fail-if-empty` termina con el código 6 cuando no se encontró ningún
 recurso. Ambos tienen prioridad sobre el código 3. Los informes se escriben igualmente.
 
 ## Dónde busca InvenTag las plantillas {#where-inventag-looks-for-templates}
@@ -103,6 +104,8 @@ primera coincidencia:
    proyecto).
 3. `~/.config/inventag/templates/` (o `$XDG_CONFIG_HOME/inventag/templates/`).
 4. Las plantillas integradas.
+
+No verificado contra Windows: el separador `;` en `INVENTAG_TEMPLATE_PATH`.
 
 Así, un archivo llamado `.inventag/templates/standard-bom.yaml` sustituye la
 plantilla integrada `standard-bom` en ese proyecto. Aun así, puede basarse en la

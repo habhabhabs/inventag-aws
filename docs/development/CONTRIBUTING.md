@@ -48,6 +48,8 @@ it green. Run the benchmarks only on request: `python -m pytest -m performance`.
 Run `pip-audit -r requirements.txt` when you change a dependency; CI fails on a
 new advisory.
 
+Not verified against a GitHub Actions runner: the CI jobs; they are read from the workflow file.
+
 **Never run tests against a real AWS account by accident.** Unset
 `AWS_PROFILE` and real keys, or use moto.
 

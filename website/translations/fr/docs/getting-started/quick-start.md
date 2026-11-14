@@ -24,6 +24,8 @@ aws sts get-caller-identity
 
 InvenTag analyse le compte auquel appartiennent ces identifiants.
 
+Non vérifié sur l’AWS CLI : ce qu’affiche `aws sts get-caller-identity`.
+
 ## 2. Analysez une région {#2-scan-one-region}
 
 Commencez petit. Une région, c’est rapide et peu coûteux.
@@ -145,8 +147,7 @@ chaque ressource. Plus de détails dans [Vérifier les étiquettes selon une pol
 
 ## Ce que coûte une exécution {#what-a-run-costs}
 
-Les appels en lecture seule d’InvenTag sont gratuits. Les appels
-`GetCostAndUsage` de Cost Explorer ne le sont pas : AWS facture chaque requête, et une exécution
+Les appels `GetCostAndUsage` de Cost Explorer sont facturés à chaque requête, et une exécution
 par défaut en fait deux par compte dans notre test hors ligne. Consultez les
 [tarifs actuels de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 Ajoutez `--no-billing-validation` pour ne faire aucun appel à Cost Explorer.

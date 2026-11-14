@@ -12,12 +12,14 @@ sidebar_position: 9
 
 ## 你會得到什麼 {#what-you-get}
 
-- `--create-google-sheets` 把與 `--create-excel` 相同的工作簿（相同的工作表、相同的列順序、相同的範本）寫成 Google Sheets 電子表格。
+- `--create-google-sheets` 把與 `--create-excel` 相同的工作簿（相同的工作表、相同的列順序）寫成 Google Sheets 電子表格。
 - `--create-google-docs` 把與 `--create-word` 相同的報告寫成 Google Docs 文件。
-- InvenTag 先生成 Excel 和 Word 報告，再複製它們，因此 `--template` 對 Google 檔案的影響與對本地檔案完全一樣。
+- InvenTag 先生成 Excel 和 Word 報告，再複製它們。使用 `--template` 時，InvenTag 不會寫出任何 Google 檔案：它會記錄該格式被跳過，執行以結束代碼 0 結束。
 - 執行時會列印每個檔案的 URL，例如 `Google Sheet: https://docs.google.com/spreadsheets/d/...` 和 `Google Doc: https://docs.google.com/document/d/...`。
-- 使用 `--per-account-reports` 時，InvenTag 為每個帳戶生成一對檔案。標題以 ` - ` 和帳戶 ID 結尾，每一行 URL 以 `[123456789012]` 開頭。
+- 使用 `--per-account-reports` 時，InvenTag 為每個帳戶生成一對檔案。標題以 ` - ` 和帳戶 ID 結尾，URL 行形如 `Google Sheet: [123456789012] https://...` 和 `Google Doc: [123456789012] https://...`。
 - 如果執行沒有找到任何資源，就不會生成 Google 檔案。
+
+未針對真實的 Google 驗證：這些檔案與 Excel 和 Word 報告外觀一致，且 URL 為這種形式。
 
 ## 安裝 Google 附加包 {#install-the-google-add-on}
 
@@ -40,6 +42,8 @@ pip install "inventag-aws[google]"
 Excel、Word 或其他功能都不需要這個附加包。如果在沒有它的情況下使用 Google 引數，
 InvenTag 會以結束代碼 2 停止，說明缺少哪個包，並列印這條命令。
 
+未針對 pip 和 pipx 驗證：Google 附加包的安裝命令。
+
 ## 登入 {#sign-in}
 
 任選一種：
@@ -56,6 +60,8 @@ InvenTag 會在掃描 AWS 之前讀取金鑰檔案或 OAuth 客戶端檔案，�
 
 權限範圍是 `drive.file`：InvenTag 只能存取它自己建立的檔案。使用
 `--google-folder-id` 時，它會請求完整的 Drive 權限範圍，因為它必須把檔案放進一個已有的資料夾。
+
+未針對真實的 Google 驗證：瀏覽器登入、儲存的權杖、應用預設憑證、要啟用的 API，以及 `drive.file` 權限範圍允許什麼。
 
 ## 誰能開啟這些檔案 {#who-can-open-the-files}
 
@@ -79,6 +85,8 @@ inventag --create-google-sheets --create-google-docs \
   `--google-share-with`、`--google-share-role`、`--google-share-anyone`、
   `--google-folder-id` 和 `--google-title`，會以結束代碼 2 停止。
 
+未針對真實的 Google 驗證：新檔案是否保持私有、共享，以及你無法開啟服務帳號擁有的檔案。
+
 ## 憑證絕不會寫入日誌 {#credentials-are-never-logged}
 
 金鑰檔案的路徑不會被列印；看起來像 Google 私鑰、存取權杖、重新整理權杖或客戶端金鑰的機密，
@@ -88,6 +96,8 @@ inventag --create-google-sheets --create-google-docs \
 ## 限制 {#limits}
 
 - Google Sheets 的單元格最多容納 50,000 個字元。InvenTag 會把更長的文字在 49,000 個字元處截斷。一個電子表格最多 1,000 萬個單元格，一個工作表最多 18,278 欄。
+
+  未針對真實的 Google 驗證：單元格、大小和欄數的限制。
 - InvenTag 會在呼叫 Google 之前先數單元格。如果報告太大，它不會建立任何內容並說明原因，執行以結束代碼 1 結束。Excel 和 Word 檔案仍會寫出。例如：
   `The report has 12,000,000 cells; a Google spreadsheet allows 10,000,000. No
   spreadsheet was created. Send fewer resources (filters or an account subset)
@@ -95,17 +105,21 @@ inventag --create-google-sheets --create-google-docs \
 - InvenTag 會把大的工作表分成多個請求傳送，每個請求最多 2,000 行，約 100 萬個字元。
 - 如果 Google 返回「429 too many requests」，InvenTag 會記錄 `Google rate limit
   reached; waiting 5 seconds` 並重試。在最後一次嘗試之前，它依次等待 5、10、20、40 和 60 秒。
+
+  未針對真實的 Google 驗證：請求大小，以及 429 的等待時間是否足夠長。
 - 如果檔案建立之後某個呼叫失敗，執行會以結束代碼 1 結束，訊息中會給出寫到一半的檔案的 URL：`The spreadsheet was already
   created and may be incomplete: <url> (delete it in Google Drive).` Google Docs 文件同理。請刪除該檔案，然後重新執行。
 - Word 報告的表格預設每個服務最多顯示 50 個資源（報告範本中是 `max_rows_per_service`，佈局檔案中是 `max_rows`），Google Docs 文件也是如此。
 - 單元格的值以文字形式寫入，因此以 `=` 開頭的標籤值不會被當作公式執行。
+
+未針對真實的 Google 驗證：以 `=` 開頭的文字會被存為文字。
 
 ## 尚未驗證的部分 {#what-is-not-verified}
 
 大多數測試使用模擬的 Google 客戶端。**我們沒有記錄過針對真實 Google API 的執行**，
 因為那需要一個 Google 帳號。特別是，InvenTag 填充 Google Docs 文件中表格時計算的位置，
 是按我們對 Docs API 規則的理解來檢查的，而不是對真實服務檢查的。請先用一個小帳戶試一試，
-如果 Google Docs 文件的版面配置有問題，請提交 issue 回饋。
+如果 Google Docs 文件的版面配置有問題，請提交 issue 回饋。上面每個依賴 Google 的部分都會說明哪些內容尚未驗證。
 
 ## 用你自己的 Google 帳號檢查 {#check-it-against-your-own-google-account}
 
@@ -133,12 +147,14 @@ inventag --create-google-sheets --create-google-docs \
 
    瀏覽器會開啟一次。如果應用處於「Testing」狀態，請把你的帳號新增到 OAuth consent screen 的 Test users 下。
 
+未針對 Google Cloud 驗證：啟用 API、建立 OAuth 客戶端和新增測試使用者的控制檯步驟。
+
 如果要使用服務帳號金鑰，請傳入 `--google-credentials key.json`。服務帳號擁有它自己 Drive 中的檔案，
 所以如果你想開啟它們，請加上 `--share-with you@example.com`。
 
 | 引數 | 作用 |
 |---|---|
-| `--large` | 還會測試一個 20,000 行的工作表和一個 300 行的 Doc 表格。它會統計 API 呼叫次數，並注入兩次「429」應答來證明重試有效。大約多花一分鐘。 |
+| `--large` | 還會測試一個 20,000 行的工作表和一個 300 行的 Doc 表格。它會統計 API 呼叫次數，並注入兩次「429」應答來證明重試有效。 |
 | `--share-with EMAIL` | 把檔案共享（reader）給這個地址，並檢查只有該地址和所有者能開啟它們。可重複使用。 |
 | `--keep` | 把檔案留在 Drive 中。預設情況下，指令碼會在最後把它建立的每個檔案移到 Drive 的回收站。 |
 | `--folder-id ID` | 還會在這個 Drive 資料夾中建立一對檔案。這需要完整的 Drive 權限範圍。使用 `--google-oauth-client` 時，請先刪除 `~/.config/inventag/google-token.json`，這樣它會重新詢問。 |

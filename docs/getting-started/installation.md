@@ -15,8 +15,9 @@ InvenTag can reach your AWS account.
 ## What you need
 
 - **Python 3.11 or later.** Python 3.10 stopped getting security fixes in
-  October 2026. Check your version with `python3 --version`.
-- **pip**, which comes with Python. (Git is only needed to install from source.)
+  October 2026. See [Python release status](https://devguide.python.org/versions/).
+  Check your version with `python3 --version`.
+- **pip** for that Python. (Git is only needed to install from source.)
 - **AWS credentials** for a read-only identity. The
   [AWS Command Line Interface (AWS CLI)](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
   is optional, but it is the easiest way to set them up.
@@ -40,6 +41,8 @@ pip install inventag-aws
 inventag --help
 ```
 
+Not verified against Debian, Ubuntu or Homebrew: the externally-managed-environment error and the two ways around it.
+
 This gives you the `inventag` command that these docs use. The report
 templates are included in the package.
 
@@ -49,6 +52,8 @@ project environments? `pipx install inventag-aws` installs it into its own
 hidden environment and puts the `inventag` command on your PATH, so you never
 activate anything. If your system allows it, a plain `pip install inventag-aws`
 into your user or system Python works too.
+
+Not verified against pip and pipx: the upgrade, pin and pipx commands.
 
 ## Install from source
 
@@ -91,6 +96,8 @@ With long-lived access keys (avoid if you can):
 aws configure
 ```
 
+Not verified against the AWS CLI: the sign-in commands in this section.
+
 Prefer short-lived credentials, such as IAM Identity Center or an assumed
 role, over access keys stored on disk.
 
@@ -127,7 +134,10 @@ echo $?
 
 <!-- END EXAMPLE OUTPUT: validate-credentials -->
 
-If the credentials don't work, InvenTag says why and suggests a fix. See
+If the credentials are missing, or the security token is not valid or has
+expired, InvenTag says why and suggests a fix. An expired IAM Identity Center
+(SSO) token is an exception: see
+[Feature status](./status.md#when-a-run-goes-wrong). See
 [Fix common problems](../guides/troubleshooting.md#credentials).
 
 ## Give InvenTag read-only permissions
@@ -189,6 +199,8 @@ suite.
 | `inventag: command not found` | Activate the virtual environment where you ran `pip install inventag-aws`, or run `python -m pip show inventag-aws` to check it is installed. |
 | `ModuleNotFoundError` | Activate the virtual environment and run `pip install -r requirements.txt` again. |
 | `No AWS credentials found!` | Run `aws sso login` or `aws configure`, or set `AWS_PROFILE`. |
+
+Not verified against the AWS CLI: the commands in the What to do column.
 
 ## Next step
 

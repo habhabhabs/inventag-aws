@@ -14,10 +14,12 @@ et confirmer qu’elle ne peut pas modifier vos ressources.
 
 ## Pourquoi c’est important {#why-this-matters}
 
-InvenTag n’a besoin que de lire. Il possède sa propre protection en lecture seule, qui bloque
+InvenTag n’a besoin que d’un accès en lecture, plus `s3:PutObject` si vous téléversez des rapports avec `--s3-bucket`. Il possède sa propre protection en lecture seule, qui bloque
 tout appel AWS qui n’est pas une lecture avant son envoi. Votre politique IAM est un
 second filet de sécurité, indépendant : si un bogue venait à contourner la protection, AWS
 refuserait quand même l’appel. Ne donnez à InvenTag rien de plus que ce dont il a besoin.
+
+Non vérifié sur un vrai AWS : qu’une politique IAM en lecture seule refuse un appel qui contourne la protection.
 
 ## Option 1 : la politique gérée AWS ReadOnlyAccess plus trois ajouts (la plus simple) {#option-1-aws-managed-readonlyaccess-plus-three-extras-simplest}
 
@@ -45,8 +47,10 @@ refuserait quand même l’appel. Ne donnez à InvenTag rien de plus que ce dont
 | Action | Pourquoi InvenTag en a besoin |
 |---|---|
 | `tag:GetResources` | Trouve les ressources étiquetées via l’API Resource Groups Tagging (son préfixe IAM est `tag`). |
-| `ce:GetCostAndUsage` | Trouve les services qui ont des dépenses. AWS facture chaque requête. |
+| `ce:GetCostAndUsage` | Trouve les services qui ont des dépenses. |
 | `ec2:DescribeRegions` | Liste les régions activées dans le compte. |
+
+AWS facture chaque requête Cost Explorer : voir la [tarification de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 
 InvenTag appelle aussi `account:ListRegions`, mais seulement quand `ec2:DescribeRegions` échoue, pour lire les régions activées.
 Ajoutez-la si vous voulez ce repli.
@@ -59,6 +63,8 @@ appelle aussi `cloudwatch:GetMetricStatistics`, que `ReadOnlyAccess` couvre), et
 certaines configurations qu’InvenTag ne consulte jamais. Si c’est trop pour votre
 organisation, utilisez l’option 2.
 
+Non vérifié sur AWS : ce que la politique gérée `ReadOnlyAccess` autorise aujourd’hui, et lesquels de ces appels elle couvre.
+
 ## Option 2 : la politique plus restreinte du dépôt {#option-2-the-narrower-policy-in-the-repository}
 
 `config/defaults/iam-policy-read-only.json` liste 122 actions de lecture précises,
@@ -69,9 +75,13 @@ et `ec2:DescribeRouteTables` et `ec2:DescribeNetworkInterfaces` pour l’
 [analyse réseau et de sécurité](./network-and-security-analysis.md#permissions).
 Si vous avez copié une ancienne version du fichier, copiez-la de nouveau. Une action manquante n’arrête pas l’exécution, mais ce service ou ce détail est absent.
 
+Non vérifié sur un vrai AWS : que l’instruction `apigateway:GET` garde les valeurs des clés d’API hors de portée.
+
 Son instruction `OptionalS3ReportUpload` autorise `s3:PutObject` avec le chiffrement
 côté serveur, pour `--s3-bucket`. Remplacez `YOUR-REPORTS-BUCKET-NAME` par votre
 bucket, ou supprimez l’instruction si vous ne téléversez pas de rapports.
+
+Non vérifié sur un vrai AWS : que l’instruction n’autorise le téléversement qu’avec le chiffrement côté serveur.
 
 Lorsqu’une action de listage manque, InvenTag journalise un avertissement pour ce service et continue sans ses ressources :
 
@@ -90,9 +100,11 @@ Certaines opérations ressemblent à des lectures mais renvoient des secrets ou 
 Exemples : `secretsmanager:GetSecretValue`, `ssm:GetParameter`, `s3:GetObject`, `dynamodb:GetItem`, `lambda:GetFunction` (il renvoie un lien de téléchargement du code),
 `cloudformation:GetTemplate`, `ec2:GetLaunchTemplateData`, `glue:GetConnection` et les résultats de requêtes Athena.
 Elle bloque aussi les clés d’API avec leurs valeurs et `ec2:DescribeInstanceAttribute` pour les données utilisateur, et vérifie les URL présignées et les jetons d’authentification de base de données selon les mêmes règles.
-Vérifiez un nom avec `inventag --validate-operations <service>:<Operation>`.
+Vérifiez un nom avec `inventag --validate-operations <service>:<Operation>`. La commande répond d’après le nom seul : `apigateway:GetApiKeys` et `ec2:DescribeInstanceAttribute` y apparaissent comme ALLOWED, et la protection ne les bloque que lorsqu’ils sont appelés avec `includeValues` ou `Attribute=userData`.
 
 Les profils IAM Identity Center (SSO) et d’identité web fonctionnent avec la protection active. La protection laisse l’étape de connexion échanger un jeton contre des identifiants, et rien d’autre.
+
+Non vérifié sur AWS IAM Identity Center : la connexion avec un vrai profil SSO ou d’identité web.
 
 Deux fonctions de la bibliothèque Python peuvent écrire dans AWS quand vous les appelez depuis votre propre code. La commande `inventag` ne les appelle jamais, et la protection les bloque lors d’une exécution de la commande.
 `CredentialManager.setup_cross_account_roles()` crée des rôles IAM et ne s’exécute qu’avec `allow_iam_writes=True`.
@@ -120,8 +132,14 @@ aws sso-admin put-inline-policy-to-permission-set \
   --inline-policy file://inventag-extras.json
 ```
 
+Non vérifié sur un vrai AWS : les commandes `aws sso-admin` et le jeu d’autorisations qu’elles créent.
+
+Non vérifié sur AWS : ce que la politique gérée `ReadOnlyAccess` autorise aujourd’hui, et lesquels de ces appels elle couvre.
+
 Connectez-vous ensuite avec `aws sso login --profile <profile>` et lancez InvenTag avec
 `AWS_PROFILE=<profile>`.
+
+Non vérifié sur l’AWS CLI : les commandes de connexion de cette section.
 
 ## Avec un rôle IAM dans chaque compte {#with-an-iam-role-in-each-account}
 
@@ -146,6 +164,8 @@ Remplacez `999999999999:role/InvenTagScanner` par l’identité qui exécute
 InvenTag. L’identité d’analyse elle-même n’a besoin que de `sts:AssumeRole` sur ces
 rôles.
 
+Non vérifié sur un vrai AWS : que la politique d’approbation et `sts:AssumeRole` suffisent à elles seules pour l’analyse.
+
 ## Vérifier qu’elle ne peut pas écrire {#check-that-it-cannot-write}
 
 Utilisez le simulateur de politiques IAM pour confirmer qu’une écriture est refusée :
@@ -158,6 +178,8 @@ aws iam simulate-principal-policy \
 ```
 
 Les deux doivent afficher `implicitDeny` ou `explicitDeny`.
+
+Non vérifié sur un vrai AWS : le résultat du simulateur de politiques pour ces deux actions.
 
 Vous pouvez aussi demander à la protection d’InvenTag quelles opérations elle autoriserait (exemple de
 sortie d’une exécution hors ligne) :

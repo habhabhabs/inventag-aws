@@ -12,6 +12,8 @@ minutes.
 **You need:** credentials for the account, for example
 `aws sso login --profile prod-readonly` and `export AWS_PROFILE=prod-readonly`.
 
+Not verified against the AWS CLI: the sign-in commands in this section.
+
 ## Template
 
 The built-in `single-account` config template scans `us-east-1` and writes
@@ -42,7 +44,8 @@ inventag --template audit
 
 ## Output
 
-The same layout from an offline run in one region (sample data):
+The same layout from an offline run with one region argument (sample data; IAM is
+listed under the region `global`, so the summary counts 2 regions):
 
 <!-- BEGIN EXAMPLE OUTPUT: standard-console -->
 

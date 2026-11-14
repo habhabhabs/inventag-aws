@@ -14,8 +14,8 @@ and a service descriptions file that the loaders accept.
 
 For templates (report layouts, tag policies, run settings), see the
 [Template reference](../templates/reference.md). A config template can do
-everything an accounts file does except hold access keys, and it is
-validated more strictly, so prefer it for new setups.
+everything an accounts file does, except that it cannot hold access keys
+and each account needs `profile_name` or `role_arn`. It is validated more strictly, so prefer it for new setups.
 
 All files can be YAML (`.yaml`, `.yml`) or JSON (`.json`). Check them without
 scanning:
@@ -52,7 +52,7 @@ settings:                              # optional
   output_directory: bom_output
 ```
 
-Each account needs **one** way to get credentials:
+An account can name one way to get credentials. An account with none uses your current credentials if they belong to that account; otherwise InvenTag tries to assume the role `InvenTagCrossAccountRole` (or the name given with `--cross-account-role`) in it.
 
 | Field | Use |
 |---|---|
@@ -117,13 +117,6 @@ Use the top-level key `tag_mappings` with a **list** of entries. InvenTag also
 accepts the older layout, which uses each tag key as a top-level key with a
 `column_name` value.
 
-Example result for the entry above, on the EC2 sheet:
-
-| service | type | id | Cost Center |
-|---|---|---|---|
-| EC2 | Instance | i-0abc1234def567890 | CC-1042 |
-| EC2 | Volume | vol-0abc1234def567890 | Unknown |
-
 ## Service descriptions
 
 Used with `--service-descriptions`. It adds the `service_description` column
@@ -145,7 +138,7 @@ templates:
 ```
 
 The top-level key `service_descriptions` is required. Under each service,
-each resource type (or `default`) needs a `description`.
+each resource type (or `default`) needs a `description`. InvenTag does not check this when you validate or start a run. A file without the key is ignored, with an error in the log, and the built-in descriptions are used.
 
 **Your entry replaces the built-in description**, for every service. An
 entry with a `template` uses that template, defined under `templates`; an
@@ -155,7 +148,7 @@ entry without one uses its `description` as written (in the example,
 `{account_id}`. Services with no entry in your file keep the built-in text.
 
 If a template cannot be filled in, InvenTag logs a warning such as
-`Failed to render template vpc_vpc: 'cidr_block'` and uses the fallback text.
+`Failed to render template vpc_vpc: 'cidr_block'` and uses the built-in fallback text. For a template in your own file, it uses that entry's `description`.
 
 ## BOM processing configuration
 

@@ -13,8 +13,9 @@ sidebar_position: 2
 ## 你需要準備 {#what-you-need}
 
 - **Python 3.11 或更高版本。** Python 3.10 自 2026 年 10 月起不再獲得安全修復。
+  請參閱 [Python 版本狀態](https://devguide.python.org/versions/)。
   用 `python3 --version` 檢視你的版本。
-- **pip**，隨 Python 一同提供。（只有從原始碼安裝時才需要 Git。）
+- 該 Python 的 **pip**。（只有從原始碼安裝時才需要 Git。）
 - 唯讀身份的 **AWS 憑證**。
   [AWS 命令列介面（AWS CLI）](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
   是可選的，但它是最簡單的設定方式。
@@ -37,6 +38,8 @@ pip install inventag-aws
 inventag --help
 ```
 
+未針對 Debian、Ubuntu 或 Homebrew 驗證：externally-managed-environment 錯誤以及繞過它的兩種辦法。
+
 這樣你就有了本文件所用的 `inventag` 命令。
 報告範本已包含在軟體包中。
 
@@ -45,6 +48,8 @@ inventag --help
 `pipx install inventag-aws` 會把它裝進獨立的隱藏環境，並把 `inventag` 命令放到
 PATH 中，你無需啟用任何環境。如果你的系統允許，直接把 `pip install inventag-aws`
 裝到使用者或系統 Python 中也可以。
+
+未針對 pip 和 pipx 驗證：升級、固定版本和 pipx 命令。
 
 ## 從原始碼安裝 {#install-from-source}
 
@@ -85,6 +90,8 @@ export AWS_PROFILE=my-readonly
 aws configure
 ```
 
+未針對 AWS CLI 驗證：本節中的登入命令。
+
 請優先使用短期憑證，例如 IAM Identity Center 或擔任的角色，
 而不是存放在磁碟上的存取金鑰。
 
@@ -117,7 +124,7 @@ echo $?
 0
 ```
 
-如果憑證不可用，InvenTag 會說明原因並給出修復建議。
+如果憑證缺失，或安全權杖無效或已過期，InvenTag 會說明原因並給出修復建議。IAM Identity Center（SSO）權杖過期是個例外：參見[功能狀態](./status.md#when-a-run-goes-wrong)。
 參見[解決常見問題](../guides/troubleshooting.md#credentials)。
 
 ## 授予 InvenTag 唯讀權限 {#give-inventag-read-only-permissions}
@@ -164,6 +171,8 @@ python -m pytest -q
 | `inventag: command not found` | 啟用你執行 `pip install inventag-aws` 的那個虛擬環境，或執行 `python -m pip show inventag-aws` 檢查是否已安裝。 |
 | `ModuleNotFoundError` | 啟用虛擬環境，再次執行 `pip install -r requirements.txt`。 |
 | `No AWS credentials found!` | 執行 `aws sso login` 或 `aws configure`，或設定 `AWS_PROFILE`。 |
+
+未針對 AWS CLI 驗證：「怎麼辦」欄中的命令。
 
 ## 下一步 {#next-step}
 

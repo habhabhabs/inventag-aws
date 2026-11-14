@@ -13,26 +13,21 @@ sidebar_position: 5
 s’arrêtent, quelles options s’arrêtent sur une erreur et que faire face à chaque limite.
 
 Cette page est volontairement directe. Elle décrit la version actuelle ; le
-[journal des modifications](https://github.com/habhabhabs/inventag-aws/blob/main/CHANGELOG.md) liste ce qui a changé dans chaque version. Nous avons
-vérifié chaque point en exécutant le code hors ligne sur un AWS simulé (moto), ou en
-lisant le chemin du code. **Aucun test n’a été exécuté sur un compte AWS réel.** Lorsqu’un
-point ci-dessous dépend du comportement du vrai AWS, la page le dit. Si vous corrigez ou
-modifiez l’un d’eux, mettez à jour cette page dans la même demande de fusion (pull request).
+[journal des modifications](https://github.com/habhabhabs/inventag-aws/blob/main/CHANGELOG.md) liste ce qui a changé dans chaque version. Chaque point ci-dessous est démontré par un test hors ligne ou une exécution sur un AWS simulé (moto). **Aucun test n’a été exécuté sur un compte AWS réel.** Lorsqu’un point dépend du comportement du vrai AWS, la page le dit. Si vous corrigez ou modifiez l’un d’eux, mettez à jour cette page dans la même demande de fusion (pull request).
 
 ## Ce qui est testé {#what-is-tested}
 
-Chaque fonctionnalité a un test hors ligne sur un AWS simulé (moto). La liste des tests
-et ce que chacun vérifie se trouvent sur la page [Tests](../security/tests.md).
+La page [Tests](../security/tests.md) liste les tests hors ligne sur un AWS simulé (moto) et ce que chacun vérifie. Une affirmation de cette documentation qu’aucun test ne démontre porte une note qui commence par « Non vérifié sur ».
 
 ## Options avec limites {#flags-with-a-limit}
 
 | Option | Ce qui se passe réellement |
 |---|---|
-| `--enable-cost-analysis` | Ajoute une feuille Cost Analysis et les quatre colonnes `forgotten_analysis.*`. Les coûts sont des estimations de l’API AWS Pricing, pas votre facture. Elle effectue des appels supplémentaires à Cost Explorer, Pricing et CloudWatch. Voir [Coûts](#costs). |
-| `--compliance-standard` | S’arrête avec le code de sortie 2. Une norme telle que SOC 2 ne peut pas être vérifiée à partir d’un inventaire, et une option qui n’afficherait qu’une étiquette vous induirait en erreur. Utilisez un modèle de politique d’étiquetage. |
+| `--enable-cost-analysis` | Ajoute une feuille Cost Analysis et les quatre colonnes `forgotten_analysis.*`, avec des estimations de l’API AWS Pricing qui ne sont pas votre facture, et effectue des appels supplémentaires à Cost Explorer, Pricing et CloudWatch (voir [Coûts](#costs)). |
+| `--compliance-standard` | S’arrête avec le code de sortie 2, car une norme telle que SOC 2 ne peut pas être vérifiée à partir d’un inventaire ; utilisez plutôt un modèle de politique d’étiquetage. |
 | `--create-google-docs`, `--create-google-sheets` | Ne fonctionnent qu’avec des clients Google simulés. Voir [Google Sheets et Docs](../guides/google-sheets-and-docs.md#what-is-not-verified). |
 | `--enable-production-safety`, `--security-validation`, `--enforce-read-only` | Conservées pour que les anciennes commandes fonctionnent encore. La protection en lecture seule est toujours active. |
-| `--disable-production-safety` | S’arrête avec le code de sortie 2. La protection ne peut pas être désactivée. |
+| `--disable-production-safety` | S’arrête avec le code de sortie 2, car la protection en lecture seule ne peut pas être désactivée. |
 
 ```bash title="Terminal"
 inventag --create-google-docs
@@ -84,15 +79,15 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   Systems Manager (noms seulement), groupes Auto Scaling, coffres Backup, groupes
   d’utilisateurs Cognito, CodeBuild, CodePipeline, groupes de travail Athena, EMR,
   MSK, AppSync, Elastic Beanstalk et ACL web WAF.
-- **Tout le reste** ne peut apparaître que si l’API Resource Groups Tagging le
-  renvoie. Cette API liste les ressources qui ont, ou ont eu, des étiquettes ; les
-  ressources sans étiquette des autres services manquent donc. Avec
-  `--fallback-display auto` (la valeur par défaut), ces ressources ne sont
-  affichées que pour les services sans résultat de leur propre code de découverte.
-  Utilisez `--fallback-display always` pour les afficher toutes.
-- **Non collecté :** valeurs secrètes, valeurs de paramètres, contenu des objets
-  ou toute autre donnée. La protection en lecture seule bloque les appels qui les
-  renvoient.
+- **Tout le reste** n’apparaît que lorsque l’API Resource Groups Tagging le
+  renvoie, donc les ressources sans étiquette de tout autre service sont
+  absentes. Avec `--fallback-display auto` (la valeur par défaut), ces
+  ressources ne sont affichées que pour les services qui n’ont aucun résultat
+  de leur propre code de découverte ; `--fallback-display always` les affiche
+  toutes.
+- **Non collecté :** valeurs secrètes, valeurs de paramètres, contenu d’objets
+  ou toute autre donnée, car la protection en lecture seule bloque les appels
+  qui les renvoient.
 - **Les valeurs secrètes des réponses autorisées sont masquées.** Certains appels
   de lecture renvoient un secret à côté d’un paramètre. Les valeurs des champs qui
   contiennent souvent des secrets sont remplacées par `***REDACTED***` dans les
@@ -107,15 +102,15 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   Splunk HEC, Grafana et de jonction, et tout champ nommé comme password,
   secret, token, access ou refresh token, private key ou credentials, y compris
   dans du texte JSON. Les noms restent.
-- **Les secrets dans d’autres champs ne sont pas trouvés.** InvenTag se fie au
-  nom du champ : un secret dans une description, une étiquette, un autre champ de
-  texte libre ou un champ qu’AWS ajoutera plus tard est copié tel quel dans les
-  rapports.
+- **Les secrets des autres champs ne sont pas détectés :** un secret dans une
+  description, une étiquette, un autre champ de texte libre ou un champ que AWS
+  ajoutera plus tard est copié tel quel dans les rapports, car le masquage se
+  fait d’après le nom du champ.
 - **Les étiquettes sont affichées telles quelles**, même quand une clé
   d’étiquette ressemble à un secret, comme `password`.
-- **Les rapports et instantanés écrits par les versions antérieures à v1.2.0
-  peuvent contenir des valeurs secrètes.** Supprimez ou restreignez les anciens
-  dossiers `bom_output/` et les copies partagées.
+- **Les rapports et instantanés écrits par des versions antérieures à v1.2.0
+  peuvent contenir des valeurs secrètes**, donc supprimez ou restreignez les
+  anciens dossiers `bom_output/` et les copies partagées.
 - **Les services globaux** (IAM, la liste des compartiments S3, CloudFront,
   Route 53, les ACL web WAF pour CloudFront et les certificats ACM utilisés par
   CloudFront) sont lus une fois par compte depuis `us-east-1` (`cn-north-1` en
@@ -132,55 +127,59 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 ## Quand une exécution tourne mal {#when-a-run-goes-wrong}
 
 - **Un compte échoue, les autres fonctionnent :** l’exécution se termine avec le
-  code 0, ou avec le code 5 si vous passez `--fail-on-account-error`. Le résumé de
-  l’exécution et le rapport par défaut nomment chaque compte en échec et la
-  raison ; un rapport fait avec `--template` ne le fait pas. Si tous
-  les comptes échouent, l’exécution se termine avec le code 1.
-- **Un compte dépasse son temps :** il compte comme en échec. Les ressources
-  trouvées avant la limite restent dans le rapport, et le rapport par défaut
-  indique que le compte est incomplet.
-- **Aucune ressource trouvée, ou les filtres les ont toutes retirées :** sans
-  `--template`, InvenTag n’écrit aucun rapport, consigne un avertissement et se
-  termine avec le code 0. Avec `--template`, il écrit un rapport vide.
-  `--fail-if-empty` fait se terminer les deux cas avec le code 6.
-- **Un service pour lequel vous n’avez pas de permission :** InvenTag ignore cet
-  appel, consigne un avertissement pour le service avec la raison, et continue.
-  Les ressources de ce service peuvent quand même apparaître si l’API Resource
-  Groups Tagging les renvoie.
+  code 0, ou avec le code 5 si vous passez `--fail-on-account-error`.
+- **Un rapport fait avec `--template`** ne nomme pas les comptes en échec ; le
+  résumé de l’exécution et le rapport par défaut les nomment.
+- **Tous les comptes échouent :** l’exécution se termine avec le code 1, y compris
+  avec `--fail-on-account-error`, et n’écrit aucun rapport, sauf si les comptes ont
+  dépassé leur délai : le rapport montre alors ce qui a été trouvé.
+- **Un compte dépasse son temps :** il compte comme en échec, et les ressources
+  trouvées avant la limite restent dans le rapport.
+- **Aucune ressource trouvée, ou les filtres les ont toutes retirées :**
+  InvenTag n’écrit aucun rapport sans `--template` et un rapport vide avec
+  `--template`, et se termine avec le code 0 sauf si vous passez
+  `--fail-if-empty` (code 6).
+- **Une politique d’étiquetage sans aucune ressource dans son périmètre**
+  signale `0 of 0 resources compliant (100.0%)`, alors que rien n’a été vérifié.
+- **Un service pour lequel vous n’avez pas de permission** est ignoré avec un
+  avertissement, et ses ressources n’apparaissent que si l’API Resource Groups
+  Tagging les renvoie.
 - **Un listage qui échoue pour une autre raison** (limité après les nouvelles
-  tentatives, ou une erreur) est consigné comme avertissement pour ce service et
-  cette région, et compté dans l’instantané d’état (`metadata.tags.coverage_summary`).
+  tentatives, ou une erreur) est un avertissement et un compte dans l’instantané
+  (`metadata.tags.coverage_summary`), et aucun rapport ne le nomme.
 - **Tous les appels d’un compte refusés :** le compte ne compte pas comme en
-  échec. L’exécution se termine avec le code 0 sans ressource à signaler, et
-  l’instantané enregistré fait que l’exécution suivante signale toutes les
-  ressources de ce compte comme supprimées.
-- **Un service dont le listage a été limité ou a échoué avec une erreur** lors
-  d’une exécution apparaît comme supprimé dans le rapport de changements suivant.
+  échec, l’exécution se termine avec le code 0, et le rapport de changements
+  suivant liste comme supprimées toutes les ressources de ce compte.
+- **Un service dont le listage a été limité ou a échoué** lors d’une exécution
+  montre ses ressources comme supprimées dans le rapport de changements suivant.
+- **Une exécution avec d’autres régions ou services que la précédente** montre
+  comme supprimées, dans le rapport de changements, les ressources hors du
+  nouveau périmètre.
 - **Le premier rapport de changements après une mise à jour depuis v1.1.4**
   liste les ressources des services nouvellement couverts comme ajoutées, alors
   qu’elles existaient déjà.
-- **Une session qui expire pendant l’analyse :** l’exécution se termine avec le
-  code 0, y compris avec `--fail-on-account-error`. Le rapport ne contient que ce
-  qui a été lu avant l’expiration de la session et ne le signale pas ; chaque
-  listage en échec est un avertissement dans la console et dans le fichier de
-  `--log-file`. Si la session a déjà expiré au début de l’analyse, aucun fichier
-  de rapport n’est écrit.
+- **Une session qui expire pendant l’analyse** laisse un rapport qui ne contient
+  que ce qui a été lu avant l’expiration, sans note, et l’exécution se termine
+  avec le code 0, y compris avec `--fail-on-account-error`.
+- **Une session déjà expirée au début de l’analyse** ne donne aucun fichier de
+  rapport et le code 0.
 - **Avec `--resume`**, un compte dont la session a expiré en cours de première
   exécution peut être réutilisé comme s’il était complet.
-- **Un jeton IAM Identity Center (SSO) expiré** arrête l’exécution avec une trace
-  d’appels Python au lieu d’un message. Relancez `aws sso login`.
+- **Un jeton IAM Identity Center (SSO) expiré** arrête l’exécution avec le code
+  de sortie 1 et une trace d’appels Python, et le message ne vous dit pas de
+  lancer `aws sso login`.
 - **Accès refusé à Cost Explorer :** l’exécution continue sans données de
-  facturation et consigne un avertissement.
-- **Un appel bloqué par la protection en lecture seule** est consigné comme une
-  erreur qui nomme l’opération. S’il survient dans un listage, ce listage est
-  ignoré et l’exécution continue avec le code de sortie 0. La CLI ne fait pas de
-  tels appels elle-même.
+  facturation, et les deux avertissements à ce sujet ne s’affichent qu’avec
+  `--debug`.
+- **Un appel bloqué par la protection en lecture seule** dans un listage ignore
+  ce listage avec une ligne d’erreur, et l’exécution se termine quand même avec
+  le code 0.
 - **Un téléversement S3 en échec** fait se terminer toute l’exécution avec le
   code 1, après l’écriture locale des rapports.
-- **Un format de rapport en échec** fait se terminer l’exécution avec le code 1,
-  et rien n’est téléversé vers S3, pas même les formats qui ont été écrits.
-- **Un instantané qui ne peut pas être enregistré** est consigné comme une
-  erreur, et l’exécution se termine quand même avec le code 0.
+- **Un format de rapport en échec** fait se terminer l’exécution avec le code 1
+  et ne téléverse rien vers S3, pas même les formats qui ont été écrits.
+- **Un instantané qui ne peut pas être enregistré** n’est qu’une ligne d’erreur,
+  et l’exécution se termine quand même avec le code 0.
 - **La sortie Google avec `--template`** est ignorée, et l’exécution se termine
   avec le code 0.
 - **Certaines valeurs non valides s’arrêtent avec le code de sortie 1, pas 2,**
@@ -188,49 +187,69 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **Les valeurs du bloc `settings` d’un fichier de comptes remplacent les
   options de ligne de commande correspondantes**, par exemple
   `max_concurrent_accounts`.
+- **Un résultat vide avec `--s3-bucket`** fait se terminer l’exécution avec le
+  code 1 (`S3 upload of reports failed: no files`), y compris avec
+  `--fail-if-empty`.
+- **Un nom de région mal saisi dans `--account-regions`** termine l’exécution
+  avec le code 0, un texte `KeyError` brut et aucun rapport.
+- **Un profil qui exige la MFA, lancé sans terminal,** s’arrête avec une trace
+  d’appels Python et un message vide, ou attend indéfiniment tant que l’entrée
+  reste ouverte.
+- **Un chemin `--audit-output` ou `--log-file` où l’on ne peut pas écrire**
+  termine l’exécution avec une trace d’appels Python, et un dossier de sortie
+  inutilisable n’est découvert qu’après toute l’analyse.
+- **Ctrl-C** arrête l’exécution sans message visible, et un SIGTERM l’arrête
+  sans aucun message.
+- **Une deuxième entrée avec le même ID de compte** dans un fichier de comptes
+  est ignorée sans message, donc ses régions ne sont pas analysées.
+- **Deux exécutions qui utilisent en même temps le même dossier de sortie** ne
+  sont pas empêchées.
+- **`--validate-config-only` ne lit pas `--bom-config`** : un fichier de paramètres BOM avec une valeur erronée passe la vérification et n’arrête que la vraie exécution (code de sortie 1).
+- **Un fichier de descriptions de services sans la clé de premier niveau `service_descriptions`** passe la vérification, et l’exécution l’ignore avec une erreur dans le journal et utilise les descriptions intégrées.
+- **`inventag --validate-operations` répond d’après le nom seul :** il affiche `apigateway:GetApiKeys` et `ec2:DescribeInstanceAttribute` comme ALLOWED, alors que la protection les bloque lorsqu’ils sont appelés avec `includeValues` ou `Attribute=userData`.
+- **Avec `services` dans un modèle de configuration**, le rapport ne contient que ces services, mais l’analyse lit toujours tous les services, si bien que des avertissements sur d’autres services peuvent apparaître.
 
 ## Coûts {#costs}
 
 Par défaut, la découverte appelle l’API `GetCostAndUsage` de Cost Explorer. Dans notre
 test hors ligne, elle a fait deux requêtes par compte. AWS facture chaque requête
-Cost Explorer. Consultez les
+Cost Explorer : consultez les
 [tarifs actuels de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 
-- `--no-billing-validation` arrête ces appels. Le rapport n’a alors aucune donnée de
-  facturation à comparer.
-- `--enable-cost-analysis` fait davantage d’appels, même avec
-  `--no-billing-validation`. Dans notre test hors ligne (un compte, `us-east-1`),
-  elle a fait 5 appels à Cost Explorer, 3 à Pricing et 2 à CloudWatch. Les
-  estimations donnent un prix à chaque type d’instance (et à chaque autre taille
-  ou classe) séparément. Chaque recherche de prix distincte n’est faite qu’une fois
-  puis réutilisée ; le nombre d’appels à Pricing augmente donc avec le nombre de
+- `--no-billing-validation` arrête ces appels, et le rapport n’a alors aucune
+  donnée de facturation à comparer.
+- `--enable-cost-analysis` fait davantage d’appels à Cost Explorer, Pricing et
+  CloudWatch, même avec `--no-billing-validation`, et leur nombre dépend de vos
+  ressources. Chaque recherche de prix distincte n’est faite qu’une fois puis
+  réutilisée ; le nombre d’appels à Pricing augmente donc avec le nombre de
   types et de tailles de ressources différents, pas avec le nombre de ressources.
 
-Les autres appels sont gratuits, mais les grands comptes impliquent de nombreuses requêtes et une possible
-limitation de débit (AWS ralentit vos requêtes). InvenTag relance un appel limité jusqu’à 10 fois
-(mode de nouvelle tentative standard) ; `AWS_RETRY_MODE` et `AWS_MAX_ATTEMPTS` modifient ce réglage.
+Non vérifié sur un vrai AWS : les estimations de coûts de `--enable-cost-analysis`.
+
+InvenTag relance un appel limité jusqu’à 10 fois (mode de nouvelle tentative
+standard) ; `AWS_RETRY_MODE` et `AWS_MAX_ATTEMPTS` modifient ce réglage.
 
 ## Performances et limites {#performance-and-limits}
 
-- InvenTag n’a pas de chiffres de performance pour des comptes réels. Analyser
-  toutes les régions d’un grand compte est lent : un jeu d’appels par service et
-  par région.
+- InvenTag n’a pas de chiffres de performance pour des comptes réels, et une
+  analyse fait un ensemble d’appels par service et par région.
 - Sur moto (dans le processus, donc sans temps réseau),
-  `scripts/benchmark_scan.py` a analysé 9 547 ressources dans une région avec
-  2 027 appels d’API. Pour des comptes réels, le chiffre utile est le nombre
-  d’appels : environ 60 appels fixes par région, plus un appel par compartiment S3
-  et par fonction Lambda, plus une page de l’API Tagging par tranche de
-  100 ressources étiquetées.
+  `scripts/benchmark_scan.py --scale 60` a analysé 10 948 ressources dans une
+  région avec 2 053 appels d’API : 1 200 appels `s3:GetBucketLocation` (un par
+  compartiment), 600 appels `lambda:GetFunctionConfiguration` (un par fonction),
+  150 appels à l’API Resource Groups Tagging et 103 autres appels. Pour des
+  comptes réels, le chiffre utile est le nombre d’appels.
 - Par défaut, quatre comptes sont analysés en même temps
   (`--max-concurrent-accounts`). Chaque compte dispose de 1800 secondes à partir
   du début de son analyse (`--account-processing-timeout`).
 - Quand certains comptes échouent, les résultats des comptes terminés sont
   enregistrés. Relancez la même commande avec `--resume` dans les 24 heures
   (`--resume-max-age-hours`) pour n’analyser que les autres.
-- Les noms de feuille Excel sont limités à 31 caractères : les noms plus longs
-  sont coupés, les caractères qu’Excel n’accepte pas deviennent `-`, un nom
-  répété reçoit ` (2)`, et le journal nomme chaque feuille modifiée. Les tableaux
-  Word affichent jusqu’à 50 ressources par service par défaut (`max_rows`).
+- Les noms de feuille Excel sont coupés à 31 caractères, les caractères que
+  Excel n’autorise pas deviennent `-`, un nom répété reçoit ` (2)`, et le
+  journal nomme chaque feuille modifiée.
+- Les tableaux Word affichent jusqu’à 50 ressources par service par défaut
+  (`max_rows`).
 - Quand une exécution enregistre un instantané, InvenTag supprime les instantanés
   de `bom_output/state/` de plus de 30 jours ou au-delà des 100 plus récents.
   L’instantané qui vient d’être écrit et celui avec lequel il est comparé ne sont
@@ -241,6 +260,7 @@ limitation de débit (AWS ralentit vos requêtes). InvenTag relance un appel lim
 - L’analyse réseau ne compte une ressource présente dans plusieurs sous-réseaux
   que pour le premier, et compte les équilibreurs de charge pour leur VPC mais
   pas pour un sous-réseau.
+- L’analyse réseau ne compte pas les clusters ElastiCache comme ressources associées d’un VPC ou d’un sous-réseau.
 - L’enrichissement des attributs de service (`enable_service_enrichment` dans
   les réglages de la BOM) ne s’exécute pas ; les rapports contiennent les champs
   que renvoie la découverte.
@@ -268,10 +288,14 @@ limitation de débit (AWS ralentit vos requêtes). InvenTag relance un appel lim
   la protection en lecture seule. Seule la commande `inventag` le fait.
 - **Un modèle de configuration peut fixer le dossier de sortie ainsi que les
   comptes et rôles à analyser.** N’utilisez que des modèles de confiance.
-- **Les sessions de rôle assumé durent une heure et ne sont pas renouvelées** :
-  l’analyse d’un compte qui dure plus longtemps tombe sur un jeton expiré.
-- **La MFA est prise en charge via les profils AWS** (`mfa_serial`), pas pour
-  les entrées `role_arn` d’un fichier de comptes.
+- **Les sessions de rôle assumé ne sont pas renouvelées**, donc l’analyse d’un
+  compte qui dépasse la durée de la session rencontre un jeton expiré.
+
+  Non vérifié sur un vrai AWS : les sessions de rôle assumé durent une heure.
+- **La MFA ne fonctionne que par les profils AWS** (`mfa_serial`), pas pour les
+  entrées `role_arn` d’un fichier de comptes.
+
+  Non vérifié sur un vrai dispositif MFA : la MFA par un profil AWS avec `mfa_serial`.
 
 ## Tests et nomenclature logicielle {#tests-and-the-software-bill-of-materials}
 

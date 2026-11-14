@@ -14,6 +14,8 @@ sidebar_position: 3
   [唯讀策略](../guides/read-only-access.md#with-an-iam-role-in-each-account)；
 - 一個可以擔任這些角色的身份的憑證，例如管理帳戶或委派的安全帳戶中的憑證。
 
+未針對真實的 AWS 驗證：管理帳戶或委派帳戶可以擔任這些角色。
+
 ## 範本 {#template}
 
 列出你的帳戶：
@@ -21,6 +23,8 @@ sidebar_position: 3
 ```bash title="Terminal"
 aws organizations list-accounts --query "Accounts[?Status=='ACTIVE'].[Id,Name]" --output text
 ```
+
+未針對真實的 AWS 驗證：`aws organizations list-accounts` 命令及其列出的帳戶。
 
 複製內建範本，並填入你的帳戶：
 
@@ -109,7 +113,7 @@ Tag policy 'finops-cost-allocation': 0 of 39 resources compliant (0.0%), 39 non-
 ## 下一步 {#next-steps}
 
 - 如果某個帳戶失敗，InvenTag 會記錄錯誤、報告其他帳戶，並仍以結束代碼 0 結束，
-  所以請檢查日誌。常見原因是角色的信任策略。加上 `--fail-on-account-error`
+  所以請檢查日誌。加上 `--fail-on-account-error`
   則會在寫出報告之後以結束代碼 5 結束。如果所有帳戶都失敗，執行會以結束代碼 1 結束。
 - 超時的帳戶會保留時限之前已找到的資源。在有帳戶失敗的執行之後，用同一條命令再加上
   `--resume` 執行，只掃描其餘帳戶（已完成的帳戶會被複用）。

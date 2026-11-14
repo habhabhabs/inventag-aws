@@ -24,6 +24,8 @@ La CI exécute la suite sur Python 3.11, 3.12, 3.13, 3.14 et 3.15, ainsi que des
 d’intégration et de sécurité de base, à chaque push sur `main` ou `develop` et à
 chaque pull request vers `main`.
 
+Non vérifié sur un runner GitHub Actions : les jobs de CI ; ils sont lus dans le fichier de workflow.
+
 **Aucun test ne s’exécute sur un vrai compte AWS.** Lorsqu’un résultat dépend du comportement du
 vrai AWS, l’[état des fonctionnalités](../getting-started/status.md) le précise.
 
@@ -49,10 +51,12 @@ référence pour les ARN et les étiquettes.
 | Protection en lecture seule, audit, `--validate-operations`, téléversement S3, fichiers privés | `tests/unit/test_cli_security.py`, `tests/unit/test_security_read_only_guard.py` |
 | Masquage des secrets, y compris les secrets Google | `tests/unit/test_security_redaction.py`, `tests/unit/test_google_output.py` |
 | Sortie Google Sheets et Docs (clients Google simulés) | `tests/unit/test_google_output.py` |
-| Valeurs secrètes masquées dans chaque rapport, instantané, point de reprise et journal (sept secrets placés) | `tests/unit/test_integration_secrets_end_to_end.py` |
+| Valeurs secrètes masquées dans chaque rapport, instantané, point de reprise et journal (dix secrets placés) | `tests/unit/test_integration_secrets_end_to_end.py` |
 | `--resume`, rétention, repli des régions, limite de temps par compte | `tests/unit/test_integration_wiring.py` |
 | Chaque opération de listage lit une deuxième page ; chaque ligne nomme son API d’origine | `tests/unit/test_integration_two_pages.py`, `tests/unit/test_integration_row_sources.py` |
 | Analyse réseau et sécurité de bout en bout | `tests/unit/test_integration_analysis_end_to_end.py` |
+
+Sur un AWS simulé, la découverte ne lit pas les valeurs de ECS, de CodeBuild, les données utilisateur EC2 ni les connexions Glue ; pour ces quatre, le test montre donc seulement qu’elles ne fuient pas.
 
 ## Exécuter les tests vous-même {#run-the-tests-yourself}
 
@@ -71,6 +75,8 @@ développement complet : [Contribuer à InvenTag](../development/CONTRIBUTING.md
 
 - **Le site de documentation** est construit en CI. La construction échoue sur un lien cassé,
   et une vérification d’accessibilité s’exécute sur les pages construites.
+
+  Non vérifié sur un runner GitHub Actions : la construction de la documentation et ses vérifications ; elles sont lues dans le fichier de workflow.
 - **Les dépendances** sont analysées à la recherche de vulnérabilités connues. Voir
   [Sécurité](./index.md#how-dependencies-are-checked) et la
   [nomenclature logicielle](./sbom.md).

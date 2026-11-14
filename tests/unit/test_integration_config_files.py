@@ -10,6 +10,30 @@ from inventag.cli.config_validator import ConfigValidator
 from inventag.cli.main import create_multi_account_config, create_parser
 
 
+class _FakeSts:
+    def get_caller_identity(self):
+        return {"Account": "123456789012", "Arn": "arn:aws:iam::123456789012:user/test"}
+
+
+class _FakeSession:
+    """Stands in for ``boto3.Session`` so that ``create_multi_account_config`` finds
+    its account without a call to STS (it asks STS who the caller is)."""
+
+    calls = []
+
+    def client(self, service, *args, **kwargs):
+        _FakeSession.calls.append(service)
+        assert service == "sts", f"unexpected client {service!r}"
+        return _FakeSts()
+
+
+@pytest.fixture(autouse=True)
+def _no_sts_call(monkeypatch):
+    """These tests are about config files, not about AWS: no call leaves the process."""
+    _FakeSession.calls = []
+    monkeypatch.setattr("boto3.Session", _FakeSession)
+
+
 def _args(tmp_path, *extra):
     return create_parser().parse_args(
         ["--account-regions", "us-east-1", "--output-directory", str(tmp_path), *extra]
@@ -67,3 +91,11 @@ def test_accounts_file_with_byte_order_mark_is_read(tmp_path):
     result = ConfigValidator().validate_accounts_file(str(path))
     assert result.is_valid, result.errors
     assert result.config == data
+
+
+def test_the_account_is_found_through_the_stub_not_the_network(tmp_path):
+    path = tmp_path / "bom.json"
+    path.write_text(json.dumps({"max_worker_threads": 3}))
+    config = create_multi_account_config(_args(tmp_path, "--bom-config", str(path)))
+    assert _FakeSession.calls == ["sts"]
+    assert [a.account_id for a in config.accounts] == ["123456789012"]

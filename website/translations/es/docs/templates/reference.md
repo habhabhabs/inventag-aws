@@ -232,5 +232,5 @@ archivo que los contiene.
 | `templates init` | 2 | El nombre o la extensión de salida no está permitido |
 | `inventag --template ...` | 1 | Una plantilla no es válida o la ejecución falló |
 | `inventag --template ...` | 3 | Se escribieron los informes, pero hay recursos que incumplen la política de etiquetas y `fail_on_tag_violations` es `true` |
-| `inventag --template ...` | 5 | Se escribieron los informes, pero una cuenta falló o se analizó solo en parte, y pasaste `--fail-on-account-error` |
+| `inventag --template ...` | 5 | Se escribieron los informes, pero una cuenta no se pudo analizar o se quedó sin tiempo, y pasaste `--fail-on-account-error` |
 | `inventag --template ...` | 6 | No se encontró ningún recurso y pasaste `--fail-if-empty` |

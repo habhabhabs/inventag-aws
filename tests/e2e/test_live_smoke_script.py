@@ -34,8 +34,7 @@ def smoke():
 
 
 @pytest.fixture
-def aws(monkeypatch):
-    monkeypatch.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
+def aws():
     with mock_aws():
         seed_estate()
         seed_compute()
@@ -107,8 +106,7 @@ class TestAgainstMoto:
         assert code == 0, output
         assert "Account 123456789012" in output
 
-    def test_empty_account_is_skip_not_pass(self, monkeypatch, run_smoke):
-        monkeypatch.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
+    def test_empty_account_is_skip_not_pass(self, run_smoke):
         with mock_aws():
             code, output = run_smoke()
         table = result_lines(output)

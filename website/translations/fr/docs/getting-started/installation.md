@@ -15,8 +15,8 @@ InvenTag peut joindre votre compte AWS.
 ## Ce dont vous avez besoin {#what-you-need}
 
 - **Python 3.11 ou version ultérieure.** Python 3.10 ne reçoit plus de correctifs de sécurité depuis
-  octobre 2026. Vérifiez votre version avec `python3 --version`.
-- **pip**, fourni avec Python. (Git n’est nécessaire que pour installer depuis les sources.)
+  octobre 2026. Voir l’[état des versions de Python](https://devguide.python.org/versions/). Vérifiez votre version avec `python3 --version`.
+- **pip** pour ce Python. (Git n’est nécessaire que pour installer depuis les sources.)
 - Des **identifiants AWS** pour une identité en lecture seule. L’
   [interface de ligne de commande AWS (AWS CLI)](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
   est facultative, mais c’est le moyen le plus simple de les configurer.
@@ -40,6 +40,8 @@ pip install inventag-aws
 inventag --help
 ```
 
+Non vérifié sur Debian, Ubuntu ni sur Homebrew : l’erreur externally-managed-environment et les deux moyens de la contourner.
+
 Vous disposez ainsi de la commande `inventag` qu’utilise cette documentation. Les
 modèles de rapport sont inclus dans le paquet.
 
@@ -49,6 +51,8 @@ environnements de projet ? `pipx install inventag-aws` l’installe dans son pro
 environnement caché et place la commande `inventag` dans votre PATH ; vous n’avez donc jamais rien
 à activer. Si votre système l’autorise, un simple `pip install inventag-aws`
 dans votre Python utilisateur ou système fonctionne aussi.
+
+Non vérifié sur pip ni sur pipx : les commandes de mise à jour, d’épinglage de version et de pipx.
 
 ## Installer depuis les sources {#install-from-source}
 
@@ -91,6 +95,8 @@ Avec des clés d’accès de longue durée (à éviter si possible) :
 aws configure
 ```
 
+Non vérifié sur l’AWS CLI : les commandes de connexion de cette section.
+
 Préférez des identifiants de courte durée, comme IAM Identity Center ou un rôle
 assumé, plutôt que des clés d’accès stockées sur disque.
 
@@ -123,7 +129,7 @@ echo $?
 0
 ```
 
-Si les identifiants ne fonctionnent pas, InvenTag explique pourquoi et suggère une solution. Voir
+Si les identifiants sont absents, ou si le jeton de sécurité n’est pas valide ou a expiré, InvenTag explique pourquoi et suggère une solution. Un jeton IAM Identity Center (SSO) expiré fait exception : voir [État des fonctionnalités](./status.md#when-a-run-goes-wrong). Voir
 [Résoudre les problèmes courants](../guides/troubleshooting.md#credentials).
 
 ## Accorder à InvenTag des autorisations en lecture seule {#give-inventag-read-only-permissions}
@@ -187,6 +193,8 @@ de tests complète.
 | `inventag: command not found` | Activez l’environnement virtuel dans lequel vous avez exécuté `pip install inventag-aws`, ou exécutez `python -m pip show inventag-aws` pour vérifier qu’il est installé. |
 | `ModuleNotFoundError` | Activez l’environnement virtuel et exécutez de nouveau `pip install -r requirements.txt`. |
 | `No AWS credentials found!` | Exécutez `aws sso login` ou `aws configure`, ou définissez `AWS_PROFILE`. |
+
+Non vérifié sur l’AWS CLI : les commandes de la colonne « Que faire ».
 
 ## Étape suivante {#next-step}
 

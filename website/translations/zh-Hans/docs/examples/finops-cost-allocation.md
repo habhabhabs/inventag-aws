@@ -9,7 +9,11 @@ sidebar_position: 5
 **目标：** 为 FinOps（云财务运营）或财务团队生成一份报告，逐个资源显示成本分摊标签是否存在且有效。
 
 **你需要：** 只读凭证。标签只有在你于 AWS Billing and Cost Management 控制台中将其激活为成本分摊标签之后，
-才会出现在 AWS 成本报告中。InvenTag 显示哪些资源带有这些标签；它不计算成本。
+才会出现在 AWS 成本报告中。InvenTag 显示哪些资源带有这些标签。它不读取你的账单。可选的 `--enable-cost-analysis` 会添加成本估算。
+
+未针对 AWS 验证：标签只有在你把它们激活为成本分摊标签之后才会出现在成本报告中。
+
+未针对真实的 AWS 验证：`--enable-cost-analysis` 的成本估算。
 
 ## 模板 {#template}
 

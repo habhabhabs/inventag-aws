@@ -94,6 +94,8 @@ for x in r['non_compliant_resources'][:10]:
 - S3 acme-data-lake missing: Project
 ```
 
+No verificado contra un runner de GitHub Actions: el resumen del trabajo muestra esta salida.
+
 `acme-reports` tiene todas las etiquetas, pero dos valores son incorrectos. La
 lista `invalid` del archivo JSON y la columna Problems del libro indican cuáles.
 
@@ -200,8 +202,8 @@ Lo que no está verificado:
 
 - Empieza en modo solo informe: pon `fail_on_tag_violations: false` hasta que
   las cifras estén cerca de cero y entonces actívalo.
-- No dejes que una ejecución incompleta pase por limpia: `--fail-on-account-error`
-  termina con el código 5 cuando no se pudo analizar una cuenta y
+- No dejes que una ejecución con una cuenta fallida pase por limpia: `--fail-on-account-error`
+  termina con el código 5 cuando una cuenta no se pudo analizar o se quedó sin tiempo y
   `--fail-if-empty` termina con el código 6 cuando no se encontró ningún recurso.
   Ambos tienen prioridad sobre el código 3.
 - Usa tus propias reglas: [Comprobar etiquetas con una política](../guides/check-tag-compliance.md#write-your-own-policy).

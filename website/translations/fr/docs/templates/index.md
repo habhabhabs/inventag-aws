@@ -45,7 +45,8 @@ inventag --template standard-bom --template security-baseline --create-excel
 Quelques règles déterminent ce qui l’emporte lorsque des paramètres se chevauchent :
 
 1. **Les options que vous tapez l’emportent.** Si un modèle de configuration indique
-   `outputs: [excel]` et que vous tapez aussi `--create-word`, vous obtenez les deux fichiers.
+   `outputs: [excel]` et que vous tapez `--create-word`, vous obtenez seulement le fichier Word :
+   un `--create-excel` ou `--create-word` tapé remplace entièrement `outputs`.
 2. **Un modèle donné en ligne de commande l’emporte sur une référence à l’intérieur d’un autre
    modèle.** `--template security-baseline` remplace la politique d’étiquetage que
    `finops-cost-report` désigne.
@@ -87,7 +88,7 @@ termine avec le code 3 lorsqu’une ressource enfreint la politique. Le modèle 
 
 Deux options facultatives ont leurs propres codes de sortie :
 `--fail-on-account-error` se termine avec le code 5 quand un compte n’a pas pu
-être analysé, et `--fail-if-empty` avec le code 6 quand aucune ressource n’a été
+être analysé ou a dépassé son délai, et `--fail-if-empty` avec le code 6 quand aucune ressource n’a été
 trouvée. Les deux l’emportent sur le code 3. Les rapports sont tout de même écrits.
 
 ## Où InvenTag cherche les modèles {#where-inventag-looks-for-templates}
@@ -100,6 +101,8 @@ première correspondance :
 2. `.inventag/templates/` dans le dossier d’où vous lancez InvenTag (votre projet).
 3. `~/.config/inventag/templates/` (ou `$XDG_CONFIG_HOME/inventag/templates/`).
 4. Les modèles intégrés.
+
+Non vérifié sur Windows : le séparateur `;` dans `INVENTAG_TEMPLATE_PATH`.
 
 Ainsi, un fichier nommé `.inventag/templates/standard-bom.yaml` remplace le modèle intégré
 `standard-bom` pour ce projet. Il peut toujours s’appuyer sur l’original avec

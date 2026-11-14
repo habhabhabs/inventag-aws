@@ -40,7 +40,7 @@ inventag_cli.py
 | `inventag/reporting/` | Normalización de recursos y escritura de los archivos de Excel y Word predeterminados | `bom_processor.py`, `converter.py` |
 | `inventag/templating/` | Carga de plantillas, validación, herencia, comprobaciones de políticas de etiquetas y salida de Excel y Word dirigida por plantillas | `schema.py`, `registry.py`, `runner.py` |
 | `inventag/state/` | Instantáneas, diferencias y registros de cambios | `state_manager.py` |
-| `inventag/compliance/` | Clases de biblioteca para comprobaciones de etiquetas y seguridad; hoy la CLI casi no las usa | `checker.py` |
+| `inventag/compliance/` | Clases de biblioteca para comprobaciones de etiquetas y seguridad. La ruta de la política de etiquetas usa `checker.py`; la CLI no usa las demás clases | `checker.py` |
 | `inventag/security/` | La protección de solo lectura, la lista de políticas de IAM, la redacción de registros, los archivos de salida seguros | `read_only_guard.py`, `iam_policy.py` |
 
 ## Módulos compartidos {#shared-modules}
@@ -72,8 +72,7 @@ Mantenlos estables: renombrar uno rompe las plantillas de la gente.
 `templating/runner.py` define `TemplatedCloudBOMGenerator`, una subclase de
 `CloudBOMGenerator` que sustituye solo el paso de los documentos. El resto de
 la ejecución, incluidos el descubrimiento, las credenciales y el estado, no
-cambia. Sin `--template` se usan las clases originales y la salida es
-exactamente la de antes.
+cambia. Sin `--template` se usan las clases originales.
 
 ## Carencias conocidas que merece la pena corregir {#known-gaps-worth-fixing}
 
@@ -95,10 +94,10 @@ Estas son las carencias del código. Cada una es una buena primera contribución
   `--fail-on-account-error` (salida 5).
 - El análisis de red y de seguridad se ejecuta dos veces en una ejecución (en el
   procesador de la BOM y en el conversor), así que sus llamadas a AWS se hacen dos veces.
-- Estos módulos no están en el recorrido de la CLI: `reporting/template_framework.py`,
+- La CLI no llama a estos módulos: `reporting/template_framework.py`,
   `branding_system.py`, `word_builder.py`, `excel_builder.py`,
   `document_generator.py` y `configuration_manager.py`, además de
-  `discovery/enhanced_readonly_discovery.py` y métodos inalcanzables de
-  `discovery/inventory.py`.
+  `discovery/enhanced_readonly_discovery.py`. `reporting/template_framework.py`
+  y `reporting/document_generator.py` se importan cuando arranca la CLI.
 
 Las notas de diseño antiguas se eliminaron del repositorio. Usa las páginas de este sitio.

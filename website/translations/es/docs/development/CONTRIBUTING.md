@@ -50,6 +50,8 @@ de rendimiento solo cuando se pida: `python -m pytest -m performance`.
 Ejecuta `pip-audit -r requirements.txt` cuando cambies una dependencia; CI
 falla ante cualquier aviso nuevo.
 
+No verificado contra un runner de GitHub Actions: los trabajos de CI; se leen del archivo de flujo de trabajo.
+
 **Nunca ejecutes las pruebas contra una cuenta real de AWS por accidente.**
 Elimina `AWS_PROFILE` y las claves reales del entorno, o usa moto.
 

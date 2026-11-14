@@ -20,8 +20,10 @@ sidebar_position: 3
 | `ec2:DescribeRegions` | 列出已启用的区域，并检查你扫描的每个区域 | 即使使用 `--account-regions`，每个区域都会进行检查。检查失败的区域会被跳过并给出警告。如果该调用在每个区域都被拒绝，则扫描所有区域。 |
 | `account:ListRegions` | 在 `ec2:DescribeRegions` 失败时列出已启用的区域 | `ec2:DescribeRegions` 正常时不会调用。 |
 | `tag:GetResources` | 找出带标签的资源（Resource Groups Tagging API） | IAM 前缀是 `tag`，而不是 `resourcegroupstaggingapi`。 |
-| `ce:GetCostAndUsage` | 找出有支出的服务 | **AWS 按请求收费。** 在我们的离线测试中，每个账户一次运行会发出两次。如果被拒绝，发现过程会在没有账单数据的情况下继续。`--no-billing-validation` 会停止这些调用，此后你可以不授予这项权限。 |
+| `ce:GetCostAndUsage` | 找出有支出的服务 | **AWS 按请求收费。** 详见[Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。 在我们的离线测试中，每个账户一次运行会发出两次。如果被拒绝，发现过程会在没有账单数据的情况下继续。`--no-billing-validation` 会停止这些调用，此后你可以不授予这项权限。 |
 | 你想放入报告的每个服务的 `List*`、`Describe*`、`Get*` | 按服务发现 | 例如 `s3:ListAllMyBuckets`、`s3:GetBucketTagging`、`lambda:ListFunctions`、`dynamodb:ListTables`。AWS 托管的 `ReadOnlyAccess` 策略涵盖了这些。 |
+
+未针对真实的 AWS 验证：`GetCallerIdentity` 不需要权限，Tagging API 的 IAM 前缀是 `tag`，并且 `ReadOnlyAccess` 涵盖 List、Describe 和 Get 操作。
 
 ## 某些功能需要什么 {#what-some-features-need}
 
@@ -30,6 +32,8 @@ sidebar_position: 3
 | 通过角色扫描其他账户 | 对这些角色的 `sts:AssumeRole`，以及每个账户中允许你的身份的信任策略 |
 | `--enable-cost-analysis` | `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`（两者都在仓库的策略中） |
 | `--s3-bucket` | 对该存储桶的 `s3:PutObject`（如果使用 `aws:kms`，还需要对该密钥的 `kms:GenerateDataKey`） |
+
+未针对真实的 AWS 验证：这些是担任角色、成本分析和上传所需的仅有的额外权限。
 
 ## InvenTag 从不需要什么 {#what-inventag-never-needs}
 
@@ -45,12 +49,16 @@ sidebar_position: 3
 `lambda:GetFunctionConfiguration`。第二条语句只允许对 `/restapis`、`/domainnames` 和
 `/usageplans` 使用 `apigateway:GET`，因此无法读取 API 密钥的值。
 
+未针对真实的 AWS 验证：对这三个路径的 `apigateway:GET` 不会返回 API 密钥值。
+
 v1.2.0 为新服务和区域回退添加了以下 17 个操作：
 `account:ListRegions`, `appsync:ListGraphqlApis`, `athena:ListWorkGroups`, `autoscaling:DescribeAutoScalingGroups`, `backup:ListBackupVaults`, `cognito-idp:ListUserPools`, `ec2:DescribeNetworkInterfaces`, `ecr:DescribeRepositories`, `elasticbeanstalk:DescribeApplications`, `elasticbeanstalk:DescribeEnvironments`, `elasticfilesystem:DescribeFileSystems`, `elasticmapreduce:ListClusters`, `es:ListDomainNames`, `firehose:ListDeliveryStreams`, `kafka:ListClustersV2`, `redshift-serverless:ListNamespaces`, `redshift-serverless:ListWorkgroups`。
 它还删除了 `cloudtrail:LookupEvents`，`inventag` 命令不会调用它。
 
 它的 `OptionalS3ReportUpload` 语句允许 `s3:PutObject`，但仅限使用服务器端加密时。
-请把你的存储桶名称填在 `YOUR-REPORTS-BUCKET-NAME` 的位置；如果你不使用 `--s3-bucket`，就删除这条语句。
+请把你的存储桶名称填在 `YOUR-REPORTS-BUCKET-NAME` 的位置；如果你不使用 `--s3-bucket`，就删除这条语句。如果你使用其他 `--s3-key-prefix`，请同时修改资源。
+
+未针对真实的 AWS 验证：该语句仅在使用服务器端加密时才允许上传。
 
 ## 检查策略 {#check-a-policy}
 
@@ -61,4 +69,6 @@ aws iam simulate-principal-policy \
   --query "EvaluationResults[].[EvalActionName,EvalDecision]" --output table
 ```
 
-前两项应为 `allowed`，而 `s3:PutObject` 应被拒绝。
+前两项应为 `allowed`。只有保留了带有你的存储桶名称的 `OptionalS3ReportUpload` 语句时，`s3:PutObject` 才会被允许。
+
+未针对真实的 AWS 验证：`aws iam simulate-principal-policy` 对此策略的输出。

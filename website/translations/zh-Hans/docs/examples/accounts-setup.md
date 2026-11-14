@@ -14,6 +14,8 @@ sidebar_position: 3
   [只读策略](../guides/read-only-access.md#with-an-iam-role-in-each-account)；
 - 一个可以代入这些角色的身份的凭证，例如管理账户或委派的安全账户中的凭证。
 
+未针对真实的 AWS 验证：管理账户或委派账户可以代入这些角色。
+
 ## 模板 {#template}
 
 列出你的账户：
@@ -21,6 +23,8 @@ sidebar_position: 3
 ```bash title="Terminal"
 aws organizations list-accounts --query "Accounts[?Status=='ACTIVE'].[Id,Name]" --output text
 ```
+
+未针对真实的 AWS 验证：`aws organizations list-accounts` 命令及其列出的账户。
 
 复制内置模板，并填入你的账户：
 
@@ -109,7 +113,7 @@ Tag policy 'finops-cost-allocation': 0 of 39 resources compliant (0.0%), 39 non-
 ## 下一步 {#next-steps}
 
 - 如果某个账户失败，InvenTag 会记录错误、报告其他账户，并仍以退出码 0 结束，
-  所以请检查日志。常见原因是角色的信任策略。加上 `--fail-on-account-error`
+  所以请检查日志。加上 `--fail-on-account-error`
   则会在写出报告之后以退出码 5 结束。如果所有账户都失败，运行会以退出码 1 结束。
 - 超时的账户会保留时限之前已找到的资源。在有账户失败的运行之后，用同一条命令再加上
   `--resume` 运行，只扫描其余账户（已完成的账户会被复用）。

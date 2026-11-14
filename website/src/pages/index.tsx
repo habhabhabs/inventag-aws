@@ -173,7 +173,7 @@ function Hero(): ReactNode {
                 </Link>
               ),
             }}>
-            {'A built-in guard lets through only read calls such as {list}, {describe} and {get}. Run it with a read-only IAM role as well: {link}.'}
+            {'A built-in guard lets through only read calls such as {list}, {describe} and {get}, and the report upload to your own S3 bucket when you ask for it. Run it with a read-only IAM role as well: {link}.'}
           </Translate>
         </p>
       </div>
@@ -331,7 +331,7 @@ function Capabilities(): ReactNode {
         </h2>
         <p className={styles.sectionLead}>
           <Translate id="home.cap.lead">
-            Everything below works in the CLI today. Where a feature is only partly done, the docs say so.
+            Everything below is in the CLI today and has an offline test against mocked AWS. Where a feature is partly done or not verified, the docs say so.
           </Translate>
         </p>
       </div>
@@ -522,7 +522,7 @@ const steps = (): [string, string][] => [
   ],
   [
     translate({id: 'home.s3.title', message: 'Enrichment'}),
-    translate({id: 'home.s3.body', message: 'Service attributes, your tag columns and descriptions, optional network and security analysis.'}),
+    translate({id: 'home.s3.body', message: 'Your tag columns and descriptions, optional network and security analysis.'}),
   ],
   [
     translate({id: 'home.s4.title', message: 'Output'}),

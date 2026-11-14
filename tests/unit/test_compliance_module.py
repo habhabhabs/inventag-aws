@@ -9,7 +9,6 @@ Requirements: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6
 """
 
 import pytest
-import sys
 import os
 import json
 import yaml
@@ -17,13 +16,7 @@ import tempfile
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, List, Any
 
-# Add the project root to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-
-try:
-    from inventag.compliance import ComprehensiveTagComplianceChecker
-except ImportError:
-    pytest.skip("Compliance module not available", allow_module_level=True)
+from inventag.compliance import ComprehensiveTagComplianceChecker
 
 
 @pytest.fixture

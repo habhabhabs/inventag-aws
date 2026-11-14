@@ -13,9 +13,9 @@ which flags work today.
 
 This page matches `inventag --help` of the release that this version of the
 docs describes. Run `inventag --help` to see the flags of the release you have
-installed. The **Status** column says what we saw when we ran the flag offline
-against mocked AWS. "Not
-re-tested" means we did not run it for this page. Details are on
+installed. The **Status** column says what an offline test against mocked AWS shows.
+"Not tested" means no test covers what the row says yet. "Mocked Google only"
+means the tests use mocked Google clients. Details are on
 [Feature status](../getting-started/status.md).
 
 ## Commands
@@ -30,6 +30,9 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 ```
 
 The `inventag` command works the same on Linux, macOS and Windows.
+
+Not verified against Windows or macOS: the `inventag` command works the same as on Linux.
+
 `templates` must be the first word after the program name.
 
 ## Templates
@@ -61,17 +64,19 @@ The `inventag` command works the same on Linux, macOS and Windows.
 |---|---|---|---|
 | `--create-excel` | on if no other output flag | Works | Write `multi_account_bom_<timestamp>.xlsx`. |
 | `--create-word` | off | Works | Write `multi_account_bom_<timestamp>.docx`. |
-| `--create-google-docs` | off | Works (mocked clients only) | Create the Word report as a Google Doc. Needs the Google add-on (`pip install "inventag-aws[google]"`). See [Google Sheets and Docs](../guides/google-sheets-and-docs.md). |
-| `--create-google-sheets` | off | Works (mocked clients only) | Create the Excel report as a Google Sheets spreadsheet. |
-| `--google-credentials FILE` | none | Works (mocked clients only) | Service account key file. Without it, Application Default Credentials are used. |
-| `--google-oauth-client FILE` | none | Works (mocked clients only) | OAuth client file; you sign in in the browser. |
-| `--google-folder-id ID` | none | Works (mocked clients only) | Drive folder for the files. |
-| `--google-share-with EMAIL` | none | Works (mocked clients only) | Share with this address. Repeat for more. |
-| `--google-share-role ROLE` | `reader` | Works (mocked clients only) | `reader`, `commenter` or `writer`. |
-| `--google-share-anyone` | off | Works (mocked clients only) | Anyone with the link can read. Files are private without it. |
-| `--google-title TITLE` | dated name | Works (mocked clients only) | Title of the Google files. |
+| `--create-google-docs` | off | Mocked Google only | Create the Word report as a Google Doc. Needs the Google add-on (`pip install "inventag-aws[google]"`). See [Google Sheets and Docs](../guides/google-sheets-and-docs.md). |
+| `--create-google-sheets` | off | Mocked Google only | Create the Excel report as a Google Sheets spreadsheet. |
+| `--google-credentials FILE` | none | Mocked Google only | Service account key file. Without it, Application Default Credentials are used. |
+| `--google-oauth-client FILE` | none | Mocked Google only | OAuth client file; you sign in in the browser. |
+| `--google-folder-id ID` | none | Mocked Google only | Drive folder for the files. |
+| `--google-share-with EMAIL` | none | Mocked Google only | Share with this address. Repeat for more. |
+| `--google-share-role ROLE` | `reader` | Mocked Google only | `reader`, `commenter` or `writer`. |
+| `--google-share-anyone` | off | Mocked Google only | Anyone with the link can read. Files are private without it. |
+| `--google-title TITLE` | dated name | Mocked Google only | Title of the Google files. |
 | `--output-directory DIR` | `bom_output` | Works | Folder for all output files. |
 | `--per-account-reports` | off | Works | One `<account-id>_bom_<timestamp>` file per account instead of one consolidated report. |
+
+Not verified against real Google: what the Google flags in this table create, share and print.
 
 ## What to scan
 
@@ -81,7 +86,7 @@ The `inventag` command works the same on Linux, macOS and Windows.
 | `--account-services LIST` | all | Works | Comma-separated service names that are kept in the report, matched against the Service column, for example `EC2,S3`. |
 | `--account-tags JSON` | none | Works | Tag filter, for example `'{"Environment":"prod"}'`. Only resources with those tags are kept. |
 | `--fallback-display auto\|always\|never` | `auto` | Works | Whether to show resources found only through the Resource Groups Tagging API. `auto` shows them only for services with no results from their own discovery code. |
-| `--hide-fallback-resources` | off | Not re-tested | Same as `--fallback-display never`. Deprecated. |
+| `--hide-fallback-resources` | off | Works | Same as `--fallback-display never`. Deprecated. |
 
 ## Analysis
 
@@ -90,7 +95,9 @@ The `inventag` command works the same on Linux, macOS and Windows.
 | `--enable-network-analysis` | off | Works | Adds a `Network Analysis` sheet to the Excel report when VPCs are found. Adds nothing with `--template`. See [Network and security analysis](../guides/network-and-security-analysis.md). |
 | `--enable-security-analysis` | off | Works | Adds a `Security Analysis` sheet to the Excel report when security groups are found. Adds nothing with `--template`. |
 | `--enable-cost-analysis` | off | Works | Adds a Cost Analysis sheet (and the four `forgotten_analysis.*` columns) to the default workbook. Makes extra Cost Explorer, Pricing and CloudWatch calls, also with `--no-billing-validation`. Needs `pricing:GetProducts` and `cloudwatch:GetMetricStatistics`. The costs are estimates from the AWS Pricing API, not your invoice. |
-| `--billing-validation`, `--no-billing-validation` | on | Works | Use Cost Explorer during discovery to find services with spend. AWS charges for each Cost Explorer request. `--no-billing-validation` stops those calls. |
+| `--billing-validation`, `--no-billing-validation` | on | Works | Use Cost Explorer during discovery to find services with spend. AWS charges for each Cost Explorer request. See [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). `--no-billing-validation` stops those calls. |
+
+Not verified against real AWS: `--enable-cost-analysis` needs only these two extra permissions, and the estimates match AWS prices.
 
 ## Configuration files
 
@@ -100,7 +107,7 @@ The `inventag` command works the same on Linux, macOS and Windows.
 | `--service-descriptions FILE` | none | Works | Adds a `service_description` column. Your entry replaces the built-in description. See [Configuration files](./configuration-files.md#service-descriptions). |
 | `--bom-config FILE` | none | Works | Sets fields of the BOM processing configuration from a YAML or JSON file. Other keys are ignored with a warning that names them. A value of the wrong type stops with exit code 1 and names the key. |
 | `--validate-config` | off | Works | Load and check the configuration, then exit. |
-| `--validate-config-only` | off | Works | Check only the files you name, then exit. It makes no AWS call. |
+| `--validate-config-only` | off | Works | Check `--accounts-file`, `--tag-mappings` and `--service-descriptions`, then exit. It does not read `--bom-config`. It makes no AWS call. |
 
 ## Report layout files
 
@@ -139,7 +146,7 @@ YAML or JSON file. See [Layout files for one report](../templates/layout-flags.m
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--fail-on-account-error` | off | Works | Exit with code 5 when an account could not be scanned completely. The reports are still written. |
+| `--fail-on-account-error` | off | Works | Exit with code 5 when an account could not be scanned or ran out of time. The reports are still written. |
 | `--fail-if-empty` | off | Works | Exit with code 6 when no resources were found or the filters removed all of them. |
 
 If more than one applies, 5 comes first, then 6, then 3, then 4. Reports are
@@ -151,7 +158,7 @@ report that lists no resources, and a run without it writes no file.
 | Flag | Default | Status | What it does |
 |---|---|---|---|
 | `--verbose`, `-v` | off | Works | Show each step. |
-| `--debug`, `-d` | off | Works | Show every AWS request. Secrets are masked. |
+| `--debug`, `-d` | off | Works | Show the AWS requests. Secrets are masked. |
 | `--log-file FILE` | none | Works | Also write a detailed log to this file. |
 | `--disable-account-logging` | off | Works | Don't prefix log lines with the account. |
 
@@ -196,7 +203,7 @@ echo $?
 
 <!-- END EXAMPLE OUTPUT: validate-operations -->
 
-What flags that stop with exit code 2 print:
+What flags that stop with exit code 2 print (the first sample is from a machine without the Google libraries):
 
 <!-- BEGIN EXAMPLE OUTPUT: failing-flags -->
 
@@ -248,6 +255,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 | `--s3-encryption AES256\|aws:kms` | `AES256` | Works | Server-side encryption for the uploads. |
 | `--s3-kms-key-id KEY` | none | Works | KMS key for `aws:kms`. Without it, S3 uses the AWS managed key `aws/s3`. Needs `--s3-encryption aws:kms`, else exit code 2. |
 
+Not verified against real AWS: the upload needs only `s3:PutObject` (and `kms:GenerateDataKey` with `aws:kms`).
+
+Not verified against AWS: that S3 uses the AWS managed key `aws/s3` when `aws:kms` has no key ID.
+
 See [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
 
 ## Exit codes
@@ -255,9 +266,9 @@ See [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
 | Code | Meaning |
 |---|---|
 | 0 | Success. Also 0 when some accounts failed but others worked, and when no resources were found, unless you pass `--fail-on-account-error` or `--fail-if-empty`. See [Feature status](../getting-started/status.md#when-a-run-goes-wrong). |
-| 1 | An error: invalid arguments, configuration or template, failed credentials, every account failed (also when some were only partly scanned), a failed S3 upload, or a report format that could not be written |
+| 1 | An error: invalid arguments, configuration or template, a number out of range (for example `--max-concurrent-accounts 0`), failed credentials, every account failed (could not be scanned or ran out of time), a failed S3 upload, or a report format that could not be written |
 | 2 | Invalid command line: unknown, badly formed or conflicting options, flags that are not implemented, bad Google options, a layout file flag without the report it needs, or a role name without `--accounts-file` |
 | 3 | Reports written, but a config template with `fail_on_tag_violations: true` found tag policy violations |
 | 4 | Reports written, but `--risk-threshold` found a security group rule at or above that level |
-| 5 | Reports written, but an account could not be scanned completely, and you passed `--fail-on-account-error` |
+| 5 | Reports written, but an account could not be scanned or ran out of time, and you passed `--fail-on-account-error` |
 | 6 | No resources to report, and you passed `--fail-if-empty` |

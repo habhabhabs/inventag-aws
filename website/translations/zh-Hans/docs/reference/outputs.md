@@ -11,9 +11,11 @@ sidebar_position: 4
 **读完后你会知道：** InvenTag 写出的每个文件的名称、位置和内容。
 
 所有文件都写入输出文件夹：默认是 `bom_output/`，除非你设置了 `--output-directory`，或在配置模板中设置了 `output_directory`。
-InvenTag 写入的其他位置只有你指定的文件（`--log-file`、`--audit-output`），以及使用 `--s3-bucket` 时的 S3 存储桶。
+InvenTag 写入的其他位置只有你指定的文件（`--log-file`、`--audit-output`、`templates init --output`）、使用 `--s3-bucket` 时的 S3 存储桶，以及使用 Google 选项时的 Google Drive；使用 `--google-oauth-client` 时还有位于 `~/.config/inventag/google-token.json` 的登录令牌文件。
 
 输出文件创建后只有你的用户可以读写，新建的输出文件夹同样只对你的用户私有。
+
+未针对 Windows 验证：文件和文件夹仅对你的用户私有。
 
 本页的示例来自针对模拟 AWS 的离线运行（示例数据）。
 
@@ -31,7 +33,7 @@ InvenTag 写入的其他位置只有你指定的文件（`--log-file`、`--audit
 | 你用 `--audit-output` 指定的文件 | 你要求时 | 本次运行调用的每个 AWS 操作 |
 | `state/partial/<key>/<account-id>.json` | 有账户失败的运行 | 已完成账户的结果，供 `--resume` 复用，完整运行后会被删除 |
 
-`<timestamp>` 的格式是 `YYYYMMDD_HHMMSS`。
+`<timestamp>` 的格式是 `YYYYMMDD_HHMMSS`。报告、Word、变更日志和标签合规文件的名称使用你电脑的本地时间。快照和 S3 文件夹使用 UTC。
 
 ## Excel 报告 {#excel-report}
 
@@ -64,7 +66,7 @@ InvenTag 写入的其他位置只有你指定的文件（`--log-file`、`--audit
 
 ## Word 报告 {#word-report}
 
-**不使用模板时：** 一个标题、一份执行摘要、一张服务表，以及每个服务最多 50 个资源，共六列。
+**不使用模板时：** 一个标题、一份执行摘要、一张服务表，以及每个服务最多 50 个资源，共六列：Name、Id、Type、Region、Tags 和 Service。如果该服务的资源都没有名称，则这六列是 Id、Type、Region、Tags、Service 和 Source Account Name。
 
 **使用报告模板时：** 即 `word.sections` 中列出的各节。表格的表头行会在每页重复，并为屏幕阅读器标记为表头。
 徽标（如果有）带有替代文本。
@@ -221,7 +223,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ## 终端输出 {#terminal-output}
 
 不使用 `--verbose` 时，运行会打印警告、错误和已写出的文件。
-使用模板时，每个文件会打印为 `Wrote <path>`，如果启用了标签策略，随后还有一行标签策略摘要。
+使用模板时，每个文件会打印为 `Wrote <path>`，如果启用了标签策略，随后还有一行标签策略摘要。不使用模板时，默认报告会打印为 `Data exported to <path>`。
 
 ## 退出码 {#exit-codes}
 

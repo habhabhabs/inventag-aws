@@ -17,6 +17,9 @@ sidebar_position: 9
   `arn:aws:s3:::YOUR-REPORTS-BUCKET-NAME/bom-reports/*`：請替換儲存貯體名稱，並注意它只覆蓋以
   `bom-reports/` 開頭的鍵。這也是 `--s3-key-prefix` 的預設值。若使用其他字首，請修改該
   資源；
+
+  未針對真實的 AWS 驗證：該語句僅在使用伺服器端加密時才允許上傳。
+
 - 一個排程器：cron、CI 定時任務或類似工具。
 
 ## 命令 {#command}
@@ -32,6 +35,9 @@ inventag --template standard-bom --create-excel --account-regions us-east-1 \
   `--s3-kms-key-id`）。`--s3-kms-key-id` 只能與 `--s3-encryption aws:kms`
   一起使用；否則執行會以結束代碼 2 停止。使用 `aws:kms` 但不給金鑰 ID 時，S3 使用 AWS
   託管金鑰 `aws/s3`。
+
+  未針對 AWS 驗證：`aws:kms` 沒有金鑰 ID 時，S3 是否使用 AWS 託管金鑰 `aws/s3`。
+
 - 每個檔案會放到 `<prefix><UTC timestamp>/<file name>`，因此各次執行不會互相覆蓋。
   如果有標籤合規 JSON 檔案，也會一併上傳。
 - 如果上傳失敗，執行會以結束代碼 1 結束，排程器因此可以察覺。報告仍然保留在你的磁碟上。
@@ -115,7 +121,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 }
 ```
 
-`blocked_calls` 為 0：本次執行只發出了讀取呼叫。
+`blocked_calls` 為 0：InvenTag 沒有阻止任何呼叫。除了報告上傳（`PutObject`）之外，本次執行只發出了讀取呼叫。
 
 ## 設定定時執行 {#schedule-it}
 
@@ -124,6 +130,8 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ```text title="crontab -e"
 17 2 * * 1-5  cd /opt/inventag-aws && .venv/bin/python inventag_cli.py --template standard-bom --create-excel --s3-bucket acme-inventory-reports --s3-key-prefix bom-reports/ >> /var/log/inventag.log 2>&1
 ```
+
+未針對 cron 驗證：這行排程設定。路徑 `/opt/inventag-aws` 只是範例。
 
 在 GitHub Actions 中，把 `--s3-bucket` 選項新增到
 [在 CI/CD 中執行 InvenTag](../guides/run-in-ci.md)裡的執行步驟。

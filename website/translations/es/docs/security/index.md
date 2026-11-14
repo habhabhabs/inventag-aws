@@ -24,7 +24,9 @@ persona mantenedora un canal privado.
 
 ## Qué hace InvenTag con tus cuentas {#what-inventag-does-with-your-accounts}
 
-- **Solo lee.** Una protección de solo lectura comprueba cada llamada a AWS
+- **Solo lee, aparte de una carga que tú pides.** La única excepción es la carga
+  de sus propios archivos de informe a tu bucket de S3, y solo cuando pasas
+  `--s3-bucket`. Una protección de solo lectura comprueba cada llamada a AWS
   antes de enviarla. Bloquea todo lo que no sea una lectura, y las lecturas que
   devuelven secretos o datos, como `secretsmanager:GetSecretValue`,
   `s3:GetObject`, `cloudformation:GetTemplate` o `ec2:GetLaunchTemplateData`.
@@ -45,6 +47,8 @@ persona mantenedora un canal privado.
   `sso:GetRoleCredentials`, `sso-oidc:CreateToken`,
   `sts:AssumeRoleWithWebIdentity` y `signin:CreateOAuth2Token`. Un cliente
   firmado que haga la misma llamada queda bloqueado.
+
+  No verificado contra AWS IAM Identity Center: las llamadas de inicio de sesión que envía un SDK real.
 - **Oculta los valores secretos de las respuestas permitidas.** Los valores de
   los campos que suelen contener secretos, como las variables de entorno de
   Lambda, los datos de usuario de EC2 o los valores de parámetros de
@@ -52,11 +56,13 @@ persona mantenedora un canal privado.
   registros. Los nombres se mantienen. Consulta
   [Estado de las funciones](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 - **No envía datos de uso.** InvenTag no tiene telemetría. La herramienta de
-  línea de comandos solo se comunica con AWS. El asistente de CI opcional de la
+  línea de comandos se comunica solo con AWS, y con Google cuando usas una opción de Google. El asistente de CI opcional de la
   biblioteca de Python puede publicar en Slack, Microsoft Teams o un
   Prometheus Pushgateway, pero solo en las direcciones que configures tú.
 - **Sus archivos son privados.** Los informes, las instantáneas y los registros
   se crean legibles solo para tu usuario.
+
+  No verificado contra Windows: archivos legibles solo por tu usuario.
 - **Sus registros ocultan los secretos.** Los tokens de sesión, las claves, las
   firmas de solicitud y los valores ocultos indicados arriba se enmascaran,
   incluso con `--debug`.
@@ -95,6 +101,8 @@ correcciones de seguridad: 3.10 llegó al fin de su vida útil en octubre de 202
 | Comprobación de dependencias en CI | El flujo de trabajo de CI ejecuta `pip-audit -r requirements.txt` y falla si encuentra algo. También ejecuta Bandit y `npm audit`, pero no falla por sus hallazgos. |
 | Análisis programado | Un flujo de trabajo aparte se ejecuta en los push a `main` y `develop`, en las pull request a `main` y cada semana (domingos, 02:00 UTC). Ejecuta Bandit, Safety, pip-audit, `npm audit` y detect-secrets. Los hallazgos se comunican pero no hacen fallar ese flujo de trabajo. |
 | Lista de materiales de software | La compilación de la documentación genera archivos SBOM de las dependencias de Python y del sitio web. |
+
+No verificado contra un runner de GitHub Actions: lo que hacen los flujos de trabajo de CI, programados y de documentación; esta tabla se lee de los archivos de flujo de trabajo.
 
 Para comprobar tu propia instalación:
 

@@ -27,7 +27,7 @@
     "message": "Comment ça marche"
   },
   "home.heroNote": {
-    "message": "Une protection intégrée ne laisse passer que les appels en lecture comme {list}, {describe} et {get}. Utilisez-le aussi avec un rôle IAM en lecture seule : {link}."
+    "message": "Une protection intégrée ne laisse passer que les appels en lecture comme {list}, {describe} et {get}, ainsi que le téléversement du rapport vers votre propre compartiment S3 lorsque vous le demandez. Utilisez-le aussi avec un rôle IAM en lecture seule : {link}."
   },
   "home.heroNoteLink": {
     "message": "voir les autorisations nécessaires"
@@ -57,7 +57,7 @@
     "message": "Une commande. Un rapport lisible par tous."
   },
   "home.cap.lead": {
-    "message": "Tout ce qui suit fonctionne aujourd’hui dans la CLI. Lorsqu’une fonctionnalité n’est qu’en partie terminée, la documentation le dit."
+    "message": "Tout ce qui suit est aujourd’hui dans la CLI et a un test hors ligne sur un AWS simulé. Lorsqu’une fonctionnalité n’est qu’en partie terminée ou n’est pas vérifiée, la documentation le dit."
   },
   "home.c1.title": {
     "message": "Rapports Excel et Word"
@@ -162,7 +162,7 @@
     "message": "Enrichissement"
   },
   "home.s3.body": {
-    "message": "Attributs des services, vos colonnes d’étiquettes et descriptions, analyse réseau et sécurité facultative."
+    "message": "Vos colonnes d’étiquettes et descriptions, analyse réseau et sécurité facultative."
   },
   "home.s4.title": {
     "message": "Sortie"

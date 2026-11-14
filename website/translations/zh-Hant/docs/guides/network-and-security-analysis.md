@@ -72,7 +72,7 @@ Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
   VPC 有網際網路閘道器但沒有這樣的路由，並不會讓它的子網變成公有。工作表不顯示這一屬性。
 - `Total IPs` 來自 VPC 的 CIDR 塊。`Available IPs` 和 `Utilization %` 來自它的子網，所以這三欄加起來對不上，
   沒有子網的 VPC 顯示可用數為 0。IPv6 地址不計入。
-- `Associated Resources` 統計 API 資料中指明瞭該 VPC 或子網的資源：EC2 例項、位於 VPC 中的 Lambda 函式、RDS 和 ElastiCache 資源以及負載均衡器。
+- `Associated Resources` 統計 API 資料中指明瞭該 VPC 或子網的資源：EC2 例項、位於 VPC 中的 Lambda 函式、RDS 資源。負載均衡器按其所在的 VPC 統計，而不按子網統計。
   安全組、網路 ACL、路由表和閘道器屬於 VPC 自身的網路元件，不計入。
 - 它唯讀取你所掃描區域中的 VPC 和子網。它不檢查網路 ACL、安全組、`MapPublicIpOnLaunch`、Direct Connect、VPN 連線、Network Firewall 或對等連線路由。
 

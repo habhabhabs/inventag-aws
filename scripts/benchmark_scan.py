@@ -350,6 +350,14 @@ def main(argv=None) -> int:
 
     from moto import mock_aws
 
+    from tests.moto_serial import serialize_moto_requests
+
+    # moto is not thread safe and the scan calls it from 15 threads: without
+    # this, describe_key_pairs can change a dict that moto/core/serialize.py
+    # (AttributePicker.__call__) is iterating for another thread's response,
+    # and that listing is lost. Details in tests/moto_serial.py.
+    serialize_moto_requests()
+
     result: dict = {"counts": counts, "region": args.region}
     started = time.time()
     with mock_aws(), tempfile.TemporaryDirectory(prefix="inventag-bench-") as tmp:

@@ -21,6 +21,8 @@ sidebar_position: 3
 | Python，來自全新安裝 | 實際安裝的版本 | CycloneDX JSON 和 `pip freeze` 列表 |
 | 文件網站 | 建置本網站所用的 Node.js 包 | CycloneDX JSON |
 
+未針對 GitHub Actions Runner 驗證：文件建置發佈的 SBOM 檔案；本頁讀自工作流檔案。
+
 同一次建置還會向本節新增一個摘要頁面，**Software Bill of Materials (SBOM)**，
 因此它出現線上上網站中，但不會出現在本地建置中。
 
@@ -33,6 +35,8 @@ Python 依賴項宣告的是最低版本，而不是精確固定，所以「已�
 pip install inventag-aws cyclonedx-bom
 cyclonedx-py environment --output-format json --output-file inventag-sbom.json
 ```
+
+未針對你安裝的 cyclonedx-bom 版本驗證：`cyclonedx-py environment` 的選項。
 
 請在你安裝 InvenTag 的虛擬環境中執行，這樣檔案列出的就恰好是你所執行的內容。
 

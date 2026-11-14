@@ -3,7 +3,7 @@
 The first group renders the captured sample data (from an offline run against
 moto). The second group runs the whole ``inventag`` command in-process against
 moto's mocked AWS, so discovery, processing, templates and the exit code are
-all exercised together. That group is skipped if ``moto`` is not installed.
+all exercised together. moto is a test dependency (requirements-dev.txt).
 """
 
 import glob
@@ -189,16 +189,14 @@ def test_logo_with_alt_text_and_landscape(tmp_path, registry, resources):
 
 @pytest.fixture
 def aws(monkeypatch):
-    moto = pytest.importorskip(
-        "moto", reason="moto is needed for the end-to-end CLI tests"
-    )
+    import moto
+
     for key in ("AWS_PROFILE", "AWS_ENDPOINT_URL", "AWS_SESSION_TOKEN"):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     monkeypatch.setenv("AWS_EC2_METADATA_DISABLED", "true")
-    monkeypatch.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
     from inventag.security.read_only_guard import uninstall_global_guard
 
     # The CLI installs a process-wide read-only guard; seeding needs writes.

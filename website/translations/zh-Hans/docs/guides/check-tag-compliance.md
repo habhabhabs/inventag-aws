@@ -39,6 +39,8 @@ Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-
 | Word，**Tag compliance** 章节 | 同样的计数、各条规则，以及不合规资源的表格（默认最多 100 行）。 |
 | `tag_compliance_<timestamp>.json` | 每条规则的计数和每个不合规资源，供脚本和 CI 使用。 |
 
+如果没有任何资源在范围内，摘要会显示 `0 of 0 resources compliant (100.0%)`：没有检查任何内容。
+
 当资源具有所有必需标签，并且每个取值都符合其规则时，该资源即为**合规**。
 问题会被逐一写明，例如：
 
@@ -106,6 +108,8 @@ JSON 文件中的 `summary` 部分：
 
 **范围外**的资源只计数、不检查：策略的 `scope` 把它们排除在外，
 例如无法携带标签的 KMS 别名。
+
+未针对 AWS 验证：KMS 别名无法携带标签。
 
 **在相信这些数字之前请先了解：** InvenTag 会按 ARN 把 Resource Groups Tagging API
 返回的标签与资源匹配；当 ARN 不一致时，则退而使用服务、区域和资源 ID 匹配。

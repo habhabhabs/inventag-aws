@@ -60,7 +60,6 @@ def estate(monkeypatch, tmp_path):
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "fake-secret-for-moto-only")
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     monkeypatch.setenv("AWS_EC2_METADATA_DISABLED", "true")
-    monkeypatch.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
     monkeypatch.delenv("AWS_PROFILE", raising=False)
     monkeypatch.chdir(tmp_path)
     with mock_aws():

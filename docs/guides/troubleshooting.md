@@ -54,6 +54,8 @@ echo $?
 `export AWS_PROFILE=my-readonly`, then check with
 `aws sts get-caller-identity`.
 
+Not verified against the AWS CLI: the commands in this fix.
+
 ### Expired or invalid credentials
 
 <!-- BEGIN EXAMPLE OUTPUT: error-expired-token -->
@@ -90,6 +92,8 @@ echo $?
 **Fix:** sign in again (`aws sso login --profile <name>`), or refresh your
 temporary keys. If you use access keys, check them with `aws configure list`.
 
+Not verified against the AWS CLI: the commands in this fix.
+
 ### A role cannot be assumed
 
 **What you see:** this in the log, and a report that lacks the account:
@@ -115,8 +119,7 @@ If every account fails, it exits with code 1 and writes no report:
 generated`. (Message text from an offline run with a simulated AWS error.)
 
 **Fix:** check the role ARN, and check that the role's trust policy allows
-your identity. InvenTag does not fall back to other credentials, so that
-account is skipped until it works. Then run the same command with `--resume`
+your identity. InvenTag does not scan the account with credentials that belong to another account, so that account is skipped until the role works. Then run the same command with `--resume`
 to scan only the accounts that are missing.
 
 ### A role name without an accounts file
@@ -201,8 +204,7 @@ and an error that starts `Blocked AWS operation <service>:<Operation>`.
 
 **Cause:** a call that is not a read, or a read that returns secrets or
 customer data (for example `cloudformation:GetTemplate` or
-`ssm:GetParameter`), reached the guard. InvenTag itself doesn't make such
-calls, so this usually means custom code or a plug-in. See
+`ssm:GetParameter`), reached the guard. This should not happen in a normal run. If it does, please open an issue with the operation name. See
 [What the read-only guard blocks](./read-only-access.md#what-the-read-only-guard-blocks).
 
 **Fix:** check which operation it was with
@@ -236,6 +238,8 @@ The run carries on with the regions that work.
 **Fix:** remove the region from `--account-regions`, or enable it for the
 account in the AWS console (Account settings, AWS Regions).
 
+Not verified against real AWS: the console path to enable a region.
+
 ### The list of regions cannot be read
 
 If `ec2:DescribeRegions` fails, InvenTag asks `account:ListRegions`, and then
@@ -254,6 +258,8 @@ denied in every region, InvenTag cannot tell which regions work:
 ec2:DescribeRegions is denied in every region, so region access cannot be checked; scanning all 34 regions.
 ```
 
+The number of regions comes from the installed AWS SDK (botocore) and changes with its version.
+
 **Fix:** allow `ec2:DescribeRegions`, or name the regions with
 `--account-regions`.
 
@@ -271,6 +277,8 @@ sqs list_queues in us-east-1 failed (ThrottlingException); its resources there m
 **Fix:** scan fewer accounts at once (`--max-concurrent-accounts 2`), scan
 fewer regions, or give big accounts more time
 (`--account-processing-timeout 3600`).
+
+Not verified against real AWS: fewer accounts or regions at once reduce throttling.
 
 ## Time limits and partial results
 
@@ -436,8 +444,8 @@ These exist only when you ask for them.
 - **4:** a security group rule open to the internet is at or above
   `--risk-threshold`. The log lists the rules. See
   [Network and security analysis](./network-and-security-analysis.md#fail-a-pipeline-on-risky-rules).
-- **5:** `--fail-on-account-error` is set and an account could not be scanned,
-  or only partly. The log says `N account(s) failed and
+- **5:** `--fail-on-account-error` is set and an account could not be scanned
+  or ran out of time. The log says `N account(s) failed and
   --fail-on-account-error is set (exit code 5)`.
 - **6:** `--fail-if-empty` is set and there is nothing to report. The log says
   `No resources in the report and --fail-if-empty is set (exit code 6)`.
@@ -451,7 +459,7 @@ The reports are written first. If more than one applies, 5 comes first, then
 |---|---|
 | Very wide sheets with `raw_data.*` columns | That is the default layout. Use `--template standard-bom`. |
 | Tag mapping columns are missing | Tag mappings add columns only to the default workbook. With `--template`, use `tag_columns`. See [Configuration files](../reference/configuration-files.md#tag-mappings). |
-| A custom service description is ignored | S3, EC2, RDS, Lambda and VPC have built-in descriptions that win unless your entry names a `template`. See [Configuration files](../reference/configuration-files.md#service-descriptions). |
+| A custom service description is ignored | Your entry replaces the built-in description; services with no entry in your file keep the built-in text. See [Configuration files](../reference/configuration-files.md#service-descriptions). |
 | No network or security sheets | Add `--enable-network-analysis` or `--enable-security-analysis`, and make sure the scan found VPCs or security groups. The flags add nothing with `--template`. See [Network and security analysis](./network-and-security-analysis.md). |
 | IAM, S3, CloudFront or Route 53 resources are missing | `--account-services` or `--account-tags` removed them, or the identity lacks the permission (look for one warning per service in the log). The region list does not matter: global services are always read from the home region (`us-east-1`, or `cn-north-1` in China and `us-gov-west-1` in GovCloud). |
 | A resource shows no tags, or appears twice | Run with `--debug` and compare the ARN column with the ARN in the AWS console. Report a mismatch as an issue with the service and resource type. |
@@ -463,6 +471,8 @@ The reports are written first. If more than one applies, 5 comes first, then
 | `Excel sheet name 'x' is not allowed or is already used; the sheet is called 'y'` | Excel does not allow some characters in sheet names (they become `-`), and names must be unique and at most 31 characters. The report is still complete. |
 | Another user can't open `bom_output/` | Output files are private to the user who ran InvenTag. Share them on purpose. |
 
+Not verified against Microsoft Excel: the sheet name rules.
+
 ## Noise you can ignore
 
 Some messages look like errors but change nothing in your report.
@@ -471,7 +481,7 @@ Some messages look like errors but change nothing in your report.
 |---|---|
 | ``Failed to render template vpc_vpc: 'cidr_block'`` (with `--service-descriptions`) | The VPC description template wants a field the resource does not have. The report is not affected. |
 | `No account specification method provided. Using default AWS credentials.` | You did not name an account, so InvenTag used your current credentials. This is the normal case. |
-| `Cross-account role not usable for account ... trying default credentials` | InvenTag tried the default role name, could not assume it, and carried on with your own credentials. It is logged once per account, only with `--verbose`. |
+| `Cross-account role not usable for account ... trying default credentials` | InvenTag could not assume the role in that account and tried your own credentials. It uses them only if they belong to that account; otherwise the account is skipped. Logged once per account, only with `--verbose`. |
 
 ## Install problems
 

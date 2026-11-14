@@ -240,5 +240,5 @@ that contains them.
 | `templates init` | 2 | The output name or extension is not allowed |
 | `inventag --template ...` | 1 | A template is invalid, or the run failed |
 | `inventag --template ...` | 3 | Reports were written, but resources break the tag policy and `fail_on_tag_violations` is `true` |
-| `inventag --template ...` | 5 | Reports were written, but an account failed or was only partly scanned, and you passed `--fail-on-account-error` |
+| `inventag --template ...` | 5 | Reports were written, but an account could not be scanned or ran out of time, and you passed `--fail-on-account-error` |
 | `inventag --template ...` | 6 | No resources were found, and you passed `--fail-if-empty` |

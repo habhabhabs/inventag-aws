@@ -38,6 +38,8 @@ aws organizations list-accounts \
   --query "Accounts[?Status=='ACTIVE'].[Id,Name]" --output text
 ```
 
+未针对真实的 AWS 验证：`aws organizations list-accounts` 命令及其列出的账户。
+
 ## 3. 把列表写成配置模板 {#3-write-the-list-as-a-config-template}
 
 ```bash
@@ -125,7 +127,7 @@ inventag --accounts-file accounts.yaml --create-excel
 | 一次一个账户 | `parallel_processing: false` | `--disable-parallel-processing` |
 
 如果某个账户失败，例如因为无法代入它的角色，InvenTag 会记录错误，并报告成功的那些账户。
-它不会对该账户回退到你的默认凭证。Excel 报告的 `Summary` 工作表和 Word 报告都有“运行备注”（Run notes）部分，
+它不会用你的默认凭证扫描该账户，除非这些凭证属于该账户。Excel 报告的 `Summary` 工作表和 Word 报告都有“运行备注”（Run notes）部分，
 列出每个未被扫描的账户及原因。日志中有同样的列表：
 
 ```text
@@ -133,7 +135,7 @@ inventag --accounts-file accounts.yaml --create-excel
   - 222222222222 (Dev): Context establishment failed: Role assumption failed for account 222222222222: An error occurred (AccessDenied) when calling the AssumeRole operation: ...
 ```
 
-运行仍然以退出码 0 结束。加上 `--fail-on-account-error`，当有账户无法完整扫描时会以退出码 5 结束。报告仍会写出。
+运行仍然以退出码 0 结束。加上 `--fail-on-account-error`，当有账户无法扫描或超出时间限制时会以退出码 5 结束。报告仍会写出。
 如果所有账户都失败，运行会以退出码 1 结束，并且不写出任何报告。
 
 超时的账户（`--account-processing-timeout`）算作失败，但它在限制之前找到的资源仍留在报告中，备注会说明该账户不完整。
@@ -149,6 +151,7 @@ inventag --accounts-file accounts.yaml --create-excel --resume
 
 InvenTag 会复用同一条命令（相同的账户、区域、服务和筛选条件）保存的、不早于 `--resume-max-age-hours`（默认 24，最多 168）的结果。
 见[失败的运行之后继续](./run-a-scan.md#continue-after-a-failed-run)。
+一个会话在中途过期的账户也会被保存，`--resume` 会把它当作完整的账户重用。
 
 ## 在 GitLab CI/CD 流水线中 {#in-a-gitlab-cicd-pipeline}
 

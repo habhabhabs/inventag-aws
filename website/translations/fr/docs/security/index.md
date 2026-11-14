@@ -25,8 +25,9 @@ mainteneur un canal privé.
 
 ## Ce qu’InvenTag fait de vos comptes {#what-inventag-does-with-your-accounts}
 
-- **Il ne fait que lire.** Une protection en lecture seule vérifie chaque appel AWS avant son
-  envoi. Elle bloque tout ce qui n’est pas une lecture, ainsi que les lectures qui renvoient des secrets
+- **Il ne fait que lire, à part un téléversement que vous demandez.** La seule exception est le téléversement de ses propres fichiers de rapport
+  vers votre compartiment S3, et seulement lorsque vous passez `--s3-bucket`. Une protection en lecture seule vérifie
+  chaque appel AWS avant son envoi. Elle bloque tout ce qui n’est pas une lecture, ainsi que les lectures qui renvoient des secrets
   ou des données, comme `secretsmanager:GetSecretValue`, `s3:GetObject`,
   `cloudformation:GetTemplate` ou `ec2:GetLaunchTemplateData`. Elle bloque aussi des
   opérations autorisées quand un paramètre demande un secret (clés d’API avec
@@ -46,6 +47,8 @@ mainteneur un canal privé.
   `sso:GetRoleCredentials`, `sso-oidc:CreateToken`,
   `sts:AssumeRoleWithWebIdentity` et `signin:CreateOAuth2Token`. Un client signé qui
   fait le même appel est bloqué.
+
+  Non vérifié sur AWS IAM Identity Center : les appels de connexion qu’envoie un vrai SDK.
 - **Il masque les valeurs secrètes des réponses autorisées.** Les valeurs des
   champs qui contiennent souvent des secrets, comme les variables d’environnement
   Lambda, les données utilisateur EC2 ou les valeurs de paramètres CloudFormation,
@@ -53,11 +56,13 @@ mainteneur un canal privé.
   Les noms restent. Voir
   [État des fonctionnalités](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 - **Il n’envoie aucune donnée d’utilisation.** InvenTag n’a pas de télémétrie. L’outil en ligne de commande
-  ne communique qu’avec AWS. L’assistant CI facultatif de la bibliothèque Python peut publier vers
+  ne communique qu’avec AWS, et avec Google lorsque vous utilisez une option Google. L’assistant CI facultatif de la bibliothèque Python peut publier vers
   Slack, Microsoft Teams ou une Prometheus Pushgateway, mais uniquement vers des adresses
   que vous configurez vous-même.
 - **Ses fichiers sont privés.** Les rapports, instantanés et journaux sont créés lisibles
   par votre seul utilisateur.
+
+  Non vérifié sur Windows : fichiers lisibles uniquement par votre utilisateur.
 - **Ses journaux masquent les secrets.** Les jetons de session, les clés, les signatures de requête et les
   valeurs masquées ci-dessus sont cachés, même avec `--debug`.
 
@@ -95,6 +100,8 @@ de sécurité : la version 3.10 a atteint sa fin de vie en octobre 2026
 | Vérification des dépendances en CI | Le workflow de CI exécute `pip-audit -r requirements.txt` et échoue en cas de résultat. Il exécute aussi Bandit et `npm audit`, mais n’échoue pas sur leurs résultats. |
 | Analyse planifiée | Un workflow distinct s’exécute à chaque push sur `main` et `develop`, sur les pull requests vers `main` et chaque semaine (le dimanche, 02:00 UTC). Il exécute Bandit, Safety, pip-audit, `npm audit` et detect-secrets. Les résultats sont signalés mais ne font pas échouer ce workflow. |
 | Nomenclature logicielle | La génération de la documentation produit des fichiers SBOM pour les dépendances Python et du site web. |
+
+Non vérifié sur un runner GitHub Actions : ce que font les workflows de CI, planifiés et de documentation ; ce tableau est lu dans les fichiers de workflow.
 
 Pour vérifier votre propre installation :
 

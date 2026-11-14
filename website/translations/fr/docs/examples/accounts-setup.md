@@ -16,6 +16,8 @@ et un contrôle des étiquettes.
 - les identifiants d’une identité autorisée à assumer ces rôles, par exemple dans le
   compte de gestion ou dans un compte de sécurité délégué.
 
+Non vérifié sur un vrai AWS : le compte de gestion ou un compte délégué peut assumer les rôles.
+
 ## Modèle {#template}
 
 Listez vos comptes :
@@ -23,6 +25,8 @@ Listez vos comptes :
 ```bash title="Terminal"
 aws organizations list-accounts --query "Accounts[?Status=='ACTIVE'].[Id,Name]" --output text
 ```
+
+Non vérifié sur un vrai AWS : la commande `aws organizations list-accounts` et les comptes qu’elle liste.
 
 Copiez le modèle intégré et renseignez-y vos comptes :
 
@@ -111,8 +115,7 @@ La feuille compte 9 colonnes ; les 7 premières sont affichées.
 ## Étapes suivantes {#next-steps}
 
 - Si un compte échoue, InvenTag journalise l’erreur, rend compte des autres comptes et
-  se termine tout de même avec le code 0 ; consultez donc le journal. La cause habituelle
-  est la politique d’approbation du rôle. Ajoutez `--fail-on-account-error` pour
+  se termine tout de même avec le code 0 ; consultez donc le journal. Ajoutez `--fail-on-account-error` pour
   obtenir le code 5, une fois les rapports écrits. Si tous les comptes échouent,
   l’exécution se termine avec le code 1.
 - Un compte qui dépasse son délai conserve les ressources trouvées avant la

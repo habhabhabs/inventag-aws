@@ -40,7 +40,7 @@ inventag_cli.py
 | `inventag/reporting/` | Normalisation des ressources et écriture des fichiers Excel et Word par défaut | `bom_processor.py`, `converter.py` |
 | `inventag/templating/` | Chargement des modèles, validation, héritage, contrôles des politiques d’étiquetage et sortie Excel et Word pilotée par les modèles | `schema.py`, `registry.py`, `runner.py` |
 | `inventag/state/` | Instantanés, différences et journaux des modifications | `state_manager.py` |
-| `inventag/compliance/` | Classes de bibliothèque pour les contrôles d’étiquettes et la sécurité ; la plupart ne sont pas utilisées par la CLI aujourd’hui | `checker.py` |
+| `inventag/compliance/` | Classes de bibliothèque pour les contrôles d’étiquettes et la sécurité. Le chemin de la politique d’étiquetage utilise `checker.py` ; la CLI n’utilise pas les autres classes | `checker.py` |
 | `inventag/security/` | La protection en lecture seule, la liste des politiques IAM, la rédaction des journaux, les fichiers de sortie sûrs | `read_only_guard.py`, `iam_policy.py` |
 
 ## Modules partagés {#shared-modules}
@@ -71,8 +71,7 @@ Gardez-les stables : en renommer un casse les modèles des utilisateurs.
 `templating/runner.py` définit `TemplatedCloudBOMGenerator`, une sous-classe de
 `CloudBOMGenerator` qui ne remplace que l’étape de génération des documents. Le reste d’une exécution,
 y compris la découverte, les identifiants et l’état, reste inchangé. Sans
-`--template`, les classes d’origine sont utilisées et la sortie est exactement la même
-qu’avant.
+`--template`, les classes d’origine sont utilisées.
 
 ## Lacunes connues à corriger {#known-gaps-worth-fixing}
 
@@ -94,10 +93,10 @@ Voici les lacunes côté code. Chacune est une bonne première contribution :
   `--fail-on-account-error` (sortie 5).
 - L’analyse réseau et sécurité s’exécute deux fois dans une exécution (dans le
   processeur de BOM et dans le convertisseur), donc ses appels AWS sont faits deux fois.
-- Ces modules ne sont pas sur le chemin de la CLI : `reporting/template_framework.py`,
+- La CLI n’appelle pas ces modules : `reporting/template_framework.py`,
   `branding_system.py`, `word_builder.py`, `excel_builder.py`,
   `document_generator.py` et `configuration_manager.py`, ainsi que
-  `discovery/enhanced_readonly_discovery.py` et des méthodes inaccessibles de
-  `discovery/inventory.py`.
+  `discovery/enhanced_readonly_discovery.py`. `reporting/template_framework.py`
+  et `reporting/document_generator.py` sont importés au démarrage de la CLI.
 
 Les anciennes notes de conception ont été retirées du dépôt. Utilisez les pages de ce site.

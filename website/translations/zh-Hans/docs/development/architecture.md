@@ -39,7 +39,7 @@ inventag_cli.py
 | `inventag/reporting/` | 规范化资源，并写出默认的 Excel 和 Word 文件 | `bom_processor.py`, `converter.py` |
 | `inventag/templating/` | 模板加载、验证、继承、标签策略检查，以及由模板驱动的 Excel 和 Word 输出 | `schema.py`, `registry.py`, `runner.py` |
 | `inventag/state/` | 快照、差异和变更日志 | `state_manager.py` |
-| `inventag/compliance/` | 用于标签检查和安全的库类；目前 CLI 基本不使用 | `checker.py` |
+| `inventag/compliance/` | 用于标签检查和安全的库类。标签策略路径使用 `checker.py`；CLI 不使用其他类 | `checker.py` |
 | `inventag/security/` | 只读保护、IAM 策略列表、日志脱敏、安全的输出文件 | `read_only_guard.py`, `iam_policy.py` |
 
 ## 共享模块 {#shared-modules}
@@ -68,7 +68,7 @@ inventag_cli.py
 
 `templating/runner.py` 定义了 `TemplatedCloudBOMGenerator`，它是 `CloudBOMGenerator` 的子类，只替换文档生成这一步。
 一次运行的其余部分，包括发现、凭证和状态，都保持不变。
-不使用 `--template` 时，仍使用原来的类，输出与以前完全一样。
+不使用 `--template` 时，仍使用原来的类。
 
 ## 值得修复的已知缺口 {#known-gaps-worth-fixing}
 
@@ -84,8 +84,9 @@ inventag_cli.py
 - 即使使用 `--no-billing-validation`，`--enable-cost-analysis` 也会调用 Cost Explorer。
 - 一个账户失败不会改变退出码，除非你传入 `--fail-on-account-error`（退出码 5）。
 - 网络和安全分析在一次运行中会执行两次（在 BOM 处理器和转换器中），因此它的 AWS 调用也会发出两次。
-- 这些模块不在 CLI 路径上：`reporting/template_framework.py`、`branding_system.py`、
+- CLI 不会调用这些模块：`reporting/template_framework.py`、`branding_system.py`、
   `word_builder.py`、`excel_builder.py`、`document_generator.py` 和 `configuration_manager.py`，
-  以及 `discovery/enhanced_readonly_discovery.py` 和 `discovery/inventory.py` 中无法到达的方法。
+  以及 `discovery/enhanced_readonly_discovery.py`。`reporting/template_framework.py`
+  和 `reporting/document_generator.py` 会在 CLI 启动时被导入。
 
 较早的设计笔记已从仓库中删除。请使用本站的页面。

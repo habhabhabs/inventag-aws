@@ -27,7 +27,7 @@
     "message": "Cómo funciona"
   },
   "home.heroNote": {
-    "message": "Una protección integrada solo deja pasar llamadas de lectura como {list}, {describe} y {get}. Úsalo también con un rol de IAM de solo lectura: {link}."
+    "message": "Una protección integrada solo deja pasar llamadas de lectura como {list}, {describe} y {get}, y la carga del informe a tu propio bucket de S3 cuando la pides. Úsalo también con un rol de IAM de solo lectura: {link}."
   },
   "home.heroNoteLink": {
     "message": "consulta los permisos que necesita"
@@ -57,7 +57,7 @@
     "message": "Un comando. Un informe que la gente puede leer."
   },
   "home.cap.lead": {
-    "message": "Todo lo siguiente funciona hoy en la CLI. Donde una función está a medias, la documentación lo dice."
+    "message": "Todo lo siguiente está hoy en la CLI y tiene una prueba sin conexión contra AWS simulado. Donde una función está a medias o no está verificada, la documentación lo dice."
   },
   "home.c1.title": {
     "message": "Informes en Excel y Word"
@@ -162,7 +162,7 @@
     "message": "Enriquecimiento"
   },
   "home.s3.body": {
-    "message": "Atributos del servicio, tus columnas de etiquetas y descripciones, y análisis opcional de red y seguridad."
+    "message": "Tus columnas de etiquetas y descripciones, y análisis opcional de red y seguridad."
   },
   "home.s4.title": {
     "message": "Salida"

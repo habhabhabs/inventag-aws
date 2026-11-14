@@ -40,7 +40,7 @@ inventag_cli.py
 | `inventag/reporting/` | Normalising resources and writing the default Excel and Word files | `bom_processor.py`, `converter.py` |
 | `inventag/templating/` | Template loading, validation, inheritance, tag-policy checks and template-driven Excel and Word output | `schema.py`, `registry.py`, `runner.py` |
 | `inventag/state/` | Snapshots, differences and changelogs | `state_manager.py` |
-| `inventag/compliance/` | Library classes for tag checks and safety; mostly not used by the CLI today | `checker.py` |
+| `inventag/compliance/` | Library classes for tag checks and safety. The tag-policy path uses `checker.py`; the other classes are not used by the CLI | `checker.py` |
 | `inventag/security/` | The read-only guard, IAM policy list, log redaction, safe output files | `read_only_guard.py`, `iam_policy.py` |
 
 ## Shared modules
@@ -71,8 +71,7 @@ Keep them stable: renaming one breaks people's templates.
 `templating/runner.py` defines `TemplatedCloudBOMGenerator`, a subclass of
 `CloudBOMGenerator` that replaces only the document step. The rest of a run,
 including discovery, credentials and state, is unchanged. Without
-`--template`, the original classes are used and the output is exactly as
-before.
+`--template`, the original classes are used.
 
 ## Known gaps worth fixing
 
@@ -94,10 +93,10 @@ These are the code-side gaps. Each is a good first contribution:
   `--fail-on-account-error` (exit 5).
 - The network and security analysis runs twice in one run (in the BOM
   processor and in the converter), so its AWS calls are made twice.
-- These modules are not on the CLI path: `reporting/template_framework.py`,
+- These modules are not called by the CLI: `reporting/template_framework.py`,
   `branding_system.py`, `word_builder.py`, `excel_builder.py`,
   `document_generator.py` and `configuration_manager.py`, as well as
-  `discovery/enhanced_readonly_discovery.py` and unreachable methods in
-  `discovery/inventory.py`.
+  `discovery/enhanced_readonly_discovery.py`. `reporting/template_framework.py`
+  and `reporting/document_generator.py` are imported when the CLI starts.
 
 Older design notes were removed from the repository. Use the pages on this site.

@@ -159,8 +159,8 @@ def test_parameters_that_return_secrets(service, operation, params, allowed):
 def test_ec2_user_data_is_blocked_on_the_wire(aws_env, global_guard):
     uninstall_global_guard()
     # Set up the instance without the guard (RunInstances is a write). A fixed
-    # image ID: moto's default AMIs may be switched off by an earlier test
-    # (MOTO_EC2_LOAD_DEFAULT_AMIS), and moto accepts any image ID.
+    # image ID: moto accepts any ID, so the test does not depend on which
+    # default AMIs moto has loaded (tests/conftest.py switches them off).
     raw = boto3.client("ec2", region_name="us-east-1")
     instance = raw.run_instances(
         ImageId="ami-12c6146b", MinCount=1, MaxCount=1, UserData="password=hunter2"

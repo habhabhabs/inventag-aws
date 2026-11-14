@@ -113,8 +113,9 @@ Changes detected in S3 service resources
   这样范围的变化就不会被误读为你的资产发生了变化。
 - `--no-generate-changelog` 会停止生成报告，但保留快照。`--disable-delta-detection`
   同样会停止生成报告。`--disable-state-management` 会同时停止快照和报告。
-- 如果某个账户在两次运行中的任何一次里无法扫描或只扫描了一部分，它的资源会被排除在比较之外。
+- 如果某个账户在两次运行中的任何一次里无法扫描或超出了时间限制，它的资源会被排除在比较之外。
   否则它的所有资源都会显示为新增或删除。变更报告会在“State Comparison”部分（`accounts_not_compared`）列出该账户。
+  一个会话在中途过期的账户会被当作完整的账户来比较。
 - InvenTag 把列表当作无序处理，所以列表中项目的顺序变化不算变更，但 Lambda 层、Auto Scaling 终止策略和 CloudFront 缓存行为除外，它们的顺序属于配置。它还会忽略每次运行都会变化的字段：
   发现途径、成本数字，以及 `ItemCount`、`ApproximateNumberOfMessages` 或 EFS 大小之类的使用计数器。
 - 运行保存快照时，InvenTag 会删除超过 30 天或超出最新 100 个的快照。用 `--state-retention-days N` 和

@@ -10,7 +10,7 @@ sidebar_position: 7
 totaux, services et conformité des étiquettes, sans tableaux par ressource.
 
 **Ce qu’il vous faut :** des identifiants en lecture seule et un logo au format PNG, JPEG, GIF ou BMP.
-Word ne peut pas intégrer de logos SVG.
+InvenTag ne peut pas intégrer de logos SVG.
 
 ## Modèle {#template}
 
@@ -104,5 +104,8 @@ echo $?
 
 - Gardez des couleurs lisibles : choisissez pour l’en-tête une couleur dont le rapport de contraste avec
   le texte d’en-tête est d’au moins 4,5:1.
+
+  Non vérifié sur WCAG : le seuil de contraste de 4,5:1.
+
 - Ajoutez l’inventaire complet sous forme de fichier Excel :
   `inventag --template board-report --create-word --create-excel`.

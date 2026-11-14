@@ -47,6 +47,8 @@ garder au vert. Ne lancez les benchmarks que sur demande : `python -m pytest -m 
 Lancez `pip-audit -r requirements.txt` lorsque vous modifiez une dépendance ; la CI échoue sur un
 nouvel avis de sécurité.
 
+Non vérifié sur un runner GitHub Actions : les jobs de CI ; ils sont lus dans le fichier de workflow.
+
 **Ne lancez jamais les tests par accident sur un vrai compte AWS.** Désactivez
 `AWS_PROFILE` et les vraies clés, ou utilisez moto.
 

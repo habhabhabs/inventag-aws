@@ -33,7 +33,6 @@ def estate(monkeypatch):
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "AKIAIOSFODNN7EXAMPLE")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "fake-secret-for-moto-only")
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
-    monkeypatch.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
     monkeypatch.delenv("AWS_PROFILE", raising=False)
     with mock_aws():
         iam = boto3.client("iam")

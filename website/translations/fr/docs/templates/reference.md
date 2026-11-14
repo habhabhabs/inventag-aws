@@ -230,5 +230,5 @@ contient.
 | `templates init` | 2 | Le nom ou l’extension du fichier de sortie n’est pas autorisé |
 | `inventag --template ...` | 1 | Un modèle est invalide, ou l’exécution a échoué |
 | `inventag --template ...` | 3 | Les rapports ont été écrits, mais des ressources enfreignent la politique d’étiquetage et `fail_on_tag_violations` vaut `true` |
-| `inventag --template ...` | 5 | Les rapports ont été écrits, mais un compte a échoué ou n’a été analysé qu’en partie, et vous avez passé `--fail-on-account-error` |
+| `inventag --template ...` | 5 | Les rapports ont été écrits, mais un compte n’a pas pu être analysé ou a dépassé son délai, et vous avez passé `--fail-on-account-error` |
 | `inventag --template ...` | 6 | Aucune ressource n’a été trouvée et vous avez passé `--fail-if-empty` |

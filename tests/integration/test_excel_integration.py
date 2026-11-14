@@ -18,13 +18,7 @@ from inventag.reporting.document_generator import (
 )
 from inventag.reporting.bom_processor import BOMData
 
-# Check if openpyxl is available
-try:
-    import openpyxl
-
-    OPENPYXL_AVAILABLE = True
-except ImportError:
-    OPENPYXL_AVAILABLE = False
+import openpyxl  # noqa: F401  (a runtime dependency in requirements.txt)
 
 
 class TestExcelIntegration(unittest.TestCase):
@@ -178,7 +172,6 @@ class TestExcelIntegration(unittest.TestCase):
         """Clean up test fixtures."""
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_excel_document_generation_integration(self):
         """Test complete Excel document generation workflow."""
         config = DocumentConfig(
@@ -270,7 +263,6 @@ class TestExcelIntegration(unittest.TestCase):
             compliance_sheet["A1"].value, "Detailed Compliance Information"
         )
 
-    @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_excel_with_custom_branding(self):
         """Test Excel generation with custom branding."""
         custom_branding = BrandingConfig(
@@ -308,7 +300,6 @@ class TestExcelIntegration(unittest.TestCase):
         self.assertEqual(wb.properties.title, "Custom Branding Test - Cloud BOM Report")
         self.assertEqual(wb.properties.creator, "InvenTag Cloud BOM Generator")
 
-    @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_excel_with_large_dataset(self):
         """Test Excel generation with larger dataset."""
         # Create larger test dataset
@@ -400,7 +391,6 @@ class TestExcelIntegration(unittest.TestCase):
         for service in services:
             self.assertIn(service, wb.sheetnames)
 
-    @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_excel_error_recovery(self):
         """Test Excel generation error recovery."""
         # Create invalid BOM data to trigger validation error
@@ -422,7 +412,6 @@ class TestExcelIntegration(unittest.TestCase):
         with self.assertRaises(Exception):  # DocumentGenerationError
             generator.generate_bom_documents(invalid_bom_data)
 
-    @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_excel_with_minimal_data(self):
         """Test Excel generation with minimal data."""
         minimal_bom_data = BOMData(

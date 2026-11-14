@@ -12,12 +12,14 @@ sidebar_position: 9
 
 ## 你会得到什么 {#what-you-get}
 
-- `--create-google-sheets` 把与 `--create-excel` 相同的工作簿（相同的工作表、相同的行顺序、相同的模板）写成 Google Sheets 电子表格。
+- `--create-google-sheets` 把与 `--create-excel` 相同的工作簿（相同的工作表、相同的行顺序）写成 Google Sheets 电子表格。
 - `--create-google-docs` 把与 `--create-word` 相同的报告写成 Google Docs 文档。
-- InvenTag 先生成 Excel 和 Word 报告，再复制它们，因此 `--template` 对 Google 文件的影响与对本地文件完全一样。
+- InvenTag 先生成 Excel 和 Word 报告，再复制它们。使用 `--template` 时，InvenTag 不会写出任何 Google 文件：它会记录该格式被跳过，运行以退出码 0 结束。
 - 运行时会打印每个文件的 URL，例如 `Google Sheet: https://docs.google.com/spreadsheets/d/...` 和 `Google Doc: https://docs.google.com/document/d/...`。
-- 使用 `--per-account-reports` 时，InvenTag 为每个账户生成一对文件。标题以 ` - ` 和账户 ID 结尾，每一行 URL 以 `[123456789012]` 开头。
+- 使用 `--per-account-reports` 时，InvenTag 为每个账户生成一对文件。标题以 ` - ` 和账户 ID 结尾，URL 行形如 `Google Sheet: [123456789012] https://...` 和 `Google Doc: [123456789012] https://...`。
 - 如果运行没有找到任何资源，就不会生成 Google 文件。
+
+未针对真实的 Google 验证：这些文件与 Excel 和 Word 报告外观一致，且 URL 为这种形式。
 
 ## 安装 Google 附加包 {#install-the-google-add-on}
 
@@ -40,6 +42,8 @@ pip install "inventag-aws[google]"
 Excel、Word 或其他功能都不需要这个附加包。如果在没有它的情况下使用 Google 参数，
 InvenTag 会以退出码 2 停止，说明缺少哪个包，并打印这条命令。
 
+未针对 pip 和 pipx 验证：Google 附加包的安装命令。
+
 ## 登录 {#sign-in}
 
 任选一种：
@@ -56,6 +60,8 @@ InvenTag 会在扫描 AWS 之前读取密钥文件或 OAuth 客户端文件，�
 
 权限范围是 `drive.file`：InvenTag 只能访问它自己创建的文件。使用
 `--google-folder-id` 时，它会请求完整的 Drive 权限范围，因为它必须把文件放进一个已有的文件夹。
+
+未针对真实的 Google 验证：浏览器登录、保存的令牌、应用默认凭证、要启用的 API，以及 `drive.file` 权限范围允许什么。
 
 ## 谁能打开这些文件 {#who-can-open-the-files}
 
@@ -79,6 +85,8 @@ inventag --create-google-sheets --create-google-docs \
   `--google-share-with`、`--google-share-role`、`--google-share-anyone`、
   `--google-folder-id` 和 `--google-title`，会以退出码 2 停止。
 
+未针对真实的 Google 验证：新文件是否保持私有、共享，以及你无法打开服务账号拥有的文件。
+
 ## 凭证绝不会写入日志 {#credentials-are-never-logged}
 
 密钥文件的路径不会被打印；看起来像 Google 私钥、访问令牌、刷新令牌或客户端密钥的机密，
@@ -88,6 +96,8 @@ inventag --create-google-sheets --create-google-docs \
 ## 限制 {#limits}
 
 - Google Sheets 的单元格最多容纳 50,000 个字符。InvenTag 会把更长的文本在 49,000 个字符处截断。一个电子表格最多 1,000 万个单元格，一个工作表最多 18,278 列。
+
+  未针对真实的 Google 验证：单元格、大小和列数的限制。
 - InvenTag 会在调用 Google 之前先数单元格。如果报告太大，它不会创建任何内容并说明原因，运行以退出码 1 结束。Excel 和 Word 文件仍会写出。例如：
   `The report has 12,000,000 cells; a Google spreadsheet allows 10,000,000. No
   spreadsheet was created. Send fewer resources (filters or an account subset)
@@ -95,17 +105,21 @@ inventag --create-google-sheets --create-google-docs \
 - InvenTag 会把大的工作表分成多个请求发送，每个请求最多 2,000 行，约 100 万个字符。
 - 如果 Google 返回“429 too many requests”，InvenTag 会记录 `Google rate limit
   reached; waiting 5 seconds` 并重试。在最后一次尝试之前，它依次等待 5、10、20、40 和 60 秒。
+
+  未针对真实的 Google 验证：请求大小，以及 429 的等待时间是否足够长。
 - 如果文件创建之后某个调用失败，运行会以退出码 1 结束，消息中会给出写到一半的文件的 URL：`The spreadsheet was already
   created and may be incomplete: <url> (delete it in Google Drive).` Google Docs 文档同理。请删除该文件，然后重新运行。
 - Word 报告的表格默认每个服务最多显示 50 个资源（报告模板中是 `max_rows_per_service`，布局文件中是 `max_rows`），Google Docs 文档也是如此。
 - 单元格的值以文本形式写入，因此以 `=` 开头的标签值不会被当作公式执行。
+
+未针对真实的 Google 验证：以 `=` 开头的文本会被存为文本。
 
 ## 尚未验证的部分 {#what-is-not-verified}
 
 大多数测试使用模拟的 Google 客户端。**我们没有记录过针对真实 Google API 的运行**，
 因为那需要一个 Google 账号。特别是，InvenTag 填充 Google Docs 文档中表格时计算的位置，
 是按我们对 Docs API 规则的理解来检查的，而不是对真实服务检查的。请先用一个小账户试一试，
-如果 Google Docs 文档的版式有问题，请提交 issue 反馈。
+如果 Google Docs 文档的版式有问题，请提交 issue 反馈。上面每个依赖 Google 的部分都会说明哪些内容尚未验证。
 
 ## 用你自己的 Google 账号检查 {#check-it-against-your-own-google-account}
 
@@ -133,12 +147,14 @@ inventag --create-google-sheets --create-google-docs \
 
    浏览器会打开一次。如果应用处于“Testing”状态，请把你的账号添加到 OAuth consent screen 的 Test users 下。
 
+未针对 Google Cloud 验证：启用 API、创建 OAuth 客户端和添加测试用户的控制台步骤。
+
 如果要使用服务账号密钥，请传入 `--google-credentials key.json`。服务账号拥有它自己 Drive 中的文件，
 所以如果你想打开它们，请加上 `--share-with you@example.com`。
 
 | 参数 | 作用 |
 |---|---|
-| `--large` | 还会测试一个 20,000 行的工作表和一个 300 行的 Doc 表格。它会统计 API 调用次数，并注入两次“429”应答来证明重试有效。大约多花一分钟。 |
+| `--large` | 还会测试一个 20,000 行的工作表和一个 300 行的 Doc 表格。它会统计 API 调用次数，并注入两次“429”应答来证明重试有效。 |
 | `--share-with EMAIL` | 把文件共享（reader）给这个地址，并检查只有该地址和所有者能打开它们。可重复使用。 |
 | `--keep` | 把文件留在 Drive 中。默认情况下，脚本会在最后把它创建的每个文件移到 Drive 的回收站。 |
 | `--folder-id ID` | 还会在这个 Drive 文件夹中创建一对文件。这需要完整的 Drive 权限范围。使用 `--google-oauth-client` 时，请先删除 `~/.config/inventag/google-token.json`，这样它会重新询问。 |

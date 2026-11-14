@@ -44,7 +44,8 @@ inventag --template standard-bom --template security-baseline --create-excel
 A few rules decide what wins when settings overlap:
 
 1. **Flags you type win.** If a config template says `outputs: [excel]` and you
-   also type `--create-word`, you get both files.
+   type `--create-word`, you get only the Word file: a typed `--create-excel` or
+   `--create-word` replaces `outputs` completely.
 2. **A template on the command line wins over a reference inside another
    template.** `--template security-baseline` replaces the tag policy that
    `finops-cost-report` names.
@@ -89,7 +90,7 @@ with code 3 when something breaks the policy. The built-in `ci-pipeline`
 template does this.
 
 Two opt-in flags have their own exit codes: `--fail-on-account-error` exits
-with code 5 when an account could not be scanned, and `--fail-if-empty` exits
+with code 5 when an account could not be scanned or ran out of time, and `--fail-if-empty` exits
 with code 6 when no resources were found. Both win over code 3. The reports
 are still written.
 
@@ -103,6 +104,8 @@ first match:
 2. `.inventag/templates/` in the folder you run InvenTag from (your project).
 3. `~/.config/inventag/templates/` (or `$XDG_CONFIG_HOME/inventag/templates/`).
 4. The built-in templates.
+
+Not verified against Windows: the `;` separator in `INVENTAG_TEMPLATE_PATH`.
 
 So a file called `.inventag/templates/standard-bom.yaml` replaces the built-in
 `standard-bom` for that project. It can still build on the original with

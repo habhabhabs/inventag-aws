@@ -12,7 +12,7 @@ slug: /user-guides/configuration-examples
 **讀完後你可以：** 寫出載入器能接受的帳戶檔案、標籤對應檔案和服務描述檔案。
 
 關於範本（報告版面配置、標籤策略、執行設定），見[範本參考](../templates/reference.md)。
-設定範本能做帳戶檔案能做的一切，只是不能存放存取金鑰，而且校驗更嚴格，因此新的設定請優先使用它。
+設定範本能做帳戶檔案能做的一切，只是不能存放存取金鑰，並且每個帳戶都需要 `profile_name` 或 `role_arn`。它的校驗更嚴格，因此新的設定請優先使用它。
 
 所有檔案都可以是 YAML（`.yaml`、`.yml`）或 JSON（`.json`）。不掃描也可以檢查它們：
 
@@ -47,7 +47,7 @@ settings:                              # optional
   output_directory: bom_output
 ```
 
-每個帳戶需要**一種**獲取憑證的方式：
+帳戶可以指定一種獲取憑證的方式。沒有指定的帳戶會使用你目前的憑證（如果它們屬於該帳戶）；否則 InvenTag 會嘗試在該帳戶中擔任角色 `InvenTagCrossAccountRole`（或用 `--cross-account-role` 給出的名稱）。
 
 | 欄位 | 用途 |
 |---|---|
@@ -102,13 +102,6 @@ tag_mappings:
 
 請使用頂層鍵 `tag_mappings`，其值是條目的**列表**。InvenTag 也接受較早的寫法，即把每個標籤鍵作為頂層鍵，並給出 `column_name` 值。
 
-上面這個條目在 EC2 工作表上的範例結果：
-
-| service | type | id | Cost Center |
-|---|---|---|---|
-| EC2 | Instance | i-0abc1234def567890 | CC-1042 |
-| EC2 | Volume | vol-0abc1234def567890 | Unknown |
-
 ## 服務描述 {#service-descriptions}
 
 與 `--service-descriptions` 一起使用。它會在報告中新增 `service_description` 欄。
@@ -129,7 +122,7 @@ templates:
     template: "Disk {resource_id} in {region}"
 ```
 
-頂層鍵 `service_descriptions` 是必需的。在每個服務之下，每種資源型別（或 `default`）都需要一個 `description`。
+頂層鍵 `service_descriptions` 是必需的。在每個服務之下，每種資源型別（或 `default`）都需要一個 `description`。InvenTag 在你校驗或啟動執行時不會檢查這一點。沒有該鍵的檔案會被忽略，日誌中會有一條錯誤，並使用內建描述。
 
 **你的條目會替換內建描述**，對所有服務都是如此。帶 `template` 的條目使用在 `templates` 下定義的該範本；
 不帶 `template` 的條目按原樣使用其 `description`（範例中 DynamoDB 表使用的是 `Application data table`）。
@@ -137,7 +130,7 @@ templates:
 你的檔案中沒有條目的服務保留內建文字。
 
 如果範本無法填充，InvenTag 會記錄一條警告，例如
-`Failed to render template vpc_vpc: 'cidr_block'`，並使用備用文字。
+`Failed to render template vpc_vpc: 'cidr_block'`，並使用內建備用文字。對於你自己檔案中的範本，則使用該條目的 `description`。
 
 ## BOM 處理設定 {#bom-processing-configuration}
 

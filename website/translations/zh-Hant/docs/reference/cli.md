@@ -10,8 +10,8 @@ sidebar_position: 1
 
 **讀完後你可以：** 寫出任意 InvenTag 命令列，並知道哪些引數現在可用。
 
-本頁與這一版文件所描述的發行版的 `inventag --help` 一致。執行 `inventag --help` 可檢視你已安裝的發行版的引數。**狀態**欄說明我們針對模擬 AWS 離線執行該引數時看到的結果。
-「未重新測試」表示我們沒有為本頁執行它。詳情見[功能狀態](../getting-started/status.md)。
+本頁與這一版文件所描述的發行版的 `inventag --help` 一致。執行 `inventag --help` 可檢視你已安裝的發行版的引數。**狀態**欄說明針對模擬 AWS 的離線測試顯示的結果。
+「未測試」表示還沒有測試覆蓋該行所述的內容。「僅限模擬的 Google」表示測試使用的是模擬的 Google 客戶端。詳情見[功能狀態](../getting-started/status.md)。
 
 ## 命令 {#commands}
 
@@ -25,6 +25,9 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 ```
 
 `inventag` 命令在 Linux、macOS 和 Windows 上的用法相同。
+
+未針對 Windows 或 macOS 驗證：`inventag` 命令的行為與在 Linux 上相同。
+
 `templates` 必須是程式名之後的第一個詞。
 
 ## 範本 {#templates}
@@ -56,17 +59,19 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 |---|---|---|---|
 | `--create-excel` | 沒有其他輸出引數時為開 | 可用 | 寫出 `multi_account_bom_<timestamp>.xlsx`。 |
 | `--create-word` | 關 | 可用 | 寫出 `multi_account_bom_<timestamp>.docx`。 |
-| `--create-google-docs` | 關 | 可用（僅限模擬客戶端） | 把 Word 報告建立為 Google 文件。需要 Google 附加元件（`pip install "inventag-aws[google]"`）。見 [Google Sheets 和 Docs](../guides/google-sheets-and-docs.md)。 |
-| `--create-google-sheets` | 關 | 可用（僅限模擬客戶端） | 把 Excel 報告建立為 Google Sheets 電子表格。 |
-| `--google-credentials FILE` | 無 | 可用（僅限模擬客戶端） | 服務帳號金鑰檔案。不給出時使用應用預設憑證（Application Default Credentials）。 |
-| `--google-oauth-client FILE` | 無 | 可用（僅限模擬客戶端） | OAuth 客戶端檔案；你在瀏覽器中登入。 |
-| `--google-folder-id ID` | 無 | 可用（僅限模擬客戶端） | 存放檔案的 Drive 資料夾。 |
-| `--google-share-with EMAIL` | 無 | 可用（僅限模擬客戶端） | 與該地址共享。可重複指定以新增更多地址。 |
-| `--google-share-role ROLE` | `reader` | 可用（僅限模擬客戶端） | `reader`、`commenter` 或 `writer`。 |
-| `--google-share-anyone` | 關 | 可用（僅限模擬客戶端） | 任何拿到連結的人都可以讀取。不加此引數時檔案是私有的。 |
-| `--google-title TITLE` | 帶日期的名稱 | 可用（僅限模擬客戶端） | Google 檔案的標題。 |
+| `--create-google-docs` | 關 | 僅限模擬的 Google | 把 Word 報告建立為 Google 文件。需要 Google 附加元件（`pip install "inventag-aws[google]"`）。見 [Google Sheets 和 Docs](../guides/google-sheets-and-docs.md)。 |
+| `--create-google-sheets` | 關 | 僅限模擬的 Google | 把 Excel 報告建立為 Google Sheets 電子表格。 |
+| `--google-credentials FILE` | 無 | 僅限模擬的 Google | 服務帳號金鑰檔案。不給出時使用應用預設憑證（Application Default Credentials）。 |
+| `--google-oauth-client FILE` | 無 | 僅限模擬的 Google | OAuth 客戶端檔案；你在瀏覽器中登入。 |
+| `--google-folder-id ID` | 無 | 僅限模擬的 Google | 存放檔案的 Drive 資料夾。 |
+| `--google-share-with EMAIL` | 無 | 僅限模擬的 Google | 與該地址共享。可重複指定以新增更多地址。 |
+| `--google-share-role ROLE` | `reader` | 僅限模擬的 Google | `reader`、`commenter` 或 `writer`。 |
+| `--google-share-anyone` | 關 | 僅限模擬的 Google | 任何拿到連結的人都可以讀取。不加此引數時檔案是私有的。 |
+| `--google-title TITLE` | 帶日期的名稱 | 僅限模擬的 Google | Google 檔案的標題。 |
 | `--output-directory DIR` | `bom_output` | 可用 | 存放所有輸出檔案的資料夾。 |
 | `--per-account-reports` | 關 | 可用 | 每個帳戶寫出一個 `<account-id>_bom_<timestamp>` 檔案，而不是一份合併的報告。 |
+
+未針對真實的 Google 驗證：此表中的 Google 引數會建立、共享和輸出什麼。
 
 ## 掃描什麼 {#what-to-scan}
 
@@ -76,7 +81,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | `--account-services LIST` | 全部 | 可用 | 以逗號分隔的服務名稱，只有這些服務會保留在報告中，與 Service 欄匹配，例如 `EC2,S3`。 |
 | `--account-tags JSON` | 無 | 可用 | 標籤篩選，例如 `'{"Environment":"prod"}'`。只保留帶有這些標籤的資源。 |
 | `--fallback-display auto\|always\|never` | `auto` | 可用 | 是否顯示只透過 Resource Groups Tagging API 找到的資源。`auto` 只對自身發現程式碼沒有返回結果的服務顯示它們。 |
-| `--hide-fallback-resources` | 關 | 未重新測試 | 等同於 `--fallback-display never`。已棄用。 |
+| `--hide-fallback-resources` | 關 | 可用 | 等同於 `--fallback-display never`。已棄用。 |
 
 ## 分析 {#analysis}
 
@@ -85,7 +90,9 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | `--enable-network-analysis` | 關 | 可用 | 找到 VPC 時，在 Excel 報告中新增 `Network Analysis` 工作表。與 `--template` 一起使用時不新增任何內容。見[網路與安全分析](../guides/network-and-security-analysis.md)。 |
 | `--enable-security-analysis` | 關 | 可用 | 找到安全組時，在 Excel 報告中新增 `Security Analysis` 工作表。與 `--template` 一起使用時不新增任何內容。 |
 | `--enable-cost-analysis` | 關 | 可用 | 在預設工作簿中新增 Cost Analysis 工作表（以及四個 `forgotten_analysis.*` 欄）。會額外呼叫 Cost Explorer、Pricing 和 CloudWatch，即使加了 `--no-billing-validation` 也一樣。需要 `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`。費用是根據 AWS Pricing API 得出的估算值，不是你的帳單。 |
-| `--billing-validation`, `--no-billing-validation` | 開 | 可用 | 在發現階段使用 Cost Explorer 找出有支出的服務。AWS 對每次 Cost Explorer 請求收費。`--no-billing-validation` 會停止這些呼叫。 |
+| `--billing-validation`, `--no-billing-validation` | 開 | 可用 | 在發現階段使用 Cost Explorer 找出有支出的服務。AWS 對每次 Cost Explorer 請求收費。詳見[Cost Explorer 定價](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。`--no-billing-validation` 會停止這些呼叫。 |
+
+未針對真實的 AWS 驗證：`--enable-cost-analysis` 只需要這兩項額外權限，並且估算值與 AWS 價格一致。
 
 ## 設定檔 {#configuration-files}
 
@@ -95,7 +102,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | `--service-descriptions FILE` | 無 | 可用 | 新增 `service_description` 欄。你的條目會替換內建描述。見[設定檔](./configuration-files.md#service-descriptions)。 |
 | `--bom-config FILE` | 無 | 可用 | 從 YAML 或 JSON 檔案設定 BOM 處理設定的欄位。其他鍵會被忽略，並給出指明這些鍵的警告。型別錯誤的值會以結束代碼 1 停止，並指明該鍵。 |
 | `--validate-config` | 關 | 可用 | 載入並檢查設定，然後退出。 |
-| `--validate-config-only` | 關 | 可用 | 只檢查你指定的檔案，然後退出。不會進行任何 AWS 呼叫。 |
+| `--validate-config-only` | 關 | 可用 | 檢查 `--accounts-file`、`--tag-mappings` 和 `--service-descriptions`，然後退出。不會讀取 `--bom-config`。不會進行任何 AWS 呼叫。 |
 
 ## 報告版面配置檔案 {#report-layout-files}
 
@@ -133,7 +140,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 
 | 引數 | 預設值 | 狀態 | 功能 |
 |---|---|---|---|
-| `--fail-on-account-error` | 關 | 可用 | 有帳戶未能完整掃描時以結束代碼 5 結束。報告仍會寫出。 |
+| `--fail-on-account-error` | 關 | 可用 | 有帳戶無法掃描或超出時限時，以結束代碼 5 結束。報告仍會寫出。 |
 | `--fail-if-empty` | 關 | 可用 | 沒有找到資源或篩選條件把它們全部去掉時，以結束代碼 6 結束。 |
 
 如果同時滿足多個條件，先是 5，然後是 6，然後是 3，最後是 4。結束代碼 3、4 和 5 會寫出報告。
@@ -144,7 +151,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | 引數 | 預設值 | 狀態 | 功能 |
 |---|---|---|---|
 | `--verbose`, `-v` | 關 | 可用 | 顯示每一步。 |
-| `--debug`, `-d` | 關 | 可用 | 顯示每個 AWS 請求。金鑰會被遮蔽。 |
+| `--debug`, `-d` | 關 | 可用 | 顯示 AWS 請求。金鑰會被遮蔽。 |
 | `--log-file FILE` | 無 | 可用 | 同時把詳細日誌寫入該檔案。 |
 | `--disable-account-logging` | 關 | 可用 | 不在日誌行前加帳戶字首。 |
 
@@ -184,7 +191,7 @@ echo $?
 1
 ```
 
-以結束代碼 2 停止的引數會列印如下內容：
+以結束代碼 2 停止的引數會列印如下內容（第一個範例來自沒有安裝 Google 庫的機器）：
 
 ```bash title="Terminal"
 inventag --create-google-docs
@@ -232,6 +239,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 | `--s3-encryption AES256\|aws:kms` | `AES256` | 可用 | 上傳檔案使用的伺服器端加密。 |
 | `--s3-kms-key-id KEY` | 無 | 可用 | 用於 `aws:kms` 的 KMS 金鑰。不給出時，S3 使用 AWS 託管金鑰 `aws/s3`。需要 `--s3-encryption aws:kms`，否則結束代碼 2。 |
 
+未針對真實的 AWS 驗證：上傳只需要 `s3:PutObject`（使用 `aws:kms` 時還需要 `kms:GenerateDataKey`）。
+
+未針對 AWS 驗證：`aws:kms` 沒有金鑰 ID 時，S3 是否使用 AWS 託管金鑰 `aws/s3`。
+
 見[按計劃把報告上傳到 S3](../examples/scheduled-s3-upload.md)。
 
 ## 結束代碼 {#exit-codes}
@@ -239,9 +250,9 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 | 程式碼 | 含義 |
 |---|---|
 | 0 | 成功。部分帳戶失敗但其他帳戶正常，以及沒有找到任何資源時，也是 0，除非你傳入 `--fail-on-account-error` 或 `--fail-if-empty`。見[功能狀態](../getting-started/status.md#when-a-run-goes-wrong)。 |
-| 1 | 出錯：引數、設定或範本無效，憑證失敗，所有帳戶都失敗（包括有些只掃描了一部分），S3 上傳失敗，或某種報告格式無法寫出 |
+| 1 | 出錯：引數、設定或範本無效，數值超出範圍（例如 `--max-concurrent-accounts 0`），憑證失敗，所有帳戶都失敗（無法掃描或超出時限），S3 上傳失敗，或某種報告格式無法寫出 |
 | 2 | 命令列無效：未知、格式錯誤或相互衝突的選項，尚未實現的引數，Google 選項有誤，版面配置檔案引數缺少它所需的報告，或給了角色名稱但沒有 `--accounts-file` |
 | 3 | 報告已寫出，但帶有 `fail_on_tag_violations: true` 的設定範本發現了標籤策略違規 |
 | 4 | 報告已寫出，但 `--risk-threshold` 發現有安全組規則達到或超過該級別 |
-| 5 | 報告已寫出，但有帳戶未能完整掃描，並且你傳入了 `--fail-on-account-error` |
+| 5 | 報告已寫出，但有帳戶無法掃描或超出時限，並且你傳入了 `--fail-on-account-error` |
 | 6 | 沒有可報告的資源，並且你傳入了 `--fail-if-empty` |

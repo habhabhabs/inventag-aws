@@ -14,14 +14,14 @@ SECRET = "S3CR3T-PLANTED-VALUE-123"
 
 @pytest.fixture
 def secret_account(monkeypatch):
-    moto = pytest.importorskip("moto")
+    import moto
+
     for key in ("AWS_PROFILE", "AWS_ENDPOINT_URL", "AWS_SESSION_TOKEN"):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     monkeypatch.setenv("AWS_EC2_METADATA_DISABLED", "true")
-    monkeypatch.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
     from inventag.security.read_only_guard import uninstall_global_guard
 
     uninstall_global_guard()

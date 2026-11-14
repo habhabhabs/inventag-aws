@@ -25,8 +25,10 @@ maintainer for a private channel.
 
 ## What InvenTag does with your accounts
 
-- **It only reads.** A read-only guard checks every AWS call before it is
-  sent. It blocks anything that is not a read, and reads that return secrets
+- **It only reads, apart from one upload you ask for.** The one exception is
+  the upload of its own report files to your S3 bucket, and only when you pass
+  `--s3-bucket`. A read-only guard checks every AWS call before it is sent.
+  It blocks anything that is not a read, and reads that return secrets
   or data, such as `secretsmanager:GetSecretValue`, `s3:GetObject`,
   `cloudformation:GetTemplate` or `ec2:GetLaunchTemplateData`. It also blocks
   allowed operations when a parameter asks for a secret (API keys with
@@ -45,17 +47,21 @@ maintainer for a private channel.
   `sso-oidc:CreateToken`, `sts:AssumeRoleWithWebIdentity` and
   `signin:CreateOAuth2Token`. A signed client that makes the same call is
   blocked.
+
+  Not verified against AWS IAM Identity Center: the sign-in calls a real SDK sends.
 - **It masks secret values in allowed answers.** Values of fields that often
   hold secrets, such as Lambda environment variables, EC2 user data or
   CloudFormation parameter values, become `***REDACTED***` in reports,
   snapshots and logs. The names stay. See
   [Feature status](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 - **It sends no usage data.** InvenTag has no telemetry. The command-line tool
-  only talks to AWS. The optional CI helper in the Python library can post to
+  talks only to AWS, and to Google when you use a Google option. The optional CI helper in the Python library can post to
   Slack, Microsoft Teams or a Prometheus Pushgateway, but only to addresses
   you configure yourself.
 - **Its files are private.** Reports, snapshots and logs are created readable
   by your user only.
+
+  Not verified against Windows: files readable by your user only.
 - **Its logs hide secrets.** Session tokens, keys, request signatures and the
   masked values above are hidden, even with `--debug`.
 
@@ -97,6 +103,8 @@ fixes: 3.10 reached end of life in October 2026
 | Dependency check in CI | The CI workflow runs `pip-audit -r requirements.txt` and fails on a finding. It runs Bandit and `npm audit` too, but does not fail on their findings. |
 | Scheduled scan | A separate workflow runs on pushes to `main` and `develop`, on pull requests to `main` and weekly (Sundays, 02:00 UTC). It runs Bandit, Safety, pip-audit, `npm audit` and detect-secrets. Findings are reported but do not fail that workflow. |
 | Software bill of materials | The documentation build generates SBOM files for the Python and website dependencies. |
+
+Not verified against a GitHub Actions runner: what the CI, scheduled and documentation workflows do; this table is read from the workflow files.
 
 To check your own installation:
 

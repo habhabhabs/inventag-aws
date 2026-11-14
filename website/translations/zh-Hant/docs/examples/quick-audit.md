@@ -11,6 +11,8 @@ sidebar_position: 2
 **你需要：** 該帳戶的憑證，例如
 `aws sso login --profile prod-readonly` 和 `export AWS_PROFILE=prod-readonly`。
 
+未針對 AWS CLI 驗證：本節中的登入命令。
+
 ## 範本 {#template}
 
 內建的 `single-account` 設定範本會掃描 `us-east-1`，並使用 `standard-bom` 版面配置寫出兩個檔案。
@@ -41,7 +43,7 @@ inventag --template audit
 
 ## 輸出 {#output}
 
-以下是同一版面配置在一個區域上的離線執行結果（範例資料）：
+以下是同一版面配置、使用一個區域引數的離線執行結果（範例資料；IAM 列在區域 `global` 下，所以摘要統計為 2 個區域）：
 
 ```text title="輸出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.

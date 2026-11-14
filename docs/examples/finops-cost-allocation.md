@@ -12,8 +12,12 @@ and valid.
 
 **You need:** read-only credentials. Tags only appear in AWS cost reports
 after you activate them as cost allocation tags in the AWS Billing and Cost
-Management console. InvenTag shows which resources carry them; it does not
-calculate costs.
+Management console. InvenTag shows which resources carry them. It does not read
+your bill. The optional `--enable-cost-analysis` adds cost estimates.
+
+Not verified against AWS: tags appear in cost reports only after you activate them as cost allocation tags.
+
+Not verified against real AWS: the cost estimates of `--enable-cost-analysis`.
 
 ## Template
 

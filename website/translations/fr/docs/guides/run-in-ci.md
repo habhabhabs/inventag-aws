@@ -73,8 +73,12 @@ jobs:
           retention-days: 30
 ```
 
+Non vérifié sur un runner GitHub Actions : ce workflow n’a pas été exécuté sur GitHub. Son YAML et sa ligne de commande `inventag` sont vérifiés à la construction de la documentation.
+
 Épinglez chaque action sur un SHA de commit complet, avec la version en commentaire. Cela
 vous protège si une balise est déplacée vers du code malveillant. Les quatre SHA ci-dessus sont les commits des balises indiquées dans les commentaires. Mettez à jour les SHA lorsque vous mettez à jour les versions.
+
+Non vérifié sur GitHub : que l’épinglage sur un SHA de commit vous protège lorsqu’une balise est déplacée.
 
 InvenTag s’exécute depuis le dossier de votre dépôt ; `.inventag/templates/nightly.yaml`
 est donc trouvé par son nom.
@@ -323,7 +327,7 @@ echo $?
 | 2 | Options invalides ou en conflit, par exemple `--accounts-file` avec `--accounts-prompt`, ou `--compliance-standard` (non implémentée). Rien n’est analysé |
 | 3 | Rapports écrits, violations de la politique d’étiquetage trouvées (`fail_on_tag_violations: true`) |
 | 4 | Rapports écrits, une règle de groupe de sécurité ouverte à Internet atteint ou dépasse `--risk-threshold` |
-| 5 | Rapports écrits, un compte n’a pas pu être analysé, ou seulement en partie (`--fail-on-account-error`) |
+| 5 | Rapports écrits, mais un compte n’a pas pu être analysé ou a dépassé son délai (`--fail-on-account-error`) |
 | 6 | Aucune ressource à signaler (`--fail-if-empty`) |
 
 Si plusieurs codes s’appliquent, le 5 passe en premier, puis le 6, puis le 3, puis le 4, car les données derrière un résultat d’étiquettes ou de risque sont incomplètes quand un compte manque.

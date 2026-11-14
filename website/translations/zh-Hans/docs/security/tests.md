@@ -20,6 +20,8 @@ AWS：需要 AWS 的测试使用 [moto](https://github.com/getmoto/moto)（它�
 CI 在每次推送到 `main` 或 `develop`、以及每个指向 `main` 的拉取请求时，都会在 Python 3.11、3.12、3.13、3.14 和 3.15 上运行测试套件，
 外加 lint、集成和基础安全作业。
 
+未针对 GitHub Actions Runner 验证：CI 作业；它们读自工作流文件。
+
 **没有任何测试针对真实的 AWS 账户运行。** 凡是结果取决于真实 AWS 行为的地方，
 [功能状态](../getting-started/status.md)都会说明。
 
@@ -44,10 +46,12 @@ moto 的 Resource Groups Tagging API 是 ARN 和标签的参照。
 | 只读防护、审计、`--validate-operations`、S3 上传、私有文件 | `tests/unit/test_cli_security.py`, `tests/unit/test_security_read_only_guard.py` |
 | 机密的遮蔽，包括 Google 机密 | `tests/unit/test_security_redaction.py`, `tests/unit/test_google_output.py` |
 | Google Sheets 和 Docs 输出（模拟的 Google 客户端） | `tests/unit/test_google_output.py` |
-| 每份报告、快照、检查点和日志中的机密值都被遮盖（埋入七个机密） | `tests/unit/test_integration_secrets_end_to_end.py` |
+| 每份报告、快照、检查点和日志中的机密值都被遮盖（埋入十个机密） | `tests/unit/test_integration_secrets_end_to_end.py` |
 | `--resume`、保留期限、区域回退、每个账户的时间限制 | `tests/unit/test_integration_wiring.py` |
 | 每个列出操作都会读取第二页；每一行都写明来源 API | `tests/unit/test_integration_two_pages.py`, `tests/unit/test_integration_row_sources.py` |
 | 端到端的网络和安全分析 | `tests/unit/test_integration_analysis_end_to_end.py` |
+
+在模拟的 AWS 下，发现过程不会读取 ECS、CodeBuild、EC2 用户数据和 Glue 连接的值，因此对这四项，测试只能证明它们没有泄露。
 
 ## 自己运行测试 {#run-the-tests-yourself}
 
@@ -65,5 +69,7 @@ pytest
 ## 还检查什么 {#what-else-is-checked}
 
 - **文档网站**在 CI 中构建。遇到失效链接时构建会失败，并且会对构建出的页面运行无障碍检查。
+
+  未针对 GitHub Actions Runner 验证：文档构建及其检查；它们读自工作流文件。
 - **依赖项**会被扫描已知漏洞。参见[安全](./index.md#how-dependencies-are-checked)和
   [软件物料清单](./sbom.md)。

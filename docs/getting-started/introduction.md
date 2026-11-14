@@ -34,7 +34,7 @@ your AWS credentials
   1. find resources   --> List/Describe/Get calls per service,
         |                 the Resource Groups Tagging API, Cost Explorer
         v
-  2. tidy and enrich  --> service names, IDs, tags
+  2. tidy             --> service names, IDs, tags
         |
         v
   3. check tags       --> only when a tag policy is active
@@ -46,18 +46,23 @@ your AWS credentials
 1. **Credentials.** InvenTag uses the normal AWS credential chain: a profile,
    environment variables, an IAM Identity Center (SSO) session or an IAM role.
    It can also assume a role in other accounts.
+
+   Not verified against AWS IAM Identity Center: sign-in with a real SSO session.
 2. **Discovery.** For each account and region it calls read-only AWS
    application programming interfaces (APIs). By default it also calls Cost
    Explorer `GetCostAndUsage` to spot services that have spend. AWS charges for
    Cost Explorer API requests; `--no-billing-validation` turns the calls off.
+   See the current [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 3. **Processing.** It standardises service names and IDs and collects tags.
 4. **Output.** It writes files to the output folder (`bom_output/` by default)
    and a snapshot to `bom_output/state/`.
 
 ## What it changes
 
-Only files on your disk. InvenTag reads your AWS accounts; it never changes
-them.
+Files on your disk. The `inventag` command only reads from your AWS accounts.
+The one exception is the upload of its own report files to your S3 bucket, and
+only when you pass `--s3-bucket`. With a Google option it also creates files in
+your Google Drive.
 
 A **read-only guard** checks every AWS call before it is sent. Calls that
 are not reads (`List`, `Describe`, `Get` and similar) are blocked, and so are

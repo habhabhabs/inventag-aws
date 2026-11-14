@@ -10,7 +10,7 @@ sidebar_position: 7
 totals, services and tag compliance, without per-resource tables.
 
 **You need:** read-only credentials and a logo as a PNG, JPEG, GIF or BMP
-file. Word cannot embed SVG logos.
+file. InvenTag cannot embed SVG logos.
 
 ## Template
 
@@ -128,5 +128,8 @@ echo $?
 
 - Keep colours readable: pick a header colour with a contrast ratio of at
   least 4.5:1 against the header text.
+
+  Not verified against WCAG: the 4.5:1 contrast threshold.
+
 - Add the full inventory as an Excel file:
   `inventag --template board-report --create-word --create-excel`.

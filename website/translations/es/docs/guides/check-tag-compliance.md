@@ -42,6 +42,8 @@ Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-
 | Word, sección **Tag compliance** | Los mismos recuentos, las reglas y una tabla de recursos no conformes (hasta 100 filas por defecto). |
 | `tag_compliance_<timestamp>.json` | Recuentos por regla y todos los recursos no conformes, para scripts y CI. |
 
+Si ningún recurso está dentro del alcance, el resumen dice `0 of 0 resources compliant (100.0%)`: no se comprobó nada.
+
 Un recurso es **conforme** cuando tiene todas las etiquetas obligatorias y cada
 valor cumple su regla. Los problemas se describen con detalle, por ejemplo:
 
@@ -110,6 +112,8 @@ La parte `summary` del archivo JSON:
 Los recursos **fuera del ámbito** se cuentan pero no se comprueban: el `scope`
 de la política los excluye, por ejemplo los alias de KMS, que no pueden llevar
 etiquetas.
+
+No verificado contra AWS: los alias de KMS no pueden llevar etiquetas.
 
 **Ten esto en cuenta antes de fiarte de los números:** InvenTag asocia las
 etiquetas de la API Resource Groups Tagging con los recursos por ARN y, si el
