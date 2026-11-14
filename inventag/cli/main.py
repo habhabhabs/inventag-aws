@@ -131,12 +131,9 @@ def _validate_specific_configs(args, logger, check_credentials=True):
         try:
             ignored = read_bom_settings(args.bom_config, BOMProcessingConfig())
         except SettingsFileError as e:
-            # The exit code of this mode is unchanged (0): the problem is a
-            # warning that says what a real run does with the file.
-            logger.warning(
-                f"--bom-config {args.bom_config} is invalid: {e} A real run "
-                "stops with exit code 1 on this file."
-            )
+            logger.error("❌ BOM settings file is invalid:")
+            logger.error(f"   - {e}")
+            all_valid = False
         else:
             if ignored:
                 logger.warning(
