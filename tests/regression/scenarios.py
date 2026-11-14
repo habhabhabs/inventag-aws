@@ -1356,6 +1356,9 @@ EXTRA = [
             ("not", ("out", NO_RESOURCES)),
             # fix/track-a (A-01): the report's Run notes name the account
             ("report_text", "Every service listing of account 123456789012"),
+            # review M2: the account is still compared; the note says the
+            # report holds only what the Tagging API returned
+            ("report_text", "the Tagging API returned"),
         ),
         code=1,
         issue_keys=("permission_denied",),
