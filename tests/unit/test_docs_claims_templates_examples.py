@@ -901,15 +901,8 @@ def test_t27_source_and_detail_level_values_of_the_three_kinds_of_row(monkeypatc
     }
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="possible defect: a layout file with templates, document_templates or "
-    "default_template is refused (exit 1, 'unknown key'), it does not ignore them",
-)
-def test_t28_old_layout_keys_have_no_effect(aws, monkeypatch, tmp_path):
-    """layout-flags.md: templates, document_templates and default_template in a
-    layout file change nothing and give no error."""
-    layout = {
+def _layout_excel():
+    return {
         "template_version": "2.0",
         "format_type": "excel",
         "sections": [
@@ -918,36 +911,84 @@ def test_t28_old_layout_keys_have_no_effect(aws, monkeypatch, tmp_path):
                 "content_type": "resources",
                 "group_by_service": False,
                 "sheet_name": "All",
-                "columns": [
-                    {"field": "id", "heading": "ID"},
-                    {"field": "service", "heading": "Service"},
-                ],
+                "columns": [{"field": "id", "heading": "ID"}],
             }
         ],
     }
-    old = dict(
-        layout, templates={"x": "y"}, document_templates={}, default_template="x"
+
+
+@pytest.mark.parametrize(
+    "flag,fmt", [("--excel-template", "excel"), ("--word-template", "word")]
+)
+def test_t28_layout_file_with_the_old_keys_is_refused(
+    aws, monkeypatch, tmp_path, capsys, flag, fmt
+):
+    """layout-flags.md: a layout file with templates, document_templates or
+    default_template is refused with 'unknown key'."""
+    layout = dict(
+        _layout_excel(),
+        format_type=fmt,
+        templates={},
+        document_templates={},
+        default_template="x",
     )
+    if fmt == "word":
+        layout["sections"] = [{"id": "s", "content_type": "resources"}]
+    lay = tmp_path / "layout.json"
+    lay.write_text(json.dumps(layout))
+    code = run_inventag(
+        monkeypatch,
+        tmp_path,
+        flag,
+        str(lay),
+        *(["--create-word"] if fmt == "word" else []),
+        "--account-regions",
+        "us-east-1",
+    )
+    assert code == 1
+    err = capsys.readouterr().err
+    for key in ("templates", "document_templates", "default_template"):
+        assert f"{key}: unknown key" in err
+
+
+def test_t30_old_keys_in_a_bom_config_file_have_no_effect(aws, monkeypatch, tmp_path):
+    """layout-flags.md: the keys of older configuration examples (here the shipped
+    config/defaults/complete_configuration_example.yaml, used with --bom-config)
+    change no report: same sheets, same Word paragraphs, exit 0."""
+    example = yaml.safe_load(
+        (
+            ROOT / "config" / "defaults" / "complete_configuration_example.yaml"
+        ).read_text()
+    )
+    old_keys = ("templates", "document_templates", "default_template")
+    assert "document_templates" in example and "default_template" in example
+    with_keys = dict(example, templates={"x": "y"})
+    without = {k: v for k, v in example.items() if k not in old_keys}
     results = []
-    for sub, data in (("plain", layout), ("old", old)):
+    for sub, data in (("with", with_keys), ("without", without)):
         out = tmp_path / sub
         out.mkdir()
-        lay = out / "layout.json"
-        lay.write_text(json.dumps(data))
+        cfg = out / "bom.yaml"
+        cfg.write_text(yaml.safe_dump(data))
         code = run_inventag(
             monkeypatch,
             out,
-            "--excel-template",
-            str(lay),
+            "--bom-config",
+            str(cfg),
+            "--create-excel",
+            "--create-word",
             "--account-regions",
             "us-east-1",
         )
         assert code == 0
-        wb = load_workbook(glob.glob(str(out / "bom_output" / "*.xlsx"))[0])
-        results.append(
-            {ws.title: [list(r) for r in ws.iter_rows(values_only=True)] for ws in wb}
+        xlsx = glob.glob(str(out / "bom_output" / "*.xlsx")) or glob.glob(
+            str(out / "output" / "*.xlsx")
         )
-    assert "All" in results[0]
+        docx = glob.glob(str(out / "bom_output" / "*.docx")) or glob.glob(
+            str(out / "output" / "*.docx")
+        )
+        assert xlsx and docx
+        results.append((_sheet_names(xlsx[0]), len(Document(docx[0]).paragraphs)))
     assert results[0] == results[1]
 
 

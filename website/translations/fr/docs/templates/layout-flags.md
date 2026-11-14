@@ -417,10 +417,8 @@ Autres limites :
 - Les scripts hérités de `scripts/legacy/` n’ont pas les options de modèle.
 - Les clés de configuration `templates`, `document_templates` et
   `default_template` dans d’anciens exemples de configuration n’ont aucun effet. Seules
-  `--word-template` et `--excel-template` sélectionnent un modèle.
-
-  Non vérifié sur un test hors ligne : les anciennes clés de configuration n’ont aucun effet.
-
+  `--word-template` et `--excel-template` sélectionnent un modèle. Un fichier de mise en page qui contient l’une de ces clés est
+  refusé avec une erreur « unknown key ».
 - Les fichiers de modèle avec `template_version: "1.0"` ne sont pas valides. Les alpha builds
   antérieures à v1.0.0 fournissaient de tels fichiers, mais la CLI ne les lisait pas.
 

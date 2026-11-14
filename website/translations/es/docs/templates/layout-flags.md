@@ -423,10 +423,8 @@ Otros límites:
   plantilla.
 - Las claves de configuración `templates`, `document_templates` y
   `default_template` de los ejemplos de configuración antiguos no tienen
-  efecto. Solo `--word-template` y `--excel-template` seleccionan una plantilla.
-
-  No verificado contra una prueba sin conexión: las claves de configuración antiguas no tienen efecto.
-
+  efecto. Solo `--word-template` y `--excel-template` seleccionan una plantilla. Un archivo de diseño que contenga una de estas claves se
+  rechaza con un error "unknown key".
 - Los archivos de plantilla con `template_version: "1.0"` no son válidos. Las
   alpha builds anteriores a la v1.0.0 incluían esos archivos, pero la CLI no los leía.
 

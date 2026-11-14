@@ -391,10 +391,7 @@ inventag: error: my_word_template.yaml: sections[1].columns[2].field: unknown co
 - Word 表格樣式必須是預設 Word 文件中的樣式。
 - `scripts/legacy/` 中的舊指令碼沒有範本引數。
 - 舊設定範例中的設定鍵 `templates`、`document_templates` 和
-  `default_template` 沒有任何作用。只有 `--word-template` 和 `--excel-template` 會選擇範本。
-
-  未針對離線測試驗證：舊設定鍵沒有任何作用。
-
+  `default_template` 沒有任何作用。只有 `--word-template` 和 `--excel-template` 會選擇範本。包含其中任何一個鍵的版面配置檔案會被拒絕，並報 "unknown key" 錯誤。
 - 帶有 `template_version: "1.0"` 的範本檔案無效。v1.0.0 之前的 alpha 建置都附帶了這類檔案，
   但 CLI 並不會讀取它們。
 
