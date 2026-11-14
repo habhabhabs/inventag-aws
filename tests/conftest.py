@@ -219,3 +219,14 @@ def _no_outbound_network(monkeypatch):
 
     monkeypatch.setattr(socket.socket, "connect", guarded_connect)
     monkeypatch.setattr(socket.socket, "connect_ex", guarded_connect_ex)
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _moto_one_request_at_a_time():
+    """Discovery threads share one moto in the test process; moto is not
+    thread safe. See tests/moto_serial.py for the moto frame that fails."""
+    from tests.moto_serial import serialize_moto_requests
+
+    undo = serialize_moto_requests()
+    yield
+    undo()
