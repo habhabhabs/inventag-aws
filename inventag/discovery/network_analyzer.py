@@ -510,7 +510,6 @@ class NetworkAnalyzer:
         """Map resources to their VPC and subnet context."""
         for resource in resources:
             vpc_id = self._extract_vpc_id(resource)
-            subnet_id = self._extract_subnet_id(resource)
             resource_id = resource.get("id", "unknown")
             if resource_id in self.vpc_cache or resource_id in self.subnet_cache:
                 continue  # a VPC or subnet is not a resource inside itself
@@ -522,12 +521,12 @@ class NetworkAnalyzer:
                 if resource_id not in self.vpc_cache[vpc_id].associated_resources:
                     self.vpc_cache[vpc_id].associated_resources.append(resource_id)
 
-            # Add resource to subnet
-            if subnet_id and subnet_id in self.subnet_cache:
-                if resource_id not in self.subnet_cache[subnet_id].associated_resources:
-                    self.subnet_cache[subnet_id].associated_resources.append(
-                        resource_id
-                    )
+            # Add resource to every subnet it names
+            for subnet_id in self._extract_subnet_ids(resource):
+                if subnet_id in self.subnet_cache:
+                    members = self.subnet_cache[subnet_id].associated_resources
+                    if resource_id not in members:
+                        members.append(resource_id)
 
     def _calculate_utilization_metrics(self):
         """Calculate utilization metrics for VPCs."""
@@ -655,11 +654,50 @@ class NetworkAnalyzer:
 
         return None
 
-    def _extract_subnet_id(self, resource: Dict[str, Any]) -> Optional[str]:
-        """Extract subnet ID from resource (top level or its raw API data).
+    def _extract_subnet_ids(self, resource: Dict[str, Any]) -> List[str]:
+        """Every subnet ID the resource's data names, once each, in order.
 
-        A resource in several subnets (Lambda VpcConfig.SubnetIds) is mapped
-        to the first one.
+        Reads the single-subnet fields (EC2), the lists of IDs (Lambda
+        VpcConfig.SubnetIds, classic load balancer Subnets), the RDS subnet
+        group (DBSubnetGroup.Subnets) and the load balancer zones
+        (AvailabilityZones[].SubnetId).
+        """
+        found: List[str] = []
+
+        def add(value: Any) -> None:
+            if (
+                isinstance(value, str)
+                and value.startswith("subnet-")
+                and value not in found
+            ):
+                found.append(value)
+
+        for source in self._raw_sources(resource):
+            for field in ("subnet_id", "SubnetId", "subnet", "subnetId"):
+                add(source.get(field))
+            for field in ("SubnetIds", "subnetIds", "Subnets", "AvailabilityZones"):
+                values = source.get(field)
+                if isinstance(values, list):
+                    for item in values:
+                        if isinstance(item, dict):
+                            item = item.get("SubnetIdentifier") or item.get("SubnetId")
+                        add(item)
+
+        # Try to extract from ARN or other fields
+        arn = resource.get("arn", "")
+        if "subnet-" in arn:
+            # Simple extraction - would need more sophisticated parsing
+            for part in arn.split("/"):
+                add(part)
+
+        return found
+
+    def _extract_subnet_id(self, resource: Dict[str, Any]) -> Optional[str]:
+        """The first subnet ID of the resource (the per-resource row columns).
+
+        A resource in several subnets has one set of subnet columns, for the
+        first subnet it names. The analysis counts it in every subnet
+        (``_extract_subnet_ids``).
         """
         for source in self._raw_sources(resource):
             for field in ("subnet_id", "SubnetId", "subnet", "subnetId"):
