@@ -292,8 +292,8 @@ const config: Config = {
         {type: 'doc', docId: 'index', label: 'Docs', position: 'left', className: 'nav-ico nav-ico-docs'},
         {to: '/docs/getting-started/quick-start', label: 'Quick start', position: 'left', className: 'nav-ico nav-ico-start'},
         {to: '/docs/reference/cli', label: 'CLI reference', position: 'left', className: 'nav-ico nav-ico-cli'},
-        {type: 'docsVersionDropdown', position: 'right', dropdownActiveClassDisabled: true},
-        {type: 'localeDropdown', position: 'right'},
+        {type: 'docsVersionDropdown', position: 'right', dropdownActiveClassDisabled: true, className: 'nav-version'},
+        {type: 'localeDropdown', position: 'right', className: 'nav-locale'},
         {type: 'search', position: 'right'},
         {
           href: 'https://github.com/habhabhabs/inventag-aws',
