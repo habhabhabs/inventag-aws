@@ -11,6 +11,8 @@ sidebar_position: 2
 **你需要：** 該帳戶的憑證，例如
 `aws sso login --profile prod-readonly` 和 `export AWS_PROFILE=prod-readonly`。
 
+未針對 AWS CLI 驗證：本節中的登入命令。
+
 ## 範本 {#template}
 
 內建的 `single-account` 設定範本會掃描 `us-east-1`，並使用 `standard-bom` 版面配置寫出兩個檔案。

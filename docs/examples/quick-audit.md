@@ -12,6 +12,8 @@ minutes.
 **You need:** credentials for the account, for example
 `aws sso login --profile prod-readonly` and `export AWS_PROFILE=prod-readonly`.
 
+Not verified against the AWS CLI: the sign-in commands in this section.
+
 ## Template
 
 The built-in `single-account` config template scans `us-east-1` and writes

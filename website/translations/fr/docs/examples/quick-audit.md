@@ -12,6 +12,8 @@ minutes.
 **Ce qu’il vous faut :** les identifiants du compte, par exemple
 `aws sso login --profile prod-readonly` et `export AWS_PROFILE=prod-readonly`.
 
+Non vérifié sur l’AWS CLI : les commandes de connexion de cette section.
+
 ## Modèle {#template}
 
 Le modèle de configuration intégré `single-account` analyse `us-east-1` et écrit
