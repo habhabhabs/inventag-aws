@@ -96,8 +96,10 @@ Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
   and a VPC without subnets shows 0 available. IPv6 addresses are not counted.
 - `Associated Resources` counts the resources whose API data names the VPC or
   subnet: EC2 instances, Lambda functions in a VPC, RDS and ElastiCache
-  resources and load balancers. Security groups, network ACLs, route tables
+  resources. Load balancers are counted for their VPC, not for a subnet. Security groups, network ACLs, route tables
   and gateways are the VPC's own plumbing and are not counted.
+
+  Not verified against an offline test: `Associated Resources` counts ElastiCache.
 - It reads only the VPCs and subnets in the regions you scan. It does not
   check network ACLs, security groups, `MapPublicIpOnLaunch`, Direct Connect,
   VPN connections, Network Firewall or peering routes.

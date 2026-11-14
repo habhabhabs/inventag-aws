@@ -83,8 +83,10 @@ Hoja `Security Analysis`, primeras filas:
 - `Total IPs` procede de los bloques CIDR de la VPC. `Available IPs` y `Utilization %` proceden de sus subredes, así que las tres columnas
   no cuadran entre sí, y una VPC sin subredes muestra 0 disponibles. Las direcciones IPv6 no se cuentan.
 - `Associated Resources` cuenta los recursos cuyos datos de API nombran la VPC o la subred: instancias EC2, funciones Lambda en una VPC,
-  recursos de RDS y ElastiCache y balanceadores de carga. Los grupos de seguridad, las ACL de red, las tablas de rutas y las puertas de enlace
+  recursos de RDS y ElastiCache. Los balanceadores de carga se cuentan para su VPC, no para una subred. Los grupos de seguridad, las ACL de red, las tablas de rutas y las puertas de enlace
   son la infraestructura propia de la VPC y no se cuentan.
+
+  No verificado contra una prueba sin conexión: que `Associated Resources` cuente ElastiCache.
 - Solo lee las VPC y subredes de las regiones que analizas. No comprueba las ACL de red, los grupos de seguridad, `MapPublicIpOnLaunch`,
   Direct Connect, las conexiones VPN, Network Firewall ni las rutas de peering.
 
