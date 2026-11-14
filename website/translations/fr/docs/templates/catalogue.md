@@ -199,9 +199,16 @@ Vérifie les étiquettes dont vous avez besoin pour répartir les dépenses par 
 
 Les alias KMS sont hors périmètre, car les alias ne peuvent pas porter d’étiquettes.
 
+Non vérifié sur AWS : les alias KMS ne peuvent pas porter d’étiquettes.
+
 Les étiquettes n’apparaissent dans les rapports de coûts AWS qu’après que vous les avez
 activées comme étiquettes d’allocation des coûts dans la console AWS Billing and Cost
-Management. InvenTag liste les ressources et les étiquettes ; il ne calcule pas les coûts.
+Management. InvenTag liste les ressources et les étiquettes. Il ne lit pas votre facture. L’option
+facultative `--enable-cost-analysis` ajoute des estimations de coûts.
+
+Non vérifié sur AWS : les étiquettes n’apparaissent dans les rapports de coûts qu’après leur activation comme étiquettes d’allocation des coûts.
+
+Non vérifié sur un vrai AWS : les estimations de coûts de `--enable-cost-analysis`.
 
 ### `security-baseline` {#security-baseline}
 

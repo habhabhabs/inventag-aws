@@ -239,9 +239,16 @@ Checks the tags you need to split spend by team and project.
 
 KMS aliases are out of scope, because aliases cannot carry tags.
 
+Not verified against AWS: KMS aliases cannot carry tags.
+
 Tags only appear in AWS cost reports after you activate them as cost
 allocation tags in the AWS Billing and Cost Management console. InvenTag
-lists resources and tags; it does not calculate costs.
+lists resources and tags. It does not read your bill. The optional
+`--enable-cost-analysis` adds cost estimates.
+
+Not verified against AWS: tags appear in cost reports only after you activate them as cost allocation tags.
+
+Not verified against real AWS: the cost estimates of `--enable-cost-analysis`.
 
 ### `security-baseline`
 

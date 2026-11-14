@@ -195,8 +195,14 @@ Tag Compliance 工作表和 Word 章节见
 
 KMS 别名不在范围内，因为别名无法携带标签。
 
+未针对 AWS 验证：KMS 别名无法携带标签。
+
 只有在 AWS Billing and Cost Management 控制台中把标签激活为成本分摊标签之后，
-它们才会出现在 AWS 成本报告中。InvenTag 列出资源和标签；它不计算成本。
+它们才会出现在 AWS 成本报告中。InvenTag 列出资源和标签。它不读取你的账单。可选的 `--enable-cost-analysis` 会添加成本估算。
+
+未针对 AWS 验证：标签只有在你把它们激活为成本分摊标签之后才会出现在成本报告中。
+
+未针对真实的 AWS 验证：`--enable-cost-analysis` 的成本估算。
 
 ### `security-baseline` {#security-baseline}
 

@@ -201,9 +201,16 @@ proyecto.
 Los alias de KMS quedan fuera del alcance, porque los alias no pueden llevar
 etiquetas.
 
+No verificado contra AWS: los alias de KMS no pueden llevar etiquetas.
+
 Las etiquetas solo aparecen en los informes de costes de AWS después de
 activarlas como etiquetas de asignación de costes en la consola de AWS Billing
-and Cost Management. InvenTag lista recursos y etiquetas; no calcula costes.
+and Cost Management. InvenTag lista recursos y etiquetas. No lee tu factura. La opción opcional
+`--enable-cost-analysis` añade estimaciones de costes.
+
+No verificado contra AWS: las etiquetas aparecen en los informes de costes solo después de activarlas como etiquetas de asignación de costes.
+
+No verificado contra AWS real: las estimaciones de costes de `--enable-cost-analysis`.
 
 ### `security-baseline` {#security-baseline}
 
