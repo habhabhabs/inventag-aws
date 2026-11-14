@@ -39,7 +39,7 @@ inventag_cli.py
 | `inventag/reporting/` | 規範化資源，並寫出預設的 Excel 和 Word 檔案 | `bom_processor.py`, `converter.py` |
 | `inventag/templating/` | 範本載入、驗證、繼承、標籤策略檢查，以及由範本驅動的 Excel 和 Word 輸出 | `schema.py`, `registry.py`, `runner.py` |
 | `inventag/state/` | 快照、差異和變更日誌 | `state_manager.py` |
-| `inventag/compliance/` | 用於標籤檢查和安全的庫類；目前 CLI 基本不使用 | `checker.py` |
+| `inventag/compliance/` | 用於標籤檢查和安全的庫類。標籤策略路徑使用 `checker.py`；CLI 不使用其他類 | `checker.py` |
 | `inventag/security/` | 唯讀保護、IAM 策略列表、日誌脫敏、安全的輸出檔案 | `read_only_guard.py`, `iam_policy.py` |
 
 ## 共享模組 {#shared-modules}
@@ -68,7 +68,7 @@ inventag_cli.py
 
 `templating/runner.py` 定義了 `TemplatedCloudBOMGenerator`，它是 `CloudBOMGenerator` 的子類，只替換文件生成這一步。
 一次執行的其餘部分，包括髮現、憑證和狀態，都保持不變。
-不使用 `--template` 時，仍使用原來的類，輸出與以前完全一樣。
+不使用 `--template` 時，仍使用原來的類。
 
 ## 值得修復的已知缺口 {#known-gaps-worth-fixing}
 
@@ -84,8 +84,9 @@ inventag_cli.py
 - 即使使用 `--no-billing-validation`，`--enable-cost-analysis` 也會呼叫 Cost Explorer。
 - 一個帳戶失敗不會改變結束代碼，除非你傳入 `--fail-on-account-error`（結束代碼 5）。
 - 網路和安全分析在一次執行中會執行兩次（在 BOM 處理器和轉換器中），因此它的 AWS 呼叫也會發出兩次。
-- 這些模組不在 CLI 路徑上：`reporting/template_framework.py`、`branding_system.py`、
+- CLI 不會呼叫這些模組：`reporting/template_framework.py`、`branding_system.py`、
   `word_builder.py`、`excel_builder.py`、`document_generator.py` 和 `configuration_manager.py`，
-  以及 `discovery/enhanced_readonly_discovery.py` 和 `discovery/inventory.py` 中無法到達的方法。
+  以及 `discovery/enhanced_readonly_discovery.py`。`reporting/template_framework.py`
+  和 `reporting/document_generator.py` 會在 CLI 啟動時被匯入。
 
 較早的設計筆記已從儲存庫中刪除。請使用本站的頁面。

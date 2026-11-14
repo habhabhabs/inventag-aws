@@ -43,6 +43,8 @@ CI 會執行相同的 `black --check` 和 `flake8` 命令，然後在 Python 3.1
 只有在需要時才執行基準測試：`python -m pytest -m performance`。
 更改依賴項時請執行 `pip-audit -r requirements.txt`；出現新的安全公告時，CI 會失敗。
 
+未針對 GitHub Actions Runner 驗證：CI 作業；它們讀自工作流檔案。
+
 **千萬不要不小心對真實的 AWS 帳戶執行測試。** 請取消設定 `AWS_PROFILE` 和真實金鑰，或者使用 moto。
 
 ## 處理範本 {#work-on-templates}

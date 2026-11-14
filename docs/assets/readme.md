@@ -20,7 +20,7 @@ This directory contains all images, diagrams, and other static assets used in th
 1. Place images in the appropriate subdirectory under `images/`
 2. Use descriptive filenames (e.g., `cli-output-example.png`, `architecture-diagram.svg`)
 3. Optimize images for web viewing (reasonable file sizes)
-4. Use relative paths in markdown: `![Alt text](/img/filename.png)`
+4. Use relative paths in markdown: `![Alt text](../assets/images/filename.png)`
 
 ### Supported Formats
 
