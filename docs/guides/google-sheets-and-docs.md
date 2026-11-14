@@ -16,17 +16,21 @@ output against your own Google account, and what has not been verified.
 ## What you get
 
 - `--create-google-sheets` writes the same workbook as `--create-excel` (same
-  sheets, same row order, same templates) as a Google Sheets spreadsheet.
+  sheets, same row order) as a Google Sheets spreadsheet.
 - `--create-google-docs` writes the same report as `--create-word` as a Google
   Doc.
-- InvenTag builds the Excel and Word reports first and copies them, so a
-  `--template` changes the Google files exactly as it changes the local ones.
+- InvenTag builds the Excel and Word reports first and copies them. With
+  `--template`, InvenTag writes no Google file: it logs that the format is skipped, and the run exits with code 0.
 - The run prints the URL of each file, for example `Google Sheet: https://docs.google.com/spreadsheets/d/...`
   and `Google Doc: https://docs.google.com/document/d/...`.
 - With `--per-account-reports`, InvenTag makes one pair of files for each
   account. The title ends with ` - ` and the account ID, and each URL line
   starts with `[123456789012]`.
+
+  Not verified against an offline test: the titles and URL lines with `--per-account-reports`.
 - If a run finds no resources, it makes no Google file.
+
+Not verified against real Google: the files look like the Excel and Word reports, and the URLs have this form.
 
 ## Install the Google add-on
 
@@ -54,6 +58,8 @@ You do not need the add-on for Excel, Word or anything else. If you use a
 Google flag without it, InvenTag stops with exit code 2, says which package is
 missing and prints this command.
 
+Not verified against pip and pipx: the install commands for the Google add-on.
+
 ## Sign in
 
 Pick one:
@@ -74,6 +80,8 @@ wrong file stops the run at once with exit code 2 and a message that starts
 The scope is `drive.file`: InvenTag can touch only files it created. With
 `--google-folder-id` it asks for the full Drive scope, because it has to put
 a file into a folder that already exists.
+
+Not verified against real Google: the browser sign-in, the saved token, Application Default Credentials and the APIs to enable.
 
 ## Who can open the files
 
@@ -100,6 +108,8 @@ inventag --create-google-sheets --create-google-docs \
   `--google-folder-id` and `--google-title` without `--create-google-sheets`
   or `--create-google-docs` stop with exit code 2.
 
+Not verified against real Google: what the `drive.file` scope allows, that new files stay private, and sharing.
+
 ## Credentials are never logged
 
 The key file path is not printed, and secrets that look like Google private
@@ -112,6 +122,8 @@ shortened to the error type, because they can quote the key file.
 - A Google Sheets cell holds up to 50,000 characters. InvenTag cuts longer
   text at 49,000 characters. A spreadsheet holds up to 10 million cells and a
   sheet up to 18,278 columns.
+
+  Not verified against real Google: the cell, size and column limits.
 - InvenTag counts the cells before it calls Google. If the report is too big,
   it creates nothing and says so, and the run exits with code 1. The Excel and
   Word files are still written. For example:
@@ -123,6 +135,8 @@ shortened to the error type, because they can quote the key file.
 - If Google answers "429 too many requests", InvenTag logs `Google rate limit
   reached; waiting 5 seconds` and tries again. It waits 5, 10, 20, 40 and then
   60 seconds before the last try.
+
+  Not verified against real Google: the request sizes, and that the 429 waits are long enough.
 - If a call fails after the file was created, the run exits with code 1 and the
   message gives the URL of the half-written file: `The spreadsheet was already
   created and may be incomplete: <url> (delete it in Google Drive).` The same
@@ -133,6 +147,8 @@ shortened to the error type, because they can quote the key file.
 - Cell values are written as text, so a tag value that starts with `=` is not
   run as a formula.
 
+Not verified against real Google: text that starts with `=` is stored as text.
+
 ## What is not verified
 
 Most tests use mocked Google clients. **We have not recorded a run against real
@@ -140,7 +156,7 @@ Google APIs**, because that needs a Google account. In particular, the
 positions InvenTag computes when it fills the tables of a Google Doc are
 checked against the rules of the Docs API as we read them, not against the
 real service. Try a small account first, and report a problem with the Doc
-layout as an issue.
+layout as an issue. Each section above that depends on Google says what is not verified.
 
 ## Check it against your own Google account
 
@@ -174,13 +190,15 @@ Run it from a checkout of the repository.
    A browser opens once. If the app is in "Testing" status, add your account
    under OAuth consent screen, Test users.
 
+Not verified against Google Cloud: the console steps to enable the APIs, create the OAuth client and add test users.
+
 To use a service account key, pass `--google-credentials key.json`. The service
 account owns the files in its own Drive, so add `--share-with you@example.com`
 if you want to open them.
 
 | Flag | What it does |
 |---|---|
-| `--large` | Also tests a 20,000-row sheet and a 300-row Doc table. It counts the API calls and injects two "429" answers to prove the retry. It adds about a minute. |
+| `--large` | Also tests a 20,000-row sheet and a 300-row Doc table. It counts the API calls and injects two "429" answers to prove the retry. |
 | `--share-with EMAIL` | Shares the files (reader) with this address and checks that only that address and the owner can open them. Repeat it for more. |
 | `--keep` | Leaves the files in Drive. By default the script moves every file it made to the Drive trash at the end. |
 | `--folder-id ID` | Also creates a pair of files in this Drive folder. This needs the full Drive scope. With `--google-oauth-client`, delete `~/.config/inventag/google-token.json` first, so that it asks again. |

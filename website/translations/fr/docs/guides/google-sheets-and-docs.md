@@ -16,14 +16,18 @@ vérifié.
 ## Ce que vous obtenez {#what-you-get}
 
 - `--create-google-sheets` écrit le même classeur que `--create-excel` (mêmes
-  feuilles, même ordre des lignes, mêmes modèles) sous forme de feuille de calcul Google Sheets.
+  feuilles, même ordre des lignes) sous forme de feuille de calcul Google Sheets.
 - `--create-google-docs` écrit le même rapport que `--create-word` sous forme de
   document Google Docs.
-- InvenTag construit d’abord les rapports Excel et Word, puis les copie ; un
-  `--template` modifie donc les fichiers Google exactement comme il modifie les fichiers locaux.
+- InvenTag construit d’abord les rapports Excel et Word, puis les copie. Avec
+  `--template`, InvenTag n’écrit aucun fichier Google : il journalise que le format est ignoré, et l’exécution se termine avec le code 0.
 - L’exécution affiche l’URL de chaque fichier, par exemple `Google Sheet: https://docs.google.com/spreadsheets/d/...` et `Google Doc: https://docs.google.com/document/d/...`.
 - Avec `--per-account-reports`, InvenTag crée une paire de fichiers par compte. Le titre se termine par ` - ` et l’ID du compte, et chaque ligne d’URL commence par `[123456789012]`.
+
+  Non vérifié sur un test hors ligne : les titres et les lignes d’URL avec `--per-account-reports`.
 - Si une exécution ne trouve aucune ressource, elle ne crée aucun fichier Google.
+
+Non vérifié sur un vrai Google : que les fichiers ressemblent aux rapports Excel et Word et que les URL aient cette forme.
 
 ## Installer le module complémentaire Google {#install-the-google-add-on}
 
@@ -51,6 +55,8 @@ Vous n’avez pas besoin du module complémentaire pour Excel, Word ou tout le r
 Google sans lui, InvenTag s’arrête avec le code de sortie 2, indique quel paquet
 manque et affiche cette commande.
 
+Non vérifié sur pip et pipx : les commandes d’installation du module complémentaire Google.
+
 ## Se connecter {#sign-in}
 
 Choisissez l’une des méthodes :
@@ -69,6 +75,8 @@ InvenTag lit le fichier de clé ou le fichier client OAuth avant d’analyser AW
 Le périmètre est `drive.file` : InvenTag ne peut toucher que les fichiers qu’il a créés. Avec
 `--google-folder-id`, il demande le périmètre Drive complet, car il doit placer
 un fichier dans un dossier qui existe déjà.
+
+Non vérifié sur un vrai Google : la connexion dans le navigateur, le jeton enregistré, les identifiants par défaut de l’application et les API à activer.
 
 ## Qui peut ouvrir les fichiers {#who-can-open-the-files}
 
@@ -95,6 +103,8 @@ inventag --create-google-sheets --create-google-docs \
   `--google-folder-id` et `--google-title` sans `--create-google-sheets`
   ni `--create-google-docs` s’arrêtent avec le code de sortie 2.
 
+Non vérifié sur un vrai Google : ce que permet le périmètre `drive.file`, que les nouveaux fichiers restent privés, et le partage.
+
 ## Les identifiants ne sont jamais journalisés {#credentials-are-never-logged}
 
 Le chemin du fichier de clé n’est pas affiché, et les secrets qui ressemblent à des clés privées Google,
@@ -105,6 +115,8 @@ sont réduits au type d’erreur, car ils peuvent citer le fichier de clé.
 ## Limites {#limits}
 
 - Une cellule Google Sheets peut contenir jusqu’à 50 000 caractères. InvenTag coupe les textes plus longs à 49 000 caractères. Une feuille de calcul peut contenir jusqu’à 10 millions de cellules et une feuille jusqu’à 18 278 colonnes.
+
+  Non vérifié sur un vrai Google : les limites de cellules, de taille et de colonnes.
 - InvenTag compte les cellules avant d’appeler Google. Si le rapport est trop grand, il ne crée rien et le dit, et l’exécution se termine avec le code 1. Les fichiers Excel et Word sont tout de même écrits. Par exemple :
   `The report has 12,000,000 cells; a Google spreadsheet allows 10,000,000. No
   spreadsheet was created. Send fewer resources (filters or an account subset)
@@ -112,6 +124,8 @@ sont réduits au type d’erreur, car ils peuvent citer le fichier de clé.
 - InvenTag envoie une grande feuille en plusieurs requêtes, chacune de 2 000 lignes au plus et d’environ 1 million de caractères.
 - Si Google répond « 429 too many requests », InvenTag consigne `Google rate limit
   reached; waiting 5 seconds` et réessaie. Il attend 5, 10, 20, 40 puis 60 secondes avant la dernière tentative.
+
+  Non vérifié sur un vrai Google : la taille des requêtes, et que les attentes après un 429 soient assez longues.
 - Si un appel échoue après la création du fichier, l’exécution se termine avec le code 1 et le message donne l’URL du fichier à moitié écrit : `The spreadsheet was already
   created and may be incomplete: <url> (delete it in Google Drive).` Il en va de même pour un Google Doc. Supprimez ce fichier et relancez.
 - Les tableaux du rapport Word affichent par défaut jusqu’à 50 ressources par service
@@ -119,9 +133,11 @@ sont réduits au type d’erreur, car ils peuvent citer le fichier de clé.
 - Les valeurs des cellules sont écrites comme du texte : une valeur d’étiquette qui commence par `=` n’est donc pas
   exécutée comme une formule.
 
+Non vérifié sur un vrai Google : le texte qui commence par `=` est enregistré comme texte.
+
 ## Ce qui n’est pas vérifié {#what-is-not-verified}
 
-La plupart des tests utilisent des clients Google simulés. **Nous n’avons pas enregistré d’exécution avec les vraies API Google**, car cela demande un compte Google. En particulier, les positions qu’InvenTag calcule pour remplir les tableaux d’un Google Doc sont vérifiées d’après les règles de l’API Docs telles que nous les comprenons, et non avec le vrai service. Essayez d’abord avec un petit compte, et signalez tout problème de mise en page du Doc dans un problème (issue).
+La plupart des tests utilisent des clients Google simulés. **Nous n’avons pas enregistré d’exécution avec les vraies API Google**, car cela demande un compte Google. En particulier, les positions qu’InvenTag calcule pour remplir les tableaux d’un Google Doc sont vérifiées d’après les règles de l’API Docs telles que nous les comprenons, et non avec le vrai service. Essayez d’abord avec un petit compte, et signalez tout problème de mise en page du Doc dans un problème (issue). Chaque section ci-dessus qui dépend de Google indique ce qui n’est pas vérifié.
 
 ## Le vérifier avec votre propre compte Google {#check-it-against-your-own-google-account}
 
@@ -145,11 +161,13 @@ Exécutez-le depuis une copie du dépôt.
 
    Un navigateur s’ouvre une seule fois. Si l’application est en état « Testing », ajoutez votre compte sous OAuth consent screen, Test users.
 
+Non vérifié sur Google Cloud : les étapes de la console pour activer les API, créer le client OAuth et ajouter des utilisateurs de test.
+
 Pour utiliser une clé de compte de service, passez `--google-credentials key.json`. Le compte de service possède les fichiers dans son propre Drive ; ajoutez donc `--share-with you@example.com` si vous voulez les ouvrir.
 
 | Option | Ce qu’elle fait |
 |---|---|
-| `--large` | Teste aussi une feuille de 20 000 lignes et un tableau de 300 lignes dans le Doc. Il compte les appels d’API et injecte deux réponses « 429 » pour prouver la nouvelle tentative. Cela ajoute environ une minute. |
+| `--large` | Teste aussi une feuille de 20 000 lignes et un tableau de 300 lignes dans le Doc. Il compte les appels d’API et injecte deux réponses « 429 » pour prouver la nouvelle tentative. |
 | `--share-with EMAIL` | Partage les fichiers (reader) avec cette adresse et vérifie que seules cette adresse et le propriétaire peuvent les ouvrir. Répétez-la pour en ajouter. |
 | `--keep` | Laisse les fichiers dans Drive. Par défaut, le script déplace à la fin tous les fichiers qu’il a créés vers la corbeille de Drive. |
 | `--folder-id ID` | Crée aussi une paire de fichiers dans ce dossier Drive. Cela demande le périmètre complet de Drive. Avec `--google-oauth-client`, supprimez d’abord `~/.config/inventag/google-token.json`, pour qu’il redemande l’autorisation. |
