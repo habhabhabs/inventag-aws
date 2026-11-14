@@ -256,3 +256,210 @@ def test_timed_out_account_gives_exit_5(empty_aws, tmp_path):
     args = argparse.Namespace(fail_on_account_error=True, fail_if_empty=False)
     code = _opt_in_exit_code(args, {"failed_accounts": failed}, logging.getLogger("x"))
     assert code == 5
+
+
+# ------------------------------------------------ the time limit (run-a-scan, troubleshooting)
+def test_discovery_stops_300_seconds_or_20_percent_early_and_later_steps_still_run():
+    from unittest import mock
+
+    from inventag.core.cloud_bom_generator import (
+        CloudBOMGenerator,
+        _AccountDeadline,
+    )
+    from inventag.discovery.comprehensive_discovery import ComprehensiveAWSDiscovery
+
+    def limit(timeout):
+        deadline = _AccountDeadline("1", timeout, clock=lambda: 0.0)
+        deadline.start()
+        return CloudBOMGenerator._discovery_time_limit(deadline)
+
+    # The smaller of 300 seconds and 20% of the limit is kept back.
+    assert limit(600) == pytest.approx(480)  # 20% = 120 s
+    assert limit(1800) == pytest.approx(1500)  # 20% = 360 s, so 300 s
+    assert limit(3000) == pytest.approx(2700)
+
+    # When the listings run out of time, tags and billing are still read.
+    import threading
+
+    release = threading.Event()
+    disc = ComprehensiveAWSDiscovery(
+        session=mock.MagicMock(),
+        regions=["us-east-1"],
+        enable_billing_validation=True,
+        discovery_timeout=0.2,
+    )
+    disc.service_discovery_patterns = {"slow": {"operations": [], "regional": True}}
+
+    def slow(task):
+        release.wait(5)
+        return 0
+
+    try:
+        with (
+            mock.patch.object(disc, "_discover_billing_services"),
+            mock.patch.object(disc, "_discover_service_in_region", side_effect=slow),
+            mock.patch.object(disc, "_enrich_with_tagging_api") as tags,
+            mock.patch.object(disc, "_validate_with_billing") as billing,
+            mock.patch.object(disc, "_add_billing_fallback_resources"),
+            mock.patch.object(disc, "_post_process_resources"),
+        ):
+            disc.discover_all_resources()
+    finally:
+        release.set()
+    assert tags.called and billing.called
+
+
+def test_every_account_timing_out_writes_a_report_and_exits_1(
+    empty_aws, tmp_path, monkeypatch, caplog
+):
+    from tests.unit.test_account_time_limit_and_failures import FakeClock
+
+    clock = FakeClock()
+    original = cbg_module().CloudBOMGenerator.__init__
+
+    def init(self, *args, **kwargs):
+        original(self, *args, **kwargs)
+        self._clock = clock
+        self._poll_seconds = 0.01
+
+    class TimesOut:
+        def __init__(self, session, regions, **kwargs):
+            self.session = session
+
+        def discover_all_resources(self):
+            self.session.client("ec2", region_name="us-east-1").describe_regions()
+            clock.now += 10_000  # past the limit
+            try:  # real discovery code catches errors per service and carries on
+                self.session.client("ec2", region_name="us-east-1").describe_vpcs()
+            except Exception:
+                pass
+            return [{"id": "r1", "service": "EC2", "type": "Instance", "region": "x"}]
+
+    monkeypatch.setattr(cbg_module().CloudBOMGenerator, "__init__", init)
+    monkeypatch.setattr(cbg_module(), "AWSResourceInventory", TimesOut)
+    caplog.set_level(logging.INFO)
+    path = accounts_file(tmp_path, [GOOD])
+    code = run_cli(
+        "--accounts-file",
+        path,
+        "--account-processing-timeout",
+        "60",
+        "--disable-parallel-processing",
+        "--output-directory",
+        "out",
+        *BASE,
+    )
+    assert code == 1
+    assert len(reports(tmp_path / "out")) == 1  # the report of what was found
+    assert any(
+        "No account finished within its time limit" in m
+        for m in logged(caplog, logging.ERROR)
+    )
+
+
+def cbg_module():
+    import importlib
+
+    return importlib.import_module("inventag.core.cloud_bom_generator")
+
+
+# ------------------------------------------------ flags you type win over a config template
+def test_a_typed_region_flag_wins_over_the_regions_of_a_config_template(
+    aws, tmp_path, monkeypatch
+):
+    folder = tmp_path / ".inventag" / "templates"
+    folder.mkdir(parents=True)
+    (folder / "my-scan.yaml").write_text(
+        "format_version: 1\nkind: config\nname: my-scan\n"
+        "spec:\n  regions: [us-east-1]\n  outputs: [excel]\n"
+    )
+    seen = []
+    cbg = cbg_module()
+    original = cbg.CloudBOMGenerator._discover_account_resources_inner
+
+    def spy(self, account_id, context):
+        seen.append(sorted(context.accessible_regions))
+        return original(self, account_id, context)
+
+    monkeypatch.setattr(cbg.CloudBOMGenerator, "_discover_account_resources_inner", spy)
+    code = run_cli(
+        "--template",
+        "my-scan",
+        "--account-regions",
+        "eu-west-1",
+        "--no-billing-validation",
+    )
+    assert code == 0
+    assert seen == [["eu-west-1"]]
+
+
+# ------------------------------------------------ the accounts file (scan-multiple-accounts, troubleshooting)
+@pytest.mark.parametrize(
+    "name,content,text",
+    [
+        ("a.yaml", "", "the file is empty"),
+        ("b.yaml", "accounts: []\naccounts: []\n", "duplicate key 'accounts'"),
+        (
+            "c.yaml",
+            "- account_id: '123456789012'\n",
+            "the top level must be a mapping of key: value pairs, but the file holds a list",
+        ),
+        (
+            "d.txt",
+            "accounts: []\n",
+            "unsupported file type '.txt'. Use .json, .yaml or .yml",
+        ),
+        (
+            "big.yaml",
+            "# " + "x" * (1024 * 1024) + "\naccounts: []\n",
+            "the maximum is 1048576 bytes",
+        ),
+        ("missing.yaml", None, "Accounts file not found"),
+    ],
+)
+def test_each_accounts_file_error_of_the_table_exits_1_with_its_text(
+    empty_aws, tmp_path, capsys, caplog, name, content, text
+):
+    if content is not None:
+        (tmp_path / name).write_text(content)
+    caplog.set_level(logging.ERROR)
+    assert run_cli("--accounts-file", name, *BASE) == 1
+    out = capsys.readouterr()
+    assert text in out.err + out.out + caplog.text
+
+
+def test_an_accounts_file_of_exactly_1_mib_is_read_and_one_byte_more_is_not(
+    empty_aws, tmp_path, caplog
+):
+    caplog.set_level(logging.ERROR)
+    body = '{"accounts": [{"account_id": "123456789012"}]}'
+    exact = body + " " * (1024 * 1024 - len(body))
+    assert len(exact.encode()) == 1024 * 1024
+    (tmp_path / "ok.json").write_text(exact)
+    (tmp_path / "big.json").write_text(exact + " ")
+    check = ["--validate-config-only", "--skip-credential-validation"]
+    assert run_cli("--accounts-file", "ok.json", *check) == 0
+    assert run_cli("--accounts-file", "big.json", *check) == 1
+    assert "the maximum is 1048576 bytes" in caplog.text
+
+
+# ------------------------------------------------ the guard blocks the named operations (read-only-access)
+@pytest.mark.parametrize(
+    "operation",
+    [
+        "secretsmanager:GetSecretValue",
+        "ssm:GetParameter",
+        "s3:GetObject",
+        "dynamodb:GetItem",
+        "lambda:GetFunction",
+        "cloudformation:GetTemplate",
+        "ec2:GetLaunchTemplateData",
+        "glue:GetConnection",
+        "athena:GetQueryResults",
+    ],
+)
+def test_the_guard_blocks_the_nine_operations_of_the_read_only_page(operation, capsys):
+    assert run_cli("--validate-operations", operation) == 1
+    assert capsys.readouterr().out.startswith(
+        f"BLOCKED  {operation} (operation returns secrets, signed URLs or customer data)"
+    )
