@@ -14,10 +14,12 @@ and confirm it cannot change your resources.
 
 ## Why this matters
 
-InvenTag only needs to read. It has its own read-only guard, which blocks
+InvenTag needs only read access, plus `s3:PutObject` if you upload reports with `--s3-bucket`. It has its own read-only guard, which blocks
 every AWS call that is not a read before it is sent. Your IAM policy is a
 second, independent safety net: if a bug ever got past the guard, AWS would
 still refuse the call. Give InvenTag nothing more than it needs.
+
+Not verified against real AWS: a read-only IAM policy refuses a call that gets past the guard.
 
 ## Option 1: AWS managed ReadOnlyAccess plus three extras (simplest)
 
@@ -45,8 +47,10 @@ still refuse the call. Give InvenTag nothing more than it needs.
 | Action | Why InvenTag needs it |
 |---|---|
 | `tag:GetResources` | Finds tagged resources through the Resource Groups Tagging API (its IAM prefix is `tag`). |
-| `ce:GetCostAndUsage` | Finds services that have spend. AWS charges per request. |
+| `ce:GetCostAndUsage` | Finds services that have spend. |
 | `ec2:DescribeRegions` | Lists the regions enabled in the account. |
+
+AWS charges for each Cost Explorer request: see [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 
 InvenTag also calls `account:ListRegions`, but only when `ec2:DescribeRegions`
 fails, to read the enabled regions. Add it if you want that fallback.
@@ -58,6 +62,8 @@ calls `cloudwatch:GetMetricStatistics`, which `ReadOnlyAccess` covers), and
 `ReadOnlyAccess` is broad: it can read data such as S3 object listings and
 some configuration that InvenTag never looks at. If that is too much for your
 organisation, use option 2.
+
+Not verified against AWS: what the managed policy `ReadOnlyAccess` allows today, and which of these calls it covers.
 
 ## Option 2: the narrower policy in the repository
 
@@ -71,9 +77,13 @@ and `ec2:DescribeRouteTables` and `ec2:DescribeNetworkInterfaces` for the
 If you copied an older version of the file, copy it again. A missing action
 does not stop the run, but that service or detail is missing.
 
+Not verified against real AWS: the `apigateway:GET` statement keeps API key values out of reach.
+
 Its `OptionalS3ReportUpload` statement allows `s3:PutObject` with server-side
 encryption, for `--s3-bucket`. Replace `YOUR-REPORTS-BUCKET-NAME` with your
 bucket, or remove the statement if you don't upload reports.
+
+Not verified against real AWS: the statement allows the upload only with server-side encryption.
 
 Where a listing action is missing, InvenTag logs one warning for that service
 and carries on without its resources:
@@ -101,11 +111,13 @@ download link for the code), `cloudformation:GetTemplate`,
 It also blocks API keys with their values and `ec2:DescribeInstanceAttribute`
 for user data, and it checks presigned URLs and database authentication tokens
 by the same rules. Check a name with
-`inventag --validate-operations <service>:<Operation>`.
+`inventag --validate-operations <service>:<Operation>`. It answers by name only: `apigateway:GetApiKeys` and `ec2:DescribeInstanceAttribute` show ALLOWED there, and the guard blocks them only when they are called with `includeValues` or `Attribute=userData`.
 
 IAM Identity Center (SSO) and web-identity profiles work under the guard.
 The guard lets the sign-in step exchange a token for credentials, and nothing
 else.
+
+Not verified against AWS IAM Identity Center: sign-in with a real SSO or web-identity profile.
 
 Two functions in the Python library can write to AWS when you call them from
 your own code. The `inventag` command never calls them, and the guard blocks
@@ -135,8 +147,14 @@ aws sso-admin put-inline-policy-to-permission-set \
   --inline-policy file://inventag-extras.json
 ```
 
+Not verified against real AWS: the `aws sso-admin` commands and the permission set they create.
+
+Not verified against AWS: what the managed policy `ReadOnlyAccess` allows today, and which of these calls it covers.
+
 Then sign in with `aws sso login --profile <profile>` and run InvenTag with
 `AWS_PROFILE=<profile>`.
+
+Not verified against the AWS CLI: the sign-in commands in this section.
 
 ## With an IAM role in each account
 
@@ -161,6 +179,8 @@ Replace `999999999999:role/InvenTagScanner` with the identity that runs
 InvenTag. The scanning identity itself needs only `sts:AssumeRole` on those
 roles.
 
+Not verified against real AWS: the trust policy and `sts:AssumeRole` alone are enough for the scan.
+
 ## Check that it cannot write
 
 Use the IAM policy simulator to confirm a write is denied:
@@ -173,6 +193,8 @@ aws iam simulate-principal-policy \
 ```
 
 Both should show `implicitDeny` or `explicitDeny`.
+
+Not verified against real AWS: the policy simulator result for these two actions.
 
 You can also ask InvenTag's guard which operations it would allow (sample
 output from an offline run):
