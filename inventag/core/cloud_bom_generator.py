@@ -80,6 +80,14 @@ _EXPIRED_SESSION_CODES = frozenset(
 )
 
 
+# At most this many service/region items in one "Not read" note.
+_NOT_READ_LIMIT = 10
+# The error code of a listing whose service the endpoint does not know (moto
+# answers it for every service it does not implement). Nothing can be read
+# there, so it is not reported as "not read".
+_NO_SUCH_SERVICE_CODE = "404"
+
+
 def _expired_listings(context) -> int:
     """How many listings of an account failed because its session expired."""
     return sum(
@@ -238,6 +246,8 @@ class AccountContext:
     # because it ran out of time.
     coverage: List[Dict[str, Any]] = field(default_factory=list)
     partial: bool = False
+    # Regions dropped by the region access check (not scanned).
+    skipped_regions: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -652,6 +662,46 @@ class CloudBOMGenerator:
             for acc_id in self._accounts_that_read_nothing()
         ]
 
+    def _not_read_notes(self) -> List[str]:
+        """Per account: the listings that were not read, grouped by service
+        and region with the reasons, and the regions the access check
+        skipped. Accounts that failed, read nothing or lost their session
+        have their own note and are not listed again."""
+        own_note = {item["account_id"] for item in self._failed_accounts()}
+        own_note |= set(self._accounts_with_expired_session())
+        own_note |= set(self._accounts_that_read_nothing())
+        notes = []
+        for acc_id, ctx in self.account_contexts.items():
+            if acc_id in own_note:
+                continue
+            reasons: Dict[tuple, set] = {}
+            for e in _coverage_of(ctx):
+                if e.get("source") not in ("service-api", "tagging-api"):
+                    continue  # billing has its own warning and drops no row
+                if e.get("outcome") not in FAILED_OUTCOMES:
+                    continue
+                if str(e.get("error_code", "")) == _NO_SUCH_SERVICE_CODE:
+                    continue
+                key = (str(e.get("service", "")), str(e.get("region", "")))
+                reasons.setdefault(key, set()).add(str(e.get("outcome")))
+            if reasons:
+                items = [
+                    f"{service} in {region} ({', '.join(sorted(why))})"
+                    for (service, region), why in sorted(reasons.items())
+                ]
+                text = "; ".join(items[:_NOT_READ_LIMIT])
+                if len(items) > _NOT_READ_LIMIT:
+                    text += f", and {len(items) - _NOT_READ_LIMIT} more"
+                notes.append(f"Not read in account {acc_id}: {text}.")
+            skipped = getattr(ctx, "skipped_regions", None) or []
+            if skipped:
+                notes.append(
+                    f"Regions skipped in account {acc_id} because the region "
+                    f"check (ec2:DescribeRegions) was denied or failed there: "
+                    f"{', '.join(skipped)}."
+                )
+        return notes
+
     def _run_notes(self) -> List[str]:
         """Lines for the report: which accounts are missing and why, and
         which accounts come from an earlier, interrupted run (``--resume``)."""
@@ -688,6 +738,7 @@ class CloudBOMGenerator:
                 notes.append(f"{item['account_id']} ({item['account_name']}): {reason}")
         notes.extend(self._expired_session_notes())
         notes.extend(self._read_nothing_notes())
+        notes.extend(self._not_read_notes())
         if self.reused_accounts:
             notes.append(
                 f"{len(self.reused_accounts)} account(s) were not scanned again: "
@@ -906,12 +957,19 @@ class CloudBOMGenerator:
                     session, target_regions
                 )
 
-                # Create account context
+                # Create account context. With no accessible region at all,
+                # discovery falls back to the target regions, so none is
+                # skipped.
                 context = AccountContext(
                     credentials=credentials,
                     session=session,
                     caller_identity=caller_identity,
                     accessible_regions=accessible_regions,
+                    skipped_regions=(
+                        [r for r in target_regions if r not in accessible_regions]
+                        if accessible_regions
+                        else []
+                    ),
                 )
 
                 account_contexts[credentials.account_id] = context
