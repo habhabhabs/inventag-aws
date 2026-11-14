@@ -654,14 +654,12 @@ class NetworkAnalyzer:
 
         return None
 
-    def _extract_subnet_ids(self, resource: Dict[str, Any]) -> List[str]:
-        """Every subnet ID the resource's data names, once each, in order.
+    _SUBNET_LIST_FIELDS = ("SubnetIds", "subnetIds", "Subnets")
 
-        Reads the single-subnet fields (EC2), the lists of IDs (Lambda
-        VpcConfig.SubnetIds, classic load balancer Subnets), the RDS subnet
-        group (DBSubnetGroup.Subnets) and the load balancer zones
-        (AvailabilityZones[].SubnetId).
-        """
+    def _subnet_ids_named(
+        self, resource: Dict[str, Any], list_fields: Tuple[str, ...]
+    ) -> List[str]:
+        """Subnet IDs the resource's data names, once each, in order."""
         found: List[str] = []
 
         def add(value: Any) -> None:
@@ -675,7 +673,7 @@ class NetworkAnalyzer:
         for source in self._raw_sources(resource):
             for field in ("subnet_id", "SubnetId", "subnet", "subnetId"):
                 add(source.get(field))
-            for field in ("SubnetIds", "subnetIds", "Subnets", "AvailabilityZones"):
+            for field in list_fields:
                 values = source.get(field)
                 if isinstance(values, list):
                     for item in values:
@@ -692,6 +690,15 @@ class NetworkAnalyzer:
 
         return found
 
+    def _extract_subnet_ids(self, resource: Dict[str, Any]) -> List[str]:
+        """Every subnet the resource sits in: single-subnet fields (EC2), lists
+        of IDs (Lambda VpcConfig.SubnetIds, classic load balancer Subnets), the
+        RDS subnet group and the load balancer zones
+        (AvailabilityZones[].SubnetId)."""
+        return self._subnet_ids_named(
+            resource, self._SUBNET_LIST_FIELDS + ("AvailabilityZones",)
+        )
+
     def _extract_subnet_id(self, resource: Dict[str, Any]) -> Optional[str]:
         """The first subnet ID of the resource (the per-resource row columns).
 
@@ -699,30 +706,8 @@ class NetworkAnalyzer:
         first subnet it names. The analysis counts it in every subnet
         (``_extract_subnet_ids``).
         """
-        for source in self._raw_sources(resource):
-            for field in ("subnet_id", "SubnetId", "subnet", "subnetId"):
-                value = source.get(field)
-                if isinstance(value, str) and value.startswith("subnet-"):
-                    return value
-            for field in ("SubnetIds", "subnetIds", "Subnets"):
-                values = source.get(field)
-                if isinstance(values, list):
-                    for item in values:
-                        if isinstance(item, dict):
-                            item = item.get("SubnetIdentifier") or item.get("SubnetId")
-                        if isinstance(item, str) and item.startswith("subnet-"):
-                            return item
-
-        # Try to extract from ARN or other fields
-        arn = resource.get("arn", "")
-        if "subnet-" in arn:
-            # Simple extraction - would need more sophisticated parsing
-            parts = arn.split("/")
-            for part in parts:
-                if part.startswith("subnet-"):
-                    return part
-
-        return None
+        found = self._subnet_ids_named(resource, self._SUBNET_LIST_FIELDS)
+        return found[0] if found else None
 
     def _calculate_cidr_ips(self, cidr_block: str) -> int:
         """Calculate total IP addresses in a CIDR block."""
