@@ -61,7 +61,7 @@ What arrived in the bucket:
 <!-- BEGIN EXAMPLE OUTPUT: s3-keys -->
 
 ```text title="Objects in s3://acme-inventory-reports"
-inventag/20261112_090000/multi_account_bom_20261112_090100.xlsx
+bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ```
 
 <!-- END EXAMPLE OUTPUT: s3-keys -->

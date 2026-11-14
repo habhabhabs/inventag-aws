@@ -233,11 +233,11 @@ bom_output/state/state_20261112_090100.json
 
 ## Objetos de S3 {#s3-objects}
 
-Con `--s3-bucket acme-inventory-reports --s3-key-prefix inventag/`, cada ejecución
+Con `--s3-bucket acme-inventory-reports --s3-key-prefix bom-reports/`, cada ejecución
 coloca sus archivos en una carpeta con el nombre de la ejecución:
 
 ```text title="Objects in s3://acme-inventory-reports"
-inventag/20261112_090000/multi_account_bom_20261112_090100.xlsx
+bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ```
 
 ## Salida del terminal {#terminal-output}

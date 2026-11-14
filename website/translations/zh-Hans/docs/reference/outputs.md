@@ -212,10 +212,10 @@ bom_output/state/state_20261112_090100.json
 
 ## S3 对象 {#s3-objects}
 
-使用 `--s3-bucket acme-inventory-reports --s3-key-prefix inventag/` 时，每次运行都会把文件放在以该次运行命名的文件夹下：
+使用 `--s3-bucket acme-inventory-reports --s3-key-prefix bom-reports/` 时，每次运行都会把文件放在以该次运行命名的文件夹下：
 
 ```text title="Objects in s3://acme-inventory-reports"
-inventag/20261112_090000/multi_account_bom_20261112_090100.xlsx
+bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ```
 
 ## 终端输出 {#terminal-output}

@@ -1438,7 +1438,7 @@ def collect(images: bool) -> Dict[str, str]:
                     "--s3-bucket",
                     "acme-inventory-reports",
                     "--s3-key-prefix",
-                    "inventag/",
+                    "bom-reports/",
                     "--audit-output",
                     "audit.json",
                 ],

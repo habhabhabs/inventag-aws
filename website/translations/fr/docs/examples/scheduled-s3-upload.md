@@ -56,7 +56,7 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 Ce qui est arrivé dans le bucket :
 
 ```text title="Objects in s3://acme-inventory-reports"
-inventag/20261112_090000/multi_account_bom_20261112_090100.xlsx
+bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ```
 
 Le fichier d’audit (extrait) :

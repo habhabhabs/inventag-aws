@@ -248,13 +248,13 @@ bom_output/state/state_20261112_090100.json
 
 ## S3 objects
 
-With `--s3-bucket acme-inventory-reports --s3-key-prefix inventag/`, each run
+With `--s3-bucket acme-inventory-reports --s3-key-prefix bom-reports/`, each run
 puts its files under a folder named after the run:
 
 <!-- BEGIN EXAMPLE OUTPUT: s3-keys -->
 
 ```text title="Objects in s3://acme-inventory-reports"
-inventag/20261112_090000/multi_account_bom_20261112_090100.xlsx
+bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ```
 
 <!-- END EXAMPLE OUTPUT: s3-keys -->

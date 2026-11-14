@@ -50,7 +50,7 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 儲存貯體中收到的內容：
 
 ```text title="Objects in s3://acme-inventory-reports"
-inventag/20261112_090000/multi_account_bom_20261112_090100.xlsx
+bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ```
 
 審計檔案（節選）：
