@@ -158,6 +158,26 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 - When a run result carries notes for the reader, the console prints each as a
   warning after the summary (the lines the "not scanned" block already shows
   are not repeated). A run without notes prints nothing new.
+- `inventag --validate-operations` shows, for an operation that is allowed by
+  name but blocked with a parameter that returns secrets, the parameter (for
+  example `ALLOWED  ec2:DescribeInstanceAttribute (...); BLOCKED when
+  Attribute=userdata`). The line still starts with ALLOWED and the exit code
+  does not change. Other lines are unchanged.
+- `--validate-config-only` reads the `--bom-config` file the way a run does:
+  a wrong value gives one warning that names the file and the key and says
+  that a real run stops with exit code 1 on this file. The exit code of the
+  validation mode stays 0, as before. Unknown keys are a warning too. A
+  service descriptions file that the run would ignore (no top-level
+  `service_descriptions` key, or an entry without `description`) gets a
+  warning that says so; exit codes do not change.
+- Clearer messages, no change of exit codes: the credential check names
+  `aws sso login --profile <name>` and `AWS_PROFILE`, tells network and timeout
+  failures apart (network, `HTTPS_PROXY`, `--credential-timeout`) and names the
+  error type; the "all accounts failed" summary gives the cause per account;
+  an unexpected error names its type and says to run with `--debug`; the
+  accounts file warns about a second entry for one account ID and about unknown
+  keys (a typo such as `profil_name`); `--compliance-standard` and
+  `--disable-production-safety` (still exit 2) say what to do instead.
 
 ### Security
 
