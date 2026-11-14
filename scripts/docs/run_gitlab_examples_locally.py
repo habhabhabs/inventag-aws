@@ -422,6 +422,16 @@ def _prepare_project(
     return project
 
 
+def gcl_args(gcl: str, variables_file: Path, variables: Dict[str, str]) -> List[str]:
+    """The gitlab-ci-local command line (options as in its `--help`)."""
+    args = [gcl, "--force-shell-executor", "--no-color"]
+    args += ["--variables-file", str(variables_file)]
+    args += ["--ignore-predefined-vars", "CI_PIPELINE_SOURCE"]
+    for k, v in variables.items():
+        args += ["--variable", f"{k}={v}"]
+    return args
+
+
 def _run_gitlab_ci_local(
     project: Path,
     site: Path,
@@ -456,11 +466,7 @@ def _run_gitlab_ci_local(
     variables.update({n: DUMMY_JWT for n in tokens})
     if not tokens:
         variables.update(AWS_ACCESS_KEY_ID="testing", AWS_SECRET_ACCESS_KEY="testing")
-    args = [gcl, "--force-shell-executor", "--no-color"]
-    args += ["--variables-file", str(variables_file)]
-    args += ["--ignore-predefined-vars", "CI_PIPELINE_SOURCE"]
-    for k, v in variables.items():
-        args += ["--variable", f"{k}={v}"]
+    args = gcl_args(gcl, variables_file, variables)
     proc = subprocess.run(
         args,
         cwd=project,
