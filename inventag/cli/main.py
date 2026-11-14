@@ -150,6 +150,8 @@ def _validate_specific_configs(args, logger, check_credentials=True):
     if args.accounts_file:
         logger.info(f"Validating accounts file: {args.accounts_file}")
         result = validator.validate_accounts_file(args.accounts_file)
+        for warning in result.warnings:
+            logger.warning(f"   - {warning}")
         if result.is_valid:
             logger.info("✅ Accounts configuration is valid")
         else:
