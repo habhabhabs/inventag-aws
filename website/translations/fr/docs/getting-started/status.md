@@ -130,8 +130,9 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   code 0, ou avec le code 5 si vous passez `--fail-on-account-error`.
 - **Un rapport fait avec `--template`** ne nomme pas les comptes en échec ; le
   résumé de l’exécution et le rapport par défaut les nomment.
-- **Tous les comptes échouent :** l’exécution se termine avec le code 1 et
-  n’écrit aucun rapport, y compris avec `--fail-on-account-error`.
+- **Tous les comptes échouent :** l’exécution se termine avec le code 1, y compris
+  avec `--fail-on-account-error`, et n’écrit aucun rapport, sauf si les comptes ont
+  dépassé leur délai : le rapport montre alors ce qui a été trouvé.
 - **Un compte dépasse son temps :** il compte comme en échec, et les ressources
   trouvées avant la limite restent dans le rapport.
 - **Aucune ressource trouvée, ou les filtres les ont toutes retirées :**

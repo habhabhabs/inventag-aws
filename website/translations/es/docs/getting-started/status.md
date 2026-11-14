@@ -131,8 +131,9 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   código 0, o con el código 5 si pasas `--fail-on-account-error`.
 - **Un informe hecho con `--template`** no nombra las cuentas que fallaron; el
   resumen de la ejecución y el informe predeterminado sí.
-- **Fallan todas las cuentas:** la ejecución termina con el código 1 y no
-  escribe ningún informe, también con `--fail-on-account-error`.
+- **Fallan todas las cuentas:** la ejecución termina con el código 1, también con
+  `--fail-on-account-error`, y no escribe ningún informe salvo que las cuentas se
+  hayan quedado sin tiempo; en ese caso el informe muestra lo que se encontró.
 - **Una cuenta se queda sin tiempo:** cuenta como fallida, y los recursos
   encontrados antes del límite se quedan en el informe.
 - **No se encontraron recursos, o los filtros los quitaron todos:** InvenTag no

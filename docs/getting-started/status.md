@@ -127,8 +127,9 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   code 5 when you pass `--fail-on-account-error`.
 - **A report made with `--template`** does not name the accounts that failed;
   the run summary and the default report do.
-- **Every account fails:** the run exits with code 1 and writes no report,
-  also with `--fail-on-account-error`.
+- **Every account fails:** the run exits with code 1, also with
+  `--fail-on-account-error`, and writes no report unless the accounts ran out
+  of time, in which case the report lists what was found.
 - **An account runs out of time:** it counts as failed, and the resources
   found before the limit stay in the report.
 - **No resources found, or the filters removed all of them:** InvenTag writes

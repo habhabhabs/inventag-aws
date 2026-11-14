@@ -99,7 +99,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 - **一个账户失败，其他账户正常：** 运行以退出码 0 结束；传入 `--fail-on-account-error` 时以退出码 5 结束。
 - **用 `--template` 生成的报告**不会列出失败的账户；运行摘要和默认报告会列出。
-- **所有账户都失败：** 运行以退出码 1 结束，并且不写报告，使用 `--fail-on-account-error` 时也是如此。
+- **所有账户都失败：** 运行以退出码 1 结束，使用 `--fail-on-account-error` 时也是如此；除非这些账户是因超时而失败，否则不写报告，超时时报告会列出已找到的资源。
 - **账户超时：** 它算作失败，超时前找到的资源保留在报告中。
 - **没有找到资源，或筛选条件把它们全部去掉了：** 不使用 `--template` 时 InvenTag 不写报告，使用 `--template` 时写出一份空报告；除非你传入 `--fail-if-empty`（退出码 6），否则运行以退出码 0 结束。
 - **范围内没有任何资源的标签策略**会报告 `0 of 0 resources compliant (100.0%)`，尽管什么都没有检查。

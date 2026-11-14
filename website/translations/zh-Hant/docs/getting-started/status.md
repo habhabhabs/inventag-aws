@@ -99,7 +99,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 - **一個帳戶失敗，其他帳戶正常：** 執行以結束代碼 0 結束；傳入 `--fail-on-account-error` 時以結束代碼 5 結束。
 - **用 `--template` 生成的報告**不會列出失敗的帳戶；執行摘要和預設報告會列出。
-- **所有帳戶都失敗：** 執行以結束代碼 1 結束，並且不寫報告，使用 `--fail-on-account-error` 時也是如此。
+- **所有帳戶都失敗：** 執行以結束代碼 1 結束，使用 `--fail-on-account-error` 時也是如此；除非這些帳戶是因超時而失敗，否則不寫報告，超時時報告會列出已找到的資源。
 - **帳戶超時：** 它算作失敗，超時前找到的資源保留在報告中。
 - **沒有找到資源，或篩選條件把它們全部去掉了：** 不使用 `--template` 時 InvenTag 不寫報告，使用 `--template` 時寫出一份空報告；除非你傳入 `--fail-if-empty`（結束代碼 6），否則執行以結束代碼 0 結束。
 - **範圍內沒有任何資源的標籤策略**會報告 `0 of 0 resources compliant (100.0%)`，儘管什麼都沒有檢查。
