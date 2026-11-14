@@ -28,10 +28,15 @@ os.environ.pop("AWS_PROFILE", None)
 from moto import mock_aws  # noqa: E402
 
 from estate import seed_estate  # noqa: E402
+from tests.moto_serial import serialize_moto_requests  # noqa: E402
 from tests.moto_warmup import warm_moto_modules  # noqa: E402
 
 if __name__ == "__main__":
+    # Same order as the session setup in tests/conftest.py: import moto's
+    # service modules in this one thread first, then serialise its requests.
     warm_moto_modules()  # no first-call import race between discovery threads
+    # Discovery threads share this moto; see tests/moto_serial.py.
+    serialize_moto_requests()
     with mock_aws():
         if os.environ.get("INVENTAG_E2E_EMPTY") != "1":
             seed_estate()
