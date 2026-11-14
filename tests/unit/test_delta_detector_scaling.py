@@ -102,3 +102,101 @@ def test_change_detection_work_grows_linearly(linked):
     assert large_links == 4 * small_links
     # So must the work: about 4 times, never near 16 times.
     assert large / small < 6, (small, large)
+
+
+_VALUES = [
+    "a",
+    "b",
+    "",
+    None,
+    0,
+    1,
+    1.0,
+    True,
+    ("a",),
+    ["a"],
+    ["b", "a"],
+    ["", "c"],
+    [],
+    [1],
+    {"k": 1},
+    [{"k": 1}],
+]
+_SERVICES = ["EC2", "ec2", "RDS", "S3", "VPC", "ELB", "EBS", "NAT", "Lambda", "SQS"]
+_FIELDS = ["vpc_id", "subnet_id", "security_groups", "iam_role", "kms_key_id"]
+
+
+def _random_rows(rng, count, prefix, mode):
+    """mode 0: hashable values only; 1: plus a dict value; 2: plus a list of dicts."""
+    values = [
+        v
+        for v in _VALUES
+        if (mode >= 1 or not isinstance(v, dict)) and (mode >= 2 or v != [{"k": 1}])
+    ]
+    rows = []
+    for i in range(count):
+        row = {
+            "arn": f"arn:aws:x:{REG}:{ACC}:r/{prefix}{i}",
+            "id": f"{prefix}{i}",
+            "service": rng.choice(_SERVICES),
+            "type": "T",
+            "region": REG,
+            "tags": {"n": str(rng.randint(0, 2))},
+        }
+        for name in _FIELDS:
+            if rng.random() < 0.5:
+                row[name] = rng.choice(values)
+        rows.append(row)
+    return rows
+
+
+def _outcome(old, new, monkeypatch, scan_all):
+    import copy
+    import json
+
+    from inventag.state import delta_detector
+
+    if scan_all:
+        monkeypatch.setattr(
+            delta_detector._RelatedIndex, "candidates", lambda self, resource: None
+        )
+    try:
+        report = DeltaDetector().detect_changes(
+            copy.deepcopy(old), copy.deepcopy(new), "s1", "s2"
+        )
+    except Exception as exc:  # the present code raises on some shapes
+        return ("raised", type(exc).__name__, str(exc))
+    finally:
+        monkeypatch.undo()
+    changes = report.added_resources + report.removed_resources
+    changes += report.modified_resources
+    return json.dumps(
+        [
+            [[c.resource_arn, c.related_resources] for c in changes],
+            report.impact_analysis,
+        ],
+        default=repr,
+    )
+
+
+@pytest.mark.parametrize("seed", range(40))
+def test_index_gives_the_same_result_as_scanning_every_row(seed, monkeypatch):
+    """Random rows with every value shape the rules treat differently.
+
+    The related lists, their order and the impact analysis must be the same
+    with the index as with a scan of every row (the v1.2.0 way), including
+    the error raised when the rows hold lists of dicts.
+    """
+    import random
+
+    rng = random.Random(seed)
+    mode = seed % 3
+    old = _random_rows(rng, 30, "o", mode)
+    new = [dict(r) for r in old[:20]] + _random_rows(rng, 15, "n", mode)
+    for r in new[:10]:
+        r["tags"] = {"n": "changed"}
+    indexed = _outcome(old, new, monkeypatch, scan_all=False)
+    scanned = _outcome(old, new, monkeypatch, scan_all=True)
+    assert indexed == scanned
+    if mode < 2:
+        assert indexed[0] != "raised"
