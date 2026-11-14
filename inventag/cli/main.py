@@ -1414,13 +1414,31 @@ def main():
             print(line)
         sys.exit(0 if all_allowed else 1)
 
+    # Paths the run writes must be usable before any AWS call or scan.
+    for option, value, is_folder in (
+        ("--log-file", args.log_file, False),
+        ("--audit-output", args.audit_output, False),
+    ):
+        problem = value and safety.unusable_path_error(option, value, is_folder)
+        if problem:
+            print(f"inventag: error: {problem}", file=sys.stderr)
+            sys.exit(1)
+
     # Set up logging
-    logger = setup_logging(
-        verbose=args.verbose,
-        debug=args.debug,
-        log_file=args.log_file,
-        account_specific=not args.disable_account_logging,
-    )
+    try:
+        logger = setup_logging(
+            verbose=args.verbose,
+            debug=args.debug,
+            log_file=args.log_file,
+            account_specific=not args.disable_account_logging,
+        )
+    except OSError as e:
+        print(
+            f"inventag: error: --log-file: cannot write '{args.log_file}': "
+            f"{e.strerror or e}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     guard = safety.enable_read_only_guard()
 
@@ -1428,7 +1446,15 @@ def main():
         _run(args, logger)
     finally:
         if args.audit_output:
-            path = safety.write_audit_output(guard, args.audit_output)
+            try:
+                path = safety.write_audit_output(guard, args.audit_output)
+            except OSError as e:
+                print(
+                    f"inventag: error: --audit-output: cannot write "
+                    f"'{args.audit_output}': {e.strerror or e}",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
             logger.info(f"Wrote AWS API audit to {path}")
 
 
@@ -1485,6 +1511,14 @@ def _run(args, logger):
             "No AWS call was made. Use --validate-credentials to test the credentials."
         )
         sys.exit(0)
+
+    if not (args.validate_config or args.validate_credentials):
+        problem = safety.unusable_path_error(
+            "--output-directory", args.output_directory, True
+        )
+        if problem:
+            print(f"inventag: error: {problem}", file=sys.stderr)
+            sys.exit(1)
 
     try:
         # Early AWS credential validation (unless skipped or using interactive prompt)
