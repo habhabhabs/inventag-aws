@@ -124,7 +124,7 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   say what to do instead.
 - `inventag --validate-operations` shows, for an operation that is allowed
   by name but blocked with a parameter that returns secrets, the parameter
-  (for example `ALLOWED  ec2:DescribeInstanceAttribute (...); BLOCKED when
+  (for example `ALLOWED  ec2:DescribeInstanceAttribute (...); blocked when
   Attribute=userdata`). The line still starts with ALLOWED and the exit code
   does not change. Other lines are unchanged.
 - `--validate-config-only` reads the `--bom-config` file the way a run does:

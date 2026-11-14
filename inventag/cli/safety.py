@@ -141,7 +141,7 @@ def validate_operations(
                 for value in sorted(values)
             ]
             if blocked:
-                line += "; BLOCKED when " + ", ".join(blocked)
+                line += "; blocked when " + ", ".join(blocked)
         lines.append(line)
     return all_allowed, lines
 
