@@ -54,6 +54,7 @@ import logging
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -161,6 +162,7 @@ FIXTURE_NEEDS = [
     ("reports bucket", re.compile(r"--s3-bucket")),
     ("KMS key", re.compile(r"--s3-kms-key-id")),
     ("accounts file", re.compile(r"--accounts-file")),
+    ("open security group", re.compile(r"--risk-threshold")),
 ]
 ACCOUNTS_FILE = """\
 accounts:
@@ -210,6 +212,17 @@ def apply_fixtures(
         import boto3
 
         boto3.client("s3", **kw).create_bucket(Bucket=bucket_name(body, variables))
+    if "open security group" in needs:
+        import boto3
+
+        ec2 = boto3.client("ec2", **kw)
+        vpc = ec2.describe_vpcs()["Vpcs"][0]["VpcId"]
+        sg = ec2.create_security_group(
+            GroupName="open-ssh", Description="docs example", VpcId=vpc
+        )["GroupId"]
+        ssh = {"IpProtocol": "tcp", "FromPort": 22, "ToPort": 22}
+        ssh["IpRanges"] = [{"CidrIp": "0.0.0.0/0"}]
+        ec2.authorize_security_group_ingress(GroupId=sg, IpPermissions=[ssh])
     if "KMS key" in needs:
         import boto3
 
@@ -434,6 +447,29 @@ def gcl_args(gcl: str, variables_file: Path, variables: Dict[str, str]) -> List[
     return args
 
 
+def run_with_timeout(
+    args: List[str], cwd: Optional[Path], env: Optional[Dict[str, str]], timeout: int
+) -> Tuple[str, bool]:
+    """Run a command; on timeout stop it and its children. (output, timed_out)"""
+    proc = subprocess.Popen(
+        args,
+        cwd=cwd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        errors="replace",
+        start_new_session=True,
+    )
+    try:
+        out, _ = proc.communicate(timeout=timeout)
+        return out, False
+    except subprocess.TimeoutExpired:
+        os.killpg(proc.pid, signal.SIGKILL)
+        out, _ = proc.communicate()
+        return out or "", True
+
+
 def _run_gitlab_ci_local(
     project: Path,
     site: Path,
@@ -442,8 +478,8 @@ def _run_gitlab_ci_local(
     tokens: List[str],
     source: str,
     variables_file: Path,
-) -> str:
-    """Run the pipeline with the given pipeline source and a controlled environment.
+) -> Tuple[str, bool]:
+    """(output, timed_out) of the run: given pipeline source, controlled environment.
 
     gitlab-ci-local passes the host environment into shell jobs, so only the
     variables below reach a job: no local AWS credentials or config.
@@ -469,16 +505,7 @@ def _run_gitlab_ci_local(
     if not tokens:
         variables.update(AWS_ACCESS_KEY_ID="testing", AWS_SECRET_ACCESS_KEY="testing")
     args = gcl_args(gcl, variables_file, variables)
-    proc = subprocess.run(
-        args,
-        cwd=project,
-        env=env,
-        capture_output=True,
-        text=True,
-        errors="replace",
-        timeout=JOB_TIMEOUT_S,
-    )
-    return proc.stdout + proc.stderr
+    return run_with_timeout(args, project, env, JOB_TIMEOUT_S)
 
 
 def _job_line(
@@ -530,7 +557,7 @@ def run_block(
     source, why = choose_pipeline_source(doc, source_override)
     variables_file = work / f"variables-{work_name(block)}.yml"
     write_variables_file(variables_file, variables)
-    output = _run_gitlab_ci_local(
+    output, timed_out = _run_gitlab_ci_local(
         project, site, gcl, endpoint, tokens, source, variables_file
     )
     log = work / f"block-{work_name(block)}.log"
@@ -538,6 +565,9 @@ def run_block(
     roles = _assumed_roles(endpoint)
     title = block["info"] or "(no title)"
     print(f"block {block['path']}:{block['line']} [gitlab] {title}")
+    if timed_out:
+        print(f"  FAIL local-run  stopped after {JOB_TIMEOUT_S} s; log {log}")
+        return False
     results = parse_results(output)
     if not results:
         print(f"  FAIL local-run  no job ran; log {log}")

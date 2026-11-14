@@ -328,3 +328,18 @@ def test_each_job_runs_in_its_own_copy_like_a_runner_checkout(tmp_path):
     assert "--shell-isolation" in args and "--force-shell-executor" in args
     assert args[args.index("--variables-file") + 1] == str(tmp_path / "v.yml")
     assert args[args.index("--variable") + 1] == "A=b"
+
+
+def test_a_risk_threshold_example_needs_one_open_security_group():
+    cmd = "inventag --enable-security-analysis --risk-threshold HIGH"
+    assert runner.fixtures_needed(cmd) == ["open security group"]
+
+
+# --- a stuck pipeline ------------------------------------------------------
+
+
+def test_a_run_that_takes_too_long_is_stopped_with_its_children_and_reported():
+    out, timed_out = runner.run_with_timeout(
+        ["sh", "-c", "sleep 30 & echo started; wait"], cwd=None, env=None, timeout=1
+    )
+    assert timed_out and "started" in out
