@@ -274,3 +274,45 @@ def test_the_wheel_is_found_in_its_folder_and_a_missing_wheel_is_an_error(tmp_pa
         assert "wheel" in str(exc)
     else:
         raise AssertionError("no error")
+
+
+# --- fixtures -------------------------------------------------------------
+
+S3_CMD = (
+    'inventag --s3-bucket "$INVENTAG_REPORTS_BUCKET" --s3-encryption aws:kms '
+    '--s3-kms-key-id "$INVENTAG_KMS_KEY_ID"'
+)
+
+
+def test_an_upload_example_needs_a_bucket_and_a_kms_key_and_nothing_else():
+    assert runner.fixtures_needed(S3_CMD) == ["reports bucket", "KMS key"]
+
+
+def test_a_bucket_example_without_kms_needs_no_key():
+    assert runner.fixtures_needed("inventag --s3-bucket b") == ["reports bucket"]
+
+
+def test_a_multi_account_example_needs_the_accounts_file():
+    cmd = "inventag --accounts-file accounts.yaml --resume"
+    assert runner.fixtures_needed(cmd) == ["accounts file"]
+
+
+def test_an_example_that_needs_nothing_gets_no_fixture():
+    assert runner.fixtures_needed("inventag --template nightly") == []
+
+
+def test_the_bucket_name_comes_from_the_variable_or_the_literal():
+    given = {"INVENTAG_REPORTS_BUCKET": "from-var"}
+    assert runner.bucket_name(S3_CMD, given) == "from-var"
+    assert runner.bucket_name("inventag --s3-bucket ${INVENTAG_REPORTS_BUCKET}", given)
+    assert runner.bucket_name("inventag --s3-bucket literal-b", {}) == "literal-b"
+
+
+def test_the_accounts_file_is_written_where_the_command_reads_it(tmp_path):
+    cmd = "inventag --accounts-file config/accounts.yaml --resume"
+    runner.apply_fixtures(["accounts file"], cmd, tmp_path, "http://unused", {})
+    data = yaml.safe_load((tmp_path / "config" / "accounts.yaml").read_text())
+    assert [a["account_id"] for a in data["accounts"]] == [
+        "111111111111",
+        "222222222222",
+    ]

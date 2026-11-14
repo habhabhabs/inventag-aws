@@ -158,6 +158,71 @@ def build_wheel(wheel_dir: Path) -> Path:
     return find_wheel(wheel_dir)
 
 
+# Fixtures: what a real project holds outside the YAML, which moto starts without.
+# Table: (what the example needs, a pattern in the block's text that shows it).
+FIXTURE_NEEDS = [
+    ("reports bucket", re.compile(r"--s3-bucket")),
+    ("KMS key", re.compile(r"--s3-kms-key-id")),
+    ("accounts file", re.compile(r"--accounts-file")),
+]
+ACCOUNTS_FILE = """\
+accounts:
+  - account_id: "111111111111"
+    account_name: Production
+    regions: [us-east-1]
+  - account_id: "222222222222"
+    account_name: Development
+    regions: [us-east-1]
+"""
+_BUCKET_ARG = re.compile(r"""--s3-bucket[ =]["']?(?:\$\{?(\w+)\}?|([^\s"']+))""")
+_ACCOUNTS_ARG = re.compile(r"""--accounts-file[ =]["']?([^\s"']+)""")
+
+
+def fixtures_needed(body: str) -> List[str]:
+    return [name for name, pattern in FIXTURE_NEEDS if pattern.search(body)]
+
+
+def bucket_name(body: str, variables: Dict[str, str]) -> str:
+    """The bucket `--s3-bucket` names: a literal, or the value of its variable."""
+    m = _BUCKET_ARG.search(body)
+    if not m:
+        raise ValueError("no --s3-bucket in the block")
+    return variables[m[1]] if m[1] else m[2]
+
+
+def apply_fixtures(
+    needs: List[str],
+    body: str,
+    project: Path,
+    endpoint: str,
+    variables: Dict[str, str],
+) -> None:
+    """Create each fixture the table asked for: project files in `project`
+    (before the git commit), AWS objects in the moto server (after its reset)."""
+    kw = dict(
+        endpoint_url=endpoint,
+        region_name="us-east-1",
+        aws_access_key_id="testing",
+        aws_secret_access_key="testing",
+    )
+    if "accounts file" in needs:
+        target = project / _ACCOUNTS_ARG.search(body)[1]  # type: ignore[index]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(ACCOUNTS_FILE)
+    if "reports bucket" in needs:
+        import boto3
+
+        boto3.client("s3", **kw).create_bucket(Bucket=bucket_name(body, variables))
+    if "KMS key" in needs:
+        import boto3
+
+        kms = boto3.client("kms", **kw)
+        key_id = kms.create_key()["KeyMetadata"]["KeyId"]
+        alias = variables.get("INVENTAG_KMS_KEY_ID", "")
+        if alias.startswith("alias/"):
+            kms.create_alias(AliasName=alias, TargetKeyId=key_id)
+
+
 def work_name(block: Dict[str, Any]) -> str:
     """A folder-name part that is unique per page path and line: the readable
     slug of the path, the line, and a short hash of the exact path (two paths
@@ -327,7 +392,12 @@ def _artifacts(project: Path, job: str) -> List[str]:
 
 
 def _prepare_project(
-    block: Dict[str, Any], doc: Dict[Any, Any], work: Path, wheel: Path
+    block: Dict[str, Any],
+    doc: Dict[Any, Any],
+    work: Path,
+    wheel: Path,
+    endpoint: str,
+    variables: Dict[str, str],
 ) -> Path:
     """A git repository holding the rewritten block and its config templates."""
     project = work / f"block-{work_name(block)}"
@@ -339,6 +409,8 @@ def _prepare_project(
     (project / ".gitlab-ci.yml").write_text(
         yaml.safe_dump(rewrite_install(doc, PREINSTALLED_NOTE), sort_keys=False)
     )
+    needs = fixtures_needed(block["body"])
+    apply_fixtures(needs, block["body"], project, endpoint, variables)
     builtin = {p.stem for p in BUILTIN_TEMPLATES.glob("*.yaml")}
     for name in template_names(block["body"]):
         if name not in builtin:
@@ -448,11 +520,11 @@ def run_block(
 ) -> bool:
     doc = yaml.safe_load(block["body"])
     tokens = id_token_names(doc)
-    project = _prepare_project(block, doc, work, wheel)
-    site = work / f"site-{work_name(block)}"
-    _seed(endpoint)
-    source, why = choose_pipeline_source(doc, source_override)
     variables = project_variables(block["body"], given_variables or {})
+    _seed(endpoint)
+    project = _prepare_project(block, doc, work, wheel, endpoint, variables)
+    site = work / f"site-{work_name(block)}"
+    source, why = choose_pipeline_source(doc, source_override)
     variables_file = work / f"variables-{work_name(block)}.yml"
     write_variables_file(variables_file, variables)
     output = _run_gitlab_ci_local(
