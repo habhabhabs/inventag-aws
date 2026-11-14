@@ -22,6 +22,7 @@ from ..security.safe_output import (
     write_safe_csv,
 )
 from ..security.secret_values import mask_resources
+from .bom_processor import analysis_resource_key
 from .safe_save import save_atomically
 from .report_template import (
     ReportTemplate,
@@ -146,6 +147,9 @@ class BOMConverter:
         # Advanced analysis components
         self.network_analysis = {}
         self.security_analysis = {}
+        # What the BOM processor's analyzers found, when the caller gave BOM
+        # data that carries it (see _analysis_found_by_processor)
+        self.analysis_results = None
         self.cost_analysis = {}
         self.service_attributes = {}
         # Lines shown under the summary (for example, accounts that were not
@@ -801,14 +805,26 @@ class BOMConverter:
             return ", ".join(str(v) for v in value)
         return value
 
+    def _analysis_found_by_processor(self, name: str):
+        """The analyzers' result the BOM processor already made, or None.
+
+        Used only when it was made for these very rows; a report of other rows
+        (one account of several) analyses its own, and so does a converter
+        that was given a plain list.
+        """
+        found = self.analysis_results
+        result = getattr(found, name, None) if found is not None else None
+        if not result:
+            return None
+        keys = tuple(analysis_resource_key(r) for r in self.data)
+        return result if keys == found.resource_keys else None
+
     def _perform_network_analysis(self):
         """Perform network analysis on VPC and subnet resources."""
         print("Performing network analysis...")
 
         try:
             from ..discovery import NetworkAnalyzer
-
-            analyzer = NetworkAnalyzer()
 
             # Extract VPC and subnet resources
             vpc_resources = [
@@ -820,7 +836,13 @@ class BOMConverter:
             if vpc_resources:
                 # Every resource goes in: the analyzer uses them to count
                 # which resources sit in each VPC and subnet.
-                self.network_analysis = analyzer.analyze_vpc_resources(self.data)
+                found = self._analysis_found_by_processor("vpcs")
+                if found is not None:
+                    self.network_analysis = found
+                else:
+                    self.network_analysis = NetworkAnalyzer().analyze_vpc_resources(
+                        self.data
+                    )
 
                 # Enrich resources with network analysis data
                 for resource in self.data:
@@ -866,8 +888,6 @@ class BOMConverter:
         try:
             from ..discovery import SecurityAnalyzer
 
-            analyzer = SecurityAnalyzer()
-
             # Extract security group resources
             sg_resources = [
                 r
@@ -878,7 +898,13 @@ class BOMConverter:
             if sg_resources:
                 # Every resource goes in, so that each group's associated
                 # resources are counted.
-                self.security_analysis = analyzer.analyze_security_groups(self.data)
+                found = self._analysis_found_by_processor("security_groups")
+                if found is not None:
+                    self.security_analysis = found
+                else:
+                    self.security_analysis = SecurityAnalyzer().analyze_security_groups(
+                        self.data
+                    )
 
                 # Enrich resources with security analysis data
                 for resource in self.data:
@@ -1554,6 +1580,7 @@ class BOMConverter:
 
         # Load the data first (secret values hidden, whatever the caller passed)
         self.data = resources = mask_resources(resources)
+        self.analysis_results = getattr(bom_data, "analysis_results", None)
         self.cost_analysis = getattr(bom_data, "cost_analysis", None) or {}
         self.headers = set()
         for item in resources:

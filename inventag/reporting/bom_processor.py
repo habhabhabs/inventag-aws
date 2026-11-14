@@ -66,6 +66,31 @@ class BOMProcessingConfig:
         object.__setattr__(self, name, value)
 
 
+def analysis_resource_key(resource: Dict[str, Any]) -> tuple:
+    """What identifies a row when asking if two reports hold the same rows."""
+    return (
+        resource.get("service"),
+        resource.get("type"),
+        resource.get("id"),
+        resource.get("region"),
+        resource.get("source_account_id"),
+    )
+
+
+@dataclass
+class AnalysisResults:
+    """What the network and security analyzers found for one set of resources.
+
+    Kept on the BOM data so the workbook writer does not read the account a
+    second time. ``resource_keys`` names the rows analysed: a report of other
+    rows (one account of several) must analyse its own.
+    """
+
+    resource_keys: tuple
+    vpcs: Optional[Dict[str, Any]] = None
+    security_groups: Optional[Dict[str, Any]] = None
+
+
 @dataclass
 class BOMData:
     """Processed BOM data structure."""
@@ -79,6 +104,10 @@ class BOMData:
     custom_attributes: List[str] = field(default_factory=list)
     processing_statistics: Dict[str, Any] = field(default_factory=dict)
     error_summary: Dict[str, Any] = field(default_factory=dict)
+    # The analyzers' own results for ``resources`` (None when none was made).
+    analysis_results: Optional[AnalysisResults] = field(
+        default=None, repr=False, compare=False
+    )
 
 
 @dataclass
@@ -127,6 +156,8 @@ class BOMDataProcessor:
         self.statistics = ProcessingStatistics()
         self._processing_cache: Dict[str, Any] = {}
         self._lock = threading.Lock()
+        # What the analyzers found in the last run (see AnalysisResults)
+        self._analysis_found: Dict[str, Any] = {}
 
     def _count(self, name: str) -> None:
         """Add one to a statistics counter (enrichment runs in several threads)."""
@@ -210,6 +241,7 @@ class BOMDataProcessor:
         """
         start_time = datetime.now(timezone.utc)
         self.statistics = ProcessingStatistics()
+        self._analysis_found = {}
         self.statistics.total_resources = len(inventory_data)
 
         self.logger.info(
@@ -260,6 +292,15 @@ class BOMDataProcessor:
             bom_data = self._create_bom_data_structure(
                 enriched_resources, network_analysis, security_analysis, cost_analysis
             )
+
+            if self._analysis_found:
+                bom_data.analysis_results = AnalysisResults(
+                    resource_keys=tuple(
+                        analysis_resource_key(r) for r in bom_data.resources
+                    ),
+                    vpcs=self._analysis_found.get("vpcs"),
+                    security_groups=self._analysis_found.get("security_groups"),
+                )
 
             self.logger.info(
                 f"BOM processing completed in {processing_time:.2f}s. "
@@ -784,7 +825,9 @@ class BOMDataProcessor:
                 # resources sit in each VPC and subnet.
                 vpc_analysis = self.network_analyzer.analyze_vpc_resources(resources)
                 summary = self.network_analyzer.generate_network_summary(vpc_analysis)
-                return self._network_summary_to_dict(summary, vpc_analysis)
+                result = self._network_summary_to_dict(summary, vpc_analysis)
+                self._analysis_found["vpcs"] = vpc_analysis
+                return result
             return {}
         except Exception as e:
             self.logger.error(f"Network analysis generation failed: {e}")
@@ -812,7 +855,9 @@ class BOMDataProcessor:
                 summary = self.security_analyzer.generate_security_summary(
                     {"security_groups": sg_analysis}
                 )
-                return self._security_summary_to_dict(summary, sg_analysis)
+                result = self._security_summary_to_dict(summary, sg_analysis)
+                self._analysis_found["security_groups"] = sg_analysis
+                return result
             return {}
         except Exception as e:
             self.logger.error(f"Security analysis generation failed: {e}")
