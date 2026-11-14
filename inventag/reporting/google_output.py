@@ -670,6 +670,13 @@ def create_document(
 # ---------------------------------------------------------------- entry point
 
 
+def _failure_text(error: Exception) -> str:
+    """The message of a Google failure, as publish() words it."""
+    if isinstance(error, GoogleOutputError):
+        return str(error)
+    return f"Google API call failed ({type(error).__name__}): {_api_reason(error)}."
+
+
 def publish(
     converter,
     bom_data,
@@ -696,7 +703,16 @@ def publish(
         if options.docs:
             converter.prepare_data(bom_data)
             document = converter.build_word_document(docs_template)
-            results["document_url"] = create_document(services, document, options)
+            try:
+                results["document_url"] = create_document(services, document, options)
+            except Exception as e:
+                if "spreadsheet_url" not in results:
+                    raise
+                # The Sheet is finished and shared; do not leave it unnamed.
+                raise GoogleOutputError(
+                    f"{_failure_text(e)} The Google Sheet was created and is "
+                    f"complete: {results['spreadsheet_url']}"
+                ) from e
     except GoogleOutputError:
         raise
     except Exception as e:
