@@ -671,14 +671,14 @@ class CloudBOMGenerator:
             for acc_id, count in self._accounts_with_expired_session().items()
         ]
 
-    def _accounts_that_read_nothing(self) -> List[str]:
+    def _accounts_without_service_apis(self) -> Dict[str, int]:
         """Accounts in which no service-API listing succeeded and at least
-        one was denied or failed (rows of the Tagging API alone do not
-        count). Failed accounts and accounts whose session expired are not
-        included: they have their own note."""
+        one was denied or failed, with the number of resources the run still
+        found for them (Tagging API rows). Failed accounts and accounts whose
+        session expired are not included: they have their own note."""
         failed_ids = {item["account_id"] for item in self._failed_accounts()}
         failed_ids |= set(self._accounts_with_expired_session())
-        accounts = []
+        accounts = {}
         for acc_id, ctx in self.account_contexts.items():
             if acc_id in failed_ids:
                 continue
@@ -689,16 +689,38 @@ class CloudBOMGenerator:
             ):
                 continue
             if any(e.get("outcome") in FAILED_OUTCOMES for e in entries):
-                accounts.append(acc_id)
+                accounts[acc_id] = int(getattr(ctx, "resource_count", 0) or 0)
         return accounts
 
-    def _read_nothing_notes(self) -> List[str]:
+    def _accounts_that_read_nothing(self) -> List[str]:
+        """Accounts for which the run read nothing at all: every service
+        listing denied or failed and no resource from any other source. They
+        are left out of change tracking. An account the Tagging API still
+        returned resources for is compared (the units whose listing failed
+        are "not compared" by the change report)."""
         return [
-            f"Every service listing of account {acc_id} was denied or failed, "
-            "so nothing was read from its service APIs and it is left out of "
-            "change tracking."
-            for acc_id in self._accounts_that_read_nothing()
+            acc_id
+            for acc_id, count in self._accounts_without_service_apis().items()
+            if count == 0
         ]
+
+    def _read_nothing_notes(self) -> List[str]:
+        notes = []
+        for acc_id, count in self._accounts_without_service_apis().items():
+            if count == 0:
+                notes.append(
+                    f"Every service listing of account {acc_id} was denied or "
+                    "failed, so nothing was read from its service APIs and it is "
+                    "left out of change tracking."
+                )
+            else:
+                notes.append(
+                    f"Every service listing of account {acc_id} was denied or "
+                    f"failed, so the report holds only the {count} resource(s) "
+                    "the Tagging API returned, and the change report does not "
+                    "compare the resources of the listings that failed."
+                )
+        return notes
 
     def _not_read_notes(self) -> List[str]:
         """Per account: the listings that were not read, grouped by service
@@ -707,7 +729,7 @@ class CloudBOMGenerator:
         have their own note and are not listed again."""
         own_note = {item["account_id"] for item in self._failed_accounts()}
         own_note |= set(self._accounts_with_expired_session())
-        own_note |= set(self._accounts_that_read_nothing())
+        own_note |= set(self._accounts_without_service_apis())
         notes = []
         for acc_id, ctx in self.account_contexts.items():
             if acc_id in own_note:

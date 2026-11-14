@@ -262,6 +262,7 @@ class _RunScope:
         self.failed: Dict[Tuple[str, str, str], str] = {}
         self.listed: Set[Tuple[str, str, str]] = set()
         self.tagging_failed: Dict[Tuple[str, str], str] = {}
+        self.tagging_read: Set[Tuple[str, str]] = set()
         for entry in current_run.get("coverage") or []:
             if not isinstance(entry, dict):
                 continue
@@ -273,6 +274,8 @@ class _RunScope:
             if source == "tagging-api":
                 if failed:
                     self.tagging_failed.setdefault((account, region), outcome)
+                elif outcome in ("ok", "empty"):
+                    self.tagging_read.add((account, region))
                 continue
             if source != "service-api":
                 # Billing (Cost Explorer) and anything else is not a listing.
@@ -341,6 +344,10 @@ class _RunScope:
             and (account, service, "global") not in self.listed
         ):
             return f"region {region} of account {account} was not scanned in this run"
+        if _seen_by_tagging(resource) and (account, region) in self.tagging_read:
+            # The Tagging API read its region in this run and did not return
+            # it: it is gone (or lost its tags), as v1.2.0 reported.
+            return None
         reason = self.failed_listing(resource, key)
         if reason:
             return reason
@@ -355,6 +362,16 @@ def _found_by_tagging_only(resource: Dict) -> bool:
     """True for a row only the Tagging API returned (v1.1.4 and v1.2.0 shapes)."""
     if resource.get("source"):
         return resource.get("source") == "tagging-api"
+    return str(resource.get("discovered_via") or "").startswith(
+        "ResourceGroupsTaggingAPI"
+    )
+
+
+def _seen_by_tagging(resource: Dict) -> bool:
+    """True for a row the Tagging API returned (alone or with a service API)."""
+    sources = str(resource.get("sources") or resource.get("source") or "")
+    if "tagging-api" in sources.split("+"):
+        return True
     return str(resource.get("discovered_via") or "").startswith(
         "ResourceGroupsTaggingAPI"
     )

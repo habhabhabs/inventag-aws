@@ -132,8 +132,13 @@ def run_notes(path):
 def test_an_all_denied_run_does_not_poison_the_next_change_report(
     aws, tmp_path, monkeypatch, caplog  # noqa: F811
 ):
-    """Good run, all-denied run (Tagging API allowed), good run: neither the
-    second nor the third run reports anything added or removed."""
+    """Good run, all-denied run (Tagging API allowed), good run.
+
+    Review M2: the account is still compared, because the Tagging API read
+    something; the second run reports nothing removed because the resources
+    of the denied listings are "not compared" (A-05). The third run reports
+    the untagged resources as added, as v1.2.0 did: telling those apart
+    needs the per-unit snapshot key (owner part of A-05)."""
     caplog.set_level(logging.INFO)
     results = result_spy(monkeypatch)
     deny = DenyEverything(monkeypatch, allow_tagging=True)
@@ -151,7 +156,7 @@ def test_an_all_denied_run_does_not_poison_the_next_change_report(
     assert second["failed_accounts"] == []  # unchanged: drives exit code 5
     assert changes(second) == (0, 0)
 
-    # The account is in the existing accounts_failed list; no new key.
+    # The account is scanned (Tagging API rows); no new key.
     files = snapshot_files(tmp_path)
     assert len(files) == 2
     data = json.loads(files[-1].read_text())
@@ -159,29 +164,29 @@ def test_an_all_denied_run_does_not_poison_the_next_change_report(
     assert set(data["metadata"]) == V120_METADATA_KEYS
     assert set(data["metadata"]["tags"]) <= V120_TAG_KEYS
     assert data["metadata"]["version"] == "1.1"
-    assert data["metadata"]["accounts_failed"] == [GOOD_ID]
-    assert data["metadata"]["accounts_scanned"] == []
+    assert not data["metadata"]["accounts_failed"]
+    assert data["metadata"]["accounts_scanned"] == [GOOD_ID]
     state_id = files[-1].stem[len("state_") :]
     loaded = StateManager(state_dir=str(tmp_path / "out" / "state")).load_state(
         state_id
     )
-    assert loaded is not None and loaded.metadata.accounts_failed == [GOOD_ID]
+    assert loaded is not None and loaded.metadata.accounts_scanned == [GOOD_ID]
 
     # The report's Run notes name the account; one warning says the same.
     new_reports = [p for p in reports(tmp_path / "out") if p not in before]
     assert len(new_reports) == 1
     notes = run_notes(new_reports[0])
-    assert any(
-        GOOD_ID in n and "left out of change tracking" in n for n in notes
-    ), notes
+    assert any(GOOD_ID in n and "Tagging API returned" in n for n in notes), notes
     warnings = [
-        m for m in logged(caplog) if GOOD_ID in m and "left out of change tracking" in m
+        m for m in logged(caplog) if GOOD_ID in m and "Tagging API returned" in m
     ]
     assert len(warnings) == 1, warnings
 
     deny.on = False
     assert run_cli(*ARGS) == 0
-    assert changes(results[-1]) == (0, 0)
+    added, removed = changes(results[-1])
+    assert removed == 0
+    assert added > 0  # untagged resources, as in v1.2.0 (owner part of A-05)
 
 
 def test_a_run_that_read_nothing_saves_no_snapshot(

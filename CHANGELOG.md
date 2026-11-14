@@ -16,13 +16,18 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   and the next run with `--resume` scans it again. The resume hint counts it
   among the accounts still to scan. A listing that is only denied still lets
   the account be saved.
-- An account in which every service listing was denied or failed no longer
-  becomes the baseline of the change report. The snapshot lists it under
+- An account for which a run read nothing (every service listing denied or
+  failed, and no resource from the Tagging API either) no longer becomes the
+  baseline of the change report. The snapshot lists it under
   `accounts_failed`, so the next run neither reports its resources as removed
   nor, after it, as added. The report's Run notes and one warning name the
   account. A run in which nothing was read saves no snapshot, and its message
   says "nothing could be read" instead of "none found, or the filters removed
-  all of them". Exit codes are unchanged.
+  all of them". When every service listing is denied but the Tagging API
+  returns resources, the account is compared as before (a deleted tagged
+  resource shows as removed, a changed tag as modified); a note says the
+  report holds only what the Tagging API returned, and resources whose
+  listing failed are not compared. Exit codes are unchanged.
 - A session that expires during the scan is now visible: the report's Run
   notes say the account is incomplete and how many listings were not read,
   one error line names the account, and the snapshot lists it under
@@ -55,8 +60,10 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 - The change report no longer shows resources as removed when this run
   could not read them: a resource whose service listing was denied,
   throttled or failed in this run, or that lies in a region or service this
-  run did not scan, is counted under `resources_not_compared` instead. A run
-  that read everything gives the same report as before.
+  run did not scan, is counted under `resources_not_compared` instead. A
+  resource the Tagging API returned before is still compared when the Tagging
+  API read its region in this run. A run that read everything gives the same
+  report as before.
 - A previous snapshot whose `resources` holds entries that are not objects is
   skipped with the file named (before: "'str' object has no attribute
   'get'"). A previous snapshot in an older format (such as one written by
