@@ -109,10 +109,16 @@ scanning:
 
 <!-- BEGIN EXAMPLE OUTPUT: board-missing-logo -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - ERROR - Template problem:
 inventag - ERROR -   ~/acme-infra/.inventag/templates/board-report.yaml:10: spec.logo: logo file not found: ~/acme-infra/.inventag/templates/brand/acme-logo.png
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Output"
 1
 ```
 

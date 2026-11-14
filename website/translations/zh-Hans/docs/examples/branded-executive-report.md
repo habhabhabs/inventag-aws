@@ -86,10 +86,16 @@ Tag policy 'security-baseline': 1 of 23 resources compliant (4.3%), 22 non-compl
 
 如果徽标缺失，或者不是 Word 支持的图片格式，运行会在扫描之前停止：
 
-```text title="Terminal"
+```text title="输出"
 inventag - ERROR - Template problem:
 inventag - ERROR -   ~/acme-infra/.inventag/templates/board-report.yaml:10: spec.logo: logo file not found: ~/acme-infra/.inventag/templates/brand/acme-logo.png
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="输出"
 1
 ```
 

@@ -88,10 +88,16 @@ Una tabla del documento:
 Si falta el logotipo, o no es una imagen compatible con Word, la ejecución se
 detiene antes de analizar:
 
-```text title="Terminal"
+```text title="Salida"
 inventag - ERROR - Template problem:
 inventag - ERROR -   ~/acme-infra/.inventag/templates/board-report.yaml:10: spec.logo: logo file not found: ~/acme-infra/.inventag/templates/brand/acme-logo.png
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Salida"
 1
 ```
 

@@ -87,10 +87,16 @@ Un tableau du document :
 Si le logo est introuvable, ou s’il n’est pas dans un format d’image pris en charge par Word, l’exécution
 s’arrête avant l’analyse :
 
-```text title="Terminal"
+```text title="Sortie"
 inventag - ERROR - Template problem:
 inventag - ERROR -   ~/acme-infra/.inventag/templates/board-report.yaml:10: spec.logo: logo file not found: ~/acme-infra/.inventag/templates/brand/acme-logo.png
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Sortie"
 1
 ```
 

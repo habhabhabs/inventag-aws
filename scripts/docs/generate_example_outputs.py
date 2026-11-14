@@ -629,6 +629,23 @@ def code(text: str, lang: str = "text", title: str = "") -> str:
     return f"```{lang}{title_attr}\n{text.rstrip()}\n```"
 
 
+def terminal(command: str) -> str:
+    """A block the reader types: titled Terminal, no `$` prompt (as every command block)."""
+    return code(command, lang="bash", title="Terminal")
+
+
+def output(text: str, note: str = "") -> str:
+    """A block that shows what the program prints: titled Output."""
+    return code(text, title="Output" + (f" ({note})" if note else ""))
+
+
+def with_exit_code(console: str, exit_code: int, note: str = "") -> str:
+    """The console output, then the typed `echo $?`, then the exit code it prints."""
+    return "\n\n".join(
+        [output(console, note), terminal("echo $?"), output(str(exit_code), note)]
+    )
+
+
 def details(summary: str, body: str) -> str:
     return f"<details>\n<summary>{summary}</summary>\n\n{body}\n\n</details>"
 
@@ -1035,7 +1052,7 @@ def collect(images: bool) -> Dict[str, str]:
             r = run_cli("ci", ["--template", "ci-pipeline"], w)
             add(
                 "ci-console",
-                code(r.console + f"\n$ echo $?\n{r.exit_code}", title="Terminal"),
+                with_exit_code(r.console, r.exit_code),
             )
             add(
                 "ci-files",
@@ -1126,7 +1143,7 @@ def collect(images: bool) -> Dict[str, str]:
             )
             add(
                 "board-missing-logo",
-                code(err.console + f"\n$ echo $?\n{err.exit_code}", title="Terminal"),
+                with_exit_code(err.console, err.exit_code),
             )
 
             # 9. custom columns
@@ -1368,7 +1385,7 @@ def collect(images: bool) -> Dict[str, str]:
             )
             add(
                 "validate-credentials",
-                code(r.console + f"\n$ echo $?\n{r.exit_code}", title="Terminal"),
+                with_exit_code(r.console, r.exit_code),
             )
             r = run_cli(
                 "validate-ops",
@@ -1383,7 +1400,7 @@ def collect(images: bool) -> Dict[str, str]:
             )
             add(
                 "validate-operations",
-                code(r.console + f"\n$ echo $?\n{r.exit_code}", title="Terminal"),
+                with_exit_code(r.console, r.exit_code),
             )
             for flag in (
                 ["--create-google-docs"],
@@ -1393,18 +1410,19 @@ def collect(images: bool) -> Dict[str, str]:
             ):
                 r = run_cli("flag", flag, w)
                 blocks.setdefault("failing-flags", "")
-                blocks[
-                    "failing-flags"
-                ] += f"$ inventag {' '.join(flag)}\n{r.console}\n(exit code {r.exit_code})\n\n"
-            blocks["failing-flags"] = code(
-                blocks["failing-flags"].strip(), title="Terminal"
-            )
+                blocks["failing-flags"] += (
+                    terminal(f"inventag {' '.join(flag)}")
+                    + "\n\n"
+                    + output(f"{r.console}\n(exit code {r.exit_code})")
+                    + "\n\n"
+                )
+            blocks["failing-flags"] = blocks["failing-flags"].strip()
             r = run_cli(
                 "bare-role", ["--cross-account-role", "InvenTagReadOnly", *regions], w
             )
             add(
                 "bare-role",
-                code(r.console + f"\n$ echo $?\n{r.exit_code}", title="Terminal"),
+                with_exit_code(r.console, r.exit_code),
             )
             drop_guard()
             boto3.client("s3", region_name="us-east-1").create_bucket(
@@ -1491,19 +1509,21 @@ def collect(images: bool) -> Dict[str, str]:
                 quiet = name == "error-access-denied-ce"
                 with simulate_aws_error(service, operation, region, err_code, message):
                     r = run_cli(name, argv, w)
-                body = r.console + f"\n$ echo $?\n{r.exit_code}"
+                note = "simulated AWS error response"
+                parts = [with_exit_code(r.console, r.exit_code, note)]
                 if quiet:
                     with simulate_aws_error(
                         service, operation, region, err_code, message
                     ):
                         v = run_cli(name, argv + ["--debug"], w, keep=err_code)
-                    body += (
-                        "\n\n$ # the same run with --debug, lines that mention "
-                        + err_code
-                        + "\n"
-                        + (v.console or "(none)")
-                    )
-                add(name, code(body, title="Terminal (simulated AWS error response)"))
+                    parts += [
+                        terminal(
+                            "# the same run with --debug, lines that mention "
+                            + err_code
+                        ),
+                        output(v.console or "(none)", note),
+                    ]
+                add(name, "\n\n".join(parts))
             saved_env = {
                 k: os.environ.pop(k)
                 for k in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY")
@@ -1513,7 +1533,7 @@ def collect(images: bool) -> Dict[str, str]:
             r = run_cli("no-credentials", ["--create-excel", *regions], w)
             add(
                 "error-no-credentials",
-                code(r.console + f"\n$ echo $?\n{r.exit_code}", title="Terminal"),
+                with_exit_code(r.console, r.exit_code),
             )
             os.environ.update(saved_env)
             del os.environ["AWS_SHARED_CREDENTIALS_FILE"], os.environ["AWS_CONFIG_FILE"]
@@ -1532,7 +1552,7 @@ def collect(images: bool) -> Dict[str, str]:
             )
             add(
                 "error-bad-accounts",
-                code(r.console + f"\n$ echo $?\n{r.exit_code}", title="Terminal"),
+                with_exit_code(r.console, r.exit_code),
             )
             (w / "bad.yaml").write_text(
                 "kind: report\nname: bad\nspec:\n  colors:\n    header_fill: blue\n"
@@ -1540,12 +1560,12 @@ def collect(images: bool) -> Dict[str, str]:
             r = run_cli("bad-template", ["--template", "./bad.yaml", *regions], w)
             add(
                 "error-bad-template",
-                code(r.console + f"\n$ echo $?\n{r.exit_code}", title="Terminal"),
+                with_exit_code(r.console, r.exit_code),
             )
             r = run_cli("no-template", ["--template", "acme-bomm", *regions], w)
             add(
                 "error-unknown-template",
-                code(r.console + f"\n$ echo $?\n{r.exit_code}", title="Terminal"),
+                with_exit_code(r.console, r.exit_code),
             )
 
             # 12. network review (all fields)
@@ -1610,6 +1630,13 @@ MARKER = re.compile(
 VOLATILE = re.compile(r'("(?:total|allowed)_calls": )\d+')
 
 
+# Pages that another team edits for v1.2.1. The Terminal/Output split of their
+# ci-console block is applied there by hand; remove this table once it has landed.
+PENDING_SPLIT = {
+    "ci-console": {"docs/guides/run-in-ci.md", "docs/examples/tag-policy-in-ci.md"}
+}
+
+
 def apply(blocks: Dict[str, str], check: bool) -> int:
     stale, unknown = [], []
     used = set()
@@ -1619,6 +1646,8 @@ def apply(blocks: Dict[str, str], check: bool) -> int:
         def fill(match):
             name = match.group(1)
             used.add(name)
+            if str(page.relative_to(ROOT)) in PENDING_SPLIT.get(name, ()):
+                return match.group(0)
             if name not in blocks:
                 unknown.append(f"{page.relative_to(ROOT)}: {name}")
                 return match.group(0)
