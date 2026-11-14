@@ -20,44 +20,55 @@ def repo_root():
     return REPO_ROOT
 
 
+def _run_uses_moto(session) -> bool:
+    """True when a collected test file uses moto: imported at module level (so it
+    is in ``sys.modules`` by now) or inside a fixture or test (found in the text
+    of the collected files). A run of pure unit tests does not import moto."""
+    if "moto" in sys.modules:
+        return True
+    files = {Path(str(item.fspath)) for item in session.items}
+    return any("moto" in path.read_text(encoding="utf-8") for path in files)
+
+
 @pytest.fixture(autouse=True, scope="session")
-def _moto_without_default_images():
-    """Switch off moto's ~1,300 default AMIs and snapshots for the whole session.
+def _moto_session_setup(request):
+    """Everything the test process does to moto, once, before the first test.
 
-    moto reads ``MOTO_EC2_LOAD_DEFAULT_AMIS`` when it builds an EC2 backend, and
-    it rebuilds its backends when ``mock_aws`` exits, which is before a per-test
-    ``monkeypatch`` puts the variable back. A test that set it per test
-    therefore left the next test with no default AMIs, depending on the order
-    of the files (review-behaviour T1: ``test_integration_row_sources.py``
-    followed by a test that reads ``describe_images``). The
-    variable is set here once, before the first test, and no test sets it
-    again. Child processes (the e2e runs) inherit it.
+    1. ``MOTO_EC2_LOAD_DEFAULT_AMIS=false``: switch off moto's ~1,300 default AMIs
+       and snapshots. moto reads the variable when it builds an EC2 backend, and
+       it rebuilds its backends when ``mock_aws`` exits, which is before a
+       per-test ``monkeypatch`` puts the variable back. A test that set it per
+       test therefore left the next test with no default AMIs, depending on the
+       order of the files (review-behaviour T1: ``test_integration_row_sources.py``
+       followed by a test that reads ``describe_images``). It is set here, and no
+       test sets it again. Child processes (the e2e runs) inherit it. It comes
+       first because step 2 is the first code that can build a moto backend.
+    2. Import all of moto's service modules in this one thread (see
+       ``tests/moto_warmup.py``: a first call from many discovery threads at once
+       can raise "deadlock detected by _ModuleLock"). About 4 s, paid only by a run
+       that uses moto.
+    3. Serialise moto's request handling (see ``tests/moto_serial.py``: moto is
+       not thread safe, and discovery calls it from up to 15 threads). It comes
+       after step 2 because importing the lock helper imports moto, and step 2
+       must not run for a run that does not use moto; no request is made in
+       step 2, so it needs no lock.
+    Teardown runs in the reverse order.
     """
-    patch = pytest.MonkeyPatch()
-    patch.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
-    yield
-    patch.undo()
-
-
-_moto_warmed = False
-
-
-@pytest.fixture(autouse=True)
-def _moto_modules_loaded_before_threads():
-    """When a test run uses moto, import all of moto's service modules once, in the
-    main thread, before the first test (see ``tests/moto_warmup.py``: a first call
-    from many threads at once can raise "deadlock detected by _ModuleLock").
-
-    Only runs that collected a moto-using file pay the 4 s; a run of pure unit
-    tests does not import moto at all.
-    """
-    global _moto_warmed
-    if not _moto_warmed and "moto" in sys.modules:
+    env = pytest.MonkeyPatch()
+    env.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
+    undo_lock = None
+    if _run_uses_moto(request.session):
         from tests.moto_warmup import warm_moto_modules
 
         warm_moto_modules()
-        _moto_warmed = True
+
+        from tests.moto_serial import serialize_moto_requests
+
+        undo_lock = serialize_moto_requests()
     yield
+    if undo_lock is not None:
+        undo_lock()
+    env.undo()
 
 
 @pytest.fixture(autouse=True)
@@ -219,14 +230,3 @@ def _no_outbound_network(monkeypatch):
 
     monkeypatch.setattr(socket.socket, "connect", guarded_connect)
     monkeypatch.setattr(socket.socket, "connect_ex", guarded_connect_ex)
-
-
-@pytest.fixture(autouse=True, scope="session")
-def _moto_one_request_at_a_time():
-    """Discovery threads share one moto in the test process; moto is not
-    thread safe. See tests/moto_serial.py for the moto frame that fails."""
-    from tests.moto_serial import serialize_moto_requests
-
-    undo = serialize_moto_requests()
-    yield
-    undo()
