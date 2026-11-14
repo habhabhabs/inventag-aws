@@ -28,8 +28,10 @@ os.environ.pop("AWS_PROFILE", None)
 from moto import mock_aws  # noqa: E402
 
 from estate import seed_estate  # noqa: E402
+from tests.moto_warmup import warm_moto_modules  # noqa: E402
 
 if __name__ == "__main__":
+    warm_moto_modules()  # no first-call import race between discovery threads
     with mock_aws():
         if os.environ.get("INVENTAG_E2E_EMPTY") != "1":
             seed_estate()

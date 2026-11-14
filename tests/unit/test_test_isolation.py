@@ -10,6 +10,7 @@ from pathlib import Path
 
 import boto3
 import pytest
+from moto import mock_aws
 
 
 def test_home_and_user_config_point_at_a_scratch_directory(_isolated_home):
@@ -294,3 +295,20 @@ def test_every_skip_states_a_reason():
             if not (isinstance(reason, ast.Constant) and str(reason.value).strip()):
                 found.append(f"{_where(path, node)}: {name}")
     assert not found, "skips with no reason:\n" + "\n".join(found)
+
+
+def test_moto_has_no_default_images_whatever_ran_before():
+    """The T1 pair: after ``test_integration_row_sources.py`` this used to see no
+    images and, run alone, it saw 1,300. Now every order sees none."""
+    with mock_aws():
+        ec2 = boto3.client("ec2", region_name="us-east-1")
+        assert ec2.describe_images(Owners=["amazon"])["Images"] == []
+
+
+def test_moto_service_modules_are_imported_before_any_thread_needs_them():
+    """A first call from several threads at once can raise "deadlock detected by
+    _ModuleLock" inside moto. tests/conftest.py imports the modules up front."""
+    import sys
+
+    for module in ("moto.awslambda.utils", "moto.kms.models", "moto.iam.exceptions"):
+        assert module in sys.modules, module

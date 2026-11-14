@@ -1,6 +1,7 @@
 """Shared pytest fixtures."""
 
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -23,10 +24,12 @@ def repo_root():
 def _moto_without_default_images():
     """Switch off moto's ~1,300 default AMIs and snapshots for the whole session.
 
-    moto reads ``MOTO_EC2_LOAD_DEFAULT_AMIS`` when it builds an EC2 backend and
-    keeps that backend after a per-test ``monkeypatch`` has put the variable
-    back. A test that set it per test therefore changed what the next test file
-    saw, depending on the order of the files (review-behaviour T1). The
+    moto reads ``MOTO_EC2_LOAD_DEFAULT_AMIS`` when it builds an EC2 backend, and
+    it rebuilds its backends when ``mock_aws`` exits, which is before a per-test
+    ``monkeypatch`` puts the variable back. A test that set it per test
+    therefore left the next test with no default AMIs, depending on the order
+    of the files (review-behaviour T1: ``test_integration_row_sources.py``
+    followed by a test that reads ``describe_images``). The
     variable is set here once, before the first test, and no test sets it
     again. Child processes (the e2e runs) inherit it.
     """
@@ -34,6 +37,27 @@ def _moto_without_default_images():
     patch.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
     yield
     patch.undo()
+
+
+_moto_warmed = False
+
+
+@pytest.fixture(autouse=True)
+def _moto_modules_loaded_before_threads():
+    """When a test run uses moto, import all of moto's service modules once, in the
+    main thread, before the first test (see ``tests/moto_warmup.py``: a first call
+    from many threads at once can raise "deadlock detected by _ModuleLock").
+
+    Only runs that collected a moto-using file pay the 4 s; a run of pure unit
+    tests does not import moto at all.
+    """
+    global _moto_warmed
+    if not _moto_warmed and "moto" in sys.modules:
+        from tests.moto_warmup import warm_moto_modules
+
+        warm_moto_modules()
+        _moto_warmed = True
+    yield
 
 
 @pytest.fixture(autouse=True)
