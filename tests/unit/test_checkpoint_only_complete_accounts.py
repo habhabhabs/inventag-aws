@@ -24,6 +24,7 @@ from tests.unit.test_docs_claims_v120 import (  # noqa: F401 (fixtures)
     BASE,
     GOOD,
     GOOD_ID,
+    MID_SCAN,
     OTHER,
     OTHER_ID,
     Expiry,
@@ -42,14 +43,16 @@ from tests.unit.test_docs_claims_v120 import (  # noqa: F401 (fixtures)
 def test_resume_scans_again_an_account_whose_session_expired_part_way(
     aws, tmp_path, monkeypatch, caplog  # noqa: F811
 ):
-    """GOOD's session expires after 20 calls, OTHER cannot assume its role.
+    """GOOD's session expires part-way (MID_SCAN), OTHER cannot assume its role.
     The second run with ``--resume`` must scan GOOD again."""
     seed_account(OTHER_ID, OTHER["role_arn"])
     caplog.set_level(logging.INFO)
     roles = RoleControl(monkeypatch, failing={OTHER_ID})
     # moto replaces the access key of the environment, so ask boto3 for it.
     default_key = boto3.Session().get_credentials().access_key
-    expiry = Expiry(monkeypatch, allow=20, key_of=lambda: default_key)
+    expiry = Expiry(
+        monkeypatch, allow=0, key_of=lambda: default_key, keep_services=MID_SCAN
+    )
     path = accounts_file(tmp_path, [GOOD, OTHER])
     assert run_cli("--accounts-file", path, *BASE, "--output-directory", "out") == 0
     assert expiry.raised > 0

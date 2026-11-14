@@ -174,21 +174,36 @@ class RoleControl:
         monkeypatch.setattr(cbg.CloudBOMGenerator, "_assume_role_session", assume)
 
 
+# A session that expired part-way, independent of thread timing: with
+# ``Expiry(..., allow=0, keep_services=MID_SCAN)`` the EC2 calls (region
+# check, VPC, subnet and security group listings) work and every other
+# service's calls raise the expired-session code. Counting the first N calls
+# instead depends on which of discovery's parallel listings come first: in
+# about 1 run in 6 the N calls all went to listings with no resources, and
+# the run read nothing (Part 3 of reports/fix-track-a.md).
+MID_SCAN = ("ec2",)
+
+
 class Expiry:
     """After ``allow`` successful non-STS calls (of the chosen credentials, or of
-    all calls when ``access_key`` is None) every call raises ``code``."""
+    all calls when ``access_key`` is None) every call raises ``code``. Calls to
+    ``keep_services`` always work and are not counted."""
 
-    def __init__(self, monkeypatch, allow, code="ExpiredToken", key_of=None):
+    def __init__(
+        self, monkeypatch, allow, code="ExpiredToken", key_of=None, keep_services=()
+    ):
         self.allow = allow
         self.code = code
         self.key_of = key_of  # callable returning the access key to expire
+        self.keep_services = frozenset(keep_services)
         self.seen = 0
         self.raised = 0
         original = botocore.client.BaseClient._make_api_call
         expiry = self
 
         def call(client, operation_name, api_params):
-            if client.meta.service_model.service_name == "sts":
+            service = client.meta.service_model.service_name
+            if service == "sts" or service in expiry.keep_services:
                 return original(client, operation_name, api_params)
             if expiry.key_of is not None:
                 creds = client._request_signer._credentials
@@ -495,7 +510,7 @@ def test_c4_single_account_expiry_exit_0_partial_report_with_note(
     aws, tmp_path, monkeypatch, caplog, capsys
 ):
     caplog.set_level(logging.INFO)
-    expiry = Expiry(monkeypatch, allow=20, code="ExpiredToken")
+    expiry = Expiry(monkeypatch, allow=0, code="ExpiredToken", keep_services=MID_SCAN)
     path = accounts_file(tmp_path, [GOOD])
     code = run_cli(
         "--accounts-file",
@@ -581,7 +596,9 @@ def test_c4_resume_scans_again_a_partly_read_account(
     caplog.set_level(logging.INFO)
     roles = RoleControl(monkeypatch, failing={OTHER_ID})
     default_key = boto3.Session().get_credentials().access_key
-    expiry = Expiry(monkeypatch, allow=20, key_of=lambda: default_key)
+    expiry = Expiry(
+        monkeypatch, allow=0, key_of=lambda: default_key, keep_services=MID_SCAN
+    )
     path = accounts_file(tmp_path, [GOOD, OTHER])
     assert run_cli("--accounts-file", path, *BASE, "--output-directory", "out") == 0
     assert expiry.raised > 0

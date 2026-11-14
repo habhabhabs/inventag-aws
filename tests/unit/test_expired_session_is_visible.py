@@ -20,6 +20,7 @@ from tests.unit.test_docs_claims_v120 import (  # noqa: F401 (fixtures)
     BASE,
     GOOD,
     GOOD_ID,
+    MID_SCAN,
     Expiry,
     accounts_file,
     aws,
@@ -59,7 +60,7 @@ def test_an_expired_session_is_named_in_the_report_log_and_snapshot(
     aws, tmp_path, monkeypatch, caplog, code, flag  # noqa: F811
 ):
     caplog.set_level(logging.INFO)
-    expiry = Expiry(monkeypatch, allow=20, code=code)
+    expiry = Expiry(monkeypatch, allow=0, code=code, keep_services=MID_SCAN)
     path = accounts_file(tmp_path, [GOOD])
     exit_code = run_cli(
         "--accounts-file", path, *BASE, *flag, "--output-directory", "out"
@@ -89,7 +90,7 @@ def test_an_expired_session_is_named_in_the_report_log_and_snapshot(
 def test_the_run_after_an_expired_session_reports_nothing_removed(
     aws, tmp_path, monkeypatch, caplog  # noqa: F811
 ):
-    """Good run, run whose session expires after 20 calls, good run: no
+    """Good run, run whose session expires part-way (MID_SCAN), good run: no
     resource is reported as removed or added."""
     caplog.set_level(logging.INFO)
     results = result_spy(monkeypatch)
@@ -97,7 +98,7 @@ def test_the_run_after_an_expired_session_reports_nothing_removed(
     args = ["--accounts-file", path, *BASE, "--output-directory", "out"]
 
     assert run_cli(*args) == 0
-    expiry = Expiry(monkeypatch, allow=20)
+    expiry = Expiry(monkeypatch, allow=0, keep_services=MID_SCAN)
     assert run_cli(*args) == 0
     assert expiry.raised > 0
     assert results[-1]["failed_accounts"] == []  # unchanged: drives exit 5

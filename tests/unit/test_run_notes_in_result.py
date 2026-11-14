@@ -21,6 +21,7 @@ from tests.unit.test_checkpoint_only_complete_accounts import (  # noqa: F401
 from tests.unit.test_docs_claims_v120 import (  # noqa: F401 (fixtures)
     BASE,
     GOOD,
+    MID_SCAN,
     Expiry,
     accounts_file,
     aws,
@@ -36,7 +37,7 @@ def test_the_result_holds_the_run_notes_the_report_shows(
 ):
     caplog.set_level(logging.INFO)
     results = result_spy(monkeypatch)
-    Expiry(monkeypatch, allow=20)
+    Expiry(monkeypatch, allow=0, keep_services=MID_SCAN)
     path = accounts_file(tmp_path, [GOOD])
     assert run_cli("--accounts-file", path, *BASE, "--output-directory", "out") == 0
     shown = run_notes(reports(tmp_path / "out")[0])
