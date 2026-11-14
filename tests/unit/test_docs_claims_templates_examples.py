@@ -1006,3 +1006,45 @@ def test_t29_reports_stay_on_disk_after_a_failed_upload(aws, monkeypatch, tmp_pa
     )
     assert code == 1
     assert glob.glob(str(tmp_path / "bom_output" / "*.xlsx"))
+
+
+def test_t31_services_in_a_config_template_still_scan_other_services_a49(
+    aws, monkeypatch, tmp_path
+):
+    """reference.md spec.services (register A-49), scan side: with
+    ``services: [S3]`` the report holds S3 only (T26), but the scan still calls
+    the APIs of other services. Counts every AWS API call per service."""
+    import collections
+
+    import boto3
+    from botocore.client import BaseClient
+
+    boto3.client("sqs", region_name="us-east-1").create_queue(QueueName="q-1")
+    calls = collections.Counter()
+    original = BaseClient._make_api_call
+
+    def counting(self, operation_name, api_params):
+        calls[self.meta.service_model.service_name] += 1
+        return original(self, operation_name, api_params)
+
+    monkeypatch.setattr(BaseClient, "_make_api_call", counting)
+    cfg = tmp_path / "only-s3.yaml"
+    cfg.write_text(
+        yaml.safe_dump(
+            {
+                "format_version": 1,
+                "kind": "config",
+                "name": "only-s3",
+                "spec": {
+                    "regions": ["us-east-1"],
+                    "services": ["S3"],
+                    "outputs": ["excel"],
+                },
+            }
+        )
+    )
+    code = run_inventag(monkeypatch, tmp_path, "--template", str(cfg))
+    assert code == 0
+    other = {s: n for s, n in calls.items() if s not in ("s3", "sts")}
+    print("calls per service:", dict(calls))
+    assert other.get("sqs", 0) > 0, dict(calls)  # other services are still called
