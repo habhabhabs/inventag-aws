@@ -8,6 +8,8 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v1.2.0] - 2026-11-14
+
 ### Upgrade notes
 
 - The new listings need more read-only IAM actions (see
@@ -584,7 +586,8 @@ One-time setup for PyPI:
 3. In the GitHub repository settings, set the variable `PYPI_PUBLISH` to
    `true`.
 
-[Unreleased]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.4...HEAD
+[Unreleased]: https://github.com/habhabhabs/inventag-aws/compare/v1.2.0...HEAD
+[v1.2.0]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.4...v1.2.0
 [v1.1.4]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.3...v1.1.4
 [v1.1.3]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.2...v1.1.3
 [v1.1.2]: https://github.com/habhabhabs/inventag-aws/compare/v1.1.1...v1.1.2
