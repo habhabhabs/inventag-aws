@@ -25,9 +25,9 @@ mainteneur un canal privé.
 
 ## Ce qu’InvenTag fait de vos comptes {#what-inventag-does-with-your-accounts}
 
-- **Il ne fait que lire, à part un téléversement que vous demandez.** Une protection en lecture seule vérifie
-  chaque appel AWS avant son envoi. La seule exception est le téléversement de ses propres fichiers de rapport
-  vers votre compartiment S3, et seulement lorsque vous passez `--s3-bucket`. Elle bloque tout ce qui n’est pas une lecture, ainsi que les lectures qui renvoient des secrets
+- **Il ne fait que lire, à part un téléversement que vous demandez.** La seule exception est le téléversement de ses propres fichiers de rapport
+  vers votre compartiment S3, et seulement lorsque vous passez `--s3-bucket`. Une protection en lecture seule vérifie
+  chaque appel AWS avant son envoi. Elle bloque tout ce qui n’est pas une lecture, ainsi que les lectures qui renvoient des secrets
   ou des données, comme `secretsmanager:GetSecretValue`, `s3:GetObject`,
   `cloudformation:GetTemplate` ou `ec2:GetLaunchTemplateData`. Elle bloque aussi des
   opérations autorisées quand un paramètre demande un secret (clés d’API avec

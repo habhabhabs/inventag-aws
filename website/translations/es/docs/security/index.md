@@ -24,10 +24,10 @@ persona mantenedora un canal privado.
 
 ## Qué hace InvenTag con tus cuentas {#what-inventag-does-with-your-accounts}
 
-- **Solo lee, aparte de una carga que tú pides.** Una protección de solo lectura
-  comprueba cada llamada a AWS antes de enviarla. La única excepción es la carga
+- **Solo lee, aparte de una carga que tú pides.** La única excepción es la carga
   de sus propios archivos de informe a tu bucket de S3, y solo cuando pasas
-  `--s3-bucket`. Bloquea todo lo que no sea una lectura, y las lecturas que
+  `--s3-bucket`. Una protección de solo lectura comprueba cada llamada a AWS
+  antes de enviarla. Bloquea todo lo que no sea una lectura, y las lecturas que
   devuelven secretos o datos, como `secretsmanager:GetSecretValue`,
   `s3:GetObject`, `cloudformation:GetTemplate` o `ec2:GetLaunchTemplateData`.
   También bloquea operaciones permitidas cuando un parámetro pide un secreto

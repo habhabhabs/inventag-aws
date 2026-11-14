@@ -21,7 +21,7 @@ sidebar_position: 1
 
 ## InvenTag 如何处理你的账户 {#what-inventag-does-with-your-accounts}
 
-- **它只读取，除了一次由你要求的上传。** 只读防护会在每个 AWS 调用发出之前检查它。唯一的例外是把它自己的报告文件上传到你的 S3 存储桶，而且仅在你传入 `--s3-bucket` 时才会这样做。它会拦截所有非读取的调用，
+- **它只读取，除了一次由你要求的上传。** 唯一的例外是把它自己的报告文件上传到你的 S3 存储桶，而且仅在你传入 `--s3-bucket` 时才会这样做。只读防护会在每个 AWS 调用发出之前检查它。它会拦截所有非读取的调用，
   以及会返回机密或数据的读取，例如 `secretsmanager:GetSecretValue`、`s3:GetObject`、
   `cloudformation:GetTemplate` 或 `ec2:GetLaunchTemplateData`。当参数要求返回机密时
   （带 `includeValue` 的 API 密钥、针对 `userData` 的 `ec2:DescribeInstanceAttribute`），

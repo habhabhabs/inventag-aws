@@ -21,7 +21,7 @@ sidebar_position: 1
 
 ## InvenTag 如何處理你的帳戶 {#what-inventag-does-with-your-accounts}
 
-- **它唯讀取，除了一次由你要求的上傳。** 唯讀防護會在每個 AWS 呼叫發出之前檢查它。唯一的例外是把它自己的報告檔案上傳到你的 S3 儲存貯體，而且僅在你傳入 `--s3-bucket` 時才會這樣做。它會攔截所有非讀取的呼叫，
+- **它唯讀取，除了一次由你要求的上傳。** 唯一的例外是把它自己的報告檔案上傳到你的 S3 儲存貯體，而且僅在你傳入 `--s3-bucket` 時才會這樣做。唯讀防護會在每個 AWS 呼叫發出之前檢查它。它會攔截所有非讀取的呼叫，
   以及會返回機密或資料的讀取，例如 `secretsmanager:GetSecretValue`、`s3:GetObject`、
   `cloudformation:GetTemplate` 或 `ec2:GetLaunchTemplateData`。當引數要求返回機密時
   （帶 `includeValue` 的 API 金鑰、針對 `userData` 的 `ec2:DescribeInstanceAttribute`），

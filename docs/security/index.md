@@ -25,9 +25,9 @@ maintainer for a private channel.
 
 ## What InvenTag does with your accounts
 
-- **It only reads, apart from one upload you ask for.** A read-only guard
-  checks every AWS call before it is sent. The one exception is the upload of
-  its own report files to your S3 bucket, and only when you pass `--s3-bucket`.
+- **It only reads, apart from one upload you ask for.** The one exception is
+  the upload of its own report files to your S3 bucket, and only when you pass
+  `--s3-bucket`. A read-only guard checks every AWS call before it is sent.
   It blocks anything that is not a read, and reads that return secrets
   or data, such as `secretsmanager:GetSecretValue`, `s3:GetObject`,
   `cloudformation:GetTemplate` or `ec2:GetLaunchTemplateData`. It also blocks
