@@ -41,7 +41,7 @@ data).
 | The file you name with `--audit-output` | When you ask for it | Every AWS operation the run called |
 | `state/partial/<key>/<account-id>.json` | A run in which some accounts failed | Results of the accounts that finished, reused by `--resume` and removed after a complete run |
 
-`<timestamp>` is `YYYYMMDD_HHMMSS`.
+`<timestamp>` is `YYYYMMDD_HHMMSS`. Report, Word, changelog and tag compliance names use your computer's local time. The snapshot and the S3 folder use UTC.
 
 ## Excel report
 
@@ -87,7 +87,7 @@ Previews of each layout, made from real files, are in
 ## Word report
 
 **Without a template:** a title, an executive summary, a service table, and
-up to 50 resources per service in six columns.
+up to 50 resources per service in six columns: Name, Id, Type, Region, Tags and Service. If no resource of the service has a name, the columns are Id, Type, Region, Tags, Service and Source Account Name.
 
 **With a report template:** the sections listed in `word.sections`. Tables
 have a header row that repeats on each page and is marked as a header for

@@ -14,7 +14,8 @@ correspondances d’étiquettes et un fichier de descriptions de services que le
 
 Pour les modèles (mises en page de rapport, politiques d’étiquetage, paramètres d’exécution), voir la
 [Référence des modèles](../templates/reference.md). Un modèle de configuration peut faire
-tout ce que fait un fichier de comptes, sauf contenir des clés d’accès, et il est
+tout ce que fait un fichier de comptes, sauf qu’il ne peut pas contenir de clés d’accès
+et que chaque compte a besoin de `profile_name` ou de `role_arn`. Il est
 validé plus strictement ; préférez-le donc pour les nouvelles installations.
 
 Tous les fichiers peuvent être en YAML (`.yaml`, `.yml`) ou en JSON (`.json`). Vérifiez-les sans

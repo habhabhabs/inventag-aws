@@ -41,7 +41,7 @@ d’exemple).
 | Le fichier que vous nommez avec `--audit-output` | Quand vous le demandez | Chaque opération AWS appelée pendant l’exécution |
 | `state/partial/<key>/<account-id>.json` | Une exécution où certains comptes ont échoué | Résultats des comptes terminés, réutilisés par `--resume` et supprimés après une exécution complète |
 
-`<timestamp>` s’écrit `YYYYMMDD_HHMMSS`.
+`<timestamp>` s’écrit `YYYYMMDD_HHMMSS`. Les noms du rapport, du fichier Word, du journal des modifications et du fichier de conformité des étiquettes utilisent l’heure locale de votre ordinateur. L’instantané et le dossier S3 utilisent UTC.
 
 ## Rapport Excel {#excel-report}
 
@@ -88,7 +88,7 @@ Des aperçus de chaque mise en page, réalisés à partir de vrais fichiers, se 
 ## Rapport Word {#word-report}
 
 **Sans modèle :** un titre, une synthèse, un tableau des services, et
-jusqu’à 50 ressources par service sur six colonnes.
+jusqu’à 50 ressources par service sur six colonnes : Name, Id, Type, Region, Tags et Service. Si aucune ressource du service n’a de nom, les colonnes sont Id, Type, Region, Tags, Service et Source Account Name.
 
 **Avec un modèle de rapport :** les sections listées dans `word.sections`. Les tableaux
 ont une ligne d’en-tête qui se répète sur chaque page et qui est signalée comme en-tête aux

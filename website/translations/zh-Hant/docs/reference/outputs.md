@@ -33,7 +33,7 @@ InvenTag 寫入的其他位置只有你指定的檔案（`--log-file`、`--audit
 | 你用 `--audit-output` 指定的檔案 | 你要求時 | 本次執行呼叫的每個 AWS 操作 |
 | `state/partial/<key>/<account-id>.json` | 有帳戶失敗的執行 | 已完成帳戶的結果，供 `--resume` 複用，完整執行後會被刪除 |
 
-`<timestamp>` 的格式是 `YYYYMMDD_HHMMSS`。
+`<timestamp>` 的格式是 `YYYYMMDD_HHMMSS`。報告、Word、變更日誌和標籤合規檔案的名稱使用你電腦的本地時間。快照和 S3 資料夾使用 UTC。
 
 ## Excel 報告 {#excel-report}
 
@@ -66,7 +66,7 @@ InvenTag 寫入的其他位置只有你指定的檔案（`--log-file`、`--audit
 
 ## Word 報告 {#word-report}
 
-**不使用範本時：** 一個標題、一份執行摘要、一張服務表，以及每個服務最多 50 個資源，共六欄。
+**不使用範本時：** 一個標題、一份執行摘要、一張服務表，以及每個服務最多 50 個資源，共六欄：Name、Id、Type、Region、Tags 和 Service。如果該服務的資源都沒有名稱，則這六欄是 Id、Type、Region、Tags、Service 和 Source Account Name。
 
 **使用報告範本時：** 即 `word.sections` 中列出的各節。表格的表頭列會在每頁重複，併為螢幕閱讀器標記為表頭。
 徽標（如果有）帶有替代文字。

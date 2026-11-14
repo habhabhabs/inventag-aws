@@ -14,8 +14,8 @@ and a service descriptions file that the loaders accept.
 
 For templates (report layouts, tag policies, run settings), see the
 [Template reference](../templates/reference.md). A config template can do
-everything an accounts file does except hold access keys, and it is
-validated more strictly, so prefer it for new setups.
+everything an accounts file does, except that it cannot hold access keys
+and each account needs `profile_name` or `role_arn`. It is validated more strictly, so prefer it for new setups.
 
 All files can be YAML (`.yaml`, `.yml`) or JSON (`.json`). Check them without
 scanning:

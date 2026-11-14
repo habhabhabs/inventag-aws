@@ -14,8 +14,8 @@ asignaciones de etiquetas y un archivo de descripciones de servicios que los car
 
 Para las plantillas (diseños de informe, políticas de etiquetas, ajustes de ejecución), consulta la
 [Referencia de plantillas](../templates/reference.md). Una plantilla de configuración puede hacer
-todo lo que hace un archivo de cuentas salvo contener claves de acceso, y se
-valida con más rigor, así que prefiérela para las configuraciones nuevas.
+todo lo que hace un archivo de cuentas, salvo que no puede contener claves de acceso
+y cada cuenta necesita `profile_name` o `role_arn`. Se valida con más rigor, así que prefiérela para las configuraciones nuevas.
 
 Todos los archivos pueden ser YAML (`.yaml`, `.yml`) o JSON (`.json`). Compruébalos sin
 analizar nada:

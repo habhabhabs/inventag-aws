@@ -41,7 +41,7 @@ de ejemplo).
 | El archivo que nombres con `--audit-output` | Cuando lo pides | Todas las operaciones de AWS que llamó la ejecución |
 | `state/partial/<key>/<account-id>.json` | Una ejecución en la que fallaron algunas cuentas | Resultados de las cuentas que terminaron; `--resume` los reutiliza y se borran tras una ejecución completa |
 
-`<timestamp>` es `YYYYMMDD_HHMMSS`.
+`<timestamp>` es `YYYYMMDD_HHMMSS`. Los nombres del informe, de Word, del registro de cambios y del cumplimiento de etiquetas usan la hora local de tu equipo. La instantánea y la carpeta de S3 usan UTC.
 
 ## Informe de Excel {#excel-report}
 
@@ -88,7 +88,7 @@ Las vistas previas de cada diseño, hechas a partir de archivos reales, están e
 ## Informe de Word {#word-report}
 
 **Sin plantilla:** un título, un resumen ejecutivo, una tabla de servicios y
-hasta 50 recursos por servicio en seis columnas.
+hasta 50 recursos por servicio en seis columnas: Name, Id, Type, Region, Tags y Service. Si ningún recurso del servicio tiene nombre, las columnas son Id, Type, Region, Tags, Service y Source Account Name.
 
 **Con una plantilla de informe:** las secciones listadas en `word.sections`. Las tablas
 tienen una fila de encabezado que se repite en cada página y está marcada como encabezado para
