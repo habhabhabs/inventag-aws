@@ -53,13 +53,13 @@ def test_parameter_dependent_operations_name_the_blocked_parameter():
     assert ok is True  # still allowed by name: the exit code does not change
     assert lines == [
         "ALLOWED  apigateway:GetApiKeys (read-only prefix); "
-        "BLOCKED when includeValues=true",
+        "blocked when includeValues=true",
         "ALLOWED  apigateway:GetApiKey (read-only prefix); "
-        "BLOCKED when includeValue=true",
+        "blocked when includeValue=true",
         "ALLOWED  ec2:DescribeInstanceAttribute (read-only prefix); "
-        "BLOCKED when Attribute=userdata",
+        "blocked when Attribute=userdata",
         "ALLOWED  ec2:DescribeInstanceAttribute (read-only prefix); "
-        "BLOCKED when Attribute=userdata",
+        "blocked when Attribute=userdata",
     ]
 
 
@@ -69,7 +69,7 @@ def test_every_parameter_rule_of_the_guard_is_shown():
         _, lines = safety.validate_operations([f"{service}:{operation}"])
         for parameter, values in rules.items():
             for value in values:
-                assert f"BLOCKED when {parameter}={value}" in lines[0]
+                assert f"blocked when {parameter}={value}" in lines[0]
 
 
 def run_cli(*args):
@@ -89,4 +89,30 @@ def test_exit_codes_of_validate_operations_are_unchanged(capsys):
     assert run_cli("--validate-operations", "apigateway:GetApiKeys") == 0
     assert run_cli("--validate-operations", "ec2:RunInstances") == 1
     out = capsys.readouterr().out
-    assert "BLOCKED when includeValues=true" in out
+    assert "blocked when includeValues=true" in out
+
+
+def test_status_words_are_counted_as_in_v1_2_0_over_every_botocore_operation():
+    """A script that greps for BLOCKED or ALLOWED gets the hits v1.2.0 gave:
+    the word BLOCKED is only on lines that start with BLOCKED, and ALLOWED only
+    on lines that start with ALLOWED. (v1.2.0, measured over the 19,597
+    operations of botocore 1.4x: 8,200 ALLOWED and 11,397 BLOCKED lines; the
+    split depends on the installed botocore, so the test states the rule.)
+    Slow (a few seconds): it walks all service models once."""
+    import re
+
+    import botocore.session
+
+    session = botocore.session.get_session()
+    operations = []
+    for service in session.get_available_services():
+        model = session.get_service_model(service)
+        operations.extend(f"{service}:{name}" for name in model.operation_names)
+    _, lines = safety.validate_operations(operations)
+    assert len(lines) == len(operations)
+    assert sum(bool(re.search("BLOCKED", x)) for x in lines) == sum(
+        x.startswith("BLOCKED  ") for x in lines
+    )
+    assert sum(bool(re.search("ALLOWED", x)) for x in lines) == sum(
+        x.startswith("ALLOWED  ") for x in lines
+    )
