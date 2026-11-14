@@ -14,7 +14,12 @@ from dataclasses import dataclass, field
 from enum import Enum
 import logging
 
-from ..discovery.arn_utils import arn_service, id_tail, normalize_arn
+from ..discovery.arn_utils import arn_service, id_tail, normalize_arn, parse_arn
+from ..discovery.service_filter import (
+    canonical_service,
+    canonical_service_set,
+    service_matches,
+)
 from .state_manager import StateLoadError
 
 logger = logging.getLogger(__name__)
@@ -241,6 +246,107 @@ class _RelatedIndex:
         return [self.rows[pos] for pos in sorted(positions)]
 
 
+# Listing outcomes of the discovery coverage ledger that mean "not read".
+_FAILED_OUTCOMES = ("denied", "throttled", "error", "timeout")
+
+
+class _RunScope:
+    """What the current run read, for telling "removed" from "not compared".
+
+    Built from ``current_run`` (see ``DeltaDetector.detect_changes``): the
+    coverage ledger entries of the run, and per account the regions and the
+    services it scanned. Lookups are by dictionary, once per resource.
+    """
+
+    def __init__(self, current_run: Dict[str, Any]):
+        self.failed: Dict[Tuple[str, str, str], str] = {}
+        self.listed: Set[Tuple[str, str, str]] = set()
+        self.tagging_failed: Dict[Tuple[str, str], str] = {}
+        for entry in current_run.get("coverage") or []:
+            if not isinstance(entry, dict):
+                continue
+            account = str(entry.get("account_id") or "")
+            region = str(entry.get("region") or "")
+            outcome = str(entry.get("outcome") or "")
+            failed = outcome in _FAILED_OUTCOMES
+            if entry.get("source") == "tagging-api":
+                if failed:
+                    self.tagging_failed.setdefault((account, region), outcome)
+                continue
+            unit = (account, canonical_service(entry.get("service")), region)
+            self.listed.add(unit)
+            if failed:
+                self.failed.setdefault(unit, outcome)
+        self.regions = {
+            str(a): set(r or []) for a, r in (current_run.get("regions") or {}).items()
+        }
+        self.services = {
+            str(a): canonical_service_set(s)
+            for a, s in (current_run.get("services") or {}).items()
+        }
+
+    @staticmethod
+    def _account(resource: Dict, key: str) -> str:
+        account = DeltaDetector._account_of(resource)
+        if not account:
+            parsed = parse_arn(resource.get("arn") or key) or {}
+            account = parsed.get("account", "")
+        return str(account)
+
+    def _service_keys(self, resource: Dict, key: str, account: str, region: str):
+        """The service key of the ledger that covers ``resource``.
+
+        The resource's own service name first (VPC rows have ec2 ARNs but
+        their own ``vpc`` listing); the ARN service when that name has no
+        listing in the ledger.
+        """
+        own = canonical_service(resource.get("service"))
+        if any((account, own, r) in self.listed for r in (region, "global")):
+            return own
+        parsed = parse_arn(resource.get("arn") or key) or {}
+        return canonical_service(parsed.get("service")) or own
+
+    def failed_listing(self, resource: Dict, key: str) -> Optional[str]:
+        """Why the current run could not list ``resource`` (None if it could)."""
+        account = self._account(resource, key)
+        region = str(resource.get("region") or "")
+        service = self._service_keys(resource, key, account, region)
+        for listed_region in (region, "global"):
+            outcome = self.failed.get((account, service, listed_region))
+            if outcome:
+                return f"{service} in {listed_region} of account {account}: {outcome}"
+        return None
+
+    def missing_reason(self, resource: Dict, key: str) -> Optional[str]:
+        """Why a resource missing from the current run is not compared."""
+        account = self._account(resource, key)
+        region = str(resource.get("region") or "")
+        allowed = self.services.get(account)
+        if allowed and not service_matches(resource.get("service"), allowed):
+            return (
+                f"service {resource.get('service')} of account {account} "
+                "was not in this run's services"
+            )
+        regions = self.regions.get(account)
+        service = self._service_keys(resource, key, account, region)
+        if (
+            regions
+            and region
+            and region != "global"
+            and region not in regions
+            and (account, service, "global") not in self.listed
+        ):
+            return f"region {region} of account {account} was not scanned in this run"
+        reason = self.failed_listing(resource, key)
+        if reason:
+            return reason
+        if _found_by_tagging_only(resource):
+            outcome = self.tagging_failed.get((account, region))
+            if outcome:
+                return f"tagging API in {region} of account {account}: {outcome}"
+        return None
+
+
 def _found_by_tagging_only(resource: Dict) -> bool:
     """True for a row only the Tagging API returned (v1.1.4 and v1.2.0 shapes)."""
     if resource.get("source"):
@@ -352,6 +458,7 @@ class DeltaDetector:
         state1_id: str,
         state2_id: str,
         skip_accounts: Optional[Dict[str, str]] = None,
+        current_run: Optional[Dict[str, Any]] = None,
     ) -> DeltaReport:
         """
         Detect comprehensive changes between two resource states.
@@ -364,6 +471,14 @@ class DeltaDetector:
             skip_accounts: Accounts (ID -> reason) to leave out of the
                 comparison on both sides, so an account that could not be
                 scanned in one run does not show all its resources as removed.
+            current_run: What the current run read, so a resource it could not
+                have seen is "not compared" instead of "removed" (or, when
+                only the Tagging API returned it, "modified"). A dict with
+                ``coverage`` (the discovery coverage ledger entries: dicts
+                with account_id, region, source, service, outcome),
+                ``regions`` (account ID -> regions scanned) and ``services``
+                (account ID -> the account's service filter; empty means
+                all). None: every missing resource is "removed", as before.
 
         Returns:
             DeltaReport with comprehensive change analysis
@@ -408,6 +523,16 @@ class DeltaDetector:
         modified_resources, unchanged_resources = self._detect_modified_resources(
             old_resources_map, new_resources_map, route_changed
         )
+        not_compared: Dict[str, int] = {}
+        if current_run is not None:
+            removed_resources, modified_resources = self._leave_out_unread(
+                _RunScope(current_run),
+                removed_resources,
+                modified_resources,
+                old_resources_map,
+                new_resources_map,
+                not_compared,
+            )
 
         # Analyze compliance changes
         compliance_changes = self._analyze_compliance_changes(
@@ -443,6 +568,8 @@ class DeltaDetector:
             + len(removed_resources)
             + len(modified_resources),
         }
+        if not_compared:
+            summary["not_compared_count"] = sum(not_compared.values())
 
         # Detailed statistics (by service, severity and category). The summary
         # counts stay in change_statistics for existing consumers.
@@ -455,6 +582,8 @@ class DeltaDetector:
                 unchanged_resources,
             ),
         }
+        if not_compared:
+            change_statistics["not_compared"] = dict(sorted(not_compared.items()))
 
         return DeltaReport(
             state1_id=state1_id,
@@ -472,6 +601,44 @@ class DeltaDetector:
             change_statistics=change_statistics,
             skipped_accounts=skipped,
         )
+
+    @staticmethod
+    def _leave_out_unread(
+        scope: "_RunScope",
+        removed: List[ResourceChange],
+        modified: List[ResourceChange],
+        old_map: Dict[str, Dict],
+        new_map: Dict[str, Dict],
+        not_compared: Dict[str, int],
+    ) -> Tuple[List[ResourceChange], List[ResourceChange]]:
+        """Drop the changes the current run could not have seen.
+
+        A removed resource whose unit the run did not read (failed listing,
+        or outside its regions or services); a modified resource that only
+        the Tagging API returned this time because its service listing
+        failed. Counts per reason go into ``not_compared``.
+        """
+        kept_removed = []
+        for change in removed:
+            reason = scope.missing_reason(
+                old_map[change.resource_arn], change.resource_arn
+            )
+            if reason:
+                not_compared[reason] = not_compared.get(reason, 0) + 1
+            else:
+                kept_removed.append(change)
+        kept_modified = []
+        for change in modified:
+            old = old_map[change.resource_arn]
+            new = new_map[change.resource_arn]
+            reason = None
+            if _found_by_tagging_only(new) and not _found_by_tagging_only(old):
+                reason = scope.failed_listing(new, change.resource_arn)
+            if reason:
+                not_compared[reason] = not_compared.get(reason, 0) + 1
+            else:
+                kept_modified.append(change)
+        return kept_removed, kept_modified
 
     @staticmethod
     def _account_of(resource: Dict) -> str:
@@ -543,7 +710,11 @@ class DeltaDetector:
         return (service, region, rid.lower())
 
     def detect_changes_by_state_id(
-        self, state_manager, previous_state_id: str, current_state_id: str
+        self,
+        state_manager,
+        previous_state_id: str,
+        current_state_id: str,
+        current_run: Optional[Dict[str, Any]] = None,
     ) -> DeltaReport:
         """
         Detect changes between two states using state IDs.
@@ -552,6 +723,7 @@ class DeltaDetector:
             state_manager: StateManager instance to load states
             previous_state_id: ID of the previous state
             current_state_id: ID of the current state
+            current_run: What the current run read (see ``detect_changes``).
 
         Returns:
             DeltaReport with comprehensive change analysis
@@ -566,12 +738,48 @@ class DeltaDetector:
         for account, reason in skip.items():
             logger.warning(f"Account {account} left out of the comparison: {reason}")
 
-        return self.detect_changes(
+        report = self.detect_changes(
             old_resources=previous_state.resources,
             new_resources=current_state.resources,
             state1_id=previous_state_id,
             state2_id=current_state_id,
             skip_accounts=skip,
+            current_run=current_run,
+        )
+        caveat = self.previous_run_caveat(previous_state, skip)
+        if caveat:
+            report.change_statistics["previous_run_incomplete"] = caveat
+        return report
+
+    @staticmethod
+    def previous_run_caveat(previous_state, skip: Dict[str, str]) -> Optional[str]:
+        """One line when the previous run could not read every listing.
+
+        Resources that run missed are in the current run only, so they show
+        as added. Read from the previous snapshot's ``coverage_summary``
+        (accounts left out of the comparison are not counted).
+        """
+        tags = getattr(previous_state.metadata, "tags", None) or {}
+        summary = tags.get("coverage_summary") if isinstance(tags, dict) else None
+        if not isinstance(summary, dict):
+            return None
+        parts = []
+        for account in sorted(summary, key=str):
+            counts = summary[account]
+            if str(account) in skip or not isinstance(counts, dict):
+                continue
+            missed = [
+                f"{counts[o]} {o}"
+                for o in _FAILED_OUTCOMES
+                if isinstance(counts.get(o), int) and counts[o] > 0
+            ]
+            if missed:
+                parts.append(f"account {account}: {', '.join(missed)}")
+        if not parts:
+            return None
+        return (
+            f"The previous run could not read every listing ({'; '.join(parts)}); "
+            "resources it missed may show as added."
         )
 
     @staticmethod
