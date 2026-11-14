@@ -316,3 +316,15 @@ def test_the_accounts_file_is_written_where_the_command_reads_it(tmp_path):
         "111111111111",
         "222222222222",
     ]
+
+
+# --- one checkout per job --------------------------------------------------
+
+
+def test_each_job_runs_in_its_own_copy_like_a_runner_checkout(tmp_path):
+    # Without isolation two jobs of one stage share one folder: the second finds
+    # the first one's bom_output/state and diffs against it, which a runner never does.
+    args = runner.gcl_args("gcl", tmp_path / "v.yml", {"A": "b"})
+    assert "--shell-isolation" in args and "--force-shell-executor" in args
+    assert args[args.index("--variables-file") + 1] == str(tmp_path / "v.yml")
+    assert args[args.index("--variable") + 1] == "A=b"

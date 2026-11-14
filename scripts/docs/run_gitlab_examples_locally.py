@@ -15,10 +15,12 @@ For every GitLab block that scripts/docs/check_ci_examples.py finds, this:
     leaves id_tokens variables unset), so the AWS SDK's web identity path
     (AWS_ROLE_ARN + AWS_WEB_IDENTITY_TOKEN_FILE) calls moto's
     sts:AssumeRoleWithWebIdentity;
-  - runs the pipeline with `gitlab-ci-local --force-shell-executor` with the
-    pipeline source the block's own rules ask for (merge_request_event, schedule,
-    ...; push when none; override: --pipeline-source) and prints which one
-    (image: is ignored; jobs run on this host).
+  - runs the pipeline with `gitlab-ci-local --force-shell-executor
+    --shell-isolation` (each job in its own copy of the project, as on a
+    runner), as the pipeline source the block's own rules ask for
+    (merge_request_event, schedule, ...; push when none; override with
+    --pipeline-source), and prints which one (image: is ignored; jobs run on
+    this host).
 
 It prints, in the per-block form of `check_ci_examples.py --report`, one line
 per job: result, exit code, collected artifacts and the role moto issued.
@@ -424,7 +426,7 @@ def _prepare_project(
 
 def gcl_args(gcl: str, variables_file: Path, variables: Dict[str, str]) -> List[str]:
     """The gitlab-ci-local command line (options as in its `--help`)."""
-    args = [gcl, "--force-shell-executor", "--no-color"]
+    args = [gcl, "--force-shell-executor", "--shell-isolation", "--no-color"]
     args += ["--variables-file", str(variables_file)]
     args += ["--ignore-predefined-vars", "CI_PIPELINE_SOURCE"]
     for k, v in variables.items():
