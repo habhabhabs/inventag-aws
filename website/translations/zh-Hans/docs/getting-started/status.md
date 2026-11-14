@@ -129,6 +129,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **Ctrl-C** 会让运行停止且没有可见消息，SIGTERM 会让它停止且没有任何消息。
 - **账户文件中账户 ID 相同的第二个条目**会被丢弃且没有任何消息，因此它的区域不会被扫描。
 - **两个同时使用同一输出文件夹的运行**不会被阻止。
+- **`--validate-config-only` 不读取 `--bom-config`**，因此值有误的 BOM 设置文件能通过检查，只有在真正运行时才会停止（退出码 1）。
+- **缺少顶层键 `service_descriptions` 的服务描述文件**能通过检查，运行时会被忽略，日志中记录一条错误，并使用内置描述。
+- **`inventag --validate-operations` 只按名称回答：** 它把 `apigateway:GetApiKeys` 和 `ec2:DescribeInstanceAttribute` 显示为 ALLOWED，但带 `includeValues` 或 `Attribute=userData` 调用它们时，防护会拦截。
+- **配置模板中设置了 `services` 时**，报告只包含这些服务，但扫描仍会读取所有服务，因此可能出现关于其他服务的警告。
 
 ## 费用 {#costs}
 
@@ -159,6 +163,7 @@ InvenTag 会把被限流的调用最多重试 10 次（standard 重试模式）�
   修改这些限制，或用 `none` 保留全部。
 - 使用 `--enable-network-analysis` 或 `--enable-security-analysis` 时，分析调用在一次运行中会发出两次。
 - 网络分析把位于多个子网中的资源只计入第一个子网，并且只把负载均衡器计入其 VPC，而不计入任何子网。
+- 网络分析不会把 ElastiCache 集群计为 VPC 或子网的关联资源。
 - 服务属性补充（BOM 设置中的 `enable_service_enrichment`）不会运行；报告包含发现过程返回的字段。
 - 在模板报告中，如果 AWS 没有为资源返回 `Name` 字段或 `Name` 标签，Name 列为空；ID 列用于识别该资源。
   对于 Lambda 函数、IAM 角色和 KMS 别名，模板报告会把 ID 显示为名称。

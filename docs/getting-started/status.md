@@ -192,6 +192,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   without a message, so its regions are not scanned.
 - **Two runs that use the same output folder at the same time** are not
   prevented.
+- **`--validate-config-only` does not read `--bom-config`**, so a BOM settings file with a wrong value passes the check and stops only the real run (exit code 1).
+- **A service descriptions file without the top-level key `service_descriptions`** passes the check, and the run ignores it with an error in the log and uses the built-in descriptions.
+- **`inventag --validate-operations` answers by name only:** it shows `apigateway:GetApiKeys` and `ec2:DescribeInstanceAttribute` as ALLOWED, although the guard blocks them when they are called with `includeValues` or `Attribute=userData`.
+- **With `services` in a config template**, the report holds only those services, but the scan still reads every service, so warnings about other services can appear.
 
 ## Costs
 
@@ -242,6 +246,7 @@ InvenTag retries a throttled call up to 10 times (standard retry mode);
   analysis calls are made twice in one run.
 - Network analysis counts a resource in several subnets for the first subnet
   only, and counts load balancers for their VPC but not for a subnet.
+- Network analysis does not count ElastiCache clusters as associated resources of a VPC or a subnet.
 - Service attribute enrichment (`enable_service_enrichment` in the BOM
   settings) does not run; reports contain the fields that discovery returns.
 - In a template report, the Name column is empty when AWS returns no `Name`

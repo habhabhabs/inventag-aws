@@ -204,6 +204,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   est ignorée sans message, donc ses régions ne sont pas analysées.
 - **Deux exécutions qui utilisent en même temps le même dossier de sortie** ne
   sont pas empêchées.
+- **`--validate-config-only` ne lit pas `--bom-config`** : un fichier de paramètres BOM avec une valeur erronée passe la vérification et n’arrête que la vraie exécution (code de sortie 1).
+- **Un fichier de descriptions de services sans la clé de premier niveau `service_descriptions`** passe la vérification, et l’exécution l’ignore avec une erreur dans le journal et utilise les descriptions intégrées.
+- **`inventag --validate-operations` répond d’après le nom seul :** il affiche `apigateway:GetApiKeys` et `ec2:DescribeInstanceAttribute` comme ALLOWED, alors que la protection les bloque lorsqu’ils sont appelés avec `includeValues` ou `Attribute=userData`.
+- **Avec `services` dans un modèle de configuration**, le rapport ne contient que ces services, mais l’analyse lit toujours tous les services, si bien que des avertissements sur d’autres services peuvent apparaître.
 
 ## Coûts {#costs}
 
@@ -256,6 +260,7 @@ standard) ; `AWS_RETRY_MODE` et `AWS_MAX_ATTEMPTS` modifient ce réglage.
 - L’analyse réseau ne compte une ressource présente dans plusieurs sous-réseaux
   que pour le premier, et compte les équilibreurs de charge pour leur VPC mais
   pas pour un sous-réseau.
+- L’analyse réseau ne compte pas les clusters ElastiCache comme ressources associées d’un VPC ou d’un sous-réseau.
 - L’enrichissement des attributs de service (`enable_service_enrichment` dans
   les réglages de la BOM) ne s’exécute pas ; les rapports contiennent les champs
   que renvoie la découverte.
