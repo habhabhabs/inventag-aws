@@ -100,28 +100,56 @@ def test_skipped_upload_message_names_the_bucket_and_the_reason():
     assert "report format failed" in text
 
 
+def generator_returning(monkeypatch, results):
+    from inventag.core.cloud_bom_generator import CloudBOMGenerator
+
+    gen = CloudBOMGenerator.__new__(CloudBOMGenerator)
+    gen.logger = logging.getLogger("inventag.core.cloud_bom_generator")
+    monkeypatch.setattr(gen, "generate_multi_account_bom", lambda **kw: results)
+    return gen
+
+
+CONFIG = dict(bucket_name="reports", key_prefix="bom-reports/")
+
+
 @pytest.mark.xfail(
     strict=False,
     reason="waits for lead A: the log call in cloud_bom_generator (fix-track-g.md)",
 )
 def test_upload_skipped_after_a_failed_format_is_logged(monkeypatch, caplog):
-    """Needs the one-line patch in cloud_bom_generator.generate_comprehensive_bom
+    """Needs the patch in cloud_bom_generator.generate_comprehensive_bom
     (lead A, see fix-track-g.md). Without it the run stays silent as in v1.2.0."""
     from inventag.core.cicd_integration import S3UploadConfig
-    from inventag.core.cloud_bom_generator import CloudBOMGenerator
 
-    gen = CloudBOMGenerator.__new__(CloudBOMGenerator)
-    gen.logger = logging.getLogger("inventag.core.cloud_bom_generator")
-    monkeypatch.setattr(
-        gen,
-        "generate_multi_account_bom",
-        lambda **kw: {"success": False, "error": "google format failed"},
+    # A failed format: the failure result carries bom_generation (what was written).
+    gen = generator_returning(
+        monkeypatch,
+        {
+            "success": False,
+            "error": "google format failed",
+            "bom_generation": {"generated_files": ["a.xlsx"]},
+        },
     )
-    config = S3UploadConfig(bucket_name="reports", key_prefix="bom-reports/")
     with caplog.at_level(logging.WARNING):
-        results = gen.generate_comprehensive_bom(["excel"], s3_upload_config=config)
+        results = gen.generate_comprehensive_bom(
+            ["excel"], s3_upload_config=S3UploadConfig(**CONFIG)
+        )
     assert results["success"] is False
     assert "Nothing was uploaded to s3://reports/bom-reports/" in caplog.text
+
+
+def test_no_skip_message_when_the_run_failed_before_any_report(monkeypatch, caplog):
+    """A run that failed in discovery has no report formats: the format message
+    would be false, so it must not appear. Passes with and without the patch."""
+    from inventag.core.cicd_integration import S3UploadConfig
+
+    gen = generator_returning(monkeypatch, {"success": False, "error": "no accounts"})
+    with caplog.at_level(logging.WARNING):
+        results = gen.generate_comprehensive_bom(
+            ["excel"], s3_upload_config=S3UploadConfig(**CONFIG)
+        )
+    assert results["success"] is False
+    assert "Nothing was uploaded" not in caplog.text
 
 
 # ---------------------------------------------- the whole run: messages and exit codes
