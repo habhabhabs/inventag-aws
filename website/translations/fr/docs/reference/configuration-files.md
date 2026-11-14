@@ -52,7 +52,7 @@ settings:                              # optional
   output_directory: bom_output
 ```
 
-Chaque compte a besoin d’**une** façon d’obtenir des identifiants :
+Un compte peut indiquer une façon d’obtenir des identifiants. Un compte qui n’en indique aucune utilise vos identifiants actuels s’ils appartiennent à ce compte ; sinon, InvenTag essaie d’assumer dans ce compte le rôle `InvenTagCrossAccountRole` (ou le nom donné avec `--cross-account-role`).
 
 | Champ | Utilisation |
 |---|---|
@@ -113,13 +113,6 @@ Utilisez la clé de premier niveau `tag_mappings` avec une **liste** d’entrée
 l’ancienne disposition, qui utilise chaque clé d’étiquette comme clé de premier niveau avec une
 valeur `column_name`.
 
-Exemple de résultat pour l’entrée ci-dessus, sur la feuille EC2 :
-
-| service | type | id | Cost Center |
-|---|---|---|---|
-| EC2 | Instance | i-0abc1234def567890 | CC-1042 |
-| EC2 | Volume | vol-0abc1234def567890 | Unknown |
-
 ## Descriptions de services {#service-descriptions}
 
 Utilisé avec `--service-descriptions`. Ajoute la colonne `service_description`
@@ -141,7 +134,7 @@ templates:
 ```
 
 La clé de premier niveau `service_descriptions` est obligatoire. Sous chaque service,
-chaque type de ressource (ou `default`) a besoin d’une `description`.
+chaque type de ressource (ou `default`) a besoin d’une `description`. InvenTag ne vérifie pas cela quand vous validez ou lancez une exécution. Un fichier sans cette clé est ignoré, avec une erreur dans le journal, et les descriptions intégrées sont utilisées.
 
 **Votre entrée remplace la description intégrée**, pour tous les services. Une
 entrée avec un `template` utilise ce modèle, défini sous `templates` ; une entrée
@@ -151,7 +144,7 @@ sans modèle utilise sa `description` telle quelle (dans l’exemple,
 Les services sans entrée dans votre fichier gardent le texte intégré.
 
 Si un modèle ne peut pas être rempli, InvenTag consigne un avertissement tel que
-`Failed to render template vpc_vpc: 'cidr_block'` et utilise le texte de repli.
+`Failed to render template vpc_vpc: 'cidr_block'` et utilise le texte de repli intégré. Pour un modèle de votre propre fichier, il utilise la `description` de cette entrée.
 
 ## Configuration de traitement de la nomenclature {#bom-processing-configuration}
 

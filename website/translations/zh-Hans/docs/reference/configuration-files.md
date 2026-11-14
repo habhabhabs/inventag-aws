@@ -47,7 +47,7 @@ settings:                              # optional
   output_directory: bom_output
 ```
 
-每个账户需要**一种**获取凭证的方式：
+账户可以指定一种获取凭证的方式。没有指定的账户会使用你当前的凭证（如果它们属于该账户）；否则 InvenTag 会尝试在该账户中代入角色 `InvenTagCrossAccountRole`（或用 `--cross-account-role` 给出的名称）。
 
 | 字段 | 用途 |
 |---|---|
@@ -102,13 +102,6 @@ tag_mappings:
 
 请使用顶层键 `tag_mappings`，其值是条目的**列表**。InvenTag 也接受较早的写法，即把每个标签键作为顶层键，并给出 `column_name` 值。
 
-上面这个条目在 EC2 工作表上的示例结果：
-
-| service | type | id | Cost Center |
-|---|---|---|---|
-| EC2 | Instance | i-0abc1234def567890 | CC-1042 |
-| EC2 | Volume | vol-0abc1234def567890 | Unknown |
-
 ## 服务描述 {#service-descriptions}
 
 与 `--service-descriptions` 一起使用。它会在报告中添加 `service_description` 列。
@@ -129,7 +122,7 @@ templates:
     template: "Disk {resource_id} in {region}"
 ```
 
-顶层键 `service_descriptions` 是必需的。在每个服务之下，每种资源类型（或 `default`）都需要一个 `description`。
+顶层键 `service_descriptions` 是必需的。在每个服务之下，每种资源类型（或 `default`）都需要一个 `description`。InvenTag 在你校验或启动运行时不会检查这一点。没有该键的文件会被忽略，日志中会有一条错误，并使用内置描述。
 
 **你的条目会替换内置描述**，对所有服务都是如此。带 `template` 的条目使用在 `templates` 下定义的该模板；
 不带 `template` 的条目按原样使用其 `description`（示例中 DynamoDB 表使用的是 `Application data table`）。
@@ -137,7 +130,7 @@ templates:
 你的文件中没有条目的服务保留内置文本。
 
 如果模板无法填充，InvenTag 会记录一条警告，例如
-`Failed to render template vpc_vpc: 'cidr_block'`，并使用备用文本。
+`Failed to render template vpc_vpc: 'cidr_block'`，并使用内置备用文本。对于你自己文件中的模板，则使用该条目的 `description`。
 
 ## BOM 处理配置 {#bom-processing-configuration}
 
