@@ -90,6 +90,24 @@ _NOT_READ_LIMIT = 10
 _NO_SUCH_SERVICE_CODE = "404"
 
 
+def _skipped_upload_message(bucket: str, key_prefix: Optional[str] = None) -> str:
+    """The line to log when a report format failed, so nothing was uploaded.
+
+    ``s3_upload.skipped_upload_message`` (fix/track-g) when it exists; the
+    same text otherwise. Remove the fallback once both are on main."""
+    from . import s3_upload
+
+    message = getattr(s3_upload, "skipped_upload_message", None)
+    if message is not None:
+        return message(bucket, key_prefix)
+    prefix = s3_upload.normalize_key_prefix(key_prefix)
+    target = f"s3://{bucket}/{prefix + '/' if prefix else ''}"
+    return (
+        f"Nothing was uploaded to {target} because a report format failed. "
+        "The report files that were written are in the output folder."
+    )
+
+
 def _expired_listings(context) -> int:
     """How many listings of an account failed because its session expired."""
     return sum(
@@ -560,6 +578,13 @@ class CloudBOMGenerator:
                 results["error"] = (
                     f"S3 upload failed for {len(upload['errors'])} file(s)"
                 )
+        elif s3_upload_config and "bom_generation" in results:
+            # A failed report format returns the files written so far.
+            self.logger.error(
+                _skipped_upload_message(
+                    s3_upload_config.bucket_name, s3_upload_config.key_prefix
+                )
+            )
 
         return results
 
