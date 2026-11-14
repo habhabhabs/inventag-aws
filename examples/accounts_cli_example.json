@@ -35,9 +35,6 @@
   "settings": {
     "max_concurrent_accounts": 3,
     "account_processing_timeout": 1800,
-    "output_directory": "multi_account_bom_output",
-    "enable_state_management": true,
-    "enable_delta_detection": true,
-    "generate_per_account_reports": false
+    "output_directory": "multi_account_bom_output"
   }
 }

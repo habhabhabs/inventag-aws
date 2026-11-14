@@ -17,6 +17,16 @@ Example multi-account configuration file showing how to configure multiple AWS a
 inventag --accounts-file examples/accounts-example.json --create-excel
 ```
 
+### `accounts_*.json`, `accounts_cli_example.yaml`, `cicd_accounts_example.yaml`
+More accounts files, one per way of giving credentials (profiles, cross-account roles, environment variables,
+CI secrets). An accounts file has two top-level keys that InvenTag reads, `accounts` and `settings`
+(`max_concurrent_accounts`, `account_processing_timeout`, `output_directory`); `version`, `encrypted` and
+`metadata` are written by InvenTag itself. Other keys are ignored and give a warning. These command-line options
+are not settings of the file: `--account-regions`, `--account-services` and `--account-tags` (instead of default
+regions, services and tags), `--enable-state-management`, `--enable-delta-detection` and `--per-account-reports`.
+Copy an example that holds keys and run `chmod 600` on the copy. The accounts without credentials name the default
+role, `InvenTagCrossAccountRole`, in `role_arn`.
+
 ### `service-descriptions-example.yaml`
 Example service descriptions configuration that customizes how AWS services and resources are described in BOM reports.
 

@@ -37,12 +37,8 @@
       }
     }
   ],
-  "global_config": {
-    "default_regions": ["us-east-1"],
-    "default_services": ["EC2", "S3", "RDS", "Lambda"],
-    "max_concurrent_accounts": 2,
-    "continue_on_error": true,
-    "retry_attempts": 2
+  "settings": {
+    "max_concurrent_accounts": 2
   },
   "metadata": {
     "created_by": "DevOps Team",

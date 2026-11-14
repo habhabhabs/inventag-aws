@@ -56,16 +56,8 @@
       }
     }
   ],
-  "global_config": {
-    "default_regions": ["us-east-1", "us-west-2"],
-    "default_services": ["EC2", "S3", "RDS", "Lambda", "ECS", "VPC", "IAM"],
-    "default_tags": ["Environment", "Owner"],
-    "max_concurrent_accounts": 4,
-    "max_concurrent_regions": 3,
-    "continue_on_error": true,
-    "retry_attempts": 3,
-    "retry_delay_seconds": 5,
-    "assume_role_duration_seconds": 3600
+  "settings": {
+    "max_concurrent_accounts": 4
   },
   "metadata": {
     "created_by": "Security Team",
