@@ -144,6 +144,20 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   column of its BOM. Its `--s3-bucket` upload still works.
 - Library use of `CloudBOMGenerator` with `compliance_policies` runs the tag
   check instead of failing.
+- An expired or missing IAM Identity Center (SSO) login stops the run with one
+  message that names the profile and the command `aws sso login --profile
+  <name>`. A profile that needs an MFA code, run with no terminal, stops with
+  a message and the `aws sts get-session-token` command. Before, both ended in
+  a traceback (and the MFA case with an empty message). Exit code 1, as
+  before. With `--debug` the full traceback is still logged.
+- `--audit-output`, `--log-file` and `--output-directory` with a path that
+  cannot be written (for example a folder that is a file) stop the run at the
+  start with one message that names the option and the path, before any AWS
+  call. Before, the first two ended in a traceback and the third after the
+  whole scan. Exit code 1, as before.
+- When a run result carries notes for the reader, the console prints each as a
+  warning after the summary (the lines the "not scanned" block already shows
+  are not repeated). A run without notes prints nothing new.
 
 ### Security
 
