@@ -11,9 +11,11 @@ sidebar_position: 4
 **读完后你会知道：** InvenTag 写出的每个文件的名称、位置和内容。
 
 所有文件都写入输出文件夹：默认是 `bom_output/`，除非你设置了 `--output-directory`，或在配置模板中设置了 `output_directory`。
-InvenTag 写入的其他位置只有你指定的文件（`--log-file`、`--audit-output`），以及使用 `--s3-bucket` 时的 S3 存储桶。
+InvenTag 写入的其他位置只有你指定的文件（`--log-file`、`--audit-output`、`templates init --output`）、使用 `--s3-bucket` 时的 S3 存储桶，以及使用 Google 选项时的 Google Drive；使用 `--google-oauth-client` 时还有位于 `~/.config/inventag/google-token.json` 的登录令牌文件。
 
 输出文件创建后只有你的用户可以读写，新建的输出文件夹同样只对你的用户私有。
+
+未针对 Windows 验证：文件和文件夹仅对你的用户私有。
 
 本页的示例来自针对模拟 AWS 的离线运行（示例数据）。
 
@@ -221,7 +223,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ## 终端输出 {#terminal-output}
 
 不使用 `--verbose` 时，运行会打印警告、错误和已写出的文件。
-使用模板时，每个文件会打印为 `Wrote <path>`，如果启用了标签策略，随后还有一行标签策略摘要。
+使用模板时，每个文件会打印为 `Wrote <path>`，如果启用了标签策略，随后还有一行标签策略摘要。不使用模板时，默认报告会打印为 `Data exported to <path>`。
 
 ## 退出码 {#exit-codes}
 

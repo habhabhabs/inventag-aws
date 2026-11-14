@@ -15,10 +15,14 @@ file InvenTag writes.
 Everything goes into the output folder: `bom_output/` unless you set
 `--output-directory` or `output_directory` in a config template. The only
 other places InvenTag writes are the files you name (`--log-file`,
-`--audit-output`) and, with `--s3-bucket`, your S3 bucket.
+`--audit-output`, `templates init --output`), your S3 bucket with `--s3-bucket`,
+and with the Google options your Google Drive and, for `--google-oauth-client`,
+a sign-in token file at `~/.config/inventag/google-token.json`.
 
 Output files are created readable and writable by your user only, and new
 output folders are private to your user too.
+
+Not verified against Windows: files and folders private to your user.
 
 The samples on this page come from offline runs against mocked AWS (sample
 data).
@@ -263,7 +267,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 
 Without `--verbose`, a run prints warnings, errors and the files written. With
 a template, each file is printed as `Wrote <path>`, followed by a one-line tag
-policy summary when a policy is active.
+policy summary when a policy is active. Without a template, the default report is printed as `Data exported to <path>`.
 
 ## Exit codes
 

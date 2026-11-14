@@ -15,10 +15,14 @@ archivo que escribe InvenTag.
 Todo va a la carpeta de salida: `bom_output/`, salvo que definas
 `--output-directory` o `output_directory` en una plantilla de configuración. Los únicos
 otros lugares donde escribe InvenTag son los archivos que nombres (`--log-file`,
-`--audit-output`) y, con `--s3-bucket`, tu bucket de S3.
+`--audit-output`, `templates init --output`), tu bucket de S3 con `--s3-bucket` y,
+con las opciones de Google, tu Google Drive y, con `--google-oauth-client`, un archivo
+de token de inicio de sesión en `~/.config/inventag/google-token.json`.
 
 Los archivos de salida se crean con lectura y escritura solo para tu usuario, y las
 carpetas de salida nuevas también son privadas para tu usuario.
+
+No verificado contra Windows: archivos y carpetas privados para tu usuario.
 
 Los ejemplos de esta página proceden de ejecuciones sin conexión contra AWS simulado (datos
 de ejemplo).
@@ -244,7 +248,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 
 Sin `--verbose`, una ejecución imprime advertencias, errores y los archivos escritos. Con
 una plantilla, cada archivo se imprime como `Wrote <path>`, seguido de un resumen de una línea de la
-política de etiquetas cuando hay una activa.
+política de etiquetas cuando hay una activa. Sin plantilla, el informe predeterminado se imprime como `Data exported to <path>`.
 
 ## Códigos de salida {#exit-codes}
 
