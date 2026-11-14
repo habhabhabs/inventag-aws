@@ -108,16 +108,11 @@ def parse_variable_args(items: List[str]) -> Dict[str, str]:
     return out
 
 
-def project_variables(body: str, given: Dict[str, str]) -> Dict[str, str]:
-    """The project CI/CD variables to pass: each dummy default whose name the
-    block mentions, then everything given with --variable (which wins)."""
-    out = {
-        name: value
-        for name, value in DUMMY_PROJECT_VARIABLES.items()
-        if re.search(rf"\b{name}\b", body)
-    }
-    out.update(given)
-    return out
+def project_variables(given: Dict[str, str]) -> Dict[str, str]:
+    """The project CI/CD variables to pass: every dummy default (the AWS SDK
+    reads AWS_ROLE_ARN itself, so no block names it), then those given with
+    --variable, which win."""
+    return {**DUMMY_PROJECT_VARIABLES, **given}
 
 
 def write_variables_file(path: Path, variables: Dict[str, str]) -> None:
@@ -520,7 +515,7 @@ def run_block(
 ) -> bool:
     doc = yaml.safe_load(block["body"])
     tokens = id_token_names(doc)
-    variables = project_variables(block["body"], given_variables or {})
+    variables = project_variables(given_variables or {})
     _seed(endpoint)
     project = _prepare_project(block, doc, work, wheel, endpoint, variables)
     site = work / f"site-{work_name(block)}"

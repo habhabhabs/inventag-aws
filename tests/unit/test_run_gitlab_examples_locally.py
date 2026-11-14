@@ -196,15 +196,15 @@ def test_the_dummy_defaults_cover_exactly_the_variables_the_examples_keep_out_of
     }
 
 
-def test_only_the_defaults_a_block_names_are_passed():
-    body = 'script:\n  - inventag --s3-bucket "$INVENTAG_REPORTS_BUCKET"\n'
-    assert list(runner.project_variables(body, {})) == ["INVENTAG_REPORTS_BUCKET"]
+def test_every_dummy_default_is_passed_even_when_the_yaml_never_names_it():
+    # AWS_ROLE_ARN is read by the AWS SDK, so no example mentions it.
+    assert runner.project_variables({}) == runner.DUMMY_PROJECT_VARIABLES
 
 
-def test_a_variable_given_on_the_command_line_beats_the_default_and_is_always_passed():
-    body = "script: [x]\nrole: ${AWS_ROLE_ARN}\n"
-    got = runner.project_variables(body, {"AWS_ROLE_ARN": "mine", "OTHER": "1"})
-    assert got == {"AWS_ROLE_ARN": "mine", "OTHER": "1"}
+def test_a_variable_given_on_the_command_line_beats_the_default_and_is_added():
+    got = runner.project_variables({"AWS_ROLE_ARN": "mine", "OTHER": "1"})
+    assert got["AWS_ROLE_ARN"] == "mine" and got["OTHER"] == "1"
+    assert got["INVENTAG_REPORTS_BUCKET"] == "inventag-docs-reports"
 
 
 def test_variable_arguments_split_at_the_first_equals_sign():
