@@ -22,16 +22,27 @@ import boto3
 import pytest
 from moto import mock_aws
 
-from tests.regression import estates
-from tests.regression.faults import Fault, FaultInjector, faults_to_json
+from tests.regression.faults import FaultInjector, faults_to_json
 
 os.environ.setdefault("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
 
 # Import every moto backend the scan touches, once, on the main thread.
 _MOTO_MODULES = (
-    "moto.ec2", "moto.s3", "moto.sqs", "moto.sns", "moto.dynamodb", "moto.kms", "moto.awslambda",
-    "moto.ecs", "moto.iam", "moto.rds", "moto.events", "moto.athena", "moto.cloudformation",
-    "moto.resourcegroupstaggingapi", "moto.ce",
+    "moto.ec2",
+    "moto.s3",
+    "moto.sqs",
+    "moto.sns",
+    "moto.dynamodb",
+    "moto.kms",
+    "moto.awslambda",
+    "moto.ecs",
+    "moto.iam",
+    "moto.rds",
+    "moto.events",
+    "moto.athena",
+    "moto.cloudformation",
+    "moto.resourcegroupstaggingapi",
+    "moto.ce",
 )
 for _name in _MOTO_MODULES:
     try:
@@ -157,8 +168,16 @@ def signal_driver(tmp_path):
             INVENTAG_REGRESSION_HIT=str(hit),
         )
         proc = subprocess.Popen(
-            [sys.executable, str(os.path.join(os.path.dirname(__file__), "child.py")), *argv],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env, cwd=str(tmp_path),
+            [
+                sys.executable,
+                str(os.path.join(os.path.dirname(__file__), "child.py")),
+                *argv,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=env,
+            cwd=str(tmp_path),
         )
         end = time.time() + wait
         while not hit.exists() and time.time() < end and proc.poll() is None:

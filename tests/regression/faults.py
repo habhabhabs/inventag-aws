@@ -17,8 +17,7 @@ picked), and the n-th call of that (service, operation, key, region).
 
 import json
 import threading
-import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 import botocore.client
@@ -102,7 +101,9 @@ def _client_error(fault: Fault, operation: str) -> bex.ClientError:
     return bex.ClientError(
         {
             "Error": {"Code": code, "Message": fault.message or f"{code} (injected)"},
-            "ResponseMetadata": {"HTTPStatusCode": fault.status or STATUS.get(code, 400)},
+            "ResponseMetadata": {
+                "HTTPStatusCode": fault.status or STATUS.get(code, 400)
+            },
         },
         operation,
     )
@@ -119,8 +120,13 @@ class FaultInjector:
         self.armed = False
         self._counts: Dict[tuple, int] = {}
         self._lock = threading.Lock()
+        self._stop = (
+            threading.Event()
+        )  # set on exit: a sleeping call wakes up and fails
         self._original = None
-        self.hit_file = None  # created when a slow fault starts (signal tests wait for it)
+        self.hit_file = (
+            None  # created when a slow fault starts (signal tests wait for it)
+        )
 
     # -- arming: seed AWS first, then switch the faults on ----------------
     def arm(self):
@@ -145,14 +151,23 @@ class FaultInjector:
                 k = (service, operation_name, key, region)
                 injector._counts[k] = injector._counts.get(k, 0) + 1
                 n = injector._counts[k]
-            record = {"service": service, "op": operation_name, "region": region, "key": key, "n": n}
+            record = {
+                "service": service,
+                "op": operation_name,
+                "region": region,
+                "key": key,
+                "n": n,
+            }
             for fault in injector.faults:
                 if not fault.matches(service, operation_name, region, key, n):
                     continue
                 if fault.sleep:
                     if injector.hit_file:
                         open(injector.hit_file, "w").write("hit")
-                    time.sleep(fault.sleep)
+                    if injector._stop.wait(fault.sleep):
+                        raise bex.EndpointConnectionError(
+                            endpoint_url="https://injector-closed/"
+                        )
                 if fault.raise_kind:
                     injector._record(record, "raise:" + fault.raise_kind)
                     url = f"https://{service}.{region}.amazonaws.com/"
@@ -174,7 +189,11 @@ class FaultInjector:
                     injector._record(record, "changed")
                     return answer
                 break  # sleep only: go on to the real call
-            if service == "sts" and operation_name == "GetCallerIdentity" and key in injector.accounts:
+            if (
+                service == "sts"
+                and operation_name == "GetCallerIdentity"
+                and key in injector.accounts
+            ):
                 account = injector.accounts[key]
                 injector._record(record, "canned")
                 return {
@@ -190,6 +209,7 @@ class FaultInjector:
         return self
 
     def __exit__(self, *exc):
+        self._stop.set()
         botocore.client.BaseClient._make_api_call = self._original
         self.armed = False
 
@@ -207,7 +227,9 @@ class FaultInjector:
 
 
 def faults_to_json(faults, accounts=None) -> str:
-    return json.dumps({"faults": [asdict(f) for f in faults], "accounts": accounts or {}})
+    return json.dumps(
+        {"faults": [asdict(f) for f in faults], "accounts": accounts or {}}
+    )
 
 
 def faults_from_json(text: str) -> Tuple[List[Fault], Dict[str, str]]:

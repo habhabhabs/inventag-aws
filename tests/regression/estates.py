@@ -35,7 +35,12 @@ def upload_bucket():
     boto3.client("s3", region_name=REGION).create_bucket(Bucket="regression-upload")
 
 
-SEEDS = {"estate": estate, "empty": empty, "ddb105": ddb105, "upload_bucket": upload_bucket}
+SEEDS = {
+    "estate": estate,
+    "empty": empty,
+    "ddb105": ddb105,
+    "upload_bucket": upload_bucket,
+}
 
 
 def seed(names):

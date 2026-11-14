@@ -113,7 +113,8 @@ def run_in_process(sc: Scenario, tmp_path: Path, monkeypatch) -> RunOutcome:
     out.mkdir(exist_ok=True)
     accounts_file = _accounts_file(sc, tmp_path)
     steps = [dict(args=(), faults=sc.faults)] + [
-        dict(args=s.get("args", ()), faults=s.get("faults", sc.faults)) for s in sc.later_runs
+        dict(args=s.get("args", ()), faults=s.get("faults", sc.faults))
+        for s in sc.later_runs
     ]
     outcomes = []
     for step in steps:
@@ -134,7 +135,12 @@ def run_in_process(sc: Scenario, tmp_path: Path, monkeypatch) -> RunOutcome:
                 injector.arm()
                 _set_limits(monkeypatch, sc.limits)
                 monkeypatch.setattr(sys, "argv", ["inventag", *argv])
-                with restored_process_state(), _logging_state(), redirect_stdout(buf_out), redirect_stderr(buf_err):
+                with (
+                    restored_process_state(),
+                    _logging_state(),
+                    redirect_stdout(buf_out),
+                    redirect_stderr(buf_err),
+                ):
                     try:
                         main()
                     except SystemExit as exc:
@@ -156,9 +162,17 @@ def run_in_process(sc: Scenario, tmp_path: Path, monkeypatch) -> RunOutcome:
     return last
 
 
-def _summary_age(text: str, ended: float):
-    """Seconds between the last "Processing time" log line and ``ended``."""
-    stamps = re.findall(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ - inventag - INFO -   - Processing time", text, re.M)
+def _summary_age(text: str, ended: float, out: Path):
+    """Seconds between the end of the report (newest report file, else the last
+    "Processing time" log line) and ``ended``. ``None`` when neither exists."""
+    files = [p.stat().st_mtime for p in out.glob("*.xlsx")]
+    if files:
+        return max(ended - max(files), 0.0)
+    stamps = re.findall(
+        r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ - inventag - INFO -   - Processing time",
+        text,
+        re.M,
+    )
     if not stamps:
         return None
     t = time.mktime(time.strptime(stamps[-1], "%Y-%m-%d %H:%M:%S"))
@@ -175,7 +189,13 @@ def run_child(sc: Scenario, tmp_path: Path) -> RunOutcome:
     hit = tmp_path / "hit"
     argv = _argv(sc, {}, out, accounts_file)
     env = dict(os.environ)
-    for name in ("AWS_PROFILE", "AWS_SESSION_TOKEN", "AWS_SHARED_CREDENTIALS_FILE", "HTTPS_PROXY", "https_proxy"):
+    for name in (
+        "AWS_PROFILE",
+        "AWS_SESSION_TOKEN",
+        "AWS_SHARED_CREDENTIALS_FILE",
+        "HTTPS_PROXY",
+        "https_proxy",
+    ):
         env.pop(name, None)
     env.update(
         HOME=str(home),
@@ -217,5 +237,5 @@ def run_child(sc: Scenario, tmp_path: Path) -> RunOutcome:
         stderr=stderr,
         out_dir=out,
         wall_seconds=ended - started,
-        seconds_after_summary=_summary_age(stdout + stderr, ended),
+        seconds_after_summary=_summary_age(stdout + stderr, ended, out),
     )
