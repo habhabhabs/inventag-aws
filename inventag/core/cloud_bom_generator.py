@@ -16,6 +16,7 @@ Features:
 """
 
 import dataclasses
+import inspect
 import logging
 import re
 import boto3
@@ -606,6 +607,27 @@ class CloudBOMGenerator:
             if counts:
                 summary[str(acc_id)] = counts
         return summary
+
+    def _delta_scope(self) -> Dict[str, Any]:
+        """What this run read, for the change report (A-05): the coverage
+        ledger, and per account the regions and services it scanned."""
+        return {
+            "coverage": [
+                entry
+                for ctx in self.account_contexts.values()
+                for entry in _coverage_of(ctx)
+            ],
+            "regions": {
+                str(acc_id): list(
+                    ctx.accessible_regions or ctx.credentials.regions or []
+                )
+                for acc_id, ctx in self.account_contexts.items()
+            },
+            "services": {
+                str(acc_id): list(ctx.credentials.services or [])
+                for acc_id, ctx in self.account_contexts.items()
+            },
+        }
 
     def _failed_accounts(self) -> List[Dict[str, Any]]:
         """Accounts that were not scanned (or only partly), with the reasons."""
@@ -2032,6 +2054,11 @@ class CloudBOMGenerator:
                 "state_id": state_id,
                 "state_directory": str(self.output_dir / "state"),
             }
+            # The snapshot is saved, but the index that lists it is not: the
+            # next run may compare with an older snapshot (A-18).
+            index_error = getattr(state_manager, "last_index_error", None)
+            if index_error:
+                results["state_index_error"] = index_error
 
             # Generate delta detection if enabled
             if self.config.enable_delta_detection:
@@ -2046,8 +2073,14 @@ class CloudBOMGenerator:
                         self.logger.warning(f"Skipped unreadable snapshot {problem}")
 
                     if previous_state_id is not None:
-                        delta_results = delta_detector.detect_changes_by_state_id(
-                            state_manager, previous_state_id, state_id
+                        # The current run's scope, when the detector takes it
+                        # (A-05; v1.2.0's detector does not).
+                        compare = delta_detector.detect_changes_by_state_id
+                        extra = {}
+                        if "current_run" in inspect.signature(compare).parameters:
+                            extra["current_run"] = self._delta_scope()
+                        delta_results = compare(
+                            state_manager, previous_state_id, state_id, **extra
                         )
                         summary = getattr(delta_results, "summary", None) or {}
                         changed = sum(
