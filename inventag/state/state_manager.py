@@ -170,6 +170,8 @@ class StateManager:
 
         # Initialize metadata tracking
         self.metadata_file = self.state_dir / "metadata.json"
+        # Set when the metadata index could not be saved (None otherwise).
+        self.last_index_error: Optional[str] = None
         self._load_metadata_index()
 
     # ------------------------------------------------------------------ index
@@ -256,8 +258,12 @@ class StateManager:
         """Save the metadata index (private temp file, then atomic rename)"""
         try:
             _atomic_write_json(self.metadata_file, self.metadata_index, indent=2)
+            self.last_index_error = None
         except Exception as e:
             logger.error(f"Could not save metadata index: {e}")
+            # For the caller (the run summary): the snapshot is saved, but
+            # the index that lists it is stale until the next save.
+            self.last_index_error = f"Could not save metadata index: {e}"
 
     def _calculate_checksum(self, resources: List[Dict]) -> str:
         """Calculate checksum for resource data to detect changes"""
@@ -453,6 +459,12 @@ class StateManager:
             raise StateLoadError(
                 f"{source} is not an InvenTag snapshot (no 'resources' list)"
             )
+        for number, entry in enumerate(data["resources"], start=1):
+            if not isinstance(entry, dict):
+                raise StateLoadError(
+                    f"{source} is not an InvenTag snapshot (entry {number} of "
+                    f"'resources' is a {type(entry).__name__}, not an object)"
+                )
         meta = data["metadata"]
         version = str(meta.get("version", "1.0"))
         try:
