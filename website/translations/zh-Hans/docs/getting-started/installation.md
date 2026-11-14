@@ -97,7 +97,7 @@ inventag --validate-credentials --verbose
 退出码为 0 表示 InvenTag 能够登录。加上 `--verbose` 还能看到各个步骤。
 下面是针对模拟 AWS 离线运行得到的示例输出（示例数据）：
 
-```text title="Terminal"
+```text title="输出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 inventag.cli.main - INFO - 🔐 Validating AWS credentials...
 inventag.cli.main - INFO - ✅ AWS credentials are valid!
@@ -107,7 +107,13 @@ inventag.cli.main - INFO - Validating credentials for account: AWS Account 12345
 inventag.core.credential_manager.CredentialManager - INFO - Validating credentials for account 123456789012
 inventag.core.credential_manager.CredentialManager - INFO - Successfully validated credentials for account 123456789012
 inventag.cli.main - INFO - ✓ All account credentials are valid
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="输出"
 0
 ```
 

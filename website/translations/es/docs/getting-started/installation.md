@@ -103,7 +103,7 @@ inventag --validate-credentials --verbose
 El código de salida 0 significa que InvenTag pudo iniciar sesión. Con `--verbose` también ves los
 pasos. Salida de ejemplo de una ejecución sin conexión contra AWS simulado (datos de ejemplo):
 
-```text title="Terminal"
+```text title="Salida"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 inventag.cli.main - INFO - 🔐 Validating AWS credentials...
 inventag.cli.main - INFO - ✅ AWS credentials are valid!
@@ -113,7 +113,13 @@ inventag.cli.main - INFO - Validating credentials for account: AWS Account 12345
 inventag.core.credential_manager.CredentialManager - INFO - Validating credentials for account 123456789012
 inventag.core.credential_manager.CredentialManager - INFO - Successfully validated credentials for account 123456789012
 inventag.cli.main - INFO - ✓ All account credentials are valid
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Salida"
 0
 ```
 

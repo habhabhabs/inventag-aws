@@ -105,7 +105,7 @@ steps. Sample output from an offline run against mocked AWS (sample data):
 
 <!-- BEGIN EXAMPLE OUTPUT: validate-credentials -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 inventag.cli.main - INFO - 🔐 Validating AWS credentials...
 inventag.cli.main - INFO - ✅ AWS credentials are valid!
@@ -115,7 +115,13 @@ inventag.cli.main - INFO - Validating credentials for account: AWS Account 12345
 inventag.core.credential_manager.CredentialManager - INFO - Validating credentials for account 123456789012
 inventag.core.credential_manager.CredentialManager - INFO - Successfully validated credentials for account 123456789012
 inventag.cli.main - INFO - ✓ All account credentials are valid
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Output"
 0
 ```
 
