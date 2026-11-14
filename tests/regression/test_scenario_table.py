@@ -19,7 +19,9 @@ def _expand(cell):
     for part in re.split(r",\s*", cell.strip()):
         m = re.match(r"([A-L])(\d+)-([A-L])?(\d+)$", part)
         if m:
-            ids += [f"{m.group(1)}{n}" for n in range(int(m.group(2)), int(m.group(4)) + 1)]
+            ids += [
+                f"{m.group(1)}{n}" for n in range(int(m.group(2)), int(m.group(4)) + 1)
+            ]
         else:
             ids.append(part)
     return ids
@@ -58,7 +60,9 @@ def test_snapshot_matches_the_plan_when_the_plan_is_available():
         for line in SNAPSHOT.read_text().splitlines()
         if line.strip() and not line.startswith("#")
     )
-    assert snapshot == sorted(set(ids_from_plan(path))), "update tests/regression/plan_ids.txt"
+    assert snapshot == sorted(
+        set(ids_from_plan(path))
+    ), "update tests/regression/plan_ids.txt"
 
 
 def test_the_plan_has_ids():
@@ -98,10 +102,17 @@ def test_every_row_is_described(row):
 
 @pytest.mark.parametrize("row", scenarios.MATRIX_ROWS, ids=lambda r: r.id)
 def test_matrix_rows_are_complete(row):
-    assert row.pins, "a matrix row pins at least the exit code or a message that is right today"
+    assert (
+        row.current or row.skip
+    ), "a matrix row records what v1.2.0 does today (or says why it is skipped)"
+    assert (
+        any(c[0] == "code" for c in row.current) or row.skip
+    ), "the current behaviour names an exit code"
     assert row.source in {"run", "code"}
     if row.wp:
-        assert row.target, "a row waiting for a work package needs a target"
+        assert (
+            row.target or row.code or row.issue_keys
+        ), "a row waiting for a work package needs a target"
     if row.issue_keys:
         assert all(re.match(r"^[a-z_]+(:[a-z0-9_-]+)?$", k) for k in row.issue_keys)
     if row.process == "child":

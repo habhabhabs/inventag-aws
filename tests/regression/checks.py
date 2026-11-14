@@ -87,6 +87,10 @@ def run_summary(outcome):
 
 def evaluate(check: tuple, o: RunOutcome) -> Optional[str]:
     name, args = check[0], check[1:]
+    if name == "not":
+        return (
+            None if evaluate(args[0], o) else f"this held, wanted it not to: {args[0]}"
+        )
     if name == "code":
         return None if o.code == args[0] else f"exit code {o.code!r}, wanted {args[0]}"
     if name == "code_nonzero":
@@ -96,10 +100,16 @@ def evaluate(check: tuple, o: RunOutcome) -> Optional[str]:
     if name == "no_out":
         return None if args[0] not in o.text else f"output contains {args[0]!r}"
     if name == "out_regex":
-        return None if re.search(args[0], o.text) else f"output does not match /{args[0]}/"
+        return (
+            None if re.search(args[0], o.text) else f"output does not match /{args[0]}/"
+        )
     if name == "report":
         have = bool(o.reports())
-        return None if have == args[0] else f"report file {'exists' if have else 'does not exist'}"
+        return (
+            None
+            if have == args[0]
+            else f"report file {'exists' if have else 'does not exist'}"
+        )
     if name == "report_text":
         book = _newest_workbook(o)
         if book is None:
@@ -120,7 +130,9 @@ def evaluate(check: tuple, o: RunOutcome) -> Optional[str]:
             n = sum(1 for _ in wb[args[0]].iter_rows(values_only=True)) - 1
         finally:
             wb.close()
-        return None if n == args[1] else f"sheet {args[0]} has {n} rows, wanted {args[1]}"
+        return (
+            None if n == args[1] else f"sheet {args[0]} has {n} rows, wanted {args[1]}"
+        )
     if name in ("row", "no_row"):
         book = _newest_workbook(o)
         if book is None:
@@ -135,35 +147,67 @@ def evaluate(check: tuple, o: RunOutcome) -> Optional[str]:
     if name == "snapshot_zero":
         counts = _snapshot_resource_counts(o)
         has_zero = any(c == 0 for c in counts)
-        return None if has_zero == args[0] else (
-            "a snapshot with 0 resources was saved" if has_zero else "no snapshot with 0 resources"
+        return (
+            None
+            if has_zero == args[0]
+            else (
+                "a snapshot with 0 resources was saved"
+                if has_zero
+                else "no snapshot with 0 resources"
+            )
         )
     if name == "log_file":
         path = o.out_dir / "inventag.log"
         if not path.is_file():
             return "no log file"
-        return None if args[0] in path.read_text() else f"{args[0]!r} is not in the log file"
+        return (
+            None
+            if args[0] in path.read_text()
+            else f"{args[0]!r} is not in the log file"
+        )
     if name == "lines_with":
         n = sum(1 for line in o.message_lines() if args[0] in line)
-        return None if n == args[1] else f"{n} lines mention {args[0]!r}, wanted {args[1]}"
+        return (
+            None if n == args[1] else f"{n} lines mention {args[0]!r}, wanted {args[1]}"
+        )
     if name == "summary":
         data = run_summary(o)
         if data is None:
             return "no run_summary.json"
-        return None if data.get(args[0]) == args[1] else f"run_summary {args[0]} is {data.get(args[0])!r}"
+        return (
+            None
+            if data.get(args[0]) == args[1]
+            else f"run_summary {args[0]} is {data.get(args[0])!r}"
+        )
     if name == "summary_has_cause":
         text = o.text
         marker = "Account-specific errors:"
         if marker not in text:
             return "no account error summary"
-        return None if args[0] in text.split(marker, 1)[1] else (
-            f"the account summary does not give the cause ({args[0]})"
+        return (
+            None
+            if args[0] in text.split(marker, 1)[1]
+            else (f"the account summary does not give the cause ({args[0]})")
+        )
+    if name == "exit_after_report_at_least":
+        if o.seconds_after_summary is None:
+            return "no report file or summary line to measure from"
+        return (
+            None
+            if o.seconds_after_summary >= args[0]
+            else (
+                f"the process ended {o.seconds_after_summary:.0f} s after the report, wanted at least {args[0]}"
+            )
         )
     if name == "exit_within_after_summary":
         if o.seconds_after_summary is None:
             return "no summary line found"
-        return None if o.seconds_after_summary <= args[0] else (
-            f"the process ended {o.seconds_after_summary:.0f} s after the summary, wanted {args[0]}"
+        return (
+            None
+            if o.seconds_after_summary <= args[0]
+            else (
+                f"the process ended {o.seconds_after_summary:.0f} s after the summary, wanted {args[0]}"
+            )
         )
     if name == "issue":
         data = run_summary(o)
@@ -174,8 +218,46 @@ def evaluate(check: tuple, o: RunOutcome) -> Optional[str]:
             keys.add(issue["category"])
             if issue.get("service"):
                 keys.add(f"{issue['category']}:{issue['service']}")
-        return None if args[0] in keys else f"issue {args[0]} is not in run_summary.json"
+        return (
+            None if args[0] in keys else f"issue {args[0]} is not in run_summary.json"
+        )
     raise ValueError(f"unknown check {name!r}")
+
+
+def sheet_rows(outcome) -> dict:
+    """Sheet name -> number of data rows of the newest workbook (empty when there is none)."""
+    book = _newest_workbook(outcome)
+    if book is None:
+        return {}
+    wb = load_workbook(book, read_only=True)
+    try:
+        return {
+            name: sum(1 for _ in wb[name].iter_rows(values_only=True)) - 1
+            for name in wb.sheetnames
+        }
+    finally:
+        wb.close()
+
+
+def summary_sheet(outcome) -> List[tuple]:
+    """Rows of the newest workbook's Summary sheet, empty cells dropped."""
+    book = _newest_workbook(outcome)
+    if book is None:
+        return []
+    wb = load_workbook(book, read_only=True)
+    try:
+        if "Summary" not in wb.sheetnames:
+            return []
+        return [
+            tuple(v for v in row if v is not None)
+            for row in wb["Summary"].iter_rows(values_only=True)
+        ]
+    finally:
+        wb.close()
+
+
+def snapshot_counts(outcome) -> List[int]:
+    return _snapshot_resource_counts(outcome)
 
 
 def failures(checks, outcome) -> List[str]:
