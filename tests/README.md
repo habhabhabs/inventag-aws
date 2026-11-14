@@ -147,9 +147,11 @@ are deleted.
 
 - `scenarios.py`: the table. Every scenario ID of `failure-regression-plan.md` once, plus `S1-` rows.
   Each row says where its test lives; matrix rows carry the injection and two sets of checks.
-  `pins` are right today and stay right. `target` is the behaviour under the accepted decisions;
-  while the row names a work package (`wp`) that test is `xfail(strict=True, reason=<ID>)`.
-  The package that makes it true removes `wp`, and the strict xfail then has to pass.
+  `current` is what the published release does today (exit code, files, messages): it is asserted
+  and must pass, right or wrong. `target` is what the accepted plan wants later: it is data, never
+  asserted, never xfail. `wp` names the package that would make it true. A row that cannot be made
+  deterministic gets `skip="reason"`. When a fix lands, change the row's `current` (the test fails
+  and shows the change) and drop `wp`.
 - `faults.py`: the injector. It replaces `BaseClient._make_api_call` and raises real `ClientError`
   codes (`AccessDenied`, `Throttling`, `ExpiredToken`, ...), connection and read errors, slow calls,
   and edited answers. A rule can target one account (by access key) or the n-th call (page 2).
@@ -157,13 +159,13 @@ are deleted.
   clock, a child-process signal driver, `MOTO_EC2_LOAD_DEFAULT_AMIS=false`, moto modules imported
   before any thread starts.
 - `checks.py`, `runner.py`, `child.py`: the checks, the in-process and child-process runners.
-- `test_failure_matrix.py`: tier 2 (the whole CLI). Three tests per row: pins, target, invariants.
+- `test_failure_matrix.py`: tier 2 (the whole CLI). Two tests per row: current and invariants. `INVENTAG_REGRESSION_DUMP=<folder>` writes what each row did and which target checks do not hold.
 - `test_scenario_table.py`: the table covers the plan (IDs read from the plan; a snapshot in
   `plan_ids.txt` is used when the plan file is not on the machine).
 
 ```bash
-python -m pytest tests/regression -q              # about 3 minutes, no real AWS
-python -m pytest tests/regression -m slow -q      # rows that need more than 30 s
+python -m pytest tests/regression -q              # about 2.5 minutes, no real AWS; skips slow rows
+python -m pytest tests/regression -m slow -q      # B3, B5, B10, K1: 15 to 50 s each
 python -m pytest tests/regression -k "D4 or F3"   # single rows
 ```
 
