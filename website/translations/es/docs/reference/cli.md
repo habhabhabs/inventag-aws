@@ -201,7 +201,7 @@ echo $?
 1
 ```
 
-Lo que imprimen las opciones que se detienen con el código de salida 2:
+Lo que imprimen las opciones que se detienen con el código de salida 2 (el primer ejemplo es de una máquina sin las bibliotecas de Google):
 
 ```bash title="Terminal"
 inventag --create-google-docs

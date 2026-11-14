@@ -203,7 +203,7 @@ echo $?
 
 <!-- END EXAMPLE OUTPUT: validate-operations -->
 
-What flags that stop with exit code 2 print:
+What flags that stop with exit code 2 print (the first sample is from a machine without the Google libraries):
 
 <!-- BEGIN EXAMPLE OUTPUT: failing-flags -->
 

@@ -191,7 +191,7 @@ echo $?
 1
 ```
 
-以結束代碼 2 停止的引數會列印如下內容：
+以結束代碼 2 停止的引數會列印如下內容（第一個範例來自沒有安裝 Google 庫的機器）：
 
 ```bash title="Terminal"
 inventag --create-google-docs

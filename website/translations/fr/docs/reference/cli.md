@@ -201,7 +201,7 @@ echo $?
 1
 ```
 
-Ce qu’affichent les options qui s’arrêtent avec le code de sortie 2 :
+Ce qu’affichent les options qui s’arrêtent avec le code de sortie 2 (le premier exemple provient d’une machine sans les bibliothèques Google) :
 
 ```bash title="Terminal"
 inventag --create-google-docs

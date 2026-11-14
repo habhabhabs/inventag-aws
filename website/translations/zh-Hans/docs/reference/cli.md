@@ -191,7 +191,7 @@ echo $?
 1
 ```
 
-以退出码 2 停止的参数会打印如下内容：
+以退出码 2 停止的参数会打印如下内容（第一个示例来自没有安装 Google 库的机器）：
 
 ```bash title="Terminal"
 inventag --create-google-docs
