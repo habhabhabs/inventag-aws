@@ -28,7 +28,7 @@
     "description": "The label for category 'Contributing' in sidebar 'docsSidebar'"
   },
   "version.label": {
-    "message": "v1.1.4（当前）",
+    "message": "v1.2.0（当前）",
     "description": "The label for version current"
   }
 }
