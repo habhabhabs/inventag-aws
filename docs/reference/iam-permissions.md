@@ -21,8 +21,10 @@ For step-by-step setup, see [Set up read-only access](../guides/read-only-access
 | `ec2:DescribeRegions` | Lists enabled regions, and checks each region you scan | The check runs for every region, even with `--account-regions`. A region that fails it is skipped with a warning. If the call is denied in every region, all regions are scanned. |
 | `account:ListRegions` | Lists enabled regions when `ec2:DescribeRegions` fails | Not called when `ec2:DescribeRegions` works. |
 | `tag:GetResources` | Finds tagged resources (Resource Groups Tagging API) | The IAM prefix is `tag`, not `resourcegroupstaggingapi`. |
-| `ce:GetCostAndUsage` | Finds services with spend | **AWS charges per request.** In our offline test a run made two for each account. If denied, discovery continues without billing data. `--no-billing-validation` stops the calls, and then you can leave this permission out. |
+| `ce:GetCostAndUsage` | Finds services with spend | **AWS charges per request.** See [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). In our offline test a run made two for each account. If denied, discovery continues without billing data. `--no-billing-validation` stops the calls, and then you can leave this permission out. |
 | `List*`, `Describe*`, `Get*` for each service you want in the report | Per-service discovery | For example `s3:ListAllMyBuckets`, `s3:GetBucketTagging`, `lambda:ListFunctions`, `dynamodb:ListTables`. The AWS managed `ReadOnlyAccess` policy covers these. |
+
+Not verified against real AWS: `GetCallerIdentity` needs no permission, the IAM prefix of the Tagging API is `tag`, and `ReadOnlyAccess` covers the List, Describe and Get actions.
 
 ## What some features need
 
@@ -31,6 +33,8 @@ For step-by-step setup, see [Set up read-only access](../guides/read-only-access
 | Scanning other accounts through a role | `sts:AssumeRole` on those roles, and a trust policy in each account that allows your identity |
 | `--enable-cost-analysis` | `pricing:GetProducts`, and `cloudwatch:GetMetricStatistics` (both are in the repository policy) |
 | `--s3-bucket` | `s3:PutObject` on that bucket (and `kms:GenerateDataKey` on the key if you use `aws:kms`) |
+
+Not verified against real AWS: these are the only extra permissions that role assumption, cost analysis and the upload need.
 
 ## What InvenTag never needs
 
@@ -51,6 +55,8 @@ matches what InvenTag calls. It includes `tag:GetResources`,
 only on `/restapis`, `/domainnames` and `/usageplans`, so API key values
 cannot be read.
 
+Not verified against real AWS: `apigateway:GET` on these three paths returns no API key values.
+
 v1.2.0 added these 17 actions for the new services and the region fallback:
 `account:ListRegions`, `appsync:ListGraphqlApis`, `athena:ListWorkGroups`, `autoscaling:DescribeAutoScalingGroups`, `backup:ListBackupVaults`, `cognito-idp:ListUserPools`, `ec2:DescribeNetworkInterfaces`, `ecr:DescribeRepositories`, `elasticbeanstalk:DescribeApplications`, `elasticbeanstalk:DescribeEnvironments`, `elasticfilesystem:DescribeFileSystems`, `elasticmapreduce:ListClusters`, `es:ListDomainNames`, `firehose:ListDeliveryStreams`, `kafka:ListClustersV2`, `redshift-serverless:ListNamespaces`, `redshift-serverless:ListWorkgroups`. It also
 removed `cloudtrail:LookupEvents`, which the `inventag` command does not call.
@@ -58,7 +64,9 @@ removed `cloudtrail:LookupEvents`, which the `inventag` command does not call.
 Its `OptionalS3ReportUpload` statement allows `s3:PutObject`, but only with
 server-side encryption. Put your bucket name in place of
 `YOUR-REPORTS-BUCKET-NAME`, or remove the statement if you don't use
-`--s3-bucket`.
+`--s3-bucket`. If you use another `--s3-key-prefix`, change the resource too.
+
+Not verified against real AWS: the statement allows the upload only with server-side encryption.
 
 ## Check a policy
 
@@ -69,4 +77,6 @@ aws iam simulate-principal-policy \
   --query "EvaluationResults[].[EvalActionName,EvalDecision]" --output table
 ```
 
-The first two should be `allowed`, and `s3:PutObject` should be denied.
+The first two should be `allowed`. `s3:PutObject` is allowed only if you kept the `OptionalS3ReportUpload` statement with your bucket name.
+
+Not verified against real AWS: the output of `aws iam simulate-principal-policy` for this policy.

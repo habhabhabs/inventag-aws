@@ -21,8 +21,10 @@ Para la configuración paso a paso, consulta [Configura el acceso de solo lectur
 | `ec2:DescribeRegions` | Lista las regiones habilitadas y comprueba cada región que analizas | La comprobación se ejecuta para cada región, incluso con `--account-regions`. Una región que no la supera se omite con una advertencia. Si la llamada se deniega en todas las regiones, se analizan todas. |
 | `account:ListRegions` | Lista las regiones habilitadas cuando `ec2:DescribeRegions` falla | No se llama cuando `ec2:DescribeRegions` funciona. |
 | `tag:GetResources` | Encuentra recursos etiquetados (API Resource Groups Tagging) | El prefijo de IAM es `tag`, no `resourcegroupstaggingapi`. |
-| `ce:GetCostAndUsage` | Encuentra servicios con gasto | **AWS cobra por solicitud.** En nuestra prueba sin conexión, una ejecución hizo dos por cada cuenta. Si se deniega, el descubrimiento continúa sin datos de facturación. `--no-billing-validation` detiene las llamadas, y entonces puedes omitir este permiso. |
+| `ce:GetCostAndUsage` | Encuentra servicios con gasto | **AWS cobra por solicitud.** Consulta los [precios de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). En nuestra prueba sin conexión, una ejecución hizo dos por cada cuenta. Si se deniega, el descubrimiento continúa sin datos de facturación. `--no-billing-validation` detiene las llamadas, y entonces puedes omitir este permiso. |
 | `List*`, `Describe*`, `Get*` de cada servicio que quieras en el informe | Descubrimiento por servicio | Por ejemplo `s3:ListAllMyBuckets`, `s3:GetBucketTagging`, `lambda:ListFunctions`, `dynamodb:ListTables`. La política administrada de AWS `ReadOnlyAccess` los cubre. |
+
+No verificado contra AWS real: `GetCallerIdentity` no necesita ningún permiso, el prefijo de IAM de la API Tagging es `tag`, y `ReadOnlyAccess` cubre las acciones List, Describe y Get.
 
 ## Qué necesitan algunas funciones {#what-some-features-need}
 
@@ -31,6 +33,8 @@ Para la configuración paso a paso, consulta [Configura el acceso de solo lectur
 | Analizar otras cuentas mediante un rol | `sts:AssumeRole` sobre esos roles, y una política de confianza en cada cuenta que permita tu identidad |
 | `--enable-cost-analysis` | `pricing:GetProducts` y `cloudwatch:GetMetricStatistics` (ambos están en la política del repositorio) |
 | `--s3-bucket` | `s3:PutObject` sobre ese bucket (y `kms:GenerateDataKey` sobre la clave si usas `aws:kms`) |
+
+No verificado contra AWS real: estos son los únicos permisos adicionales que necesitan la asunción de roles, el análisis de costes y la carga.
 
 ## Lo que InvenTag nunca necesita {#what-inventag-never-needs}
 
@@ -51,6 +55,8 @@ coincide con lo que InvenTag llama. Incluye `tag:GetResources`,
 solo en `/restapis`, `/domainnames` y `/usageplans`, así que no se pueden leer los
 valores de las claves de API.
 
+No verificado contra AWS real: `apigateway:GET` en estas tres rutas no devuelve valores de claves de API.
+
 v1.2.0 añadió estas 17 acciones para los servicios nuevos y la alternativa de regiones:
 `account:ListRegions`, `appsync:ListGraphqlApis`, `athena:ListWorkGroups`, `autoscaling:DescribeAutoScalingGroups`, `backup:ListBackupVaults`, `cognito-idp:ListUserPools`, `ec2:DescribeNetworkInterfaces`, `ecr:DescribeRepositories`, `elasticbeanstalk:DescribeApplications`, `elasticbeanstalk:DescribeEnvironments`, `elasticfilesystem:DescribeFileSystems`, `elasticmapreduce:ListClusters`, `es:ListDomainNames`, `firehose:ListDeliveryStreams`, `kafka:ListClustersV2`, `redshift-serverless:ListNamespaces`, `redshift-serverless:ListWorkgroups`. También
 quitó `cloudtrail:LookupEvents`, que el comando `inventag` no llama.
@@ -58,7 +64,9 @@ quitó `cloudtrail:LookupEvents`, que el comando `inventag` no llama.
 Su instrucción `OptionalS3ReportUpload` permite `s3:PutObject`, pero solo con
 cifrado del lado del servidor. Pon el nombre de tu bucket en lugar de
 `YOUR-REPORTS-BUCKET-NAME`, o quita la instrucción si no usas
-`--s3-bucket`.
+`--s3-bucket`. Si usas otro `--s3-key-prefix`, cambia también el recurso.
+
+No verificado contra AWS real: la instrucción permite la carga solo con cifrado del lado del servidor.
 
 ## Comprueba una política {#check-a-policy}
 
@@ -69,4 +77,6 @@ aws iam simulate-principal-policy \
   --query "EvaluationResults[].[EvalActionName,EvalDecision]" --output table
 ```
 
-Los dos primeros deberían ser `allowed`, y `s3:PutObject` debería estar denegado.
+Los dos primeros deberían ser `allowed`. `s3:PutObject` se permite solo si conservaste la instrucción `OptionalS3ReportUpload` con el nombre de tu bucket.
+
+No verificado contra AWS real: la salida de `aws iam simulate-principal-policy` para esta política.
