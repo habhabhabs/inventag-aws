@@ -75,7 +75,7 @@ def _params():
 @pytest.mark.parametrize("sc", _params())
 def test_current(sc, tmp_path, monkeypatch):
     if sc.skip:
-        pytest.skip(sc.skip)
+        pytest.skip("row has a skip reason in tests/regression/scenarios.py")
     outcome = _outcome(sc, tmp_path, monkeypatch)
     bad = failures(sc.current, outcome)
     assert not bad, f"{sc.id}: {bad}\n--- output ---\n{outcome.text[-3000:]}"
@@ -85,7 +85,7 @@ def test_current(sc, tmp_path, monkeypatch):
 def test_invariants(sc, tmp_path, monkeypatch):
     """Invariants that must hold after every row, whatever went wrong in it."""
     if sc.skip:
-        pytest.skip(sc.skip)
+        pytest.skip("row has a skip reason in tests/regression/scenarios.py")
     outcome = _outcome(sc, tmp_path, monkeypatch)
     # I2: no zero-byte or temporary file in the output folder
     stray = [
