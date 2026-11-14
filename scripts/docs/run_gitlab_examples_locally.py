@@ -28,6 +28,11 @@ treats any `allow_failure: {exit_codes: [...]}` job as allowed at pipeline
 level, so this script reads each job's own PASS/WARN/FAIL line, not
 gitlab-ci-local's exit status.
 
+Project CI/CD variables (the examples keep AWS_ROLE_ARN, INVENTAG_REPORTS_BUCKET
+and INVENTAG_KMS_KEY_ID out of the YAML) are passed through gitlab-ci-local's
+project variables file; dummy defaults for those three names exist, and
+`--variable NAME=VALUE` (repeatable) adds or overrides.
+
 Needs: gitlab-ci-local (on PATH or --gitlab-ci-local), rsync, and moto with
 its server extra (`pip install "moto[server]"`) in the Python running this.
 Without them it prints SKIP and exits 0. Not wired into any workflow.
@@ -61,6 +66,14 @@ REPO = Path(__file__).resolve().parents[2]
 BUILTIN_TEMPLATES = REPO / "inventag" / "templating" / "builtin"
 PIPELINE_EXIT_CODES = {0, 3, 4, 5, 6}
 JOB_TIMEOUT_S = 900
+# Project CI/CD variables that the docs examples keep out of the YAML. The values
+# are DUMMIES for the mocked AWS (moto accepts any role and any key id); they are
+# not real accounts or keys. Override or add with `--variable NAME=VALUE`.
+DUMMY_PROJECT_VARIABLES = {
+    "AWS_ROLE_ARN": "arn:aws:iam::123456789012:role/InvenTagGitLabReadOnly",
+    "INVENTAG_REPORTS_BUCKET": "inventag-docs-reports",
+    "INVENTAG_KMS_KEY_ID": "alias/inventag-docs-example",
+}
 # header.payload.signature with alg "none": moto does not check the signature.
 DUMMY_JWT = "eyJhbGciOiJub25lIn0.eyJzdWIiOiJwcm9qZWN0X3BhdGg6ZG9jcy9leGFtcGxlIn0."
 
@@ -80,6 +93,34 @@ class JobResult(NamedTuple):
     job: str
     label: str  # PASS, WARN or FAIL, as gitlab-ci-local printed it
     exit_code: int
+
+
+def parse_variable_args(items: List[str]) -> Dict[str, str]:
+    """`NAME=VALUE` arguments as a dict; the value may hold more `=` signs."""
+    out: Dict[str, str] = {}
+    for item in items:
+        name, sep, value = item.partition("=")
+        if not sep or not name:
+            raise ValueError(f"--variable needs NAME=VALUE, got {item!r}")
+        out[name] = value
+    return out
+
+
+def project_variables(body: str, given: Dict[str, str]) -> Dict[str, str]:
+    """The project CI/CD variables to pass: each dummy default whose name the
+    block mentions, then everything given with --variable (which wins)."""
+    out = {
+        name: value
+        for name, value in DUMMY_PROJECT_VARIABLES.items()
+        if re.search(rf"\b{name}\b", body)
+    }
+    out.update(given)
+    return out
+
+
+def write_variables_file(path: Path, variables: Dict[str, str]) -> None:
+    """gitlab-ci-local's project file variables (README: `--variables-file`)."""
+    path.write_text(yaml.safe_dump(dict(variables), default_style='"'))
 
 
 def work_name(block: Dict[str, Any]) -> str:
@@ -285,6 +326,7 @@ def _run_gitlab_ci_local(
     endpoint: str,
     tokens: List[str],
     source: str,
+    variables_file: Path,
 ) -> str:
     """Run the pipeline with the given pipeline source and a controlled environment.
 
@@ -312,6 +354,7 @@ def _run_gitlab_ci_local(
     if not tokens:
         variables.update(AWS_ACCESS_KEY_ID="testing", AWS_SECRET_ACCESS_KEY="testing")
     args = [gcl, "--force-shell-executor", "--no-color"]
+    args += ["--variables-file", str(variables_file)]
     args += ["--ignore-predefined-vars", "CI_PIPELINE_SOURCE"]
     for k, v in variables.items():
         args += ["--variable", f"{k}={v}"]
@@ -364,6 +407,7 @@ def run_block(
     endpoint: str,
     work: Path,
     source_override: Optional[str] = None,
+    given_variables: Optional[Dict[str, str]] = None,
 ) -> bool:
     doc = yaml.safe_load(block["body"])
     tokens = id_token_names(doc)
@@ -371,7 +415,12 @@ def run_block(
     site = work / f"site-{work_name(block)}"
     _seed(endpoint)
     source, why = choose_pipeline_source(doc, source_override)
-    output = _run_gitlab_ci_local(project, site, gcl, endpoint, tokens, source)
+    variables = project_variables(block["body"], given_variables or {})
+    variables_file = work / f"variables-{work_name(block)}.yml"
+    write_variables_file(variables_file, variables)
+    output = _run_gitlab_ci_local(
+        project, site, gcl, endpoint, tokens, source, variables_file
+    )
     log = work / f"block-{work_name(block)}.log"
     log.write_text(output)
     roles = _assumed_roles(endpoint)
@@ -384,7 +433,8 @@ def run_block(
     ok = True
     tool = (
         f"<{_gcl_version(gcl)}, shell executor, moto server, "
-        f"pipeline source {source} ({why})>"
+        f"pipeline source {source} ({why}); "
+        f"project variables {', '.join(variables) or 'none'}>"
     )
     for r in results:
         job_ok, line = _job_line(
@@ -419,8 +469,20 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="simulate this CI_PIPELINE_SOURCE for every block (default: chosen "
         "per block from its rules:if, push when none names a source)",
     )
+    ap.add_argument(
+        "--variable",
+        action="append",
+        default=[],
+        metavar="NAME=VALUE",
+        help="project CI/CD variable for every block, repeatable. Built-in dummy "
+        "defaults exist for " + ", ".join(DUMMY_PROJECT_VARIABLES),
+    )
     ap.add_argument("--keep", action="store_true", help="keep the work directory")
     ns = ap.parse_args(argv)
+    try:
+        given = parse_variable_args(ns.variable)
+    except ValueError as exc:
+        ap.error(str(exc))
     missing = missing_prerequisites(ns.gitlab_ci_local)
     if missing:
         for m in missing:
@@ -452,6 +514,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                     f"http://{host}:{port}",
                     work,
                     ns.pipeline_source,
+                    given,
                 )
                 for b in blocks
             ]

@@ -183,3 +183,49 @@ def test_a_block_without_source_rules_runs_as_a_push_pipeline():
 def test_the_override_wins_and_is_named_as_such():
     doc = yaml.safe_load(MR_BLOCK)
     assert runner.choose_pipeline_source(doc, "web") == ("web", "override")
+
+
+# --- project CI/CD variables ---------------------------------------------
+
+
+def test_the_dummy_defaults_cover_exactly_the_variables_the_examples_keep_out_of_yaml():
+    assert set(runner.DUMMY_PROJECT_VARIABLES) == {
+        "AWS_ROLE_ARN",
+        "INVENTAG_REPORTS_BUCKET",
+        "INVENTAG_KMS_KEY_ID",
+    }
+
+
+def test_only_the_defaults_a_block_names_are_passed():
+    body = 'script:\n  - inventag --s3-bucket "$INVENTAG_REPORTS_BUCKET"\n'
+    assert list(runner.project_variables(body, {})) == ["INVENTAG_REPORTS_BUCKET"]
+
+
+def test_a_variable_given_on_the_command_line_beats_the_default_and_is_always_passed():
+    body = "script: [x]\nrole: ${AWS_ROLE_ARN}\n"
+    got = runner.project_variables(body, {"AWS_ROLE_ARN": "mine", "OTHER": "1"})
+    assert got == {"AWS_ROLE_ARN": "mine", "OTHER": "1"}
+
+
+def test_variable_arguments_split_at_the_first_equals_sign():
+    assert runner.parse_variable_args(["A=b", "C=d=e", "E="]) == {
+        "A": "b",
+        "C": "d=e",
+        "E": "",
+    }
+
+
+def test_a_variable_argument_without_a_name_and_equals_sign_is_refused():
+    for bad in ("NOEQUALS", "=value"):
+        try:
+            runner.parse_variable_args([bad])
+        except ValueError as exc:
+            assert "NAME=VALUE" in str(exc)
+        else:
+            raise AssertionError(bad)
+
+
+def test_the_variables_file_is_read_back_by_yaml_with_every_value_a_string(tmp_path):
+    path = tmp_path / "vars.yml"
+    runner.write_variables_file(path, {"A": "1", "B": "x: y"})
+    assert yaml.safe_load(path.read_text()) == {"A": "1", "B": "x: y"}
