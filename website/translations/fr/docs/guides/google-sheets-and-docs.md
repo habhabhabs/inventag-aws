@@ -53,7 +53,7 @@ Vous n’avez pas besoin du module complémentaire pour Excel, Word ou tout le r
 Google sans lui, InvenTag s’arrête avec le code de sortie 2, indique quel paquet
 manque et affiche cette commande.
 
-Non vérifié sur pip et pipx : les commandes d’installation du module complémentaire Google.
+Non vérifié sur pip ni sur pipx : les commandes d’installation du module complémentaire Google.
 
 ## Se connecter {#sign-in}
 

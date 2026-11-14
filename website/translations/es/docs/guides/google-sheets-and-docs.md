@@ -56,7 +56,7 @@ No necesitas el complemento para Excel, Word ni nada más. Si usas una opción d
 Google sin él, InvenTag se detiene con el código de salida 2, indica qué
 paquete falta e imprime este comando.
 
-No verificado contra pip y pipx: los comandos de instalación del complemento de Google.
+No verificado contra pip ni pipx: los comandos de instalación del complemento de Google.
 
 ## Inicia sesión {#sign-in}
 
