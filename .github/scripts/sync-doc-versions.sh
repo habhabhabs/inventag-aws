@@ -25,7 +25,9 @@ CURRENT="$(jq -r .version version.json)"
 cd website
 
 if [ "${SYNC_DOCS_OFFLINE:-0}" != 1 ]; then
-  git rev-parse --is-shallow-repository | grep -q true && git fetch --unshallow --tags -q || true
+  if git rev-parse --is-shallow-repository | grep -q true; then
+    git fetch --unshallow --tags -q || true
+  fi
   git fetch --tags -q 2>/dev/null || true
 fi
 rm -rf i18n/*/docusaurus-plugin-content-docs/current   # generated copies must not leak into snapshots
@@ -79,8 +81,9 @@ for tag in $(git tag -l | grep -E "$PATTERN" | sort -V); do
   for sb in sidebars.ts sidebars.js; do git cat-file -e "$tag:website/$sb" 2>/dev/null && git checkout "$tag" -- "$sb"; done
   npm run docusaurus -- docs:version "$v"
   restore_current_docs                                   # unstage the old tag's files, put the current docs back
-  [ -d "versioned_docs/version-$v" ] && [ -f "versioned_sidebars/version-$v-sidebars.json" ] \
-    || { echo "snapshot of $tag was not created"; exit 1; }
+  if [ ! -d "versioned_docs/version-$v" ] || [ ! -f "versioned_sidebars/version-$v-sidebars.json" ]; then
+    echo "snapshot of $tag was not created"; exit 1
+  fi
   # The docs at a tag can still name an older release ("This page describes
   # InvenTag v1.0.2" in the v1.1.2 docs): make the snapshot name its own version.
   node scripts/stamp-doc-version.mjs "versioned_docs/version-$v" "$v"
