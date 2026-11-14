@@ -202,6 +202,7 @@ the first command makes no AWS call. A broken accounts file looks like this
 
 ```text title="Output"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
+inventag - WARNING -    - Account 1: no credentials given; InvenTag will assume the --cross-account-role role (default InvenTagCrossAccountRole) in this account, or use the default credentials only if they belong to this account
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
 inventag - ERROR - ❌ Some configuration files have validation errors

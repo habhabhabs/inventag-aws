@@ -62,7 +62,7 @@ Una cuenta puede indicar una forma de obtener credenciales. Una cuenta sin ningu
 
 Los valores de `settings` sustituyen a las opciones equivalentes de la línea de comandos.
 
-Una segunda entrada con el mismo ID de cuenta, y una clave que InvenTag no conoce (por ejemplo `profil_name`), dan cada una una advertencia que la nombra. El archivo se acepta igualmente.
+Una segunda entrada con el mismo ID de cuenta, y una clave que InvenTag no conoce (por ejemplo `profil_name`), dan cada una una advertencia que la nombra, y `--validate-config-only` también las muestra. El archivo se acepta igualmente.
 
 Para usar el mismo nombre de rol en todas las cuentas, omite `role_arn` y añade
 `--cross-account-role InvenTagReadOnly` al comando.
@@ -72,6 +72,7 @@ ID de cuenta sin comillas (datos de ejemplo):
 
 ```text title="Salida"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
+inventag - WARNING -    - Account 1: no credentials given; InvenTag will assume the --cross-account-role role (default InvenTagCrossAccountRole) in this account, or use the default credentials only if they belong to this account
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
 inventag - ERROR - ❌ Some configuration files have validation errors

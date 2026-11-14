@@ -105,6 +105,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **你沒有權限的服務**會被跳過並記錄一條警告；只有 Resource Groups Tagging API 返回時，它的資源才會出現。
 - **因其他原因失敗的列出呼叫**（重試後仍被限流，或出現錯誤）會記為一條警告，並計入快照（`metadata.tags.coverage_summary`）。
 - **帳戶中的所有呼叫都被拒絕：** 該帳戶不算失敗，執行以結束代碼 0 結束。
+- **只有標籤 API 回應過的帳戶：** 在某次執行中，某個帳戶只有 Resource Groups Tagging API 作出了回應，之後的下一次完整執行會把該帳戶中沒有標籤的資源列為新增。
 - **某個服務的列出呼叫在上一次執行中失敗**時，該服務的資源可能在下一份變更報告中顯示為新增。
 - **從 v1.1.4 升級後的第一份變更報告**會把新覆蓋服務的資源列為新增，儘管它們之前就存在。
 - **掃描過程中會話過期**時，報告只包含會話過期前讀取到的內容，執行以結束代碼 0 結束，使用 `--fail-on-account-error` 時也是如此。
@@ -126,7 +127,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **兩個同時使用同一輸出資料夾的執行**不會被阻止。
 - **帶有值有誤的 `--bom-config` 檔案的 `--validate-config-only`** 會輸出一條警告並以結束代碼 0 結束，而真正執行時會以結束代碼 1 停止。
 - **缺少頂層鍵 `service_descriptions` 的服務描述檔案**能透過 `--validate-config-only`，只給出一條警告並以結束代碼 0 結束；執行時它會被忽略，日誌中記錄一條錯誤，並使用內建描述。
-- **`inventag --validate-operations` 把 `apigateway:GetApiKeys` 和 `ec2:DescribeInstanceAttribute` 顯示為 ALLOWED**，並附上防護適用的規則（`BLOCKED when includeValues=true`、`BLOCKED when Attribute=userdata`），結束代碼為 0，因為只有帶該引數呼叫它們時，防護才會攔截。
+- **`inventag --validate-operations` 把 `apigateway:GetApiKeys` 和 `ec2:DescribeInstanceAttribute` 顯示為 ALLOWED**，並附上防護適用的規則（`blocked when includeValues=true`、`blocked when Attribute=userdata`），結束代碼為 0，因為只有帶該引數呼叫它們時，防護才會攔截。
 - **設定範本中設定了 `services` 時**，報告只包含這些服務，但掃描仍會讀取所有服務，因此可能出現關於其他服務的警告。
 
 ## 費用 {#costs}

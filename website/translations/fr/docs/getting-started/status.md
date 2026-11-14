@@ -147,6 +147,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   (`metadata.tags.coverage_summary`).
 - **Tous les appels d’un compte refusés :** le compte ne compte pas comme en
   échec, et l’exécution se termine avec le code 0.
+- **Après une exécution où seule l’API Tagging a répondu pour un compte,** l’exécution complète suivante liste comme ajoutées les ressources de ce compte qui n’ont pas de balises.
 - **Un service dont le listage a échoué lors de l’exécution précédente** peut
   montrer ses ressources comme ajoutées dans le rapport de changements suivant.
 - **Le premier rapport de changements après une mise à jour depuis v1.1.4**
@@ -191,7 +192,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   sont pas empêchées.
 - **`--validate-config-only` avec un fichier `--bom-config` dont une valeur est erronée** affiche un avertissement et se termine avec le code 0, alors que la vraie exécution s’arrête avec le code de sortie 1.
 - **Un fichier de descriptions de services sans la clé de premier niveau `service_descriptions`** passe `--validate-config-only` avec un avertissement et le code 0, et l’exécution l’ignore avec une erreur dans le journal et utilise les descriptions intégrées.
-- **`inventag --validate-operations` affiche `apigateway:GetApiKeys` et `ec2:DescribeInstanceAttribute` comme ALLOWED**, chacun avec la règle qu’applique la protection (`BLOCKED when includeValues=true`, `BLOCKED when Attribute=userdata`), et se termine avec le code 0, car la protection ne les bloque que lorsqu’ils sont appelés avec ce paramètre.
+- **`inventag --validate-operations` affiche `apigateway:GetApiKeys` et `ec2:DescribeInstanceAttribute` comme ALLOWED**, chacun avec la règle qu’applique la protection (`blocked when includeValues=true`, `blocked when Attribute=userdata`), et se termine avec le code 0, car la protection ne les bloque que lorsqu’ils sont appelés avec ce paramètre.
 - **Avec `services` dans un modèle de configuration**, le rapport ne contient que ces services, mais l’analyse lit toujours tous les services, si bien que des avertissements sur d’autres services peuvent apparaître.
 
 ## Coûts {#costs}

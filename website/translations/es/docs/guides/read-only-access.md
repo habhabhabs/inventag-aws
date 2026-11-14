@@ -103,7 +103,7 @@ Algunas operaciones parecen lecturas pero devuelven secretos o datos de clientes
 Ejemplos: `secretsmanager:GetSecretValue`, `ssm:GetParameter`, `s3:GetObject`, `dynamodb:GetItem`, `lambda:GetFunction` (devuelve un enlace de descarga del código),
 `cloudformation:GetTemplate`, `ec2:GetLaunchTemplateData`, `glue:GetConnection` y los resultados de consultas de Athena.
 También bloquea las claves de API con sus valores y `ec2:DescribeInstanceAttribute` para los datos de usuario, y comprueba las URL prefirmadas y los tokens de autenticación de bases de datos con las mismas reglas.
-Comprueba un nombre con `inventag --validate-operations <service>:<Operation>`. Cuando la respuesta depende de un parámetro, nombra la regla: `apigateway:GetApiKeys` muestra `ALLOWED` con `BLOCKED when includeValues=true`, y `ec2:DescribeInstanceAttribute` muestra `ALLOWED` con `BLOCKED when Attribute=userdata`. La protección bloquea estas llamadas solo cuando se hacen con ese parámetro.
+Comprueba un nombre con `inventag --validate-operations <service>:<Operation>`. Cuando la respuesta depende de un parámetro, nombra la regla: `apigateway:GetApiKeys` muestra `ALLOWED` con `blocked when includeValues=true`, y `ec2:DescribeInstanceAttribute` muestra `ALLOWED` con `blocked when Attribute=userdata`. La protección bloquea estas llamadas solo cuando se hacen con ese parámetro.
 
 Los perfiles de IAM Identity Center (SSO) y de identidad web funcionan con la protección activa. La protección deja que el paso de inicio de sesión cambie un token por credenciales, y nada más.
 

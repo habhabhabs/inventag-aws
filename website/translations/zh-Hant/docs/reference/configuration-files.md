@@ -57,7 +57,7 @@ settings:                              # optional
 
 `settings` 中的值會覆蓋對應的命令列引數。
 
-帳戶 ID 相同的第二個條目，以及 InvenTag 不認識的鍵（例如 `profil_name`），都會給出一條指出它的警告。檔案仍會被接受。
+帳戶 ID 相同的第二個條目，以及 InvenTag 不認識的鍵（例如 `profil_name`），都會給出一條指出它的警告，`--validate-config-only` 也會輸出這些警告。檔案仍會被接受。
 
 要在每個帳戶中使用同一個角色名稱，請省略 `role_arn`，並在命令中加上
 `--cross-account-role InvenTagReadOnly`。
@@ -66,6 +66,7 @@ settings:                              # optional
 
 ```text title="輸出"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
+inventag - WARNING -    - Account 1: no credentials given; InvenTag will assume the --cross-account-role role (default InvenTagCrossAccountRole) in this account, or use the default credentials only if they belong to this account
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
 inventag - ERROR - ❌ Some configuration files have validation errors

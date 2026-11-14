@@ -129,7 +129,7 @@ son ARN.
   `--disable-delta-detection` le supprime aussi. `--disable-state-management`
   supprime les instantanés et les rapports.
 - Si un compte n’a pas pu être analysé ou a dépassé son délai dans l’une des deux exécutions, ses ressources sont exclues de la comparaison.
-  Sinon, toutes apparaîtraient comme ajoutées ou supprimées. Le rapport de changements nomme le compte dans sa section State Comparison (`accounts_not_compared`). Il en va de même pour un compte dont la session a expiré en cours d’analyse et pour un compte dont tous les appels ont été refusés.
+  Sinon, toutes apparaîtraient comme ajoutées ou supprimées. Le rapport de changements nomme le compte dans sa section State Comparison (`accounts_not_compared`). Il en va de même pour un compte dont la session a expiré en cours d’analyse et pour un compte dont rien n’a pu être lu. Une ressource que l’API Tagging a déjà renvoyée reste comparée lorsque l’API Tagging a lu sa région dans cette exécution.
 - InvenTag compare les listes sans tenir compte de l’ordre : déplacer des éléments dans une liste n’est donc pas un changement, sauf pour les couches Lambda, les politiques de résiliation Auto Scaling et les comportements de cache CloudFront, dont l’ordre fait partie de la configuration.
   Il ignore aussi les champs qui changent à chaque exécution : la voie de découverte, les chiffres de coût et les compteurs d’utilisation
   comme `ItemCount`, `ApproximateNumberOfMessages` ou la taille EFS.

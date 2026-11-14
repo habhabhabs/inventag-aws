@@ -111,7 +111,7 @@ download link for the code), `cloudformation:GetTemplate`,
 It also blocks API keys with their values and `ec2:DescribeInstanceAttribute`
 for user data, and it checks presigned URLs and database authentication tokens
 by the same rules. Check a name with
-`inventag --validate-operations <service>:<Operation>`. Where the answer depends on a parameter, it names the rule: `apigateway:GetApiKeys` shows `ALLOWED` with `BLOCKED when includeValues=true`, and `ec2:DescribeInstanceAttribute` shows `ALLOWED` with `BLOCKED when Attribute=userdata`. The guard blocks these calls only when they are called with that parameter.
+`inventag --validate-operations <service>:<Operation>`. Where the answer depends on a parameter, it names the rule: `apigateway:GetApiKeys` shows `ALLOWED` with `blocked when includeValues=true`, and `ec2:DescribeInstanceAttribute` shows `ALLOWED` with `blocked when Attribute=userdata`. The guard blocks these calls only when they are called with that parameter.
 
 IAM Identity Center (SSO) and web-identity profiles work under the guard.
 The guard lets the sign-in step exchange a token for credentials, and nothing

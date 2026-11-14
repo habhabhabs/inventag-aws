@@ -142,6 +142,8 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   (`metadata.tags.coverage_summary`).
 - **Every call in an account denied:** the account does not count as failed,
   and the run exits with code 0.
+- **After a run in which only the Tagging API answered for an account,**
+  the next complete run lists that account's resources without tags as added.
 - **A service whose listing failed in the previous run** can show its
   resources as added in the next change report.
 - **The first change report after upgrading from v1.1.4** lists the resources
@@ -181,7 +183,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   prevented.
 - **`--validate-config-only` with a `--bom-config` file that has a wrong value** prints one warning and exits with code 0, although the real run stops with exit code 1.
 - **A service descriptions file without the top-level key `service_descriptions`** passes `--validate-config-only` with a warning and exit code 0, and the run ignores it with an error in the log and uses the built-in descriptions.
-- **`inventag --validate-operations` shows `apigateway:GetApiKeys` and `ec2:DescribeInstanceAttribute` as ALLOWED**, each with the rule that the guard applies (`BLOCKED when includeValues=true`, `BLOCKED when Attribute=userdata`), and exits with code 0, because the guard blocks them only when they are called with that parameter.
+- **`inventag --validate-operations` shows `apigateway:GetApiKeys` and `ec2:DescribeInstanceAttribute` as ALLOWED**, each with the rule that the guard applies (`blocked when includeValues=true`, `blocked when Attribute=userdata`), and exits with code 0, because the guard blocks them only when they are called with that parameter.
 - **With `services` in a config template**, the report holds only those services, but the scan still reads every service, so warnings about other services can appear.
 
 ## Costs

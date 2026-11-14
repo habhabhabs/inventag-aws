@@ -132,7 +132,7 @@ Qué debes saber:
   `--disable-delta-detection` también lo detiene. `--disable-state-management`
   detiene las instantáneas y los informes.
 - Si una cuenta no se pudo analizar o se quedó sin tiempo en cualquiera de las dos ejecuciones, sus recursos se dejan fuera de la comparación.
-  Si no, todos aparecerían como añadidos o eliminados. El informe de cambios nombra la cuenta en su sección State Comparison (`accounts_not_compared`). Lo mismo vale para una cuenta cuya sesión caducó a mitad del análisis y para una cuenta en la que se denegaron todas las llamadas.
+  Si no, todos aparecerían como añadidos o eliminados. El informe de cambios nombra la cuenta en su sección State Comparison (`accounts_not_compared`). Lo mismo vale para una cuenta cuya sesión caducó a mitad del análisis y para una cuenta de la que no se pudo leer nada. Un recurso que la API Tagging devolvió antes se sigue comparando cuando la API Tagging leyó su región en esta ejecución.
 - InvenTag compara las listas sin tener en cuenta el orden, así que mover elementos dentro de una lista no es un cambio, salvo en las capas de Lambda, las políticas de terminación de Auto Scaling y los comportamientos de caché de CloudFront, cuyo orden es configuración.
   También ignora los campos que cambian en cada ejecución: la vía de descubrimiento, las cifras de coste y los contadores de uso
   como `ItemCount`, `ApproximateNumberOfMessages` o el tamaño de EFS.

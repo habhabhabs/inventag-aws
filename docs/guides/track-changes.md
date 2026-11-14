@@ -153,7 +153,9 @@ What to know:
   would show as added or removed. The change report names the account in its
   State Comparison section (`accounts_not_compared`).
   The same holds for an account whose session expired part-way and for an
-  account in which every call was denied.
+  account in which nothing at all could be read. A resource that the Tagging
+  API returned before is still compared when the Tagging API read its region in
+  this run.
 - InvenTag compares lists as unordered, so moving items around in a list is
   not a change, except Lambda layers, Auto Scaling termination policies and
   CloudFront cache behaviors, whose order is configuration. It also ignores

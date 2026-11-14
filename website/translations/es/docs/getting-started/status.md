@@ -147,6 +147,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   (`metadata.tags.coverage_summary`).
 - **Todas las llamadas de una cuenta denegadas:** la cuenta no cuenta como
   fallida, y la ejecución termina con el código 0.
+- **Después de una ejecución en la que solo respondió la API Tagging para una cuenta,** la siguiente ejecución completa lista como añadidos los recursos de esa cuenta que no tienen etiquetas.
 - **Un servicio cuyo listado falló en la ejecución anterior** puede mostrar sus
   recursos como añadidos en el siguiente informe de cambios.
 - **El primer informe de cambios después de actualizar desde v1.1.4** lista los
@@ -190,7 +191,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   impiden.
 - **`--validate-config-only` con un archivo `--bom-config` que tiene un valor erróneo** muestra una advertencia y termina con el código 0, aunque la ejecución real se detiene con el código de salida 1.
 - **Un archivo de descripciones de servicio sin la clave de nivel superior `service_descriptions`** pasa `--validate-config-only` con una advertencia y el código 0, y la ejecución lo ignora con un error en el registro y usa las descripciones integradas.
-- **`inventag --validate-operations` muestra `apigateway:GetApiKeys` y `ec2:DescribeInstanceAttribute` como ALLOWED**, cada uno con la regla que aplica la protección (`BLOCKED when includeValues=true`, `BLOCKED when Attribute=userdata`), y termina con el código 0, porque la protección los bloquea solo cuando se llaman con ese parámetro.
+- **`inventag --validate-operations` muestra `apigateway:GetApiKeys` y `ec2:DescribeInstanceAttribute` como ALLOWED**, cada uno con la regla que aplica la protección (`blocked when includeValues=true`, `blocked when Attribute=userdata`), y termina con el código 0, porque la protección los bloquea solo cuando se llaman con ese parámetro.
 - **Con `services` en una plantilla de configuración**, el informe solo contiene esos servicios, pero el análisis sigue leyendo todos los servicios, así que pueden aparecer avisos sobre otros servicios.
 
 ## Costes {#costs}
