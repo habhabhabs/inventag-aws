@@ -19,6 +19,23 @@ def repo_root():
     return REPO_ROOT
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _moto_without_default_images():
+    """Switch off moto's ~1,300 default AMIs and snapshots for the whole session.
+
+    moto reads ``MOTO_EC2_LOAD_DEFAULT_AMIS`` when it builds an EC2 backend and
+    keeps that backend after a per-test ``monkeypatch`` has put the variable
+    back. A test that set it per test therefore changed what the next test file
+    saw, depending on the order of the files (review-behaviour T1). The
+    variable is set here once, before the first test, and no test sets it
+    again. Child processes (the e2e runs) inherit it.
+    """
+    patch = pytest.MonkeyPatch()
+    patch.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
+    yield
+    patch.undo()
+
+
 @pytest.fixture(autouse=True)
 def _no_real_aws(monkeypatch):
     """Tests must never reach real AWS or the instance metadata service.

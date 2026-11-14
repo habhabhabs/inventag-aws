@@ -92,8 +92,8 @@ def world():
             VolumeId=ids["vol"],
             TagSpecifications=[{"ResourceType": "snapshot", "Tags": TAGS}],
         )["SnapshotId"]
-        # A fixed image ID: moto's default AMIs may be switched off by an
-        # earlier test (MOTO_EC2_LOAD_DEFAULT_AMIS), and moto accepts any ID.
+        # A fixed image ID: moto accepts any ID, so the test does not depend on
+        # which default AMIs moto has loaded (tests/conftest.py switches them off).
         ids["instance"] = ec2.run_instances(
             ImageId="ami-12c6146b",
             MinCount=1,

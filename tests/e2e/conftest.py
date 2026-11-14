@@ -95,21 +95,15 @@ def run_main(argv, capsys, monkeypatch, output_dir: Optional[Path] = None):
     return CliResult(code, captured.out, captured.err, output_dir)
 
 
-@pytest.fixture(autouse=True)
-def _small_moto(monkeypatch):
-    # moto ships ~1300 default AMIs and snapshots; they only slow the scan down.
-    monkeypatch.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
-
-
 @pytest.fixture
-def estate(_small_moto):
+def estate():
     """moto AWS with the standard e2e estate in us-east-1."""
     with mock_aws():
         yield seed_estate()
 
 
 @pytest.fixture
-def empty_aws(_small_moto):
+def empty_aws():
     with mock_aws():
         yield
 

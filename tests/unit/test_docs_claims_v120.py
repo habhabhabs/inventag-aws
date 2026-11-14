@@ -55,7 +55,6 @@ BASE = ["--create-excel", "--no-billing-validation"]
 @pytest.fixture
 def empty_aws(monkeypatch, tmp_path):
     """moto AWS with nothing in it; the working directory is ``tmp_path``."""
-    monkeypatch.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "AKIAIOSFODNN7EXAMPLE")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "fake-secret-for-moto-only")
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
