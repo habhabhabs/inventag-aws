@@ -152,12 +152,18 @@ inventag templates validate my-scan
 
 退出码 0 表示文件有效。使用 `--skip-credential-validation` 时，第一条命令不发出任何 AWS 调用。损坏的账户文件如下所示（示例数据）：
 
-```text title="Terminal"
+```text title="输出"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
 inventag - ERROR - ❌ Some configuration files have validation errors
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="输出"
 1
 ```
 

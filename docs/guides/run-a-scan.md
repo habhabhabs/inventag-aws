@@ -189,12 +189,18 @@ the first command makes no AWS call. A broken accounts file looks like this
 
 <!-- BEGIN EXAMPLE OUTPUT: error-bad-accounts -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
 inventag - ERROR - ❌ Some configuration files have validation errors
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Output"
 1
 ```
 

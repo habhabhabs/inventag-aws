@@ -172,12 +172,18 @@ El código de salida 0 significa que los archivos son válidos. Con `--skip-cred
 el primer comando no hace ninguna llamada a AWS. Un archivo de cuentas erróneo se ve
 así (datos de ejemplo):
 
-```text title="Terminal"
+```text title="Salida"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
 inventag - ERROR - ❌ Some configuration files have validation errors
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Salida"
 1
 ```
 

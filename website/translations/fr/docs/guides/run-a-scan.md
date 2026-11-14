@@ -166,12 +166,18 @@ inventag templates validate my-scan
 Le code de sortie 0 signifie que les fichiers sont valides. Avec `--skip-credential-validation`, la première commande
 n’effectue aucun appel AWS. Un fichier de comptes incorrect ressemble à ceci (données d’exemple) :
 
-```text title="Terminal"
+```text title="Sortie"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
 inventag - ERROR - ❌ Some configuration files have validation errors
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Sortie"
 1
 ```
 
