@@ -16,7 +16,6 @@ Features:
 """
 
 import dataclasses
-import inspect
 import logging
 import re
 import boto3
@@ -88,24 +87,6 @@ _NOT_READ_LIMIT = 10
 # answers it for every service it does not implement). Nothing can be read
 # there, so it is not reported as "not read".
 _NO_SUCH_SERVICE_CODE = "404"
-
-
-def _skipped_upload_message(bucket: str, key_prefix: Optional[str] = None) -> str:
-    """The line to log when a report format failed, so nothing was uploaded.
-
-    ``s3_upload.skipped_upload_message`` (fix/track-g) when it exists; the
-    same text otherwise. Remove the fallback once both are on main."""
-    from . import s3_upload
-
-    message = getattr(s3_upload, "skipped_upload_message", None)
-    if message is not None:
-        return message(bucket, key_prefix)
-    prefix = s3_upload.normalize_key_prefix(key_prefix)
-    target = f"s3://{bucket}/{prefix + '/' if prefix else ''}"
-    return (
-        f"Nothing was uploaded to {target} because a report format failed. "
-        "The report files that were written are in the output folder."
-    )
 
 
 def _expired_listings(context) -> int:
@@ -580,8 +561,10 @@ class CloudBOMGenerator:
                 )
         elif s3_upload_config and "bom_generation" in results:
             # A failed report format returns the files written so far.
+            from .s3_upload import skipped_upload_message
+
             self.logger.error(
-                _skipped_upload_message(
+                skipped_upload_message(
                     s3_upload_config.bucket_name, s3_upload_config.key_prefix
                 )
             )
@@ -2098,14 +2081,13 @@ class CloudBOMGenerator:
                         self.logger.warning(f"Skipped unreadable snapshot {problem}")
 
                     if previous_state_id is not None:
-                        # The current run's scope, when the detector takes it
-                        # (A-05; v1.2.0's detector does not).
-                        compare = delta_detector.detect_changes_by_state_id
-                        extra = {}
-                        if "current_run" in inspect.signature(compare).parameters:
-                            extra["current_run"] = self._delta_scope()
-                        delta_results = compare(
-                            state_manager, previous_state_id, state_id, **extra
+                        # The current run's scope (A-05): what this run did
+                        # not read is not compared instead of removed.
+                        delta_results = delta_detector.detect_changes_by_state_id(
+                            state_manager,
+                            previous_state_id,
+                            state_id,
+                            current_run=self._delta_scope(),
                         )
                         summary = getattr(delta_results, "summary", None) or {}
                         changed = sum(
