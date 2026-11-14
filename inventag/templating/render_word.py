@@ -95,7 +95,13 @@ def _cover(doc, spec, template, resources, metadata) -> None:
     doc.add_paragraph(f"Generated: {metadata['generated_at']}")
 
 
-def _summary(doc, spec, resources) -> None:
+def _run_notes(doc, run_notes) -> None:
+    doc.add_paragraph("Run notes", style="Heading 3")
+    for note in run_notes:
+        doc.add_paragraph(note)
+
+
+def _summary(doc, spec, resources, run_notes=None) -> None:
     doc.add_heading("Summary", level=1)
     accounts = {str(r.get("source_account_id") or "") for r in resources} - {""}
     regions = {str(r.get("region") or "") for r in resources} - {""}
@@ -107,6 +113,8 @@ def _summary(doc, spec, resources) -> None:
         f"Regions: {len(regions)}",
     ):
         doc.add_paragraph(line, style="List Bullet")
+    if run_notes:
+        _run_notes(doc, run_notes)
 
 
 def _service_summary(doc, spec, resources) -> None:
@@ -230,8 +238,14 @@ def render_word(
     template,
     compliance: Optional[ComplianceReport] = None,
     metadata: Optional[Dict[str, Any]] = None,
+    run_notes: Optional[List[str]] = None,
 ) -> str:
-    """Write the document to ``path`` and return the path."""
+    """Write the document to ``path`` and return the path.
+
+    ``run_notes`` are lines the reader must know (accounts that were not
+    scanned and why). They follow the Summary, and only when there are some.
+    A template without a summary section gets them after its first section.
+    """
     resources = mask_resources(resources)  # no secret value goes into a file
     spec = template.spec
     metadata = dict(metadata or {})
@@ -250,14 +264,17 @@ def render_word(
         )
     renderers = {
         "cover": lambda: _cover(doc, spec, template, resources, metadata),
-        "summary": lambda: _summary(doc, spec, resources),
+        "summary": lambda: _summary(doc, spec, resources, run_notes),
         "service-summary": lambda: _service_summary(doc, spec, resources),
         "tag-compliance": lambda: _tag_compliance(doc, spec, compliance),
         "service-tables": lambda: _service_tables(doc, spec, resources),
         "about": lambda: _about(doc, spec, template, metadata),
     }
-    for section_name in spec["word"]["sections"]:
+    names = spec["word"]["sections"]
+    for index, section_name in enumerate(names):
         renderers[section_name]()
+        if run_notes and "summary" not in names and index == 0:
+            _run_notes(doc, run_notes)
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     save_atomically(path, doc.save)
     return path

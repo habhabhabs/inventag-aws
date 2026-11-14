@@ -424,6 +424,9 @@ class TemplatedCloudBOMGenerator(CloudBOMGenerator):
             now = datetime.now(timezone.utc)
             stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             metadata = {"generated_at": now.strftime("%Y-%m-%d %H:%M UTC")}
+            # The lines the default report shows (accounts not scanned, and
+            # whatever else the generator adds): one list for every report.
+            notes = self._run_notes()
 
             if run.policy is not None:
                 run.compliance = evaluate(processed, run.policy)
@@ -437,12 +440,22 @@ class TemplatedCloudBOMGenerator(CloudBOMGenerator):
                 if fmt == "excel":
                     path = self.output_dir / f"multi_account_bom_{stamp}.xlsx"
                     render_excel(
-                        str(path), processed, run.report, run.compliance, metadata
+                        str(path),
+                        processed,
+                        run.report,
+                        run.compliance,
+                        metadata,
+                        notes,
                     )
                 elif fmt == "word":
                     path = self.output_dir / f"multi_account_bom_{stamp}.docx"
                     render_word(
-                        str(path), processed, run.report, run.compliance, metadata
+                        str(path),
+                        processed,
+                        run.report,
+                        run.compliance,
+                        metadata,
+                        notes,
                     )
                 else:
                     self.logger.warning(
