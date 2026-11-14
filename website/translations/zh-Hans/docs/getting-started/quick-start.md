@@ -22,6 +22,8 @@ aws sts get-caller-identity
 
 InvenTag 扫描这组凭证所属的账户。
 
+未针对 AWS CLI 验证：`aws sts get-caller-identity` 的输出内容。
+
 ## 2. 扫描一个区域 {#2-scan-one-region}
 
 先从小处着手。一个区域既快又省钱。
@@ -136,8 +138,7 @@ Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-
 
 ## 一次运行的费用 {#what-a-run-costs}
 
-InvenTag 发出的只读调用是免费的，但 Cost Explorer 的 `GetCostAndUsage`
-调用不是：AWS 按请求收费，在我们的离线测试中，默认运行会为每个账户发出两次。
+Cost Explorer 的 `GetCostAndUsage` 调用按请求收费，在我们的离线测试中，默认运行会为每个账户发出两次。
 请参阅最新的
 [Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。
 加上 `--no-billing-validation` 就不会发出任何 Cost Explorer 调用。

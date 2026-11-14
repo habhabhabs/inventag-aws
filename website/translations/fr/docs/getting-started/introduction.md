@@ -34,7 +34,7 @@ your AWS credentials
   1. find resources   --> List/Describe/Get calls per service,
         |                 the Resource Groups Tagging API, Cost Explorer
         v
-  2. tidy and enrich  --> service names, IDs, tags
+  2. tidy             --> service names, IDs, tags
         |
         v
   3. check tags       --> only when a tag policy is active
@@ -45,19 +45,22 @@ your AWS credentials
 
 1. **Identifiants.** InvenTag utilise la chaîne d’identifiants AWS habituelle : un profil,
    des variables d’environnement, une session IAM Identity Center (SSO) ou un rôle IAM.
-   Il peut aussi assumer un rôle dans d’autres comptes.
+   Il peut aussi assumer un rôle dans d’autres comptes. Non vérifié sur AWS IAM Identity Center : la connexion avec une vraie session SSO.
 2. **Découverte.** Pour chaque compte et chaque région, il appelle des interfaces de programmation
    d’applications (API) AWS en lecture seule. Par défaut, il appelle aussi `GetCostAndUsage` de
    Cost Explorer pour repérer les services qui génèrent des dépenses. AWS facture les requêtes à l’API
    Cost Explorer ; `--no-billing-validation` désactive ces appels.
+   Consultez les [tarifs actuels de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 3. **Traitement.** Il uniformise les noms et identifiants de services et collecte les étiquettes.
 4. **Sortie.** Il écrit les fichiers dans le dossier de sortie (`bom_output/` par défaut)
    et un instantané dans `bom_output/state/`.
 
 ## Ce qu’il modifie {#what-it-changes}
 
-Uniquement des fichiers sur votre disque. InvenTag lit vos comptes AWS ; il ne les modifie
-jamais.
+Des fichiers sur votre disque. La commande `inventag` ne fait que lire vos comptes AWS.
+La seule exception est le téléversement de ses propres fichiers de rapport vers votre
+compartiment S3, et seulement lorsque vous passez `--s3-bucket`. Avec une option Google,
+elle crée aussi des fichiers dans votre Google Drive.
 
 Une **protection en lecture seule** vérifie chaque appel AWS avant son envoi. Les appels qui
 ne sont pas des lectures (`List`, `Describe`, `Get` et similaires) sont bloqués, de même que les lectures
