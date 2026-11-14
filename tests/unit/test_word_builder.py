@@ -21,13 +21,7 @@ from inventag.reporting.document_generator import (
 )
 from inventag.reporting.bom_processor import BOMData
 
-# Check if python-docx is available
-try:
-    import docx
-
-    PYTHON_DOCX_AVAILABLE = True
-except ImportError:
-    PYTHON_DOCX_AVAILABLE = False
+import docx  # noqa: F401  (a runtime dependency in requirements.txt)
 
 
 class TestWordDocumentBuilder(unittest.TestCase):
@@ -151,44 +145,38 @@ class TestWordDocumentBuilder(unittest.TestCase):
         builder = WordDocumentBuilder(self.test_config)
         dependencies = builder.validate_dependencies()
 
-        if PYTHON_DOCX_AVAILABLE:
-            self.assertEqual(dependencies, [])
-        else:
-            self.assertIn("python-docx library not available", dependencies[0])
+        self.assertEqual(dependencies, [])
 
     def test_styles_initialization(self):
         """Test Word styles initialization."""
         builder = WordDocumentBuilder(self.test_config)
 
-        if PYTHON_DOCX_AVAILABLE:
-            self.assertIn("title_font_size", builder.styles)
-            self.assertIn("heading1_font_size", builder.styles)
-            self.assertIn("body_font_size", builder.styles)
-            self.assertIn("primary_color", builder.styles)
-            self.assertIn("font_name", builder.styles)
+        self.assertIn("title_font_size", builder.styles)
+        self.assertIn("heading1_font_size", builder.styles)
+        self.assertIn("body_font_size", builder.styles)
+        self.assertIn("primary_color", builder.styles)
+        self.assertIn("font_name", builder.styles)
 
     def test_hex_to_rgb_conversion(self):
         """Test hex color to RGB conversion."""
         builder = WordDocumentBuilder(self.test_config)
 
-        if PYTHON_DOCX_AVAILABLE:
-            # Test normal 6-character hex
-            rgb = builder._hex_to_rgb("FF0000")
-            self.assertEqual(rgb, docx.shared.RGBColor(255, 0, 0))
+        # Test normal 6-character hex
+        rgb = builder._hex_to_rgb("FF0000")
+        self.assertEqual(rgb, docx.shared.RGBColor(255, 0, 0))
 
-            # Test 3-character hex
-            rgb = builder._hex_to_rgb("F00")
-            self.assertEqual(rgb, docx.shared.RGBColor(255, 0, 0))
+        # Test 3-character hex
+        rgb = builder._hex_to_rgb("F00")
+        self.assertEqual(rgb, docx.shared.RGBColor(255, 0, 0))
 
-            # Test with # prefix
-            rgb = builder._hex_to_rgb("#00FF00")
-            self.assertEqual(rgb, docx.shared.RGBColor(0, 255, 0))
+        # Test with # prefix
+        rgb = builder._hex_to_rgb("#00FF00")
+        self.assertEqual(rgb, docx.shared.RGBColor(0, 255, 0))
 
-            # Test invalid color (should default to black)
-            rgb = builder._hex_to_rgb("invalid")
-            self.assertEqual(rgb, docx.shared.RGBColor(0, 0, 0))
+        # Test invalid color (should default to black)
+        rgb = builder._hex_to_rgb("invalid")
+        self.assertEqual(rgb, docx.shared.RGBColor(0, 0, 0))
 
-    @unittest.skipUnless(PYTHON_DOCX_AVAILABLE, "python-docx not available")
     def test_generate_document_success(self):
         """Test successful Word document generation."""
         builder = WordDocumentBuilder(self.test_config)
@@ -207,7 +195,6 @@ class TestWordDocumentBuilder(unittest.TestCase):
         self.assertTrue(os.path.exists(output_path))
         self.assertGreater(os.path.getsize(output_path), 0)
 
-    @unittest.skipUnless(PYTHON_DOCX_AVAILABLE, "python-docx not available")
     def test_document_structure(self):
         """Test Word document structure and content."""
         builder = WordDocumentBuilder(self.test_config)
@@ -250,7 +237,6 @@ class TestWordDocumentBuilder(unittest.TestCase):
                 found, f"Expected heading '{expected}' not found in document"
             )
 
-    @unittest.skipUnless(PYTHON_DOCX_AVAILABLE, "python-docx not available")
     def test_document_tables(self):
         """Test Word document table generation."""
         builder = WordDocumentBuilder(self.test_config)
@@ -364,7 +350,6 @@ class TestWordDocumentBuilder(unittest.TestCase):
         service_finding = any("aws services" in finding.lower() for finding in findings)
         self.assertTrue(service_finding, "Service diversity finding not generated")
 
-    @unittest.skipUnless(PYTHON_DOCX_AVAILABLE, "python-docx not available")
     def test_branding_application(self):
         """Test branding application to document."""
         builder = WordDocumentBuilder(self.test_config)
@@ -398,17 +383,15 @@ class TestWordDocumentBuilder(unittest.TestCase):
 
         builder = WordDocumentBuilder(custom_config)
 
-        if PYTHON_DOCX_AVAILABLE:
-            # Check that custom colors are used in styles
-            self.assertEqual(
-                builder.styles["primary_color"], docx.shared.RGBColor(255, 0, 0)
-            )
-            self.assertEqual(
-                builder.styles["accent_color"], docx.shared.RGBColor(0, 255, 0)
-            )
-            self.assertEqual(builder.styles["font_name"], "Arial")
+        # Check that custom colors are used in styles
+        self.assertEqual(
+            builder.styles["primary_color"], docx.shared.RGBColor(255, 0, 0)
+        )
+        self.assertEqual(
+            builder.styles["accent_color"], docx.shared.RGBColor(0, 255, 0)
+        )
+        self.assertEqual(builder.styles["font_name"], "Arial")
 
-    @unittest.skipUnless(PYTHON_DOCX_AVAILABLE, "python-docx not available")
     def test_empty_data_handling(self):
         """Test handling of empty or minimal data."""
         empty_bom_data = BOMData(
@@ -428,7 +411,6 @@ class TestWordDocumentBuilder(unittest.TestCase):
         self.assertTrue(result.success)
         self.assertTrue(os.path.exists(output_path))
 
-    @unittest.skipUnless(PYTHON_DOCX_AVAILABLE, "python-docx not available")
     def test_large_dataset_handling(self):
         """Test handling of larger datasets."""
         # Create larger test dataset
@@ -472,7 +454,6 @@ class TestWordDocumentBuilder(unittest.TestCase):
             os.path.getsize(output_path), 20000
         )  # Should be reasonably large file
 
-    @unittest.skipUnless(PYTHON_DOCX_AVAILABLE, "python-docx not available")
     def test_service_section_generation(self):
         """Test service-specific section generation."""
         builder = WordDocumentBuilder(self.test_config)

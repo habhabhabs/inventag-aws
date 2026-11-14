@@ -130,16 +130,12 @@ class TestPythonCompatibility:
         parsed_data = yaml.safe_load(yaml_str)
         assert parsed_data == test_data
 
-    def test_optional_dependencies(self):
-        """Test optional dependencies (Word processing)."""
-        try:
-            from docx import Document
+    def test_python_docx_is_installed_and_makes_a_document(self):
+        """python-docx is a runtime dependency (requirements.txt): a missing install fails."""
+        from docx import Document
 
-            doc = Document()
-            assert doc is not None
-        except ImportError:
-            # python-docx is optional, so this is acceptable
-            pytest.skip("python-docx not available (optional dependency)")
+        doc = Document()
+        assert len(doc.paragraphs) == 0
 
     def test_python_version_specific_features(self):
         """Test Python version-specific language features."""

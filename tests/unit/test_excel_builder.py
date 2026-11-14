@@ -21,13 +21,7 @@ from inventag.reporting.document_generator import (
 )
 from inventag.reporting.bom_processor import BOMData
 
-# Check if openpyxl is available
-try:
-    import openpyxl
-
-    OPENPYXL_AVAILABLE = True
-except ImportError:
-    OPENPYXL_AVAILABLE = False
+import openpyxl  # noqa: F401  (a runtime dependency in requirements.txt)
 
 
 class TestExcelWorkbookBuilder(unittest.TestCase):
@@ -146,23 +140,18 @@ class TestExcelWorkbookBuilder(unittest.TestCase):
         builder = ExcelWorkbookBuilder(self.test_config)
         dependencies = builder.validate_dependencies()
 
-        if OPENPYXL_AVAILABLE:
-            self.assertEqual(dependencies, [])
-        else:
-            self.assertIn("openpyxl library not available", dependencies[0])
+        self.assertEqual(dependencies, [])
 
     def test_styles_initialization(self):
         """Test Excel styles initialization."""
         builder = ExcelWorkbookBuilder(self.test_config)
 
-        if OPENPYXL_AVAILABLE:
-            self.assertIn("header_font", builder.styles)
-            self.assertIn("header_fill", builder.styles)
-            self.assertIn("compliant_fill", builder.styles)
-            self.assertIn("non_compliant_fill", builder.styles)
-            self.assertIn("border", builder.styles)
+        self.assertIn("header_font", builder.styles)
+        self.assertIn("header_fill", builder.styles)
+        self.assertIn("compliant_fill", builder.styles)
+        self.assertIn("non_compliant_fill", builder.styles)
+        self.assertIn("border", builder.styles)
 
-    @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_generate_document_success(self):
         """Test successful Excel document generation."""
         builder = ExcelWorkbookBuilder(self.test_config)
@@ -181,7 +170,6 @@ class TestExcelWorkbookBuilder(unittest.TestCase):
         self.assertTrue(os.path.exists(output_path))
         self.assertGreater(os.path.getsize(output_path), 0)
 
-    @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_workbook_structure(self):
         """Test Excel workbook structure and sheets."""
         builder = ExcelWorkbookBuilder(self.test_config)
@@ -211,7 +199,6 @@ class TestExcelWorkbookBuilder(unittest.TestCase):
         # Verify Executive Summary is first sheet
         self.assertEqual(wb.sheetnames[0], "Executive Summary")
 
-    @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_executive_summary_content(self):
         """Test executive summary sheet content."""
         builder = ExcelWorkbookBuilder(self.test_config)
@@ -243,7 +230,6 @@ class TestExcelWorkbookBuilder(unittest.TestCase):
             found_compliance_overview, "Compliance Overview section not found"
         )
 
-    @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_service_sheets_content(self):
         """Test service-specific sheets content."""
         builder = ExcelWorkbookBuilder(self.test_config)
@@ -265,7 +251,6 @@ class TestExcelWorkbookBuilder(unittest.TestCase):
         s3_ws = wb["S3"]
         self.assertEqual(s3_ws["A1"].value, "S3 Resources")
 
-    @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_network_analysis_sheet(self):
         """Test network analysis sheet content."""
         builder = ExcelWorkbookBuilder(self.test_config)
@@ -294,7 +279,6 @@ class TestExcelWorkbookBuilder(unittest.TestCase):
 
         self.assertTrue(found_network_overview, "Network Overview section not found")
 
-    @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_security_analysis_sheet(self):
         """Test security analysis sheet content."""
         builder = ExcelWorkbookBuilder(self.test_config)
@@ -323,7 +307,6 @@ class TestExcelWorkbookBuilder(unittest.TestCase):
 
         self.assertTrue(found_security_overview, "Security Overview section not found")
 
-    @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_compliance_details_sheet(self):
         """Test compliance details sheet content."""
         builder = ExcelWorkbookBuilder(self.test_config)
@@ -409,7 +392,6 @@ class TestExcelWorkbookBuilder(unittest.TestCase):
         )
         self.assertTrue(security_finding, "Security finding not generated")
 
-    @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_branding_application(self):
         """Test branding application to workbook."""
         builder = ExcelWorkbookBuilder(self.test_config)
@@ -440,16 +422,12 @@ class TestExcelWorkbookBuilder(unittest.TestCase):
 
         builder = ExcelWorkbookBuilder(custom_config)
 
-        if OPENPYXL_AVAILABLE:
-            # Check that custom colors are used in styles (openpyxl uses ARGB format)
-            self.assertIn("FF0000", builder.styles["header_fill"].start_color.rgb)
-            self.assertIn("00FF00", builder.styles["compliant_fill"].start_color.rgb)
-            self.assertIn(
-                "0000FF", builder.styles["non_compliant_fill"].start_color.rgb
-            )
-            self.assertIn("FFFF00", builder.styles["warning_fill"].start_color.rgb)
+        # Check that custom colors are used in styles (openpyxl uses ARGB format)
+        self.assertIn("FF0000", builder.styles["header_fill"].start_color.rgb)
+        self.assertIn("00FF00", builder.styles["compliant_fill"].start_color.rgb)
+        self.assertIn("0000FF", builder.styles["non_compliant_fill"].start_color.rgb)
+        self.assertIn("FFFF00", builder.styles["warning_fill"].start_color.rgb)
 
-    @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_empty_data_handling(self):
         """Test handling of empty or minimal data."""
         empty_bom_data = BOMData(
@@ -469,7 +447,6 @@ class TestExcelWorkbookBuilder(unittest.TestCase):
         self.assertTrue(result.success)
         self.assertTrue(os.path.exists(output_path))
 
-    @unittest.skipUnless(OPENPYXL_AVAILABLE, "openpyxl not available")
     def test_large_dataset_handling(self):
         """Test handling of larger datasets."""
         # Create larger test dataset

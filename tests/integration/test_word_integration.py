@@ -18,13 +18,7 @@ from inventag.reporting.document_generator import (
 )
 from inventag.reporting.bom_processor import BOMData
 
-# Check if python-docx is available
-try:
-    import docx
-
-    PYTHON_DOCX_AVAILABLE = True
-except ImportError:
-    PYTHON_DOCX_AVAILABLE = False
+import docx  # noqa: F401  (a runtime dependency in requirements.txt)
 
 
 class TestWordIntegration(unittest.TestCase):
@@ -146,7 +140,6 @@ class TestWordIntegration(unittest.TestCase):
         """Clean up test fixtures."""
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @unittest.skipUnless(PYTHON_DOCX_AVAILABLE, "python-docx not available")
     def test_word_document_generation_integration(self):
         """Test complete Word document generation workflow."""
         config = DocumentConfig(
@@ -230,7 +223,6 @@ class TestWordIntegration(unittest.TestCase):
         )
         self.assertEqual(doc.core_properties.author, "InvenTag Cloud BOM Generator")
 
-    @unittest.skipUnless(PYTHON_DOCX_AVAILABLE, "python-docx not available")
     def test_word_with_custom_branding(self):
         """Test Word generation with custom branding."""
         custom_branding = BrandingConfig(
@@ -274,7 +266,6 @@ class TestWordIntegration(unittest.TestCase):
         company_found = any("Custom Branding Test" in text for text in all_text)
         self.assertTrue(company_found, "Custom company name not found in document")
 
-    @unittest.skipUnless(PYTHON_DOCX_AVAILABLE, "python-docx not available")
     def test_word_with_large_dataset(self):
         """Test Word generation with larger dataset."""
         # Create larger test dataset
@@ -366,7 +357,6 @@ class TestWordIntegration(unittest.TestCase):
         self.assertGreater(len(doc.paragraphs), 30)
         self.assertGreater(len(doc.tables), 5)
 
-    @unittest.skipUnless(PYTHON_DOCX_AVAILABLE, "python-docx not available")
     def test_word_error_recovery(self):
         """Test Word generation error recovery."""
         # Create invalid BOM data to trigger validation error
@@ -388,7 +378,6 @@ class TestWordIntegration(unittest.TestCase):
         with self.assertRaises(Exception):  # DocumentGenerationError
             generator.generate_bom_documents(invalid_bom_data)
 
-    @unittest.skipUnless(PYTHON_DOCX_AVAILABLE, "python-docx not available")
     def test_word_with_minimal_data(self):
         """Test Word generation with minimal data."""
         minimal_bom_data = BOMData(
@@ -442,7 +431,6 @@ class TestWordIntegration(unittest.TestCase):
         ]
         self.assertIn("Executive Summary", " ".join(headings))
 
-    @unittest.skipUnless(PYTHON_DOCX_AVAILABLE, "python-docx not available")
     def test_word_service_sections(self):
         """Test Word generation with multiple services."""
         multi_service_resources = []
