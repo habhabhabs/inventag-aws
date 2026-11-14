@@ -71,6 +71,23 @@ def _coverage_of(context) -> List[Dict[str, Any]]:
     return [e for e in entries if isinstance(e, dict)]
 
 
+# AWS error codes that say the account's session is no longer valid. A listing
+# that ends with one of them means the session expired during the scan: the
+# account was read only in part.
+_EXPIRED_SESSION_CODES = frozenset(
+    {"ExpiredToken", "ExpiredTokenException", "RequestExpired"}
+)
+
+
+def _expired_listings(context) -> int:
+    """How many listings of an account failed because its session expired."""
+    return sum(
+        1
+        for entry in _coverage_of(context)
+        if str(entry.get("error_code", "")) in _EXPIRED_SESSION_CODES
+    )
+
+
 class AccountSessionError(Exception):
     """Raised when explicitly configured credentials for an account do not work."""
 
@@ -698,8 +715,14 @@ class CloudBOMGenerator:
         context: AccountContext,
         resources: List[Dict[str, Any]],
     ) -> None:
-        """Save a completely scanned account (main thread only)."""
-        if self._checkpoints is None or context.processing_errors:
+        """Save a completely scanned account (main thread only). An account
+        whose session expired during the scan was read only in part: it is
+        not saved, so ``--resume`` scans it again."""
+        if (
+            self._checkpoints is None
+            or context.processing_errors
+            or _expired_listings(context)
+        ):
             return
         try:
             self._checkpoints.save_account(
@@ -714,18 +737,26 @@ class CloudBOMGenerator:
         if self._checkpoints is None:
             return
         failed = self._failed_accounts()
-        if not failed:
+        failed_ids = {item["account_id"] for item in failed}
+        # Accounts not saved although they did not fail: the session expired.
+        not_saved = [
+            acc_id
+            for acc_id, ctx in self.account_contexts.items()
+            if acc_id not in failed_ids and _expired_listings(ctx)
+        ]
+        if not failed and not not_saved:
             try:
                 self._checkpoints.clear()
             except Exception as e:
                 self.logger.warning(f"Could not remove checkpoints: {e}")
             return
-        saved = len(self.account_contexts) - len(failed)
+        others = len(failed) + len(not_saved)
+        saved = len(self.account_contexts) - others
         hours = self.config.resume_max_age_hours
         self.logger.warning(
             f"{saved} of {len(self.account_contexts)} account(s) finished and were "
             f"saved. Run the same command with --resume within {hours:g} hours "
-            f"to scan only the other {len(failed)}."
+            f"to scan only the other {others}."
         )
 
     def _establish_account_contexts(self) -> Dict[str, AccountContext]:
