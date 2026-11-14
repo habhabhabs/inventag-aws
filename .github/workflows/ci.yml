@@ -1,10 +1,22 @@
 name: CI/CD Pipeline
 
+# Every change except one that touches only GitHub Actions code (.github/**):
+# that has its own workflow, actions-checks.yml, which also runs the tests that
+# read the workflow files. A change to this file still runs this workflow.
+# Docs-only changes still run here: several tests read docs/ and version.json.
 on:
   push:
     branches: [ main, develop ]
+    paths:
+      - '**'
+      - '!.github/**'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - '**'
+      - '!.github/**'
+      - '.github/workflows/ci.yml'
 
 permissions:
   contents: read
