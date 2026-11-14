@@ -119,9 +119,11 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   and names the error type; the "all accounts failed" summary gives the
   cause per account; an unexpected error names its type and says to run with
   `--debug`; the accounts file warns about a second entry for one account ID
-  and about unknown keys (a typo such as `profil_name`);
+  and about unknown keys (a typo such as `profil_name`), also with
+  `--validate-config-only`;
   `--compliance-standard` and `--disable-production-safety` (still exit 2)
-  say what to do instead.
+  say what to do instead. The accounts examples in `examples/` hold only keys
+  InvenTag reads, so they load without a warning.
 - `inventag --validate-operations` shows, for an operation that is allowed
   by name but blocked with a parameter that returns secrets, the parameter
   (for example `ALLOWED  ec2:DescribeInstanceAttribute (...); blocked when
