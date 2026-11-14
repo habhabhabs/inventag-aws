@@ -112,6 +112,8 @@ def _validate_specific_configs(args, logger, check_credentials=True):
     if args.service_descriptions:
         logger.info(f"Validating service descriptions: {args.service_descriptions}")
         result = validator.validate_service_descriptions_file(args.service_descriptions)
+        for warning in result.warnings:
+            logger.warning(f"   - {warning}")
         if result.is_valid:
             logger.info("✅ Service descriptions configuration is valid")
         else:

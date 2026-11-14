@@ -27,6 +27,28 @@ class ValidationResult:
     config: Optional[Dict[str, Any]] = None
 
 
+def _service_descriptions_ignored_warnings(config) -> List[str]:
+    """Where the run's loader would refuse the file and use the built-in
+    descriptions: the top-level key and a ``description`` per entry."""
+    refused = "InvenTag ignores this file and uses the built-in descriptions."
+    if "service_descriptions" not in config:
+        return [f"The file has no top-level key 'service_descriptions'. {refused}"]
+    services = config["service_descriptions"]
+    if not isinstance(services, dict):
+        return [f"'service_descriptions' must be a dictionary. {refused}"]
+    warnings = []
+    for service, types in services.items():
+        if not isinstance(types, dict):
+            warnings.append(f"Service '{service}' must be a dictionary. {refused}")
+            continue
+        for resource_type, entry in types.items():
+            if not isinstance(entry, dict) or "description" not in entry:
+                warnings.append(
+                    f"{service}/{resource_type} has no 'description'. {refused}"
+                )
+    return warnings
+
+
 class ConfigValidator:
     """Validates InvenTag configuration files and CLI arguments."""
 
@@ -333,6 +355,7 @@ class ConfigValidator:
                             # This might be a nested resource configuration
                             pass
 
+            result.warnings.extend(_service_descriptions_ignored_warnings(config))
             result.is_valid = len(result.errors) == 0
 
         except Exception as e:
