@@ -564,25 +564,31 @@ def test_c4_one_account_of_two_expires(aws, tmp_path, monkeypatch, caplog, capsy
     assert f"(ExpiredTokenException); its resources there {EXPIRED_WARNING}" in console
 
 
-def test_c4_resume_reuses_a_partly_read_account_as_if_complete(
+def test_c4_resume_scans_again_a_partly_read_account(
     aws, tmp_path, monkeypatch, caplog
 ):
-    """Side effect of the expiry behaviour: GOOD expires part-way (exit 0, no
-    failure), OTHER fails to assume its role. The run saves GOOD as finished and
-    --resume then reuses that partial result without a scan."""
+    """GOOD expires part-way (exit 0, no failure), OTHER fails to assume its
+    role. GOOD is not saved as finished, so --resume scans it again (A-03).
+
+    Until A-03 this test was ``..._reuses_a_partly_read_account_as_if_complete``
+    and expired the key "AKIAIOSFODNN7EXAMPLE", which moto replaces: no call
+    expired, so it pinned the reuse of a COMPLETE account."""
     seed_account(OTHER_ID, OTHER["role_arn"])
     caplog.set_level(logging.INFO)
     roles = RoleControl(monkeypatch, failing={OTHER_ID})
-    Expiry(monkeypatch, allow=20, key_of=lambda: "AKIAIOSFODNN7EXAMPLE")
+    default_key = boto3.Session().get_credentials().access_key
+    expiry = Expiry(monkeypatch, allow=20, key_of=lambda: default_key)
     path = accounts_file(tmp_path, [GOOD, OTHER])
     assert run_cli("--accounts-file", path, *BASE, "--output-directory", "out") == 0
+    assert expiry.raised > 0
     roles.failing.clear()
+    expiry.allow = 10**9  # the session works again
     scanned = scan_spy(monkeypatch)
     caplog.clear()
     args = ["--accounts-file", path, *BASE, "--resume", "--output-directory", "out"]
     assert run_cli(*args) == 0
-    assert scanned == [OTHER_ID]
-    assert any("reusing results" in m and GOOD_ID in m for m in logged(caplog))
+    assert sorted(scanned) == sorted([GOOD_ID, OTHER_ID])
+    assert not any("reusing results" in m and GOOD_ID in m for m in logged(caplog))
 
 
 # ============================================================== C5: --resume
