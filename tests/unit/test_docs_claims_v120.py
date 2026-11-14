@@ -480,7 +480,8 @@ def test_c3_layout_file_needs_extra_fields(aws, tmp_path, capsys):
 # code 0 and the report looks complete." A reviewer says such a scan fails.
 # Observed: the exit code is 0 (also with --fail-on-account-error), the account
 # does not count as failed, the report holds what was read before the expiry
-# with no note inside it, and each listing that failed is a console warning
+# with no note inside it (until A-02; now the Run notes say it is incomplete),
+# and each listing that failed is a console warning
 # ("... failed (ExpiredToken); its resources there may be incomplete").
 EXPIRED_WARNING = "may be incomplete"
 
@@ -490,7 +491,7 @@ def notes_say_incomplete(path):
     return any(w in text for w in ("expire", "incomplete", "not scanned", "partly"))
 
 
-def test_c4_single_account_expiry_exit_0_partial_report_no_note(
+def test_c4_single_account_expiry_exit_0_partial_report_with_note(
     aws, tmp_path, monkeypatch, caplog, capsys
 ):
     caplog.set_level(logging.INFO)
@@ -509,7 +510,8 @@ def test_c4_single_account_expiry_exit_0_partial_report_no_note(
     files = reports(tmp_path / "out")
     assert len(files) == 1
     assert total_resources(files[0]) > 0  # what was read before the expiry
-    assert not notes_say_incomplete(files[0])  # the report itself looks complete
+    # Since A-02 the report says it is incomplete (v1.2.0: no note).
+    assert notes_say_incomplete(files[0])
     # The console warns, once per listing that failed.
     console = capsys.readouterr().err + "\n".join(logged(caplog))
     assert f"(ExpiredToken); its resources there {EXPIRED_WARNING}" in console
@@ -533,7 +535,8 @@ def test_c4_expired_before_the_first_call_exit_0_and_no_report(
 
 def test_c4_one_account_of_two_expires(aws, tmp_path, monkeypatch, caplog, capsys):
     """Account OTHER's session expires after 30 calls; GOOD is fine. Exit 0 even
-    with --fail-on-account-error; the report has GOOD and no note."""
+    with --fail-on-account-error; the report has GOOD and, since A-02, a note
+    that OTHER is incomplete (v1.2.0: no note)."""
     seed_account(OTHER_ID, OTHER["role_arn"])
     caplog.set_level(logging.INFO)
     roles = RoleControl(monkeypatch)
@@ -558,7 +561,8 @@ def test_c4_one_account_of_two_expires(aws, tmp_path, monkeypatch, caplog, capsy
     assert len(files) == 1
     cells = {str(c) for rows in workbook(files[0]).values() for r in rows for c in r}
     assert GOOD_ID in cells
-    assert not notes_say_incomplete(files[0])
+    assert notes_say_incomplete(files[0])
+    assert any(OTHER_ID in c and "expired" in c for c in cells)
     assert not any("were not scanned" in m for m in logged(caplog))
     console = capsys.readouterr().err + "\n".join(logged(caplog))
     assert f"(ExpiredTokenException); its resources there {EXPIRED_WARNING}" in console

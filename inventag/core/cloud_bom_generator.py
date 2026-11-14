@@ -386,6 +386,8 @@ class CloudBOMGenerator:
                 # run still fails and no snapshot is saved.
                 only_partial = True
 
+            for note in self._expired_session_notes():
+                self.logger.error(note)
             for note in self._read_nothing_notes():
                 self.logger.warning(note)
 
@@ -599,12 +601,32 @@ class CloudBOMGenerator:
                 )
         return failed
 
+    def _accounts_with_expired_session(self) -> Dict[str, int]:
+        """Accounts (not already failed) whose session expired during the
+        scan, with the number of listings that failed because of it."""
+        failed_ids = {item["account_id"] for item in self._failed_accounts()}
+        expired = {}
+        for acc_id, ctx in self.account_contexts.items():
+            count = _expired_listings(ctx)
+            if count and acc_id not in failed_ids:
+                expired[acc_id] = count
+        return expired
+
+    def _expired_session_notes(self) -> List[str]:
+        return [
+            f"The session for account {acc_id} expired during the scan, so "
+            f"{count} listing(s) were not read and this report is incomplete "
+            "for that account."
+            for acc_id, count in self._accounts_with_expired_session().items()
+        ]
+
     def _accounts_that_read_nothing(self) -> List[str]:
         """Accounts in which no service-API listing succeeded and at least
         one was denied or failed (rows of the Tagging API alone do not
-        count). Failed accounts are not included: they are reported as
-        failed."""
+        count). Failed accounts and accounts whose session expired are not
+        included: they have their own note."""
         failed_ids = {item["account_id"] for item in self._failed_accounts()}
+        failed_ids |= set(self._accounts_with_expired_session())
         accounts = []
         for acc_id, ctx in self.account_contexts.items():
             if acc_id in failed_ids:
@@ -661,6 +683,7 @@ class CloudBOMGenerator:
             for item in failed:
                 reason = "; ".join(item["errors"])[:300]
                 notes.append(f"{item['account_id']} ({item['account_name']}): {reason}")
+        notes.extend(self._expired_session_notes())
         notes.extend(self._read_nothing_notes())
         if self.reused_accounts:
             notes.append(
@@ -1840,12 +1863,14 @@ class CloudBOMGenerator:
             )
             primary_account = next(iter(self.account_contexts.keys()), "multi-account")
             failed_ids = {item["account_id"] for item in self._failed_accounts()}
-            # An account that read nothing is not a baseline: it is left out
-            # of the comparison like a failed one.
-            read_nothing = set(self._accounts_that_read_nothing())
-            failed_ids |= read_nothing
+            # An account that read nothing, or whose session expired during
+            # the scan, is not a baseline: it is left out of the comparison
+            # like a failed one.
+            incomplete = set(self._accounts_that_read_nothing())
+            incomplete |= set(self._accounts_with_expired_session())
+            failed_ids |= incomplete
             if (
-                read_nothing
+                incomplete
                 and not resources
                 and set(self.account_contexts) <= failed_ids
             ):
