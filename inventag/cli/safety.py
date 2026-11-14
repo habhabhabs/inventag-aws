@@ -12,7 +12,11 @@ import os
 import re
 from typing import List, Optional, Tuple
 
-from ..security.read_only_guard import ReadOnlyGuard, install_global_guard
+from ..security.read_only_guard import (
+    DENIED_PARAMETERS,
+    ReadOnlyGuard,
+    install_global_guard,
+)
 from ..security.redaction import install_log_record_redaction
 from ..security.safe_output import ensure_private_dir, open_private
 from pathlib import Path
@@ -123,7 +127,18 @@ def validate_operations(
         allowed, reason = guard.evaluate(service, operation)
         all_allowed = all_allowed and allowed
         status = "ALLOWED" if allowed else "BLOCKED"
-        lines.append(f"{status}  {service}:{operation} ({reason})")
+        line = f"{status}  {service}:{operation} ({reason})"
+        if allowed:
+            # Allowed by name, but blocked with a parameter that returns secrets.
+            rules = DENIED_PARAMETERS.get((service, operation), {})
+            blocked = [
+                f"{parameter}={value}"
+                for parameter, values in rules.items()
+                for value in sorted(values)
+            ]
+            if blocked:
+                line += "; BLOCKED when " + ", ".join(blocked)
+        lines.append(line)
     return all_allowed, lines
 
 
