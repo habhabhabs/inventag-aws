@@ -53,7 +53,7 @@ inventag --compliance-standard soc2
 ```
 
 ```text title="Sortie"
-inventag: error: --compliance-standard: Compliance-standard enforcement is not implemented yet;  InvenTag does not assess compliance. To check your tags against a built-in baseline, run: inventag --template security-baseline --create-excel
+inventag: error: --compliance-standard: Compliance-standard enforcement is not implemented yet; the option has never changed InvenTag's behaviour. InvenTag does not assess compliance. To check your tags against a built-in baseline, run: inventag --template security-baseline --create-excel
 (exit code 2)
 ```
 
@@ -62,7 +62,7 @@ inventag --disable-production-safety
 ```
 
 ```text title="Sortie"
-inventag: error: --disable-production-safety: The read-only guard cannot be disabled from the CLI: InvenTag only needs read access, so  Remove this option; nothing else is needed. To see which calls are allowed, run: inventag --validate-operations ec2:DescribeInstances
+inventag: error: --disable-production-safety: The read-only guard cannot be disabled from the CLI: InvenTag only needs read access, so non-read AWS calls are always blocked. Remove this option; nothing else is needed. To see which calls are allowed, run: inventag --validate-operations ec2:DescribeInstances
 (exit code 2)
 ```
 
@@ -128,8 +128,6 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 - **Un compte échoue, les autres fonctionnent :** l’exécution se termine avec le
   code 0, ou avec le code 5 si vous passez `--fail-on-account-error`.
-- **Un rapport fait avec `--template`** ne nomme pas les comptes en échec ; le
-  résumé de l’exécution et le rapport par défaut les nomment.
 - **Tous les comptes échouent :** l’exécution se termine avec le code 1, y compris
   avec `--fail-on-account-error`, et n’écrit aucun rapport, sauf si les comptes ont
   dépassé leur délai : le rapport montre alors ce qui a été trouvé.
@@ -146,28 +144,19 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   Tagging les renvoie.
 - **Un listage qui échoue pour une autre raison** (limité après les nouvelles
   tentatives, ou une erreur) est un avertissement et un compte dans l’instantané
-  (`metadata.tags.coverage_summary`), et aucun rapport ne le nomme.
+  (`metadata.tags.coverage_summary`).
 - **Tous les appels d’un compte refusés :** le compte ne compte pas comme en
-  échec, l’exécution se termine avec le code 0, et le rapport de changements
-  suivant liste comme supprimées toutes les ressources de ce compte.
-- **Un service dont le listage a été limité ou a échoué** lors d’une exécution
-  montre ses ressources comme supprimées dans le rapport de changements suivant.
-- **Une exécution avec d’autres régions ou services que la précédente** montre
-  comme supprimées, dans le rapport de changements, les ressources hors du
-  nouveau périmètre.
+  échec, et l’exécution se termine avec le code 0.
+- **Un service dont le listage a échoué lors de l’exécution précédente** peut
+  montrer ses ressources comme ajoutées dans le rapport de changements suivant.
 - **Le premier rapport de changements après une mise à jour depuis v1.1.4**
   liste les ressources des services nouvellement couverts comme ajoutées, alors
   qu’elles existaient déjà.
 - **Une session qui expire pendant l’analyse** laisse un rapport qui ne contient
-  que ce qui a été lu avant l’expiration, sans note, et l’exécution se termine
-  avec le code 0, y compris avec `--fail-on-account-error`.
+  que ce qui a été lu avant l’expiration, et l’exécution se termine avec le
+  code 0, y compris avec `--fail-on-account-error`.
 - **Une session déjà expirée au début de l’analyse** ne donne aucun fichier de
   rapport et le code 0.
-- **Avec `--resume`**, un compte dont la session a expiré en cours de première
-  exécution peut être réutilisé comme s’il était complet.
-- **Un jeton IAM Identity Center (SSO) expiré** arrête l’exécution avec le code
-  de sortie 1 et une trace d’appels Python, et le message ne vous dit pas de
-  lancer `aws sso login`.
 - **Accès refusé à Cost Explorer :** l’exécution continue sans données de
   facturation, et les deux avertissements à ce sujet ne s’affichent qu’avec
   `--debug`.
@@ -192,21 +181,17 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   `--fail-if-empty`.
 - **Un nom de région mal saisi dans `--account-regions`** termine l’exécution
   avec le code 0, un texte `KeyError` brut et aucun rapport.
-- **Un profil qui exige la MFA, lancé sans terminal,** s’arrête avec une trace
-  d’appels Python et un message vide, ou attend indéfiniment tant que l’entrée
-  reste ouverte.
-- **Un chemin `--audit-output` ou `--log-file` où l’on ne peut pas écrire**
-  termine l’exécution avec une trace d’appels Python, et un dossier de sortie
-  inutilisable n’est découvert qu’après toute l’analyse.
+- **Un profil qui exige la MFA, lancé sans terminal,** attend indéfiniment tant
+  que l’entrée reste ouverte.
 - **Ctrl-C** arrête l’exécution sans message visible, et un SIGTERM l’arrête
   sans aucun message.
 - **Une deuxième entrée avec le même ID de compte** dans un fichier de comptes
-  est ignorée sans message, donc ses régions ne sont pas analysées.
+  est ignorée avec un avertissement, donc ses régions ne sont pas analysées.
 - **Deux exécutions qui utilisent en même temps le même dossier de sortie** ne
   sont pas empêchées.
-- **`--validate-config-only` ne lit pas `--bom-config`** : un fichier de paramètres BOM avec une valeur erronée passe la vérification et n’arrête que la vraie exécution (code de sortie 1).
-- **Un fichier de descriptions de services sans la clé de premier niveau `service_descriptions`** passe la vérification, et l’exécution l’ignore avec une erreur dans le journal et utilise les descriptions intégrées.
-- **`inventag --validate-operations` répond d’après le nom seul :** il affiche `apigateway:GetApiKeys` et `ec2:DescribeInstanceAttribute` comme ALLOWED, alors que la protection les bloque lorsqu’ils sont appelés avec `includeValues` ou `Attribute=userData`.
+- **`--validate-config-only` avec un fichier `--bom-config` dont une valeur est erronée** affiche un avertissement et se termine avec le code 0, alors que la vraie exécution s’arrête avec le code de sortie 1.
+- **Un fichier de descriptions de services sans la clé de premier niveau `service_descriptions`** passe `--validate-config-only` avec un avertissement et le code 0, et l’exécution l’ignore avec une erreur dans le journal et utilise les descriptions intégrées.
+- **`inventag --validate-operations` affiche `apigateway:GetApiKeys` et `ec2:DescribeInstanceAttribute` comme ALLOWED**, chacun avec la règle qu’applique la protection (`BLOCKED when includeValues=true`, `BLOCKED when Attribute=userdata`), et se termine avec le code 0, car la protection ne les bloque que lorsqu’ils sont appelés avec ce paramètre.
 - **Avec `services` dans un modèle de configuration**, le rapport ne contient que ces services, mais l’analyse lit toujours tous les services, si bien que des avertissements sur d’autres services peuvent apparaître.
 
 ## Coûts {#costs}
@@ -255,11 +240,6 @@ standard) ; `AWS_RETRY_MODE` et `AWS_MAX_ATTEMPTS` modifient ce réglage.
   L’instantané qui vient d’être écrit et celui avec lequel il est comparé ne sont
   jamais supprimés. Modifiez ces limites avec `--state-retention-days` et
   `--state-max-snapshots`, ou gardez tout avec `none`.
-- Avec `--enable-network-analysis` ou `--enable-security-analysis`, les appels de
-  l’analyse sont faits deux fois dans une même exécution.
-- L’analyse réseau ne compte une ressource présente dans plusieurs sous-réseaux
-  que pour le premier, et compte les équilibreurs de charge pour leur VPC mais
-  pas pour un sous-réseau.
 - L’analyse réseau ne compte pas les clusters ElastiCache comme ressources associées d’un VPC ou d’un sous-réseau.
 - L’enrichissement des attributs de service (`enable_service_enrichment` dans
   les réglages de la BOM) ne s’exécute pas ; les rapports contiennent les champs

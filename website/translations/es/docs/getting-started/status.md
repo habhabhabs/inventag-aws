@@ -53,7 +53,7 @@ inventag --compliance-standard soc2
 ```
 
 ```text title="Salida"
-inventag: error: --compliance-standard: Compliance-standard enforcement is not implemented yet;  InvenTag does not assess compliance. To check your tags against a built-in baseline, run: inventag --template security-baseline --create-excel
+inventag: error: --compliance-standard: Compliance-standard enforcement is not implemented yet; the option has never changed InvenTag's behaviour. InvenTag does not assess compliance. To check your tags against a built-in baseline, run: inventag --template security-baseline --create-excel
 (exit code 2)
 ```
 
@@ -62,7 +62,7 @@ inventag --disable-production-safety
 ```
 
 ```text title="Salida"
-inventag: error: --disable-production-safety: The read-only guard cannot be disabled from the CLI: InvenTag only needs read access, so  Remove this option; nothing else is needed. To see which calls are allowed, run: inventag --validate-operations ec2:DescribeInstances
+inventag: error: --disable-production-safety: The read-only guard cannot be disabled from the CLI: InvenTag only needs read access, so non-read AWS calls are always blocked. Remove this option; nothing else is needed. To see which calls are allowed, run: inventag --validate-operations ec2:DescribeInstances
 (exit code 2)
 ```
 
@@ -129,8 +129,6 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 - **Una cuenta falla y las demás funcionan:** la ejecución termina con el
   código 0, o con el código 5 si pasas `--fail-on-account-error`.
-- **Un informe hecho con `--template`** no nombra las cuentas que fallaron; el
-  resumen de la ejecución y el informe predeterminado sí.
 - **Fallan todas las cuentas:** la ejecución termina con el código 1, también con
   `--fail-on-account-error`, y no escribe ningún informe salvo que las cuentas se
   hayan quedado sin tiempo; en ese caso el informe muestra lo que se encontró.
@@ -146,28 +144,19 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   sus recursos aparecen solo si la API Resource Groups Tagging los devuelve.
 - **Un listado que falla por otro motivo** (limitado tras los reintentos, o un
   error) es una advertencia y un recuento en la instantánea
-  (`metadata.tags.coverage_summary`), y ningún informe lo nombra.
+  (`metadata.tags.coverage_summary`).
 - **Todas las llamadas de una cuenta denegadas:** la cuenta no cuenta como
-  fallida, la ejecución termina con el código 0 y el siguiente informe de
-  cambios lista como eliminados todos los recursos de esa cuenta.
-- **Un servicio cuyo listado se limitó o falló** en una ejecución muestra sus
-  recursos como eliminados en el siguiente informe de cambios.
-- **Una ejecución con otras regiones o servicios que la anterior** muestra como
-  eliminados, en el informe de cambios, los recursos que quedan fuera del nuevo
-  alcance.
+  fallida, y la ejecución termina con el código 0.
+- **Un servicio cuyo listado falló en la ejecución anterior** puede mostrar sus
+  recursos como añadidos en el siguiente informe de cambios.
 - **El primer informe de cambios después de actualizar desde v1.1.4** lista los
   recursos de los servicios que ahora se cubren como añadidos, aunque ya
   existían.
 - **Una sesión que caduca durante el análisis** deja un informe solo con lo que
-  se leyó antes de que caducara, sin ninguna nota, y la ejecución termina con el
-  código 0, también con `--fail-on-account-error`.
+  se leyó antes de que caducara, y la ejecución termina con el código 0, también
+  con `--fail-on-account-error`.
 - **Una sesión que ya ha caducado cuando empieza el análisis** no da ningún
   archivo de informe y termina con el código 0.
-- **Con `--resume`**, una cuenta cuya sesión caducó a mitad de la primera
-  ejecución puede reutilizarse como si estuviera completa.
-- **Un token de IAM Identity Center (SSO) caducado** detiene la ejecución con el
-  código de salida 1 y un traceback de Python, y el mensaje no te dice que
-  ejecutes `aws sso login`.
 - **Acceso denegado a Cost Explorer:** la ejecución continúa sin datos de
   facturación, y las dos advertencias sobre ello solo se muestran con `--debug`.
 - **Una llamada bloqueada por la protección de solo lectura** dentro de un
@@ -191,21 +180,17 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   `--fail-if-empty`.
 - **Un nombre de región mal escrito en `--account-regions`** termina la
   ejecución con el código 0, un texto `KeyError` sin procesar y ningún informe.
-- **Un perfil que necesita MFA, ejecutado sin terminal,** se detiene con un
-  traceback de Python y un mensaje vacío, o espera para siempre cuando la
-  entrada sigue abierta.
-- **Una ruta de `--audit-output` o `--log-file` en la que no se puede
-  escribir** termina la ejecución con un traceback de Python, y una carpeta de
-  salida que no se puede usar se descubre solo después de todo el análisis.
+- **Un perfil que necesita MFA, ejecutado sin terminal,** espera para siempre
+  cuando la entrada sigue abierta.
 - **Ctrl-C** detiene la ejecución sin un mensaje visible, y un SIGTERM la
   detiene sin ningún mensaje.
 - **Una segunda entrada con el mismo ID de cuenta** en un archivo de cuentas se
-  descarta sin mensaje, así que sus regiones no se analizan.
+  descarta con una advertencia, así que sus regiones no se analizan.
 - **Dos ejecuciones que usan la misma carpeta de salida a la vez** no se
   impiden.
-- **`--validate-config-only` no lee `--bom-config`**, así que un archivo de ajustes de BOM con un valor erróneo pasa la comprobación y solo detiene la ejecución real (código de salida 1).
-- **Un archivo de descripciones de servicio sin la clave de nivel superior `service_descriptions`** pasa la comprobación, y la ejecución lo ignora con un error en el registro y usa las descripciones integradas.
-- **`inventag --validate-operations` responde solo por el nombre:** muestra `apigateway:GetApiKeys` y `ec2:DescribeInstanceAttribute` como ALLOWED, aunque la protección los bloquea cuando se llaman con `includeValues` o `Attribute=userData`.
+- **`--validate-config-only` con un archivo `--bom-config` que tiene un valor erróneo** muestra una advertencia y termina con el código 0, aunque la ejecución real se detiene con el código de salida 1.
+- **Un archivo de descripciones de servicio sin la clave de nivel superior `service_descriptions`** pasa `--validate-config-only` con una advertencia y el código 0, y la ejecución lo ignora con un error en el registro y usa las descripciones integradas.
+- **`inventag --validate-operations` muestra `apigateway:GetApiKeys` y `ec2:DescribeInstanceAttribute` como ALLOWED**, cada uno con la regla que aplica la protección (`BLOCKED when includeValues=true`, `BLOCKED when Attribute=userdata`), y termina con el código 0, porque la protección los bloquea solo cuando se llaman con ese parámetro.
 - **Con `services` en una plantilla de configuración**, el informe solo contiene esos servicios, pero el análisis sigue leyendo todos los servicios, así que pueden aparecer avisos sobre otros servicios.
 
 ## Costes {#costs}
@@ -254,11 +239,6 @@ standard); `AWS_RETRY_MODE` y `AWS_MAX_ATTEMPTS` cambian este ajuste.
   instantánea recién escrita y la que se usa para comparar nunca se borran.
   Cambia los límites con `--state-retention-days` y `--state-max-snapshots`, o
   consérvalo todo con `none`.
-- Con `--enable-network-analysis` o `--enable-security-analysis`, las llamadas
-  del análisis se hacen dos veces en una misma ejecución.
-- El análisis de red cuenta un recurso que está en varias subredes solo para la
-  primera, y cuenta los balanceadores de carga para su VPC pero no para una
-  subred.
 - El análisis de red no cuenta los clústeres de ElastiCache como recursos asociados de una VPC ni de una subred.
 - El enriquecimiento de atributos de servicio (`enable_service_enrichment` en
   los ajustes de la BOM) no se ejecuta; los informes contienen los campos que

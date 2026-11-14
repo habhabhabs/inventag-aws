@@ -52,7 +52,7 @@ inventag --compliance-standard soc2
 ```
 
 ```text title="輸出"
-inventag: error: --compliance-standard: Compliance-standard enforcement is not implemented yet;  InvenTag does not assess compliance. To check your tags against a built-in baseline, run: inventag --template security-baseline --create-excel
+inventag: error: --compliance-standard: Compliance-standard enforcement is not implemented yet; the option has never changed InvenTag's behaviour. InvenTag does not assess compliance. To check your tags against a built-in baseline, run: inventag --template security-baseline --create-excel
 (exit code 2)
 ```
 
@@ -61,7 +61,7 @@ inventag --disable-production-safety
 ```
 
 ```text title="輸出"
-inventag: error: --disable-production-safety: The read-only guard cannot be disabled from the CLI: InvenTag only needs read access, so  Remove this option; nothing else is needed. To see which calls are allowed, run: inventag --validate-operations ec2:DescribeInstances
+inventag: error: --disable-production-safety: The read-only guard cannot be disabled from the CLI: InvenTag only needs read access, so non-read AWS calls are always blocked. Remove this option; nothing else is needed. To see which calls are allowed, run: inventag --validate-operations ec2:DescribeInstances
 (exit code 2)
 ```
 
@@ -98,21 +98,17 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 ## 執行出錯時 {#when-a-run-goes-wrong}
 
 - **一個帳戶失敗，其他帳戶正常：** 執行以結束代碼 0 結束；傳入 `--fail-on-account-error` 時以結束代碼 5 結束。
-- **用 `--template` 生成的報告**不會列出失敗的帳戶；執行摘要和預設報告會列出。
 - **所有帳戶都失敗：** 執行以結束代碼 1 結束，使用 `--fail-on-account-error` 時也是如此；除非這些帳戶是因超時而失敗，否則不寫報告，超時時報告會列出已找到的資源。
 - **帳戶超時：** 它算作失敗，超時前找到的資源保留在報告中。
 - **沒有找到資源，或篩選條件把它們全部去掉了：** 不使用 `--template` 時 InvenTag 不寫報告，使用 `--template` 時寫出一份空報告；除非你傳入 `--fail-if-empty`（結束代碼 6），否則執行以結束代碼 0 結束。
 - **範圍內沒有任何資源的標籤策略**會報告 `0 of 0 resources compliant (100.0%)`，儘管什麼都沒有檢查。
 - **你沒有權限的服務**會被跳過並記錄一條警告；只有 Resource Groups Tagging API 返回時，它的資源才會出現。
-- **因其他原因失敗的列出呼叫**（重試後仍被限流，或出現錯誤）會記為一條警告，並計入快照（`metadata.tags.coverage_summary`），沒有任何報告會提到它。
-- **帳戶中的所有呼叫都被拒絕：** 該帳戶不算失敗，執行以結束代碼 0 結束，下一份變更報告會把該帳戶的所有資源列為已刪除。
-- **某個服務的列出呼叫被限流或失敗**，在下一份變更報告中，該服務的資源會顯示為已刪除。
-- **與上一次執行相比，區域或服務不同的執行**，會在變更報告中把新範圍之外的資源顯示為已刪除。
+- **因其他原因失敗的列出呼叫**（重試後仍被限流，或出現錯誤）會記為一條警告，並計入快照（`metadata.tags.coverage_summary`）。
+- **帳戶中的所有呼叫都被拒絕：** 該帳戶不算失敗，執行以結束代碼 0 結束。
+- **某個服務的列出呼叫在上一次執行中失敗**時，該服務的資源可能在下一份變更報告中顯示為新增。
 - **從 v1.1.4 升級後的第一份變更報告**會把新覆蓋服務的資源列為新增，儘管它們之前就存在。
-- **掃描過程中會話過期**時，報告只包含會話過期前讀取到的內容，沒有任何說明，執行以結束代碼 0 結束，使用 `--fail-on-account-error` 時也是如此。
+- **掃描過程中會話過期**時，報告只包含會話過期前讀取到的內容，執行以結束代碼 0 結束，使用 `--fail-on-account-error` 時也是如此。
 - **掃描開始時會話已經過期**時，不會生成報告檔案，結束代碼為 0。
-- **使用 `--resume` 時**，第一次執行中會話中途過期的帳戶，可能會被當作已完整掃描而複用。
-- **IAM Identity Center（SSO）權杖過期**時，執行會以結束代碼 1 和 Python 回溯停止，並且訊息不會告訴你執行 `aws sso login`。
 - **Cost Explorer 存取被拒絕：** 執行在沒有帳單資料的情況下繼續，關於它的兩條警告只在使用 `--debug` 時顯示。
 - **被唯讀防護阻止的呼叫**如果發生在列出呼叫中，該列出會被跳過並輸出一行錯誤，執行仍以結束代碼 0 結束。
 - **S3 上傳失敗**會讓整個執行以結束代碼 1 結束，此時報告已寫到本地。
@@ -124,14 +120,13 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **帳戶檔案 `settings` 塊中的值會覆蓋對應的命令列引數，** 例如 `max_concurrent_accounts`。
 - **使用 `--s3-bucket` 時結果為空**會讓執行以結束代碼 1 結束（`S3 upload of reports failed: no files`），使用 `--fail-if-empty` 時也是如此。
 - **`--account-regions` 中輸入錯誤的區域名稱**會讓執行以結束代碼 0 結束，輸出原始的 `KeyError` 文字，並且不寫報告。
-- **需要 MFA 的設定檔在沒有終端的情況下執行**時，會以 Python 回溯和空訊息停止，或者在輸入保持開啟時一直等待。
-- **無法寫入的 `--audit-output` 或 `--log-file` 路徑**會讓執行以 Python 回溯結束，而無法使用的輸出資料夾要到整個掃描結束後才會發現。
+- **需要 MFA 的設定檔在沒有終端的情況下執行**時，會在輸入保持開啟時一直等待。
 - **Ctrl-C** 會讓執行停止且沒有可見訊息，SIGTERM 會讓它停止且沒有任何訊息。
-- **帳戶檔案中帳戶 ID 相同的第二個條目**會被丟棄且沒有任何訊息，因此它的區域不會被掃描。
+- **帳戶檔案中帳戶 ID 相同的第二個條目**會被丟棄並給出一條警告，因此它的區域不會被掃描。
 - **兩個同時使用同一輸出資料夾的執行**不會被阻止。
-- **`--validate-config-only` 不讀取 `--bom-config`**，因此值有誤的 BOM 設定檔案能透過檢查，只有在真正執行時才會停止（結束代碼 1）。
-- **缺少頂層鍵 `service_descriptions` 的服務描述檔案**能透過檢查，執行時會被忽略，日誌中記錄一條錯誤，並使用內建描述。
-- **`inventag --validate-operations` 只按名稱回答：** 它把 `apigateway:GetApiKeys` 和 `ec2:DescribeInstanceAttribute` 顯示為 ALLOWED，但帶 `includeValues` 或 `Attribute=userData` 呼叫它們時，防護會攔截。
+- **帶有值有誤的 `--bom-config` 檔案的 `--validate-config-only`** 會輸出一條警告並以結束代碼 0 結束，而真正執行時會以結束代碼 1 停止。
+- **缺少頂層鍵 `service_descriptions` 的服務描述檔案**能透過 `--validate-config-only`，只給出一條警告並以結束代碼 0 結束；執行時它會被忽略，日誌中記錄一條錯誤，並使用內建描述。
+- **`inventag --validate-operations` 把 `apigateway:GetApiKeys` 和 `ec2:DescribeInstanceAttribute` 顯示為 ALLOWED**，並附上防護適用的規則（`BLOCKED when includeValues=true`、`BLOCKED when Attribute=userdata`），結束代碼為 0，因為只有帶該引數呼叫它們時，防護才會攔截。
 - **設定範本中設定了 `services` 時**，報告只包含這些服務，但掃描仍會讀取所有服務，因此可能出現關於其他服務的警告。
 
 ## 費用 {#costs}
@@ -161,8 +156,6 @@ InvenTag 會把被限流的呼叫最多重試 10 次（standard 重試模式）�
 - 當執行儲存快照時，InvenTag 會刪除 `bom_output/state/` 中超過 30 天或超出最新 100 個的快照。
   剛寫入的快照和與之比較的快照永遠不會被刪除。用 `--state-retention-days` 和 `--state-max-snapshots`
   修改這些限制，或用 `none` 保留全部。
-- 使用 `--enable-network-analysis` 或 `--enable-security-analysis` 時，分析呼叫在一次執行中會發出兩次。
-- 網路分析把位於多個子網中的資源只計入第一個子網，並且只把負載均衡器計入其 VPC，而不計入任何子網。
 - 網路分析不會把 ElastiCache 叢集計為 VPC 或子網的關聯資源。
 - 服務屬性補充（BOM 設定中的 `enable_service_enrichment`）不會執行；報告包含發現過程返回的欄位。
 - 在範本報告中，如果 AWS 沒有為資源返回 `Name` 欄位或 `Name` 標籤，Name 列為空；ID 欄用於識別該資源。

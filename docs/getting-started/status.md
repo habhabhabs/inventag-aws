@@ -125,8 +125,6 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 - **One account fails, the others work:** the run exits with code 0, or with
   code 5 when you pass `--fail-on-account-error`.
-- **A report made with `--template`** does not name the accounts that failed;
-  the run summary and the default report do.
 - **Every account fails:** the run exits with code 1, also with
   `--fail-on-account-error`, and writes no report unless the accounts ran out
   of time, in which case the report lists what was found.
@@ -141,26 +139,18 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   resources appear only if the Resource Groups Tagging API returns them.
 - **A listing that fails for another reason** (throttled after the retries, or
   an error) is a warning and a count in the snapshot
-  (`metadata.tags.coverage_summary`), and no report names it.
+  (`metadata.tags.coverage_summary`).
 - **Every call in an account denied:** the account does not count as failed,
-  the run exits with code 0, and the next change report lists every resource
-  of that account as removed.
-- **A service whose listing was throttled or failed** in one run shows its
-  resources as removed in the next change report.
-- **A run with other regions or services than the run before** shows the
-  resources outside the new scope as removed in the change report.
+  and the run exits with code 0.
+- **A service whose listing failed in the previous run** can show its
+  resources as added in the next change report.
 - **The first change report after upgrading from v1.1.4** lists the resources
   of newly covered services as added, although they existed before.
 - **A session that expires during the scan** leaves a report with only what
-  was read before it expired, without a note, and the run exits with code 0,
-  also with `--fail-on-account-error`.
+  was read before it expired, and the run exits with code 0, also with
+  `--fail-on-account-error`.
 - **A session that is already expired when the scan starts** gives no report
   file and exit code 0.
-- **With `--resume`**, an account whose session expired part-way in the first
-  run can be reused as if it were complete.
-- **An expired IAM Identity Center (SSO) token** stops the run with exit code
-  1 and a Python traceback, and the message does not tell you to run
-  `aws sso login`.
 - **Cost Explorer access denied:** the run carries on without billing data,
   and the two warnings about it show only with `--debug`.
 - **A call blocked by the read-only guard** inside a listing skips that
@@ -181,20 +171,17 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   (`S3 upload of reports failed: no files`), also with `--fail-if-empty`.
 - **A region name typed wrong in `--account-regions`** ends the run with exit
   code 0, a raw `KeyError` text and no report.
-- **A profile that needs MFA, run without a terminal,** stops with a Python
-  traceback and an empty message, or waits for ever when the input stays open.
-- **An `--audit-output` or `--log-file` path that cannot be written** ends the
-  run with a Python traceback, and an output folder that cannot be used is
-  found only after the whole scan.
+- **A profile that needs MFA, run without a terminal,** waits for ever when
+  the input stays open.
 - **Ctrl-C** stops the run without a visible message, and a SIGTERM stops it
   without any message.
 - **A second entry with the same account ID** in an accounts file is dropped
-  without a message, so its regions are not scanned.
+  with a warning, so its regions are not scanned.
 - **Two runs that use the same output folder at the same time** are not
   prevented.
-- **`--validate-config-only` does not read `--bom-config`**, so a BOM settings file with a wrong value passes the check and stops only the real run (exit code 1).
-- **A service descriptions file without the top-level key `service_descriptions`** passes the check, and the run ignores it with an error in the log and uses the built-in descriptions.
-- **`inventag --validate-operations` answers by name only:** it shows `apigateway:GetApiKeys` and `ec2:DescribeInstanceAttribute` as ALLOWED, although the guard blocks them when they are called with `includeValues` or `Attribute=userData`.
+- **`--validate-config-only` with a `--bom-config` file that has a wrong value** prints one warning and exits with code 0, although the real run stops with exit code 1.
+- **A service descriptions file without the top-level key `service_descriptions`** passes `--validate-config-only` with a warning and exit code 0, and the run ignores it with an error in the log and uses the built-in descriptions.
+- **`inventag --validate-operations` shows `apigateway:GetApiKeys` and `ec2:DescribeInstanceAttribute` as ALLOWED**, each with the rule that the guard applies (`BLOCKED when includeValues=true`, `BLOCKED when Attribute=userdata`), and exits with code 0, because the guard blocks them only when they are called with that parameter.
 - **With `services` in a config template**, the report holds only those services, but the scan still reads every service, so warnings about other services can appear.
 
 ## Costs
@@ -242,10 +229,6 @@ InvenTag retries a throttled call up to 10 times (standard retry mode);
   written and the one it is compared with are never removed. Change the limits
   with `--state-retention-days` and `--state-max-snapshots`, or keep everything
   with `none`.
-- With `--enable-network-analysis` or `--enable-security-analysis`, the
-  analysis calls are made twice in one run.
-- Network analysis counts a resource in several subnets for the first subnet
-  only, and counts load balancers for their VPC but not for a subnet.
 - Network analysis does not count ElastiCache clusters as associated resources of a VPC or a subnet.
 - Service attribute enrichment (`enable_service_enrichment` in the BOM
   settings) does not run; reports contain the fields that discovery returns.

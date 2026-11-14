@@ -1043,3 +1043,16 @@ def test_modules_named_on_the_architecture_page_are_not_called_by_a_default_run(
         cwd=ROOT,
     ).stdout
     assert eval(out) == ["reporting.template_framework", "reporting.document_generator"]
+
+
+def test_a_service_that_failed_in_the_previous_run_shows_its_resources_as_added():
+    """Status: a service whose listing failed in the previous run can show its
+    resources as added in the next change report. The previous snapshot has no
+    queue (its listing failed), the current run reads it: the queue is added."""
+    from tests.unit.test_delta_not_compared import _detect, _entry, _queue, _run
+
+    previous_snapshot = []  # the sqs listing of the previous run was throttled
+    current = [_queue("q1")]
+    report = _detect(previous_snapshot, current, _run([_entry("sqs", "ok")]))
+    assert [c.resource_id for c in report.added_resources] == ["q1"]
+    assert report.removed_resources == []
