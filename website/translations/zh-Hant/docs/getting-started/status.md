@@ -140,7 +140,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - `--no-billing-validation` 會停止這些呼叫，此時報告裡沒有可供對比的計費資料。
 - `--enable-cost-analysis` 會發出更多 Cost Explorer、Pricing 和 CloudWatch 呼叫，即使加上 `--no-billing-validation` 也是如此，呼叫次數取決於你的資源。每個不同的價格查詢只發出一次，之後重複使用，因此 Pricing 呼叫次數隨不同資源型別和規格的數量增長，而不是隨資源數量增長。
 
-未針對真實的 AWS 驗證：`--enable-cost-analysis` 的費用估算。
+未針對 真實的 AWS 驗證：`--enable-cost-analysis` 的費用估算。
 
 InvenTag 會把被限流的呼叫最多重試 10 次（standard 重試模式）；`AWS_RETRY_MODE` 和 `AWS_MAX_ATTEMPTS` 可以覆蓋這一設定。
 
@@ -173,8 +173,8 @@ InvenTag 會把被限流的呼叫最多重試 10 次（standard 重試模式）�
   只在 `allow_bucket_writes=True` 時執行。在 CLI 執行中，唯讀防護會阻止這兩者。
 - **從你自己的 Python 程式碼中使用 `CloudBOMGenerator`** 不會安裝唯讀防護。只有 `inventag` 命令會安裝。
 - **設定範本可以設定輸出資料夾以及要掃描的帳戶和角色。** 只使用你信任的範本。
-- **擔任角色的會話不會重新整理**，因此持續時間超過會話的帳戶掃描會遇到權杖過期。未針對真實的 AWS 驗證：擔任角色的會話持續一小時。
-- **MFA 只能透過 AWS 設定檔（`mfa_serial`）使用**，不支援帳戶檔案中的 `role_arn` 條目。未針對真實的 MFA 裝置驗證：透過帶 `mfa_serial` 的 AWS 設定檔使用 MFA。
+- **擔任角色的會話不會重新整理**，因此持續時間超過會話的帳戶掃描會遇到權杖過期。未針對 真實的 AWS 驗證：擔任角色的會話持續一小時。
+- **MFA 只能透過 AWS 設定檔（`mfa_serial`）使用**，不支援帳戶檔案中的 `role_arn` 條目。未針對 真實的 MFA 裝置 驗證：透過帶 `mfa_serial` 的 AWS 設定檔使用 MFA。
 
 ## 測試與軟體物料清單 {#tests-and-the-software-bill-of-materials}
 

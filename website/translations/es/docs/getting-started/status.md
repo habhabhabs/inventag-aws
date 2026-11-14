@@ -282,11 +282,11 @@ standard); `AWS_RETRY_MODE` y `AWS_MAX_ATTEMPTS` cambian este ajuste.
 - **Una plantilla de configuración puede fijar la carpeta de salida y las
   cuentas y roles que se analizan.** Usa solo plantillas de confianza.
 - **Las sesiones de rol asumido no se renuevan**, así que el análisis de una
-  cuenta que dure más que la sesión se encuentra con un token caducado. No
-  verificado contra AWS real: las sesiones de rol asumido duran una hora.
+  cuenta que dure más que la sesión se encuentra con un token caducado.
+  No verificado contra AWS real: las sesiones de rol asumido duran una hora.
 - **MFA funciona solo mediante perfiles de AWS** (`mfa_serial`), no para
-  entradas `role_arn` de un archivo de cuentas. No verificado contra un
-  dispositivo MFA real: MFA mediante un perfil de AWS con `mfa_serial`.
+  entradas `role_arn` de un archivo de cuentas.
+  No verificado contra un dispositivo MFA real: MFA mediante un perfil de AWS con `mfa_serial`.
 
 ## Pruebas y lista de materiales de software {#tests-and-the-software-bill-of-materials}
 

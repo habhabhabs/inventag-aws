@@ -140,7 +140,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - `--no-billing-validation` 会停止这些调用，此时报告里没有可供对比的计费数据。
 - `--enable-cost-analysis` 会发出更多 Cost Explorer、Pricing 和 CloudWatch 调用，即使加上 `--no-billing-validation` 也是如此，调用次数取决于你的资源。每个不同的价格查询只发出一次，之后重复使用，因此 Pricing 调用次数随不同资源类型和规格的数量增长，而不是随资源数量增长。
 
-未针对真实的 AWS 验证：`--enable-cost-analysis` 的费用估算。
+未针对 真实的 AWS 验证：`--enable-cost-analysis` 的费用估算。
 
 InvenTag 会把被限流的调用最多重试 10 次（standard 重试模式）；`AWS_RETRY_MODE` 和 `AWS_MAX_ATTEMPTS` 可以覆盖这一设置。
 
@@ -173,8 +173,8 @@ InvenTag 会把被限流的调用最多重试 10 次（standard 重试模式）�
   只在 `allow_bucket_writes=True` 时运行。在 CLI 运行中，只读防护会阻止这两者。
 - **从你自己的 Python 代码中使用 `CloudBOMGenerator`** 不会安装只读防护。只有 `inventag` 命令会安装。
 - **配置模板可以设置输出文件夹以及要扫描的账户和角色。** 只使用你信任的模板。
-- **代入角色的会话不会刷新**，因此持续时间超过会话的账户扫描会遇到令牌过期。未针对真实的 AWS 验证：代入角色的会话持续一小时。
-- **MFA 只能通过 AWS 配置文件（`mfa_serial`）使用**，不支持账户文件中的 `role_arn` 条目。未针对真实的 MFA 设备验证：通过带 `mfa_serial` 的 AWS 配置文件使用 MFA。
+- **代入角色的会话不会刷新**，因此持续时间超过会话的账户扫描会遇到令牌过期。未针对 真实的 AWS 验证：代入角色的会话持续一小时。
+- **MFA 只能通过 AWS 配置文件（`mfa_serial`）使用**，不支持账户文件中的 `role_arn` 条目。未针对 真实的 MFA 设备 验证：通过带 `mfa_serial` 的 AWS 配置文件使用 MFA。
 
 ## 测试与软件物料清单 {#tests-and-the-software-bill-of-materials}
 

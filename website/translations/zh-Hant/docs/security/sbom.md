@@ -36,7 +36,7 @@ pip install inventag-aws cyclonedx-bom
 cyclonedx-py environment --output-format json --output-file inventag-sbom.json
 ```
 
-未針對你安裝的 cyclonedx-bom 版本驗證：`cyclonedx-py environment` 的選項。
+未針對 你安裝的 cyclonedx-bom 版本 驗證：`cyclonedx-py environment` 的選項。
 
 請在你安裝 InvenTag 的虛擬環境中執行，這樣檔案列出的就恰好是你所執行的內容。
 
