@@ -8,6 +8,136 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `--resume` no longer reuses an account whose session expired during the
+  scan (`ExpiredToken`, `ExpiredTokenException`, `RequestExpired`). Such an
+  account was read only in part, so it is not saved under `state/partial/`
+  and the next run with `--resume` scans it again. The resume hint counts it
+  among the accounts still to scan. A listing that is only denied still lets
+  the account be saved.
+- An account in which every service listing was denied or failed no longer
+  becomes the baseline of the change report. The snapshot lists it under
+  `accounts_failed`, so the next run neither reports its resources as removed
+  nor, after it, as added. The report's Run notes and one warning name the
+  account. A run in which nothing was read saves no snapshot, and its message
+  says "nothing could be read" instead of "none found, or the filters removed
+  all of them". Exit codes are unchanged.
+- A session that expires during the scan is now visible: the report's Run
+  notes say the account is incomplete and how many listings were not read,
+  one error line names the account, and the snapshot lists it under
+  `accounts_failed`, so the next change report does not show its unread
+  resources as removed. The exit code stays 0, also with
+  `--fail-on-account-error`.
+- The report's Run notes name what was not read: the listings that were
+  denied, throttled or failed, grouped by service and region with the reason
+  ("Not read in account 123456789012, so the report is partial there:
+  dynamodb in us-east-1 (throttled)", at most ten, then "and N more"), and
+  the regions the region check skipped. Before, only the log said so and the
+  Summary sheet showed 100.0 %. A run with no such listing shows no note, as
+  before.
+- A call blocked by the read-only guard is no longer hidden behind a
+  successful run. The run notes name each blocked operation and say that it
+  is a defect in InvenTag, not in your account, to be reported; one error
+  line says the same, also for a block while the state snapshot is saved.
+  The exit code is unchanged.
+- The console prints the run notes after the summary, each once, as
+  warnings. A note that already appeared as a log line of the run (an
+  expired session, an account that read nothing, a guard block) and the
+  accounts the "not scanned" block lists are not repeated. A run without
+  notes prints nothing new.
+- Reports made with `--template` name the accounts that were not scanned, or
+  only partly, and the reason: "Run notes" lines at the end of the Summary
+  sheet (Excel) and the Summary section (Word), the same lines as the default
+  report. A template with `summary_sheet: false` gets the Summary sheet when
+  there are notes. A run with nothing to report gives the same files as
+  before.
+- The change report no longer shows resources as removed when this run
+  could not read them: a resource whose service listing was denied,
+  throttled or failed in this run, or that lies in a region or service this
+  run did not scan, is counted under `resources_not_compared` instead. A run
+  that read everything gives the same report as before.
+- A previous snapshot whose `resources` holds entries that are not objects is
+  skipped with the file named (before: "'str' object has no attribute
+  'get'"). A previous snapshot in an older format (such as one written by
+  v1.1.4) gives one warning that the change report may list format
+  differences.
+- Change tracking is faster when many resources change. The search for
+  related resources looked at the whole new snapshot once for every changed
+  EC2, RDS, S3 or VPC resource, so its time grew with the square of the
+  estate (about 3 seconds for 1,600 changed resources, 4 times more when the
+  estate doubled). It now uses a lookup built once per comparison (0.1
+  seconds for the same run). The change report and the changelog are the
+  same as before.
+- An expired or missing IAM Identity Center (SSO) login stops the run with
+  one message that names the profile and the command `aws sso login
+  --profile <name>`. A profile that needs an MFA code, run with no terminal,
+  stops with a message and the `aws sts get-session-token` command. Before,
+  both ended in a traceback (and the MFA case with an empty message). Exit
+  code 1, as before. With `--debug` the full traceback is still logged.
+- `--audit-output`, `--log-file` and `--output-directory` with a path that
+  cannot be written (for example a folder that is a file) stop the run at
+  the start with one message that names the option and the path, before any
+  AWS call. Before, the first two ended in a traceback and the third after
+  the whole scan. Exit code 1, as before.
+- An account that could not be reached because of an error without a
+  message (for example an MFA prompt with no terminal, in an
+  `--accounts-file` run) is reported with the error's type instead of an
+  empty reason.
+- A scan no longer raises one hidden error for each resource in the BOM
+  processor (it called a service enrichment method that does not exist).
+  Service attribute enrichment has never run; reports are unchanged. If a
+  `--bom-config` file sets `enable_service_enrichment: true`, one warning
+  says the setting has no effect in this version.
+- Network analysis counts a resource in every subnet its data names, and
+  reads the subnets of load balancers. On the "Network Analysis" sheet, the
+  "Associated Resources" column of the subnet table was too low for a
+  resource in several subnets (a Lambda function, an RDS instance) and
+  missed application and network load balancers; those numbers rise. VPC
+  counts, the resource rows and the change report do not change.
+- With `--enable-network-analysis` or `--enable-security-analysis`, the
+  analysis calls (the `ec2:Describe*` reads of VPCs, subnets, route tables,
+  gateways, network interfaces and security groups) are made once per run
+  instead of twice. The reports are the same.
+- S3 upload says what happened. After a run with a failed file, one line
+  names the files that were uploaded and the files that failed, or says that
+  no file was uploaded. A `PermanentRedirect` error from S3 carries a hint to
+  set `AWS_DEFAULT_REGION` to the bucket's region. When a report format
+  failed, so nothing is uploaded, the log says so and that the files written
+  are in the output folder (before, the upload was skipped without a word).
+  When the Google Doc fails after the Google Sheet was created, the error
+  names the Sheet URL. Exit codes and uploads are unchanged.
+- The read-only guard allows the upload of reports only to the bucket named
+  with `--s3-bucket`, not to any bucket on the uploader's client. A call to
+  another bucket is blocked; no call that was blocked before is allowed now.
+
+### Changed
+
+- Clearer messages, no change of exit codes: the credential check names
+  `aws sso login --profile <name>` and `AWS_PROFILE`, tells network and
+  timeout failures apart (network, `HTTPS_PROXY`, `--credential-timeout`)
+  and names the error type; the "all accounts failed" summary gives the
+  cause per account; an unexpected error names its type and says to run with
+  `--debug`; the accounts file warns about a second entry for one account ID
+  and about unknown keys (a typo such as `profil_name`);
+  `--compliance-standard` and `--disable-production-safety` (still exit 2)
+  say what to do instead.
+- `inventag --validate-operations` shows, for an operation that is allowed
+  by name but blocked with a parameter that returns secrets, the parameter
+  (for example `ALLOWED  ec2:DescribeInstanceAttribute (...); BLOCKED when
+  Attribute=userdata`). The line still starts with ALLOWED and the exit code
+  does not change. Other lines are unchanged.
+- `--validate-config-only` reads the `--bom-config` file the way a run does:
+  a wrong value gives one warning that names the file and the key and says
+  that a real run stops with exit code 1 on this file. The exit code of the
+  validation mode stays 0, as before. Unknown keys are a warning too. A
+  service descriptions file that the run would ignore (no top-level
+  `service_descriptions` key, or an entry without `description`) gets a
+  warning that says so; exit codes do not change.
+- The template field reference describes `spec.services` as it works: it
+  limits the services in the report, while the scan still reads every
+  service, so warnings about other services can appear.
+
 ## [v1.2.0] - 2026-11-14
 
 ### Upgrade notes
