@@ -64,12 +64,18 @@ guard allows with `--validate-operations`:
 
 <!-- BEGIN EXAMPLE OUTPUT: validate-operations -->
 
-```text title="Terminal"
+```text title="Output"
 ALLOWED  ec2:DescribeInstances (read-only prefix)
 ALLOWED  s3:GetBucketTagging (read-only prefix)
 BLOCKED  s3:PutObject (operation is not on the read-only allowlist)
 BLOCKED  secretsmanager:GetSecretValue (operation returns secrets, signed URLs or customer data)
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Output"
 1
 ```
 

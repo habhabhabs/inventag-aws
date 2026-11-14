@@ -46,12 +46,18 @@ sidebar_position: 1
 你可以用 `--audit-output audit.json` 检查一次运行做了什么，用 `--validate-operations`
 检查防护允许什么：
 
-```text title="Terminal"
+```text title="输出"
 ALLOWED  ec2:DescribeInstances (read-only prefix)
 ALLOWED  s3:GetBucketTagging (read-only prefix)
 BLOCKED  s3:PutObject (operation is not on the read-only allowlist)
 BLOCKED  secretsmanager:GetSecretValue (operation returns secrets, signed URLs or customer data)
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="输出"
 1
 ```
 

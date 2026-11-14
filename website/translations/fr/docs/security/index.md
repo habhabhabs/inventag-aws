@@ -64,12 +64,18 @@ mainteneur un canal privé.
 Vous pouvez vérifier ce qu’une exécution a fait avec `--audit-output audit.json`, et ce que la
 protection autorise avec `--validate-operations` :
 
-```text title="Terminal"
+```text title="Sortie"
 ALLOWED  ec2:DescribeInstances (read-only prefix)
 ALLOWED  s3:GetBucketTagging (read-only prefix)
 BLOCKED  s3:PutObject (operation is not on the read-only allowlist)
 BLOCKED  secretsmanager:GetSecretValue (operation returns secrets, signed URLs or customer data)
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Sortie"
 1
 ```
 
