@@ -66,7 +66,10 @@ def test_a_throttled_listing_is_named_in_the_report(
     args = [*BASE, "--account-regions", "us-east-1", "--output-directory", "out"]
     assert run_cli(*args, "--fail-on-account-error") == 0  # as in v1.2.0
     notes = run_notes(reports(tmp_path / "out")[0])
-    wanted = f"Not read in account {GOOD_ID}: dynamodb in us-east-1 (throttled)"
+    wanted = (
+        f"Not read in account {GOOD_ID}, so the report is partial there: "
+        "dynamodb in us-east-1 (throttled)"
+    )
     assert any(n.startswith(wanted) for n in notes), notes
     assert results[-1]["failed_accounts"] == []
 
@@ -131,7 +134,8 @@ def test_listings_are_grouped_by_service_and_region_with_their_reasons(tmp_path)
     )
     notes = generator._run_notes()
     assert notes == [
-        "Not read in account 111111111111: dynamodb in us-east-1 (throttled); "
+        "Not read in account 111111111111, so the report is partial there: "
+        "dynamodb in us-east-1 (throttled); "
         "sqs in eu-west-1 (denied); sqs in us-east-1 (denied, error)."
     ]
 
