@@ -320,8 +320,9 @@ def test_cost_analysis_calls_cost_explorer_pricing_and_cloudwatch_with_billing_o
     assert seen["ce"] > 0 and seen["pricing"] > 0 and seen["cloudwatch"] > 0
 
 
-def test_analysis_calls_are_made_twice(aws, tmp_path, monkeypatch):
-    """Status: with --enable-network-analysis the analysis calls are made twice."""
+def test_analysis_calls_are_made_once(aws, tmp_path, monkeypatch):
+    """With --enable-network-analysis the analysis calls are made once in a run:
+    the status page no longer lists a limit (v1.2.0 made them twice)."""
     c = Counter_(monkeypatch)
     base = [
         "--create-excel",
@@ -343,7 +344,7 @@ def test_analysis_calls_are_made_twice(aws, tmp_path, monkeypatch):
     )
     with_analysis = c.calls[("ec2", "DescribeRouteTables")]
     print("route tables", plain, with_analysis)
-    assert with_analysis - plain >= 2
+    assert with_analysis - plain == 1
 
 
 # ------------------------------------------------------------ report limits
@@ -477,11 +478,11 @@ def test_zero_for_limits_stops_with_exit_1_not_2(aws, flag):
     assert run_cli(flag, "0", "--no-billing-validation") == 1
 
 
-def test_expired_sso_token_prints_a_traceback_and_one_error_line(tmp_path):
-    """Status says an expired SSO token 'stops the run with a Python traceback instead
-    of a message'. Observed: botocore logs a traceback as a warning, InvenTag logs one
-    error line with the cause (no 'aws sso login' hint) and exits 1. Run in a
-    subprocess because botocore reads the SSO cache folder when it is imported."""
+def test_expired_sso_token_stops_with_a_message_that_names_the_login_command(tmp_path):
+    """An expired (cached) SSO token stops the run with exit code 1 and a message
+    that names `aws sso login --profile <name>`, with no traceback (v1.2.0: a
+    traceback and no hint; A-10). Run in a subprocess because botocore reads the
+    SSO cache folder when it is imported."""
     import hashlib
     import os
     import subprocess
@@ -531,9 +532,8 @@ def test_expired_sso_token_prints_a_traceback_and_one_error_line(tmp_path):
     )
     text = run.stdout + run.stderr
     assert run.returncode == 1
-    assert "Traceback (most recent call last)" in text
-    assert "Token has expired and refresh failed" in text
-    assert "aws sso login" not in text  # the hint of main.py is not reached
+    assert "Traceback" not in text
+    assert "aws sso login --profile sso1" in text  # the message names the command
 
 
 # ------------------------------------------------------------ security claims
@@ -717,9 +717,9 @@ def test_secrets_in_tags_and_free_text_are_copied_as_they_are(aws, tmp_path):
     assert "hunter2-in-other-tag" in text
 
 
-def test_a_template_report_does_not_name_a_failed_account(tmp_path):
-    """Status: a report made with --template does not name the accounts that
-    failed (the default report does).  Same set-up as the A-07 test of lead E."""
+def test_a_template_report_names_a_failed_account_and_the_reason(tmp_path):
+    """A report made with --template names the accounts that failed and the
+    reason, as the default report does (v1.2.0: it did not; A-07)."""
     from unittest.mock import MagicMock
 
     from openpyxl import load_workbook
@@ -784,14 +784,15 @@ def test_a_template_report_does_not_name_a_failed_account(tmp_path):
         for c in row
         if c.value
     ]
-    assert not any(failed_id in c for c in cells)
+    reason = "not authorized to perform sts:AssumeRole"
+    assert any(failed_id in c and reason in c for c in cells)
     paragraphs = [p.text for p in docx.Document(files["docx"]).paragraphs]
-    assert not any(failed_id in p for p in paragraphs)
+    assert any(failed_id in p and reason in p for p in paragraphs)
 
 
-def test_network_analysis_counts_a_resource_in_the_first_subnet_only():
-    """Status: a resource in several subnets counts for the first subnet only, and
-    a load balancer counts for its VPC but not for a subnet."""
+def test_network_analysis_counts_a_resource_in_every_one_of_its_subnets():
+    """A resource in several subnets, and a load balancer, is counted once in each
+    of its subnets and once for its VPC (v1.2.0: first subnet only; A-08)."""
     import boto3
     from moto import mock_aws
 
@@ -829,8 +830,8 @@ def test_network_analysis_counts_a_resource_in_the_first_subnet_only():
         }
         analyzer = NetworkAnalyzer(boto3.Session(region_name=region))
         analyzer.analyze_vpc_resources([alb, function])
-        assert analyzer.subnet_cache[a].associated_resources == ["fn"]
-        assert analyzer.subnet_cache[b].associated_resources == []
+        assert sorted(analyzer.subnet_cache[a].associated_resources) == ["alb1", "fn"]
+        assert sorted(analyzer.subnet_cache[b].associated_resources) == ["alb1", "fn"]
         assert sorted(analyzer.vpc_cache[vpc].associated_resources) == ["alb1", "fn"]
 
 

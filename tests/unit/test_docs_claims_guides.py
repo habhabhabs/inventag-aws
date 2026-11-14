@@ -706,7 +706,7 @@ def _subnet_estate_in_moto():
     return analyzer, vpc, sub, instance
 
 
-def test_associated_resources_counts_ec2_lambda_and_rds_in_a_subnet_and_load_balancers_per_vpc(
+def test_associated_resources_counts_ec2_lambda_rds_and_load_balancers_in_a_subnet_and_its_vpc(
     empty_aws,
 ):
     analyzer, vpc, sub, instance = _subnet_estate_in_moto()
@@ -714,8 +714,8 @@ def test_associated_resources_counts_ec2_lambda_and_rds_in_a_subnet_and_load_bal
     in_vpc = analyzer.vpc_cache[vpc].associated_resources
     assert instance in in_subnet and "fn" in in_subnet and "db1" in in_subnet
     assert instance in in_vpc and "db1" in in_vpc
-    # Load balancers are counted for their VPC, not for a subnet (register A-08).
-    assert "lb1" in in_vpc and "lb1" not in in_subnet
+    # A load balancer is counted for its VPC and for each of its subnets (A-08).
+    assert "lb1" in in_vpc and "lb1" in in_subnet
 
 
 def test_associated_resources_does_not_count_an_elasticache_cluster(empty_aws):
