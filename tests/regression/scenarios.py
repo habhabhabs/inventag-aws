@@ -913,6 +913,7 @@ SLOW_B = Fault(service="ec2", op="DescribeVpcs", key=ACCOUNTS["B"][1], sleep=40.
 SHORT = {"account_timeout": 20, "grace": 1, "poll": 0.2}
 ONE_SERVICE = ("--account-services", "SQS")
 NO_RESOURCES = "No resources to report (none found, or the filters removed all of them). No report file was written."
+NOTHING_READ = "No resources to report: nothing could be read (see the messages above). No report file was written."
 
 # What a row overrides on its plan entry. ``source`` is "run" when S1 executed the
 # scenario against moto (evidence under audit/extra/s1-failure-probes), "code" when
@@ -927,20 +928,20 @@ MATRIX: Dict[str, Dict[str, Any]] = {
                 error="ExpiredToken",
             ),
         ),
+        # fix/track-a (A-02, A-01): the expired session is named, no 0-resource
+        # snapshot, and the message no longer blames the filters
         current=(
             ("code", 0),
             ("out", "failed (ExpiredToken)"),
-            ("out", NO_RESOURCES),
+            ("out", "expired during the scan"),
+            ("out", NOTHING_READ),
+            ("no_out", "none found, or the filters removed"),
             ("report", False),
-            ("snapshot_zero", True),
+            ("snapshot_zero", False),
         ),
         code=1,
         issue_keys=("credentials",),
-        target=(
-            ("code", 1),
-            ("no_out", "none found, or the filters removed"),
-            ("snapshot_zero", False),
-        ),
+        target=(("code", 1),),
         wp="WP-F1a",
     ),
     "B1": dict(
@@ -1080,7 +1081,8 @@ MATRIX: Dict[str, Dict[str, Any]] = {
             ("code", 0),
             ("report", True),
             ("out", "sqs list_queues in us-east-1 failed (Throttling)"),
-            ("not", ("report_text", "throttl")),
+            # fix/track-a (A-28): the report's Run notes name the listing
+            ("report_text", "throttl"),
         ),
         issue_keys=("throttled:sqs",),
         target=(("report_text", "throttl"),),
@@ -1099,7 +1101,8 @@ MATRIX: Dict[str, Dict[str, Any]] = {
             ("code", 0),
             ("out", "dynamodb list_tables in us-east-1 failed (ThrottlingException)"),
             ("rows", "DYNAMODB", 100),
-            ("not", ("report_text", "partial")),
+            # fix/track-a (A-28): the report's Run notes say it is partial
+            ("report_text", "partial"),
         ),
         issue_keys=("throttled:dynamodb",),
         target=(("report_text", "partial"),),
@@ -1222,20 +1225,20 @@ MATRIX: Dict[str, Dict[str, Any]] = {
                 error="AccessDenied",
             ),
         ),
+        # fix/track-a (A-01): the account is named, no 0-resource snapshot, and the
+        # message no longer blames the filters
         current=(
             ("code", 0),
             ("report", False),
             ("out", "No permission for vpc"),
-            ("out", NO_RESOURCES),
-            ("snapshot_zero", True),
-        ),
-        code=1,
-        issue_keys=("permission_denied",),
-        target=(
-            ("code", 1),
+            ("out", "Every service listing of account 123456789012"),
+            ("out", NOTHING_READ),
             ("no_out", "none found, or the filters removed"),
             ("snapshot_zero", False),
         ),
+        code=1,
+        issue_keys=("permission_denied",),
+        target=(("code", 1),),
         wp="WP-F1a",
     ),
     "F4": dict(
@@ -1345,6 +1348,8 @@ EXTRA = [
             ("report", True),
             ("out", "No permission for vpc"),
             ("not", ("out", NO_RESOURCES)),
+            # fix/track-a (A-01): the report's Run notes name the account
+            ("report_text", "Every service listing of account 123456789012"),
         ),
         code=1,
         issue_keys=("permission_denied",),
