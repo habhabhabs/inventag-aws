@@ -1497,6 +1497,7 @@ def test_file_name_timestamps_local_time_for_reports_and_tag_json_utc_for_the_re
             == 0
         )
     finally:
+        now_local, now_utc = datetime.now(), datetime.utcnow()
         monkeypatch.delenv("TZ")
         time.tzset()
 
@@ -1522,8 +1523,12 @@ def test_file_name_timestamps_local_time_for_reports_and_tag_json_utc_for_the_re
     def seconds(a, b):
         return (a - b).total_seconds()
 
-    assert abs(seconds(word, local)) < 60 and abs(seconds(changelog, local)) < 60
-    assert abs(seconds(tag_json, local)) < 120  # local time, not UTC
+    # the six names: report, Word, changelog and tag compliance carry local time
+    for local_name in (local, word, changelog, tag_json):
+        assert abs(seconds(local_name, now_local)) < 300, local_name
+    # the snapshot and the S3 folder carry UTC
+    for utc_name in (snapshot, s3_folder):
+        assert abs(seconds(utc_name, now_utc)) < 300, utc_name
     for utc in (snapshot, s3_folder):
         assert abs(seconds(local, utc) - eight_hours) < 120, (local, utc)
 
@@ -1558,3 +1563,25 @@ def test_failing_template_in_your_own_file_uses_that_entrys_description(
     )
     assert text == "Block storage"
     assert "Failed to render template" in caplog.text
+
+
+def test_account_with_neither_profile_nor_role_is_refused_in_a_template_only(
+    tmp_path,
+):
+    """configuration-files.md: a config template account needs `profile_name` or
+    `role_arn`; an accounts-file account with neither is accepted."""
+    from inventag.cli.config_validator import ConfigValidator
+    from inventag.templating.errors import TemplateError
+    from inventag.templating.runner import load_templates
+
+    account = {"account_id": "111111111111"}
+    (tmp_path / "a.json").write_text(json.dumps({"accounts": [account]}))
+    assert (
+        ConfigValidator().validate_accounts_file(str(tmp_path / "a.json")).errors == []
+    )
+    (tmp_path / "c.yaml").write_text(
+        yaml.safe_dump({"kind": "config", "name": "c", "spec": {"accounts": [account]}})
+    )
+    with pytest.raises(TemplateError) as error:
+        load_templates([str(tmp_path / "c.yaml")])
+    assert "each account needs profile_name or role_arn" in str(error.value.issues)
