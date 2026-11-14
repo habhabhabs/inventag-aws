@@ -38,6 +38,13 @@
  *   - cookie banner on a phone: 150px or less, and it states the current choice
  *   - phone menu: Close stays at the same height on every level, focus is not
  *     lost when a section opens, the language button is in the header
+ *   - phone menu, at 320, 390 and 768 px, in English and (when built) French:
+ *     the version row sits under the header, names a version, is >= 44px, opens
+ *     a list with every archived version plus the current one, every link is
+ *     >= 44px, the open version is focused, Tab never reaches the covered menu,
+ *     choosing an archive opens it and closes the drawer, the first link on the
+ *     archived page leads back, no horizontal scroll, and axe is clean with the
+ *     list open
  * And: no infinite animations with prefers-reduced-motion.
  * Exit code 1 if anything fails.
  */
@@ -63,6 +70,8 @@ const BASE = arg('--base', 'http://localhost:4173/inventag-aws');
 const SHOTS = arg('--shots', null);
 const QUICK = process.argv.includes('--quick');
 
+// Archived versions, newest first (never hard-coded: the check survives every release).
+const VERSIONS = JSON.parse(fs.readFileSync(new URL('../versions.json', import.meta.url), 'utf8'));
 const PAGES = [
   ['landing', '/'],
   ['docs-overview', '/docs'],
@@ -71,6 +80,7 @@ const PAGES = [
   ['status', '/docs/getting-started/status'],
   ['cli-guide', '/docs/user-guides/cli-user-guide'],
   ['production-safety', '/docs/user-guides/production-safety'],
+  ['archived', `/docs/${VERSIONS[0]}/getting-started/quick-start`],
   ['not-found', '/this-page-does-not-exist'],
 ];
 const VIEWPORTS = [
@@ -680,6 +690,105 @@ for (const theme of ['light', 'dark']) {
       if (cur !== 'true') fail('phone menu: the current language is not focused when the list opens');
     }
     await ctx.close();
+  }
+
+  // 6f. phone menu: the version row and its list, per width and language
+  for (const locale of ['', '/fr']) {
+    for (const [w, h] of [[320, 640], [390, 844], [768, 1024]]) {
+      const tag = `phone menu version row ${locale ? locale.slice(1) : 'en'} ${w}px`;
+      const start = `${locale}/docs/getting-started/quick-start`;
+      const ctx = await newContext(browser, {viewport: {width: w, height: h}, dpr: 2, mobile: true, theme: 'light'});
+      const page = await ctx.newPage();
+      const res = await page.goto(BASE + start, {waitUntil: 'networkidle'});
+      if (locale && (!res || res.status() !== 200)) {
+        console.log(`${tag}: skipped: no ${locale.slice(1)} build`);
+        await ctx.close();
+        continue;
+      }
+      await hydrated(page);
+      const noScroll = async (what) => {
+        const m = await page.evaluate(() => ({sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth}));
+        if (m.sw > m.cw) fail(`${tag}: horizontal scroll ${what} (${m.sw} > ${m.cw})`);
+      };
+      const drawerClosed = async () => (await page.locator('nav.navbar.navbar-sidebar--show').count()) === 0;
+      const openDrawer = async () => {
+        await page.locator('.navbar__toggle').click();
+        await page.waitForSelector('.navbar-sidebar--show');
+        await page.waitForTimeout(300);
+      };
+      const ver = page.locator('.navbar-sidebar__ver');
+      const openList = async () => {
+        await ver.click();
+        await page.waitForSelector('.it-mver');
+      };
+      await openDrawer();
+      if (!(await ver.count())) {
+        fail(`${tag}: no version row (.navbar-sidebar__ver) in the drawer`);
+        await ctx.close();
+        continue;
+      }
+      const rowText = (await ver.innerText()).trim();
+      if (!/v\d+\.\d+\.\d+/.test(rowText)) fail(`${tag}: the row names no version ("${rowText}")`);
+      const rowBox = await ver.boundingBox();
+      if (!rowBox || rowBox.height < 44) fail(`${tag}: the row is ${rowBox ? Math.round(rowBox.height) : 0}px high (< 44)`);
+      if ((await ver.getAttribute('aria-expanded')) !== 'false') fail(`${tag}: aria-expanded is not false when closed`);
+      await noScroll('with the drawer open');
+      // open the list: one link per archive plus the current version
+      await openList();
+      const links = page.locator('.it-mver a');
+      const n = await links.count();
+      if (n < VERSIONS.length + 1) fail(`${tag}: the list has ${n} links, expected ${VERSIONS.length + 1}`);
+      for (let i = 0; i < n; i++) {
+        const b = await links.nth(i).boundingBox();
+        if (!b || b.height < 44 - 0.5) fail(`${tag}: list link ${i + 1} is ${b ? Math.round(b.height) : 0}px high (< 44)`);
+      }
+      const cur = await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('aria-current'));
+      if (cur !== 'true') fail(`${tag}: the open version is not focused with aria-current when the list opens`);
+      await noScroll('with the version list open');
+      if (w === 390 && !locale) {
+        for (const v of await runAxe(page)) fail(`${tag}: axe ${v.id}: ${v.help} -> ${v.nodes.join(' | ')}`);
+      }
+      // Tab past the last link must not land on the menu the list covers
+      await links.nth(n - 1).focus();
+      await page.keyboard.press('Tab');
+      const covered = await page.evaluate(() => {
+        const el = document.activeElement;
+        if (!el || el === document.body) return false;
+        const r = el.getBoundingClientRect();
+        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return !(top === el || (top && el.contains(top)));
+      });
+      if (covered) fail(`${tag}: Tab past the last link lands on an element the list covers`);
+      // Escape closes the list only, focus returns to the row
+      await links.nth(0).focus();
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(150);
+      if (await page.locator('.it-mver').count()) fail(`${tag}: Escape did not close the list`);
+      if (await drawerClosed()) fail(`${tag}: Escape closed the whole drawer`);
+      if (!(await page.evaluate(() => document.activeElement && document.activeElement.classList.contains('navbar-sidebar__ver')))) {
+        fail(`${tag}: focus is not on the row after Escape`);
+      }
+      // choose the newest archive
+      const arch = VERSIONS[0];
+      await openList();
+      await page.locator('.it-mver a', {hasText: new RegExp(`^v${arch.replace(/\./g, '\\.')}$`)}).click();
+      await page.waitForURL(new RegExp(`${locale}/docs/${arch.replace(/\./g, '\\.')}/getting-started/quick-start`), {timeout: 10000}).catch(() => {});
+      await page.waitForTimeout(300);
+      if (!page.url().includes(`/docs/${arch}/`)) fail(`${tag}: choosing v${arch} led to ${page.url()}`);
+      if (!(await drawerClosed())) fail(`${tag}: the drawer is still open after choosing v${arch}`);
+      await noScroll(`on the archived page v${arch}`);
+      // on the archived page: the row names it, and the first link leads back
+      await openDrawer();
+      const archText = (await ver.innerText()).trim();
+      if (!archText.includes(`v${arch}`)) fail(`${tag}: on v${arch} the row says "${archText}"`);
+      await openList();
+      await page.locator('.it-mver a').first().click();
+      await page.waitForTimeout(600);
+      const back = new URL(page.url()).pathname;
+      if (back.includes(`/docs/${arch}/`) || !back.endsWith('/docs/getting-started/quick-start')) fail(`${tag}: the first link on v${arch} led to ${back}, not the current page`);
+      if (!(await drawerClosed())) fail(`${tag}: the drawer is still open after the first link on v${arch}`);
+      await ctx.close();
+    }
   }
 }
 
