@@ -20,7 +20,7 @@ sidebar_position: 8
 
 ### 找不到凭证 {#no-credentials-found}
 
-```text title="Terminal"
+```text title="输出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 inventag.cli.main - ERROR - ❌ No AWS credentials found!
 inventag.cli.main - ERROR -    Solutions:
@@ -33,7 +33,13 @@ inventag.cli.main - ERROR -    4. Use --accounts-prompt for interactive setup
 inventag - ERROR - ❌ Cannot proceed with invalid AWS credentials
 inventag - ERROR - 💡 Use --accounts-prompt for interactive credential setup
 inventag - ERROR - 💡 Or use --skip-credential-validation to bypass this check
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="输出"
 1
 ```
 
@@ -42,7 +48,7 @@ $ echo $?
 
 ### 凭证已过期或无效 {#expired-or-invalid-credentials}
 
-```text title="Terminal (simulated AWS error response)"
+```text title="输出 (simulated AWS error response)"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 inventag.cli.main - ERROR - ❌ AWS credential validation failed!
 inventag.cli.main - ERROR -    Issue: Invalid or expired security token
@@ -59,7 +65,13 @@ inventag.cli.main - ERROR -    aws configure               # Set up new credenti
 inventag - ERROR - ❌ Cannot proceed with invalid AWS credentials
 inventag - ERROR - 💡 Use --accounts-prompt for interactive credential setup
 inventag - ERROR - 💡 Or use --skip-credential-validation to bypass this check
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="输出 (simulated AWS error response)"
 1
 ```
 
@@ -90,10 +102,16 @@ InvenTag 不会回退到其他凭证，因此在问题解决之前，该账户�
 
 ### 给了角色名称但没有账户文件 {#a-role-name-without-an-accounts-file}
 
-```text title="Terminal"
+```text title="输出"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag.cli.main - ERROR - --cross-account-role was given a role name without --accounts-file. Pass a full role ARN (arn:aws:iam::<account-id>:role/<name>), or list the target account IDs in --accounts-file.
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="输出"
 2
 ```
 
@@ -105,13 +123,24 @@ $ echo $?
 
 InvenTag 会在没有账单数据的情况下继续，运行也会成功，所以这个问题很容易被忽略。它只会在使用 `--debug` 时显示：
 
-```text title="Terminal (simulated AWS error response)"
+```text title="输出 (simulated AWS error response)"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
-$ echo $?
-0
+```
 
-$ # the same run with --debug, lines that mention AccessDeniedException
+```bash title="Terminal"
+echo $?
+```
+
+```text title="输出 (simulated AWS error response)"
+0
+```
+
+```bash title="Terminal"
+# the same run with --debug, lines that mention AccessDeniedException
+```
+
+```text title="输出 (simulated AWS error response)"
 [AWS Account 123456789012 (moto)] inventag.discovery.inventory - WARNING - No permission for the Cost Explorer API (AccessDeniedException). Skipping billing validation; add ce:GetCostAndUsage or use --no-billing-validation.
 [AWS Account 123456789012 (moto)] inventag.discovery.comprehensive_discovery - WARNING - Cost Explorer data is not available, so billing checks are skipped: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
 ```
@@ -144,11 +173,17 @@ No permission for sqs (list_queues in us-east-1: AccessDenied). Resources of sqs
 
 ### 区域未对该账户启用 {#a-region-is-not-enabled-for-the-account}
 
-```text title="Terminal (simulated AWS error response)"
+```text title="输出 (simulated AWS error response)"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Region ap-east-1 test failed: An error occurred (AuthFailure) when calling the DescribeRegions operation: AWS was not able to validate the provided access credentials
 Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="输出 (simulated AWS error response)"
 0
 ```
 
@@ -211,10 +246,16 @@ Resource discovery failed for account 123456789012: timed out after 60 seconds (
 
 ### 无效的模板 {#invalid-template}
 
-```text title="Terminal"
+```text title="输出"
 inventag - ERROR - Template problem:
 inventag - ERROR -   bad.yaml:5: spec.colors.header_fill: must be a six-digit hex colour such as 1F3A5F (got 'blue')
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="输出"
 1
 ```
 
@@ -222,10 +263,16 @@ $ echo $?
 
 ### 未知的模板名称 {#unknown-template-name}
 
-```text title="Terminal"
+```text title="输出"
 inventag - ERROR - Template problem:
 inventag - ERROR -   no template named 'acme-bomm'. Run 'inventag templates list' to see what is available (searched: ~/acme-infra/.inventag/templates, ~/.config/inventag/templates, ~/inventag-aws/inventag/templating/builtin)
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="输出"
 1
 ```
 
@@ -233,12 +280,18 @@ $ echo $?
 
 ### 无效的账户文件 {#invalid-accounts-file}
 
-```text title="Terminal"
+```text title="输出"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
 inventag - ERROR - ❌ Some configuration files have validation errors
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="输出"
 1
 ```
 

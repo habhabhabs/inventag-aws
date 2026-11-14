@@ -25,7 +25,7 @@ logs mask secrets, but treat them as sensitive.
 
 <!-- BEGIN EXAMPLE OUTPUT: error-no-credentials -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 inventag.cli.main - ERROR - ❌ No AWS credentials found!
 inventag.cli.main - ERROR -    Solutions:
@@ -38,7 +38,13 @@ inventag.cli.main - ERROR -    4. Use --accounts-prompt for interactive setup
 inventag - ERROR - ❌ Cannot proceed with invalid AWS credentials
 inventag - ERROR - 💡 Use --accounts-prompt for interactive credential setup
 inventag - ERROR - 💡 Or use --skip-credential-validation to bypass this check
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Output"
 1
 ```
 
@@ -52,7 +58,7 @@ $ echo $?
 
 <!-- BEGIN EXAMPLE OUTPUT: error-expired-token -->
 
-```text title="Terminal (simulated AWS error response)"
+```text title="Output (simulated AWS error response)"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 inventag.cli.main - ERROR - ❌ AWS credential validation failed!
 inventag.cli.main - ERROR -    Issue: Invalid or expired security token
@@ -69,7 +75,13 @@ inventag.cli.main - ERROR -    aws configure               # Set up new credenti
 inventag - ERROR - ❌ Cannot proceed with invalid AWS credentials
 inventag - ERROR - 💡 Use --accounts-prompt for interactive credential setup
 inventag - ERROR - 💡 Or use --skip-credential-validation to bypass this check
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Output (simulated AWS error response)"
 1
 ```
 
@@ -111,10 +123,16 @@ to scan only the accounts that are missing.
 
 <!-- BEGIN EXAMPLE OUTPUT: bare-role -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag.cli.main - ERROR - --cross-account-role was given a role name without --accounts-file. Pass a full role ARN (arn:aws:iam::<account-id>:role/<name>), or list the target account IDs in --accounts-file.
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Output"
 2
 ```
 
@@ -132,13 +150,24 @@ is easy to miss. It only shows with `--debug`:
 
 <!-- BEGIN EXAMPLE OUTPUT: error-access-denied-ce -->
 
-```text title="Terminal (simulated AWS error response)"
+```text title="Output (simulated AWS error response)"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
-$ echo $?
-0
+```
 
-$ # the same run with --debug, lines that mention AccessDeniedException
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Output (simulated AWS error response)"
+0
+```
+
+```bash title="Terminal"
+# the same run with --debug, lines that mention AccessDeniedException
+```
+
+```text title="Output (simulated AWS error response)"
 [AWS Account 123456789012 (moto)] inventag.discovery.inventory - WARNING - No permission for the Cost Explorer API (AccessDeniedException). Skipping billing validation; add ce:GetCostAndUsage or use --no-billing-validation.
 [AWS Account 123456789012 (moto)] inventag.discovery.comprehensive_discovery - WARNING - Cost Explorer data is not available, so billing checks are skipped: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
 ```
@@ -186,11 +215,17 @@ be turned off.
 
 <!-- BEGIN EXAMPLE OUTPUT: error-region-disabled -->
 
-```text title="Terminal (simulated AWS error response)"
+```text title="Output (simulated AWS error response)"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Region ap-east-1 test failed: An error occurred (AuthFailure) when calling the DescribeRegions operation: AWS was not able to validate the provided access credentials
 Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Output (simulated AWS error response)"
 0
 ```
 
@@ -274,10 +309,16 @@ account again.
 
 <!-- BEGIN EXAMPLE OUTPUT: error-bad-template -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - ERROR - Template problem:
 inventag - ERROR -   bad.yaml:5: spec.colors.header_fill: must be a six-digit hex colour such as 1F3A5F (got 'blue')
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Output"
 1
 ```
 
@@ -290,10 +331,16 @@ $ echo $?
 
 <!-- BEGIN EXAMPLE OUTPUT: error-unknown-template -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - ERROR - Template problem:
 inventag - ERROR -   no template named 'acme-bomm'. Run 'inventag templates list' to see what is available (searched: ~/acme-infra/.inventag/templates, ~/.config/inventag/templates, ~/inventag-aws/inventag/templating/builtin)
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Output"
 1
 ```
 
@@ -306,12 +353,18 @@ templates must be in `.inventag/templates/` in the folder you run from.
 
 <!-- BEGIN EXAMPLE OUTPUT: error-bad-accounts -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
 inventag - ERROR - ❌ Some configuration files have validation errors
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Output"
 1
 ```
 
