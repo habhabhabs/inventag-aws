@@ -10,14 +10,7 @@ import json
 import tempfile
 from unittest.mock import Mock, patch, MagicMock
 
-# Add the project root to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-try:
-    from inventag.reporting import BOMConverter
-except ImportError:
-    # Skip tests if reporting module is not available
-    pytest.skip("BOM Converter module not available", allow_module_level=True)
+from inventag.reporting import BOMConverter
 
 
 class TestBOMConverter:

@@ -9,20 +9,12 @@ Requirements: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6
 """
 
 import pytest
-import sys
-import os
 import json
 from datetime import datetime
 from unittest.mock import Mock, patch, MagicMock, call
 from botocore.exceptions import ClientError, NoCredentialsError, BotoCoreError
 
-# Add the project root to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-
-try:
-    from inventag.discovery import AWSResourceInventory
-except ImportError:
-    pytest.skip("Discovery module not available", allow_module_level=True)
+from inventag.discovery import AWSResourceInventory
 
 
 class TestAWSResourceInventoryCore:
