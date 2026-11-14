@@ -99,4 +99,5 @@ jobs:
       run: |
         python -m pytest -q \
           tests/unit/test_release_needed.py \
+          tests/unit/test_sync_doc_versions.py \
           "tests/backward_compatibility/test_github_actions_compatibility.py::TestGitHubActionsCompatibility"
