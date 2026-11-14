@@ -79,7 +79,7 @@ The scope is `drive.file`: InvenTag can touch only files it created. With
 `--google-folder-id` it asks for the full Drive scope, because it has to put
 a file into a folder that already exists.
 
-Not verified against real Google: the browser sign-in, the saved token, Application Default Credentials and the APIs to enable.
+Not verified against real Google: the browser sign-in, the saved token, Application Default Credentials, the APIs to enable and what the `drive.file` scope allows.
 
 ## Who can open the files
 
@@ -106,7 +106,7 @@ inventag --create-google-sheets --create-google-docs \
   `--google-folder-id` and `--google-title` without `--create-google-sheets`
   or `--create-google-docs` stop with exit code 2.
 
-Not verified against real Google: what the `drive.file` scope allows, that new files stay private, and sharing.
+Not verified against real Google: that new files stay private, sharing, and that you cannot open a file a service account owns.
 
 ## Credentials are never logged
 

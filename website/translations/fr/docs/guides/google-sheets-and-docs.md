@@ -74,7 +74,7 @@ Le périmètre est `drive.file` : InvenTag ne peut toucher que les fichiers qu�
 `--google-folder-id`, il demande le périmètre Drive complet, car il doit placer
 un fichier dans un dossier qui existe déjà.
 
-Non vérifié sur un vrai Google : la connexion dans le navigateur, le jeton enregistré, les identifiants par défaut de l’application et les API à activer.
+Non vérifié sur un vrai Google : la connexion dans le navigateur, le jeton enregistré, les identifiants par défaut de l’application, les API à activer et ce que permet le périmètre `drive.file`.
 
 ## Qui peut ouvrir les fichiers {#who-can-open-the-files}
 
@@ -101,7 +101,7 @@ inventag --create-google-sheets --create-google-docs \
   `--google-folder-id` et `--google-title` sans `--create-google-sheets`
   ni `--create-google-docs` s’arrêtent avec le code de sortie 2.
 
-Non vérifié sur un vrai Google : ce que permet le périmètre `drive.file`, que les nouveaux fichiers restent privés, et le partage.
+Non vérifié sur un vrai Google : que les nouveaux fichiers restent privés, le partage, et que vous ne pouvez pas ouvrir un fichier qui appartient à un compte de service.
 
 ## Les identifiants ne sont jamais journalisés {#credentials-are-never-logged}
 

@@ -77,7 +77,7 @@ El alcance es `drive.file`: InvenTag solo puede tocar los archivos que creó.
 Con `--google-folder-id` pide el alcance completo de Drive, porque tiene que
 colocar un archivo en una carpeta que ya existe.
 
-No verificado contra Google real: el inicio de sesión en el navegador, el token guardado, las credenciales predeterminadas de la aplicación y las API que hay que habilitar.
+No verificado contra Google real: el inicio de sesión en el navegador, el token guardado, las credenciales predeterminadas de la aplicación, las API que hay que habilitar y qué permite el alcance `drive.file`.
 
 ## Quién puede abrir los archivos {#who-can-open-the-files}
 
@@ -105,7 +105,7 @@ inventag --create-google-sheets --create-google-docs \
   `--google-folder-id` y `--google-title` sin `--create-google-sheets` o
   `--create-google-docs` se detienen con el código de salida 2.
 
-No verificado contra Google real: qué permite el alcance `drive.file`, que los archivos nuevos sigan siendo privados y el uso compartido.
+No verificado contra Google real: que los archivos nuevos sigan siendo privados, el uso compartido y que no puedas abrir un archivo que pertenece a una cuenta de servicio.
 
 ## Las credenciales nunca se registran {#credentials-are-never-logged}
 

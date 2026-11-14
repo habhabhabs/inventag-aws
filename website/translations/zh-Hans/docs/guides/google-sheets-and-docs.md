@@ -61,7 +61,7 @@ InvenTag 会在扫描 AWS 之前读取密钥文件或 OAuth 客户端文件，�
 权限范围是 `drive.file`：InvenTag 只能访问它自己创建的文件。使用
 `--google-folder-id` 时，它会请求完整的 Drive 权限范围，因为它必须把文件放进一个已有的文件夹。
 
-未针对 真实的 Google 验证：浏览器登录、保存的令牌、应用默认凭证以及要启用的 API。
+未针对真实的 Google 验证：浏览器登录、保存的令牌、应用默认凭证、要启用的 API，以及 `drive.file` 权限范围允许什么。
 
 ## 谁能打开这些文件 {#who-can-open-the-files}
 
@@ -85,7 +85,7 @@ inventag --create-google-sheets --create-google-docs \
   `--google-share-with`、`--google-share-role`、`--google-share-anyone`、
   `--google-folder-id` 和 `--google-title`，会以退出码 2 停止。
 
-未针对 真实的 Google 验证：`drive.file` 权限范围允许什么、新文件是否保持私有，以及共享。
+未针对真实的 Google 验证：新文件是否保持私有、共享，以及你无法打开服务账号拥有的文件。
 
 ## 凭证绝不会写入日志 {#credentials-are-never-logged}
 
