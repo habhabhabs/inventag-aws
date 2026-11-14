@@ -144,10 +144,11 @@ What to know:
 - `--no-generate-changelog` stops the report but keeps the snapshots.
   `--disable-delta-detection` also stops it. `--disable-state-management`
   stops snapshots and reports.
-- If an account could not be scanned, or only partly, in either of the two
+- If an account could not be scanned or ran out of time in either of the two
   runs, its resources are left out of the comparison. Otherwise all of them
   would show as added or removed. The change report names the account in its
   State Comparison section (`accounts_not_compared`).
+  An account whose session expired part-way is compared as if it were complete.
 - InvenTag compares lists as unordered, so moving items around in a list is
   not a change, except Lambda layers, Auto Scaling termination policies and
   CloudFront cache behaviors, whose order is configuration. It also ignores

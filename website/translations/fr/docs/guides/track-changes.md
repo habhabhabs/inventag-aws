@@ -126,8 +126,8 @@ son ARN.
 - `--no-generate-changelog` supprime le rapport mais conserve les instantanés.
   `--disable-delta-detection` le supprime aussi. `--disable-state-management`
   supprime les instantanés et les rapports.
-- Si un compte n’a pas pu être analysé, ou seulement en partie, dans l’une des deux exécutions, ses ressources sont exclues de la comparaison.
-  Sinon, toutes apparaîtraient comme ajoutées ou supprimées. Le rapport de changements nomme le compte dans sa section State Comparison (`accounts_not_compared`).
+- Si un compte n’a pas pu être analysé ou a dépassé son délai dans l’une des deux exécutions, ses ressources sont exclues de la comparaison.
+  Sinon, toutes apparaîtraient comme ajoutées ou supprimées. Le rapport de changements nomme le compte dans sa section State Comparison (`accounts_not_compared`). Un compte dont la session a expiré en cours d’analyse est comparé comme s’il était complet.
 - InvenTag compare les listes sans tenir compte de l’ordre : déplacer des éléments dans une liste n’est donc pas un changement, sauf pour les couches Lambda, les politiques de résiliation Auto Scaling et les comportements de cache CloudFront, dont l’ordre fait partie de la configuration.
   Il ignore aussi les champs qui changent à chaque exécution : la voie de découverte, les chiffres de coût et les compteurs d’utilisation
   comme `ItemCount`, `ApproximateNumberOfMessages` ou la taille EFS.
