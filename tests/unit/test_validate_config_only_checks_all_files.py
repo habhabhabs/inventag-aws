@@ -105,3 +105,34 @@ def test_validate_config_only_prints_the_service_descriptions_warning(tmp_path, 
     )
     assert code == 0
     assert "service_descriptions" in text
+
+
+def warning_lines(text):
+    return [
+        line.split(" - WARNING - ", 1)[1]
+        for line in text.splitlines()
+        if " - WARNING - " in line and "bom" in line
+    ]
+
+
+def test_bom_config_warning_is_one_clean_sentence_for_a_missing_file(tmp_path, capsys):
+    missing = tmp_path / "nonexist.yaml"
+    code, text = run_cli(capsys, "--validate-config-only", "--bom-config", str(missing))
+    assert code == 0
+    assert warning_lines(text) == [
+        f"--bom-config {missing}: file not found, or not a regular file. "
+        "A real run stops with exit code 1 on this file."
+    ]
+
+
+def test_bom_config_warning_is_one_clean_sentence_for_a_bad_value(tmp_path, capsys):
+    bad = tmp_path / "bom.yaml"
+    bad.write_text("max_worker_threads: many\n")
+    code, text = run_cli(capsys, "--validate-config-only", "--bom-config", str(bad))
+    assert code == 0
+    (line,) = warning_lines(text)
+    assert line.startswith(f"--bom-config {bad}: ")
+    assert line.count("--bom-config") == 1
+    assert "max_worker_threads" in line
+    assert line.endswith(". A real run stops with exit code 1 on this file.")
+    assert ".." not in line
