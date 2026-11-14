@@ -459,7 +459,7 @@ The reports are written first. If more than one applies, 5 comes first, then
 |---|---|
 | Very wide sheets with `raw_data.*` columns | That is the default layout. Use `--template standard-bom`. |
 | Tag mapping columns are missing | Tag mappings add columns only to the default workbook. With `--template`, use `tag_columns`. See [Configuration files](../reference/configuration-files.md#tag-mappings). |
-| A custom service description is ignored | S3, EC2, RDS, Lambda and VPC have built-in descriptions that win unless your entry names a `template`. See [Configuration files](../reference/configuration-files.md#service-descriptions). |
+| A custom service description is ignored | Your entry replaces the built-in description; services with no entry in your file keep the built-in text. See [Configuration files](../reference/configuration-files.md#service-descriptions). |
 | No network or security sheets | Add `--enable-network-analysis` or `--enable-security-analysis`, and make sure the scan found VPCs or security groups. The flags add nothing with `--template`. See [Network and security analysis](./network-and-security-analysis.md). |
 | IAM, S3, CloudFront or Route 53 resources are missing | `--account-services` or `--account-tags` removed them, or the identity lacks the permission (look for one warning per service in the log). The region list does not matter: global services are always read from the home region (`us-east-1`, or `cn-north-1` in China and `us-gov-west-1` in GovCloud). |
 | A resource shows no tags, or appears twice | Run with `--debug` and compare the ARN column with the ARN in the AWS console. Report a mismatch as an issue with the service and resource type. |

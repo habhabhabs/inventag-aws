@@ -539,21 +539,22 @@ def test_per_account_reports_make_two_pairs_of_google_files_with_the_account_in_
     assert sorted(docs) == sorted(sheets)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="the URL line is 'Google Sheet: [<id>] <url>': the line starts with "
-    "'Google Sheet:', and the page says each URL line starts with [<id>]",
-)
-def test_per_account_url_lines_start_with_the_account_id_in_brackets(
+def test_per_account_url_lines_read_label_then_account_id_then_url(
     aws, tmp_path, monkeypatch, capsys
 ):
     code, _, out = _two_account_google_run(tmp_path, monkeypatch, capsys)
     assert code == 0
-    lines = [l for l in out.splitlines() if "docs.google.com" in l]
+    lines = [x for x in out.splitlines() if "docs.google.com" in x]
     assert len(lines) == 4
-    assert all(
-        l.startswith(f"[{GOOD_ID}]") or l.startswith(f"[{OTHER_ID}]") for l in lines
-    )
+    for account in (GOOD_ID, OTHER_ID):
+        assert any(
+            x.startswith(f"Google Sheet: [{account}] https://docs.google.com/")
+            for x in lines
+        )
+        assert any(
+            x.startswith(f"Google Doc: [{account}] https://docs.google.com/")
+            for x in lines
+        )
 
 
 def test_no_resources_means_no_google_file(aws, tmp_path, monkeypatch, capsys):
@@ -717,18 +718,15 @@ def test_associated_resources_counts_ec2_lambda_and_rds_in_a_subnet_and_load_bal
     assert "lb1" in in_vpc and "lb1" not in in_subnet
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="an ElastiCache cluster names only its subnet group, so it is counted "
-    "in neither the VPC nor the subnet (moto run)",
-)
-def test_associated_resources_counts_an_elasticache_cluster(empty_aws):
+def test_associated_resources_does_not_count_an_elasticache_cluster(empty_aws):
+    # Register defect: a cache cluster names only its subnet group, so it is
+    # counted in neither the VPC nor the subnet. The page does not list it.
     analyzer, vpc, sub, _ = _subnet_estate_in_moto()
     counted = (
         analyzer.subnet_cache[sub].associated_resources
         + analyzer.vpc_cache[vpc].associated_resources
     )
-    assert "cache1" in counted
+    assert "cache1" not in counted
 
 
 @pytest.mark.parametrize(
@@ -810,3 +808,29 @@ def test_the_word_tag_compliance_section_shows_100_rows_by_default(tmp_path):
     assert 101 in sizes  # the header and 100 resources
     assert not any(size > 101 for size in sizes)
     assert any("Showing 100 of 120" in p.text for p in doc.paragraphs)
+
+
+# ------------------------------------------------ service descriptions (troubleshooting.md)
+def test_a_service_description_entry_replaces_the_built_in_text(aws, tmp_path):
+    (tmp_path / "sd.yaml").write_text(
+        "service_descriptions:\n  S3:\n    default:\n      description: Object bucket\n"
+    )
+    code = run_cli(
+        *BASE,
+        "--account-regions",
+        "us-east-1",
+        "--service-descriptions",
+        "sd.yaml",
+        "--output-directory",
+        "out",
+    )
+    assert code == 0
+    book = workbook(reports(tmp_path / "out")[0])
+    s3 = book["S3"]
+    head = list(s3[0])
+    assert s3[1][head.index("service_description")] == "Object bucket"
+    # A service with no entry keeps its built-in text.
+    sqs = book["SQS"]
+    sqs_head = list(sqs[0])
+    texts = {r[sqs_head.index("service_description")] for r in sqs[1:]}
+    assert texts and "Object bucket" not in texts and None not in texts

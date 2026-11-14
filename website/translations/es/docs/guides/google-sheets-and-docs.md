@@ -23,9 +23,7 @@ ha verificado.
 - InvenTag genera primero los informes de Excel y Word y los copia. Con
   `--template`, InvenTag no escribe ningún archivo de Google: registra que se omite el formato y la ejecución termina con el código 0.
 - La ejecución imprime la URL de cada archivo, por ejemplo `Google Sheet: https://docs.google.com/spreadsheets/d/...` y `Google Doc: https://docs.google.com/document/d/...`.
-- Con `--per-account-reports`, InvenTag crea un par de archivos por cuenta. El título termina con ` - ` y el ID de la cuenta, y cada línea de URL empieza con `[123456789012]`.
-
-  No verificado contra una prueba sin conexión: los títulos y las líneas de URL con `--per-account-reports`.
+- Con `--per-account-reports`, InvenTag crea un par de archivos por cuenta. El título termina con ` - ` y el ID de la cuenta, y las líneas de URL son `Google Sheet: [123456789012] https://...` y `Google Doc: [123456789012] https://...`.
 - Si una ejecución no encuentra recursos, no crea ningún archivo de Google.
 
 No verificado contra Google real: que los archivos se parezcan a los informes de Excel y Word y que las URL tengan esta forma.

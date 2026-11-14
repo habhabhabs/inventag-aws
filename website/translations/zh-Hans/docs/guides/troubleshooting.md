@@ -370,7 +370,7 @@ inventag: error: --resume: needs state management (saved results live in the sta
 |---|---|
 | 工作表很宽，带有 `raw_data.*` 列 | 这是默认版式。请使用 `--template standard-bom`。 |
 | 缺少标签映射列 | 标签映射只会向默认工作簿添加列。使用 `--template` 时，请用 `tag_columns`。见[配置文件](../reference/configuration-files.md#tag-mappings)。 |
-| 自定义服务描述被忽略 | S3、EC2、RDS、Lambda 和 VPC 有内置描述，除非你的条目指定了 `template`，否则内置描述优先。见[配置文件](../reference/configuration-files.md#service-descriptions)。 |
+| 自定义服务描述被忽略 | 你的条目会替换内置描述；文件中没有条目的服务保留内置文本。见[配置文件](../reference/configuration-files.md#service-descriptions)。 |
 | 没有网络或安全工作表 | 添加 `--enable-network-analysis` 或 `--enable-security-analysis`，并确认扫描找到了 VPC 或安全组。与 `--template` 一起使用时，这些参数不添加任何内容。见[网络与安全分析](./network-and-security-analysis.md)。 |
 | 缺少 IAM、S3、CloudFront 或 Route 53 资源 | 它们被 `--account-services` 或 `--account-tags` 筛掉了，或者该身份缺少权限（在日志中查找每个服务一条的警告）。区域列表无关紧要：全局服务始终从主区域读取（`us-east-1`；中国区为 `cn-north-1`，GovCloud 为 `us-gov-west-1`）。 |
 | 某个资源没有显示标签，或出现了两次 | 用 `--debug` 运行，并把 ARN 列与 AWS 控制台中的 ARN 对比。如果不一致，请作为 issue 报告，并附上服务和资源类型。 |

@@ -16,9 +16,7 @@ sidebar_position: 9
 - `--create-google-docs` 把与 `--create-word` 相同的报告写成 Google Docs 文档。
 - InvenTag 先生成 Excel 和 Word 报告，再复制它们。使用 `--template` 时，InvenTag 不会写出任何 Google 文件：它会记录该格式被跳过，运行以退出码 0 结束。
 - 运行时会打印每个文件的 URL，例如 `Google Sheet: https://docs.google.com/spreadsheets/d/...` 和 `Google Doc: https://docs.google.com/document/d/...`。
-- 使用 `--per-account-reports` 时，InvenTag 为每个账户生成一对文件。标题以 ` - ` 和账户 ID 结尾，每一行 URL 以 `[123456789012]` 开头。
-
-  未针对 离线测试 验证：使用 `--per-account-reports` 时的标题和 URL 行。
+- 使用 `--per-account-reports` 时，InvenTag 为每个账户生成一对文件。标题以 ` - ` 和账户 ID 结尾，URL 行形如 `Google Sheet: [123456789012] https://...` 和 `Google Doc: [123456789012] https://...`。
 - 如果运行没有找到任何资源，就不会生成 Google 文件。
 
 未针对 真实的 Google 验证：这些文件与 Excel 和 Word 报告外观一致，且 URL 为这种形式。

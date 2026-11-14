@@ -24,10 +24,8 @@ output against your own Google account, and what has not been verified.
 - The run prints the URL of each file, for example `Google Sheet: https://docs.google.com/spreadsheets/d/...`
   and `Google Doc: https://docs.google.com/document/d/...`.
 - With `--per-account-reports`, InvenTag makes one pair of files for each
-  account. The title ends with ` - ` and the account ID, and each URL line
-  starts with `[123456789012]`.
-
-  Not verified against an offline test: the titles and URL lines with `--per-account-reports`.
+  account. The title ends with ` - ` and the account ID, and the URL lines
+  read `Google Sheet: [123456789012] https://...` and `Google Doc: [123456789012] https://...`.
 - If a run finds no resources, it makes no Google file.
 
 Not verified against real Google: the files look like the Excel and Word reports, and the URLs have this form.
