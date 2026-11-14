@@ -89,6 +89,8 @@ for x in r['non_compliant_resources'][:10]:
 - S3 acme-data-lake missing: Project
 ```
 
+未针对 GitHub Actions Runner 验证：作业摘要会显示此输出。
+
 `acme-reports` 拥有所有标签，但有两个值是错误的。JSON 文件中的 `invalid` 列表和工作簿中的 Problems 列会说明具体是哪两个。
 
 ## GitLab CI/CD {#gitlab-cicd}
@@ -193,5 +195,5 @@ security-groups:
 ## 下一步 {#next-steps}
 
 - 先从仅报告模式开始：在数字接近零之前，把 `fail_on_tag_violations` 设为 `false`，然后再打开它。
-- 不要让不完整的运行被当作通过：有账户无法扫描时，`--fail-on-account-error` 以退出码 5 结束；没有找到任何资源时，`--fail-if-empty` 以退出码 6 结束。两者都优先于退出码 3。
+- 不要让有账户失败的运行被当作通过：有账户无法扫描或超出时间限制时，`--fail-on-account-error` 以退出码 5 结束；没有找到任何资源时，`--fail-if-empty` 以退出码 6 结束。两者都优先于退出码 3。
 - 使用你自己的规则：[对照策略检查标签](../guides/check-tag-compliance.md#write-your-own-policy)。

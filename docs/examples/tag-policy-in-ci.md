@@ -104,6 +104,8 @@ for x in r['non_compliant_resources'][:10]:
 
 <!-- END EXAMPLE OUTPUT: ci-summary-output -->
 
+Not verified against a GitHub Actions runner: the job summary shows this output.
+
 `acme-reports` has every tag, but two values are wrong. The `invalid` list
 in the JSON file and the Problems column in the workbook say which.
 
@@ -210,7 +212,7 @@ What is not verified:
 
 - Start in report-only mode: set `fail_on_tag_violations: false` until the
   numbers are close to zero, then switch it on.
-- Do not let an incomplete run pass as clean: `--fail-on-account-error` exits
-  with code 5 when an account could not be scanned, and `--fail-if-empty` exits
+- Do not let a run with a failed account pass as clean: `--fail-on-account-error` exits
+  with code 5 when an account could not be scanned or ran out of time, and `--fail-if-empty` exits
   with code 6 when no resources were found. Both win over code 3.
 - Use your own rules: [Check tags against a policy](../guides/check-tag-compliance.md#write-your-own-policy).
