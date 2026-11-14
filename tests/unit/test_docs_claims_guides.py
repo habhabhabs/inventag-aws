@@ -214,3 +214,45 @@ def test_template_validate_catches_role_arn_of_another_account(
     assert "role is in account 999999999999 but account_id is 123456789012" in (
         out.out + out.err
     )
+
+
+# ------------------------------------------------ exit code 5 for a timed-out account (Ruling R1)
+def test_timed_out_account_gives_exit_5(empty_aws, tmp_path):
+    import argparse
+    import threading
+    from unittest.mock import patch
+
+    from inventag.cli.main import _opt_in_exit_code
+    from inventag.core.cloud_bom_generator import CloudBOMGenerator, MultiAccountConfig
+    from tests.unit.test_account_time_limit_and_failures import (
+        FakeClock,
+        SlowOrFastInventory,
+        _contexts,
+    )
+
+    clock = FakeClock()
+    SlowOrFastInventory.clock = clock
+    SlowOrFastInventory.fast_done = threading.Event()
+    SlowOrFastInventory.calls_after_limit = 0
+    g = CloudBOMGenerator(
+        MultiAccountConfig(
+            accounts=[],
+            output_directory=str(tmp_path),
+            account_processing_timeout=60,
+            parallel_account_processing=False,
+        )
+    )
+    g._clock = clock
+    g._poll_seconds = 0.01
+    c = _contexts(["111111111111", "222222222222"])
+    c["222222222222"].session._slow = True
+    g.account_contexts.update(c)
+    with patch(
+        "inventag.core.cloud_bom_generator.AWSResourceInventory", SlowOrFastInventory
+    ):
+        g._sequential_account_discovery(c)
+    failed = g._failed_accounts()
+    assert [f["account_id"] for f in failed] == ["222222222222"]
+    args = argparse.Namespace(fail_on_account_error=True, fail_if_empty=False)
+    code = _opt_in_exit_code(args, {"failed_accounts": failed}, logging.getLogger("x"))
+    assert code == 5
