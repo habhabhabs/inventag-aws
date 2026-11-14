@@ -787,14 +787,39 @@ def test_t24_cron_example_command_line_is_accepted_by_the_parser():
 
 
 # --------------------------------------------------------------------- T25
+# Four 4x4 pixel images, one per format, stored as base64 so that the test needs
+# no image library (the application needs none either).
+_LOGO_BYTES = {
+    "PNG": (
+        "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAFElEQVR42mNs"
+        "YGhggAEmBiSAmwMAMwQBCNYn6XMAAAAASUVORK5CYII="
+    ),
+    "JPEG": (
+        "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsL"
+        "DBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/"
+        "2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIy"
+        "MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAEAAQDASIAAhEBAxEB/8QA"
+        "FQABAQAAAAAAAAAAAAAAAAAAAAf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QA"
+        "FAEBAAAAAAAAAAAAAAAAAAAABv/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAM"
+        "AwEAAhEDEQA/AJoASmD/2Q=="
+    ),
+    "GIF": ("R0lGODdhBAAEAIEAAIAAgAAAAAAAAAAAACwAAAAABAAEAAAICQABCBxIsCCA" "gAA7"),
+    "BMP": (
+        "Qk1mAAAAAAAAADYAAAAoAAAABAAAAAQAAAABABgAAAAAADAAAADEDgAAxA4A"
+        "AAAAAAAAAAAAgACAgACAgACAgACAgACAgACAgACAgACAgACAgACAgACAgACA"
+        "gACAgACAgACAgACA"
+    ),
+}
+
+
 @pytest.mark.parametrize("fmt", ["PNG", "JPEG", "GIF", "BMP"])
 def test_t25_word_logo_formats_named_on_the_pages_are_embedded(
     tmp_path, registry, resources, fmt
 ):
-    from PIL import Image
+    import base64
 
     name = "logo." + {"JPEG": "jpg"}.get(fmt, fmt.lower())
-    Image.new("RGB", (20, 20), "purple").save(tmp_path / name, fmt)
+    (tmp_path / name).write_bytes(base64.b64decode(_LOGO_BYTES[fmt]))
     (tmp_path / "t.yaml").write_text(f"kind: report\nname: t\nspec:\n  logo: {name}\n")
     reg = TemplateRegistry([SearchDir("p", tmp_path), SearchDir("b", BUILTIN_DIR)])
     template = reg.resolve("t")
