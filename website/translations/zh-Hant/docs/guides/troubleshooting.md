@@ -46,6 +46,8 @@ echo $?
 **解決辦法：** 登入，例如執行 `aws sso login --profile my-readonly` 和
 `export AWS_PROFILE=my-readonly`，然後用 `aws sts get-caller-identity` 檢查。
 
+未針對 AWS CLI 驗證：此解決辦法中的命令。
+
 ### 憑證已過期或無效 {#expired-or-invalid-credentials}
 
 ```text title="輸出 (simulated AWS error response)"
@@ -78,6 +80,8 @@ echo $?
 **解決辦法：** 重新登入（`aws sso login --profile <name>`），或重新整理你的臨時金鑰。
 如果你使用存取金鑰，請用 `aws configure list` 檢查它們。
 
+未針對 AWS CLI 驗證：此解決辦法中的命令。
+
 ### 無法擔任角色 {#a-role-cannot-be-assumed}
 
 **你會看到：** 日誌中出現如下內容，並且報告中缺少該帳戶：
@@ -98,7 +102,7 @@ inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Skipping account
 如果每個帳戶都失敗，InvenTag 以結束代碼 1 結束，並且不寫報告：`Resource discovery failed for all 1 configured account(s); no report was generated`。（訊息文字來自帶有模擬 AWS 錯誤的離線執行。）
 
 **解決辦法：** 檢查角色 ARN，並檢查該角色的信任策略是否允許你的身份。
-InvenTag 不會回退到其他憑證，因此在問題解決之前，該帳戶會被跳過。然後用 `--resume` 執行同一條命令，只掃描缺少的帳戶。
+InvenTag 不會用屬於其他帳戶的憑證掃描該帳戶，因此在角色可用之前，該帳戶會被跳過。然後用 `--resume` 執行同一條命令，只掃描缺少的帳戶。
 
 ### 給了角色名稱但沒有帳戶檔案 {#a-role-name-without-an-accounts-file}
 
@@ -165,7 +169,7 @@ No permission for sqs (list_queues in us-east-1: AccessDenied). Resources of sqs
 **你會看到：** 日誌中有 `Read-only guard blocked <service>:<Operation>`，
 以及以 `Blocked AWS operation <service>:<Operation>` 開頭的錯誤。
 
-**原因：** 一個不是讀取的呼叫，或者會返回金鑰或客戶資料的讀取（例如 `cloudformation:GetTemplate` 或 `ssm:GetParameter`），到達了防護。InvenTag 自己不會發出這樣的呼叫，因此這通常意味著自定義程式碼或外掛。見[唯讀防護會阻止什麼](./read-only-access.md#what-the-read-only-guard-blocks)。
+**原因：** 一個不是讀取的呼叫，或者會返回金鑰或客戶資料的讀取（例如 `cloudformation:GetTemplate` 或 `ssm:GetParameter`），到達了防護。正常執行中不應出現這種情況。如果出現，請提交 issue 並附上操作名稱。見[唯讀防護會阻止什麼](./read-only-access.md#what-the-read-only-guard-blocks)。
 
 **解決辦法：** 用 `inventag --validate-operations <service>:<Operation>` 檢查是哪個操作。防護無法關閉。
 
@@ -191,6 +195,8 @@ echo $?
 
 **解決辦法：** 從 `--account-regions` 中刪除該區域，或在 AWS 控制檯中為該帳戶啟用它（Account settings，AWS Regions）。
 
+未針對 真實的 AWS 驗證：在控制檯中啟用區域的路徑。
+
 ### 無法讀取區域列表 {#the-list-of-regions-cannot-be-read}
 
 如果 `ec2:DescribeRegions` 失敗，InvenTag 會改用 `account:ListRegions`，再不行就嘗試該分割槽的每個區域：
@@ -207,6 +213,8 @@ Could not read the account's enabled regions. Trying all 34 regions of the aws p
 ec2:DescribeRegions is denied in every region, so region access cannot be checked; scanning all 34 regions.
 ```
 
+區域的數量來自已安裝的 AWS SDK（botocore），並會隨其版本而變化。
+
 **解決辦法：** 允許 `ec2:DescribeRegions`，或用 `--account-regions` 指定區域。
 
 ## 限流 {#throttling}
@@ -219,6 +227,8 @@ sqs list_queues in us-east-1 failed (ThrottlingException); its resources there m
 
 **解決辦法：** 減少同時掃描的帳戶數（`--max-concurrent-accounts 2`），掃描更少的區域，
 或給大型帳戶更多時間（`--account-processing-timeout 3600`）。
+
+未針對 真實的 AWS 驗證：同時掃描更少的帳戶或區域可以減少限流。
 
 ## 時間限制和部分結果 {#time-limits-and-partial-results}
 
@@ -349,7 +359,7 @@ inventag: error: --resume: needs state management (saved results live in the sta
 只有在你要求時才會出現這些結束代碼。
 
 - **4：** 向網際網路開放的安全組規則達到或超過 `--risk-threshold`。日誌會列出這些規則。見[網路與安全分析](./network-and-security-analysis.md#fail-a-pipeline-on-risky-rules)。
-- **5：** 設定了 `--fail-on-account-error`，並且有帳戶無法掃描，或只掃描了一部分。日誌會寫出 `N account(s) failed and --fail-on-account-error is set (exit code 5)`。
+- **5：** 設定了 `--fail-on-account-error`，並且有帳戶無法掃描或超出了時間限制。日誌會寫出 `N account(s) failed and --fail-on-account-error is set (exit code 5)`。
 - **6：** 設定了 `--fail-if-empty`，並且沒有任何內容可報告。日誌會寫出 `No resources in the report and --fail-if-empty is set (exit code 6)`。
 
 報告會先寫出。如果同時滿足多個條件，先是 5，然後是 6，然後是 3 和 4。見[在 CI/CD 中執行 InvenTag](./run-in-ci.md#exit-codes)。
@@ -372,6 +382,8 @@ inventag: error: --resume: needs state management (saved results live in the sta
 | `Excel sheet name 'x' is not allowed or is already used; the sheet is called 'y'` | Excel 不允許工作表名稱使用某些字元（它們會變成 `-`），名稱必須唯一，且最多 31 個字元。報告仍然完整。 |
 | 其他使用者無法開啟 `bom_output/` | 輸出檔案只對執行 InvenTag 的使用者私有。請有意識地共享它們。 |
 
+未針對 Microsoft Excel 驗證：工作表名稱規則。
+
 ## 可以忽略的噪音 {#noise-you-can-ignore}
 
 有些訊息看起來像錯誤，但不會改變你的報告。
@@ -380,7 +392,7 @@ inventag: error: --resume: needs state management (saved results live in the sta
 |---|---|
 | ``Failed to render template vpc_vpc: 'cidr_block'``（使用 `--service-descriptions` 時） | VPC 描述範本需要一個該資源沒有的欄位。報告不受影響。 |
 | `No account specification method provided. Using default AWS credentials.` | 你沒有指定帳戶，所以 InvenTag 使用了你目前的憑證。這是正常情況。 |
-| `Cross-account role not usable for account ... trying default credentials` | InvenTag 嘗試了預設的角色名稱，無法擔任它，於是用你自己的憑證繼續。每個帳戶只記錄一次，並且只在使用 `--verbose` 時。 |
+| `Cross-account role not usable for account ... trying default credentials` | InvenTag 無法擔任該帳戶中的角色，於是嘗試了你自己的憑證。只有這些憑證屬於該帳戶時才會使用；否則該帳戶會被跳過。每個帳戶只記錄一次，並且只在使用 `--verbose` 時。 |
 
 ## 安裝問題 {#install-problems}
 

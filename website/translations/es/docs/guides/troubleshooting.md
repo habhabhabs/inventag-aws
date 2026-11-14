@@ -50,6 +50,8 @@ echo $?
 `export AWS_PROFILE=my-readonly`, y comprueba con
 `aws sts get-caller-identity`.
 
+No verificado contra la AWS CLI: los comandos de esta solución.
+
 ### Credenciales caducadas o no válidas {#expired-or-invalid-credentials}
 
 ```text title="Salida (simulated AWS error response)"
@@ -82,6 +84,8 @@ echo $?
 **Solución:** vuelve a iniciar sesión (`aws sso login --profile <name>`), o renueva tus
 claves temporales. Si usas claves de acceso, compruébalas con `aws configure list`.
 
+No verificado contra la AWS CLI: los comandos de esta solución.
+
 ### No se puede asumir un rol {#a-role-cannot-be-assumed}
 
 **Lo que ves:** esto en el registro, y un informe en el que falta la cuenta:
@@ -102,8 +106,7 @@ Si otras cuentas funcionaron, InvenTag escribe igualmente su informe y **termina
 Si todas las cuentas fallan, termina con el código 1 y no escribe ningún informe: `Resource discovery failed for all 1 configured account(s); no report was generated`. (Texto del mensaje de una ejecución sin conexión con un error de AWS simulado.)
 
 **Solución:** comprueba el ARN del rol y que la política de confianza del rol permita
-tu identidad. InvenTag no recurre a otras credenciales, así que esa
-cuenta se omite hasta que funcione. Después ejecuta el mismo comando con `--resume` para analizar solo las cuentas que faltan.
+tu identidad. InvenTag no analiza la cuenta con credenciales que pertenezcan a otra cuenta, así que esa cuenta se omite hasta que el rol funcione. Después ejecuta el mismo comando con `--resume` para analizar solo las cuentas que faltan.
 
 ### Un nombre de rol sin archivo de cuentas {#a-role-name-without-an-accounts-file}
 
@@ -174,7 +177,7 @@ cubre todas las llamadas que hace InvenTag. Consulta [Permisos de IAM](../refere
 **Lo que ves:** `Read-only guard blocked <service>:<Operation>` en el registro,
 y un error que empieza por `Blocked AWS operation <service>:<Operation>`.
 
-**Causa:** una llamada que no es de lectura, o una lectura que devuelve secretos o datos de clientes (por ejemplo `cloudformation:GetTemplate` o `ssm:GetParameter`), llegó a la protección. InvenTag no hace esas llamadas por sí mismo, así que normalmente se trata de código personalizado o de un complemento. Consulta [Qué bloquea la protección de solo lectura](./read-only-access.md#what-the-read-only-guard-blocks).
+**Causa:** una llamada que no es de lectura, o una lectura que devuelve secretos o datos de clientes (por ejemplo `cloudformation:GetTemplate` o `ssm:GetParameter`), llegó a la protección. Esto no debería ocurrir en una ejecución normal. Si ocurre, abre un issue con el nombre de la operación. Consulta [Qué bloquea la protección de solo lectura](./read-only-access.md#what-the-read-only-guard-blocks).
 
 **Solución:** comprueba de qué operación se trataba con
 `inventag --validate-operations <service>:<Operation>`. La protección no se puede
@@ -203,6 +206,8 @@ La ejecución continúa con las regiones que funcionan.
 **Solución:** quita la región de `--account-regions`, o habilítala para la
 cuenta en la consola de AWS (Account settings, AWS Regions).
 
+No verificado contra AWS real: la ruta de la consola para habilitar una región.
+
 ### No se puede leer la lista de regiones {#the-list-of-regions-cannot-be-read}
 
 Si `ec2:DescribeRegions` falla, InvenTag consulta `account:ListRegions` y después prueba todas las regiones de la partición:
@@ -219,6 +224,8 @@ La comprobación de acceso de cada región también usa `ec2:DescribeRegions`. S
 ec2:DescribeRegions is denied in every region, so region access cannot be checked; scanning all 34 regions.
 ```
 
+El número de regiones procede del AWS SDK instalado (botocore) y cambia con su versión.
+
 **Solución:** permite `ec2:DescribeRegions`, o indica las regiones con `--account-regions`.
 
 ## Limitación de solicitudes (throttling) {#throttling}
@@ -234,6 +241,8 @@ sqs list_queues in us-east-1 failed (ThrottlingException); its resources there m
 **Solución:** analiza menos cuentas a la vez (`--max-concurrent-accounts 2`), analiza
 menos regiones, o da más tiempo a las cuentas grandes
 (`--account-processing-timeout 3600`).
+
+No verificado contra AWS real: que menos cuentas o regiones a la vez reduzcan la limitación de solicitudes.
 
 ## Límites de tiempo y resultados parciales {#time-limits-and-partial-results}
 
@@ -368,7 +377,7 @@ el archivo JSON para ver qué recursos.
 Existen solo cuando los pides.
 
 - **4:** una regla de grupo de seguridad abierta a internet está en `--risk-threshold` o por encima. El registro lista las reglas. Consulta [Análisis de red y seguridad](./network-and-security-analysis.md#fail-a-pipeline-on-risky-rules).
-- **5:** `--fail-on-account-error` está activado y una cuenta no se pudo analizar, o solo en parte. El registro dice `N account(s) failed and --fail-on-account-error is set (exit code 5)`.
+- **5:** `--fail-on-account-error` está activado y una cuenta no se pudo analizar o se quedó sin tiempo. El registro dice `N account(s) failed and --fail-on-account-error is set (exit code 5)`.
 - **6:** `--fail-if-empty` está activado y no hay nada que informar. El registro dice `No resources in the report and --fail-if-empty is set (exit code 6)`.
 
 Los informes se escriben primero. Si se aplica más de uno, el 5 va primero, después el 6, y luego el 3 y el 4. Consulta [Ejecuta InvenTag en CI/CD](./run-in-ci.md#exit-codes).
@@ -391,6 +400,8 @@ Los informes se escriben primero. Si se aplica más de uno, el 5 va primero, des
 | `Excel sheet name 'x' is not allowed or is already used; the sheet is called 'y'` | Excel no permite algunos caracteres en los nombres de hoja (se convierten en `-`), y los nombres deben ser únicos y de 31 caracteres como máximo. El informe sigue completo. |
 | Otro usuario no puede abrir `bom_output/` | Los archivos de salida son privados para el usuario que ejecutó InvenTag. Compártelos de forma deliberada. |
 
+No verificado contra Microsoft Excel: las reglas de los nombres de hoja.
+
 ## Ruido que puedes ignorar {#noise-you-can-ignore}
 
 Algunos mensajes parecen errores pero no cambian nada en tu informe.
@@ -399,7 +410,7 @@ Algunos mensajes parecen errores pero no cambian nada en tu informe.
 |---|---|
 | ``Failed to render template vpc_vpc: 'cidr_block'`` (con `--service-descriptions`) | La plantilla de descripción de VPC quiere un campo que el recurso no tiene. El informe no se ve afectado. |
 | `No account specification method provided. Using default AWS credentials.` | No indicaste ninguna cuenta, así que InvenTag usó tus credenciales actuales. Es el caso normal. |
-| `Cross-account role not usable for account ... trying default credentials` | InvenTag probó el nombre de rol predeterminado, no pudo asumirlo y continuó con tus propias credenciales. Se registra una vez por cuenta, y solo con `--verbose`. |
+| `Cross-account role not usable for account ... trying default credentials` | InvenTag no pudo asumir el rol en esa cuenta e intentó con tus propias credenciales. Las usa solo si pertenecen a esa cuenta; si no, la cuenta se omite. Se registra una vez por cuenta, y solo con `--verbose`. |
 
 ## Problemas de instalación {#install-problems}
 

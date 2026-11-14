@@ -46,6 +46,8 @@ echo $?
 **解决办法：** 登录，例如运行 `aws sso login --profile my-readonly` 和
 `export AWS_PROFILE=my-readonly`，然后用 `aws sts get-caller-identity` 检查。
 
+未针对 AWS CLI 验证：此解决办法中的命令。
+
 ### 凭证已过期或无效 {#expired-or-invalid-credentials}
 
 ```text title="输出 (simulated AWS error response)"
@@ -78,6 +80,8 @@ echo $?
 **解决办法：** 重新登录（`aws sso login --profile <name>`），或刷新你的临时密钥。
 如果你使用访问密钥，请用 `aws configure list` 检查它们。
 
+未针对 AWS CLI 验证：此解决办法中的命令。
+
 ### 无法代入角色 {#a-role-cannot-be-assumed}
 
 **你会看到：** 日志中出现如下内容，并且报告中缺少该账户：
@@ -98,7 +102,7 @@ inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Skipping account
 如果每个账户都失败，InvenTag 以退出码 1 结束，并且不写报告：`Resource discovery failed for all 1 configured account(s); no report was generated`。（消息文本来自带有模拟 AWS 错误的离线运行。）
 
 **解决办法：** 检查角色 ARN，并检查该角色的信任策略是否允许你的身份。
-InvenTag 不会回退到其他凭证，因此在问题解决之前，该账户会被跳过。然后用 `--resume` 运行同一条命令，只扫描缺少的账户。
+InvenTag 不会用属于其他账户的凭证扫描该账户，因此在角色可用之前，该账户会被跳过。然后用 `--resume` 运行同一条命令，只扫描缺少的账户。
 
 ### 给了角色名称但没有账户文件 {#a-role-name-without-an-accounts-file}
 
@@ -165,7 +169,7 @@ No permission for sqs (list_queues in us-east-1: AccessDenied). Resources of sqs
 **你会看到：** 日志中有 `Read-only guard blocked <service>:<Operation>`，
 以及以 `Blocked AWS operation <service>:<Operation>` 开头的错误。
 
-**原因：** 一个不是读取的调用，或者会返回密钥或客户数据的读取（例如 `cloudformation:GetTemplate` 或 `ssm:GetParameter`），到达了防护。InvenTag 自己不会发出这样的调用，因此这通常意味着自定义代码或插件。见[只读防护会阻止什么](./read-only-access.md#what-the-read-only-guard-blocks)。
+**原因：** 一个不是读取的调用，或者会返回密钥或客户数据的读取（例如 `cloudformation:GetTemplate` 或 `ssm:GetParameter`），到达了防护。正常运行中不应出现这种情况。如果出现，请提交 issue 并附上操作名称。见[只读防护会阻止什么](./read-only-access.md#what-the-read-only-guard-blocks)。
 
 **解决办法：** 用 `inventag --validate-operations <service>:<Operation>` 检查是哪个操作。防护无法关闭。
 
@@ -191,6 +195,8 @@ echo $?
 
 **解决办法：** 从 `--account-regions` 中删除该区域，或在 AWS 控制台中为该账户启用它（Account settings，AWS Regions）。
 
+未针对 真实的 AWS 验证：在控制台中启用区域的路径。
+
 ### 无法读取区域列表 {#the-list-of-regions-cannot-be-read}
 
 如果 `ec2:DescribeRegions` 失败，InvenTag 会改用 `account:ListRegions`，再不行就尝试该分区的每个区域：
@@ -207,6 +213,8 @@ Could not read the account's enabled regions. Trying all 34 regions of the aws p
 ec2:DescribeRegions is denied in every region, so region access cannot be checked; scanning all 34 regions.
 ```
 
+区域的数量来自已安装的 AWS SDK（botocore），并会随其版本而变化。
+
 **解决办法：** 允许 `ec2:DescribeRegions`，或用 `--account-regions` 指定区域。
 
 ## 限流 {#throttling}
@@ -219,6 +227,8 @@ sqs list_queues in us-east-1 failed (ThrottlingException); its resources there m
 
 **解决办法：** 减少同时扫描的账户数（`--max-concurrent-accounts 2`），扫描更少的区域，
 或给大型账户更多时间（`--account-processing-timeout 3600`）。
+
+未针对 真实的 AWS 验证：同时扫描更少的账户或区域可以减少限流。
 
 ## 时间限制和部分结果 {#time-limits-and-partial-results}
 
@@ -349,7 +359,7 @@ inventag: error: --resume: needs state management (saved results live in the sta
 只有在你要求时才会出现这些退出码。
 
 - **4：** 向互联网开放的安全组规则达到或超过 `--risk-threshold`。日志会列出这些规则。见[网络与安全分析](./network-and-security-analysis.md#fail-a-pipeline-on-risky-rules)。
-- **5：** 设置了 `--fail-on-account-error`，并且有账户无法扫描，或只扫描了一部分。日志会写出 `N account(s) failed and --fail-on-account-error is set (exit code 5)`。
+- **5：** 设置了 `--fail-on-account-error`，并且有账户无法扫描或超出了时间限制。日志会写出 `N account(s) failed and --fail-on-account-error is set (exit code 5)`。
 - **6：** 设置了 `--fail-if-empty`，并且没有任何内容可报告。日志会写出 `No resources in the report and --fail-if-empty is set (exit code 6)`。
 
 报告会先写出。如果同时满足多个条件，先是 5，然后是 6，然后是 3 和 4。见[在 CI/CD 中运行 InvenTag](./run-in-ci.md#exit-codes)。
@@ -372,6 +382,8 @@ inventag: error: --resume: needs state management (saved results live in the sta
 | `Excel sheet name 'x' is not allowed or is already used; the sheet is called 'y'` | Excel 不允许工作表名称使用某些字符（它们会变成 `-`），名称必须唯一，且最多 31 个字符。报告仍然完整。 |
 | 其他用户无法打开 `bom_output/` | 输出文件只对运行 InvenTag 的用户私有。请有意识地共享它们。 |
 
+未针对 Microsoft Excel 验证：工作表名称规则。
+
 ## 可以忽略的噪音 {#noise-you-can-ignore}
 
 有些消息看起来像错误，但不会改变你的报告。
@@ -380,7 +392,7 @@ inventag: error: --resume: needs state management (saved results live in the sta
 |---|---|
 | ``Failed to render template vpc_vpc: 'cidr_block'``（使用 `--service-descriptions` 时） | VPC 描述模板需要一个该资源没有的字段。报告不受影响。 |
 | `No account specification method provided. Using default AWS credentials.` | 你没有指定账户，所以 InvenTag 使用了你当前的凭证。这是正常情况。 |
-| `Cross-account role not usable for account ... trying default credentials` | InvenTag 尝试了默认的角色名称，无法代入它，于是用你自己的凭证继续。每个账户只记录一次，并且只在使用 `--verbose` 时。 |
+| `Cross-account role not usable for account ... trying default credentials` | InvenTag 无法代入该账户中的角色，于是尝试了你自己的凭证。只有这些凭证属于该账户时才会使用；否则该账户会被跳过。每个账户只记录一次，并且只在使用 `--verbose` 时。 |
 
 ## 安装问题 {#install-problems}
 
