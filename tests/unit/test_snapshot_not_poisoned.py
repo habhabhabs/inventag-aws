@@ -216,3 +216,17 @@ def test_a_good_run_still_saves_a_complete_snapshot(
     data = json.loads(snapshot_files(tmp_path)[-1].read_text())
     assert data["metadata"]["accounts_scanned"] == [GOOD_ID]
     assert not data["metadata"]["accounts_failed"]
+
+
+def test_a_run_that_read_nothing_does_not_blame_the_filters(
+    aws, tmp_path, monkeypatch, caplog  # noqa: F811
+):
+    """Harness rows A3 and F3: the empty result is not explained as "none
+    found, or the filters removed all of them" when nothing could be read."""
+    caplog.set_level(logging.INFO)
+    deny = DenyEverything(monkeypatch, allow_tagging=False)
+    deny.on = True
+    assert run_cli(*ARGS) == 0  # exit code as in v1.2.0
+    messages = logged(caplog)
+    assert not any("filters removed" in m for m in messages), messages
+    assert any("nothing could be read" in m for m in messages), messages
