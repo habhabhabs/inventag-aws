@@ -1444,3 +1444,85 @@ def test_profile_name_selects_the_aws_cli_profile(empty_aws, tmp_path, monkeypat
     )
     assert session.profile_name == "acme"
     assert session.get_credentials().access_key == "AKIAPROFILEEXAMPLE1"
+
+
+def test_default_run_prints_data_exported_and_a_template_run_prints_wrote(
+    estate, tmp_path, capsys
+):
+    """outputs.md Terminal output: `Data exported to <path>` for the default
+    (Excel) report without a template, `Wrote <path>` with one."""
+    assert (
+        run_cli(*BASE, "--create-excel", "--create-word", "--output-directory", "o")
+        == 0
+    )
+    out = capsys.readouterr().out
+    assert _re.search(
+        r"^Data exported to \S*o/multi_account_bom_\d{8}_\d{6}\.xlsx$", out, _re.M
+    )
+    # the Word report has its own line
+    assert _re.search(
+        r"Word document saved: \S*o/multi_account_bom_\d{8}_\d{6}\.docx$", out, _re.M
+    )
+    assert run_cli(*BASE, "--template", "standard-bom", "--output-directory", "t") == 0
+    out = capsys.readouterr().out
+    assert "Data exported to" not in out and "Wrote " in out
+
+
+def test_file_name_timestamps_local_time_for_reports_and_tag_json_utc_for_the_rest(
+    estate, tmp_path, monkeypatch
+):
+    """Observed: report, Word, changelog AND the tag compliance JSON of a template
+    run are named with the computer's local time; the state snapshot and the S3
+    folder are named with UTC (the docs sheet said the tag file is UTC: it is not)."""
+    from datetime import datetime
+
+    boto3.client("s3", region_name="us-east-1").create_bucket(Bucket="acme-reports")
+    monkeypatch.setenv("TZ", "Asia/Singapore")  # UTC+8, no daylight saving
+    time.tzset()
+    try:
+        argv = [*BASE, "--create-excel", "--create-word", "--output-directory", "o"]
+        assert run_cli(*argv, "--s3-bucket", "acme-reports") == 0
+        time.sleep(1.1)
+        assert run_cli(*argv) == 0  # second run: changelog
+        assert (
+            run_cli(
+                *BASE,
+                "--template",
+                "finops-cost-report",
+                "--template",
+                "finops-cost-allocation",
+                "--output-directory",
+                "t",
+            )
+            == 0
+        )
+    finally:
+        monkeypatch.delenv("TZ")
+        time.tzset()
+
+    def stamp(name):
+        match = _re.search(r"(\d{8})_(\d{6})", name)
+        return datetime.strptime(match.group(1) + match.group(2), "%Y%m%d%H%M%S")
+
+    out = tmp_path / "o"
+    local = stamp(sorted(out.glob("multi_account_bom_*.xlsx"))[-1].name)
+    word = stamp(sorted(out.glob("multi_account_bom_*.docx"))[-1].name)
+    changelog = stamp(only(out, "changelog_*.md").name)
+    snapshot = stamp(sorted((out / "state").glob("state_*.json"))[-1].name)
+    tag_json = stamp(only(tmp_path / "t", "tag_compliance_*.json").name)
+    keys = [
+        o["Key"]
+        for o in boto3.client("s3", region_name="us-east-1").list_objects_v2(
+            Bucket="acme-reports"
+        )["Contents"]
+    ]
+    s3_folder = stamp(keys[0].split("/")[1])
+    eight_hours = 8 * 3600
+
+    def seconds(a, b):
+        return (a - b).total_seconds()
+
+    assert abs(seconds(word, local)) < 60 and abs(seconds(changelog, local)) < 60
+    assert abs(seconds(tag_json, local)) < 120  # local time, not UTC
+    for utc in (snapshot, s3_folder):
+        assert abs(seconds(local, utc) - eight_hours) < 120, (local, utc)
