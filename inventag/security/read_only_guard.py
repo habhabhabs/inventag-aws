@@ -35,7 +35,9 @@ Allowlist rules (see :meth:`ReadOnlyGuard.evaluate`):
 6. A specific client can be granted extra operations with
    :meth:`ReadOnlyGuard.allow_on_client` (InvenTag uses this only for
    ``s3:PutObject`` on the client that uploads reports when ``--s3-bucket`` is
-   given).
+   given). With ``bucket=`` the grant is bound to that bucket: the same
+   operation on another bucket, or on a call whose bucket is unknown, is
+   blocked.
 
 ``Scan`` and ``Query`` are not allowed: they read table contents, not
 inventory metadata.
@@ -275,6 +277,16 @@ def _request_params(request_dict) -> Dict[str, Any]:
     return found
 
 
+def _request_bucket(request_dict) -> Optional[str]:
+    """The bucket a serialized S3 request names, or None when it cannot be told."""
+    if not isinstance(request_dict, dict):
+        return None
+    context = request_dict.get("context")
+    input_params = context.get("input_params") if isinstance(context, dict) else None
+    bucket = input_params.get("Bucket") if isinstance(input_params, dict) else None
+    return bucket if isinstance(bucket, str) else None
+
+
 def _denied_parameter(service: str, operation: str, params) -> Optional[str]:
     rules = DENIED_PARAMETERS.get((service, operation))
     if not rules or not params:
@@ -389,10 +401,25 @@ class ReadOnlyGuard:
         events.register("before-call", handler, unique_id=self.UNIQUE_ID)
 
     @staticmethod
-    def allow_on_client(client, operations: Iterable[str]) -> None:
-        """Allow extra operation names (e.g. ``PutObject``) on one client only."""
-        current = getattr(client, "_inventag_read_only_extra", frozenset())
-        client._inventag_read_only_extra = frozenset(current) | frozenset(operations)
+    def allow_on_client(
+        client, operations: Iterable[str], bucket: Optional[str] = None
+    ) -> None:
+        """Allow extra operation names (e.g. ``PutObject``) on one client only.
+
+        With ``bucket``, the operations are allowed only on calls that name
+        that bucket. A bucket-bound operation stays bound: a later call
+        without ``bucket`` does not widen it.
+        """
+        if bucket is None:
+            current = getattr(client, "_inventag_read_only_extra", frozenset())
+            client._inventag_read_only_extra = frozenset(current) | frozenset(
+                operations
+            )
+            return
+        bound = dict(getattr(client, "_inventag_read_only_buckets", {}))
+        for operation in operations:
+            bound[operation] = frozenset(bound.get(operation, frozenset())) | {bucket}
+        client._inventag_read_only_buckets = bound
 
     # ---------------------------------------------------------------- handler
     def _before_call(self, client_ref=None, model=None, params=None, **kwargs):
@@ -401,16 +428,37 @@ class ReadOnlyGuard:
         service = model.service_model.service_name
         operation = model.name
         client = client_ref() if client_ref is not None else None
-        self._check(client, service, operation, params=_request_params(params))
+        self._check(
+            client,
+            service,
+            operation,
+            params=_request_params(params),
+            bucket=_request_bucket(params),
+        )
         return None
 
-    def _check(self, client, service: str, operation: str, params) -> None:
+    def _check(
+        self, client, service: str, operation: str, params, bucket: Optional[str] = None
+    ) -> None:
         client_extra = getattr(client, "_inventag_read_only_extra", frozenset())
+        bound = getattr(client, "_inventag_read_only_buckets", {})
+        if operation in bound:
+            # A bucket-bound grant wins over an unbound one on the same client.
+            if bucket in bound[operation]:
+                client_extra = client_extra | {operation}
+            else:
+                client_extra = client_extra - {operation}
         config = getattr(getattr(client, "meta", None), "config", None)
         unsigned = getattr(config, "signature_version", None) is botocore.UNSIGNED
         allowed, reason = self.evaluate(
             service, operation, client_extra, params=params, unsigned=unsigned
         )
+        if not allowed and operation in bound:
+            reason = (
+                f"{operation} is allowed on this client only for "
+                f"{service} bucket {', '.join(sorted(bound[operation]))}, "
+                f"not for {bucket!r}"
+            )
         region = getattr(getattr(client, "meta", None), "region_name", None)
         self._record(service, operation, allowed, reason, region)
         if not allowed:
@@ -526,6 +574,8 @@ def check_client_call(client, method_name: str) -> Tuple[bool, str]:
         return False, f"{method_name} is not an operation of {service}"
     guard = _installed_guard or ReadOnlyGuard()
     extra = getattr(client, "_inventag_read_only_extra", frozenset())
+    # A bucket-bound grant needs a bucket, which is not known here: not allowed.
+    extra = extra - set(getattr(client, "_inventag_read_only_buckets", {}))
     config = getattr(meta, "config", None)
     unsigned = getattr(config, "signature_version", None) is botocore.UNSIGNED
     return guard.evaluate(service, operation, extra, unsigned=unsigned)
