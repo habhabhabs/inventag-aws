@@ -1439,6 +1439,11 @@ pre code,
 }
 /* Touch screens of any size (iPad, Windows touch laptops): 44px targets */
 @media (pointer: coarse) {
+  .theme-doc-version-banner a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
   .breadcrumbs__link {
     min-height: 44px;
     display: inline-flex;
