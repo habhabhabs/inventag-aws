@@ -1322,6 +1322,7 @@ class TestCli:
         context.resource_count = 0
         context.processing_time_seconds = 0.0
         context.processing_errors = []
+        context.skipped_regions = []  # a real AccountContext always has the list
         generator.account_contexts = {"111111111111": context}
         with (
             patch.object(module, "BOMDataProcessor") as processor,
