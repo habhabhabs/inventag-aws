@@ -98,13 +98,19 @@ et `tag_compliance_<timestamp>.json` avec chaque ressource non conforme.
 Exemple de sortie de `inventag --template ci-pipeline` d’une exécution hors ligne
 (données d’exemple) :
 
-```text title="Terminal"
+```text title="Sortie"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-compliant, 14 out of scope.
 Tag policy violations found and fail_on_tag_violations is true (exit code 3).
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Sortie"
 3
 ```
 

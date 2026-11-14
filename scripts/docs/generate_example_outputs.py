@@ -1630,13 +1630,6 @@ MARKER = re.compile(
 VOLATILE = re.compile(r'("(?:total|allowed)_calls": )\d+')
 
 
-# Pages that another team edits for v1.2.1. The Terminal/Output split of their
-# ci-console block is applied there by hand; remove this table once it has landed.
-PENDING_SPLIT = {
-    "ci-console": {"docs/guides/run-in-ci.md", "docs/examples/tag-policy-in-ci.md"}
-}
-
-
 def apply(blocks: Dict[str, str], check: bool) -> int:
     stale, unknown = [], []
     used = set()
@@ -1646,8 +1639,6 @@ def apply(blocks: Dict[str, str], check: bool) -> int:
         def fill(match):
             name = match.group(1)
             used.add(name)
-            if str(page.relative_to(ROOT)) in PENDING_SPLIT.get(name, ()):
-                return match.group(0)
             if name not in blocks:
                 unknown.append(f"{page.relative_to(ROOT)}: {name}")
                 return match.group(0)
