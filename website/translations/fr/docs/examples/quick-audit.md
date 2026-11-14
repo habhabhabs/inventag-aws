@@ -44,7 +44,7 @@ inventag --template audit
 
 ## Sortie {#output}
 
-La même mise en page, issue d’une exécution hors ligne dans une région (données d’exemple) :
+La même mise en page, issue d’une exécution hors ligne avec un argument de région (données d’exemple ; IAM figure sous la région `global`, donc le résumé compte 2 régions) :
 
 ```text title="Sortie"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.

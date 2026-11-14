@@ -43,7 +43,7 @@ inventag --template audit
 
 ## 輸出 {#output}
 
-以下是同一版面配置在一個區域上的離線執行結果（範例資料）：
+以下是同一版面配置、使用一個區域引數的離線執行結果（範例資料；IAM 列在區域 `global` 下，所以摘要統計為 2 個區域）：
 
 ```text title="輸出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.

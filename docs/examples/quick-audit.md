@@ -44,7 +44,8 @@ inventag --template audit
 
 ## Output
 
-The same layout from an offline run in one region (sample data):
+The same layout from an offline run with one region argument (sample data; IAM is
+listed under the region `global`, so the summary counts 2 regions):
 
 <!-- BEGIN EXAMPLE OUTPUT: standard-console -->
 

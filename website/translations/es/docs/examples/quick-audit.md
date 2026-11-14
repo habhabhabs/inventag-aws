@@ -45,7 +45,7 @@ inventag --template audit
 
 ## Salida {#output}
 
-El mismo diseño, de una ejecución sin conexión en una región (datos de ejemplo):
+El mismo diseño, de una ejecución sin conexión con un argumento de región (datos de ejemplo; IAM figura en la región `global`, así que el resumen cuenta 2 regiones):
 
 ```text title="Salida"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
