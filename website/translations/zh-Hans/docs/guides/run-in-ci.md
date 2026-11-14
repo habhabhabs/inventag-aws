@@ -85,7 +85,7 @@ InvenTag 从你仓库的文件夹运行，因此 `.inventag/templates/nightly.ya
 
 ### 让 GitLab 代入只读角色 {#let-gitlab-assume-a-read-only-role}
 
-未针对 GitLab 或 AWS 验证：GitLab 签发 ID 令牌，AWS 凭该令牌和信任策略中对 `aud` 和 `sub` 的条件接受它并允许代入该角色。
+未针对 GitLab 或 AWS 验证：GitLab 签发 ID 令牌，以及 AWS 为该角色接受它，包括信任策略中对 `aud` 和 `sub` 的条件。
 
 **第 1 步：把 GitLab 添加为 IAM 中的 OIDC 身份提供商。** 在 IAM 控制台中打开 **Identity providers > Add provider**，选择 OpenID Connect（[AWS：创建 OIDC 身份提供商](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html)）。
 
@@ -197,7 +197,7 @@ InvenTag 保持只读。无论角色还是流水线，都不会让任何账户�
 
 这个作业每晚运行 InvenTag，并把报告保存为作业产物。它需要第 2 步中的 `.inventag/templates/nightly.yaml`。把文件以 `.gitlab-ci.yml` 为名放到仓库根目录。如果该文件已经有 `stages`，就把阶段名加到那个列表里。
 
-未针对 GitLab Runner 或真实的 AWS 账户验证：此流水线尚未在 GitLab 上运行。它的 YAML 和 `inventag` 命令行会在构建文档时检查。它的作业曾在本地用 gitlab-ci-local 4.77.1（用替身代替 rsync）对模拟的 AWS 运行，使用的是虚拟令牌。
+未针对 GitLab Runner 或真实的 AWS 账户验证：此流水线尚未在 GitLab 上运行。它的 YAML 和 `inventag` 命令行会在构建文档时检查。它的作业已在本地用 gitlab-ci-local 4.77.1（用替身代替 rsync）针对模拟的 AWS 运行，使用的是虚拟令牌。
 
 ```yaml
 # .gitlab-ci.yml
@@ -253,13 +253,13 @@ inventory:
 这个示例还有两部分没有验证：
 
 - 未针对 GitLab 验证：`image`、`timeout`、`expire_in` 和 `cache`（gitlab-ci-local 会忽略它们）。
-- 未针对 GitLab 的 **Pipeline schedules** 验证：本地运行时流水线来源是手动设置的。
+- 未针对 GitLab 流水线计划验证：本地运行时，流水线来源是手动设置的。
 
 ### 设置定时运行 {#schedule-it}
 
 定时设置不在文件里。请在 GitLab 中创建一个 schedule：打开 **Build > Pipeline schedules > New schedule**，填写 cron 表达式（例如 `17 2 * * 1-5`）和目标分支，然后保存。你需要 Developer 或更高的角色。流水线以该 schedule 所有者的权限运行（[GitLab：pipeline schedules](https://docs.gitlab.com/ci/pipelines/schedules/)）。要手动运行该作业，请在 GitLab 界面中选择 **New pipeline**，或在该 schedule 上选择 **Run**。
 
-未针对 GitLab 验证：**Pipeline schedules** 对 cron 表达式使用的时区。
+未针对 GitLab 验证：流水线计划对 cron 表达式使用的时区。
 
 ### 与 GitHub Actions 的差异 {#what-differs-from-github-actions}
 

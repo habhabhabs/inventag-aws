@@ -89,7 +89,7 @@ Cette section est l’équivalent GitLab des étapes GitHub Actions ci-dessus. L
 
 ### Laissez GitLab assumer un rôle en lecture seule {#let-gitlab-assume-a-read-only-role}
 
-Non vérifié auprès de GitLab ni d’AWS : que GitLab émette le jeton d’ID et qu’AWS l’accepte pour le rôle, avec les conditions de la politique d’approbation sur `aud` et `sub`.
+Non vérifié sur GitLab ni sur AWS : l’émission du jeton d’ID par GitLab et son acceptation par AWS pour le rôle, avec les conditions de la politique d’approbation sur `aud` et `sub`.
 
 **Étape 1 : ajoutez GitLab comme fournisseur d’identité OIDC dans IAM.** Dans la console IAM, ouvrez **Identity providers > Add provider** et choisissez OpenID Connect ([AWS : créer un fournisseur d’identité OIDC](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html)).
 
@@ -155,7 +155,7 @@ Un caractère générique dans une condition demande `StringLike`. Avec `StringE
 }
 ```
 
-Non vérifié auprès d’AWS : que `"true"` soit le texte exact qu’AWS compare pour `ref_protected`. `ref_protected` et `pipeline_source` sont des clés de condition propres à GitLab.com.
+Non vérifié sur AWS : que `"true"` soit le texte exact qu’AWS compare pour `ref_protected`. `ref_protected` et `pipeline_source` sont des clés de condition propres à GitLab.com.
 
 **Variante : balises protégées (GitLab.com).** Le même bloc, avec `ref_type:tag:ref:*` (ou `ref_type:tag:ref:v*`) dans la ligne `sub`.
 
@@ -173,7 +173,7 @@ Non vérifié auprès d’AWS : que `"true"` soit le texte exact qu’AWS compar
 }
 ```
 
-Non vérifié auprès de GitLab : le texte exact de `sub` dans un pipeline de requête de fusion.
+Non vérifié sur GitLab : le texte exact de `sub` dans un pipeline de requête de fusion.
 
 Avec cette variante, toute personne qui peut pousser une branche dans le projet et ouvrir une requête de fusion peut exécuter un job avec ce rôle, et peut modifier le script du job dans sa branche. Le rôle est en lecture seule, ces personnes peuvent donc lire ce qu’InvenTag peut lire. Utilisez un rôle distinct pour cette variante. Ne réutilisez pas le rôle des jobs planifiés, et ne lui donnez pas `s3:PutObject`. Voir [l’exemple de politique de balises](../examples/tag-policy-in-ci.md#gitlab-cicd).
 
@@ -186,7 +186,7 @@ InvenTag reste en lecture seule. Ni le rôle ni le pipeline ne rendent un compte
 
 #### Sur une instance auto-hébergée {#on-a-self-managed-instance}
 
-Non vérifié auprès d’une instance GitLab auto-hébergée : ce paragraphe. L’URL du fournisseur et les clés de condition utilisent le nom d’hôte de votre instance. Dans ce cas AWS ne prend en charge que les claims `sub` et `aud`, la ligne `project_id` disparaît donc. Il n’y a pas non plus de clé `ref_protected` dans AWS dans ce cas ; épinglez chaque branche par son nom. AWS doit pouvoir joindre l’instance depuis Internet ; GitLab décrit un contournement pour une instance non publique et le qualifie d’avancé ([GitLab : configure a non-public GitLab instance](https://docs.gitlab.com/ci/cloud_services/aws/)). Le runner doit pouvoir exécuter des images de conteneur.
+Non vérifié sur une instance GitLab auto-hébergée : ce paragraphe. L’URL du fournisseur et les clés de condition utilisent le nom d’hôte de votre instance. Dans ce cas AWS ne prend en charge que les claims `sub` et `aud`, la ligne `project_id` disparaît donc. Il n’y a pas non plus de clé `ref_protected` dans AWS dans ce cas ; épinglez chaque branche par son nom. AWS doit pouvoir joindre l’instance depuis Internet ; GitLab décrit un contournement pour une instance non publique et le qualifie d’avancé ([GitLab : configure a non-public GitLab instance](https://docs.gitlab.com/ci/cloud_services/aws/)). Le runner doit pouvoir exécuter des images de conteneur.
 
 ### Ajoutez la variable CI/CD {#add-the-cicd-variable}
 
@@ -194,14 +194,14 @@ Dans votre projet GitLab, ouvrez **Settings > CI/CD > Variables > Add variable**
 
 - Pour les exemples planifiés, cochez **Protect variable** et protégez la branche. La variable n’atteint alors que les pipelines des branches ou balises protégées.
 - Pour l’exemple de requête de fusion, ne protégez pas la variable. Une variable protégée n’est pas transmise à un pipeline de requête de fusion, sauf si la branche source et la branche cible sont toutes deux protégées ([GitLab : merge request pipelines](https://docs.gitlab.com/ci/pipelines/merge_request_pipelines/)). Avec deux rôles, utilisez un second nom de variable dans les deux jobs de cet exemple.
-- Depuis GitLab 18.3, GitLab met par défaut une nouvelle variable en **Masked**, et une valeur masquée doit tenir sur une ligne, faire au moins 8 caractères et ne pas contenir d’espaces. Un ARN de rôle n’est pas un secret. Choisissez **Visible** si GitLab refuse de masquer la valeur. Non vérifié auprès de GitLab : que GitLab accepte un ARN de rôle comme valeur masquée.
+- Depuis GitLab 18.3, GitLab met par défaut une nouvelle variable en **Masked**, et une valeur masquée doit tenir sur une ligne, faire au moins 8 caractères et ne pas contenir d’espaces. Un ARN de rôle n’est pas un secret. Choisissez **Visible** si GitLab refuse de masquer la valeur. Non vérifié sur GitLab : que GitLab accepte un ARN de rôle comme valeur masquée.
 - L’exemple d’envoi demande deux variables de plus, `INVENTAG_REPORTS_BUCKET` et `INVENTAG_KMS_KEY_ID`. Aucune n’est un secret.
 
 ### Ajoutez le pipeline {#add-the-pipeline}
 
 Ce job exécute InvenTag chaque nuit et conserve les rapports comme artefacts du job. Il a besoin de `.inventag/templates/nightly.yaml` de l’étape 2. Ajoutez le fichier à la racine de votre dépôt sous le nom `.gitlab-ci.yml`. Si le fichier a déjà des `stages`, ajoutez le nom de l’étape à cette liste.
 
-Non vérifié auprès d’un runner GitLab ni d’un compte AWS réel : ce pipeline n’a pas été exécuté sur GitLab. Son YAML et sa ligne de commande `inventag` sont vérifiés à la construction de la documentation. Son job a été exécuté en local avec gitlab-ci-local 4.77.1 (avec un substitut de rsync) contre un AWS simulé, avec un jeton factice.
+Non vérifié sur un runner GitLab ni sur un vrai compte AWS : ce pipeline n’a pas été exécuté sur GitLab. Son YAML et sa ligne de commande `inventag` sont vérifiés à la construction de la documentation. Son job a été exécuté en local avec gitlab-ci-local 4.77.1 (avec un substitut de rsync) contre un AWS simulé, avec un jeton factice.
 
 ```yaml
 # .gitlab-ci.yml
@@ -256,14 +256,14 @@ Ce que fait chaque partie :
 
 Deux autres parties de cet exemple ne sont pas vérifiées :
 
-- Non vérifié auprès de GitLab : `image`, `timeout`, `expire_in` et `cache` (gitlab-ci-local les ignore).
-- Non vérifié auprès d’une planification de pipeline GitLab : l’exécution en local a défini la source du pipeline à la main.
+- Non vérifié sur GitLab : `image`, `timeout`, `expire_in` et `cache` (gitlab-ci-local les ignore).
+- Non vérifié sur une planification de pipeline GitLab : l’exécution en local a défini la source du pipeline à la main.
 
 ### Planifiez-le {#schedule-it}
 
 La planification n’est pas dans le fichier. Créez-la dans GitLab : ouvrez **Build > Pipeline schedules > New schedule**, saisissez un motif cron (par exemple `17 2 * * 1-5`) et la branche cible, puis enregistrez. Il faut le rôle Developer ou supérieur. Le pipeline s’exécute avec les droits du propriétaire de la planification ([GitLab : pipeline schedules](https://docs.gitlab.com/ci/pipelines/schedules/)). Pour lancer le job à la main, choisissez **New pipeline** dans l’interface GitLab, ou **Run** sur la planification.
 
-Non vérifié auprès de GitLab : le fuseau horaire qu’une planification de pipeline utilise pour le motif cron.
+Non vérifié sur GitLab : le fuseau horaire qu’une planification de pipeline utilise pour le motif cron.
 
 ### Ce qui change par rapport à GitHub Actions {#what-differs-from-github-actions}
 

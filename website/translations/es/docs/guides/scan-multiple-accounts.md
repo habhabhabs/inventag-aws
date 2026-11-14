@@ -164,7 +164,7 @@ Consulta [Continúa tras una ejecución fallida](./run-a-scan.md#continue-after-
 
 ## En un pipeline de GitLab CI/CD {#in-a-gitlab-cicd-pipeline}
 
-No verificado contra un runner de GitLab ni una cuenta real de AWS: este pipeline no se ha ejecutado en GitLab. Su YAML y su línea de comandos `inventag` se comprueban cuando se compila la documentación. Su job se ejecutó en local con gitlab-ci-local 4.77.1 (con un sustituto de rsync) contra un AWS simulado, con un token ficticio.
+No verificado contra un runner de GitLab ni una cuenta real de AWS: este pipeline no se ha ejecutado en GitLab. Su YAML y su línea de comandos de `inventag` se comprueban al compilar la documentación. Su job se ejecutó en local con gitlab-ci-local 4.77.1 (con un sustituto de rsync) contra un AWS simulado, con un token ficticio.
 
 Este job analiza todas las cuentas de `accounts.yaml` en una programación de pipelines. Inicia sesión en un solo rol mediante OIDC, y después InvenTag asume el rol `InvenTagReadOnly` en cada cuenta. El job usa `--resume`, así que la caché y un **Retry** pueden terminar las cuentas que faltaban. `accounts.yaml` está en el repositorio, por lo que solo debe contener IDs y nombres de cuenta, y ninguna clave de acceso. Antes de usarlo:
 
@@ -222,7 +222,7 @@ Partes que la ejecución local no cubrió:
 
 - No verificado contra GitLab ni AWS: que GitLab emita el token de ID y que AWS lo acepte para el rol, con las condiciones de la política de confianza sobre `aud` y `sub`.
 - No verificado contra GitLab: `image`, `timeout`, `expire_in` y `cache` (gitlab-ci-local los ignora).
-- No verificado contra una programación de pipelines de GitLab: la ejecución local fijó a mano el origen del pipeline.
+- No verificado contra una programación de pipelines de GitLab: la ejecución en local fijó a mano el origen del pipeline.
 - No verificado contra AWS: que el rol de OIDC asuma el rol `InvenTagReadOnly` en cada cuenta, con políticas de confianza reales.
 
 ## Comprueba el archivo de cuentas {#check-the-accounts-file}

@@ -97,7 +97,7 @@ for x in r['non_compliant_resources'][:10]:
 
 请先设置角色和 CI/CD 变量：参见[在 CI/CD 中运行 InvenTag](../guides/run-in-ci.md#gitlab-cicd)。合并请求作业需要第二个角色，见下面的第三点。
 
-未针对 GitLab Runner 或真实的 AWS 账户验证：此流水线尚未在 GitLab 上运行。它的 YAML 和 `inventag` 命令行会在构建文档时检查。它的作业已在本地用 gitlab-ci-local 4.77.1（用替身代替 rsync）、模拟的 AWS 和一个虚拟令牌运行过。
+未针对 GitLab Runner 或真实的 AWS 账户验证：此流水线尚未在 GitLab 上运行。它的 YAML 和 `inventag` 命令行会在构建文档时检查。它的作业已在本地用 gitlab-ci-local 4.77.1（用替身代替 rsync）针对模拟的 AWS 运行，使用的是虚拟令牌。
 
 ```yaml
 # .gitlab-ci.yml
@@ -178,8 +178,8 @@ security-groups:
 
 尚未验证的内容：
 
-- 未针对 GitLab 或 AWS 验证：GitLab 签发 ID 令牌，以及 AWS 据此接受该角色，包括对 `aud` 和 `sub` 的信任策略条件。
-- 未针对 GitLab 验证：`image`、`timeout`、`expire_in` 和 `cache`（gitlab-ci-local 会忽略它们）。
+- 未针对 GitLab 或 AWS 验证：GitLab 签发 ID 令牌，以及 AWS 为该角色接受它，包括信任策略中对 `aud` 和 `sub` 的条件。
+- 未针对 GitLab 验证：`image`、`timeout` 和 `expire_in`（gitlab-ci-local 会忽略它们）。
 - 未针对 GitLab 验证：失败的作业或允许失败的作业如何影响后续作业、流水线状态和合并请求。
 
 ### 需要了解的三点 {#three-things-to-know}

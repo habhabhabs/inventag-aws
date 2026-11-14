@@ -259,13 +259,13 @@ Qué hace cada parte:
 Otras dos partes de este ejemplo no están verificadas:
 
 - No verificado contra GitLab: `image`, `timeout`, `expire_in` y `cache` (gitlab-ci-local los ignora).
-- No verificado contra una programación de pipeline de GitLab: la ejecución en local fijó el origen del pipeline a mano.
+- No verificado contra una programación de pipelines de GitLab: la ejecución en local fijó a mano el origen del pipeline.
 
 ### Prográmalo {#schedule-it}
 
 La programación no está en el archivo. Créala en GitLab: abre **Build > Pipeline schedules > New schedule**, escribe un patrón cron (por ejemplo `17 2 * * 1-5`) y la rama de destino, y guarda. Necesitas el rol Developer o superior. El pipeline se ejecuta con los permisos del propietario de la programación ([GitLab: pipeline schedules](https://docs.gitlab.com/ci/pipelines/schedules/)). Para ejecutar el job a mano, elige **New pipeline** en la interfaz de GitLab, o **Run** en la programación.
 
-No verificado contra GitLab: la zona horaria que usa una programación de pipeline para el patrón cron.
+No verificado contra GitLab: la zona horaria que usa una programación de pipelines para el patrón cron.
 
 ### Qué cambia respecto a GitHub Actions {#what-differs-from-github-actions}
 

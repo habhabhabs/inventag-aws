@@ -136,7 +136,7 @@ En GitHub Actions, añade las opciones `--s3-bucket` al paso de ejecución de
 
 ### GitLab CI/CD {#gitlab-cicd}
 
-No verificado contra un runner de GitLab ni una cuenta real de AWS: este pipeline no se ha ejecutado en GitLab. Su YAML y su línea de comandos `inventag` se comprueban cuando se compila la documentación. Su job se ejecutó en local con gitlab-ci-local 4.77.1 (con un sustituto de rsync) contra un AWS simulado, con un token ficticio.
+No verificado contra un runner de GitLab ni una cuenta real de AWS: este pipeline no se ha ejecutado en GitLab. Su YAML y su línea de comandos de `inventag` se comprueban al compilar la documentación. Su job se ejecutó en local con gitlab-ci-local 4.77.1 (con un sustituto de rsync) contra un AWS simulado, con un token ficticio.
 
 Este job ejecuta el comando de arriba en una programación de pipelines, sube los informes a tu bucket y conserva una copia como artefactos del job. Antes de usarlo:
 
@@ -195,7 +195,7 @@ Partes que la ejecución local no cubrió:
 
 - No verificado contra GitLab ni AWS: que GitLab emita el token de ID y que AWS lo acepte para el rol, con las condiciones de la política de confianza sobre `aud` y `sub`.
 - No verificado contra GitLab: `image`, `timeout` y `expire_in` (gitlab-ci-local los ignora).
-- No verificado contra una programación de pipelines de GitLab: la ejecución local fijó a mano el origen del pipeline.
+- No verificado contra una programación de pipelines de GitLab: la ejecución en local fijó a mano el origen del pipeline.
 - No verificado contra AWS: los permisos de S3 y KMS para la subida, con un bucket y una clave reales.
 
 ## Siguientes pasos {#next-steps}

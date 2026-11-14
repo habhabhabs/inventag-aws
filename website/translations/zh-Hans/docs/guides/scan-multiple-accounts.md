@@ -152,7 +152,7 @@ InvenTag 会复用同一条命令（相同的账户、区域、服务和筛选�
 
 ## 在 GitLab CI/CD 流水线中 {#in-a-gitlab-cicd-pipeline}
 
-未针对 GitLab Runner 或真实的 AWS 账户验证：这条流水线尚未在 GitLab 上运行。它的 YAML 和 `inventag` 命令行会在构建文档时检查。它的作业已在本地用 gitlab-ci-local 4.77.1（使用 rsync 的替代程序）针对模拟的 AWS 运行，使用的是虚设令牌。
+未针对 GitLab Runner 或真实的 AWS 账户验证：此流水线尚未在 GitLab 上运行。它的 YAML 和 `inventag` 命令行会在构建文档时检查。它的作业已在本地用 gitlab-ci-local 4.77.1（用替身代替 rsync）针对模拟的 AWS 运行，使用的是虚拟令牌。
 
 这个作业按流水线计划扫描 `accounts.yaml` 中的每个账户。它通过 OIDC 登录到一个角色，然后 InvenTag 在每个账户中担任 `InvenTagReadOnly` 角色。该作业使用 `--resume`，所以缓存加上一次 **Retry** 就能完成之前缺少的账户。`accounts.yaml` 会提交到仓库，因此它只能包含账户 ID 和名称，不能包含访问密钥。使用之前：
 
@@ -210,7 +210,7 @@ org-inventory:
 
 - 未针对 GitLab 或 AWS 验证：GitLab 签发 ID 令牌，以及 AWS 为该角色接受它，包括信任策略中对 `aud` 和 `sub` 的条件。
 - 未针对 GitLab 验证：`image`、`timeout`、`expire_in` 和 `cache`（gitlab-ci-local 会忽略它们）。
-- 未针对 GitLab 流水线计划验证：本地运行是手动设定流水线来源的。
+- 未针对 GitLab 流水线计划验证：本地运行时，流水线来源是手动设置的。
 - 未针对 AWS 验证：OIDC 角色在每个账户中担任 `InvenTagReadOnly` 角色，使用真实的信任策略。
 
 ## 检查账户文件 {#check-the-accounts-file}

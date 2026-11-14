@@ -130,7 +130,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 
 ### GitLab CI/CD {#gitlab-cicd}
 
-未针对 GitLab Runner 或真实的 AWS 账户验证：这条流水线尚未在 GitLab 上运行。它的 YAML 和 `inventag` 命令行会在构建文档时检查。它的作业已在本地用 gitlab-ci-local 4.77.1（使用 rsync 的替代程序）针对模拟的 AWS 运行，使用的是虚设令牌。
+未针对 GitLab Runner 或真实的 AWS 账户验证：此流水线尚未在 GitLab 上运行。它的 YAML 和 `inventag` 命令行会在构建文档时检查。它的作业已在本地用 gitlab-ci-local 4.77.1（用替身代替 rsync）针对模拟的 AWS 运行，使用的是虚拟令牌。
 
 这个作业按流水线计划运行上面的命令，把报告上传到你的存储桶，并把一份副本保存为作业产物。使用之前：
 
@@ -189,7 +189,7 @@ inventory-to-s3:
 
 - 未针对 GitLab 或 AWS 验证：GitLab 签发 ID 令牌，以及 AWS 为该角色接受它，包括信任策略中对 `aud` 和 `sub` 的条件。
 - 未针对 GitLab 验证：`image`、`timeout` 和 `expire_in`（gitlab-ci-local 会忽略它们）。
-- 未针对 GitLab 流水线计划验证：本地运行是手动设定流水线来源的。
+- 未针对 GitLab 流水线计划验证：本地运行时，流水线来源是手动设置的。
 - 未针对 AWS 验证：用真实的存储桶和密钥上传时的 S3 和 KMS 权限。
 
 ## 下一步 {#next-steps}

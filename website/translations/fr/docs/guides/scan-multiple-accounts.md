@@ -164,7 +164,7 @@ Voir [Reprendre après une exécution en échec](./run-a-scan.md#continue-after-
 
 ## Dans un pipeline GitLab CI/CD {#in-a-gitlab-cicd-pipeline}
 
-Non vérifié sur un runner GitLab ni sur un vrai compte AWS : ce pipeline n’a pas été exécuté sur GitLab. Son YAML et sa ligne de commande `inventag` sont contrôlés lors de la construction de la documentation. Son job a été exécuté en local avec gitlab-ci-local 4.77.1 (avec un substitut de rsync) contre un AWS simulé, avec un jeton factice.
+Non vérifié sur un runner GitLab ni sur un vrai compte AWS : ce pipeline n’a pas été exécuté sur GitLab. Son YAML et sa ligne de commande `inventag` sont vérifiés à la construction de la documentation. Son job a été exécuté en local avec gitlab-ci-local 4.77.1 (avec un substitut de rsync) contre un AWS simulé, avec un jeton factice.
 
 Ce job analyse tous les comptes de `accounts.yaml` selon une planification de pipeline. Il se connecte à un seul rôle via OIDC, puis InvenTag assume le rôle `InvenTagReadOnly` dans chaque compte. Le job utilise `--resume` : le cache et un **Retry** peuvent donc terminer les comptes qui manquaient. `accounts.yaml` est versionné dans le dépôt ; il ne doit donc contenir que des ID et des noms de compte, et aucune clé d’accès. Avant de l’utiliser :
 
@@ -222,7 +222,7 @@ Les lignes que tous les exemples GitLab ont en commun sont expliquées dans [Ex�
 
 - Non vérifié sur GitLab ni sur AWS : l’émission du jeton d’ID par GitLab et son acceptation par AWS pour le rôle, avec les conditions de la politique d’approbation sur `aud` et `sub`.
 - Non vérifié sur GitLab : `image`, `timeout`, `expire_in` et `cache` (gitlab-ci-local les ignore).
-- Non vérifié sur une planification de pipeline GitLab : l’exécution locale a défini l’origine du pipeline à la main.
+- Non vérifié sur une planification de pipeline GitLab : l’exécution en local a défini la source du pipeline à la main.
 - Non vérifié sur AWS : le rôle OIDC qui assume le rôle `InvenTagReadOnly` dans chaque compte, avec de vraies politiques d’approbation.
 
 ## Vérifier le fichier de comptes {#check-the-accounts-file}

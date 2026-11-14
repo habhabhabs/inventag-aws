@@ -136,7 +136,7 @@ Dans GitHub Actions, ajoutez les options `--s3-bucket` à l’étape d’exécut
 
 ### GitLab CI/CD {#gitlab-cicd}
 
-Non vérifié sur un runner GitLab ni sur un vrai compte AWS : ce pipeline n’a pas été exécuté sur GitLab. Son YAML et sa ligne de commande `inventag` sont contrôlés lors de la construction de la documentation. Son job a été exécuté en local avec gitlab-ci-local 4.77.1 (avec un substitut de rsync) contre un AWS simulé, avec un jeton factice.
+Non vérifié sur un runner GitLab ni sur un vrai compte AWS : ce pipeline n’a pas été exécuté sur GitLab. Son YAML et sa ligne de commande `inventag` sont vérifiés à la construction de la documentation. Son job a été exécuté en local avec gitlab-ci-local 4.77.1 (avec un substitut de rsync) contre un AWS simulé, avec un jeton factice.
 
 Ce job exécute la commande ci-dessus selon une planification de pipeline, envoie les rapports vers votre bucket et garde une copie comme artefacts du job. Avant de l’utiliser :
 
@@ -195,7 +195,7 @@ Les lignes que tous les exemples GitLab ont en commun sont expliquées dans [Ex�
 
 - Non vérifié sur GitLab ni sur AWS : l’émission du jeton d’ID par GitLab et son acceptation par AWS pour le rôle, avec les conditions de la politique d’approbation sur `aud` et `sub`.
 - Non vérifié sur GitLab : `image`, `timeout` et `expire_in` (gitlab-ci-local les ignore).
-- Non vérifié sur une planification de pipeline GitLab : l’exécution locale a défini l’origine du pipeline à la main.
+- Non vérifié sur une planification de pipeline GitLab : l’exécution en local a défini la source du pipeline à la main.
 - Non vérifié sur AWS : les autorisations S3 et KMS pour l’envoi, avec un vrai bucket et une vraie clé.
 
 ## Étapes suivantes {#next-steps}

@@ -185,7 +185,7 @@ Las líneas que comparten todos los ejemplos de GitLab (`image`, `timeout`, `id_
 Lo que no está verificado:
 
 - No verificado contra GitLab ni AWS: que GitLab emita el token de ID y que AWS lo acepte para el rol, con las condiciones de la política de confianza sobre `aud` y `sub`.
-- No verificado contra GitLab: `image`, `timeout`, `expire_in` y `cache` (gitlab-ci-local los ignora).
+- No verificado contra GitLab: `image`, `timeout` y `expire_in` (gitlab-ci-local los ignora).
 - No verificado contra GitLab: cómo afecta un job fallido, o un job al que se permite fallar, a los jobs posteriores, al estado del pipeline y a la solicitud de fusión.
 
 ### Tres cosas que debes saber {#three-things-to-know}

@@ -195,7 +195,7 @@ The lines that every GitLab example shares (`image`, `timeout`, `id_tokens`, the
 What is not verified:
 
 - Not verified against GitLab or AWS: GitLab issuing the ID token and AWS accepting it for the role, with the trust policy conditions on `aud` and `sub`.
-- Not verified against GitLab: `image`, `timeout`, `expire_in` and `cache` (gitlab-ci-local ignores them).
+- Not verified against GitLab: `image`, `timeout` and `expire_in` (gitlab-ci-local ignores them).
 - Not verified against GitLab: how a failed job or a job that is allowed to fail affects later jobs, the pipeline status and the merge request.
 
 ### Three things to know

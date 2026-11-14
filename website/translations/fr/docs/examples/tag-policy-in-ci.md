@@ -182,8 +182,8 @@ Les lignes que tous les exemples GitLab ont en commun (`image`, `timeout`, `id_t
 
 Ce qui n’est pas vérifié :
 
-- Non vérifié sur GitLab ou AWS : l’émission du jeton d’ID par GitLab et son acceptation par AWS pour le rôle, avec les conditions de la politique de confiance sur `aud` et `sub`.
-- Non vérifié sur GitLab : `image`, `timeout`, `expire_in` et `cache` (gitlab-ci-local les ignore).
+- Non vérifié sur GitLab ni sur AWS : l’émission du jeton d’ID par GitLab et son acceptation par AWS pour le rôle, avec les conditions de la politique d’approbation sur `aud` et `sub`.
+- Non vérifié sur GitLab : `image`, `timeout` et `expire_in` (gitlab-ci-local les ignore).
 - Non vérifié sur GitLab : l’effet d’un job en échec, ou d’un job autorisé à échouer, sur les jobs suivants, l’état du pipeline et la requête de fusion.
 
 ### Trois choses à savoir {#three-things-to-know}
