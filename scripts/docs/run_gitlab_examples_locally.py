@@ -13,8 +13,10 @@ For every GitLab block that scripts/docs/check_ci_examples.py finds, this:
     leaves id_tokens variables unset), so the AWS SDK's web identity path
     (AWS_ROLE_ARN + AWS_WEB_IDENTITY_TOKEN_FILE) calls moto's
     sts:AssumeRoleWithWebIdentity;
-  - runs the pipeline with `gitlab-ci-local --force-shell-executor` as a
-    scheduled pipeline (image: is ignored; jobs run on this host).
+  - runs the pipeline with `gitlab-ci-local --force-shell-executor` with the
+    pipeline source the block's own rules ask for (merge_request_event, schedule,
+    ...; push when none; override: --pipeline-source) and prints which one
+    (image: is ignored; jobs run on this host).
 
 It prints, in the per-block form of `check_ci_examples.py --report`, one line
 per job: result, exit code, collected artifacts and the role moto issued.
@@ -67,6 +69,7 @@ _PIP_INSTALL = re.compile(
     r"""["']?inventag-aws(?:\[[^\]]*\])?(?:[=<>~!]=?[^"'\s]*)?["']?"""
 )
 _TEMPLATE_ARG = re.compile(r"--template[ =](\S+)")
+_SOURCE_RULE = re.compile(r"""\$CI_PIPELINE_SOURCE\s*==\s*["']([a-z_]+)["']""")
 _JOB_FINISHED = re.compile(
     r"^(?P<job>\S+)\s+finished in .*?(?:\s(?P<label>FAIL|WARN)\s+(?P<code>\d+))?\s*$"
 )
@@ -128,6 +131,32 @@ def id_token_names(doc: Dict[Any, Any]) -> List[str]:
         if isinstance(job, dict) and isinstance(job.get("id_tokens"), dict):
             names += [n for n in job["id_tokens"] if n not in names]
     return names
+
+
+def choose_pipeline_source(
+    doc: Dict[Any, Any], override: Optional[str]
+) -> Tuple[str, str]:
+    """The pipeline source to simulate and why: the override, else the source
+    named in `rules:if` that lets most jobs run (the first named wins a tie),
+    else gitlab-ci-local's default, push."""
+    if override:
+        return override, "override"
+    per_job: List[List[str]] = []
+    for name, job in doc.items():
+        rules = job.get("rules") if isinstance(job, dict) else None
+        if str(name).startswith(".") or not isinstance(rules, list):
+            continue
+        found: List[str] = []
+        for rule in rules:
+            if isinstance(rule, dict) and rule.get("when") != "never":
+                found += _SOURCE_RULE.findall(str(rule.get("if", "")))
+        if found:
+            per_job.append(found)
+    order = list(dict.fromkeys(src for found in per_job for src in found))
+    if not order:
+        return "push", "default: no rule names a source"
+    best = max(order, key=lambda src: sum(src in found for found in per_job))
+    return best, "from the block's rules"
 
 
 def parse_results(output: str) -> List[JobResult]:
@@ -250,9 +279,14 @@ def _prepare_project(block: Dict[str, Any], doc: Dict[Any, Any], work: Path) -> 
 
 
 def _run_gitlab_ci_local(
-    project: Path, site: Path, gcl: str, endpoint: str, tokens: List[str]
+    project: Path,
+    site: Path,
+    gcl: str,
+    endpoint: str,
+    tokens: List[str],
+    source: str,
 ) -> str:
-    """Run the pipeline as a scheduled one, with a controlled environment.
+    """Run the pipeline with the given pipeline source and a controlled environment.
 
     gitlab-ci-local passes the host environment into shell jobs, so only the
     variables below reach a job: no local AWS credentials or config.
@@ -273,7 +307,7 @@ def _run_gitlab_ci_local(
         "PIP_DISABLE_PIP_VERSION_CHECK": "1",
         "LANG": "C.UTF-8",
     }
-    variables = {"CI_PIPELINE_SOURCE": "schedule", "AWS_ENDPOINT_URL": endpoint}
+    variables = {"CI_PIPELINE_SOURCE": source, "AWS_ENDPOINT_URL": endpoint}
     variables.update({n: DUMMY_JWT for n in tokens})
     if not tokens:
         variables.update(AWS_ACCESS_KEY_ID="testing", AWS_SECRET_ACCESS_KEY="testing")
@@ -324,13 +358,20 @@ def _job_line(
     )
 
 
-def run_block(block: Dict[str, Any], gcl: str, endpoint: str, work: Path) -> bool:
+def run_block(
+    block: Dict[str, Any],
+    gcl: str,
+    endpoint: str,
+    work: Path,
+    source_override: Optional[str] = None,
+) -> bool:
     doc = yaml.safe_load(block["body"])
     tokens = id_token_names(doc)
     project = _prepare_project(block, doc, work)
     site = work / f"site-{work_name(block)}"
     _seed(endpoint)
-    output = _run_gitlab_ci_local(project, site, gcl, endpoint, tokens)
+    source, why = choose_pipeline_source(doc, source_override)
+    output = _run_gitlab_ci_local(project, site, gcl, endpoint, tokens, source)
     log = work / f"block-{work_name(block)}.log"
     log.write_text(output)
     roles = _assumed_roles(endpoint)
@@ -341,13 +382,16 @@ def run_block(block: Dict[str, Any], gcl: str, endpoint: str, work: Path) -> boo
         print(f"  FAIL local-run  no job ran; log {log}")
         return False
     ok = True
-    source = f"<{_gcl_version(gcl)}, shell executor, moto server>"
+    tool = (
+        f"<{_gcl_version(gcl)}, shell executor, moto server, "
+        f"pipeline source {source} ({why})>"
+    )
     for r in results:
         job_ok, line = _job_line(
             r, doc.get(r.job, {}), _artifacts(project, r.job), roles, tokens
         )
         ok = ok and job_ok
-        print(f"{line}  {source}")
+        print(f"{line}  {tool}")
     return ok
 
 
@@ -369,6 +413,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         default=os.environ.get("GITLAB_CI_LOCAL") or shutil.which("gitlab-ci-local"),
         help="path to the gitlab-ci-local executable (default: env "
         "GITLAB_CI_LOCAL, else PATH)",
+    )
+    ap.add_argument(
+        "--pipeline-source",
+        help="simulate this CI_PIPELINE_SOURCE for every block (default: chosen "
+        "per block from its rules:if, push when none names a source)",
     )
     ap.add_argument("--keep", action="store_true", help="keep the work directory")
     ns = ap.parse_args(argv)
@@ -397,7 +446,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     try:
         ok = all(
             [
-                run_block(b, ns.gitlab_ci_local, f"http://{host}:{port}", work)
+                run_block(
+                    b,
+                    ns.gitlab_ci_local,
+                    f"http://{host}:{port}",
+                    work,
+                    ns.pipeline_source,
+                )
                 for b in blocks
             ]
         )

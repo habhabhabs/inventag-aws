@@ -119,3 +119,67 @@ def test_work_folder_names_differ_when_slugs_of_two_paths_are_equal():
 def test_work_folder_name_is_one_safe_path_segment():
     name = runner.work_name({"path": "docs/a b/ü.md", "line": 3})
     assert "/" not in name and " " not in name and name.isascii()
+
+
+# --- pipeline source ------------------------------------------------------
+
+MR_BLOCK = """\
+stages: [check]
+a:
+  stage: check
+  script: [x]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+b:
+  stage: check
+  script: [x]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_ID'
+"""
+
+SCHEDULE_BLOCK = """\
+j:
+  script: [x]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+"""
+
+
+def test_a_block_whose_jobs_need_merge_request_event_runs_as_a_merge_request():
+    doc = yaml.safe_load(MR_BLOCK)
+    assert runner.choose_pipeline_source(doc, None) == (
+        "merge_request_event",
+        "from the block's rules",
+    )
+
+
+def test_a_scheduled_block_runs_as_a_schedule():
+    doc = yaml.safe_load(SCHEDULE_BLOCK)
+    assert runner.choose_pipeline_source(doc, None)[0] == "schedule"
+
+
+def test_the_source_that_lets_most_jobs_run_wins():
+    doc = yaml.safe_load(SCHEDULE_BLOCK)
+    doc["k"] = {
+        "script": ["x"],
+        "rules": [{"if": '$CI_PIPELINE_SOURCE == "web"'}],
+    }
+    doc["l"] = {
+        "script": ["x"],
+        "rules": [{"if": '$CI_PIPELINE_SOURCE == "web"'}],
+    }
+    assert runner.choose_pipeline_source(doc, None)[0] == "web"
+
+
+def test_a_block_without_source_rules_runs_as_a_push_pipeline():
+    doc = {"j": {"script": ["x"]}}
+    assert runner.choose_pipeline_source(doc, None) == (
+        "push",
+        "default: no rule names a source",
+    )
+
+
+def test_the_override_wins_and_is_named_as_such():
+    doc = yaml.safe_load(MR_BLOCK)
+    assert runner.choose_pipeline_source(doc, "web") == ("web", "override")
