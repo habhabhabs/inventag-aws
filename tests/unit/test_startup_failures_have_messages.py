@@ -235,8 +235,8 @@ def test_mfa_prompt_still_works_on_a_terminal(env):
     threading.Thread(target=server.serve_forever, daemon=True).start()
     master, slave = pty.openpty()
     try:
-        environ = child_env(env)
-        environ["AWS_ENDPOINT_URL_STS"] = f"http://127.0.0.1:{server.server_port}"
+        child = child_env(env)
+        child["AWS_ENDPOINT_URL_STS"] = f"http://127.0.0.1:{server.server_port}"
         proc = subprocess.Popen(
             [
                 sys.executable,
@@ -250,7 +250,7 @@ def test_mfa_prompt_still_works_on_a_terminal(env):
             stdin=slave,
             stdout=slave,
             stderr=slave,
-            env=environ,
+            env=child,
             cwd=env,
             start_new_session=True,
             preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0),
