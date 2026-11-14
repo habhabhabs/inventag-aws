@@ -263,7 +263,9 @@ def test_templated_generator_reports_empty_result(registry, tmp_path, caplog):
     )
     run = TemplateRun(registry.resolve("standard-bom"), None, None)
     generator = TemplatedCloudBOMGenerator(config, run)
-    generator.account_contexts = {"1": SimpleNamespace(session=MagicMock())}
+    generator.account_contexts = {
+        "1": SimpleNamespace(session=MagicMock(), processing_errors=[])
+    }
     with caplog.at_level(logging.WARNING):
         out = generator._generate_bom_documents([], {}, ["excel"])
     assert out["empty"] is True and out["total_resources"] == 0

@@ -120,3 +120,32 @@ def test_notes_from_the_generator_pass_through_unchanged(registry, tmp_path):
 def test_no_notes_means_no_run_notes_heading_in_the_document(registry, tmp_path):
     _, docx = _generate(_generator(registry, tmp_path, failed=False))
     assert "Run notes" not in _word_text(docx)
+
+
+def test_notes_are_not_lost_when_the_template_has_no_summary(
+    registry, user_dir, tmp_path
+):
+    """A user template without the Summary sheet or section still shows them."""
+    from inventag.templating.render_excel import render_excel
+    from inventag.templating.render_word import render_word
+
+    (user_dir / "bare.yaml").write_text(
+        "format_version: 1\nkind: report\nname: bare\nspec:\n"
+        "  title: Bare\n  excel:\n    summary_sheet: false\n"
+        "  word:\n    sections: [service-tables]\n"
+    )
+    template = registry.resolve("bare")
+    notes = [f"{FAILED_ID} (bad): {REASON}"]
+    xlsx = render_excel(
+        str(tmp_path / "b.xlsx"), [dict(RESOURCE)], template, None, {}, notes
+    )
+    docx = render_word(
+        str(tmp_path / "b.docx"), [dict(RESOURCE)], template, None, {}, notes
+    )
+    assert notes[0] in _workbook_text(xlsx)["Summary"]
+    assert notes[0] in _word_text(docx)
+    # and nothing is added when there is nothing to say
+    clean = render_excel(
+        str(tmp_path / "c.xlsx"), [dict(RESOURCE)], template, None, {}, []
+    )
+    assert "Summary" not in _workbook_text(clean)
