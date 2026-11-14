@@ -63,6 +63,8 @@ Un compte peut indiquer une façon d’obtenir des identifiants. Un compte qui n
 
 Les valeurs de `settings` remplacent les options de ligne de commande correspondantes.
 
+Une deuxième entrée avec le même ID de compte, et une clé qu’InvenTag ne connaît pas (par exemple `profil_name`), donnent chacune un avertissement qui la nomme. Le fichier est quand même accepté.
+
 Pour utiliser le même nom de rôle dans chaque compte, omettez `role_arn` et ajoutez
 `--cross-account-role InvenTagReadOnly` à la commande.
 

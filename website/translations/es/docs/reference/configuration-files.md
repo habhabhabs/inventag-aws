@@ -62,6 +62,8 @@ Una cuenta puede indicar una forma de obtener credenciales. Una cuenta sin ningu
 
 Los valores de `settings` sustituyen a las opciones equivalentes de la línea de comandos.
 
+Una segunda entrada con el mismo ID de cuenta, y una clave que InvenTag no conoce (por ejemplo `profil_name`), dan cada una una advertencia que la nombra. El archivo se acepta igualmente.
+
 Para usar el mismo nombre de rol en todas las cuentas, omite `role_arn` y añade
 `--cross-account-role InvenTagReadOnly` al comando.
 

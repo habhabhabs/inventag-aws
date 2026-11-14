@@ -62,6 +62,10 @@ An account can name one way to get credentials. An account with none uses your c
 
 Values in `settings` override the matching command-line flags.
 
+A second entry with the same account ID, and a key that InvenTag does not know
+(for example `profil_name`), each give a warning that names it. The file is
+still accepted.
+
 To use the same role name in every account, leave out `role_arn` and add
 `--cross-account-role InvenTagReadOnly` to the command.
 

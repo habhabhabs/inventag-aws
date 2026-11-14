@@ -57,6 +57,8 @@ settings:                              # optional
 
 `settings` 中的值會覆蓋對應的命令列引數。
 
+帳戶 ID 相同的第二個條目，以及 InvenTag 不認識的鍵（例如 `profil_name`），都會給出一條指出它的警告。檔案仍會被接受。
+
 要在每個帳戶中使用同一個角色名稱，請省略 `role_arn`，並在命令中加上
 `--cross-account-role InvenTagReadOnly`。
 
