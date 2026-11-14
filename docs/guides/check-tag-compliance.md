@@ -45,6 +45,8 @@ Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-
 | Word, **Tag compliance** section | The same counts, the rules, and a table of non-compliant resources (up to 100 rows by default). |
 | `tag_compliance_<timestamp>.json` | Counts per rule and every non-compliant resource, for scripts and CI. |
 
+If no resource is in scope, the summary reads `0 of 0 resources compliant (100.0%)`: nothing was checked.
+
 A resource is **compliant** when it has every required tag and every value
 passes its rule. Problems are spelled out, for example:
 
@@ -124,6 +126,8 @@ The `summary` part of the JSON file:
 
 **Out of scope** resources are counted but not checked: the policy's `scope`
 excludes them, for example KMS aliases, which cannot carry tags.
+
+Not verified against AWS: KMS aliases cannot carry tags.
 
 **Know this before you trust the numbers:** InvenTag matches tags from the
 Resource Groups Tagging API to resources by ARN, and falls back to the
