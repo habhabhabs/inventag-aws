@@ -34,21 +34,39 @@ et ce que chacun vérifie se trouvent sur la page [Tests](../security/tests.md).
 | `--enable-production-safety`, `--security-validation`, `--enforce-read-only` | Conservées pour que les anciennes commandes fonctionnent encore. La protection en lecture seule est toujours active. |
 | `--disable-production-safety` | S’arrête avec le code de sortie 2. La protection ne peut pas être désactivée. |
 
-```text title="Terminal"
-$ inventag --create-google-docs
+```bash title="Terminal"
+inventag --create-google-docs
+```
+
+```text title="Sortie"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 inventag: error: Google: Google output needs libraries that are not installed (google.auth). Install the Google libraries with: pip install "inventag-aws[google]"
 (exit code 2)
+```
 
-$ inventag --risk-threshold HIGH
+```bash title="Terminal"
+inventag --risk-threshold HIGH
+```
+
+```text title="Sortie"
 inventag: error: --risk-threshold: needs --enable-security-analysis, which produces the risk levels it checks.
 (exit code 2)
+```
 
-$ inventag --compliance-standard soc2
+```bash title="Terminal"
+inventag --compliance-standard soc2
+```
+
+```text title="Sortie"
 inventag: error: --compliance-standard: Compliance-standard enforcement is not implemented yet; the option has never changed InvenTag's behaviour.
 (exit code 2)
+```
 
-$ inventag --disable-production-safety
+```bash title="Terminal"
+inventag --disable-production-safety
+```
+
+```text title="Sortie"
 inventag: error: --disable-production-safety: The read-only guard cannot be disabled from the CLI: InvenTag only needs read access, so non-read AWS calls are always blocked.
 (exit code 2)
 ```
