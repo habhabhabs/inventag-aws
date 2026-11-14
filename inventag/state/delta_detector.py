@@ -20,7 +20,7 @@ from ..discovery.service_filter import (
     canonical_service_set,
     service_matches,
 )
-from .state_manager import StateLoadError
+from .state_manager import SNAPSHOT_VERSION, StateLoadError
 
 logger = logging.getLogger(__name__)
 
@@ -733,6 +733,8 @@ class DeltaDetector:
         previous_state = self._load(state_manager, previous_state_id)
         current_state = self._load(state_manager, current_state_id)
 
+        self._warn_if_older_format(previous_state_id, previous_state)
+
         # Leave out accounts that were not scanned in both runs.
         skip = self.accounts_to_skip(previous_state, current_state)
         for account, reason in skip.items():
@@ -781,6 +783,26 @@ class DeltaDetector:
             f"The previous run could not read every listing ({'; '.join(parts)}); "
             "resources it missed may show as added."
         )
+
+    @staticmethod
+    def _warn_if_older_format(state_id: str, snapshot) -> None:
+        """One warning when the previous snapshot has an older format."""
+        version = str(getattr(snapshot.metadata, "version", "") or "1.0")
+
+        def as_tuple(v: str):
+            try:
+                return tuple(int(p) for p in v.split("."))
+            except ValueError:
+                return None
+
+        old, new = as_tuple(version), as_tuple(SNAPSHOT_VERSION)
+        if old is not None and new is not None and old < new:
+            logger.warning(
+                f"Snapshot {state_id} was written in snapshot format {version} "
+                f"(this release writes {SNAPSHOT_VERSION}); the change report may "
+                "list differences that come from the format, not from your "
+                "resources."
+            )
 
     @staticmethod
     def _load(state_manager, state_id: str):
