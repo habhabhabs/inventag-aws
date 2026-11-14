@@ -132,9 +132,9 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 
 未針對 GitLab Runner 或真實的 AWS 帳戶驗證：此流水線尚未在 GitLab 上執行。它的 YAML 和 `inventag` 命令列會在建置文件時檢查。它的作業已在本地用 gitlab-ci-local 4.77.1（用替身代替 rsync）針對模擬的 AWS 執行，使用的是虛擬權杖。
 
-這個作業按流水線計劃執行上面的命令，把報告上傳到你的儲存貯體，並把一份副本儲存為作業產物。使用之前：
+這個作業按流水線排程執行上面的命令，把報告上傳到你的儲存貯體，並把一份副本儲存為作業產物。使用之前：
 
-- 按照[在 CI/CD 中執行 InvenTag](../guides/run-in-ci.md#gitlab-cicd)中的說明，建立 GitLab 用來登入的角色和 CI/CD 變數 `AWS_ROLE_ARN`。該部分也說明了如何建立流水線計劃。
+- 按照[在 CI/CD 中執行 InvenTag](../guides/run-in-ci.md#gitlab-cicd)中的說明，建立 GitLab 用來登入的角色和 CI/CD 變數 `AWS_ROLE_ARN`。該部分也說明了如何建立流水線排程。
 - 再新增兩個 CI/CD 變數：`INVENTAG_REPORTS_BUCKET`（儲存貯體名稱）和 `INVENTAG_KMS_KEY_ID`（KMS 金鑰 ID）。兩者都不是機密。
 - 給該角色加上 `config/defaults/iam-policy-read-only.json` 中的 `OptionalS3ReportUpload` 語句，並把 `YOUR-REPORTS-BUCKET-NAME` 換成你的儲存貯體名稱。它的資源是 `arn:aws:s3:::YOUR-REPORTS-BUCKET-NAME/bom-reports/*`，所以請保留 `--s3-key-prefix bom-reports/`，或修改該資源。使用 `aws:kms` 時，角色還需要對該金鑰擁有 `kms:GenerateDataKey` 權限（[IAM 權限](../reference/iam-permissions.md)）。
 
@@ -189,7 +189,7 @@ inventory-to-s3:
 
 - 未針對 GitLab 或 AWS 驗證：GitLab 簽發 ID 權杖，以及 AWS 為該角色接受它，包括信任策略中對 `aud` 和 `sub` 的條件。
 - 未針對 GitLab 驗證：`image`、`timeout` 和 `expire_in`（gitlab-ci-local 會忽略它們）。
-- 未針對 GitLab 流水線計劃驗證：本地執行時，流水線來源是手動設定的。
+- 未針對 GitLab 流水線排程驗證：本地執行時，流水線來源是手動設定的。
 - 未針對 AWS 驗證：用真實的儲存貯體和金鑰上傳時的 S3 和 KMS 權限。
 
 ## 下一步 {#next-steps}

@@ -253,13 +253,13 @@ inventory:
 這個範例還有兩部分沒有驗證：
 
 - 未針對 GitLab 驗證：`image`、`timeout`、`expire_in` 和 `cache`（gitlab-ci-local 會忽略它們）。
-- 未針對 GitLab 流水線計劃驗證：本地執行時，流水線來源是手動設定的。
+- 未針對 GitLab 流水線排程驗證：本地執行時，流水線來源是手動設定的。
 
 ### 設定定時執行 {#schedule-it}
 
 定時設定不在檔案裡。請在 GitLab 中建立一個 schedule：開啟 **Build > Pipeline schedules > New schedule**，填寫 cron 表示式（例如 `17 2 * * 1-5`）和目標分支，然後儲存。你需要 Developer 或更高的角色。流水線以該 schedule 所有者的權限執行（[GitLab：pipeline schedules](https://docs.gitlab.com/ci/pipelines/schedules/)）。要手動執行該作業，請在 GitLab 介面中選擇 **New pipeline**，或在該 schedule 上選擇 **Run**。
 
-未針對 GitLab 驗證：流水線計劃對 cron 表示式使用的時區。
+未針對 GitLab 驗證：流水線排程對 cron 表示式使用的時區。
 
 ### 與 GitHub Actions 的差異 {#what-differs-from-github-actions}
 
