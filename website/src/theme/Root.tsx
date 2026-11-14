@@ -1,8 +1,17 @@
-import React, {useEffect, useRef, useState, type ReactNode} from 'react';
+import React, {Fragment, useEffect, useRef, useState, type ReactNode} from 'react';
 import {translate} from '@docusaurus/Translate';
 import Link from '@docusaurus/Link';
 import {useLocation} from '@docusaurus/router';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import {getChoice, setChoice} from '@site/src/clientModules/analyticsConsent';
+import {
+  AddressLocaleContext,
+  applyCodeMessages,
+  loadBundle,
+  localeInAddress,
+  restoreCodeMessages,
+  type AddressLocale,
+} from '@site/src/address/addressLocale';
 
 const SETTINGS_HASH = '#analytics-settings';
 
@@ -13,6 +22,11 @@ const SETTINGS_HASH = '#analytics-settings';
  * region, not a modal: it never traps or steals focus on page load. The
  * "Cookie preferences" button in the footer reopens it and moves focus to it.
  * Details (including the analytics provider) live on /privacy.
+ *
+ * The 404 page is one English file for every address (GitHub Pages). When the
+ * address names another language (/fr/...), the translation files of that
+ * language are loaded here and the theme's texts, the cookie banner and the
+ * navbar follow it (see src/address/addressLocale.tsx). Nothing changes elsewhere.
  */
 export default function Root({children}: {children: ReactNode}): ReactNode {
   const [open, setOpen] = useState(false);
@@ -20,8 +34,33 @@ export default function Root({children}: {children: ReactNode}): ReactNode {
   const [choice, setChoiceState] = useState<'granted' | 'denied' | null>(null);
   const [saved, setSaved] = useState('');
   const {pathname} = useLocation();
+  const {
+    siteConfig: {baseUrl},
+    i18n: {currentLocale},
+  } = useDocusaurusContext();
+  const wanted = localeInAddress(pathname, baseUrl, currentLocale);
+  const [address, setAddress] = useState<AddressLocale>(null);
   const regionRef = useRef<HTMLElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!wanted) return;
+    let cancelled = false;
+    let applied = false;
+    loadBundle(wanted).then((bundle) => {
+      if (cancelled) return;
+      applyCodeMessages(bundle.code);
+      applied = true;
+      setAddress({locale: wanted, navbar: bundle.navbar});
+    });
+    return () => {
+      cancelled = true;
+      if (applied) {
+        restoreCodeMessages();
+        setAddress(null);
+      }
+    };
+  }, [wanted]);
 
   // move focus into the banner only when the visitor opened it on purpose
   useEffect(() => {
@@ -115,7 +154,10 @@ export default function Root({children}: {children: ReactNode}): ReactNode {
 
   return (
     <>
-      {children}
+      {/* a new key remounts the page once, so every text is read again in the address's language */}
+      <Fragment key={address?.locale ?? 'build'}>
+        <AddressLocaleContext.Provider value={address}>{children}</AddressLocaleContext.Provider>
+      </Fragment>
       <p className="sr-only" role="status" aria-live="polite">
         {saved}
       </p>
@@ -138,7 +180,13 @@ export default function Root({children}: {children: ReactNode}): ReactNode {
           <p className="consent-banner__title">{translate({id: 'consent.title', message: 'A tiny cookie confession'})}</p>
           <p>
             <span className="consent-banner__text">{body} </span>
-            <Link to="/privacy">{translate({id: 'consent.link', message: 'What’s stored and why'})}</Link>.
+            {address ? (
+              // a plain link: the privacy page of that language is not a route of this English build
+              <a href={`${baseUrl}${address.locale}/privacy`}>{translate({id: 'consent.link', message: 'What’s stored and why'})}</a>
+            ) : (
+              <Link to="/privacy">{translate({id: 'consent.link', message: 'What’s stored and why'})}</Link>
+            )}
+            .
           </p>
           <div className="consent-banner__actions">
             <button
