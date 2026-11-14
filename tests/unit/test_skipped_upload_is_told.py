@@ -1,8 +1,7 @@
 """After a report format failed, the log says that nothing was uploaded (A-12).
 
 v1.2.0 skipped the S3 upload after a failed format without a word. The
-line comes from ``s3_upload.skipped_upload_message`` (senior G, branch
-fix/track-g) when that function exists, else from the same text built here.
+line comes from ``s3_upload.skipped_upload_message`` (senior G).
 """
 
 import logging

@@ -1,12 +1,11 @@
 """The change report gets what this run read (A-05 wiring, lead B's patch).
 
-``DeltaDetector.detect_changes_by_state_id(..., current_run=...)`` exists on
-lead B's branch (fix/delta-detector-performance), not on v1.2.0. The
-generator passes the current run's coverage ledger, regions and services
-only when the detector accepts the argument, so these tests pass with and
-without that branch: they replace the detector method by a spy that accepts
-it. A state manager that could not save its index (``last_index_error``,
-lead B's branch) is reported in the result.
+The generator passes the current run's coverage ledger, regions and services
+to ``DeltaDetector.detect_changes_by_state_id(..., current_run=...)`` (lead B).
+The first test replaces the detector method by a spy that records the
+argument; test_patch_tracks_together.py runs the real detector. A state
+manager that could not save its index (``last_index_error``) is reported in
+the result.
 """
 
 from inventag.state import DeltaDetector, StateManager
@@ -42,25 +41,6 @@ def test_the_change_report_gets_the_current_run_when_it_accepts_it(
     assert scope["coverage"] and all(
         e.get("account_id") == GOOD_ID for e in scope["coverage"]
     )
-
-
-def test_a_detector_without_the_argument_still_compares(
-    aws, tmp_path, monkeypatch  # noqa: F811
-):
-    """v1.2.0's signature: no current_run; the comparison still runs."""
-    calls = []
-    original = DeltaDetector.detect_changes_by_state_id
-
-    def old_signature(self, state_manager, old_id, new_id):
-        calls.append(old_id)
-        return original(self, state_manager, old_id, new_id)
-
-    monkeypatch.setattr(DeltaDetector, "detect_changes_by_state_id", old_signature)
-    results = result_spy(monkeypatch)
-    assert run_cli(*ARGS) == 0
-    assert run_cli(*ARGS) == 0
-    assert len(calls) == 1
-    assert "error" not in results[-1]["state_management"]["delta_detection"]
 
 
 def test_an_unsaved_snapshot_index_is_in_the_result(
