@@ -53,6 +53,7 @@ from ..security.arn import (
     partition_from_arn,
     validate_role_arn,
 )
+from ..security.read_only_guard import get_installed_guard
 from ..security.redaction import register_secrets
 from ..security.secret_values import mask_secret_values
 from .._version import __version__
@@ -337,6 +338,9 @@ class CloudBOMGenerator:
         self._scan_local = threading.local()  # the deadline of this thread's scan
         self._checkpoints = None  # PartialResultStore, set per run
         self.reused_accounts: Dict[str, str] = {}  # account -> scanned at (UTC)
+        # Read-only guard blocks counted before this run (blocked calls,
+        # recorded entries), so only this run's blocks are reported.
+        self._guard_start = (0, 0)
 
         self.logger.info(
             f"Initialized CloudBOMGenerator with {len(self.config.accounts)} accounts"
@@ -360,6 +364,7 @@ class CloudBOMGenerator:
         self.logger.info("Starting multi-account BOM generation")
         self._processing_stats["processing_start_time"] = datetime.now(timezone.utc)
         self._processing_stats["total_accounts"] = len(self.config.accounts)
+        self._guard_start = self._guard_counts()
 
         try:
             # Step 1: Validate and establish account contexts
@@ -448,6 +453,8 @@ class CloudBOMGenerator:
 
             self._finish_checkpoints()
 
+            self._log_guard_blocks()
+
             # Step 7: Compile final results
             self._processing_stats["processing_end_time"] = datetime.now(timezone.utc)
             processing_time = (
@@ -495,6 +502,7 @@ class CloudBOMGenerator:
 
         except Exception as e:
             self.logger.error(f"Multi-account BOM generation failed: {e}")
+            self._log_guard_blocks()
             self._processing_stats["processing_end_time"] = datetime.now(timezone.utc)
 
             failure = {
@@ -705,6 +713,46 @@ class CloudBOMGenerator:
                 )
         return notes
 
+    @staticmethod
+    def _guard_audit() -> Optional[Dict[str, Any]]:
+        guard = get_installed_guard()
+        if guard is None:
+            return None
+        try:
+            return guard.audit_report()
+        except Exception:
+            return None
+
+    def _guard_counts(self) -> tuple:
+        audit = self._guard_audit() or {}
+        return (int(audit.get("blocked_calls", 0)), len(audit.get("blocked", [])))
+
+    def _guard_block_notes(self) -> List[str]:
+        """One note when the read-only guard blocked a call in this run: a
+        blocked call is a defect in InvenTag, not in the user's account."""
+        audit = self._guard_audit()
+        if not audit:
+            return []
+        calls_before, entries_before = self._guard_start
+        count = int(audit.get("blocked_calls", 0)) - calls_before
+        if count <= 0:
+            return []
+        operations = sorted(
+            {
+                f"{b.get('service')}:{b.get('operation')}"
+                for b in audit.get("blocked", [])[entries_before:]
+            }
+        )
+        return [
+            f"The read-only guard blocked {count} call(s) "
+            f"({', '.join(operations)}); this is a defect in InvenTag, not in "
+            "your account, so please report it."
+        ]
+
+    def _log_guard_blocks(self) -> None:
+        for note in self._guard_block_notes():
+            self.logger.error(note)
+
     def _run_notes(self) -> List[str]:
         """Lines for the report: which accounts are missing and why, and
         which accounts come from an earlier, interrupted run (``--resume``)."""
@@ -742,6 +790,7 @@ class CloudBOMGenerator:
         notes.extend(self._expired_session_notes())
         notes.extend(self._read_nothing_notes())
         notes.extend(self._not_read_notes())
+        notes.extend(self._guard_block_notes())
         if self.reused_accounts:
             notes.append(
                 f"{len(self.reused_accounts)} account(s) were not scanned again: "
