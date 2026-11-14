@@ -20,6 +20,9 @@ S3, cifrados, con un registro de cada llamada a AWS que hizo.
   y ten en cuenta que solo cubre las claves que empiezan por `bom-reports/`. Ese es
   también el valor predeterminado de `--s3-key-prefix`. Si usas otro prefijo, cambia
   el recurso;
+
+  No verificado contra AWS real: la declaración solo permite la subida con cifrado en el servidor.
+
 - un programador: cron, una programación de CI o similar.
 
 ## Comando {#command}
@@ -36,6 +39,9 @@ inventag --template standard-bom --create-excel --account-regions us-east-1 \
   `--s3-kms-key-id` solo funciona con `--s3-encryption aws:kms`; sin ella la
   ejecución se detiene con el código de salida 2. Con `aws:kms` y sin ID de clave,
   S3 usa la clave administrada por AWS `aws/s3`.
+
+  No verificado contra AWS: que S3 use la clave administrada por AWS `aws/s3` cuando `aws:kms` no lleva ID de clave.
+
 - Cada archivo va a `<prefix><UTC timestamp>/<file name>`, de modo que las
   ejecuciones no se sobrescriben entre sí. El archivo JSON de cumplimiento de
   etiquetas también se sube, cuando existe.
@@ -121,7 +127,8 @@ El archivo de auditoría (extracto):
 }
 ```
 
-`blocked_calls` es 0: la ejecución solo hizo llamadas de lectura.
+`blocked_calls` es 0: InvenTag no bloqueó ninguna llamada. Aparte de la subida de los
+informes (`PutObject`), la ejecución solo hizo llamadas de lectura.
 
 ## Prográmalo {#schedule-it}
 
@@ -130,6 +137,8 @@ Con cron, cada día laborable a las 02:17:
 ```text title="crontab -e"
 17 2 * * 1-5  cd /opt/inventag-aws && .venv/bin/python inventag_cli.py --template standard-bom --create-excel --s3-bucket acme-inventory-reports --s3-key-prefix bom-reports/ >> /var/log/inventag.log 2>&1
 ```
+
+No verificado contra cron: la línea de programación. La ruta `/opt/inventag-aws` es un ejemplo.
 
 En GitHub Actions, añade las opciones `--s3-bucket` al paso de ejecución de
 [Ejecutar InvenTag en CI/CD](../guides/run-in-ci.md).

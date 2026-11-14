@@ -20,6 +20,9 @@ with a record of every AWS call it made.
   and note that it covers only keys that start with `bom-reports/`. That is
   also the default of `--s3-key-prefix`. For another prefix, change the
   resource;
+
+  Not verified against real AWS: the statement allows the upload only with server-side encryption.
+
 - a scheduler: cron, a CI schedule or similar.
 
 ## Command
@@ -35,6 +38,9 @@ inventag --template standard-bom --create-excel --account-regions us-east-1 \
   `--s3-kms-key-id` for a KMS key). `--s3-kms-key-id` works only with
   `--s3-encryption aws:kms`; without it the run stops with exit code 2. With
   `aws:kms` and no key ID, S3 uses the AWS managed key `aws/s3`.
+
+  Not verified against AWS: that S3 uses the AWS managed key `aws/s3` when `aws:kms` has no key ID.
+
 - Each file goes to `<prefix><UTC timestamp>/<file name>`, so runs do not
   overwrite each other. The tag-compliance JSON file is uploaded too, when
   there is one.
@@ -132,7 +138,8 @@ The audit file (excerpt):
 
 <!-- END EXAMPLE OUTPUT: audit-json -->
 
-`blocked_calls` is 0: the run only made read calls.
+`blocked_calls` is 0: InvenTag blocked no call. Apart from the report upload
+(`PutObject`), the run made only read calls.
 
 ## Schedule it
 
@@ -141,6 +148,8 @@ With cron, every weekday at 02:17:
 ```text title="crontab -e"
 17 2 * * 1-5  cd /opt/inventag-aws && .venv/bin/python inventag_cli.py --template standard-bom --create-excel --s3-bucket acme-inventory-reports --s3-key-prefix bom-reports/ >> /var/log/inventag.log 2>&1
 ```
+
+Not verified against cron: the schedule line. The path `/opt/inventag-aws` is an example.
 
 In GitHub Actions, add the `--s3-bucket` options to the run step in
 [Run InvenTag in CI/CD](../guides/run-in-ci.md).
