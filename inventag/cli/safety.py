@@ -45,6 +45,34 @@ def unimplemented_flag_errors(args) -> List[str]:
     ]
 
 
+def unusable_path_error(option: str, path: str, folder: bool) -> Optional[str]:
+    """A message when ``path`` cannot be written, else None.
+
+    Looks only: nothing is created. ``folder`` is True for an output folder
+    and False for a file (its parent folder is checked). The nearest existing
+    parent must be a folder that the user may write to.
+    """
+    target = Path(path) if folder else Path(path).parent
+    if not folder and Path(path).is_dir():
+        return f"{option}: '{path}' is a folder; give a file name."
+    probe = target
+    while not probe.exists() and probe != probe.parent:
+        probe = probe.parent
+    if not probe.exists():
+        return None  # cannot tell; the later write reports it
+    if not probe.is_dir():
+        return (
+            f"{option}: cannot write to '{path}', because '{probe}' is a file, "
+            "not a folder. Give a path in a folder that exists or can be created."
+        )
+    if not os.access(probe, os.W_OK | os.X_OK):
+        return (
+            f"{option}: cannot write to '{path}', because you may not write in "
+            f"'{probe}'. Give a path in a folder you can write to."
+        )
+    return None
+
+
 def harden_process() -> None:
     """Owner-only default permissions and log redaction for this process.
 
