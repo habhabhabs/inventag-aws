@@ -94,7 +94,7 @@ InvenTag 会在进程中的每一次 AWS 调用发出之前检查它。它只允
 例如：`secretsmanager:GetSecretValue`、`ssm:GetParameter`、`s3:GetObject`、`dynamodb:GetItem`、`lambda:GetFunction`（它会返回代码的下载链接）、
 `cloudformation:GetTemplate`、`ec2:GetLaunchTemplateData`、`glue:GetConnection` 和 Athena 查询结果。
 它还会拦截带值的 API 密钥以及用于获取用户数据的 `ec2:DescribeInstanceAttribute`，并按同样的规则检查预签名 URL 和数据库认证令牌。
-可以用 `inventag --validate-operations <service>:<Operation>` 检查某个名称。它只按名称回答：`apigateway:GetApiKeys` 和 `ec2:DescribeInstanceAttribute` 在这里显示 ALLOWED，只有在带 `includeValues` 或 `Attribute=userData` 调用它们时，保护机制才会拦截。
+可以用 `inventag --validate-operations <service>:<Operation>` 检查某个名称。当答案取决于某个参数时，它会给出规则：`apigateway:GetApiKeys` 显示 `ALLOWED` 并附带 `BLOCKED when includeValues=true`，`ec2:DescribeInstanceAttribute` 显示 `ALLOWED` 并附带 `BLOCKED when Attribute=userdata`。只有带该参数调用这些操作时，保护机制才会拦截。
 
 IAM Identity Center（SSO）和 web identity 配置文件在保护机制下可以正常工作。保护机制只允许登录步骤用令牌换取凭证，别的都不允许。
 
