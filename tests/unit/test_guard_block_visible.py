@@ -46,10 +46,11 @@ def test_a_blocked_call_inside_a_listing_is_named_as_a_defect(
     caplog.set_level(logging.INFO)
     results = result_spy(monkeypatch)
     original = botocore.client.BaseClient._make_api_call
+    active = [True]
 
     def call(client, operation_name, api_params):
         service = client.meta.service_model.service_name
-        if service == "sqs" and operation_name == "ListQueues":
+        if active[0] and service == "sqs" and operation_name == "ListQueues":
             client.create_queue(QueueName="must-never-be-created")
         return original(client, operation_name, api_params)
 
@@ -62,6 +63,7 @@ def test_a_blocked_call_inside_a_listing_is_named_as_a_defect(
     errors = summary_errors(caplog)
     assert len(errors) == 1 and "sqs:CreateQueue" in errors[0], errors
     # The queue was not created.
+    active[0] = False
     assert "must-never-be-created" not in str(
         boto3.client("sqs", region_name="us-east-1").list_queues()
     )
