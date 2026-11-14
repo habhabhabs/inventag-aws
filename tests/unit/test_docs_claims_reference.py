@@ -1161,3 +1161,286 @@ def test_per_account_reports_make_a_report_only_for_accounts_with_resources():
         ("111111111111_bom", 1),
         ("222222222222_bom", 2),
     ]
+
+
+# ================================================ C. claims3: reference TEST rows
+def test_version_flag_prints_the_version_and_exits_0(empty_aws, capsys):
+    """cli.md Commands block: `inventag --version` prints the version and exits."""
+    version = json.loads((ROOT / "version.json").read_text())["version"]
+    assert run_cli("--version") == 0
+    assert capsys.readouterr().out.strip() == f"inventag {version}"
+
+
+def _cells(path):
+    return {str(c) for rows in sheets(path).values() for r in rows for c in r}
+
+
+@pytest.fixture
+def estate_with_log_group(estate):
+    # CloudWatch Logs has no discovery code of its own, so a tagged log group
+    # reaches the report only through the Resource Groups Tagging API.
+    boto3.client("logs", region_name="us-east-1").create_log_group(
+        logGroupName="tagging-only-logs", tags={"Owner": "platform"}
+    )
+
+
+@pytest.mark.parametrize(
+    "extra, shown",
+    [
+        ([], True),  # default is auto
+        (["--fallback-display", "auto"], True),
+        (["--fallback-display", "always"], True),
+        (["--fallback-display", "never"], False),
+        (["--hide-fallback-resources"], False),  # same as never
+    ],
+)
+def test_fallback_display_and_the_deprecated_hide_flag(
+    estate_with_log_group, tmp_path, extra, shown
+):
+    """cli.md: auto/always/never; --hide-fallback-resources = never."""
+    assert run_cli(*BASE, "--output-directory", "o", *extra) == 0
+    cells = _cells(only(tmp_path / "o", "*.xlsx"))
+    assert any("tagging-only-logs" in c for c in cells) is shown
+    assert any("tagged-queue" in c for c in cells)  # own discovery: always there
+
+
+def test_fallback_auto_shows_tagging_only_resources_only_for_uncovered_services():
+    """cli.md: `auto` shows them only for services with no results of their own."""
+    from inventag.discovery.comprehensive_discovery import ComprehensiveAWSDiscovery
+
+    discovery = ComprehensiveAWSDiscovery(
+        regions=["us-east-1"], fallback_display_mode="auto"
+    )
+    discovery.services_with_primary_resources = {"s3"}
+    bucket = "arn:aws:s3:::acme-logs"
+    log_group = "arn:aws:logs:us-east-1:123456789012:log-group:g"
+    assert discovery._should_show_fallback(bucket) is False  # S3 has own results
+    assert discovery._should_show_fallback(log_group) is True  # logs has none
+    discovery.fallback_display_mode = "always"
+    assert discovery._should_show_fallback(bucket) is True
+    discovery.fallback_display_mode = "never"
+    assert discovery._should_show_fallback(log_group) is False
+
+
+class _CountingInventory:
+    """Fake discovery that records how many accounts run at the same time."""
+
+    lock = None
+    running = 0
+    peak = 0
+
+    def __init__(self, session, regions, **kwargs):
+        self.session = session
+
+    def discover_all_resources(self):
+        import threading  # noqa: F401
+
+        cls = _CountingInventory
+        with cls.lock:
+            cls.running += 1
+            cls.peak = max(cls.peak, cls.running)
+        time.sleep(0.4)
+        with cls.lock:
+            cls.running -= 1
+        return [{"id": "r", "service": "S3", "type": "Bucket", "region": "us-east-1"}]
+
+
+def _peak_concurrency(tmp_path, argv):
+    import threading
+    from unittest.mock import patch
+
+    from inventag.core.cloud_bom_generator import AccountContext, AccountCredentials
+
+    _CountingInventory.lock = threading.Lock()
+    _CountingInventory.running = 0
+    _CountingInventory.peak = 0
+    args = cli_main.create_parser().parse_args(
+        [*argv, "--output-directory", str(tmp_path / "o")]
+    )
+    config = cli_main.create_multi_account_config(args)
+    ids = ["111111111111", "222222222222", "333333333333"]
+    contexts = {
+        i: AccountContext(
+            credentials=AccountCredentials(account_id=i, account_name=f"a-{i}"),
+            session=boto3.Session(),
+            caller_identity={"Account": i},
+            accessible_regions=["us-east-1"],
+        )
+        for i in ids
+    }
+    generator = cli_main.CloudBOMGenerator(config)
+    generator.account_contexts.update(contexts)
+    generator._establish_account_contexts = lambda: contexts
+    with patch(
+        "inventag.core.cloud_bom_generator.AWSResourceInventory", _CountingInventory
+    ):
+        generator.generate_comprehensive_bom(output_formats=[])
+    return _CountingInventory.peak
+
+
+def test_max_concurrent_accounts_limits_accounts_at_the_same_time(empty_aws, tmp_path):
+    """cli.md: `--max-concurrent-accounts N` accounts scanned at the same time."""
+    assert _peak_concurrency(tmp_path, ["--max-concurrent-accounts", "2"]) == 2
+    assert _peak_concurrency(tmp_path, ["--max-concurrent-accounts", "3"]) == 3
+
+
+def test_disable_parallel_processing_scans_one_account_at_a_time(empty_aws, tmp_path):
+    """cli.md: `--disable-parallel-processing` scans one account at a time."""
+    assert _peak_concurrency(tmp_path, ["--disable-parallel-processing"]) == 1
+
+
+def test_validate_credentials_exits_1_when_an_account_fails_and_0_when_all_work(
+    empty_aws, tmp_path
+):
+    """cli.md: `--validate-credentials` exits 0 if all work, 1 if not."""
+    good = {"account_id": "123456789012"}  # moto's account; default credentials
+    wrong = {"account_id": "999999999999"}  # not the account of the credentials
+    (tmp_path / "good.json").write_text(json.dumps({"accounts": [good]}))
+    (tmp_path / "mixed.json").write_text(json.dumps({"accounts": [good, wrong]}))
+    assert run_cli("--accounts-file", "good.json", "--validate-credentials") == 0
+    assert run_cli("--accounts-file", "mixed.json", "--validate-credentials") == 1
+
+
+def test_tag_mapping_matches_keys_case_insensitively_unless_case_sensitive(tmp_path):
+    """glossary: a tag mapping matches keys case-insensitively unless
+    `case_sensitive: true`."""
+    from inventag.discovery.tag_mapping import TagMappingEngine
+
+    path = tmp_path / "m.yaml"
+    path.write_text(
+        "tag_mappings:\n"
+        "  - {tag: Owner, name: Owner Mapped}\n"
+        "  - {tag: Team, name: Team Mapped, case_sensitive: true}\n"
+    )
+    engine = TagMappingEngine(str(path))
+    result = engine.extract_custom_attributes(
+        {"id": "r", "tags": {"owner": "alex", "team": "core"}}
+    )
+    assert result.mapped_attributes["Owner Mapped"] == "alex"  # matched "owner"
+    assert result.mapped_attributes["Team Mapped"] != "core"  # "team" is not "Team"
+    exact = engine.extract_custom_attributes({"id": "r", "tags": {"Team": "core"}})
+    assert exact.mapped_attributes["Team Mapped"] == "core"
+
+
+def _word_headers(tmp_path, resources):
+    import docx
+
+    from inventag.reporting.converter import BOMConverter
+
+    out = tmp_path / "w.docx"
+    BOMConverter().generate_word_bom(resources, str(out))
+    document = docx.Document(str(out))
+    return [
+        [c.text for c in t.rows[0].cells]
+        for t in document.tables
+        if len(t.columns) == 6
+    ]
+
+
+def test_word_report_six_columns_name_or_source_account_name(tmp_path):
+    """outputs.md: six columns. Name when a resource of the service has a name,
+    otherwise Source Account Name takes the sixth place."""
+    base = {
+        "service": "SQS",
+        "type": "Queue",
+        "region": "us-east-1",
+        "tags": {"Owner": "x"},
+        "account_id": "123456789012",
+        "source_account_name": "prod",
+    }
+    named = [dict(base, id="q1", name="orders")]
+    unnamed = [dict(base, id="q2")]
+    assert _word_headers(tmp_path, named)[-1] == [
+        "Name",
+        "Id",
+        "Type",
+        "Region",
+        "Tags",
+        "Service",
+    ]
+    assert _word_headers(tmp_path, unnamed)[-1] == [
+        "Id",
+        "Type",
+        "Region",
+        "Tags",
+        "Service",
+        "Source Account Name",
+    ]
+
+
+def test_config_template_gives_the_same_accounts_as_an_accounts_file(
+    empty_aws, tmp_path
+):
+    """configuration-files.md: a config template does what an accounts file does
+    (here: the same two accounts) and cannot hold keys."""
+    import logging as _logging
+
+    from inventag.templating.errors import TemplateError
+    from inventag.templating.runner import apply_config, load_templates
+
+    accounts = [
+        {
+            "account_id": "111111111111",
+            "account_name": "prod",
+            "profile_name": "prod-profile",
+            "regions": ["us-east-1"],
+            "services": ["S3"],
+        },
+        {
+            "account_id": "222222222222",
+            "account_name": "dev",
+            "role_arn": "arn:aws:iam::222222222222:role/InvenTagReadOnly",
+            "external_id": "abc",
+            "regions": ["eu-west-1"],
+        },
+    ]
+    (tmp_path / "a.json").write_text(json.dumps({"accounts": accounts}))
+    (tmp_path / "c.yaml").write_text(
+        yaml.safe_dump({"kind": "config", "name": "c", "spec": {"accounts": accounts}})
+    )
+    file_args = cli_main.create_parser().parse_args(["--accounts-file", "a.json"])
+    from_file = cli_main.create_multi_account_config(file_args).accounts
+    tmpl_args = cli_main.create_parser().parse_args(["--template", "c.yaml"])
+    run = load_templates(tmpl_args.template)
+    apply_config(run, tmpl_args, set(), _logging.getLogger("t"))
+    try:
+        from_template = cli_main.create_multi_account_config(tmpl_args).accounts
+    finally:
+        run.cleanup()
+    assert from_template == from_file and len(from_file) == 2
+    # a template with a key field is refused
+    (tmp_path / "k.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "kind": "config",
+                "name": "k",
+                "spec": {
+                    "accounts": [
+                        {"account_id": "111111111111", "access_key_id": "AKIAEXAMPLE"}
+                    ]
+                },
+            }
+        )
+    )
+    with pytest.raises(TemplateError):
+        load_templates(["k.yaml"])
+
+
+def test_profile_name_selects_the_aws_cli_profile(empty_aws, tmp_path, monkeypatch):
+    """configuration-files.md: `profile_name` selects the AWS CLI profile."""
+    (tmp_path / "config").write_text("[profile acme]\nregion = us-east-1\n")
+    (tmp_path / "creds").write_text(
+        "[acme]\naws_access_key_id = AKIAPROFILEEXAMPLE1\n"
+        "aws_secret_access_key = fake-profile-secret-for-moto\n"
+    )
+    monkeypatch.setenv("AWS_CONFIG_FILE", str(tmp_path / "config"))
+    monkeypatch.setenv("AWS_SHARED_CREDENTIALS_FILE", str(tmp_path / "creds"))
+    from inventag.core.cloud_bom_generator import AccountCredentials, CloudBOMGenerator
+    from inventag.core.cloud_bom_generator import MultiAccountConfig
+
+    generator = CloudBOMGenerator(MultiAccountConfig(accounts=[]))
+    session = generator._create_account_session(
+        AccountCredentials(account_id="123456789012", profile_name="acme")
+    )
+    assert session.profile_name == "acme"
+    assert session.get_credentials().access_key == "AKIAPROFILEEXAMPLE1"
