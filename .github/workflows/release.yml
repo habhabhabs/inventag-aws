@@ -29,6 +29,11 @@ permissions:
 # Runs that can never release ([skip release] or [skip ci] pushes, and the manual
 # publish-only run) get a group of their own: in the shared group they would
 # replace a queued release run, and the commit of that run would not be released.
+# Every other push stays in the shared group, even one that changes only docs or
+# .github/**: it releases when any commit since the last tag changed the
+# application (release-needed.sh reads the whole range), so it may stand in for a
+# release run it replaces, and it must never run beside a release that has not
+# tagged yet, or both would release the same change.
 concurrency:
   group: >-
     ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.publish_existing_tag != '') ||
@@ -53,6 +58,8 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
+        # All history and all tags: release-needed.sh compares the pushed commit
+        # with the last release tag (and refuses a shallow clone).
         fetch-depth: 0
 
     - name: Check for release triggers
@@ -96,16 +103,45 @@ jobs:
           # (their message carries the PR title).
           if echo "$COMMIT_MSG" | grep -qiE "\[skip (release|ci)\]"; then
             echo "Commit asks to skip the release - no release triggered"
+            exit 0
+          fi
+
+          if echo "$COMMIT_MSG" | head -n 1 | grep -q "^chore: bump version to "; then
+            # The release job's own version commit: never release it again.
+            echo "Automated version bump commit - no release triggered"
+            exit 0
+          fi
+
+          # A new version only when the application changed since the last
+          # release tag. .github/scripts/release-needed.sh defines "application"
+          # and reads every commit since that tag (one release covers them all).
+          NEEDED=$(bash .github/scripts/release-needed.sh "$GITHUB_SHA")
+          echo "$NEEDED"
+          BASE_TAG=$(echo "$NEEDED" | sed -n 's/^base_tag=//p')
+          APP_CHANGED=$(echo "$NEEDED" | sed -n 's/^application_changed=//p')
+          case "$APP_CHANGED" in true|false) ;; *) echo "release-needed.sh gave no answer"; exit 1;; esac
+
+          if [ "$APP_CHANGED" = "false" ]; then
+            echo "No application change since ${BASE_TAG:-the first commit}: no release"
+            if echo "$COMMIT_MSG" | grep -qiE "^Release-As: *(patch|minor|major) *$"; then
+              echo "The Release-As line is ignored: a version is released only for an application change. To force a release, run this workflow by hand with a version bump."
+            fi
+            if echo "$COMMIT_MSG" | head -n 1 | grep -q "^Merge pull request #"; then
+              echo "Any release:* label on the pull request is ignored for the same reason."
+            fi
+            exit 0
+          fi
+
           # Check if this is a merge commit from a PR
-          elif echo "$COMMIT_MSG" | head -n 1 | grep -q "^Merge pull request #"; then
+          if echo "$COMMIT_MSG" | head -n 1 | grep -q "^Merge pull request #"; then
             # PR number from the first line only: the body may mention other #numbers
             PR_NUM=$(echo "$COMMIT_MSG" | head -n 1 | grep -o "#[0-9]\+" | head -n 1 | tr -d '#')
             echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
-            
+
             # Get PR labels to determine version bump
             PR_LABELS=$(gh pr view $PR_NUM --json labels --jq '.labels[].name' || echo "")
             echo "PR Labels: $PR_LABELS"
-            
+
             # Determine version bump from labels
             if echo "$PR_LABELS" | grep -q "release:major"; then
               echo "should_release=true" >> $GITHUB_OUTPUT
@@ -125,12 +161,10 @@ jobs:
               echo "version_bump=patch" >> $GITHUB_OUTPUT
               echo "Default patch release for PR #$PR_NUM (no version label found)"
             fi
-          elif echo "$COMMIT_MSG" | head -n 1 | grep -q "^chore: bump version to "; then
-            # The release job's own version commit: never release it again.
-            echo "Automated version bump commit - no release triggered"
           else
-            # Every other push to main is a patch release, unless the commit
-            # message has a "Release-As: minor|major" (or patch) line.
+            # Every other push to main with an application change is a patch
+            # release, unless the commit message has a "Release-As: minor|major"
+            # (or patch) line.
             BUMP=$(echo "$COMMIT_MSG" | grep -oiE "^Release-As: *(patch|minor|major) *$" | head -n 1 | sed -E 's/^[^:]*: *//' | tr 'A-Z' 'a-z' | tr -d ' ' || true)
             BUMP=${BUMP:-patch}
             echo "should_release=true" >> $GITHUB_OUTPUT

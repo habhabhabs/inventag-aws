@@ -3,18 +3,25 @@
 ``.github/scripts/release-needed.sh`` is the one place that defines the
 application paths. The release workflow releases a new version only when it
 prints ``application_changed=true``. Each test builds a small git repository in
-a temporary folder, so the tests need ``git`` and ``bash`` and nothing else.
+a temporary folder, so the tests need ``git``, ``bash`` and PyYAML.
+
+The last group runs the "Check for release triggers" step of release.yml itself
+(read from the workflow file) against such a repository, to prove the order of
+the release rules.
 """
 
 import os
+import re
+import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 
-SCRIPT = (
-    Path(__file__).resolve().parents[2] / ".github" / "scripts" / "release-needed.sh"
-)
+ROOT = Path(__file__).resolve().parents[2]
+SCRIPT = ROOT / ".github" / "scripts" / "release-needed.sh"
+RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 
 GIT_ENV = {
     "GIT_AUTHOR_NAME": "Test",
@@ -278,3 +285,143 @@ def test_an_unknown_commit_is_an_error(repo):
     result = run_script(repo.path, "no-such-commit")
     assert result.returncode != 0
     assert "application_changed" not in result.stdout
+
+
+# ----------------------------------------------- the release.yml decision step
+def check_step_script() -> str:
+    workflow = yaml.safe_load(RELEASE_WORKFLOW.read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["check-for-release"]["steps"]
+    return next(step for step in steps if step.get("id") == "check")["run"]
+
+
+def run_check_step(
+    repo: Repo,
+    tmp_path: Path,
+    event: str = "push",
+    labels: str = "",
+    version_bump: str = "",
+    publish_tag: str = "",
+) -> tuple:
+    """Run the step as GitHub would (bash -e), with a fake ``gh`` for PR labels."""
+    sha = repo.git("rev-parse", "HEAD")
+    values = {"github.event_name": event, "github.ref": "refs/heads/main"}
+    values["github.sha"] = sha
+
+    def render(match):
+        return values[match.group(1)]
+
+    script = re.sub(r"\$\{\{\s*([a-z_.]+)\s*\}\}", render, check_step_script())
+    # The step runs the script from the checkout of the commit.
+    target = repo.path / ".github" / "scripts" / "release-needed.sh"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(SCRIPT, target)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    fake_gh = bin_dir / "gh"
+    fake_gh.write_text("#!/bin/sh\nprintf '%s\\n' " + repr(labels) + "\n")
+    fake_gh.chmod(0o755)
+    output = tmp_path / "github_output"
+    output.write_text("")
+    env = {
+        **os.environ,
+        **GIT_ENV,
+        "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+        "GITHUB_OUTPUT": str(output),
+        "GITHUB_SHA": sha,
+        "INPUT_VERSION_BUMP": version_bump,
+        "INPUT_PUBLISH_TAG": publish_tag,
+    }
+    result = subprocess.run(
+        ["bash", "-e", "-c", script],
+        cwd=repo.path,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    outputs = {}
+    for line in output.read_text().splitlines():
+        key, _, value = line.partition("=")
+        outputs[key] = value  # the last value written wins, as on GitHub
+    return outputs, result.stdout
+
+
+def test_step_docs_only_push_is_no_release_and_says_why(repo, tmp_path):
+    repo.commit("docs: a page", {"docs/index.md": "x\n"})
+    outputs, log = run_check_step(repo, tmp_path)
+    assert outputs["should_release"] == "false"
+    assert "No application change since v1.0.0: no release" in log
+
+
+def test_step_code_push_is_a_patch_release(repo, tmp_path):
+    repo.commit("fix: a bug", {"inventag/core.py": "x = 1\n"})
+    outputs, _ = run_check_step(repo, tmp_path)
+    assert (outputs["should_release"], outputs["version_bump"]) == ("true", "patch")
+
+
+def test_step_release_as_line_with_code_sets_the_bump(repo, tmp_path):
+    repo.commit("feat: x\n\nRelease-As: minor", {"inventag/core.py": "x = 1\n"})
+    outputs, _ = run_check_step(repo, tmp_path)
+    assert (outputs["should_release"], outputs["version_bump"]) == ("true", "minor")
+
+
+def test_step_release_as_line_without_code_is_no_release(repo, tmp_path):
+    repo.commit("docs: x\n\nRelease-As: major", {"docs/index.md": "x\n"})
+    outputs, log = run_check_step(repo, tmp_path)
+    assert outputs["should_release"] == "false"
+    assert "No application change since v1.0.0: no release" in log
+    assert "The Release-As line is ignored" in log
+
+
+def test_step_pr_label_with_code_sets_the_bump(repo, tmp_path):
+    repo.commit("Merge pull request #12 from a/b\n\nfeat", {"inventag/x.py": "1\n"})
+    outputs, _ = run_check_step(repo, tmp_path, labels="release:minor")
+    assert (outputs["should_release"], outputs["version_bump"]) == ("true", "minor")
+    assert outputs["pr_number"] == "12"
+
+
+def test_step_pr_label_without_code_is_no_release(repo, tmp_path):
+    repo.commit("Merge pull request #13 from a/b\n\ndocs", {"docs/index.md": "x\n"})
+    outputs, log = run_check_step(repo, tmp_path, labels="release:major")
+    assert outputs["should_release"] == "false"
+    assert "release:* label on the pull request is ignored" in log
+
+
+def test_step_skip_release_wins_over_a_code_change(repo, tmp_path):
+    repo.commit("fix: x [skip release]", {"inventag/core.py": "x = 1\n"})
+    outputs, log = run_check_step(repo, tmp_path)
+    assert outputs["should_release"] == "false"
+    assert "skip the release" in log
+
+
+def test_step_bump_commit_is_no_release(repo, tmp_path):
+    repo.commit("fix: x", {"inventag/core.py": "x = 1\n"})
+    repo.commit("chore: bump version to v1.0.1", {"inventag/_version.py": "1.0.1\n"})
+    outputs, log = run_check_step(repo, tmp_path)
+    assert outputs["should_release"] == "false"
+    assert "Automated version bump commit" in log
+
+
+def test_step_commit_inside_a_release_tag_is_no_release(repo, tmp_path):
+    repo.commit("fix: x", {"inventag/core.py": "x = 1\n"})
+    repo.git("tag", "v1.0.1")
+    outputs, log = run_check_step(repo, tmp_path)
+    assert outputs["should_release"] == "false"
+    assert "already part of v1.0.1" in log
+
+
+def test_step_manual_run_with_a_bump_forces_a_release(repo, tmp_path):
+    repo.commit("docs: only docs", {"docs/index.md": "x\n"})
+    outputs, _ = run_check_step(
+        repo, tmp_path, event="workflow_dispatch", version_bump="minor"
+    )
+    assert (outputs["should_release"], outputs["version_bump"]) == ("true", "minor")
+
+
+def test_step_publish_only_run_is_no_release(repo, tmp_path):
+    repo.commit("fix: x", {"inventag/core.py": "x = 1\n"})
+    outputs, log = run_check_step(
+        repo, tmp_path, event="workflow_dispatch", publish_tag="v1.0.0"
+    )
+    assert outputs["should_release"] == "false"
+    assert "Publish-only run" in log
