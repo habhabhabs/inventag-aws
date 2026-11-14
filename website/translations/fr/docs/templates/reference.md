@@ -126,7 +126,7 @@ le validateur accepte.
 |---|---|---|---|
 | `spec.accounts` | liste de mappings | non défini | Comptes à analyser. Omettez-le pour analyser le compte de vos identifiants AWS actuels. Chaque compte nécessite `profile_name` ou `role_arn`. |
 | `spec.regions` | liste de textes | non défini | Régions à analyser (`--account-regions`). Omettez-le pour analyser toutes les régions activées. |
-| `spec.services` | liste de textes | non défini | Services à inclure (`--account-services`). Actuellement appliqué dans un seul chemin de découverte ; d’autres services peuvent donc encore apparaître. |
+| `spec.services` | liste de textes | non défini | Services à inclure (`--account-services`). Limite les services du rapport. L’analyse lit toujours tous les services ; des avertissements sur d’autres services peuvent donc apparaître. |
 | `spec.outputs` | liste de valeurs parmi `excel`, `word` | `["excel"]` | Fichiers à produire (`--create-excel`, `--create-word`). |
 | `spec.output_directory` | texte | `bom_output` | Dossier des rapports (`--output-directory`). |
 | `spec.report_template` | nom de modèle ou chemin relatif | `standard-bom` | Modèle de rapport à utiliser, par nom ou par chemin relatif. |

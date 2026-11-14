@@ -127,7 +127,7 @@ con lo que acepta el validador.
 |---|---|---|---|
 | `spec.accounts` | lista de mapeos | sin definir | Cuentas que se analizan. Omítelo para analizar la cuenta de tus credenciales de AWS actuales. Cada cuenta necesita `profile_name` o `role_arn`. |
 | `spec.regions` | lista de textos | sin definir | Regiones que se analizan (`--account-regions`). Omítelo para analizar todas las regiones habilitadas. |
-| `spec.services` | lista de textos | sin definir | Servicios que se incluyen (`--account-services`). Por ahora se aplica solo en una ruta de descubrimiento, así que aún pueden aparecer otros servicios. |
+| `spec.services` | lista de textos | sin definir | Servicios que se incluyen (`--account-services`). Limita los servicios del informe. El escaneo sigue leyendo todos los servicios, así que pueden aparecer avisos sobre otros servicios. |
 | `spec.outputs` | lista de valores de `excel`, `word` | `["excel"]` | Archivos que se producen (`--create-excel`, `--create-word`). |
 | `spec.output_directory` | texto | `bom_output` | Carpeta de los informes (`--output-directory`). |
 | `spec.report_template` | nombre de plantilla o ruta relativa | `standard-bom` | Plantilla de informe que se usa, por nombre o ruta relativa. |

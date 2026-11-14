@@ -127,7 +127,7 @@ the validator accepts.
 |---|---|---|---|
 | `spec.accounts` | list of mappings | not set | Accounts to scan. Leave out to scan the account of your current AWS credentials. Each account needs `profile_name` or `role_arn`. |
 | `spec.regions` | list of text | not set | Regions to scan (`--account-regions`). Leave out to scan every enabled region. |
-| `spec.services` | list of text | not set | Services to include (`--account-services`). Currently applied in one discovery path only, so other services can still appear. |
+| `spec.services` | list of text | not set | Services to include (`--account-services`). Limits the services in the report. The scan still reads every service, so warnings about other services can appear. |
 | `spec.outputs` | list of values from `excel`, `word` | `["excel"]` | Files to produce (`--create-excel`, `--create-word`). |
 | `spec.output_directory` | text | `bom_output` | Folder for the reports (`--output-directory`). |
 | `spec.report_template` | template name or relative path | `standard-bom` | Report template to use, by name or relative path. |

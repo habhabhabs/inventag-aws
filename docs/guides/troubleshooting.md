@@ -35,6 +35,7 @@ inventag.cli.main - ERROR -       export AWS_ACCESS_KEY_ID=your-key
 inventag.cli.main - ERROR -       export AWS_SECRET_ACCESS_KEY=your-secret
 inventag.cli.main - ERROR -    3. Use IAM roles if running on EC2/ECS/Lambda
 inventag.cli.main - ERROR -    4. Use --accounts-prompt for interactive setup
+inventag.cli.main - ERROR -    5. If you use AWS SSO, run 'aws sso login --profile <name>' and set AWS_PROFILE=<name>, or name the profile in an accounts file
 inventag - ERROR - ❌ Cannot proceed with invalid AWS credentials
 inventag - ERROR - 💡 Use --accounts-prompt for interactive credential setup
 inventag - ERROR - 💡 Or use --skip-credential-validation to bypass this check
@@ -221,6 +222,8 @@ be turned off.
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Region ap-east-1 test failed: An error occurred (AuthFailure) when calling the DescribeRegions operation: AWS was not able to validate the provided access credentials
 Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
+inventag - WARNING - Notes about this run:
+inventag - WARNING -   - Regions skipped in account 123456789012 because the region check (ec2:DescribeRegions) was denied or failed there: ap-east-1.
 ```
 
 ```bash title="Terminal"

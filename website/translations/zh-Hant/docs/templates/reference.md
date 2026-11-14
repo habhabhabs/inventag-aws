@@ -117,7 +117,7 @@ spec:                      # the settings for this kind
 |---|---|---|---|
 | `spec.accounts` | 對應列表 | 未設定 | 要掃描的帳戶。省略則掃描你目前 AWS 憑證所屬的帳戶。每個帳戶需要 `profile_name` 或 `role_arn`。 |
 | `spec.regions` | 文字列表 | 未設定 | 要掃描的區域（`--account-regions`）。省略則掃描每個已啟用的區域。 |
-| `spec.services` | 文字列表 | 未設定 | 要包含的服務（`--account-services`）。目前只在一條發現路徑中生效，因此其他服務仍可能出現。 |
+| `spec.services` | 文字列表 | 未設定 | 要包含的服務（`--account-services`）。限制報告中的服務。掃描仍會讀取所有服務，因此可能出現關於其他服務的警告。 |
 | `spec.outputs` | 取自 `excel`、`word` 的值列表 | `["excel"]` | 要生成的檔案（`--create-excel`、`--create-word`）。 |
 | `spec.output_directory` | 文字 | `bom_output` | 報告所在的資料夾（`--output-directory`）。 |
 | `spec.report_template` | 範本名稱或相對路徑 | `standard-bom` | 要使用的報告範本，按名稱或相對路徑指定。 |
