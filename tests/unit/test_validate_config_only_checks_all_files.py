@@ -136,3 +136,26 @@ def test_bom_config_warning_is_one_clean_sentence_for_a_bad_value(tmp_path, caps
     assert "max_worker_threads" in line
     assert line.endswith(". A real run stops with exit code 1 on this file.")
     assert ".." not in line
+
+
+ACCOUNTS_WITH_WARNINGS = (
+    "accounts:\n"
+    "  - {account_id: '111111111111', profil_name: a, profile_name: a}\n"
+    "  - {account_id: '111111111111', profile_name: b}\n"
+)
+
+
+@pytest.mark.parametrize("mode", ["--validate-config-only", "--validate-config"])
+def test_accounts_file_warnings_also_appear_in_the_validation_modes(
+    tmp_path, capsys, mode
+):
+    path = tmp_path / "accounts.yaml"
+    path.write_text(ACCOUNTS_WITH_WARNINGS)
+    path.chmod(0o600)
+    code, text = run_cli(
+        capsys, mode, "--accounts-file", str(path), "--skip-credential-validation"
+    )
+    assert code == 0  # exit code as in v1.2.0
+    assert "unknown key 'profil_name'" in text
+    assert "account ID 111111111111 is already listed" in text
+    assert text.count("unknown key 'profil_name'") == 1
