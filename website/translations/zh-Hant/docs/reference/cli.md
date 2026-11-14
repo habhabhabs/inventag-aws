@@ -169,32 +169,56 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | `--compliance-standard ...` | 無 | 以結束代碼 2 停止 | 未實現：無法根據清單檢查某個標準。請使用標籤策略範本。 |
 | `--risk-threshold LEVEL` | 無 | 可用 | 與 `--enable-security-analysis` 一起使用時：如果有安全組規則達到或超過 `LOW`、`MEDIUM`、`HIGH` 或 `CRITICAL`，結束代碼為 4。沒有 `--enable-security-analysis` 時：結束代碼為 2。 |
 
-```text title="Terminal"
+```text title="輸出"
 ALLOWED  ec2:DescribeInstances (read-only prefix)
 ALLOWED  s3:GetBucketTagging (read-only prefix)
 BLOCKED  s3:PutObject (operation is not on the read-only allowlist)
 BLOCKED  secretsmanager:GetSecretValue (operation returns secrets, signed URLs or customer data)
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="輸出"
 1
 ```
 
 以結束代碼 2 停止的引數會列印如下內容：
 
-```text title="Terminal"
-$ inventag --create-google-docs
+```bash title="Terminal"
+inventag --create-google-docs
+```
+
+```text title="輸出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 inventag: error: Google: Google output needs libraries that are not installed (google.auth). Install the Google libraries with: pip install "inventag-aws[google]"
 (exit code 2)
+```
 
-$ inventag --risk-threshold HIGH
+```bash title="Terminal"
+inventag --risk-threshold HIGH
+```
+
+```text title="輸出"
 inventag: error: --risk-threshold: needs --enable-security-analysis, which produces the risk levels it checks.
 (exit code 2)
+```
 
-$ inventag --compliance-standard soc2
+```bash title="Terminal"
+inventag --compliance-standard soc2
+```
+
+```text title="輸出"
 inventag: error: --compliance-standard: Compliance-standard enforcement is not implemented yet; the option has never changed InvenTag's behaviour.
 (exit code 2)
+```
 
-$ inventag --disable-production-safety
+```bash title="Terminal"
+inventag --disable-production-safety
+```
+
+```text title="輸出"
 inventag: error: --disable-production-safety: The read-only guard cannot be disabled from the CLI: InvenTag only needs read access, so non-read AWS calls are always blocked.
 (exit code 2)
 ```

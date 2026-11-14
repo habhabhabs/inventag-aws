@@ -178,32 +178,56 @@ sea de lectura, y las lecturas que devuelven secretos o datos.
 | `--compliance-standard ...` | ninguno | Se detiene con el código de salida 2 | No implementada: un estándar no se puede comprobar a partir de un inventario. Usa una plantilla de política de etiquetas. |
 | `--risk-threshold LEVEL` | ninguno | Funciona | Con `--enable-security-analysis`: código de salida 4 si una regla de un grupo de seguridad está en `LOW`, `MEDIUM`, `HIGH` o `CRITICAL`, o por encima. Sin `--enable-security-analysis`: código de salida 2. |
 
-```text title="Terminal"
+```text title="Salida"
 ALLOWED  ec2:DescribeInstances (read-only prefix)
 ALLOWED  s3:GetBucketTagging (read-only prefix)
 BLOCKED  s3:PutObject (operation is not on the read-only allowlist)
 BLOCKED  secretsmanager:GetSecretValue (operation returns secrets, signed URLs or customer data)
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Salida"
 1
 ```
 
 Lo que imprimen las opciones que se detienen con el código de salida 2:
 
-```text title="Terminal"
-$ inventag --create-google-docs
+```bash title="Terminal"
+inventag --create-google-docs
+```
+
+```text title="Salida"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 inventag: error: Google: Google output needs libraries that are not installed (google.auth). Install the Google libraries with: pip install "inventag-aws[google]"
 (exit code 2)
+```
 
-$ inventag --risk-threshold HIGH
+```bash title="Terminal"
+inventag --risk-threshold HIGH
+```
+
+```text title="Salida"
 inventag: error: --risk-threshold: needs --enable-security-analysis, which produces the risk levels it checks.
 (exit code 2)
+```
 
-$ inventag --compliance-standard soc2
+```bash title="Terminal"
+inventag --compliance-standard soc2
+```
+
+```text title="Salida"
 inventag: error: --compliance-standard: Compliance-standard enforcement is not implemented yet; the option has never changed InvenTag's behaviour.
 (exit code 2)
+```
 
-$ inventag --disable-production-safety
+```bash title="Terminal"
+inventag --disable-production-safety
+```
+
+```text title="Salida"
 inventag: error: --disable-production-safety: The read-only guard cannot be disabled from the CLI: InvenTag only needs read access, so non-read AWS calls are always blocked.
 (exit code 2)
 ```
