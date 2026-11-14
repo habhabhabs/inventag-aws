@@ -463,3 +463,131 @@ def test_the_guard_blocks_the_nine_operations_of_the_read_only_page(operation, c
     assert capsys.readouterr().out.startswith(
         f"BLOCKED  {operation} (operation returns secrets, signed URLs or customer data)"
     )
+
+
+# ------------------------------------------------ track changes: the first run after the upgrade
+def test_a_masked_value_shows_as_a_change_against_a_snapshot_with_the_raw_value():
+    from inventag.state.delta_detector import DeltaDetector
+
+    arn = "arn:aws:lambda:us-east-1:123456789012:function:f"
+    old = [
+        {
+            "service": "Lambda",
+            "type": "Function",
+            "id": "f",
+            "arn": arn,
+            "region": "us-east-1",
+            "environment": {"Variables": {"DB_PASSWORD": "hunter2"}},
+        }
+    ]
+    new = [
+        {
+            **old[0],
+            "environment": {"Variables": {"DB_PASSWORD": "***REDACTED***"}},
+        }
+    ]
+    report = DeltaDetector().detect_changes(old, new, "old", "new")
+    assert report.summary["modified_count"] == 1
+    # The same masked value in two runs is no change.
+    again = DeltaDetector().detect_changes(new, new, "a", "b")
+    assert again.summary["modified_count"] == 0
+
+
+# ------------------------------------------------ Google output with a mocked client (google-sheets-and-docs)
+def _fake_google(monkeypatch):
+    from inventag.reporting import google_output as go
+    from tests.unit.test_google_output import fake_services
+
+    log = []
+    monkeypatch.setattr(go, "load_credentials", lambda options: object())
+    monkeypatch.setattr(go, "build_services", lambda creds: fake_services(log))
+    return go, log
+
+
+def _two_account_google_run(tmp_path, monkeypatch, capsys):
+    seed_account(OTHER_ID, OTHER["role_arn"])
+    RoleControl(monkeypatch)
+    go, log = _fake_google(monkeypatch)
+    path = accounts_file(tmp_path, [GOOD, OTHER])
+    code = run_cli(
+        "--accounts-file",
+        path,
+        "--per-account-reports",
+        "--create-google-sheets",
+        "--create-google-docs",
+        "--google-title",
+        "AWS inventory",
+        "--no-billing-validation",
+    )
+    return code, log, capsys.readouterr().out
+
+
+def test_per_account_reports_make_two_pairs_of_google_files_with_the_account_in_the_title(
+    aws, tmp_path, monkeypatch, capsys
+):
+    code, log, _ = _two_account_google_run(tmp_path, monkeypatch, capsys)
+    assert code == 0
+    sheets = [
+        kw["body"]["properties"]["title"] for n, kw in log if n == "spreadsheets.create"
+    ]
+    docs = [kw["body"]["title"] for n, kw in log if n == "documents.create"]
+    assert sorted(sheets) == [
+        f"AWS inventory - {GOOD_ID}",
+        f"AWS inventory - {OTHER_ID}",
+    ]
+    assert sorted(docs) == sorted(sheets)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="the URL line is 'Google Sheet: [<id>] <url>': the line starts with "
+    "'Google Sheet:', and the page says each URL line starts with [<id>]",
+)
+def test_per_account_url_lines_start_with_the_account_id_in_brackets(
+    aws, tmp_path, monkeypatch, capsys
+):
+    code, _, out = _two_account_google_run(tmp_path, monkeypatch, capsys)
+    assert code == 0
+    lines = [l for l in out.splitlines() if "docs.google.com" in l]
+    assert len(lines) == 4
+    assert all(
+        l.startswith(f"[{GOOD_ID}]") or l.startswith(f"[{OTHER_ID}]") for l in lines
+    )
+
+
+def test_no_resources_means_no_google_file(aws, tmp_path, monkeypatch, capsys):
+    go, log = _fake_google(monkeypatch)
+    monkeypatch.setattr(
+        cbg_module().CloudBOMGenerator,
+        "_discover_account_resources_inner",
+        lambda self, account_id, context: [],
+    )
+    code = run_cli(
+        "--create-google-sheets",
+        "--create-google-docs",
+        "--account-regions",
+        "us-east-1",
+        "--no-billing-validation",
+    )
+    assert code == 0
+    assert not [n for n, _ in log if n.endswith(".create")]
+    assert "docs.google.com" not in capsys.readouterr().out
+
+
+def test_a_report_too_big_for_google_creates_nothing_exits_1_and_keeps_excel(
+    aws, tmp_path, monkeypatch, capsys
+):
+    go, log = _fake_google(monkeypatch)
+    monkeypatch.setattr(go, "MAX_SPREADSHEET_CELLS", 10)
+    code = run_cli(
+        "--account-regions",
+        "us-east-1",
+        "--create-excel",
+        "--create-google-sheets",
+        "--no-billing-validation",
+        "--output-directory",
+        "out",
+    )
+    assert code == 1
+    assert not [n for n, _ in log if n.endswith(".create")]
+    assert len(reports(tmp_path / "out")) == 1
