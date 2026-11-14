@@ -94,9 +94,6 @@ def _work(groups, linked):
     return CountingRow.counter[0], links
 
 
-@pytest.mark.xfail(
-    strict=True, reason="quadratic impact analysis in v1.2.0; removed by the fix"
-)
 @pytest.mark.parametrize("linked", [False, True], ids=["scanner-rows", "linked-rows"])
 def test_change_detection_work_grows_linearly(linked):
     small, small_links = _work(20, linked)
