@@ -25,7 +25,7 @@ sidebar_position: 6
 | **IAM Identity Center** | 用於單點登入（SSO）AWS 帳戶的 AWS 服務。它曾叫 AWS SSO。 |
 | **IAM 角色（IAM role）** | 一種帶有權限的身份，其他身份可以臨時擔任它。 |
 | **moto** | 一個在你的電腦上模擬 AWS 的 Python 庫。文件中的範例輸出來自針對 moto 的執行。 |
-| **OIDC** | OpenID Connect：讓 GitHub Actions 等 CI 系統無需儲存金鑰即可獲得短期 AWS 憑證。 |
+| **OIDC** | OpenID Connect：讓 GitHub Actions 或 GitLab CI/CD 等 CI 系統無需儲存金鑰即可獲得短期 AWS 憑證。 |
 | **範圍外（Out of scope）** | 由於 `scope` 設定，標籤策略不檢查的資源。 |
 | **唯讀防護（Read-only guard）** | InvenTag 中在每個 AWS 呼叫發出之前進行檢查，並阻止所有非讀取呼叫的部分。始終開啟。 |
 | **區域（Region）** | AWS 的地理位置，以 `us-east-1` 或 `eu-west-1` 這樣的程式碼表示。 |

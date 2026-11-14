@@ -25,7 +25,7 @@ sidebar_position: 6
 | **IAM Identity Center** | 用于单点登录（SSO）AWS 账户的 AWS 服务。它曾叫 AWS SSO。 |
 | **IAM 角色（IAM role）** | 一种带有权限的身份，其他身份可以临时代入它。 |
 | **moto** | 一个在你的电脑上模拟 AWS 的 Python 库。文档中的示例输出来自针对 moto 的运行。 |
-| **OIDC** | OpenID Connect：让 GitHub Actions 等 CI 系统无需存储密钥即可获得短期 AWS 凭证。 |
+| **OIDC** | OpenID Connect：让 GitHub Actions 或 GitLab CI/CD 等 CI 系统无需存储密钥即可获得短期 AWS 凭证。 |
 | **范围外（Out of scope）** | 由于 `scope` 设置，标签策略不检查的资源。 |
 | **只读防护（Read-only guard）** | InvenTag 中在每个 AWS 调用发出之前进行检查，并阻止所有非读取调用的部分。始终开启。 |
 | **区域（Region）** | AWS 的地理位置，以 `us-east-1` 或 `eu-west-1` 这样的代码表示。 |

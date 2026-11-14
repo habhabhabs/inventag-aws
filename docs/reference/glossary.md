@@ -25,7 +25,7 @@ The docs use each term below in one meaning only.
 | **IAM Identity Center** | The AWS service for single sign-on (SSO) to AWS accounts. It was called AWS SSO. |
 | **IAM role** | An identity with permissions that other identities can assume for a short time. |
 | **moto** | A Python library that imitates AWS on your computer. The docs' sample outputs come from runs against moto. |
-| **OIDC** | OpenID Connect: lets a CI system such as GitHub Actions get short-lived AWS credentials without stored keys. |
+| **OIDC** | OpenID Connect: lets a CI system such as GitHub Actions or GitLab CI/CD get short-lived AWS credentials without stored keys. |
 | **Out of scope** | A resource that a tag policy does not check, because of its `scope` settings. |
 | **Read-only guard** | The part of InvenTag that checks every AWS call before it is sent and blocks anything that is not a read. Always on. |
 | **Region** | A geographic AWS location, written as a code such as `us-east-1` or `eu-west-1`. |

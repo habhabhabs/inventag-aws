@@ -25,7 +25,7 @@ La documentation emploie chacun des termes ci-dessous dans un seul sens.
 | **IAM Identity Center** | Le service AWS d’authentification unique (SSO) pour les comptes AWS. Il s’appelait AWS SSO. |
 | **Rôle IAM** | Une identité dotée d’autorisations que d’autres identités peuvent assumer pour une courte durée. |
 | **moto** | Une bibliothèque Python qui imite AWS sur votre ordinateur. Les exemples de sortie de la documentation proviennent d’exécutions sur moto. |
-| **OIDC** | OpenID Connect : permet à un système d’intégration continue tel que GitHub Actions d’obtenir des identifiants AWS de courte durée sans clés stockées. |
+| **OIDC** | OpenID Connect : permet à un système d’intégration continue tel que GitHub Actions ou GitLab CI/CD d’obtenir des identifiants AWS de courte durée sans clés stockées. |
 | **Hors périmètre** | Une ressource qu’une politique d’étiquetage ne vérifie pas, en raison de ses paramètres `scope`. |
 | **Protection en lecture seule** | La partie d’InvenTag qui vérifie chaque appel AWS avant son envoi et bloque tout ce qui n’est pas une lecture. Toujours active. |
 | **Région** | Un emplacement géographique AWS, écrit sous la forme d’un code tel que `us-east-1` ou `eu-west-1`. |
