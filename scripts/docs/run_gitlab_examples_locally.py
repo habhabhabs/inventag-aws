@@ -239,14 +239,13 @@ def _prepare_project(block: Dict[str, Any], doc: Dict[Any, Any], work: Path) -> 
 
 
 def _run_gitlab_ci_local(
-    project: Path, gcl: str, endpoint: str, tokens: List[str]
+    project: Path, site: Path, gcl: str, endpoint: str, tokens: List[str]
 ) -> str:
     """Run the pipeline as a scheduled one, with a controlled environment.
 
     gitlab-ci-local passes the host environment into shell jobs, so only the
     variables below reach a job: no local AWS credentials or config.
     """
-    site = project.parent / project.name.replace("block-", "site-")
     env = {
         "PATH": os.pathsep.join(
             [
@@ -318,8 +317,9 @@ def run_block(block: Dict[str, Any], gcl: str, endpoint: str, work: Path) -> boo
     doc = yaml.safe_load(block["body"])
     tokens = id_token_names(doc)
     project = _prepare_project(block, doc, work)
+    site = work / f"site-{block['line']}"
     _seed(endpoint)
-    output = _run_gitlab_ci_local(project, gcl, endpoint, tokens)
+    output = _run_gitlab_ci_local(project, site, gcl, endpoint, tokens)
     log = work / f"block-{block['line']}.log"
     log.write_text(output)
     roles = _assumed_roles(endpoint)
