@@ -10,7 +10,7 @@ sidebar_position: 7
 包含总数、服务和标签合规情况，不含逐个资源的表格。
 
 **你需要：** 只读凭证，以及一个 PNG、JPEG、GIF 或 BMP 格式的徽标文件。
-Word 无法嵌入 SVG 徽标。
+InvenTag 无法嵌入 SVG 徽标。
 
 ## 模板 {#template}
 
@@ -102,5 +102,8 @@ echo $?
 ## 下一步 {#next-steps}
 
 - 保持颜色易读：选择与表头文字对比度至少为 4.5:1 的表头颜色。
+
+  未针对 WCAG 验证：4.5:1 的对比度阈值。
+
 - 把完整清单也生成为 Excel 文件：
   `inventag --template board-report --create-word --create-excel`。

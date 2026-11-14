@@ -11,7 +11,7 @@ tus colores: totales, servicios y cumplimiento de etiquetas, sin tablas por
 recurso.
 
 **Necesitas:** credenciales de solo lectura y un logotipo en un archivo PNG,
-JPEG, GIF o BMP. Word no puede incrustar logotipos SVG.
+JPEG, GIF o BMP. InvenTag no puede incrustar logotipos SVG.
 
 ## Plantilla {#template}
 
@@ -105,5 +105,8 @@ echo $?
 
 - Mantén los colores legibles: elige un color de encabezado con una relación de
   contraste de al menos 4,5:1 respecto al texto del encabezado.
+
+  No verificado contra WCAG: el umbral de contraste de 4,5:1.
+
 - Añade el inventario completo como archivo de Excel:
   `inventag --template board-report --create-word --create-excel`.
