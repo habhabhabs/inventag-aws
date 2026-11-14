@@ -971,7 +971,8 @@ MATRIX: Dict[str, Dict[str, Any]] = {
             ("code", 1),
             ("report", False),
             ("out", "Resource discovery failed for all 2 configured account(s)"),
-            ("not", ("summary_has_cause", "InvalidClientTokenId")),
+            # fix/track-c (A-20): the summary gives the cause per account
+            ("summary_has_cause", "InvalidClientTokenId"),
         ),
         code=1,
         target=(("code", 1), ("summary_has_cause", "InvalidClientTokenId")),
@@ -1023,11 +1024,16 @@ MATRIX: Dict[str, Dict[str, Any]] = {
             ("code", 0),
             ("report", True),
             ("rows", "SQS", 1),
-            ("not", ("out_regex", r"(?i)listed twice|duplicate|more than once")),
+            # fix/track-c (A-27): the second entry gives a warning
+            (
+                "out",
+                "account ID 111111111111 is already listed as Account 1. "
+                "Only one entry per account ID is scanned",
+            ),
         ),
         target=(
             ("code", 0),
-            ("out_regex", r"(?i)listed twice|duplicate|more than once"),
+            ("out_regex", r"(?i)already listed|listed twice|duplicate|more than once"),
             ("no_out", "Configured 2 account"),
         ),
         wp="WP-E",
