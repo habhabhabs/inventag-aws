@@ -177,6 +177,70 @@ _RELATIONSHIP_FIELDS = (
 )
 
 
+def _relation_keys(resource: Dict) -> Optional[Set[Tuple[str, Any]]]:
+    """(field, value) pairs by which ``resource`` can be related to another.
+
+    Two resources that ``_resources_are_related`` finds related always share
+    one of these pairs (a list contributes each element). None when a value
+    cannot be hashed; the caller then compares with every row.
+    """
+    keys = set()
+    for name in _RELATIONSHIP_FIELDS:
+        value = resource.get(name)
+        if not value:
+            continue
+        for item in value if isinstance(value, list) else (value,):
+            try:
+                keys.add((name, item))
+            except TypeError:
+                return None
+    return keys
+
+
+class _RelatedIndex:
+    """Rows of the new snapshot by relationship value, built once per comparison.
+
+    ``candidates`` returns, in snapshot order, the only rows that can be
+    related to a resource; the caller still checks each one with
+    ``_resources_are_related``, so the result is the same as checking every
+    row. When the rows hold anything unusual (a service that is not a string,
+    a value that cannot be hashed) it returns None and the caller checks every
+    row, as before.
+    """
+
+    def __init__(self, new_resources_map: Dict[str, Dict]):
+        self.rows = list(new_resources_map.items())
+        self.by_key: Optional[Dict[Tuple[str, Any], List[int]]] = {}
+        self.always: List[int] = []
+        try:
+            for pos, (_, resource) in enumerate(self.rows):
+                if not isinstance(resource.get("service", ""), str):
+                    self.by_key = None
+                    return
+                keys = _relation_keys(resource)
+                if keys is None:
+                    self.always.append(pos)
+                    continue
+                for key in keys:
+                    self.by_key.setdefault(key, []).append(pos)
+        except Exception:
+            self.by_key = None
+
+    def candidates(self, resource: Dict) -> Optional[List[Tuple[str, Dict]]]:
+        if self.by_key is None:
+            return None
+        try:
+            keys = _relation_keys(resource)
+        except Exception:
+            return None
+        if keys is None:
+            return None
+        positions = set(self.always)
+        for key in keys:
+            positions.update(self.by_key.get(key, ()))
+        return [self.rows[pos] for pos in sorted(positions)]
+
+
 def _found_by_tagging_only(resource: Dict) -> bool:
     """True for a row only the Tagging API returned (v1.1.4 and v1.2.0 shapes)."""
     if resource.get("source"):
@@ -1470,6 +1534,9 @@ class DeltaDetector:
             "dependency_impacts": {},
             "cascade_risks": [],
         }
+        # Built once, so each change looks at the rows that can be related to
+        # it instead of the whole snapshot.
+        related_index = _RelatedIndex(new_resources_map)
 
         for change in all_changes:
             service = change.service.upper()
@@ -1480,7 +1547,11 @@ class DeltaDetector:
 
                 # Find related resources that might be affected
                 related_resources = self._find_related_resources(
-                    change, patterns, old_resources_map, new_resources_map
+                    change,
+                    patterns,
+                    old_resources_map,
+                    new_resources_map,
+                    related_index,
                 )
 
                 if related_resources:
@@ -1526,6 +1597,7 @@ class DeltaDetector:
         dependency_patterns: Dict[str, List[str]],
         old_resources_map: Dict[str, Dict],
         new_resources_map: Dict[str, Dict],
+        related_index: Optional[_RelatedIndex] = None,
     ) -> List[str]:
         """Find resources that might be affected by this change"""
         related_resources = []
@@ -1538,6 +1610,10 @@ class DeltaDetector:
             return related_resources
 
         rows = new_resources_map.items()
+        if related_index is not None:
+            candidates = related_index.candidates(resource_data)
+            if candidates is not None:
+                rows = candidates
 
         # Check resources that depend on this one
         for arn, resource in rows:
