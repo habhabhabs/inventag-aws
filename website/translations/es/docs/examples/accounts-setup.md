@@ -16,6 +16,8 @@ y una comprobación de etiquetas.
 - credenciales de una identidad que pueda asumir esos roles, por ejemplo en la
   cuenta de administración o en una cuenta de seguridad delegada.
 
+No verificado contra AWS real: la cuenta de administración o una cuenta delegada puede asumir los roles.
+
 ## Plantilla {#template}
 
 Lista tus cuentas:
@@ -23,6 +25,8 @@ Lista tus cuentas:
 ```bash title="Terminal"
 aws organizations list-accounts --query "Accounts[?Status=='ACTIVE'].[Id,Name]" --output text
 ```
+
+No verificado contra AWS real: el comando `aws organizations list-accounts` y las cuentas que lista.
 
 Copia la plantilla integrada y pon en ella tus cuentas:
 
@@ -111,8 +115,7 @@ La hoja tiene 9 columnas; se muestran las 7 primeras.
 ## Siguientes pasos {#next-steps}
 
 - Si una cuenta falla, InvenTag registra el error, informa de las demás y aun
-  así termina con el código 0, así que revisa el registro. La causa habitual es
-  la política de confianza del rol. Añade `--fail-on-account-error` para que
+  así termina con el código 0, así que revisa el registro. Añade `--fail-on-account-error` para que
   termine con el código 5, una vez escritos los informes. Si fallan todas las
   cuentas, la ejecución termina con el código 1.
 - Una cuenta que se queda sin tiempo conserva los recursos encontrados antes del

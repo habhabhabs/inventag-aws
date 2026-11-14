@@ -16,6 +16,8 @@ and a tag check.
 - credentials for an identity that may assume those roles, for example in the
   management account or a delegated security account.
 
+Not verified against real AWS: the management or a delegated account can assume the roles.
+
 ## Template
 
 List your accounts:
@@ -23,6 +25,8 @@ List your accounts:
 ```bash title="Terminal"
 aws organizations list-accounts --query "Accounts[?Status=='ACTIVE'].[Id,Name]" --output text
 ```
+
+Not verified against real AWS: the `aws organizations list-accounts` command and the accounts it lists.
 
 Copy the built-in template and put your accounts in it:
 
@@ -127,8 +131,7 @@ The sheet has 9 columns; the first 7 are shown.
 ## Next steps
 
 - If an account fails, InvenTag logs the error, reports the others and still
-  exits with code 0, so check the log. The usual cause is the role's trust
-  policy. Add `--fail-on-account-error` to exit with code 5 instead, after the
+  exits with code 0, so check the log. Add `--fail-on-account-error` to exit with code 5 instead, after the
   reports are written. If every account fails, the run exits with code 1.
 - An account that runs out of time keeps the resources found before the limit.
   After a run where some accounts failed, run the same command again with
