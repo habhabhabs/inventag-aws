@@ -41,12 +41,19 @@ def run_cli(capsys, *args):
     return code, captured.out + captured.err
 
 
-def test_validate_config_only_refuses_a_bom_config_that_a_run_refuses(tmp_path, capsys):
+def test_validate_config_only_warns_about_a_bom_config_that_a_run_refuses(
+    tmp_path, capsys
+):
     bad = tmp_path / "bom.yaml"
     bad.write_text("max_worker_threads: many\n")
     code, text = run_cli(capsys, "--validate-config-only", "--bom-config", str(bad))
-    assert "max_worker_threads" in text
-    assert code == 1  # the real run exits 1 on this file
+    assert code == 0  # exit code of the validation mode is unchanged (v1.2.0)
+    warnings = [
+        line for line in text.splitlines() if "WARNING" in line and "bom.yaml" in line
+    ]
+    assert len(warnings) == 1
+    assert "max_worker_threads" in warnings[0]
+    assert "exit code 1" in warnings[0]
 
 
 def test_validate_config_only_accepts_a_good_bom_config(tmp_path, capsys):
