@@ -20,7 +20,10 @@ from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 from botocore.exceptions import (
     ClientError,
+    ConnectTimeoutError,
+    EndpointConnectionError,
     NoCredentialsError,
+    ReadTimeoutError,
     SSOTokenLoadError,
     TokenRetrievalError,
     UnauthorizedSSOTokenError,
@@ -1336,11 +1339,34 @@ def validate_aws_credentials_early(timeout: Optional[int] = None) -> bool:
         logger.error("      export AWS_SECRET_ACCESS_KEY=your-secret")
         logger.error("   3. Use IAM roles if running on EC2/ECS/Lambda")
         logger.error("   4. Use --accounts-prompt for interactive setup")
+        logger.error(
+            "   5. If you use AWS SSO, run 'aws sso login --profile <name>' and "
+            "set AWS_PROFILE=<name>, or name the profile in an accounts file"
+        )
 
         return False
 
-    except Exception as e:
+    except (EndpointConnectionError, ConnectTimeoutError) as e:
         logger.error(f"❌ Unexpected error validating credentials: {e}")
+        logger.error(
+            "   AWS could not be reached. Check your network, DNS and "
+            "HTTPS_PROXY, then try again. If the link is slow, raise "
+            "--credential-timeout."
+        )
+        return False
+
+    except ReadTimeoutError as e:
+        logger.error(f"❌ Unexpected error validating credentials: {e}")
+        logger.error(
+            "   AWS did not answer in time. Raise --credential-timeout, or "
+            "check your network and HTTPS_PROXY."
+        )
+        return False
+
+    except Exception as e:
+        logger.error(
+            f"❌ Unexpected error validating credentials: {type(e).__name__}: {e}"
+        )
         logger.error("   Try running 'aws sts get-caller-identity' manually")
         return False
 
@@ -1732,8 +1758,10 @@ def _run(args, logger):
                 logger.error("Account-specific errors:")
                 for account_id, ctx in account_contexts.items():
                     if ctx.get("error_count", 0) > 0:
+                        causes = "; ".join(str(x) for x in ctx.get("errors", []))
                         logger.error(
                             f"  - {account_id}: {ctx.get('error_count', 0)} errors"
+                            + (f": {causes[:300]}" if causes else "")
                         )
 
             sys.exit(1)
@@ -1742,7 +1770,10 @@ def _run(args, logger):
         logger.info("BOM generation interrupted by user")
         sys.exit(1)
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+        logger.error(
+            f"Unexpected error: {type(e).__name__}: {e}. Run again with "
+            "--debug to log the traceback; if it repeats, report it."
+        )
         if args.debug:
             import traceback
 
