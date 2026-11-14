@@ -31,13 +31,17 @@ _NOT_IMPLEMENTED = (
         "--compliance-standard",
         lambda a: getattr(a, "compliance_standard", None) is not None,
         "Compliance-standard enforcement is not implemented yet; the option "
-        "has never changed InvenTag's behaviour.",
+        "has never changed InvenTag's behaviour. InvenTag does not assess "
+        "compliance. To check your tags against a built-in baseline, run: "
+        "inventag --template security-baseline --create-excel",
     ),
     (
         "--disable-production-safety",
         lambda a: getattr(a, "disable_production_safety", False),
         "The read-only guard cannot be disabled from the CLI: InvenTag only "
-        "needs read access, so non-read AWS calls are always blocked.",
+        "needs read access, so non-read AWS calls are always blocked. Remove "
+        "this option; nothing else is needed. To see which calls are allowed, "
+        "run: inventag --validate-operations ec2:DescribeInstances",
     ),
 )
 
