@@ -22,6 +22,7 @@ from tests.unit.test_docs_claims_v120 import (  # noqa: F401  (fixtures + helper
     reports,
     run_cli,
     seed_account,
+    workbook,
 )
 
 
@@ -591,3 +592,221 @@ def test_a_report_too_big_for_google_creates_nothing_exits_1_and_keeps_excel(
     assert code == 1
     assert not [n for n, _ in log if n.endswith(".create")]
     assert len(reports(tmp_path / "out")) == 1
+
+
+# ------------------------------------------------ network and security analysis (network-and-security-analysis.md)
+def test_a_layout_file_keeps_the_network_and_security_analysis_sheets(aws, tmp_path):
+    layout = {
+        "template_version": "2.0",
+        "format_type": "excel",
+        "sections": [
+            {
+                "id": "all",
+                "content_type": "resources",
+                "group_by_service": False,
+                "sheet_name": "All",
+                "columns": [{"field": "id", "heading": "ID"}],
+            },
+            {"id": "network_analysis", "content_type": "network_analysis"},
+            {"id": "security_analysis", "content_type": "security_analysis"},
+        ],
+    }
+    path = tmp_path / "layout.json"
+    path.write_text(json.dumps(layout))
+    code = run_cli(
+        *BASE,
+        "--account-regions",
+        "us-east-1",
+        "--enable-network-analysis",
+        "--enable-security-analysis",
+        "--excel-template",
+        str(path),
+        "--output-directory",
+        "out",
+    )
+    assert code == 0
+    sheets = [name.lower() for name in workbook(reports(tmp_path / "out")[0])]
+    assert any("network" in name for name in sheets)
+    assert any("security" in name for name in sheets)
+
+
+def _subnet_estate_in_moto():
+    """One resource of each kind in one subnet (moto). Returns discovery output and IDs."""
+    import io
+    import zipfile
+
+    import boto3
+
+    from inventag.discovery.inventory import AWSResourceInventory
+
+    region = "us-east-1"
+    ec2 = boto3.client("ec2", region_name=region)
+    vpc = ec2.create_vpc(CidrBlock="10.20.0.0/16")["Vpc"]["VpcId"]
+    sub = ec2.create_subnet(
+        VpcId=vpc, CidrBlock="10.20.1.0/24", AvailabilityZone="us-east-1a"
+    )["Subnet"]["SubnetId"]
+    sub2 = ec2.create_subnet(
+        VpcId=vpc, CidrBlock="10.20.2.0/24", AvailabilityZone="us-east-1b"
+    )["Subnet"]["SubnetId"]
+    sg = ec2.create_security_group(GroupName="g", Description="d", VpcId=vpc)["GroupId"]
+    instance = ec2.run_instances(
+        ImageId="ami-12345678", MinCount=1, MaxCount=1, SubnetId=sub
+    )["Instances"][0]["InstanceId"]
+    role = boto3.client("iam", region_name=region).create_role(
+        RoleName="r", AssumeRolePolicyDocument="{}"
+    )["Role"]["Arn"]
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("app.py", "def h(e, c):\n    return 1\n")
+    boto3.client("lambda", region_name=region).create_function(
+        FunctionName="fn",
+        Runtime="python3.12",
+        Role=role,
+        Handler="app.h",
+        Code={"ZipFile": buffer.getvalue()},
+        VpcConfig={"SubnetIds": [sub], "SecurityGroupIds": [sg]},
+    )
+    rds = boto3.client("rds", region_name=region)
+    rds.create_db_subnet_group(
+        DBSubnetGroupName="sg1", DBSubnetGroupDescription="d", SubnetIds=[sub, sub2]
+    )
+    rds.create_db_instance(
+        DBInstanceIdentifier="db1",
+        DBInstanceClass="db.t3.micro",
+        Engine="postgres",
+        MasterUsername="u",
+        MasterUserPassword="password123",
+        AllocatedStorage=20,
+        DBSubnetGroupName="sg1",
+    )
+    cache = boto3.client("elasticache", region_name=region)
+    cache.create_cache_subnet_group(
+        CacheSubnetGroupName="cg",
+        CacheSubnetGroupDescription="d",
+        SubnetIds=[sub, sub2],
+    )
+    cache.create_cache_cluster(
+        CacheClusterId="cache1",
+        Engine="redis",
+        CacheNodeType="cache.t3.micro",
+        NumCacheNodes=1,
+        CacheSubnetGroupName="cg",
+    )
+    boto3.client("elbv2", region_name=region).create_load_balancer(
+        Name="lb1", Subnets=[sub, sub2], SecurityGroups=[sg]
+    )
+    resources = AWSResourceInventory(
+        session=boto3.Session(), regions=[region], enable_billing_validation=False
+    ).discover_all_resources()
+    from inventag.discovery.network_analyzer import NetworkAnalyzer
+
+    analyzer = NetworkAnalyzer(boto3.Session())
+    analyzer.analyze_vpc_resources(resources)
+    return analyzer, vpc, sub, instance
+
+
+def test_associated_resources_counts_ec2_lambda_and_rds_in_a_subnet_and_load_balancers_per_vpc(
+    empty_aws,
+):
+    analyzer, vpc, sub, instance = _subnet_estate_in_moto()
+    in_subnet = analyzer.subnet_cache[sub].associated_resources
+    in_vpc = analyzer.vpc_cache[vpc].associated_resources
+    assert instance in in_subnet and "fn" in in_subnet and "db1" in in_subnet
+    assert instance in in_vpc and "db1" in in_vpc
+    # Load balancers are counted for their VPC, not for a subnet (register A-08).
+    assert "lb1" in in_vpc and "lb1" not in in_subnet
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="an ElastiCache cluster names only its subnet group, so it is counted "
+    "in neither the VPC nor the subnet (moto run)",
+)
+def test_associated_resources_counts_an_elasticache_cluster(empty_aws):
+    analyzer, vpc, sub, _ = _subnet_estate_in_moto()
+    counted = (
+        analyzer.subnet_cache[sub].associated_resources
+        + analyzer.vpc_cache[vpc].associated_resources
+    )
+    assert "cache1" in counted
+
+
+@pytest.mark.parametrize(
+    "from_port,to_port,level",
+    [
+        (22, 22, "critical"),
+        (23, 23, "critical"),
+        (1433, 1433, "critical"),
+        (3306, 3306, "critical"),
+        (3389, 3389, "critical"),
+        (5432, 5432, "critical"),
+        (20, 25, "critical"),  # the range contains 22 and 23
+        (80, 80, "high"),  # a port below 1024
+        (8080, 8080, "medium"),  # any other port
+    ],
+)
+def test_critical_ports_and_levels_of_a_rule_open_to_the_internet(
+    from_port, to_port, level
+):
+    import boto3
+    from moto import mock_aws
+
+    from inventag.discovery.security_analyzer import SecurityAnalyzer
+
+    with mock_aws():
+        ec2 = boto3.client("ec2", region_name="us-east-1")
+        vpc = ec2.create_vpc(CidrBlock="10.0.0.0/16")["Vpc"]["VpcId"]
+        g = ec2.create_security_group(GroupName="open", Description="d", VpcId=vpc)[
+            "GroupId"
+        ]
+        ec2.authorize_security_group_ingress(
+            GroupId=g,
+            IpPermissions=[
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": from_port,
+                    "ToPort": to_port,
+                    "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
+                }
+            ],
+        )
+        analyzer = SecurityAnalyzer(boto3.Session(region_name="us-east-1"))
+        analyzer.analyze_security_groups([{"id": "x", "region": "us-east-1"}])
+        rules = analyzer.sg_cache[g].inbound_rules
+        assert [r.risk_assessment for r in rules] == [level]
+
+
+# ------------------------------------------------ tag compliance in Word (check-tag-compliance.md)
+def test_the_word_tag_compliance_section_shows_100_rows_by_default(tmp_path):
+    from docx import Document
+
+    from inventag.templating.registry import BUILTIN_DIR, SearchDir, TemplateRegistry
+    from inventag.templating.render_word import render_word
+    from inventag.templating.tag_policy import evaluate
+
+    registry = TemplateRegistry([SearchDir("builtin", BUILTIN_DIR)])
+    resources = [
+        {
+            "service": "S3",
+            "resource_type": "Bucket",
+            "resource_id": f"b{i:03d}",
+            "resource_name": f"b{i:03d}",
+            "arn": f"arn:aws:s3:::b{i:03d}",
+            "region": "us-east-1",
+            "source_account_id": "123456789012",
+            "tags": {},
+        }
+        for i in range(120)
+    ]
+    template = registry.resolve("standard-bom")
+    compliance = evaluate(resources, registry.resolve("finops-cost-allocation"))
+    assert len([f for f in compliance.findings if not f.compliant]) == 120
+    doc = Document(
+        render_word(str(tmp_path / "r.docx"), resources, template, compliance)
+    )
+    heading = [p for p in doc.paragraphs if p.text == "Non-compliant resources"]
+    assert len(heading) == 1
+    sizes = sorted(len(t.rows) for t in doc.tables)
+    assert 101 in sizes  # the header and 100 resources
+    assert not any(size > 101 for size in sizes)
+    assert any("Showing 100 of 120" in p.text for p in doc.paragraphs)
