@@ -1056,3 +1056,31 @@ def test_a_service_that_failed_in_the_previous_run_shows_its_resources_as_added(
     report = _detect(previous_snapshot, current, _run([_entry("sqs", "ok")]))
     assert [c.resource_id for c in report.added_resources] == ["q1"]
     assert report.removed_resources == []
+
+
+def test_after_a_tagging_only_run_the_next_full_run_lists_untagged_resources_as_added(
+    aws, tmp_path, monkeypatch
+):
+    """Status: after a run in which only the Tagging API answered for an account,
+    the next complete run lists that account's resources without tags as added."""
+    import boto3
+
+    from tests.unit.test_tagging_only_change_tracking import (
+        GOOD_ID,
+        UNTAGGED,
+        arns,
+        delta,
+        result_spy,
+        run,
+        tagging_only,
+    )
+
+    boto3.client("sqs", region_name="us-east-1").create_queue(QueueName=UNTAGGED)
+    untagged_arn = f"arn:aws:sqs:us-east-1:{GOOD_ID}:{UNTAGGED}"
+    results = result_spy(monkeypatch)
+    assert run(results, [tagging_only()])[0] == 0
+    code, second = run(results)
+    assert code == 0
+    report = delta(second)
+    assert report is not None, second["state_management"]
+    assert untagged_arn in arns(report.added_resources)
