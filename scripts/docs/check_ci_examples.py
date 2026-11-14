@@ -628,7 +628,7 @@ def check_id_tokens(doc: Dict[Any, Any], block: Dict[str, Any]) -> List[Problem]
     return out
 
 
-@rule("gitlab-retry", GL_YAML + " (retry, retry:max, retry:when)")
+@rule("gitlab-retry", GL_YAML + " (retry, retry:max, retry:when, retry:exit_codes)")
 def check_retry(doc: Dict[Any, Any], block: Dict[str, Any]) -> List[Problem]:
     out: List[Problem] = []
     for name, job in _job_pairs(doc):
@@ -639,7 +639,9 @@ def check_retry(doc: Dict[Any, Any], block: Dict[str, Any]) -> List[Problem]:
             if retry not in (0, 1, 2):
                 out.append((at, f"{where}: `retry` must be 0, 1 or 2"))
         elif (
-            isinstance(retry, dict) and set(retry) <= {"max", "when"} and "max" in retry
+            isinstance(retry, dict)
+            and set(retry) <= {"max", "when", "exit_codes"}
+            and "max" in retry
         ):
             if retry["max"] not in (0, 1, 2) or not _is_int(retry["max"]):
                 out.append((at, f"{where}: `retry:max` must be 0, 1 or 2"))
@@ -648,9 +650,19 @@ def check_retry(doc: Dict[Any, Any], block: Dict[str, Any]) -> List[Problem]:
             for w in whens:
                 if w not in GITLAB_RETRY_WHEN:
                     out.append((at, f"{where}: `retry:when` `{w}` is not documented"))
+            codes = retry.get("exit_codes", 0)
+            if not _is_int(codes) and not (
+                isinstance(codes, list) and codes and all(_is_int(c) for c in codes)
+            ):
+                out.append(
+                    (at, f"{where}: `retry:exit_codes` must be an integer or a list")
+                )
         else:
             out.append(
-                (at, f"{where}: `retry` must be 0, 1, 2 or a map with `max` and `when`")
+                (
+                    at,
+                    f"{where}: `retry` must be 0, 1, 2 or a map with `max`, `when`, `exit_codes`",
+                )
             )
     return out
 

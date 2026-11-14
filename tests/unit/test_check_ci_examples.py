@@ -272,6 +272,9 @@ def test_retry_shapes_pass():
         "2",
         "{max: 2, when: runner_system_failure}",
         "{max: 1, when: [script_failure, api_failure]}",
+        "{max: 2, exit_codes: 137}",
+        "{max: 2, exit_codes: [255, 137]}",
+        "{max: 1, when: script_failure, exit_codes: [1]}",
     ):
         assert passes("gitlab-retry", f"j:\n  script: [x]\n  retry: {value}\n"), value
 
@@ -279,6 +282,12 @@ def test_retry_shapes_pass():
 def test_retry_shapes_fail():
     for value in ("3", '"2"', "{max: 5}", "{max: 1, when: nonsense}", "{count: 1}"):
         assert problems("gitlab-retry", f"j:\n  script: [x]\n  retry: {value}\n"), value
+
+
+def test_retry_exit_codes_must_be_an_integer_or_a_list_of_integers():
+    for value in ('"137"', "[137, x]", "[]", "true", "{a: 1}", "[[1]]"):
+        body = f"j:\n  script: [x]\n  retry: {{max: 1, exit_codes: {value}}}\n"
+        assert problems("gitlab-retry", body), value
 
 
 def test_timeout_string_passes_and_number_fails():
