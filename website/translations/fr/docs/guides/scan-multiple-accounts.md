@@ -161,7 +161,7 @@ inventag --accounts-file accounts.yaml --create-excel --resume
 
 InvenTag réutilise les résultats enregistrés de la même commande (mêmes comptes, régions, services et filtres) qui ne sont pas
 plus anciens que `--resume-max-age-hours` (24 par défaut, 168 au maximum).
-Voir [Reprendre après une exécution en échec](./run-a-scan.md#continue-after-a-failed-run). Un compte dont la session a expiré en cours d’analyse est aussi enregistré, et `--resume` le réutilise comme s’il était complet.
+Voir [Reprendre après une exécution en échec](./run-a-scan.md#continue-after-a-failed-run). Un compte dont la session a expiré en cours d’analyse n’est pas enregistré, donc `--resume` l’analyse de nouveau.
 
 ## Dans un pipeline GitLab CI/CD {#in-a-gitlab-cicd-pipeline}
 

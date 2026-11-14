@@ -151,7 +151,7 @@ inventag --accounts-file accounts.yaml --create-excel --resume
 
 InvenTag 会复用同一条命令（相同的账户、区域、服务和筛选条件）保存的、不早于 `--resume-max-age-hours`（默认 24，最多 168）的结果。
 见[失败的运行之后继续](./run-a-scan.md#continue-after-a-failed-run)。
-一个会话在中途过期的账户也会被保存，`--resume` 会把它当作完整的账户重用。
+一个会话在中途过期的账户不会被保存，所以 `--resume` 会重新扫描它。
 
 ## 在 GitLab CI/CD 流水线中 {#in-a-gitlab-cicd-pipeline}
 

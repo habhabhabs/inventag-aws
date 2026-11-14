@@ -119,7 +119,7 @@ y el resultado no es más antiguo que `--resume-max-age-hours` (por defecto 24, 
 Necesita la gestión de estado, así que `--resume` con `--disable-state-management` se detiene con código de salida 2.
 El registro dice `123456789012: reusing results scanned 2026-11-14 06:13 UTC (--resume)`, y las notas del informe
 listan cada cuenta reutilizada con su hora de análisis. Sin `--resume`, una advertencia indica que existen resultados guardados
-y que se analizan de nuevo. InvenTag borra los resultados guardados tras una ejecución en la que todas las cuentas terminan. También se guarda una cuenta cuya sesión caducó a mitad del análisis, y `--resume` la reutiliza como si estuviera completa.
+y que se analizan de nuevo. InvenTag borra los resultados guardados tras una ejecución en la que todas las cuentas terminan. Una cuenta cuya sesión caducó a mitad del análisis no se guarda, así que `--resume` la analiza de nuevo.
 
 ## Elige los archivos de salida {#choose-the-output-files}
 

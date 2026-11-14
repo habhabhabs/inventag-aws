@@ -131,8 +131,8 @@ and the report's notes list each reused account with its scan time. Without
 `--resume`, a warning says that saved results exist and are scanned again.
 InvenTag deletes the saved results after a run in which every account
 finishes.
-An account whose session expired part-way is saved too, and `--resume`
-reuses it as if it were complete.
+An account whose session expired part-way is not saved, so `--resume` scans it
+again.
 
 ## Choose the output files
 

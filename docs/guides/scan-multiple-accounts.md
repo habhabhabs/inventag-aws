@@ -178,7 +178,7 @@ inventag --accounts-file accounts.yaml --create-excel --resume
 InvenTag reuses saved results of the same command (same accounts, regions,
 services and filters) that are not older than `--resume-max-age-hours` (default
 24, at most 168). See [Continue after a failed run](./run-a-scan.md#continue-after-a-failed-run).
-An account whose session expired part-way is saved too, and `--resume` reuses it as if it were complete.
+An account whose session expired part-way is not saved, so `--resume` scans it again.
 
 ## In a GitLab CI/CD pipeline
 

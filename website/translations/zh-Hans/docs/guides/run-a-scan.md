@@ -104,7 +104,7 @@ inventag --accounts-file accounts.yaml --create-excel --resume
 只有当命令使用相同的账户、区域、服务和筛选条件，并且保存的结果不早于 `--resume-max-age-hours`（默认 24，最多 168）时，InvenTag 才会复用它。
 它需要状态管理，所以 `--resume` 与 `--disable-state-management` 同用会以退出码 2 停止。
 日志会显示 `123456789012: reusing results scanned 2026-11-14 06:13 UTC (--resume)`，报告的备注会列出每个被复用的账户及其扫描时间。
-不带 `--resume` 时，警告会说明存在已保存的结果，并且它们会被重新扫描。所有账户都完成的运行结束后，InvenTag 会删除已保存的结果。一个会话在中途过期的账户也会被保存，`--resume` 会把它当作完整的账户重用。
+不带 `--resume` 时，警告会说明存在已保存的结果，并且它们会被重新扫描。所有账户都完成的运行结束后，InvenTag 会删除已保存的结果。一个会话在中途过期的账户不会被保存，所以 `--resume` 会重新扫描它。
 
 ## 选择输出文件 {#choose-the-output-files}
 
