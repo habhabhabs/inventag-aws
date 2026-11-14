@@ -1033,15 +1033,16 @@ class CloudBOMGenerator:
                 )
 
             except Exception as e:
+                cause = str(e) or type(e).__name__
                 self.logger.error(
-                    f"Failed to establish context for account {credentials.account_id}: {e}"
+                    f"Failed to establish context for account {credentials.account_id}: {cause}"
                 )
                 # Create a failed context for tracking
                 context = AccountContext(
                     credentials=credentials,
                     session=None,
                     caller_identity={},
-                    processing_errors=[f"Context establishment failed: {e}"],
+                    processing_errors=[f"Context establishment failed: {cause}"],
                 )
                 account_contexts[credentials.account_id] = context
                 self.account_contexts[credentials.account_id] = context
