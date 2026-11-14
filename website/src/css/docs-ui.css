@@ -1003,8 +1003,9 @@ textarea {
    1. Until the reader starts it, read-aloud is one quiet button level with
       the breadcrumbs, at every width. Pause, Stop and Speed appear only
       while it is reading.
-   2. The version badge shows only on archived versions. On the current
-      version the navbar already names it.
+   2. From 997 px up the version badge shows only on archived versions: on
+      the current version the navbar names it. Below 997 px the navbar has no
+      version menu, so the badge shows on every page.
    ------------------------------------------------------------------ */
 [class*='docItemContainer'] {
   position: relative;
@@ -1061,8 +1062,10 @@ html:has(.it-listen:not(.it-listen--idle)) .theme-doc-markdown :is(h2, h3, h4) {
 .it-listen__btn--idle:hover {
   color: var(--it-ink, inherit);
 }
-html.docs-version-current .theme-doc-version-badge {
-  display: none;
+@media (min-width: 997px) {
+  html.docs-version-current .theme-doc-version-badge {
+    display: none;
+  }
 }
 
 /* Headings break into lines of similar length; paragraphs avoid a lone last word. */
