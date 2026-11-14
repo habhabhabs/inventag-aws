@@ -134,8 +134,8 @@ def _validate_specific_configs(args, logger, check_credentials=True):
             # The exit code of this mode is unchanged (0): the problem is a
             # warning that says what a real run does with the file.
             logger.warning(
-                f"--bom-config {args.bom_config} is invalid: {e} A real run "
-                "stops with exit code 1 on this file."
+                f"{str(e).rstrip('.')}. A real run stops with exit code 1 on "
+                "this file."
             )
         else:
             if ignored:
