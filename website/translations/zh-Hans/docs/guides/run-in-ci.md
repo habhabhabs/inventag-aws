@@ -56,7 +56,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install "inventag-aws==%INVENTAG_VERSION%"   # pin a release
-      - uses: aws-actions/configure-aws-credentials@<full-commit-SHA> # pin the current release
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: arn:aws:iam::123456789012:role/InvenTagGitHubReadOnly
           aws-region: us-east-1
