@@ -124,7 +124,7 @@ echo $?
 0
 ```
 
-如果凭证缺失，或安全令牌无效或已过期，InvenTag 会说明原因并给出修复建议。IAM Identity Center（SSO）令牌过期是个例外：参见[功能状态](./status.md#when-a-run-goes-wrong)。
+如果凭证缺失，或安全令牌无效或已过期，InvenTag 会说明原因并给出修复建议。
 参见[解决常见问题](../guides/troubleshooting.md#credentials)。
 
 ## 授予 InvenTag 只读权限 {#give-inventag-read-only-permissions}

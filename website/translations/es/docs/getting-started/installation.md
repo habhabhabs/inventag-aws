@@ -129,7 +129,7 @@ echo $?
 0
 ```
 
-Si faltan las credenciales, o el token de seguridad no es válido o ha caducado, InvenTag explica por qué y sugiere una solución. Un token caducado de IAM Identity Center (SSO) es una excepción: consulta [Estado de las funciones](./status.md#when-a-run-goes-wrong). Consulta
+Si faltan las credenciales, o el token de seguridad no es válido o ha caducado, InvenTag explica por qué y sugiere una solución. Consulta
 [Solucionar problemas comunes](../guides/troubleshooting.md#credentials).
 
 ## Dar a InvenTag permisos de solo lectura {#give-inventag-read-only-permissions}

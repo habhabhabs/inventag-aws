@@ -135,9 +135,7 @@ echo $?
 <!-- END EXAMPLE OUTPUT: validate-credentials -->
 
 If the credentials are missing, or the security token is not valid or has
-expired, InvenTag says why and suggests a fix. An expired IAM Identity Center
-(SSO) token is an exception: see
-[Feature status](./status.md#when-a-run-goes-wrong). See
+expired, InvenTag says why and suggests a fix. See
 [Fix common problems](../guides/troubleshooting.md#credentials).
 
 ## Give InvenTag read-only permissions

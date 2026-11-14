@@ -124,7 +124,7 @@ echo $?
 0
 ```
 
-如果憑證缺失，或安全權杖無效或已過期，InvenTag 會說明原因並給出修復建議。IAM Identity Center（SSO）權杖過期是個例外：參見[功能狀態](./status.md#when-a-run-goes-wrong)。
+如果憑證缺失，或安全權杖無效或已過期，InvenTag 會說明原因並給出修復建議。
 參見[解決常見問題](../guides/troubleshooting.md#credentials)。
 
 ## 授予 InvenTag 唯讀權限 {#give-inventag-read-only-permissions}

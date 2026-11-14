@@ -129,7 +129,7 @@ echo $?
 0
 ```
 
-Si les identifiants sont absents, ou si le jeton de sécurité n’est pas valide ou a expiré, InvenTag explique pourquoi et suggère une solution. Un jeton IAM Identity Center (SSO) expiré fait exception : voir [État des fonctionnalités](./status.md#when-a-run-goes-wrong). Voir
+Si les identifiants sont absents, ou si le jeton de sécurité n’est pas valide ou a expiré, InvenTag explique pourquoi et suggère une solution. Voir
 [Résoudre les problèmes courants](../guides/troubleshooting.md#credentials).
 
 ## Accorder à InvenTag des autorisations en lecture seule {#give-inventag-read-only-permissions}
