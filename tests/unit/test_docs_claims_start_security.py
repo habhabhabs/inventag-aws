@@ -161,7 +161,9 @@ def test_test_counts_on_the_tests_page():
         text=True,
     ).stdout
     m = re.search(r"(\d+)/(\d+) tests collected \((\d+) deselected\)", out)
-    assert m and int(m.group(1)) > 2300 and int(m.group(3)) == 9
+    # The default run leaves out the nine benchmarks (counted exactly below)
+    # and the slow regression rows, so "deselected" is nine or more.
+    assert m and int(m.group(1)) > 2300 and int(m.group(3)) >= 9
     bench = subprocess.run(
         [sys.executable, "-m", "pytest", "--collect-only", "-q", "-m", "performance"],
         cwd=ROOT,

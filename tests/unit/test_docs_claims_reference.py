@@ -30,7 +30,6 @@ DOCS = ROOT / "docs" / "reference"
 # ------------------------------------------------------------------ helpers
 @pytest.fixture
 def empty_aws(monkeypatch, tmp_path):
-    monkeypatch.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "AKIAIOSFODNN7EXAMPLE")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "fake-secret-for-moto-only")
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")

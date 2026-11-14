@@ -869,7 +869,6 @@ def test_t27_source_and_detail_level_values_of_the_three_kinds_of_row(monkeypatc
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
-    monkeypatch.setenv("MOTO_EC2_LOAD_DEFAULT_AMIS", "false")
     vault = "arn:aws:backup:us-east-1:123456789012:backup-vault:v1"
 
     def tagging_only(self):
