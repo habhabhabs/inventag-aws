@@ -191,6 +191,7 @@ inventory-to-s3:
 - 未針對 GitLab 驗證：`image`、`timeout` 和 `expire_in`（gitlab-ci-local 會忽略它們）。
 - 未針對 GitLab 流水線排程驗證：本地執行時，流水線來源是手動設定的。
 - 未針對 AWS 驗證：用真實的儲存貯體和金鑰上傳時的 S3 和 KMS 權限。
+- 未針對 AWS 驗證：`aws:kms` 沒有金鑰 ID 時，S3 是否使用 AWS 託管金鑰 `aws/s3`。
 
 ## 下一步 {#next-steps}
 

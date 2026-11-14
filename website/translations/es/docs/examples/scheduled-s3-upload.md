@@ -197,6 +197,7 @@ Partes que la ejecución local no cubrió:
 - No verificado contra GitLab: `image`, `timeout` y `expire_in` (gitlab-ci-local los ignora).
 - No verificado contra una programación de pipelines de GitLab: la ejecución en local fijó a mano el origen del pipeline.
 - No verificado contra AWS: los permisos de S3 y KMS para la subida, con un bucket y una clave reales.
+- No verificado contra AWS: que S3 use la clave administrada por AWS `aws/s3` cuando `aws:kms` no lleva ID de clave.
 
 ## Siguientes pasos {#next-steps}
 

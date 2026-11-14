@@ -176,7 +176,7 @@ What GitLab does with each InvenTag exit code in this file:
 | Exit code | Job `tag-policy` | Job `security-groups` |
 |---|---|---|
 | 0 | passes | passes |
-| 3 (tag policy violations) | **fails**, as the GitHub Actions example does | does not occur (this command has no tag policy) |
+| 3 (tag policy violations) | **fails**, as the GitHub Actions example does ([GitLab: `script`](https://docs.gitlab.com/ci/yaml/script/)) | does not occur (this command has no tag policy) |
 | 4 (security group rule at or above `HIGH`) | does not occur (no `--risk-threshold`) | "allowed to fail": the job shows a warning, the pipeline goes on and counts as passed ([GitLab](https://docs.gitlab.com/ci/yaml/#allow_failureexit_codes)) |
 | 5 (an account could not be scanned; `--fail-on-account-error`), 6 (no resources found; `--fail-if-empty`) | fails | fails: the code is not in `exit_codes`, so `allow_failure` is false for it |
 | 1, 2 | fails | fails |
@@ -189,7 +189,7 @@ The lines that every GitLab example shares (`image`, `timeout`, `id_tokens`, the
 |---|---|
 | `rules: - if: $CI_PIPELINE_SOURCE == "merge_request_event"` | The job runs in merge request pipelines only ([GitLab](https://docs.gitlab.com/ci/pipelines/merge_request_pipelines/)). |
 | `inventag --template ci-pipeline --fail-on-account-error --fail-if-empty` | The command of this page plus the two opt-in flags. Exit codes 5 and 6 win over 3 (the order is 5, 6, 3, 4), so a run with an account that could not be scanned, or with no resources, is never shown as "no violations". A failed service call inside an account that was reached does not give 5. In the local run, this job ended as failed with exit code 3 and its report files were collected. |
-| `allow_failure: exit_codes: 4` | Only exit code 4 is tolerated. With any other non-zero code the job fails as usual. To block the merge request on code 4, delete the two lines. To start the `tag-policy` job in warning mode, give it `allow_failure:` with `exit_codes: 3` in the same way, or keep `fail_on_tag_violations: false`, as "Next steps" says ([GitLab](https://docs.gitlab.com/ci/yaml/#allow_failureexit_codes)). In the local run, `security-groups` ended with a warning and exit code 4. |
+| `allow_failure: exit_codes: 4` | Only exit code 4 is tolerated. With any other non-zero code the job fails as usual ([GitLab: `script`](https://docs.gitlab.com/ci/yaml/script/)). To block the merge request on code 4, delete the two lines. To start the `tag-policy` job in warning mode, give it `allow_failure:` with `exit_codes: 3` in the same way, or keep `fail_on_tag_violations: false`, as "Next steps" says ([GitLab](https://docs.gitlab.com/ci/yaml/#allow_failureexit_codes)). In the local run, `security-groups` ended with a warning and exit code 4. |
 | `inventag --create-excel --enable-security-analysis --risk-threshold HIGH ...` | Exit code 4 when a security group rule is at or above `HIGH`. `--risk-threshold` needs `--enable-security-analysis`, otherwise the exit code is 2. There is no `--template` here, because `--enable-security-analysis` adds nothing with `--template` (see the [CLI reference](../reference/cli.md)). This job scans every enabled region. |
 
 What is not verified:

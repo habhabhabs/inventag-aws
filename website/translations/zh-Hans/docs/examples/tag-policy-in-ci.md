@@ -160,7 +160,7 @@ security-groups:
 | 退出码 | 作业 `tag-policy` | 作业 `security-groups` |
 |---|---|---|
 | 0 | 通过 | 通过 |
-| 3（标签策略违规） | **失败**，与 GitHub Actions 示例一致 | 不会出现（此命令没有标签策略） |
+| 3（标签策略违规） | **失败**，与 GitHub Actions 示例一致（[GitLab：`script`](https://docs.gitlab.com/ci/yaml/script/)） | 不会出现（此命令没有标签策略） |
 | 4（有安全组规则达到或超过 `HIGH`） | 不会出现（没有 `--risk-threshold`） | “允许失败”：作业显示警告，流水线继续运行，并算作通过（[GitLab](https://docs.gitlab.com/ci/yaml/#allow_failureexit_codes)） |
 | 5（有账户无法扫描；`--fail-on-account-error`）、6（没有找到资源；`--fail-if-empty`） | 失败 | 失败：该退出码不在 `exit_codes` 中，所以对它而言 `allow_failure` 为 false |
 | 1、2 | 失败 | 失败 |
@@ -173,7 +173,7 @@ security-groups:
 |---|---|
 | `rules: - if: $CI_PIPELINE_SOURCE == "merge_request_event"` | 作业只在合并请求流水线中运行（[GitLab](https://docs.gitlab.com/ci/pipelines/merge_request_pipelines/)）。 |
 | `inventag --template ci-pipeline --fail-on-account-error --fail-if-empty` | 本页的命令，加上两个需要主动开启的选项。退出码 5 和 6 优先于 3（顺序为 5、6、3、4），所以有账户无法扫描、或没有找到资源的运行，绝不会显示为“无违规”。已连接账户内某次服务调用失败不会给出 5。在本地运行中，此作业以退出码 3 失败，其报告文件已被收集。 |
-| `allow_failure: exit_codes: 4` | 只容许退出码 4。其他任何非零退出码，作业照常失败。若要让退出码 4 也阻止合并请求，删除这两行。若要让 `tag-policy` 作业以警告模式启动，用同样的方式给它加上 `allow_failure:` 和 `exit_codes: 3`，或者像“下一步”所说，保持 `fail_on_tag_violations: false`（[GitLab](https://docs.gitlab.com/ci/yaml/#allow_failureexit_codes)）。在本地运行中，`security-groups` 以警告和退出码 4 结束。 |
+| `allow_failure: exit_codes: 4` | 只容许退出码 4。其他任何非零退出码，作业照常失败（[GitLab：`script`](https://docs.gitlab.com/ci/yaml/script/)）。若要让退出码 4 也阻止合并请求，删除这两行。若要让 `tag-policy` 作业以警告模式启动，用同样的方式给它加上 `allow_failure:` 和 `exit_codes: 3`，或者像“下一步”所说，保持 `fail_on_tag_violations: false`（[GitLab](https://docs.gitlab.com/ci/yaml/#allow_failureexit_codes)）。在本地运行中，`security-groups` 以警告和退出码 4 结束。 |
 | `inventag --create-excel --enable-security-analysis --risk-threshold HIGH ...` | 有安全组规则达到或超过 `HIGH` 时退出码为 4。`--risk-threshold` 需要 `--enable-security-analysis`，否则退出码为 2。这里没有 `--template`，因为 `--enable-security-analysis` 与 `--template` 一起使用时不会增加任何内容（见 [CLI 参考](../reference/cli.md)）。此作业会扫描每个已启用的区域。 |
 
 尚未验证的内容：

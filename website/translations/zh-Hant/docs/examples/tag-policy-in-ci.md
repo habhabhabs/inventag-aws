@@ -160,7 +160,7 @@ security-groups:
 | 結束代碼 | 作業 `tag-policy` | 作業 `security-groups` |
 |---|---|---|
 | 0 | 透過 | 透過 |
-| 3（標籤策略違規） | **失敗**，與 GitHub Actions 範例一致 | 不會出現（此命令沒有標籤策略） |
+| 3（標籤策略違規） | **失敗**，與 GitHub Actions 範例一致（[GitLab：`script`](https://docs.gitlab.com/ci/yaml/script/)） | 不會出現（此命令沒有標籤策略） |
 | 4（有安全組規則達到或超過 `HIGH`） | 不會出現（沒有 `--risk-threshold`） | 「允許失敗」：作業顯示警告，流水線繼續執行，並算作透過（[GitLab](https://docs.gitlab.com/ci/yaml/#allow_failureexit_codes)） |
 | 5（有帳戶無法掃描；`--fail-on-account-error`）、6（沒有找到資源；`--fail-if-empty`） | 失敗 | 失敗：該結束代碼不在 `exit_codes` 中，所以對它而言 `allow_failure` 為 false |
 | 1、2 | 失敗 | 失敗 |
@@ -173,7 +173,7 @@ security-groups:
 |---|---|
 | `rules: - if: $CI_PIPELINE_SOURCE == "merge_request_event"` | 作業只在合併請求流水線中執行（[GitLab](https://docs.gitlab.com/ci/pipelines/merge_request_pipelines/)）。 |
 | `inventag --template ci-pipeline --fail-on-account-error --fail-if-empty` | 本頁的命令，加上兩個需要主動開啟的選項。結束代碼 5 和 6 優先於 3（順序為 5、6、3、4），所以有帳戶無法掃描、或沒有找到資源的執行，絕不會顯示為「無違規」。已連線帳戶內某次服務呼叫失敗不會給出 5。在本地執行中，此作業以結束代碼 3 失敗，其報告檔案已被收集。 |
-| `allow_failure: exit_codes: 4` | 只容許結束代碼 4。其他任何非零結束代碼，作業照常失敗。若要讓結束代碼 4 也阻止合併請求，刪除這兩行。若要讓 `tag-policy` 作業以警告模式啟動，用同樣的方式給它加上 `allow_failure:` 和 `exit_codes: 3`，或者像「下一步」所說，保持 `fail_on_tag_violations: false`（[GitLab](https://docs.gitlab.com/ci/yaml/#allow_failureexit_codes)）。在本地執行中，`security-groups` 以警告和結束代碼 4 結束。 |
+| `allow_failure: exit_codes: 4` | 只容許結束代碼 4。其他任何非零結束代碼，作業照常失敗（[GitLab：`script`](https://docs.gitlab.com/ci/yaml/script/)）。若要讓結束代碼 4 也阻止合併請求，刪除這兩行。若要讓 `tag-policy` 作業以警告模式啟動，用同樣的方式給它加上 `allow_failure:` 和 `exit_codes: 3`，或者像「下一步」所說，保持 `fail_on_tag_violations: false`（[GitLab](https://docs.gitlab.com/ci/yaml/#allow_failureexit_codes)）。在本地執行中，`security-groups` 以警告和結束代碼 4 結束。 |
 | `inventag --create-excel --enable-security-analysis --risk-threshold HIGH ...` | 有安全組規則達到或超過 `HIGH` 時結束代碼為 4。`--risk-threshold` 需要 `--enable-security-analysis`，否則結束代碼為 2。這裡沒有 `--template`，因為 `--enable-security-analysis` 與 `--template` 一起使用時不會增加任何內容（見 [CLI 參考](../reference/cli.md)）。此作業會掃描每個已啟用的區域。 |
 
 尚未驗證的內容：

@@ -208,6 +208,7 @@ Parts that the local run did not cover:
 - Not verified against GitLab: `image`, `timeout` and `expire_in` (gitlab-ci-local ignores them).
 - Not verified against a GitLab pipeline schedule: the local run set the pipeline source by hand.
 - Not verified against AWS: the S3 and KMS permissions for the upload, with a real bucket and key.
+- Not verified against AWS: that S3 uses the AWS managed key `aws/s3` when `aws:kms` has no key ID.
 
 ## Next steps
 

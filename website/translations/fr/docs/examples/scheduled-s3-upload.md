@@ -197,6 +197,7 @@ Les lignes que tous les exemples GitLab ont en commun sont expliquées dans [Ex�
 - Non vérifié sur GitLab : `image`, `timeout` et `expire_in` (gitlab-ci-local les ignore).
 - Non vérifié sur une planification de pipeline GitLab : l’exécution en local a défini la source du pipeline à la main.
 - Non vérifié sur AWS : les autorisations S3 et KMS pour l’envoi, avec un vrai bucket et une vraie clé.
+- Non vérifié sur AWS : que S3 utilise la clé gérée par AWS `aws/s3` lorsque `aws:kms` n’a pas d’ID de clé.
 
 ## Étapes suivantes {#next-steps}
 
