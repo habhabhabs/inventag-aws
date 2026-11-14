@@ -692,7 +692,10 @@ class CloudBOMGenerator:
                 text = "; ".join(items[:_NOT_READ_LIMIT])
                 if len(items) > _NOT_READ_LIMIT:
                     text += f", and {len(items) - _NOT_READ_LIMIT} more"
-                notes.append(f"Not read in account {acc_id}: {text}.")
+                notes.append(
+                    f"Not read in account {acc_id}, so the report is partial "
+                    f"there: {text}."
+                )
             skipped = getattr(ctx, "skipped_regions", None) or []
             if skipped:
                 notes.append(
@@ -1805,10 +1808,18 @@ class CloudBOMGenerator:
             generated_files = [path for path in generated_files if os.path.isfile(path)]
 
             if not resources:
-                self.logger.warning(
-                    "No resources to report (none found, or the filters removed "
-                    "all of them). No report file was written."
-                )
+                if self._accounts_that_read_nothing() or (
+                    self._accounts_with_expired_session()
+                ):
+                    self.logger.warning(
+                        "No resources to report: nothing could be read (see the "
+                        "messages above). No report file was written."
+                    )
+                else:
+                    self.logger.warning(
+                        "No resources to report (none found, or the filters "
+                        "removed all of them). No report file was written."
+                    )
 
             if format_errors:
                 # A requested report that could not be written is a failed run.
