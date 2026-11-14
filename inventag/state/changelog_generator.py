@@ -349,6 +349,18 @@ class ChangelogGenerator:
             state_comparison["accounts_not_compared"] = "; ".join(
                 f"{account} ({reason})" for account, reason in sorted(skipped.items())
             )
+        statistics = getattr(delta_report, "change_statistics", None) or {}
+        not_compared = statistics.get("not_compared")
+        if not_compared:
+            state_comparison["resources_not_compared"] = (
+                f"{sum(not_compared.values())} ("
+                + "; ".join(f"{reason}: {n}" for reason, n in not_compared.items())
+                + ")"
+            )
+        if statistics.get("previous_run_incomplete"):
+            state_comparison["previous_run_incomplete"] = statistics[
+                "previous_run_incomplete"
+            ]
 
         # Create changelog
         changelog = Changelog(
@@ -1082,6 +1094,14 @@ class ChangelogGenerator:
         if changelog.state_comparison.get("accounts_not_compared"):
             lines.append(
                 f"**Accounts not compared:** {changelog.state_comparison['accounts_not_compared']}"
+            )
+        if changelog.state_comparison.get("resources_not_compared"):
+            lines.append(
+                f"**Resources not compared:** {changelog.state_comparison['resources_not_compared']}"
+            )
+        if changelog.state_comparison.get("previous_run_incomplete"):
+            lines.append(
+                f"**Note:** {changelog.state_comparison['previous_run_incomplete']}"
             )
         lines.append("")
 
