@@ -16,6 +16,20 @@ from ..security.safe_output import ensure_private_dir, open_private
 AWS_SDK_LOGGERS = ("boto3", "botocore", "s3transfer", "urllib3")
 
 
+class _NoTraceback(logging.Filter):
+    """Drop the traceback of a record, keep its message.
+
+    botocore logs a failed credential refresh (an expired SSO token, an MFA
+    prompt without a terminal) as a WARNING with the full traceback. The
+    cause is reported by InvenTag in one message; ``--debug`` shows all.
+    """
+
+    def filter(self, record):
+        record.exc_info = None
+        record.exc_text = None
+        return True
+
+
 class AccountSpecificFormatter(logging.Formatter):
     """Custom formatter that includes account context in log messages."""
 
@@ -126,6 +140,13 @@ def setup_logging(
         for handler in logger.handlers:
             sdk_logger.addHandler(handler)
         sdk_logger.propagate = False
+
+    credentials_logger = logging.getLogger("botocore.credentials")
+    credentials_logger.filters = [
+        f for f in credentials_logger.filters if not isinstance(f, _NoTraceback)
+    ]
+    if not debug:
+        credentials_logger.addFilter(_NoTraceback())
 
     # Store formatters for account context updates
     logger._account_formatters = []
