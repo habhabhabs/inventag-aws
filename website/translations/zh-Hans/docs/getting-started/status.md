@@ -140,7 +140,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - `--no-billing-validation` 会停止这些调用，此时报告里没有可供对比的计费数据。
 - `--enable-cost-analysis` 会发出更多 Cost Explorer、Pricing 和 CloudWatch 调用，即使加上 `--no-billing-validation` 也是如此，调用次数取决于你的资源。每个不同的价格查询只发出一次，之后重复使用，因此 Pricing 调用次数随不同资源类型和规格的数量增长，而不是随资源数量增长。
 
-未针对 真实的 AWS 验证：`--enable-cost-analysis` 的费用估算。
+未针对真实的 AWS 验证：`--enable-cost-analysis` 的成本估算。
 
 InvenTag 会把被限流的调用最多重试 10 次（standard 重试模式）；`AWS_RETRY_MODE` 和 `AWS_MAX_ATTEMPTS` 可以覆盖这一设置。
 
