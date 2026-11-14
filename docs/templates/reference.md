@@ -193,10 +193,16 @@ For example, a template with `header_fill: blue`, used in a run:
 
 <!-- BEGIN EXAMPLE OUTPUT: error-bad-template -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - ERROR - Template problem:
 inventag - ERROR -   bad.yaml:5: spec.colors.header_fill: must be a six-digit hex colour such as 1F3A5F (got 'blue')
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Output"
 1
 ```
 
@@ -206,10 +212,16 @@ And a misspelt template name:
 
 <!-- BEGIN EXAMPLE OUTPUT: error-unknown-template -->
 
-```text title="Terminal"
+```text title="Output"
 inventag - ERROR - Template problem:
 inventag - ERROR -   no template named 'acme-bomm'. Run 'inventag templates list' to see what is available (searched: ~/acme-infra/.inventag/templates, ~/.config/inventag/templates, ~/inventag-aws/inventag/templating/builtin)
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="Output"
 1
 ```
 

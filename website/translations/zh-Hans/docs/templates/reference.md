@@ -171,19 +171,31 @@ spec:                      # the settings for this kind
 
 例如，一个带有 `header_fill: blue` 的模板在运行中被使用：
 
-```text title="Terminal"
+```text title="输出"
 inventag - ERROR - Template problem:
 inventag - ERROR -   bad.yaml:5: spec.colors.header_fill: must be a six-digit hex colour such as 1F3A5F (got 'blue')
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="输出"
 1
 ```
 
 以及拼错的模板名称：
 
-```text title="Terminal"
+```text title="输出"
 inventag - ERROR - Template problem:
 inventag - ERROR -   no template named 'acme-bomm'. Run 'inventag templates list' to see what is available (searched: ~/acme-infra/.inventag/templates, ~/.config/inventag/templates, ~/inventag-aws/inventag/templating/builtin)
-$ echo $?
+```
+
+```bash title="Terminal"
+echo $?
+```
+
+```text title="输出"
 1
 ```
 
