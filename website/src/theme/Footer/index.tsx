@@ -57,9 +57,11 @@ function translate(links: Column[], copyright: string | undefined, bundle: Bundl
         }
         const label = item.label ? text(`link.item.label.${item.label}`, item.label) : item.label;
         if (item.to) {
-          // an internal page: the same page in the locale of the address
+          // an internal page: the same page in the locale of the address. A plain link (pathname://),
+          // because that page is not a route of the English build: a client-side jump would only
+          // show this 404 page again at the new address.
           const {to, ...rest} = item;
-          return {...rest, label, href: `${prefix}${to.replace(/^\//, '')}`};
+          return {...rest, label, to: `pathname://${prefix}${to.replace(/^\//, '')}`, target: '_self'};
         }
         return {...item, label};
       }),
