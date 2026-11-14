@@ -42,6 +42,8 @@ pip install -e .
 inventag --validate-credentials
 ```
 
+Not verified against Debian, Ubuntu or Homebrew: the externally-managed-environment error and the two ways around it.
+
 Python 3.11 or later is required. Use a read-only IAM identity. By default, discovery made two
 Cost Explorer requests for each account in our offline test, and AWS bills each
 request. Add `--no-billing-validation` to make no Cost Explorer request.
@@ -71,6 +73,7 @@ Details:
 - **Google Sheets and Docs** (`--create-google-sheets`, `--create-google-docs`;
   add the Google add-on with `pip install "inventag-aws[google]"`): the same
   Excel and Word reports as Google files, private unless you share them.
+  Not verified against real Google: the Google files and who can open them.
 - **Global services** (IAM, S3 bucket list, CloudFront, Route 53, WAF for
   CloudFront) are read once per account from `us-east-1` (`cn-north-1` in
   China, `us-gov-west-1` in GovCloud), whichever regions you choose.
