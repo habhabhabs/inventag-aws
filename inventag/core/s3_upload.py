@@ -36,6 +36,48 @@ class S3UploadError(Exception):
     """Raised for invalid S3 upload configuration."""
 
 
+def skipped_upload_message(bucket: str, key_prefix: Optional[str] = None) -> str:
+    """The line to log when a report format failed, so no report was uploaded."""
+    prefix = normalize_key_prefix(key_prefix)
+    target = f"s3://{bucket}/{prefix + '/' if prefix else ''}"
+    return (
+        f"Nothing was uploaded to {target} because a report format failed. "
+        "The report files that were written are in the output folder."
+    )
+
+
+def _region_hint(error: Exception) -> str:
+    """Extra text for S3's PermanentRedirect: the bucket is in another region."""
+    code = getattr(error, "response", {}).get("Error", {}).get("Code")
+    if code != "PermanentRedirect":
+        return ""
+    endpoint = getattr(error, "response", {}).get("Error", {}).get("Endpoint")
+    where = f" (S3 names the endpoint {endpoint})" if endpoint else ""
+    return (
+        " Hint: the bucket is in a different region than the one InvenTag "
+        f"used{where}. Set AWS_DEFAULT_REGION to the bucket's region and run again."
+    )
+
+
+def _log_upload_summary(
+    bucket: str, uploaded: List[Dict[str, Any]], errors: List[Dict[str, Any]]
+) -> None:
+    """After a run with at least one failed file: what was and was not delivered."""
+    total = len(uploaded) + len(errors)
+    failed = ", ".join(Path(e["file"]).name for e in errors)
+    if not uploaded:
+        logger.error(
+            f"No file was uploaded to s3://{bucket}. Failed: {failed}. "
+            "The local report files are kept."
+        )
+        return
+    done = ", ".join(f"s3://{bucket}/{u['key']}" for u in uploaded)
+    logger.error(
+        f"S3 upload is incomplete: {len(uploaded)} of {total} file(s) uploaded "
+        f"({done}); failed: {failed}. The local report files are kept."
+    )
+
+
 def validate_bucket_name(bucket: str) -> str:
     if not isinstance(bucket, str) or not _BUCKET_RE.match(bucket) or ".." in bucket:
         raise S3UploadError(f"Invalid S3 bucket name: {bucket!r}")
@@ -112,8 +154,11 @@ def upload_files(
             result["uploaded"].append({"file": str(path), "key": key, "url": url})
             logger.info(f"Uploaded {path.name} to s3://{bucket}/{key}")
         except Exception as e:  # report every failure; caller decides exit code
-            logger.error(f"Failed to upload {file_path} to s3://{bucket}: {e}")
-            result["errors"].append({"file": str(path), "error": str(e)})
+            reason = f"{e}{_region_hint(e)}"
+            logger.error(f"Failed to upload {file_path} to s3://{bucket}: {reason}")
+            result["errors"].append({"file": str(path), "error": reason})
+    if result["errors"]:
+        _log_upload_summary(bucket, result["uploaded"], result["errors"])
     return result
 
 

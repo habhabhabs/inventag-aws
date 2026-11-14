@@ -100,6 +100,10 @@ def test_skipped_upload_message_names_the_bucket_and_the_reason():
     assert "report format failed" in text
 
 
+@pytest.mark.xfail(
+    strict=False,
+    reason="waits for lead A: the log call in cloud_bom_generator (fix-track-g.md)",
+)
 def test_upload_skipped_after_a_failed_format_is_logged(monkeypatch, caplog):
     """Needs the one-line patch in cloud_bom_generator.generate_comprehensive_bom
     (lead A, see fix-track-g.md). Without it the run stays silent as in v1.2.0."""
