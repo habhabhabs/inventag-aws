@@ -15,6 +15,8 @@ journalisation d’une exécution. Pour toutes les options, voir la [référence
 
 La commande `inventag` fonctionne de la même façon sous Linux, macOS et Windows.
 
+Non vérifié sur Windows ni sur macOS : que la commande `inventag` fonctionne de la même façon que sous Linux.
+
 ## Choisir les comptes {#choose-the-accounts}
 
 | Vous voulez analyser... | Utilisez |
@@ -40,6 +42,8 @@ un avertissement et essaie toutes les régions de la partition que connaît votr
 Les régions que le compte n’a pas activées échouent à la vérification d’accès et sont
 ignorées. Utilisez `--account-regions` pour choisir vous-même les régions.
 
+Non vérifié sur un vrai AWS : l’erreur que renvoie AWS pour une région qui n’est pas activée.
+
 Une région dont la vérification d’accès échoue est ignorée avec un avertissement. Si la vérification
 échoue dans toutes les régions, parce que l’identité n’a pas `ec2:DescribeRegions`, InvenTag ne peut pas
 savoir lesquelles fonctionnent et les analyse toutes.
@@ -58,6 +62,8 @@ CloudFront. Si la région d’origine figure dans votre liste, ils ne sont pas l
   Un bucket S3 affiche sa propre région, par exemple `eu-west-1`.
 - Leurs étiquettes proviennent de l’API Resource Groups Tagging dans la région d’origine, où
   AWS conserve les étiquettes des ressources globales.
+
+  Non vérifié sur un vrai AWS : AWS conserve les étiquettes des ressources globales dans la région d’origine.
 - Des tests hors ligne couvrent `eu-west-1` seule, toutes les régions, et une liste qui inclut
   `us-east-1`. La réponse du vrai AWS n’est pas testée.
 
@@ -72,7 +78,9 @@ InvenTag réessaie un appel limité jusqu’à 10 fois au total (le mode de nouv
 « standard » de l’AWS SDK). Si vous définissez `AWS_RETRY_MODE` ou `AWS_MAX_ATTEMPTS`, vos valeurs sont utilisées.
 Un listage qui échoue encore est journalisé comme avertissement pour ce service et cette région :
 `<service> <operation> in <region> failed (<error>); its resources there may be incomplete.`
-La sortie JSON enregistre comment chaque listage s’est terminé. Une autorisation refusée n’est journalisée qu’une fois par service.
+L’instantané d’état compte comment les listages de chaque compte se sont terminés, dans `metadata.tags.coverage_summary`. Une autorisation refusée n’est journalisée qu’une fois par service.
+
+Non vérifié sur un vrai AWS : la façon dont AWS limite les appels et dont les nouvelles tentatives du SDK y font face.
 
 ## Limite de temps et comptes en parallèle {#time-limit-and-parallel-accounts}
 
@@ -107,7 +115,7 @@ et que le résultat n’est pas plus ancien que `--resume-max-age-hours` (24 par
 Cela nécessite la gestion d’état : `--resume` avec `--disable-state-management` s’arrête donc avec le code de sortie 2.
 Le journal indique `123456789012: reusing results scanned 2026-11-14 06:13 UTC (--resume)`, et les notes du rapport
 listent chaque compte réutilisé avec son heure d’analyse. Sans `--resume`, un avertissement signale que des résultats enregistrés existent
-et qu’ils sont analysés de nouveau. InvenTag supprime les résultats enregistrés après une exécution où tous les comptes se terminent.
+et qu’ils sont analysés de nouveau. InvenTag supprime les résultats enregistrés après une exécution où tous les comptes se terminent. Un compte dont la session a expiré en cours d’analyse est aussi enregistré, et `--resume` le réutilise comme s’il était complet.
 
 ## Choisir les fichiers de sortie {#choose-the-output-files}
 
@@ -187,7 +195,7 @@ InvenTag se termine avec le code 0 même si un compte a échoué ou si rien n’
 
 | Option | Code de sortie | Quand |
 |---|---|---|
-| `--fail-on-account-error` | 5 | Un compte n’a pas pu être analysé, ou seulement en partie |
+| `--fail-on-account-error` | 5 | Un compte n’a pas pu être analysé ou a dépassé son délai |
 | `--fail-if-empty` | 6 | Aucune ressource à signaler |
 
 Avec le code 6, une exécution avec `--template` écrit un rapport qui ne liste

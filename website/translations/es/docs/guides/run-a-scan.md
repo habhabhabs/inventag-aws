@@ -16,6 +16,8 @@ salida y registro de una ejecución. Para ver todas las opciones, consulta la
 
 El comando `inventag` funciona igual en Linux, macOS y Windows.
 
+No verificado contra Windows ni macOS: que el comando `inventag` funcione igual que en Linux.
+
 ## Elige las cuentas {#choose-the-accounts}
 
 | Quieres analizar... | Usa |
@@ -42,6 +44,8 @@ partición que conoce tu AWS SDK. Las regiones que la cuenta no ha habilitado no
 superan la comprobación de acceso y se omiten. Usa `--account-regions` para
 elegir tú las regiones.
 
+No verificado contra AWS real: el error que devuelve AWS para una región que no está habilitada.
+
 Una región que no supera su comprobación de acceso se omite con una
 advertencia. Si la comprobación falla en todas las regiones, porque la identidad
 no tiene `ec2:DescribeRegions`, InvenTag no puede saber cuáles funcionan y las
@@ -62,6 +66,8 @@ está en tu lista, no se leen dos veces.
   región. Un bucket de S3 muestra su propia región, por ejemplo `eu-west-1`.
 - Sus etiquetas proceden de la API Resource Groups Tagging en la región
   principal, donde AWS guarda las etiquetas de los recursos globales.
+
+  No verificado contra AWS real: AWS guarda las etiquetas de los recursos globales en la región principal.
 - Las pruebas sin conexión cubren `eu-west-1` solo, todas las regiones y una
   lista que incluye `us-east-1`. No se ha probado cómo responde AWS real.
 
@@ -76,7 +82,9 @@ InvenTag reintenta una llamada limitada hasta 10 veces en total (el modo de rein
 «standard» del AWS SDK). Si defines `AWS_RETRY_MODE` o `AWS_MAX_ATTEMPTS`, se usan tus valores.
 Un listado que sigue fallando se registra como advertencia para ese servicio y región:
 `<service> <operation> in <region> failed (<error>); its resources there may be incomplete.`
-La salida JSON registra cómo terminó cada listado. Un permiso denegado se registra una sola vez por servicio.
+La instantánea de estado cuenta cómo terminaron los listados de cada cuenta, en `metadata.tags.coverage_summary`. Un permiso denegado se registra una sola vez por servicio.
+
+No verificado contra AWS real: cómo limita AWS las llamadas y cómo lo afrontan los reintentos del SDK.
 
 ## Límite de tiempo y cuentas en paralelo {#time-limit-and-parallel-accounts}
 
@@ -111,7 +119,7 @@ y el resultado no es más antiguo que `--resume-max-age-hours` (por defecto 24, 
 Necesita la gestión de estado, así que `--resume` con `--disable-state-management` se detiene con código de salida 2.
 El registro dice `123456789012: reusing results scanned 2026-11-14 06:13 UTC (--resume)`, y las notas del informe
 listan cada cuenta reutilizada con su hora de análisis. Sin `--resume`, una advertencia indica que existen resultados guardados
-y que se analizan de nuevo. InvenTag borra los resultados guardados tras una ejecución en la que todas las cuentas terminan.
+y que se analizan de nuevo. InvenTag borra los resultados guardados tras una ejecución en la que todas las cuentas terminan. También se guarda una cuenta cuya sesión caducó a mitad del análisis, y `--resume` la reutiliza como si estuviera completa.
 
 ## Elige los archivos de salida {#choose-the-output-files}
 
@@ -193,7 +201,7 @@ InvenTag sale con código 0 aunque una cuenta haya fallado o no se haya encontra
 
 | Opción | Código de salida | Cuándo |
 |---|---|---|
-| `--fail-on-account-error` | 5 | Una cuenta no se pudo analizar, o solo en parte |
+| `--fail-on-account-error` | 5 | Una cuenta no se pudo analizar o se quedó sin tiempo |
 | `--fail-if-empty` | 6 | No hay recursos que informar |
 
 Con el código 6, una ejecución con `--template` escribe un informe que no lista

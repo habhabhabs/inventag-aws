@@ -14,6 +14,8 @@ slug: /user-guides/cli-user-guide
 
 `inventag` 命令在 Linux、macOS 和 Windows 上的用法相同。
 
+未針對 Windows 或 macOS 驗證：`inventag` 命令的用法與在 Linux 上相同。
+
 ## 選擇帳戶 {#choose-the-accounts}
 
 | 你想掃描…… | 使用 |
@@ -37,6 +39,8 @@ inventag --account-regions us-east-1,eu-west-1 --create-excel
 如果它也失敗，InvenTag 會記錄一條警告，並嘗試你的 AWS SDK 所知的該分割槽的每個區域。
 帳戶未啟用的區域會通不過存取檢查而被跳過。可以用 `--account-regions` 自己選擇區域。
 
+未針對 真實的 AWS 驗證：AWS 對未啟用的區域返回的錯誤。
+
 存取檢查失敗的區域會被跳過，並給出警告。如果檢查在每個區域都失敗（因為該身份缺少 `ec2:DescribeRegions`），
 InvenTag 無法判斷哪些區域可用，會掃描全部區域。
 
@@ -52,6 +56,8 @@ InvenTag 無法判斷哪些區域可用，會掃描全部區域。
 - IAM、CloudFront 和 Route 53 資源在區域欄中顯示 `global`。
   S3 儲存貯體顯示它自己所在的區域，例如 `eu-west-1`。
 - 它們的標籤來自主區域的 Resource Groups Tagging API，AWS 在那裡儲存全域性資源的標籤。
+
+  未針對 真實的 AWS 驗證：AWS 把全域性資源的標籤儲存在主區域。
 - 離線測試覆蓋了僅 `eu-west-1`、所有區域，以及包含 `us-east-1` 的列表。
   真實 AWS 會如何回應，沒有測試過。
 
@@ -65,7 +71,9 @@ InvenTag 為 46 個 AWS 服務提供了自己的唯讀列舉呼叫。其他服�
 對於被限流的呼叫，InvenTag 總共最多重試 10 次（AWS SDK 的 「standard」 重試模式）。
 如果你設定了 `AWS_RETRY_MODE` 或 `AWS_MAX_ATTEMPTS`，則使用你的值。仍然失敗的列舉會為該服務和區域記錄一條警告：
 `<service> <operation> in <region> failed (<error>); its resources there may be incomplete.`
-JSON 輸出會記錄每次列舉的結果。被拒絕的權限對每個服務只記錄一次。
+狀態快照會統計每個帳戶的各次列舉如何結束，位置在 `metadata.tags.coverage_summary`。被拒絕的權限對每個服務只記錄一次。
+
+未針對 真實的 AWS 驗證：AWS 如何對呼叫限流，以及 SDK 重試如何應對。
 
 ## 時間限制與平行帳戶 {#time-limit-and-parallel-accounts}
 
@@ -96,7 +104,7 @@ inventag --accounts-file accounts.yaml --create-excel --resume
 只有當命令使用相同的帳戶、區域、服務和篩選條件，並且儲存的結果不早於 `--resume-max-age-hours`（預設 24，最多 168）時，InvenTag 才會複用它。
 它需要狀態管理，所以 `--resume` 與 `--disable-state-management` 同用會以結束代碼 2 停止。
 日誌會顯示 `123456789012: reusing results scanned 2026-11-14 06:13 UTC (--resume)`，報告的備註會列出每個被複用的帳戶及其掃描時間。
-不帶 `--resume` 時，警告會說明存在已儲存的結果，並且它們會被重新掃描。所有帳戶都完成的執行結束後，InvenTag 會刪除已儲存的結果。
+不帶 `--resume` 時，警告會說明存在已儲存的結果，並且它們會被重新掃描。所有帳戶都完成的執行結束後，InvenTag 會刪除已儲存的結果。一個會話在中途過期的帳戶也會被儲存，`--resume` 會把它當作完整的帳戶重用。
 
 ## 選擇輸出檔案 {#choose-the-output-files}
 
@@ -173,7 +181,7 @@ echo $?
 
 | 引數 | 結束代碼 | 何時 |
 |---|---|---|
-| `--fail-on-account-error` | 5 | 有帳戶無法掃描，或只掃描了一部分 |
+| `--fail-on-account-error` | 5 | 有帳戶無法掃描，或超出了時間限制 |
 | `--fail-if-empty` | 6 | 沒有可報告的資源 |
 
 對於結束代碼 6，帶 `--template` 的執行會寫出一份不列出任何資源的報告，不帶 `--template` 的執行則不寫檔案。

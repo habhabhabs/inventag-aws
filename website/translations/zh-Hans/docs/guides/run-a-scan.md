@@ -14,6 +14,8 @@ slug: /user-guides/cli-user-guide
 
 `inventag` 命令在 Linux、macOS 和 Windows 上的用法相同。
 
+未针对 Windows 或 macOS 验证：`inventag` 命令的用法与在 Linux 上相同。
+
 ## 选择账户 {#choose-the-accounts}
 
 | 你想扫描…… | 使用 |
@@ -37,6 +39,8 @@ inventag --account-regions us-east-1,eu-west-1 --create-excel
 如果它也失败，InvenTag 会记录一条警告，并尝试你的 AWS SDK 所知的该分区的每个区域。
 账户未启用的区域会通不过访问检查而被跳过。可以用 `--account-regions` 自己选择区域。
 
+未针对 真实的 AWS 验证：AWS 对未启用的区域返回的错误。
+
 访问检查失败的区域会被跳过，并给出警告。如果检查在每个区域都失败（因为该身份缺少 `ec2:DescribeRegions`），
 InvenTag 无法判断哪些区域可用，会扫描全部区域。
 
@@ -52,6 +56,8 @@ InvenTag 无法判断哪些区域可用，会扫描全部区域。
 - IAM、CloudFront 和 Route 53 资源在区域列中显示 `global`。
   S3 存储桶显示它自己所在的区域，例如 `eu-west-1`。
 - 它们的标签来自主区域的 Resource Groups Tagging API，AWS 在那里保存全局资源的标签。
+
+  未针对 真实的 AWS 验证：AWS 把全局资源的标签保存在主区域。
 - 离线测试覆盖了仅 `eu-west-1`、所有区域，以及包含 `us-east-1` 的列表。
   真实 AWS 会如何响应，没有测试过。
 
@@ -65,7 +71,9 @@ InvenTag 为 46 个 AWS 服务提供了自己的只读列举调用。其他服�
 对于被限流的调用，InvenTag 总共最多重试 10 次（AWS SDK 的 “standard” 重试模式）。
 如果你设置了 `AWS_RETRY_MODE` 或 `AWS_MAX_ATTEMPTS`，则使用你的值。仍然失败的列举会为该服务和区域记录一条警告：
 `<service> <operation> in <region> failed (<error>); its resources there may be incomplete.`
-JSON 输出会记录每次列举的结果。被拒绝的权限对每个服务只记录一次。
+状态快照会统计每个账户的各次列举如何结束，位置在 `metadata.tags.coverage_summary`。被拒绝的权限对每个服务只记录一次。
+
+未针对 真实的 AWS 验证：AWS 如何对调用限流，以及 SDK 重试如何应对。
 
 ## 时间限制与并行账户 {#time-limit-and-parallel-accounts}
 
@@ -96,7 +104,7 @@ inventag --accounts-file accounts.yaml --create-excel --resume
 只有当命令使用相同的账户、区域、服务和筛选条件，并且保存的结果不早于 `--resume-max-age-hours`（默认 24，最多 168）时，InvenTag 才会复用它。
 它需要状态管理，所以 `--resume` 与 `--disable-state-management` 同用会以退出码 2 停止。
 日志会显示 `123456789012: reusing results scanned 2026-11-14 06:13 UTC (--resume)`，报告的备注会列出每个被复用的账户及其扫描时间。
-不带 `--resume` 时，警告会说明存在已保存的结果，并且它们会被重新扫描。所有账户都完成的运行结束后，InvenTag 会删除已保存的结果。
+不带 `--resume` 时，警告会说明存在已保存的结果，并且它们会被重新扫描。所有账户都完成的运行结束后，InvenTag 会删除已保存的结果。一个会话在中途过期的账户也会被保存，`--resume` 会把它当作完整的账户重用。
 
 ## 选择输出文件 {#choose-the-output-files}
 
@@ -173,7 +181,7 @@ echo $?
 
 | 参数 | 退出码 | 何时 |
 |---|---|---|
-| `--fail-on-account-error` | 5 | 有账户无法扫描，或只扫描了一部分 |
+| `--fail-on-account-error` | 5 | 有账户无法扫描，或超出了时间限制 |
 | `--fail-if-empty` | 6 | 没有可报告的资源 |
 
 对于退出码 6，带 `--template` 的运行会写出一份不列出任何资源的报告，不带 `--template` 的运行则不写文件。

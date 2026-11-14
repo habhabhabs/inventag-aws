@@ -15,6 +15,8 @@ logging for a run. For every flag, see the [CLI reference](../reference/cli.md).
 
 The `inventag` command works the same on Linux, macOS and Windows.
 
+Not verified against Windows or macOS: the `inventag` command works the same as on Linux.
+
 ## Choose the accounts
 
 | You want to scan... | Use |
@@ -42,6 +44,8 @@ fails, it logs a warning and tries every region of the partition that your
 AWS SDK knows. Regions that the account has not enabled fail the access check
 and are skipped. Use `--account-regions` to choose the regions yourself.
 
+Not verified against real AWS: the error AWS returns for a region that is not enabled.
+
 A region that fails its access check is skipped with a warning. If the check
 fails in every region, because the identity lacks `ec2:DescribeRegions`,
 InvenTag cannot tell which regions work and scans all of them.
@@ -61,6 +65,8 @@ region is in your list, they are not read twice.
   An S3 bucket shows its own region, for example `eu-west-1`.
 - Their tags come from the Resource Groups Tagging API in the home region,
   where AWS keeps the tags of global resources.
+
+  Not verified against real AWS: AWS keeps the tags of global resources in the home region.
 - Offline tests cover `eu-west-1` alone, all regions, and a list that includes
   `us-east-1`. How real AWS answers is not tested.
 
@@ -76,9 +82,12 @@ InvenTag retries a throttled call up to 10 times in total (the AWS SDK
 "standard" retry mode). If you set `AWS_RETRY_MODE` or `AWS_MAX_ATTEMPTS`,
 your values are used instead. A listing that still fails is logged as a
 warning for that service and region: `<service> <operation> in <region>
-failed (<error>); its resources there may be incomplete.` The JSON output
-records how each listing ended. A denied permission is logged once for the
+failed (<error>); its resources there may be incomplete.` The state snapshot
+counts how the listings of each account ended, in
+`metadata.tags.coverage_summary`. A denied permission is logged once for the
 service.
+
+Not verified against real AWS: how AWS throttles calls and how the SDK retries cope with it.
 
 ## Time limit and parallel accounts
 
@@ -122,6 +131,8 @@ and the report's notes list each reused account with its scan time. Without
 `--resume`, a warning says that saved results exist and are scanned again.
 InvenTag deletes the saved results after a run in which every account
 finishes.
+An account whose session expired part-way is saved too, and `--resume`
+reuses it as if it were complete.
 
 ## Choose the output files
 
@@ -213,7 +224,7 @@ Two opt-in flags change that. With code 5 the reports are still written.
 
 | Flag | Exit code | When |
 |---|---|---|
-| `--fail-on-account-error` | 5 | An account could not be scanned, or only partly |
+| `--fail-on-account-error` | 5 | An account could not be scanned or ran out of time |
 | `--fail-if-empty` | 6 | No resources to report |
 
 With code 6, a run with `--template` writes a report that lists no resources,
