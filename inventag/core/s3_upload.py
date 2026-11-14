@@ -6,7 +6,8 @@ Security properties:
 * Every object is written with server-side encryption (``AES256`` or
   ``aws:kms``); public ACLs are refused.
 * Under the read-only guard, only the uploader's own S3 client is allowed
-  ``PutObject`` (plus the lifecycle calls when the caller opted in to them).
+  ``PutObject``, and only to the bucket the caller named (plus the lifecycle
+  calls when the caller opted in to them).
 * The lifecycle rule is merged into the bucket's existing configuration by
   rule ID. ``PutBucketLifecycleConfiguration`` replaces the whole
   configuration, so writing a single rule would delete everyone else's rules.
@@ -126,7 +127,7 @@ def upload_files(
             f"Unsupported S3 encryption {encryption!r}; use one of {VALID_ENCRYPTION}"
         )
 
-    ReadOnlyGuard.allow_on_client(s3_client, {"PutObject"})
+    ReadOnlyGuard.allow_on_client(s3_client, {"PutObject"}, bucket=bucket)
     timestamp = timestamp or datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     region = (
         getattr(getattr(s3_client, "meta", None), "region_name", None) or "us-east-1"
