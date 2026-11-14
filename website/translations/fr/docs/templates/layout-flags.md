@@ -245,6 +245,8 @@ contient chaque clé du schéma de `inventag/reporting/report_template.py`.
 L’en-tête et le pied de page d’impression Excel ne s’affichent que dans la vue Mise en page et
 sur papier.
 
+Non vérifié sur Microsoft Excel : l’en-tête et le pied de page d’impression ne s’affichent que dans la vue Mise en page et sur papier.
+
 ### `sections` {#sections}
 
 Chaque entrée de `sections` est un mapping. La clé `content_type` sélectionne ce que la
@@ -416,6 +418,9 @@ Autres limites :
 - Les clés de configuration `templates`, `document_templates` et
   `default_template` dans d’anciens exemples de configuration n’ont aucun effet. Seules
   `--word-template` et `--excel-template` sélectionnent un modèle.
+
+  Non vérifié sur un test hors ligne : les anciennes clés de configuration n’ont aucun effet.
+
 - Les fichiers de modèle avec `template_version: "1.0"` ne sont pas valides. Les alpha builds
   antérieures à v1.0.0 fournissaient de tels fichiers, mais la CLI ne les lisait pas.
 

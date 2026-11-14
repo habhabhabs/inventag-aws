@@ -232,6 +232,8 @@ header_footer:
 
 Excel 的打印页眉和打印页脚只会在页面布局视图和纸张上显示。
 
+未针对 Microsoft Excel 验证：打印页眉和页脚只会在页面布局视图和纸张上显示。
+
 ### `sections` {#sections}
 
 `sections` 的每个条目都是一个映射。`content_type` 键决定该章节显示什么。
@@ -390,6 +392,9 @@ inventag: error: my_word_template.yaml: sections[1].columns[2].field: unknown co
 - `scripts/legacy/` 中的旧脚本没有模板参数。
 - 旧配置示例中的配置键 `templates`、`document_templates` 和
   `default_template` 没有任何作用。只有 `--word-template` 和 `--excel-template` 会选择模板。
+
+  未针对离线测试验证：旧配置键没有任何作用。
+
 - 带有 `template_version: "1.0"` 的模板文件无效。v1.0.0 之前的 alpha 构建都附带了这类文件，
   但 CLI 并不会读取它们。
 

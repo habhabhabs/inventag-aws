@@ -245,6 +245,8 @@ contains each key of the schema in `inventag/reporting/report_template.py`.
 The Excel print header and print footer show only in the page layout view and
 on paper.
 
+Not verified against Microsoft Excel: the print header and footer show only in page layout view and on paper.
+
 ### `sections`
 
 Each entry of `sections` is a mapping. The `content_type` key selects what the
@@ -416,6 +418,9 @@ Other limits:
 - The configuration keys `templates`, `document_templates` and
   `default_template` in older configuration examples have no effect. Only
   `--word-template` and `--excel-template` select a template.
+
+  Not verified against an offline test: the old configuration keys have no effect.
+
 - Template files with `template_version: "1.0"` are not valid. Alpha builds
   before v1.0.0 shipped such files, but the CLI did not read them.
 
