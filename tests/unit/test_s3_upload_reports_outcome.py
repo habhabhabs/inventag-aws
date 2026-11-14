@@ -112,13 +112,9 @@ def generator_returning(monkeypatch, results):
 CONFIG = dict(bucket_name="reports", key_prefix="bom-reports/")
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="waits for lead A: the log call in cloud_bom_generator (fix-track-g.md)",
-)
 def test_upload_skipped_after_a_failed_format_is_logged(monkeypatch, caplog):
-    """Needs the patch in cloud_bom_generator.generate_comprehensive_bom
-    (lead A, see fix-track-g.md). Without it the run stays silent as in v1.2.0."""
+    """The generator logs the uploader's message (lead A's call in
+    cloud_bom_generator.generate_comprehensive_bom); v1.2.0 stayed silent."""
     from inventag.core.cicd_integration import S3UploadConfig
 
     # A failed format: the failure result carries bom_generation (what was written).
