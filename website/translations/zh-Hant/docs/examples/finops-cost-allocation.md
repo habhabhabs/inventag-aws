@@ -9,7 +9,11 @@ sidebar_position: 5
 **目標：** 為 FinOps（雲財務運營）或財務團隊生成一份報告，逐個資源顯示成本分攤標籤是否存在且有效。
 
 **你需要：** 唯讀憑證。標籤只有在你於 AWS Billing and Cost Management 控制檯中將其啟用為成本分攤標籤之後，
-才會出現在 AWS 成本報告中。InvenTag 顯示哪些資源帶有這些標籤；它不計算成本。
+才會出現在 AWS 成本報告中。InvenTag 顯示哪些資源帶有這些標籤。它不讀取你的帳單。可選的 `--enable-cost-analysis` 會新增成本估算。
+
+未針對 AWS 驗證：標籤只有在你把它們啟用為成本分攤標籤之後才會出現在成本報告中。
+
+未針對真實的 AWS 驗證：`--enable-cost-analysis` 的成本估算。
 
 ## 範本 {#template}
 

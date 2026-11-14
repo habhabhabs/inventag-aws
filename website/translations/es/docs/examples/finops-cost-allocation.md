@@ -13,7 +13,12 @@ asignación de costes están presentes y son válidas.
 **Necesitas:** credenciales de solo lectura. Las etiquetas solo aparecen en los
 informes de costes de AWS después de activarlas como etiquetas de asignación de
 costes en la consola de AWS Billing and Cost Management. InvenTag muestra qué
-recursos las llevan; no calcula costes.
+recursos las llevan. No lee tu factura. La opción opcional `--enable-cost-analysis`
+añade estimaciones de costes.
+
+No verificado contra AWS: las etiquetas aparecen en los informes de costes solo después de activarlas como etiquetas de asignación de costes.
+
+No verificado contra AWS real: las estimaciones de costes de `--enable-cost-analysis`.
 
 ## Plantilla {#template}
 
