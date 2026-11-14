@@ -27,6 +27,69 @@ class ValidationResult:
     config: Optional[Dict[str, Any]] = None
 
 
+_ACCOUNT_KEYS = (
+    "account_id",
+    "account_name",
+    "access_key_id",
+    "secret_access_key",
+    "session_token",
+    "profile_name",
+    "role_arn",
+    "external_id",
+    "regions",
+    "services",
+    "tags",
+)
+_SETTINGS_KEYS = (
+    "max_concurrent_accounts",
+    "account_processing_timeout",
+    "output_directory",
+)
+
+
+def _accounts_file_warnings(config, accounts) -> List[str]:
+    """Input that is accepted but changes nothing, or changes what is scanned:
+    unknown keys (a typo is ignored) and a second entry for one account ID."""
+    warnings = []
+    for key in config:
+        # version, encrypted and metadata are written by InvenTag itself
+        # (create_secure_credential_file) and read back by it.
+        if key not in ("accounts", "settings", "version", "encrypted", "metadata"):
+            warnings.append(
+                f"Unknown top-level key '{key}' is ignored. Valid keys: "
+                "accounts, settings"
+            )
+    settings = config.get("settings")
+    if isinstance(settings, dict):
+        for key in settings:
+            if key not in _SETTINGS_KEYS:
+                warnings.append(
+                    f"Unknown key '{key}' in 'settings' is ignored. Valid keys: "
+                    f"{', '.join(_SETTINGS_KEYS)}"
+                )
+    first_seen = {}
+    for i, account in enumerate(accounts):
+        if not isinstance(account, dict):
+            continue
+        for key in account:
+            if key not in _ACCOUNT_KEYS:
+                warnings.append(
+                    f"Account {i + 1}: unknown key '{key}' is ignored. Valid "
+                    f"keys: {', '.join(_ACCOUNT_KEYS)}"
+                )
+        account_id = account.get("account_id")
+        if isinstance(account_id, str) and account_id.strip():
+            if account_id in first_seen:
+                warnings.append(
+                    f"Account {i + 1}: account ID {account_id} is already "
+                    f"listed as Account {first_seen[account_id]}. Only one "
+                    "entry per account ID is scanned; remove or correct one."
+                )
+            else:
+                first_seen[account_id] = i + 1
+    return warnings
+
+
 def _service_descriptions_ignored_warnings(config) -> List[str]:
     """Where the run's loader would refuse the file and use the built-in
     descriptions: the top-level key and a ``description`` per entry."""
@@ -126,6 +189,8 @@ class ConfigValidator:
                         "InvenTagCrossAccountRole) in this account, or use the default "
                         "credentials only if they belong to this account"
                     )
+
+            result.warnings.extend(_accounts_file_warnings(config, accounts))
 
             warning = self._secret_file_permission_warning(path, accounts)
             if warning:
