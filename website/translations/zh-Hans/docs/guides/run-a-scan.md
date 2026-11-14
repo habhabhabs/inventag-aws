@@ -14,7 +14,7 @@ slug: /user-guides/cli-user-guide
 
 `inventag` 命令在 Linux、macOS 和 Windows 上的用法相同。
 
-未针对 Windows 或 macOS 验证：`inventag` 命令的用法与在 Linux 上相同。
+未针对 Windows 或 macOS 验证：`inventag` 命令的行为与在 Linux 上相同。
 
 ## 选择账户 {#choose-the-accounts}
 

@@ -16,7 +16,7 @@ salida y registro de una ejecución. Para ver todas las opciones, consulta la
 
 El comando `inventag` funciona igual en Linux, macOS y Windows.
 
-No verificado contra Windows ni macOS: que el comando `inventag` funcione igual que en Linux.
+No verificado contra Windows ni macOS: el comando `inventag` funciona igual que en Linux.
 
 ## Elige las cuentas {#choose-the-accounts}
 

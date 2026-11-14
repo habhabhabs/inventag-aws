@@ -32,7 +32,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 
 La commande `inventag` fonctionne de la même façon sous Linux, macOS et Windows.
 
-Non vérifié sur Windows ni sur macOS : la commande `inventag` fonctionne comme sous Linux.
+Non vérifié sur Windows ni sur macOS : la commande `inventag` fonctionne de la même façon que sous Linux.
 
 `templates` doit être le premier mot après le nom du programme.
 

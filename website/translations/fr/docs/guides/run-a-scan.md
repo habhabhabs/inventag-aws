@@ -15,7 +15,7 @@ journalisation d’une exécution. Pour toutes les options, voir la [référence
 
 La commande `inventag` fonctionne de la même façon sous Linux, macOS et Windows.
 
-Non vérifié sur Windows ni sur macOS : que la commande `inventag` fonctionne de la même façon que sous Linux.
+Non vérifié sur Windows ni sur macOS : la commande `inventag` fonctionne de la même façon que sous Linux.
 
 ## Choisir les comptes {#choose-the-accounts}
 
