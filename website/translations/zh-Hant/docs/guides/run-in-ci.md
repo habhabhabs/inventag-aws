@@ -70,9 +70,13 @@ jobs:
           retention-days: 30
 ```
 
+未針對 GitHub Actions Runner 驗證：此工作流尚未在 GitHub 上執行。它的 YAML 和 `inventag` 命令列會在建置文件時檢查。
+
 請把每個 action 固定到完整的提交 SHA，並在註釋中註明版本。這樣即使某個標籤被移到惡意程式碼上，
 你也能得到保護。上面四個 SHA 是註釋中所標版本的標籤所對應的提交。
 更新版本時，請同時更新 SHA。
+
+未針對 GitHub 驗證：固定到提交 SHA 可在標籤被移動時保護你。
 
 InvenTag 從你儲存庫的資料夾執行，因此 `.inventag/templates/nightly.yaml` 可以按名稱找到。
 
@@ -318,7 +322,7 @@ echo $?
 | 2 | 選項無效或相互衝突，例如 `--accounts-file` 與 `--accounts-prompt` 同用，或 `--compliance-standard`（未實現）。不會掃描任何內容 |
 | 3 | 報告已寫出，發現標籤策略違規（`fail_on_tag_violations: true`） |
 | 4 | 報告已寫出，有對網際網路開放的安全組規則達到或超過 `--risk-threshold` |
-| 5 | 報告已寫出，有帳戶無法掃描或只掃描了一部分（`--fail-on-account-error`） |
+| 5 | 報告已寫出，但有帳戶無法掃描或超出了時間限制（`--fail-on-account-error`） |
 | 6 | 沒有可報告的資源（`--fail-if-empty`） |
 
 如果同時滿足多個條件，先是 5，然後是 6，然後是 3，最後是 4，因為缺少帳戶時，標籤或風險結果背後的資料是不完整的。

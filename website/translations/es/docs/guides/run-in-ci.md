@@ -75,8 +75,12 @@ jobs:
           retention-days: 30
 ```
 
+No verificado contra un runner de GitHub Actions: este flujo de trabajo no se ha ejecutado en GitHub. Su YAML y su línea de comandos de `inventag` se comprueban al compilar la documentación.
+
 Fija cada acción a un SHA de commit completo, con la versión en un comentario.
 Eso te protege si una etiqueta (tag) se mueve a código malicioso. Los cuatro SHA de arriba son los commits de las etiquetas (tags) indicadas en los comentarios. Actualiza los SHA cuando actualices las versiones.
+
+No verificado contra GitHub: que fijar a un SHA de commit te proteja cuando se mueve una etiqueta (tag).
 
 InvenTag se ejecuta desde la carpeta de tu repositorio, así que
 `.inventag/templates/nightly.yaml` se encuentra por nombre.
@@ -326,7 +330,7 @@ echo $?
 | 2 | Opciones no válidas o en conflicto, por ejemplo `--accounts-file` con `--accounts-prompt`, o `--compliance-standard` (no implementada). No se analiza nada |
 | 3 | Informes escritos, se encontraron incumplimientos de la política de etiquetas (`fail_on_tag_violations: true`) |
 | 4 | Informes escritos, una regla de grupo de seguridad abierta a internet con nivel igual o superior a `--risk-threshold` |
-| 5 | Informes escritos, una cuenta no se pudo analizar o solo en parte (`--fail-on-account-error`) |
+| 5 | Informes escritos, pero una cuenta no se pudo analizar o se quedó sin tiempo (`--fail-on-account-error`) |
 | 6 | No hay recursos que informar (`--fail-if-empty`) |
 
 Si se aplica más de uno, primero va el 5, luego el 6, después el 3 y por último el 4, porque los datos detrás de un resultado de etiquetas o de riesgo están incompletos cuando falta una cuenta.

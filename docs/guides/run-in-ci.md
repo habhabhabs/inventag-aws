@@ -73,8 +73,12 @@ jobs:
           retention-days: 30
 ```
 
+Not verified against a GitHub Actions runner: this workflow has not run on GitHub. Its YAML and its `inventag` command line are checked when the docs are built.
+
 Pin each action to a full commit SHA, with the version in a comment. That
 protects you if a tag is moved to malicious code. The four SHAs above are the commits of the tags named in the comments. Update the SHAs when you update the versions.
+
+Not verified against GitHub: pinning to a commit SHA protects you when a tag is moved.
 
 InvenTag runs from your repository's folder, so `.inventag/templates/nightly.yaml`
 is found by name.
@@ -329,7 +333,7 @@ echo $?
 | 2 | Invalid or conflicting options, for example `--accounts-file` with `--accounts-prompt`, or `--compliance-standard` (not implemented). Nothing is scanned |
 | 3 | Reports written, tag policy violations found (`fail_on_tag_violations: true`) |
 | 4 | Reports written, a security group rule open to the internet at or above `--risk-threshold` |
-| 5 | Reports written, an account could not be scanned or only partly (`--fail-on-account-error`) |
+| 5 | Reports written, but an account could not be scanned or ran out of time (`--fail-on-account-error`) |
 | 6 | No resources to report (`--fail-if-empty`) |
 
 If more than one applies, 5 comes first, then 6, then 3, then 4, because the data
