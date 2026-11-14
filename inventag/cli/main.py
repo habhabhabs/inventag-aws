@@ -8,6 +8,7 @@ compliance checking, and advanced reporting capabilities.
 
 import argparse
 import getpass
+import os
 import re
 import sys
 import json
@@ -17,7 +18,13 @@ import boto3
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
-from botocore.exceptions import ClientError, NoCredentialsError
+from botocore.exceptions import (
+    ClientError,
+    NoCredentialsError,
+    SSOTokenLoadError,
+    TokenRetrievalError,
+    UnauthorizedSSOTokenError,
+)
 
 # InvenTag imports
 from ..core import (
@@ -1178,6 +1185,13 @@ def _opt_in_exit_code(args, results: Dict[str, Any], logger) -> int:
     return 0
 
 
+def _profile_name(session) -> str:
+    """The profile the default session uses (for messages)."""
+    return getattr(session, "profile_name", None) or os.environ.get(
+        "AWS_PROFILE", "default"
+    )
+
+
 def validate_aws_credentials_early(timeout: Optional[int] = None) -> bool:
     """
     Validate AWS credentials early before any BOM processing.
@@ -1187,6 +1201,7 @@ def validate_aws_credentials_early(timeout: Optional[int] = None) -> bool:
 
     logger.info("🔐 Validating AWS credentials...")
 
+    session = None
     try:
         # Test default session first
         session = boto3.Session()
@@ -1260,6 +1275,33 @@ def validate_aws_credentials_early(timeout: Optional[int] = None) -> bool:
         logger.error("   aws sts get-caller-identity # Test credentials")
         logger.error("   aws configure               # Set up new credentials")
 
+        return False
+
+    except (SSOTokenLoadError, UnauthorizedSSOTokenError, TokenRetrievalError):
+        profile = _profile_name(session)
+        logger.error(
+            f"❌ The IAM Identity Center (SSO) login for profile '{profile}' "
+            "is missing or has expired."
+        )
+        logger.error(f"   Run: aws sso login --profile {profile}")
+        logger.error("   Then run InvenTag again.")
+        return False
+
+    except EOFError:
+        profile = _profile_name(session)
+        logger.error(
+            f"❌ Profile '{profile}' needs an MFA code, and there is no "
+            "terminal to type it."
+        )
+        logger.error(
+            "   Run InvenTag in a terminal, or get temporary credentials first "
+            "and set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and "
+            "AWS_SESSION_TOKEN:"
+        )
+        logger.error(
+            "   aws sts get-session-token --serial-number <MFA device ARN> "
+            "--token-code <code>"
+        )
         return False
 
     except NoCredentialsError:
