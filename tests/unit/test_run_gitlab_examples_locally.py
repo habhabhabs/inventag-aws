@@ -229,3 +229,48 @@ def test_the_variables_file_is_read_back_by_yaml_with_every_value_a_string(tmp_p
     path = tmp_path / "vars.yml"
     runner.write_variables_file(path, {"A": "1", "B": "x: y"})
     assert yaml.safe_load(path.read_text()) == {"A": "1", "B": "x: y"}
+
+
+# --- one build, no concurrent builds -------------------------------------
+
+TWO_JOBS = """\
+stages: [check]
+a:
+  stage: check
+  script:
+    - pip install "inventag-aws==%INVENTAG_VERSION%"
+    - inventag --template x
+b:
+  stage: check
+  script:
+    - pip install "inventag-aws==%INVENTAG_VERSION%"
+    - inventag --template y
+"""
+
+
+def test_no_job_installs_or_builds_the_package_the_pipeline_installs_it_once():
+    doc = runner.rewrite_install(yaml.safe_load(TWO_JOBS), runner.PREINSTALLED_NOTE)
+    for job in ("a", "b"):
+        assert not any("pip install" in line for line in doc[job]["script"])
+        assert doc[job]["script"][0] == runner.PREINSTALLED_NOTE
+
+
+def test_the_install_comes_from_the_built_wheel_not_the_source_folder(tmp_path):
+    argv = runner.install_argv("/py", tmp_path / "site", tmp_path / "x-1-py3.whl")
+    assert argv[:4] == ["/py", "-m", "pip", "install"]
+    assert str(tmp_path / "x-1-py3.whl") in argv
+    assert str(runner.REPO) not in argv
+    assert "--no-deps" in argv and "--target" in argv
+
+
+def test_the_wheel_is_found_in_its_folder_and_a_missing_wheel_is_an_error(tmp_path):
+    (tmp_path / "inventag_aws-1.2.0-py3-none-any.whl").write_text("")
+    assert runner.find_wheel(tmp_path).name.startswith("inventag_aws-")
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    try:
+        runner.find_wheel(empty)
+    except RuntimeError as exc:
+        assert "wheel" in str(exc)
+    else:
+        raise AssertionError("no error")

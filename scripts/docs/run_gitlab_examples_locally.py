@@ -3,8 +3,10 @@
 
 For every GitLab block that scripts/docs/check_ci_examples.py finds, this:
   - writes the block as .gitlab-ci.yml in a new git repository in a temp dir;
-  - replaces `pip install "inventag-aws..."` with a pip install of this
-    checkout (into a private --target dir, so your environment is untouched);
+  - builds this checkout into a wheel once, installs the wheel into a private
+    --target dir per block (your environment is untouched), and replaces each
+    `pip install "inventag-aws..."` of the jobs with an echo: jobs of one stage
+    run at the same time and must not build the package in one folder;
   - creates each `--template NAME` that is not built in with
     `inventag templates init ci-pipeline` (step 2 of the CI guides);
   - starts a moto server on 127.0.0.1, seeds an EC2 instance and an S3 bucket,
@@ -121,6 +123,39 @@ def project_variables(body: str, given: Dict[str, str]) -> Dict[str, str]:
 def write_variables_file(path: Path, variables: Dict[str, str]) -> None:
     """gitlab-ci-local's project file variables (README: `--variables-file`)."""
     path.write_text(yaml.safe_dump(dict(variables), default_style='"'))
+
+
+PREINSTALLED_NOTE = (
+    'echo "inventag-aws: installed before the pipeline, from a wheel built once"'
+)
+
+
+def install_argv(python: str, site: Path, wheel: Path) -> List[str]:
+    """pip command that installs the wheel (and no dependencies) into `site`."""
+    return [python, "-m", "pip", "install", "--quiet", "--no-deps"] + [
+        "--target",
+        str(site),
+        str(wheel),
+    ]
+
+
+def find_wheel(wheel_dir: Path) -> Path:
+    wheels = sorted(wheel_dir.glob("inventag_aws-*.whl"))
+    if not wheels:
+        raise RuntimeError(f"no inventag_aws wheel was built in {wheel_dir}")
+    return wheels[-1]
+
+
+def build_wheel(wheel_dir: Path) -> Path:
+    """Build this checkout once. Jobs of one stage run at the same time, so
+    none of them may build the package: they would share one build folder."""
+    cmd = [sys.executable, "-m", "pip", "wheel", "--quiet", "--no-deps"]
+    subprocess.run(
+        cmd + ["--wheel-dir", str(wheel_dir), str(REPO)],
+        check=True,
+        capture_output=True,
+    )
+    return find_wheel(wheel_dir)
 
 
 def work_name(block: Dict[str, Any]) -> str:
@@ -291,17 +326,18 @@ def _artifacts(project: Path, job: str) -> List[str]:
     )
 
 
-def _prepare_project(block: Dict[str, Any], doc: Dict[Any, Any], work: Path) -> Path:
+def _prepare_project(
+    block: Dict[str, Any], doc: Dict[Any, Any], work: Path, wheel: Path
+) -> Path:
     """A git repository holding the rewritten block and its config templates."""
     project = work / f"block-{work_name(block)}"
     site = work / f"site-{work_name(block)}"
     project.mkdir()
-    install = (
-        f'"{sys.executable}" -m pip install --quiet --no-deps --target "{site}" '
-        f'"{REPO}"'
+    subprocess.run(
+        install_argv(sys.executable, site, wheel), check=True, capture_output=True
     )
     (project / ".gitlab-ci.yml").write_text(
-        yaml.safe_dump(rewrite_install(doc, install), sort_keys=False)
+        yaml.safe_dump(rewrite_install(doc, PREINSTALLED_NOTE), sort_keys=False)
     )
     builtin = {p.stem for p in BUILTIN_TEMPLATES.glob("*.yaml")}
     for name in template_names(block["body"]):
@@ -406,12 +442,13 @@ def run_block(
     gcl: str,
     endpoint: str,
     work: Path,
+    wheel: Path,
     source_override: Optional[str] = None,
     given_variables: Optional[Dict[str, str]] = None,
 ) -> bool:
     doc = yaml.safe_load(block["body"])
     tokens = id_token_names(doc)
-    project = _prepare_project(block, doc, work)
+    project = _prepare_project(block, doc, work, wheel)
     site = work / f"site-{work_name(block)}"
     _seed(endpoint)
     source, why = choose_pipeline_source(doc, source_override)
@@ -506,6 +543,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     host, port = server.get_host_and_port()
     work = Path(tempfile.mkdtemp(prefix="gl-examples-"))
     try:
+        wheel = build_wheel(work / "wheel")
         ok = all(
             [
                 run_block(
@@ -513,6 +551,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                     ns.gitlab_ci_local,
                     f"http://{host}:{port}",
                     work,
+                    wheel,
                     ns.pipeline_source,
                     given,
                 )
