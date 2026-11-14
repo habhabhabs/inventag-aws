@@ -1526,3 +1526,35 @@ def test_file_name_timestamps_local_time_for_reports_and_tag_json_utc_for_the_re
     assert abs(seconds(tag_json, local)) < 120  # local time, not UTC
     for utc in (snapshot, s3_folder):
         assert abs(seconds(local, utc) - eight_hours) < 120, (local, utc)
+
+
+def test_failing_template_in_your_own_file_uses_that_entrys_description(
+    tmp_path, caplog
+):
+    """configuration-files.md: a template that cannot be filled in logs a warning;
+    for a template in your own file the entry's `description` is used."""
+    from inventag.discovery.service_descriptions import ServiceDescriptionManager
+
+    path = tmp_path / "sd.yaml"
+    path.write_text(
+        "service_descriptions:\n"
+        "  EC2:\n"
+        "    Volume:\n"
+        "      description: Block storage\n"
+        "      template: volume_text\n"
+        "templates:\n"
+        "  volume_text:\n"
+        "    template: 'Disk {no_such_variable} in {region}'\n"
+    )
+    caplog.set_level(logging.WARNING)
+    text = ServiceDescriptionManager(str(path)).get_dynamic_description(
+        {
+            "service": "EC2",
+            "type": "Volume",
+            "id": "vol-1",
+            "region": "us-east-1",
+            "account_id": "1",
+        }
+    )
+    assert text == "Block storage"
+    assert "Failed to render template" in caplog.text
