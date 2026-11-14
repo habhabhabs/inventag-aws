@@ -120,14 +120,16 @@ son ARN.
 
 - Il compare une exécution à celle qui la précède. Il ne compare pas avec une
   exécution plus ancienne que vous choisiriez.
-- Il compare les ressources trouvées par chaque exécution. Utilisez les mêmes régions, services et
-  filtres pour les deux exécutions, afin qu’un changement de périmètre ne soit pas pris pour un changement dans
-  votre parc.
+- Il compare les ressources trouvées par chaque exécution. Les ressources que l’exécution actuelle n’a pas
+  regardées (une région ou un service qu’elle n’a pas analysé) ou n’a pas pu lire (un listage refusé, limité ou en
+  échec) ne sont pas comparées : la section State Comparison les compte dans `resources_not_compared` et elles ne
+  sont pas présentées comme supprimées. Une région ou un service que seule l’exécution actuelle a analysé montre ses
+  ressources comme ajoutées ; utilisez donc les mêmes régions, services et filtres pour les deux exécutions.
 - `--no-generate-changelog` supprime le rapport mais conserve les instantanés.
   `--disable-delta-detection` le supprime aussi. `--disable-state-management`
   supprime les instantanés et les rapports.
 - Si un compte n’a pas pu être analysé ou a dépassé son délai dans l’une des deux exécutions, ses ressources sont exclues de la comparaison.
-  Sinon, toutes apparaîtraient comme ajoutées ou supprimées. Le rapport de changements nomme le compte dans sa section State Comparison (`accounts_not_compared`). Un compte dont la session a expiré en cours d’analyse est comparé comme s’il était complet.
+  Sinon, toutes apparaîtraient comme ajoutées ou supprimées. Le rapport de changements nomme le compte dans sa section State Comparison (`accounts_not_compared`). Il en va de même pour un compte dont la session a expiré en cours d’analyse et pour un compte dont tous les appels ont été refusés.
 - InvenTag compare les listes sans tenir compte de l’ordre : déplacer des éléments dans une liste n’est donc pas un changement, sauf pour les couches Lambda, les politiques de résiliation Auto Scaling et les comportements de cache CloudFront, dont l’ordre fait partie de la configuration.
   Il ignore aussi les champs qui changent à chaque exécution : la voie de découverte, les chiffres de coût et les compteurs d’utilisation
   comme `ItemCount`, `ApproximateNumberOfMessages` ou la taille EFS.

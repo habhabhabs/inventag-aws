@@ -109,13 +109,15 @@ Changes detected in S3 service resources
 需要了解的事項：
 
 - 它把一次執行與它之前的那次執行比較，不會與你指定的更早的執行比較。
-- 它比較的是每次執行發現的資源。兩次執行請使用相同的區域、服務和過濾條件，
-  這樣範圍的變化就不會被誤讀為你的資產發生了變化。
+- 它比較的是每次執行發現的資源。目前執行沒有檢視的資源（它沒有掃描的區域或服務）
+  和它無法讀取的資源（被拒絕、被限流或失敗的列出呼叫）不會參與比較：State Comparison
+  部分會把它們計入 `resources_not_compared`，它們不會顯示為已刪除。只有目前執行掃描過的
+  區域或服務，其資源會顯示為新增，所以兩次執行請使用相同的區域、服務和過濾條件。
 - `--no-generate-changelog` 會停止生成報告，但保留快照。`--disable-delta-detection`
   同樣會停止生成報告。`--disable-state-management` 會同時停止快照和報告。
 - 如果某個帳戶在兩次執行中的任何一次裡無法掃描或超出了時間限制，它的資源會被排除在比較之外。
   否則它的所有資源都會顯示為新增或刪除。變更報告會在「State Comparison」部分（`accounts_not_compared`）列出該帳戶。
-  一個會話在中途過期的帳戶會被當作完整的帳戶來比較。
+  會話在中途過期的帳戶，以及所有呼叫都被拒絕的帳戶，也按同樣方式處理。
 - InvenTag 把列表當作無序處理，所以列表中專案的順序變化不算變更，但 Lambda 層、Auto Scaling 終止策略和 CloudFront 快取行為除外，它們的順序屬於設定。它還會忽略每次執行都會變化的欄位：
   發現途徑、成本數字，以及 `ItemCount`、`ApproximateNumberOfMessages` 或 EFS 大小之類的使用計數器。
 - 執行儲存快照時，InvenTag 會刪除超過 30 天或超出最新 100 個的快照。用 `--state-retention-days N` 和

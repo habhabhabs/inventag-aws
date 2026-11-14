@@ -138,9 +138,13 @@ What to know:
 
 - It compares one run with the run before it. It does not compare with an
   older run you pick.
-- It compares the resources each run found. Use the same regions, services and
-  filters for both runs, so that a change in scope is not read as a change in
-  your estate.
+- It compares the resources each run found. Resources that the current run
+  did not look at (a region or a service it did not scan) or could not read (a
+  denied, throttled or failed listing) are not compared: the State Comparison
+  section counts them under `resources_not_compared`, and they do not show as
+  removed. A region or service that only the current run scanned shows its
+  resources as added, so use the same regions, services and filters for both
+  runs.
 - `--no-generate-changelog` stops the report but keeps the snapshots.
   `--disable-delta-detection` also stops it. `--disable-state-management`
   stops snapshots and reports.
@@ -148,7 +152,8 @@ What to know:
   runs, its resources are left out of the comparison. Otherwise all of them
   would show as added or removed. The change report names the account in its
   State Comparison section (`accounts_not_compared`).
-  An account whose session expired part-way is compared as if it were complete.
+  The same holds for an account whose session expired part-way and for an
+  account in which every call was denied.
 - InvenTag compares lists as unordered, so moving items around in a list is
   not a change, except Lambda layers, Auto Scaling termination policies and
   CloudFront cache behaviors, whose order is configuration. It also ignores

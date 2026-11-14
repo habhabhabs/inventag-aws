@@ -121,14 +121,18 @@ Qué debes saber:
 
 - Compara una ejecución con la anterior. No compara con una ejecución más
   antigua que elijas.
-- Compara los recursos que encontró cada ejecución. Usa las mismas regiones,
-  servicios y filtros en ambas, para que un cambio de ámbito no se lea como un
-  cambio en tu infraestructura.
+- Compara los recursos que encontró cada ejecución. Los recursos que la
+  ejecución actual no miró (una región o un servicio que no analizó) o no pudo
+  leer (un listado denegado, limitado o fallido) no se comparan: la sección State
+  Comparison los cuenta en `resources_not_compared` y no aparecen como
+  eliminados. Una región o un servicio que solo analizó la ejecución actual
+  muestra sus recursos como añadidos, así que usa las mismas regiones, servicios
+  y filtros en ambas.
 - `--no-generate-changelog` detiene el informe pero conserva las instantáneas.
   `--disable-delta-detection` también lo detiene. `--disable-state-management`
   detiene las instantáneas y los informes.
 - Si una cuenta no se pudo analizar o se quedó sin tiempo en cualquiera de las dos ejecuciones, sus recursos se dejan fuera de la comparación.
-  Si no, todos aparecerían como añadidos o eliminados. El informe de cambios nombra la cuenta en su sección State Comparison (`accounts_not_compared`). Una cuenta cuya sesión caducó a mitad del análisis se compara como si estuviera completa.
+  Si no, todos aparecerían como añadidos o eliminados. El informe de cambios nombra la cuenta en su sección State Comparison (`accounts_not_compared`). Lo mismo vale para una cuenta cuya sesión caducó a mitad del análisis y para una cuenta en la que se denegaron todas las llamadas.
 - InvenTag compara las listas sin tener en cuenta el orden, así que mover elementos dentro de una lista no es un cambio, salvo en las capas de Lambda, las políticas de terminación de Auto Scaling y los comportamientos de caché de CloudFront, cuyo orden es configuración.
   También ignora los campos que cambian en cada ejecución: la vía de descubrimiento, las cifras de coste y los contadores de uso
   como `ItemCount`, `ApproximateNumberOfMessages` o el tamaño de EFS.
