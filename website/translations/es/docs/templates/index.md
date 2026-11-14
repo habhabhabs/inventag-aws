@@ -56,6 +56,8 @@ Unas pocas reglas deciden qué prevalece cuando los ajustes se solapan:
 
 Las ejecuciones sin `--template` usan el diseño de informe original.
 
+Cuando una cuenta no se analizó, o solo en parte, un informe hecho con una plantilla termina su hoja `Summary` y su documento Word con «Run notes» que nombran la cuenta y el motivo. Una plantilla con `summary_sheet: false` sigue recibiendo la hoja `Summary` cuando hay notas. Sin notas, los archivos son los mismos que antes.
+
 `--tag-mappings` y `--service-descriptions` añaden columnas a ese diseño
 original. Con `--template`, un informe muestra solo las columnas que enumera,
 así que esas columnas no aparecen hasta que las indicas en `columns`, por

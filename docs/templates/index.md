@@ -53,6 +53,12 @@ A few rules decide what wins when settings overlap:
 
 Runs without `--template` use the original report layout.
 
+When an account was not scanned, or only partly, a report made with a template
+ends its `Summary` sheet and its Word document with "Run notes" that name the
+account and the reason. A template with `summary_sheet: false` still gets the
+`Summary` sheet when there are notes. Without notes, the files are the same as
+before.
+
 `--tag-mappings` and `--service-descriptions` add columns to that original
 layout. With `--template`, a report shows only the columns it lists, so those
 columns stay out until you list them under `columns`, for example
