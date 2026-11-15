@@ -206,7 +206,9 @@ def test_google_output_alone_gives_no_missing_format_warning():
     assert not any("No output format" in w for w in result.warnings)
     args = SimpleNamespace(**{**vars(args), "create_google_sheets": False})
     result = ConfigValidator().validate_cli_arguments(args)
-    assert any("No output format" in w for w in result.warnings)
+    # A-54: no output flag means Excel; the one line that says so is printed
+    # by the run (see test_default_output_console.py), not by the validator.
+    assert not any("No output format" in w for w in result.warnings)
 
 
 # --------------------------------------------- AWS calls of validation modes
