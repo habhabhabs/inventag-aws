@@ -18,7 +18,8 @@ from ..security.read_only_guard import (
     install_global_guard,
 )
 from ..security.redaction import install_log_record_redaction
-from ..security.safe_output import ensure_private_dir, open_private
+from ..reporting.safe_save import save_atomically
+from ..security.safe_output import ensure_private_dir
 from pathlib import Path
 
 # Exit code for flags that are recognised but not implemented (argparse also
@@ -155,6 +156,10 @@ def write_audit_output(guard: Optional[ReadOnlyGuard], path: str) -> str:
     )
     output_path = Path(path)
     ensure_private_dir(output_path.parent)
-    with open_private(output_path, "w", encoding="utf-8") as f:
-        json.dump(report, f, indent=2)
-    return str(output_path)
+
+    def write(temporary: str) -> None:
+        with open(temporary, "w", encoding="utf-8") as f:
+            json.dump(report, f, indent=2)
+
+    # Whole or not at all: a failing write keeps the old file (A-14).
+    return save_atomically(output_path, write)
