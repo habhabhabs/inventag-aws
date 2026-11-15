@@ -2032,7 +2032,12 @@ class CloudBOMGenerator:
                 if label is None:
                     converter = bom_converter
                 else:
-                    converter = BOMConverter(session=session)
+                    # The account's own session reads its Network and Security
+                    # sheets (A-58); the first session is only the fallback.
+                    account = self.account_contexts.get(label)
+                    converter = BOMConverter(
+                        session=(account.session if account else None) or session
+                    )
                     converter.analyze_network = bom_converter.analyze_network
                     converter.analyze_security = bom_converter.analyze_security
                     converter.run_notes = notes
