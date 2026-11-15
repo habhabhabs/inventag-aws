@@ -142,6 +142,18 @@ def _bound_cost_explorer(session, config: Optional[BotoConfig]):
     return restore
 
 
+def _known_regions(session) -> set:
+    """Every region the installed botocore knows (all partitions); empty if
+    that cannot be read, so that no region is called unknown by mistake."""
+    try:
+        regions = set()
+        for partition in session.get_available_partitions():
+            regions.update(session.get_available_regions("ec2", partition))
+        return regions
+    except Exception:
+        return set()
+
+
 def _expired_listings(context) -> int:
     """How many listings of an account failed because its session expired."""
     return sum(
@@ -399,6 +411,11 @@ class CloudBOMGenerator:
         self.reused_accounts: Dict[str, str] = {}  # account -> scanned at (UTC)
         # Run notes of the state stage (snapshot, index, change report; A-18).
         self._state_notes: List[str] = []
+        # Region names botocore does not know (A-16): per account, the ones
+        # that were not scanned; and the names already warned about.
+        self._unknown_regions: Dict[str, List[str]] = {}
+        self._warned_regions: set = set()
+        self._last_unknown: List[str] = []
         # Read-only guard blocks counted before this run (blocked calls,
         # recorded entries), so only this run's blocks are reported.
         self._guard_start = (0, 0)
@@ -843,6 +860,12 @@ class CloudBOMGenerator:
                     f"Not read in account {acc_id}, so the report is partial "
                     f"there: {text}."
                 )
+            unknown = self._unknown_regions.get(str(acc_id)) or []
+            if unknown:
+                notes.append(
+                    f"Regions not scanned in account {acc_id} because they are not "
+                    f"known AWS regions (check the spelling): {', '.join(unknown)}."
+                )
             skipped = getattr(ctx, "skipped_regions", None) or []
             if skipped:
                 notes.append(
@@ -1208,11 +1231,20 @@ class CloudBOMGenerator:
                     caller_identity=caller_identity,
                     accessible_regions=accessible_regions,
                     skipped_regions=(
-                        [r for r in target_regions if r not in accessible_regions]
+                        [
+                            r
+                            for r in target_regions
+                            if r not in accessible_regions
+                            and r not in self._last_unknown
+                        ]
                         if accessible_regions
                         else []
                     ),
                 )
+                if accessible_regions and self._last_unknown:
+                    self._unknown_regions[str(credentials.account_id)] = list(
+                        self._last_unknown
+                    )
 
                 account_contexts[credentials.account_id] = context
                 self.account_contexts[credentials.account_id] = context
@@ -1432,8 +1464,24 @@ class CloudBOMGenerator:
         """
         accessible_regions = []
         denied = []
+        known = _known_regions(session)
+        self._last_unknown = []
 
         for region in target_regions:
+            if known and region not in known:
+                # A typo (or a region newer than botocore): no region check;
+                # it is scanned only if no other region is accessible.
+                self._last_unknown.append(region)
+                if region not in self._warned_regions:
+                    self._warned_regions.add(region)
+                    self.logger.warning(
+                        f"Region '{region}' is not a known AWS region; check its "
+                        "spelling in --account-regions or in the accounts file. "
+                        "To list the regions of your account, run: aws ec2 "
+                        "describe-regions --query 'Regions[].RegionName' "
+                        "--output text"
+                    )
+                continue
             try:
                 # Test region accessibility with a simple EC2 describe call
                 ec2 = session.client("ec2", region_name=region)
