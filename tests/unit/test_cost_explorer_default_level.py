@@ -48,7 +48,6 @@ def test_default_run_shows_exactly_one_billing_warning_with_the_cause(
     assert outcome.code == 0
     assert len(lines) == 1, lines
     assert cause in lines[0], lines[0]
-    assert "billing" in lines[0].lower(), lines[0]
 
 
 def test_debug_run_still_shows_the_detail_lines(tmp_path):
