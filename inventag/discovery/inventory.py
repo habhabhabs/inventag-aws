@@ -913,6 +913,11 @@ class AWSResourceInventory:
             )
             self.logger.debug(f"Billing discovery detail: {e}")
             self.enable_billing_validation = False
+            # The comprehensive step reads Cost Explorer again and records the
+            # outcome; it must not say the same thing a second time.
+            engine = getattr(self, "comprehensive_discovery", None)
+            if engine is not None:
+                engine.billing_failure_said = True
 
     def _normalize_billing_service_name(self, billing_service_name: str) -> str:
         """Normalize billing service names to AWS service codes."""

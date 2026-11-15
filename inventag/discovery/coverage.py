@@ -124,6 +124,9 @@ class CoverageLedger:
 
 
 _UNREADABLE_ANSWER = (ValueError, KeyError, TypeError, AttributeError, IndexError)
+# A call that did not answer in time: botocore's own timeouts, or the shorter
+# ones the generator gives Cost Explorer under a short account limit (A-24).
+_TIMEOUT_ERRORS = frozenset({"ConnectTimeoutError", "ReadTimeoutError"})
 _CONNECTION_ERRORS = frozenset(
     {
         "EndpointConnectionError",
@@ -166,6 +169,12 @@ def billing_failure_message(error: BaseException, code: str, denied_codes) -> st
         what = f"could not be read ({code})"
     elif isinstance(error, _UNREADABLE_ANSWER):
         what = "returned an answer InvenTag could not read"
+    elif type(error).__name__ in _TIMEOUT_ERRORS:
+        return (
+            f"Cost Explorer did not answer in time ({type(error).__name__}),"
+            + _BILLING_TAIL
+            + "Run the scan again."
+        )
     elif type(error).__name__ in _CONNECTION_ERRORS:
         return (
             f"Cost Explorer could not be reached ({type(error).__name__}),"

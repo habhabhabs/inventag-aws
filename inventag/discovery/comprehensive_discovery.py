@@ -481,6 +481,9 @@ class ComprehensiveAWSDiscovery:
         self._stop = threading.Event()
         # One entry per listing call: what was tried and how it ended
         self.coverage = coverage if coverage is not None else CoverageLedger()
+        # Set by the inventory step when it already warned about a failed Cost
+        # Explorer read that left no ledger entry (a timeout or connection error).
+        self.billing_failure_said = False
 
         # Comprehensive service discovery patterns
         self.service_discovery_patterns = {
@@ -867,7 +870,7 @@ class ComprehensiveAWSDiscovery:
             )
             # The inventory step may have read the same failure a moment ago and
             # said so; one warning is enough, the detail stays at DEBUG.
-            already_said = self._billing_failure_recorded()
+            already_said = self.billing_failure_said or self._billing_failure_recorded()
             self._record_billing(
                 coverage_mod.outcome_for_error(code, self.DENIED_CODES), 0, code
             )
