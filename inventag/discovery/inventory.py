@@ -24,7 +24,7 @@ from .optimized_discovery import OptimizedAWSDiscovery
 from .comprehensive_discovery import ComprehensiveAWSDiscovery
 from .arn_utils import build_arn, normalize_arn
 from .aws_clients import create_client
-from .coverage import outcome_for_error
+from .coverage import billing_failure_message, outcome_for_error
 from ..security.secret_values import mask_secret_values
 from .service_filter import (
     canonical_service,
@@ -898,25 +898,20 @@ class AWSResourceInventory:
                 count=0,
                 error_code=error_code,
             )
-            if error_code in (
-                "UnauthorizedOperation",
-                "AccessDenied",
-                "AccessDeniedException",
-            ):
-                self.logger.warning(
-                    "No permission for the Cost Explorer API "
-                    f"({error_code}). Skipping billing validation; add "
-                    "ce:GetCostAndUsage or use --no-billing-validation."
+            self.logger.warning(
+                billing_failure_message(
+                    e, error_code, ComprehensiveAWSDiscovery.DENIED_CODES
                 )
-            elif error_code == "OptInRequired":
-                self.logger.warning(
-                    "Cost Explorer not enabled. Skipping billing validation."
-                )
-            else:
-                self.logger.warning(f"Cost Explorer API failed: {e}")
+            )
+            self.logger.debug(f"Cost Explorer detail: {e}")
             self.enable_billing_validation = False
         except Exception as e:
-            self.logger.warning(f"Billing discovery failed: {e}")
+            self.logger.warning(
+                billing_failure_message(
+                    e, type(e).__name__, ComprehensiveAWSDiscovery.DENIED_CODES
+                )
+            )
+            self.logger.debug(f"Billing discovery detail: {e}")
             self.enable_billing_validation = False
 
     def _normalize_billing_service_name(self, billing_service_name: str) -> str:

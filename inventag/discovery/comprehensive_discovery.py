@@ -871,14 +871,14 @@ class ComprehensiveAWSDiscovery:
             self._record_billing(
                 coverage_mod.outcome_for_error(code, self.DENIED_CODES), 0, code
             )
-            message = (
-                f"Cost Explorer data is not available, so billing "
-                f"checks are skipped: {e}"
-            )
             if already_said:
-                self.logger.debug(message)
+                self.logger.debug(f"Cost Explorer detail: {e}")
             else:
-                self._warn_once("billing", message)
+                self._warn_once(
+                    "billing",
+                    coverage_mod.billing_failure_message(e, code, self.DENIED_CODES),
+                )
+                self.logger.debug(f"Cost Explorer detail: {e}")
 
     def _billing_failure_recorded(self) -> bool:
         """True when the ledger already holds a failed Cost Explorer read."""
@@ -1278,13 +1278,33 @@ class ComprehensiveAWSDiscovery:
             outcome = coverage_mod.outcome_for_error(code, self.DENIED_CODES)
             record(outcome, code)
             if outcome == coverage_mod.DENIED:
-                self._warn_once(
-                    f"denied:{service_name}",
-                    f"No permission for {service_name} "
-                    f"({operation_name} in {region}: {code}). "
-                    f"Resources of {service_name} are skipped; add the "
-                    "read permission to see them.",
-                )
+                if code == "OptInRequired":
+                    # Not a missing permission: the account must opt in.
+                    text = (
+                        f"{service_name} needs an opt-in or subscription "
+                        f"({operation_name} in {region}: {code}), so its "
+                        "resources are not listed. Enable it for this "
+                        "account in the AWS console."
+                    )
+                else:
+                    # A service with more than one listing (ECS: clusters and
+                    # services) keeps what its other listings return.
+                    many = (
+                        len(
+                            self.service_discovery_patterns.get(service_name, {}).get(
+                                "operations", []
+                            )
+                        )
+                        > 1
+                    )
+                    text = (
+                        f"No permission for {service_name} "
+                        f"({operation_name} in {region}: {code}). "
+                        f"{'Some resources' if many else 'Resources'} of "
+                        f"{service_name} are skipped; add the read "
+                        "permission to see them."
+                    )
+                self._warn_once(f"denied:{service_name}", text)
             else:
                 # Not a permission problem: resources of this service in this
                 # region may be missing, so say so (once per service/region).
