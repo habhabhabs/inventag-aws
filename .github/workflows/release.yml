@@ -512,12 +512,16 @@ jobs:
         # Keep the package version (read by pyproject.toml) equal to the release
         printf '"""Single source of the InvenTag version.\n\nThe release workflow rewrites this file. pyproject.toml reads it at build time.\n"""\n\n__version__ = "%s"\n' "${{ steps.version.outputs.new_version }}" > inventag/_version.py
 
+        # Move the Unreleased notes of CHANGELOG.md under this version. It changes
+        # nothing when Unreleased is empty. The change goes in the bump commit below.
+        .github/scripts/roll-changelog.sh "${{ steps.version.outputs.new_version }}" "$(date -u +%F)"
+
         # Check if the version files have actually changed
-        if git diff --quiet version.json inventag/_version.py; then
+        if git diff --quiet version.json inventag/_version.py CHANGELOG.md; then
           echo "No changes to version.json - skipping commit"
         else
           # Add and commit the version changes directly to main
-          git add version.json inventag/_version.py
+          git add version.json inventag/_version.py CHANGELOG.md
           git commit -m "chore: bump version to v${{ steps.version.outputs.new_version }}" -m "Automated version bump after release creation." -m "Previous version: v${{ steps.version.outputs.current_version }}" -m "New version: v${{ steps.version.outputs.new_version }}" -m "Bump type: ${{ needs.check-for-release.outputs.version_bump }}"
           
           # Push directly to main using the VERSION_BUMP_WORKFLOW token. Rebase first
