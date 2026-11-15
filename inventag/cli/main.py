@@ -587,8 +587,9 @@ Examples:
         "--fail-on-account-error",
         action="store_true",
         help=(
-            f"Exit with code {EXIT_ACCOUNT_FAILED} when any account could not be "
-            "scanned (the reports are still written). Without it, such a run "
+            f"Exit with code {EXIT_ACCOUNT_FAILED} when an account could not be "
+            "scanned or ran out of time (the reports are still written). "
+            "Without it, such a run "
             "exits with 0 unless every account failed"
         ),
     )

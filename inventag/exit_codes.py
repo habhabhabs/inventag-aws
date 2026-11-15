@@ -12,7 +12,7 @@ Code  Meaning
 3     Tag policy violations, when the config template sets
       ``fail_on_tag_violations``.
 4     A security group rule at or above ``--risk-threshold``.
-5     An account could not be scanned (or only partly), with
+5     An account could not be scanned or ran out of time, with
       ``--fail-on-account-error``.
 6     No resources to report, with ``--fail-if-empty``.
 ====  =========================================================================
