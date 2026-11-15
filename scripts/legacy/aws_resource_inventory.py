@@ -41,15 +41,16 @@ def get_python_command():
 def _upload_report(session, filename, bucket, key):
     """Upload the saved report (``--s3-bucket``, the user's explicit request).
 
-    Only this one S3 client may call ``PutObject``; the object is encrypted
-    (SSE-S3) and the bucket name is checked. Every other write stays blocked.
+    Only this one S3 client may call ``PutObject``, and only to this bucket;
+    the object is encrypted (SSE-S3) and the bucket name is checked. Every
+    other write stays blocked.
     """
     from inventag.core.s3_upload import validate_bucket_name
     from inventag.security.read_only_guard import ReadOnlyGuard
 
     validate_bucket_name(bucket)
     s3 = session.client("s3")
-    ReadOnlyGuard.allow_on_client(s3, {"PutObject"})
+    ReadOnlyGuard.allow_on_client(s3, {"PutObject"}, bucket=bucket)
     content_type = "text/yaml" if filename.endswith(".yaml") else "application/json"
     with open(filename, "rb") as body:
         s3.put_object(

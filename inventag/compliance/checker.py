@@ -802,7 +802,8 @@ class ComprehensiveTagComplianceChecker:
 
         InvenTag is read-only by default, so this refuses unless the caller
         passes ``allow_write=True``. Even then the read-only guard, if
-        installed, only lets ``PutObject`` through on this one client.
+        installed, only lets ``PutObject`` through on this one client, and only
+        to ``bucket_name``.
         """
         if not allow_write:
             raise PermissionError(
@@ -811,7 +812,7 @@ class ComprehensiveTagComplianceChecker:
             )
         try:
             s3 = self.session.client("s3")
-            ReadOnlyGuard.allow_on_client(s3, {"PutObject"})
+            ReadOnlyGuard.allow_on_client(s3, {"PutObject"}, bucket=bucket_name)
 
             if format_type.lower() == "json":
                 content = json.dumps(self.compliance_results, indent=2, default=str)
