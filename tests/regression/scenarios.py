@@ -1129,7 +1129,7 @@ MATRIX: Dict[str, Dict[str, Any]] = {
             ("report", True),
             (
                 "out",
-                "No permission for sqs (list_queues in us-east-1: OptInRequired). Resources of sqs are skipped; add the read permission",
+                "sqs needs an opt-in or subscription (list_queues in us-east-1: OptInRequired), so its resources are not listed. Enable it for this account in the AWS console.",
             ),
         ),
         issue_keys=("not_enabled:sqs",),
@@ -1171,7 +1171,10 @@ MATRIX: Dict[str, Dict[str, Any]] = {
         ),
         current=(
             ("code", 0),
-            ("out", "No permission for the Cost Explorer API"),
+            (
+                "out",
+                "Cost Explorer was denied (AccessDeniedException), so billing data is missing",
+            ),
             ("report", True),
             ("lines_with", "Cost Explorer", 1),
         ),
@@ -1188,7 +1191,10 @@ MATRIX: Dict[str, Dict[str, Any]] = {
         ),
         current=(
             ("code", 0),
-            ("out", "Cost Explorer API failed"),
+            (
+                "out",
+                "Cost Explorer was throttled (ThrottlingException), so billing data is missing",
+            ),
             ("report", True),
             ("lines_with", "Cost Explorer", 1),
         ),
