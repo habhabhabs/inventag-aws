@@ -84,8 +84,8 @@ COLUMN = Field(
         ),
         "width": Field(
             "integer",
-            "Excel column width in characters. Defaults to a width that fits the "
-            "content, capped by `excel.max_column_width`.",
+            "Excel column width in characters; Word tables ignore it. Defaults to a "
+            "width that fits the content, capped by `excel.max_column_width`.",
             minimum=4,
             maximum=120,
         ),
@@ -104,7 +104,8 @@ REPORT_SPEC: Dict[str, Field] = {
     ),
     "company_name": Field(
         "string",
-        "Organisation name shown on the cover and stored in the file properties.",
+        "Organisation name shown on the Word cover and in the Excel Summary sheet. "
+        "It is not stored in the file properties.",
         default="",
         max_length=200,
     ),
@@ -129,7 +130,7 @@ REPORT_SPEC: Dict[str, Field] = {
     "logo_alt_text": Field(
         "string",
         "Alternative text for the logo, read by screen readers. Defaults to "
-        "`<company_name> logo`.",
+        "`<company_name> logo`, or `Logo` when there is no `company_name`.",
         default="",
         max_length=200,
     ),
@@ -158,7 +159,8 @@ REPORT_SPEC: Dict[str, Field] = {
     "tag_policy": Field(
         "ref",
         "Tag policy to check, by name or by relative path. A `--template` with "
-        "a tag policy on the command line takes precedence.",
+        "a tag policy on the command line takes precedence, then the `tag_policy` "
+        "of a config template.",
         default=None,
     ),
     "excel": Field(
@@ -276,7 +278,10 @@ REQUIRED_TAG = Field(
             max_length=128,
         ),
         "description": Field(
-            "string", "Why the tag exists. Shown in reports.", default=""
+            "string",
+            "Why the tag exists. For people who read the policy file; it is not shown "
+            "in the reports.",
+            default="",
         ),
         "allowed_values": Field(
             "list",

@@ -14,6 +14,7 @@ from openpyxl import load_workbook
 from inventag.templating.render_excel import render_excel
 from inventag.templating.render_word import render_word
 from inventag.templating.runner import load_templates
+from inventag.templating.schema import CONFIG_SPEC, REPORT_SPEC, TAG_POLICY_SPEC
 from inventag.templating.tag_policy import evaluate
 
 from .conftest import write
@@ -53,6 +54,8 @@ def test_tag_rule_description_is_not_shown_in_any_output(tmp_path, registry):
     sentence = policy.spec["required_tags"][0]["description"]
     assert sentence == "Budget that pays for the resource."
     assert sentence not in _all_text(tmp_path, registry, "standard-bom")
+    description = TAG_POLICY_SPEC["required_tags"].item.fields["description"]
+    assert "not shown in the reports" in description.description
 
 
 def test_word_tables_ignore_column_width(tmp_path, registry, user_dir):
@@ -69,6 +72,10 @@ def test_word_tables_ignore_column_width(tmp_path, registry, user_dir):
         return zipfile.ZipFile(path).read("word/document.xml")
 
     assert document(None) == document(100)
+    assert (
+        "Word tables ignore it"
+        in REPORT_SPEC["columns"].item.fields["width"].description
+    )
 
 
 def test_company_name_is_in_no_file_property(tmp_path, registry, user_dir):
@@ -85,6 +92,8 @@ def test_company_name_is_in_no_file_property(tmp_path, registry, user_dir):
                 archive.read(n) for n in archive.namelist() if n.startswith("docProps/")
             )
         assert b"Acme Ltd" not in properties
+    text = REPORT_SPEC["company_name"].description
+    assert "not stored in the file properties" in text
 
 
 def test_logo_alt_text_default_without_company_name(tmp_path, registry, user_dir):
@@ -98,6 +107,7 @@ def test_logo_alt_text_default_without_company_name(tmp_path, registry, user_dir
     docx = render_word(str(tmp_path / "l.docx"), RESOURCES, registry.resolve("l"))
     with zipfile.ZipFile(docx) as archive:
         assert b'descr="Logo"' in archive.read("word/document.xml")
+    assert "or `Logo`" in REPORT_SPEC["logo_alt_text"].description
 
 
 def test_config_tag_policy_wins_over_the_report_tag_policy(tmp_path, registry):
@@ -112,3 +122,6 @@ def test_config_tag_policy_wins_over_the_report_tag_policy(tmp_path, registry):
     )
     run = load_templates([str(tmp_path / "r.yaml"), str(tmp_path / "c.yaml")], registry)
     assert run.policy.name == "finops-cost-allocation"
+    text = REPORT_SPEC["tag_policy"].description
+    assert "command line" in text and "of a config template" in text
+    assert CONFIG_SPEC["tag_policy"].description  # the config field is unchanged
