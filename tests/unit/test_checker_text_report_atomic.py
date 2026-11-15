@@ -45,3 +45,18 @@ def test_failed_text_report_keeps_the_old_file_and_leaves_no_temp_file(
         checker._generate_word_bom(bom, str(tmp_path / "bom.docx"))
     assert old.read_text() == "old report"
     assert sorted(p.name for p in tmp_path.iterdir()) == ["bom.txt"]
+
+
+@pytest.mark.parametrize("mask,mode", [(0o022, 0o644), (0o077, 0o600)])
+def test_text_report_mode_is_what_a_plain_open_gave(checker, tmp_path, mask, mode):
+    """v1.2.1 wrote this file with open(..., "w"): 0666 minus the umask."""
+    import os
+    import stat
+
+    bom = SimpleNamespace(resources=[], compliance_details={"compliance_percentage": 1})
+    old = os.umask(mask)
+    try:
+        checker._generate_word_bom(bom, str(tmp_path / "bom.docx"))
+    finally:
+        os.umask(old)
+    assert stat.S_IMODE((tmp_path / "bom.txt").stat().st_mode) == mode
