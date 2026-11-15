@@ -8,6 +8,7 @@ The exit code stays 0.
 """
 
 import logging
+from pathlib import Path
 
 from inventag.state import DeltaDetector, StateManager
 from tests.unit.test_docs_claims_v120 import (  # noqa: F401 (fixtures)
@@ -36,7 +37,7 @@ def test_a_snapshot_that_cannot_be_saved_is_in_the_run_notes(
 
     monkeypatch.setattr(StateManager, "save_state", save_state)
     assert run_cli(*ARGS) == 0  # as in v1.2.1
-    state_dir = tmp_path / "out" / "state"
+    state_dir = Path("out") / "state"  # as the user gave it
     assert (
         "The state snapshot was not saved ([Errno 28] No space left on device), "
         "so the next change report will compare with an older snapshot; check "
@@ -57,7 +58,7 @@ def test_an_index_that_cannot_be_saved_is_in_the_run_notes(
 
     monkeypatch.setattr(StateManager, "save_state", save_state)
     assert run_cli(*ARGS) == 0
-    state_dir = tmp_path / "out" / "state"
+    state_dir = Path("out") / "state"  # as the user gave it
     assert (
         "The state snapshot was saved, but the list of snapshots could not be "
         "updated (Could not save metadata index: disk full), so the next change "

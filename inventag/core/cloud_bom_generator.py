@@ -397,6 +397,8 @@ class CloudBOMGenerator:
         self._scan_local = threading.local()  # the deadline of this thread's scan
         self._checkpoints = None  # PartialResultStore, set per run
         self.reused_accounts: Dict[str, str] = {}  # account -> scanned at (UTC)
+        # Run notes of the state stage (snapshot, index, change report; A-18).
+        self._state_notes: List[str] = []
         # Read-only guard blocks counted before this run (blocked calls,
         # recorded entries), so only this run's blocks are reported.
         self._guard_start = (0, 0)
@@ -509,6 +511,7 @@ class CloudBOMGenerator:
             state_results = {}
             if self.config.enable_state_management:
                 state_results = self._generate_state_artifacts(consolidated_resources)
+                self._state_notes = self._notes_for_state(state_results)
 
             self._finish_checkpoints()
 
@@ -551,8 +554,13 @@ class CloudBOMGenerator:
                 "output_directory": str(self.output_dir),
             }
 
+            outcome = (
+                "completed (the state stage had a problem: see the run notes)"
+                if self._state_notes
+                else "completed successfully"
+            )
             self.logger.info(
-                f"Multi-account BOM generation completed successfully in {processing_time:.2f}s. "
+                f"Multi-account BOM generation {outcome} in {processing_time:.2f}s. "
                 f"Processed {len(consolidated_resources)} resources across "
                 f"{self._processing_stats['successful_accounts']} accounts"
             )
@@ -824,6 +832,35 @@ class CloudBOMGenerator:
                 )
         return notes
 
+    def _notes_for_state(self, state: Dict[str, Any]) -> List[str]:
+        """Run notes for a snapshot, an index or a change report that could
+        not be made (A-18). A snapshot left out on purpose (nothing was read,
+        A-01) has its own note."""
+        if not isinstance(state, dict):
+            return []
+        state_dir = self.output_dir / "state"
+        notes = []
+        if state.get("state_saved") is False and state.get("error"):
+            notes.append(
+                f"The state snapshot was not saved ({state['error']}), so the next "
+                "change report will compare with an older snapshot; check that "
+                f"{state_dir} is writable."
+            )
+        if state.get("state_index_error"):
+            notes.append(
+                "The state snapshot was saved, but the list of snapshots could not "
+                f"be updated ({state['state_index_error']}), so the next change "
+                "report may compare with an older snapshot; check that "
+                f"{state_dir} is writable."
+            )
+        delta = state.get("delta_detection")
+        if isinstance(delta, dict) and delta.get("error"):
+            notes.append(
+                f"The change report could not be made ({delta['error']}); the "
+                "snapshot of this run was saved."
+            )
+        return notes
+
     def _billing_timeout_notes(self) -> List[str]:
         """One note per account whose Cost Explorer call did not answer in
         time (A-24): its listings are in the report, its billing data is not."""
@@ -922,6 +959,7 @@ class CloudBOMGenerator:
         notes.extend(self._read_nothing_notes())
         notes.extend(self._not_read_notes())
         notes.extend(self._billing_timeout_notes())
+        notes.extend(self._state_notes)
         notes.extend(self._guard_block_notes())
         if self.reused_accounts:
             notes.append(
