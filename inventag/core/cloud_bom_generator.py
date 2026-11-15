@@ -89,6 +89,59 @@ _NOT_READ_LIMIT = 10
 _NO_SUCH_SERVICE_CODE = "404"
 
 
+# Cost Explorer is optional and it is the first call of an account. With
+# botocore's limits (60 s to connect, 60 s to read, up to 10 attempts) one slow
+# answer can use a short --account-processing-timeout completely, and the
+# account is then lost before any listing runs (A-24). Below this limit the
+# Cost Explorer client of the account gets at most a tenth of it.
+_CE_BOUND_BELOW_SECONDS = 1200
+_CE_ATTEMPTS = 2
+# Error names of a Cost Explorer call that did not answer in time.
+_TIMEOUT_ERRORS = frozenset({"ReadTimeoutError", "ConnectTimeoutError"})
+
+
+def _cost_explorer_config(limit_seconds) -> Optional[BotoConfig]:
+    """Client settings for Cost Explorer under a short account limit, else
+    None (botocore's own settings, as before)."""
+    try:
+        limit = float(limit_seconds)
+    except (TypeError, ValueError):
+        return None
+    if limit <= 0 or limit >= _CE_BOUND_BELOW_SECONDS:
+        return None
+    # Each attempt: at most limit/40 to connect and limit/40 to read, so two
+    # attempts take at most a tenth of the limit (at least 1 s per step).
+    per_step = max(1.0, limit / (2 * _CE_ATTEMPTS * 10))
+    settings = {"connect_timeout": per_step, "read_timeout": per_step}
+    if not (os.environ.get("AWS_RETRY_MODE") or os.environ.get("AWS_MAX_ATTEMPTS")):
+        settings["retries"] = {"mode": "standard", "total_max_attempts": _CE_ATTEMPTS}
+    return BotoConfig(**settings)
+
+
+def _bound_cost_explorer(session, config: Optional[BotoConfig]):
+    """Give the Cost Explorer clients created from ``session`` the settings
+    ``config``. Returns a function that undoes it."""
+    if config is None or session is None or not hasattr(session, "client"):
+        return lambda: None
+    original = session.client
+
+    def client(service_name, *args, **kwargs):
+        if service_name == "ce":
+            given = kwargs.get("config")
+            kwargs["config"] = given.merge(config) if given is not None else config
+        return original(service_name, *args, **kwargs)
+
+    session.client = client
+
+    def restore():
+        try:
+            del session.client
+        except AttributeError:
+            pass
+
+    return restore
+
+
 def _expired_listings(context) -> int:
     """How many listings of an account failed because its session expired."""
     return sum(
@@ -765,6 +818,26 @@ class CloudBOMGenerator:
                 )
         return notes
 
+    def _billing_timeout_notes(self) -> List[str]:
+        """One note per account whose Cost Explorer call did not answer in
+        time (A-24): its listings are in the report, its billing data is not."""
+        failed_ids = {item["account_id"] for item in self._failed_accounts()}
+        notes = []
+        for acc_id, ctx in self.account_contexts.items():
+            if acc_id in failed_ids:
+                continue
+            if any(
+                e.get("source") == "billing"
+                and str(e.get("error_code", "")) in _TIMEOUT_ERRORS
+                for e in _coverage_of(ctx)
+            ):
+                notes.append(
+                    f"Cost Explorer did not answer in time for account {acc_id}, "
+                    "so its billing checks were skipped and services that only "
+                    "billing shows are not listed for it."
+                )
+        return notes
+
     @staticmethod
     def _guard_audit() -> Optional[Dict[str, Any]]:
         guard = get_installed_guard()
@@ -842,6 +915,7 @@ class CloudBOMGenerator:
         notes.extend(self._expired_session_notes())
         notes.extend(self._read_nothing_notes())
         notes.extend(self._not_read_notes())
+        notes.extend(self._billing_timeout_notes())
         notes.extend(self._guard_block_notes())
         if self.reused_accounts:
             notes.append(
@@ -1545,6 +1619,9 @@ class CloudBOMGenerator:
         deadline = deadline or self._new_deadline(account_id)
         deadline.start()
         deadline.attach(context.session)
+        unbound = _bound_cost_explorer(
+            context.session, _cost_explorer_config(deadline.timeout_seconds)
+        )
         try:
             with account_log_context(account_id, context.credentials.account_name):
                 self._scan_local.deadline = deadline
@@ -1554,6 +1631,7 @@ class CloudBOMGenerator:
             resources = None
         finally:
             self._scan_local.deadline = None
+            unbound()
             deadline.detach(context.session)
         if deadline.expired:
             raise AccountTimeoutError(

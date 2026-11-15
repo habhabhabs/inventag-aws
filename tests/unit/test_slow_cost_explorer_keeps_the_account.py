@@ -127,9 +127,11 @@ def test_a_slow_cost_explorer_call_keeps_the_listed_resources(
     sheets = workbook(files[0])
     assert "VPC" in sheets and len(sheets["VPC"]) > 1  # listed resources
     notes = run_notes(files[0])
-    assert any(
-        GOOD_ID in n and "Cost Explorer" in n and "billing" in n for n in notes
-    ), notes
+    assert (
+        f"Cost Explorer did not answer in time for account {GOOD_ID}, so its "
+        "billing checks were skipped and services that only billing shows are "
+        "not listed for it."
+    ) in notes, notes
 
 
 def test_one_slow_account_of_two_keeps_its_resources(
