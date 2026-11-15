@@ -110,6 +110,60 @@ jobs:
         name: codecov-umbrella
         fail_ci_if_error: false
 
+  # The read-only guard reads botocore's `context["input_params"]`, an internal
+  # field, to find the bucket of an upload; it fails closed when the field is
+  # missing. The other jobs install the newest boto3, so this job runs the guard
+  # and S3 upload tests on the oldest boto3 and botocore that requirements.txt
+  # allows. The floor is read from requirements.txt, so it follows that file.
+  boto-floor-tests:
+    name: Guard and S3 upload tests (oldest boto3 and botocore)
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: '3.13'
+
+    - name: Pin boto3 and botocore to the floor in requirements.txt
+      shell: bash
+      run: |
+        floor=$(sed -n 's/^boto3>=\([0-9][0-9.]*\).*/\1/p' requirements.txt)
+        if [ -z "$floor" ]; then
+          echo "::error::requirements.txt has no 'boto3>=<version>' line"
+          exit 1
+        fi
+        # botocore uses the same version numbers as boto3 and boto3 requires
+        # the same minor version of botocore.
+        printf 'boto3==%s\nbotocore==%s\n' "$floor" "$floor" | tee floor-constraints.txt
+
+    - name: Install dependencies at the floor
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -c floor-constraints.txt -r requirements.txt -r requirements-dev.txt
+        pip list | grep -E '^(boto3|botocore|moto) '
+
+    # Deselected: it lists the operations the guard denies and checks that
+    # botocore knows each one. Older botocore lacks operations added later, and
+    # denying an operation that does not exist is harmless.
+    - name: Run guard and S3 upload tests
+      shell: bash
+      run: |
+        python -m pytest -q --timeout=300 \
+          tests/unit/test_read_only_guard*.py \
+          tests/unit/test_security_read_only_guard.py \
+          tests/unit/test_review_security_*.py \
+          tests/unit/test_security_s3_upload.py \
+          tests/unit/test_s3_upload_*.py \
+          tests/unit/test_legacy_checker_s3_upload.py \
+          tests/unit/test_checker_upload_sse.py \
+          tests/unit/test_skipped_upload_is_told.py \
+          --deselect tests/unit/test_review_security_guard.py::test_every_denied_operation_exists_in_botocore
+
   basic-security:
     name: Basic Security Checks
     runs-on: ubuntu-latest
