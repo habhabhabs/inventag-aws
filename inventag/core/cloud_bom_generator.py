@@ -253,6 +253,11 @@ class _AccountDeadline:
         events = getattr(session, "events", None)
         if events is not None:
             events.register("before-call", self.before_call, unique_id=self.UNIQUE_ID)
+            # Also before every retry attempt of a call already under way,
+            # so a call does not go on for up to ten attempts after the limit.
+            events.register(
+                "before-send", self.before_call, unique_id=self.UNIQUE_ID + "-send"
+            )
 
     def detach(self, session) -> None:
         self.active = False
@@ -260,6 +265,7 @@ class _AccountDeadline:
         events = getattr(session, "events", None)
         if events is not None:
             events.unregister("before-call", unique_id=self.UNIQUE_ID)
+            events.unregister("before-send", unique_id=self.UNIQUE_ID + "-send")
 
 
 @dataclass
