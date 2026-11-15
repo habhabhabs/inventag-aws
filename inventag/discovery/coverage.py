@@ -20,6 +20,36 @@ TIMEOUT = "timeout"  # not finished before the discovery time limit
 
 FAILED_OUTCOMES = frozenset({DENIED, THROTTLED, ERROR, TIMEOUT})
 
+# Source of a record for a call that adds detail to a resource a listing found
+# (bucket location, function configuration, ...). It is not a listing: the
+# change report reads only "service-api" and "tagging-api" records as listings,
+# so a failed detail call never makes it skip the resources of that service.
+DETAIL_SOURCE = "service-api-detail"
+
+# What AWS answers when the thing asked for is not set up, or is gone. These
+# are answers, not failures: nothing is missing from the report.
+NOTHING_CONFIGURED_CODES = frozenset(
+    {
+        "NoSuchBucketPolicy",
+        "NoSuchTagSet",
+        "NoSuchLifecycleConfiguration",
+        "NoSuchPublicAccessBlockConfiguration",
+        "NoSuchCORSConfiguration",
+        "NoSuchWebsiteConfiguration",
+        "NoSuchReplicationConfiguration",
+        "ServerSideEncryptionConfigurationNotFoundError",
+        "ObjectLockConfigurationNotFoundError",
+        "404",
+        "NotFound",
+        "NoSuchKey",
+        # The resource was deleted between the listing and the detail call.
+        "NoSuchBucket",
+        "ResourceNotFoundException",
+        "DBInstanceNotFound",
+        "DBInstanceNotFoundFault",
+    }
+)
+
 _THROTTLE_CODES = frozenset(
     {
         "Throttling",

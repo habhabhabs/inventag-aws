@@ -51,7 +51,7 @@ class Raising:
         self._error = error
 
     def __getattr__(self, name):
-        def call(**kwargs):
+        def call(*args, **kwargs):
             raise self._error
 
         return call

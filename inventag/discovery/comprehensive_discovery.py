@@ -1040,9 +1040,37 @@ class ComprehensiveAWSDiscovery:
                 )
             else:
                 self.logger.debug(f"CloudFront certificate lookup failed: {e}")
+            self._record_certificate_failure(e)
         except Exception as e:
             self.logger.debug(f"CloudFront certificate lookup failed: {e}")
+            self._record_certificate_failure(e)
         return found
+
+    def _record_certificate_failure(self, error: Exception) -> None:
+        """Ledger record for a failed CloudFront certificate lookup (a detail
+        record: the ACM listing itself is recorded by its own table entry)."""
+        failures: Dict = {}
+        self._detail_failure(failures, "ListCertificates", error)
+        denied_said = "denied:acm" in self.__dict__.get("_warned_keys", set())
+        for (operation, code), count in failures.items():
+            self.coverage.record(
+                region=self.home_region,
+                source=coverage_mod.DETAIL_SOURCE,
+                service="acm",
+                resource_type="Certificate",
+                operation=operation,
+                outcome=coverage_mod.outcome_for_error(code, self.DENIED_CODES),
+                count=count,
+                error_code=code,
+            )
+            if not denied_said:
+                self._warn_once(
+                    f"detail:acm:{operation}:{code}",
+                    f"CloudFront certificates could not be read "
+                    f"({operation}: {code}); the certificates they use are "
+                    "missing from the report. Run the scan again; with "
+                    "--debug the log has the detail.",
+                )
 
     def _discover_service_in_region(self, task: Dict[str, Any]) -> int:
         """Discover resources for a specific service in a specific region."""
@@ -1079,9 +1107,32 @@ class ComprehensiveAWSDiscovery:
                     continue
 
         except Exception as e:
-            self.logger.warning(
-                f"Service client creation failed for {service_name}: {e}"
+            # No listing of this service could start here: a listing record,
+            # so the report and the change report know it was not read.
+            code = (
+                e.response.get("Error", {}).get("Code", "")
+                if isinstance(e, ClientError)
+                else type(e).__name__
+            ) or type(e).__name__
+            self.coverage.record(
+                region=(
+                    region if config.get("regional", True) else GLOBAL_REGION_LABEL
+                ),
+                source="service-api",
+                service=service_name,
+                resource_type="",
+                operation="",
+                outcome=coverage_mod.outcome_for_error(code, self.DENIED_CODES),
+                count=0,
+                error_code=code,
             )
+            self.logger.warning(
+                f"Service client creation failed for {service_name}: {code}. "
+                f"The resources of {service_name} in {region} were not "
+                "listed; run the scan again, and with --debug the log has "
+                "the detail."
+            )
+            self.logger.debug(f"Service client creation detail: {e}")
 
         return resources_found
 
@@ -2058,6 +2109,7 @@ class ComprehensiveAWSDiscovery:
         """Use boto3 APIs to get correct regions and metadata for all services."""
         # S3 bucket region detection
         s3_client = self._client("s3")
+        s3_failures: Dict[str, Dict] = {}
 
         for resource in self.resources:
             if (
@@ -2087,7 +2139,17 @@ class ComprehensiveAWSDiscovery:
                     self.logger.debug(
                         f"Failed to get S3 bucket region for {bucket_name}: {e}"
                     )
+                    self._detail_failure(
+                        s3_failures.setdefault(
+                            resource.get("region") or GLOBAL_REGION_LABEL, {}
+                        ),
+                        "GetBucketLocation",
+                        e,
+                    )
                     continue
+
+        for region, failures in s3_failures.items():
+            self._record_detail_failures("s3", region, "Bucket", failures)
 
         # Lambda function region/runtime enhancement
         self._enhance_lambda_functions()
@@ -2097,6 +2159,50 @@ class ComprehensiveAWSDiscovery:
 
         # CloudFormation stack region/status enhancement
         self._enhance_cloudformation_stacks()
+
+    def _detail_failure(self, failures: Dict, operation: str, error: Exception):
+        """Count one failed detail call. An answer of "nothing configured" (or
+        "gone") is not a failure and is not counted."""
+        code = (
+            error.response.get("Error", {}).get("Code", "")
+            if isinstance(error, ClientError)
+            else type(error).__name__
+        )
+        if code in coverage_mod.NOTHING_CONFIGURED_CODES:
+            return
+        key = (operation, code)
+        failures[key] = failures.get(key, 0) + 1
+
+    def _record_detail_failures(
+        self, service: str, region: str, resource_type: str, failures: Dict
+    ) -> None:
+        """One ledger record and one warning per failed operation and error
+        code, with the number of resources whose details were not read."""
+        for (operation, code), count in sorted(failures.items()):
+            outcome = coverage_mod.outcome_for_error(code, self.DENIED_CODES)
+            self.coverage.record(
+                region=region,
+                source=coverage_mod.DETAIL_SOURCE,
+                service=service,
+                resource_type=resource_type,
+                operation=operation,
+                outcome=outcome,
+                count=count,
+                error_code=code,
+            )
+            step = {
+                coverage_mod.DENIED: "Add the read permission to see them.",
+                coverage_mod.THROTTLED: "Run the scan again later.",
+            }.get(
+                outcome,
+                "Run the scan again; with --debug the log has the detail.",
+            )
+            self._warn_once(
+                f"detail:{service}:{region}:{operation}:{code}",
+                f"Details of {count} {service} resource(s) in {region} could "
+                f"not be read ({operation or 'create client'}: {code}); their "
+                f"rows have some fields missing. {step}",
+            )
 
     def _resources_by_region(self, service: str, type_test) -> Dict[str, List[Dict]]:
         """Group discovered resources of one service by the region they were
@@ -2118,6 +2224,7 @@ class ComprehensiveAWSDiscovery:
         """
         grouped = self._resources_by_region("LAMBDA", lambda t: t == "Function")
         for region, lambda_functions in grouped.items():
+            failures: Dict = {}
             try:
                 lambda_client = self._client("lambda", region)
 
@@ -2146,16 +2253,23 @@ class ComprehensiveAWSDiscovery:
                         self.logger.debug(
                             f"Failed to enhance Lambda function {function_name}: {e}"
                         )
+                        self._detail_failure(failures, "GetFunctionConfiguration", e)
                         continue
+
+                self._record_detail_failures("lambda", region, "Function", failures)
 
             except Exception as e:
                 self.logger.debug(f"Failed to create Lambda client for {region}: {e}")
+                for _ in lambda_functions:
+                    self._detail_failure(failures, "", e)
+                self._record_detail_failures("lambda", region, "Function", failures)
                 continue
 
     def _enhance_rds_resources(self):
         """Enhance RDS instances with detailed metadata, read in their own region."""
         grouped = self._resources_by_region("RDS", lambda t: t == "DBInstance")
         for region, rds_instances in grouped.items():
+            failures: Dict = {}
             try:
                 rds_client = self._client("rds", region)
 
@@ -2192,10 +2306,16 @@ class ComprehensiveAWSDiscovery:
                         self.logger.debug(
                             f"Failed to enhance RDS instance {instance_id}: {e}"
                         )
+                        self._detail_failure(failures, "DescribeDBInstances", e)
                         continue
+
+                self._record_detail_failures("rds", region, "DBInstance", failures)
 
             except Exception as e:
                 self.logger.debug(f"Failed to create RDS client for {region}: {e}")
+                for _ in rds_instances:
+                    self._detail_failure(failures, "", e)
+                self._record_detail_failures("rds", region, "DBInstance", failures)
                 continue
 
     def _enhance_cloudformation_stacks(self):
@@ -2203,6 +2323,7 @@ class ComprehensiveAWSDiscovery:
         own region."""
         grouped = self._resources_by_region("CLOUDFORMATION", lambda t: t == "Stack")
         for region, cf_stacks in grouped.items():
+            failures: Dict = {}
             try:
                 cf_client = self._client("cloudformation", region)
 
@@ -2236,11 +2357,21 @@ class ComprehensiveAWSDiscovery:
                         self.logger.debug(
                             f"Failed to enhance CloudFormation stack {stack_name}: {e}"
                         )
+                        self._detail_failure(failures, "DescribeStacks", e)
                         continue
+
+                self._record_detail_failures(
+                    "cloudformation", region, "Stack", failures
+                )
 
             except Exception as e:
                 self.logger.debug(
                     f"Failed to create CloudFormation client for {region}: {e}"
+                )
+                for _ in cf_stacks:
+                    self._detail_failure(failures, "", e)
+                self._record_detail_failures(
+                    "cloudformation", region, "Stack", failures
                 )
                 continue
 
