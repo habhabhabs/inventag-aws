@@ -130,3 +130,53 @@ def test_a_complete_write_replaces_the_file_and_leaves_no_temporary_file(tmp_pat
     assert [p.name for p in tmp_path.iterdir()] == ["template.json"]
     assert '"name": "t"' in target.read_text()
     assert os.stat(target).st_size > len(OLD)
+
+
+def _write_each_kind(tmp_path):
+    """Write one file of each kind; return {kind: path}."""
+    generator = DocumentGenerator(
+        DocumentConfig(output_formats=["csv"], output_directory=str(tmp_path))
+    )
+    summary = DocumentGenerationSummary(
+        total_formats=1,
+        successful_formats=1,
+        failed_formats=0,
+        results=[],
+        total_generation_time=0.1,
+    )
+    paths = {
+        "report": tmp_path / "report.json",
+        "csv": tmp_path / "out.csv",
+        "config": tmp_path / "config.json",
+        "template": tmp_path / "template.yaml",
+    }
+    generator.save_generation_report(summary, str(paths["report"]))
+    csv_module.CSVBuilder(DocumentConfig(output_formats=["csv"])).generate_document(
+        BOMData(resources=[{"id": "i-1"}]), str(paths["csv"])
+    )
+    ConfigurationManager(str(tmp_path)).save_configuration(
+        ConfigurationSet(name="c"), str(paths["config"])
+    )
+    TemplateManager().save_template(DocumentTemplate(name="t"), str(paths["template"]))
+    return paths
+
+
+# What v1.2.1 gave: the report and the CSV were opened with open_private (0600);
+# the saved configuration and template with a plain open (0666 minus the umask).
+@pytest.mark.parametrize(
+    "umask,expected",
+    [
+        (0o022, {"report": 0o600, "csv": 0o600, "config": 0o644, "template": 0o644}),
+        (0o077, {"report": 0o600, "csv": 0o600, "config": 0o600, "template": 0o600}),
+    ],
+)
+def test_file_modes_are_what_they_were_before_the_atomic_write(
+    tmp_path, umask, expected
+):
+    previous = os.umask(umask)
+    try:
+        paths = _write_each_kind(tmp_path)
+    finally:
+        os.umask(previous)
+    modes = {kind: os.stat(path).st_mode & 0o777 for kind, path in paths.items()}
+    assert modes == expected
