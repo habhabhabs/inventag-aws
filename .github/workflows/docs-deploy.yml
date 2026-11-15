@@ -34,10 +34,11 @@ concurrency:
 jobs:
   # Build job
   build:
-    # Pinned: on the ubuntu-26.04 image that ubuntu-latest now gives, Playwright 1.60.0
-    # cannot install Chromium, so the accessibility check step fails. Move to a newer
-    # image together with a Playwright version that supports it.
-    runs-on: ubuntu-24.04
+    # ubuntu-latest is ubuntu-26.04. Playwright 1.60.0 cannot install Chromium there
+    # ("does not support chromium on ubuntu26.04-x64"); 1.61.0 is the first release
+    # that lists ubuntu26.04 as a supported platform. Keep Playwright at 1.61.0 or newer
+    # while this job runs on ubuntu-latest.
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       pages: read  # actions/configure-pages reads the Pages site settings
@@ -950,7 +951,7 @@ jobs:
       - name: Install Chromium for the accessibility checks
         working-directory: ./website
         run: |
-          npm install --no-save --no-audit --no-fund playwright@1.60.0
+          npm install --no-save --no-audit --no-fund playwright@1.61.1
           npx playwright install --with-deps chromium
 
       # axe-core at 320, 390, 768 and 1440px in the light and the dark theme.
