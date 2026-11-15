@@ -538,17 +538,7 @@ class ConfigValidator:
         """Validate CLI arguments for consistency and completeness."""
         result = ValidationResult(is_valid=True)
 
-        # Check format options
-        format_options = [
-            args.create_word,
-            args.create_excel,
-            getattr(args, "create_google_docs", False),
-            getattr(args, "create_google_sheets", False),
-        ]
-        if not any(format_options):
-            result.warnings.append(
-                "No output format specified. Use --create-word or --create-excel"
-            )
+        # No output flag is not a problem: the run writes Excel and says so.
 
         # Check account specification
         account_options = [
