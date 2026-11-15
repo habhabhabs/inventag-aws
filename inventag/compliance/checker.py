@@ -761,24 +761,29 @@ class ComprehensiveTagComplianceChecker:
             self.logger.warning(
                 "Word document generation not available, creating text report"
             )
-            with open(filename.replace(".docx", ".txt"), "w") as f:
-                f.write("InvenTag Tag Check BOM Report\n")
-                f.write("=" * 40 + "\n\n")
-                f.write(f"Generated: {datetime.now(timezone.utc).isoformat()}\n")
-                f.write(f"Total Resources: {len(bom_data.resources)}\n")
-                f.write(
-                    f"Resources with all required tags: {bom_data.compliance_details['compliance_percentage']}%\n\n"
-                )
+            from ..reporting.safe_save import save_atomically
 
-                # Write summary by service
-                services = {}
-                for resource in bom_data.resources:
-                    service = resource.get("service", "Unknown")
-                    services[service] = services.get(service, 0) + 1
+            def write_text(temp_path: str) -> None:
+                with open(temp_path, "w") as f:
+                    f.write("InvenTag Tag Check BOM Report\n")
+                    f.write("=" * 40 + "\n\n")
+                    f.write(f"Generated: {datetime.now(timezone.utc).isoformat()}\n")
+                    f.write(f"Total Resources: {len(bom_data.resources)}\n")
+                    f.write(
+                        f"Resources with all required tags: {bom_data.compliance_details['compliance_percentage']}%\n\n"
+                    )
 
-                f.write("Resources by Service:\n")
-                for service, count in sorted(services.items()):
-                    f.write(f"  {service}: {count}\n")
+                    # Write summary by service
+                    services = {}
+                    for resource in bom_data.resources:
+                        service = resource.get("service", "Unknown")
+                        services[service] = services.get(service, 0) + 1
+
+                    f.write("Resources by Service:\n")
+                    for service, count in sorted(services.items()):
+                        f.write(f"  {service}: {count}\n")
+
+            save_atomically(filename.replace(".docx", ".txt"), write_text)
 
     def _generate_csv_bom(self, bom_data, filename: str):
         """Generate CSV BOM document."""
