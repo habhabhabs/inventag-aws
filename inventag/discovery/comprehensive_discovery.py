@@ -1302,6 +1302,7 @@ class ComprehensiveAWSDiscovery:
                     for value in page.get(parent["key"], []) or []:
                         param_sets.append({**spec["params"], parent["param"]: value})
 
+            problems: List[int] = []
             for params in param_sets:
                 pages = (
                     self._pages_with_token(client, spec, params)
@@ -1320,7 +1321,13 @@ class ComprehensiveAWSDiscovery:
                         spec["type"],
                         operation_name,
                         spec,
+                        problems,
                     )
+            if problems:
+                # Some of what the answer held was not read, so the listing
+                # may be partial; count stays the number of resources found.
+                record(coverage_mod.ERROR, "MalformedResponse")
+                return found
             record(coverage_mod.OK if found else coverage_mod.EMPTY)
             return found
 
@@ -1392,16 +1399,35 @@ class ComprehensiveAWSDiscovery:
         resource_type: str,
         operation_name: str,
         spec: Optional[Dict[str, Any]] = None,
+        problems: Optional[List[int]] = None,
     ) -> int:
-        """Extract resources from AWS API response."""
+        """Extract resources from AWS API response.
+
+        An item in a form InvenTag cannot read is skipped with one warning
+        (service, operation and region; never the payload) and the other items
+        are kept. ``problems``, when given, gets the number of items skipped.
+        """
         try:
             # Handle nested response keys (like 'DistributionList.Items')
             data = response
             for key in response_key.split("."):
+                if data is None:
+                    break
+                if not isinstance(data, dict):
+                    return self._unreadable_answer(
+                        service_name, region, operation_name, None, problems
+                    )
                 data = data.get(key, [])
 
-            if not isinstance(data, list):
-                data = [data] if data else []
+            if isinstance(data, dict):
+                data = [data]
+            elif data is None or data == []:
+                data = []
+            elif not isinstance(data, list):
+                # A string or a number where a list belongs.
+                return self._unreadable_answer(
+                    service_name, region, operation_name, None, problems
+                )
 
             # DescribeInstances returns reservations. The instances are one
             # level down, and a reservation has no resource ID of its own.
@@ -1417,37 +1443,79 @@ class ComprehensiveAWSDiscovery:
                 ]
 
             resources_added = 0
+            skipped = 0
             for item in data:
-                if isinstance(item, dict):
-                    resource = self._normalize_resource(
-                        item,
-                        service_name,
-                        region,
-                        resource_type,
-                        operation_name,
-                        spec,
-                    )
-                    if resource:
-                        self.resources.append(resource)
-                        resources_added += 1
-                        # Track service with primary resources for smart fallback logic
-                        self.services_with_primary_resources.add(service_name)
-                elif isinstance(item, str):
-                    # Handle string responses (like SQS queue URLs)
-                    resource = self._create_string_resource(
-                        item, service_name, region, resource_type, operation_name, spec
-                    )
-                    if resource:
-                        self.resources.append(resource)
-                        resources_added += 1
-                        # Track service with primary resources for smart fallback logic
-                        self.services_with_primary_resources.add(service_name)
+                resource = None
+                try:
+                    if isinstance(item, dict):
+                        resource = self._normalize_resource(
+                            item,
+                            service_name,
+                            region,
+                            resource_type,
+                            operation_name,
+                            spec,
+                        )
+                    elif isinstance(item, str):
+                        # Handle string responses (like SQS queue URLs)
+                        resource = self._create_string_resource(
+                            item,
+                            service_name,
+                            region,
+                            resource_type,
+                            operation_name,
+                            spec,
+                        )
+                except Exception as e:
+                    self.logger.debug(f"Item of {service_name} not readable: {e}")
+                if resource:
+                    self.resources.append(resource)
+                    resources_added += 1
+                    # Track service with primary resources for smart fallback logic
+                    self.services_with_primary_resources.add(service_name)
+                else:
+                    skipped += 1
 
+            if skipped:
+                self._unreadable_answer(
+                    service_name, region, operation_name, skipped, problems
+                )
             return resources_added
 
         except Exception as e:
             self.logger.debug(f"Resource extraction failed for {service_name}: {e}")
+            self._unreadable_answer(service_name, region, operation_name, 1, problems)
             return 0
+
+    def _unreadable_answer(
+        self,
+        service_name: str,
+        region: str,
+        operation_name: str,
+        items: Optional[int],
+        problems: Optional[List[int]],
+    ) -> int:
+        """Say once that an answer (``items`` None) or ``items`` items of it
+        could not be read. Returns 0 (the number of rows added)."""
+        if problems is not None:
+            problems.append(items or 1)
+        where = f"{service_name} {operation_name} in {region}"
+        if items is None:
+            what = (
+                f"{where} returned an answer InvenTag could not read, so none "
+                "of its items are listed."
+            )
+        else:
+            what = (
+                f"{where} returned {items} item(s) InvenTag could not read; "
+                "they are skipped and the other items are kept."
+            )
+        self._warn_once(
+            f"malformed:{service_name}:{operation_name}:{region}",
+            f"{what} Run the scan again; if it repeats, report it with the "
+            "--debug log.",
+        )
+        return 0
 
     def _normalize_resource(
         self,
