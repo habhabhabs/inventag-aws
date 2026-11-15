@@ -59,10 +59,8 @@ from ..security.secret_values import mask_secret_values
 from .._version import __version__
 
 from ..state.partial_results import PartialResultStore, make_run_key
-from ..security.safe_output import (
-    ensure_private_dir,
-    open_private,
-)
+from ..reporting.safe_save import save_atomically
+from ..security.safe_output import ensure_private_dir
 
 
 def _coverage_of(context) -> List[Dict[str, Any]]:
@@ -2066,19 +2064,20 @@ class CloudBOMGenerator:
 
                         elif fmt == "json":
                             output_file = self.output_dir / f"{prefix}_{stamp}.json"
-                            with open_private(output_file, "w") as f:
-                                json.dump(
-                                    {
-                                        "resources": scope_data.resources,
-                                        "metadata": scope_data.generation_metadata,
-                                        "compliance_summary": scope_data.compliance_summary,
-                                        "network_analysis": scope_data.network_analysis,
-                                        "security_analysis": scope_data.security_analysis,
-                                    },
-                                    f,
-                                    indent=2,
-                                    default=str,
-                                )
+                            document = {
+                                "resources": scope_data.resources,
+                                "metadata": scope_data.generation_metadata,
+                                "compliance_summary": scope_data.compliance_summary,
+                                "network_analysis": scope_data.network_analysis,
+                                "security_analysis": scope_data.security_analysis,
+                            }
+
+                            def write_json(temp_path, document=document):
+                                with open(temp_path, "w") as f:
+                                    json.dump(document, f, indent=2, default=str)
+
+                            # Whole or not at all; an older file stays (A-14).
+                            save_atomically(output_file, write_json)
                             generated_files.append(str(output_file))
 
                         elif fmt == "google":
@@ -2333,9 +2332,13 @@ class CloudBOMGenerator:
                                 title="Multi-Account Infrastructure Changes",
                             )
 
-                            # Write changelog to file
-                            with open_private(changelog_file, "w") as f:
-                                f.write(changelog.to_markdown())
+                            # Write changelog to file: whole or not at all (A-14)
+                            def write_changelog(temp_path, changelog=changelog):
+                                text = changelog.to_markdown()
+                                with open(temp_path, "w") as f:
+                                    f.write(text)
+
+                            save_atomically(changelog_file, write_changelog)
 
                             results["changelog_generated"] = True
                             results["changelog_file"] = str(changelog_file)
