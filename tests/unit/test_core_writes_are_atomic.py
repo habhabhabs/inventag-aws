@@ -18,8 +18,8 @@ from inventag.core.cloud_bom_generator import CloudBOMGenerator, MultiAccountCon
 from tests.unit.test_account_time_limit_and_failures import (  # noqa: F401
     CountingInventory,
     _contexts,
-    aws,
 )
+from tests.unit.test_account_time_limit_and_failures import aws  # noqa: F401
 from tests.unit.test_docs_claims_v120 import (  # noqa: F401 (fixtures)
     BASE,
     empty_aws,
@@ -63,8 +63,8 @@ def leftovers(folder):
 
 
 def test_a_failing_json_write_keeps_the_old_file(
-    aws, tmp_path, monkeypatch
-):  # noqa: F811
+    aws, tmp_path, monkeypatch  # noqa: F811
+):
     monkeypatch.setattr(cbg, "datetime", FixedDatetime)
     target = tmp_path / f"multi_account_bom_{STAMP}.json"
     target.write_text("OLD")
@@ -81,8 +81,8 @@ def test_a_failing_json_write_keeps_the_old_file(
 
 
 def test_a_json_write_gives_the_same_name_and_mode(
-    aws, tmp_path, monkeypatch
-):  # noqa: F811
+    aws, tmp_path, monkeypatch  # noqa: F811
+):
     monkeypatch.setattr(cbg, "datetime", FixedDatetime)
     result = _json_run(tmp_path)
     assert result["success"] is True
