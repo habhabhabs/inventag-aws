@@ -49,3 +49,14 @@ def test_a_good_write_is_owner_only_and_complete(tmp_path):
     assert json.loads(path.read_text()) == {"operations": []}
     assert oct(path.stat().st_mode & 0o777) == "0o600"
     assert os.listdir(path.parent) == ["audit.json"]
+
+
+@pytest.mark.parametrize("umask", [0o022, 0o077])
+def test_audit_file_is_owner_only_under_any_umask_as_in_v1_2_1(tmp_path, umask):
+    old = os.umask(umask)
+    try:
+        path = tmp_path / "audit.json"
+        safety.write_audit_output(Guard({"operations": []}), str(path))
+    finally:
+        os.umask(old)
+    assert oct(path.stat().st_mode & 0o777) == "0o600"
