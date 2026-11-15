@@ -10,7 +10,9 @@ import argparse
 import getpass
 import os
 import re
+import signal
 import sys
+import time
 import json
 import yaml
 import logging
@@ -1494,9 +1496,14 @@ def main():
 
     guard = safety.enable_read_only_guard()
 
+    previous_sigterm = _install_sigterm_message(
+        logger, args.output_directory, time.time()
+    )
     try:
         _run(args, logger)
     finally:
+        if previous_sigterm is not None:
+            signal.signal(signal.SIGTERM, previous_sigterm)
         if args.audit_output:
             try:
                 path = safety.write_audit_output(guard, args.audit_output)
@@ -1547,9 +1554,49 @@ def _log_run_notes(results, logger, already_logged=frozenset()):
         logger.warning(f"  - {note}")
 
 
+def _written_reports_note(output_dir, since) -> str:
+    """What is true on disk when a run is stopped: report files that this run
+    already wrote into the output folder."""
+    written = []
+    try:
+        for path in Path(output_dir).iterdir():
+            if (
+                path.is_file()
+                and path.suffix in (".xlsx", ".docx", ".json")
+                and path.stat().st_mtime >= since - 2  # file times are coarse
+            ):
+                written.append(path)
+    except OSError:
+        pass
+    if not written:
+        return "No report was written."
+    return f"{len(written)} report file(s) already written stay in {output_dir}."
+
+
+def _install_sigterm_message(logger, output_dir, since):
+    """Say one line when the process is asked to stop (SIGTERM), then end as
+    before: the default action, so the exit status (killed by SIGTERM) is the
+    same. The handler removes itself first, so a second SIGTERM is not held
+    back. Ctrl-C is left to Python (KeyboardInterrupt). Returns the handler
+    that was there before, to put back; None when none could be set."""
+
+    def handler(signum, frame):
+        logger.warning(
+            "Terminated (SIGTERM). " + _written_reports_note(output_dir, since)
+        )
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    try:
+        return signal.signal(signal.SIGTERM, handler)
+    except (ValueError, OSError, AttributeError):
+        return None  # not the main thread, or no SIGTERM on this system
+
+
 def _run(args, logger):
     """Validate arguments and run the requested CLI action."""
     logger.info("InvenTag CLI started")
+    run_started = time.time()
     logger.debug(f"CLI arguments: {vars(args)}")
 
     template_run = prepare_template_run(args, sys.argv[1:], create_parser, logger)
@@ -1791,7 +1838,10 @@ def _run(args, logger):
             sys.exit(1)
 
     except KeyboardInterrupt:
-        logger.info("BOM generation interrupted by user")
+        logger.warning(
+            "Stopped by the user (Ctrl-C). "
+            + _written_reports_note(args.output_directory, run_started)
+        )
         sys.exit(1)
     except Exception as e:
         logger.error(
