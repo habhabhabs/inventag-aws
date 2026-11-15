@@ -8,6 +8,76 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- A slow Cost Explorer answer no longer costs a whole account when
+  `--account-processing-timeout` is short. Below 1200 seconds, Cost Explorer
+  gets at most a tenth of the account's limit; the account's resources are
+  listed and in the report, and a run note says that its billing data is
+  missing. With the default limit nothing changes.
+- After an account reaches its time limit, a call that is still running is no
+  longer retried, so the run ends sooner after the summary.
+- A snapshot that could not be saved, a snapshot list (`metadata.json`) that
+  could not be updated, or a change report that failed is now named in the
+  run notes, with the folder to check, and the console's completion line no
+  longer calls such a run successful. The exit code is unchanged.
+- An empty result with `--s3-bucket` says that there is nothing to upload and
+  why, instead of "S3 upload failed". The exit code is still 1.
+- A region name in `--account-regions` (or the accounts file) that is not a
+  known AWS region is named once, with how to list the valid ones, instead of
+  a raw error text. A run note says it was not scanned. The exit code is
+  unchanged.
+- A failed Cost Explorer read prints one warning that says billing data is
+  missing, why, and the next step (before: up to three lines, and "not
+  enabled" asked for a permission). A Cost Explorer call that did not answer
+  in time says so, in the words of the run note, instead of blaming the
+  network.
+- A listing that AWS answers with `OptInRequired` says the service needs an
+  opt-in. A service with several listings (for example ECS) no longer says
+  all its resources are skipped when only one listing was denied.
+- Detail calls that failed (a bucket's location, a Lambda function's
+  configuration, RDS, CloudFormation stacks, CloudFront certificates) and
+  clients that could not be created are recorded in the coverage list, warned
+  about once, and named in the run notes with how many resources have fields
+  missing. "Nothing configured" answers are not reported. Such a failure does
+  not make a resource "not compared" in the change report.
+- An answer in the wrong form no longer makes a false row (for example a row
+  named `oops`); the unreadable items are skipped with one warning and the
+  good items are kept.
+- With `--template`, a report format that cannot be written no longer stops
+  the other formats; the failed format is named in one error line and in the
+  run notes of the files that were written. The exit code is unchanged (1).
+- Ctrl-C and SIGTERM print one visible line that says what was written. The
+  exit status is unchanged.
+- With `--resume`, a reused account is named once on the console.
+- With `--per-account-reports`, each account's Network and Security sheets are
+  read with that account's own credentials, not the first account's.
+- Network analysis counts an ElastiCache cluster in its VPC and in each subnet
+  of its subnet group (it reads `elasticache:DescribeCacheSubnetGroups`,
+  already in the read-only policy; one warning if it cannot be read), and no
+  longer counts an RDS DB subnet group as a resource of its VPC and subnets.
+- The legacy tag compliance checker and the legacy inventory script allow the
+  read-only guard's upload exception only for the bucket you name, not for any
+  bucket on that client.
+- These files are now written whole or not at all, so a failed write keeps the
+  older file of the same name and leaves no temporary file: the JSON output,
+  the change log, `--audit-output`, the tag compliance JSON of a template run,
+  the credential file of the credential manager, the CI/CD artifacts and
+  metrics file, the generation report, the CSV report, saved configuration
+  and template files, and the checker's plain-text report. File modes are as
+  before.
+
+### Changed
+
+- A run without an output flag no longer prints "No output format specified.
+  Use --create-word or --create-excel"; it prints one line saying that Excel
+  is the default.
+- The help text of `--fail-on-account-error` says that exit code 5 covers an
+  account that could not be scanned or ran out of time.
+- The template field reference corrects five descriptions that the code
+  contradicted (tag description, Word column width, company name, logo alt
+  text, tag policy precedence).
+
 ## [v1.2.1] - 2026-11-15
 
 ### Fixed
