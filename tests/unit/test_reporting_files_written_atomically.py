@@ -1,0 +1,132 @@
+"""The JSON, CSV and YAML files the reporting package writes are written whole or not at all.
+
+A write that fails part-way must leave the file that was there as it was, and
+no temporary file in the folder. (Workbooks and Word documents already go
+through ``save_atomically``.)
+"""
+
+import os
+
+import pytest
+
+from inventag.reporting import configuration_manager as configuration_module
+from inventag.reporting import csv_builder as csv_module
+from inventag.reporting import document_generator as generator_module
+from inventag.reporting import template_framework as template_module
+from inventag.reporting.bom_processor import BOMData
+from inventag.reporting.configuration_manager import (
+    ConfigurationManager,
+    ConfigurationSet,
+)
+from inventag.reporting.document_generator import (
+    DocumentConfig,
+    DocumentGenerationResult,
+    DocumentGenerationSummary,
+    DocumentGenerator,
+)
+from inventag.reporting.template_framework import DocumentTemplate, TemplateManager
+
+OLD = "the previous complete file\n"
+
+
+def _half_dump(obj, fileobj, *args, **kwargs):
+    fileobj.write('{"half": ')
+    raise RuntimeError("write failed")
+
+
+def _folder_after(tmp_path, target):
+    return sorted(p.name for p in tmp_path.iterdir()), target.read_text()
+
+
+def test_the_generation_report_keeps_the_old_file_when_the_write_fails(
+    tmp_path, monkeypatch
+):
+    target = tmp_path / "report.json"
+    target.write_text(OLD)
+    monkeypatch.setattr(generator_module.json, "dump", _half_dump)
+    generator = DocumentGenerator(
+        DocumentConfig(output_formats=["csv"], output_directory=str(tmp_path))
+    )
+    summary = DocumentGenerationSummary(
+        total_formats=1,
+        successful_formats=1,
+        failed_formats=0,
+        results=[
+            DocumentGenerationResult(format_type="csv", filename="a", success=True)
+        ],
+        total_generation_time=0.1,
+    )
+    generator.save_generation_report(summary, str(target))
+    assert _folder_after(tmp_path, target) == (["report.json"], OLD)
+
+
+def test_a_csv_keeps_the_old_file_when_the_write_fails(tmp_path, monkeypatch):
+    target = tmp_path / "out.csv"
+    target.write_text(OLD)
+
+    def half_csv(fileobj, headers, rows):
+        fileobj.write("id,")
+        raise RuntimeError("write failed")
+
+    monkeypatch.setattr(csv_module, "write_safe_csv", half_csv)
+    builder = csv_module.CSVBuilder(DocumentConfig(output_formats=["csv"]))
+    result = builder.generate_document(
+        BOMData(resources=[{"id": "i-1", "service": "EC2"}]), str(target)
+    )
+    assert result.success is False
+    assert _folder_after(tmp_path, target) == (["out.csv"], OLD)
+
+
+@pytest.mark.parametrize("suffix", [".json", ".yaml"])
+def test_a_saved_configuration_keeps_the_old_file_when_the_write_fails(
+    tmp_path, monkeypatch, suffix
+):
+    target = tmp_path / f"config{suffix}"
+    target.write_text(OLD)
+    monkeypatch.setattr(configuration_module.json, "dump", _half_dump)
+    monkeypatch.setattr(configuration_module.yaml, "dump", _half_dump)
+    with pytest.raises(RuntimeError, match="write failed"):
+        ConfigurationManager(str(tmp_path)).save_configuration(
+            ConfigurationSet(name="c"), str(target)
+        )
+    assert _folder_after(tmp_path, target) == ([f"config{suffix}"], OLD)
+
+
+def test_a_saved_configuration_in_an_unsupported_format_keeps_the_old_file(tmp_path):
+    target = tmp_path / "config.txt"
+    target.write_text(OLD)
+    with pytest.raises(ValueError, match="Unsupported output format"):
+        ConfigurationManager(str(tmp_path)).save_configuration(
+            ConfigurationSet(name="c"), str(target)
+        )
+    assert _folder_after(tmp_path, target) == (["config.txt"], OLD)
+
+
+@pytest.mark.parametrize("suffix", [".json", ".yaml"])
+def test_a_saved_template_keeps_the_old_file_when_the_write_fails(
+    tmp_path, monkeypatch, suffix
+):
+    target = tmp_path / f"template{suffix}"
+    target.write_text(OLD)
+    monkeypatch.setattr(template_module.json, "dump", _half_dump)
+    monkeypatch.setattr(template_module.yaml, "dump", _half_dump)
+    with pytest.raises(RuntimeError, match="write failed"):
+        TemplateManager().save_template(DocumentTemplate(name="t"), str(target))
+    assert _folder_after(tmp_path, target) == ([f"template{suffix}"], OLD)
+
+
+def test_a_saved_template_in_an_unsupported_format_keeps_the_old_file(tmp_path):
+    target = tmp_path / "template.txt"
+    target.write_text(OLD)
+    with pytest.raises(ValueError, match="Unsupported output format"):
+        TemplateManager().save_template(DocumentTemplate(name="t"), str(target))
+    assert _folder_after(tmp_path, target) == (["template.txt"], OLD)
+
+
+def test_a_complete_write_replaces_the_file_and_leaves_no_temporary_file(tmp_path):
+    target = tmp_path / "template.json"
+    target.write_text(OLD)
+    TemplateManager().save_template(DocumentTemplate(name="t"), str(target))
+    assert [p.name for p in tmp_path.iterdir()] == ["template.json"]
+    assert '"name": "t"' in target.read_text()
+    assert os.stat(target).st_size > len(OLD)
