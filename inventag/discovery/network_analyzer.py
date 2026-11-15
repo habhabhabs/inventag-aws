@@ -669,6 +669,8 @@ class NetworkAnalyzer:
             "dhcpoptions",
             "prefixlist",
             "managedprefixlist",
+            # A DB subnet group names subnets; nothing runs in it (A-60).
+            "dbsubnetgroup",
         }
     )
 
