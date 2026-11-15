@@ -718,15 +718,23 @@ def test_associated_resources_counts_ec2_lambda_rds_and_load_balancers_in_a_subn
     assert "lb1" in in_vpc and "lb1" in in_subnet
 
 
-def test_associated_resources_does_not_count_an_elasticache_cluster(empty_aws):
-    # Register row A-59: a cache cluster names only its subnet group, so it is
-    # counted in neither the VPC nor the subnet. The status page lists it.
+def test_associated_resources_counts_an_elasticache_cluster_in_its_vpc_and_each_subnet(
+    empty_aws,
+):
+    # Register row A-59: a cache cluster names only its subnet group; the group's
+    # subnets (and so its VPC) are read, and the cluster is counted in the VPC
+    # and in each subnet of the group.
     analyzer, vpc, sub, _ = _subnet_estate_in_moto()
-    counted = (
-        analyzer.subnet_cache[sub].associated_resources
-        + analyzer.vpc_cache[vpc].associated_resources
+    sub2 = next(
+        s
+        for s in analyzer.subnet_cache
+        if s != sub
+        and analyzer.subnet_cache[s].vpc_id == vpc
+        and analyzer.subnet_cache[s].cidr_block == "10.20.2.0/24"
     )
-    assert "cache1" not in counted
+    assert "cache1" in analyzer.vpc_cache[vpc].associated_resources
+    assert "cache1" in analyzer.subnet_cache[sub].associated_resources
+    assert "cache1" in analyzer.subnet_cache[sub2].associated_resources
 
 
 @pytest.mark.parametrize(
