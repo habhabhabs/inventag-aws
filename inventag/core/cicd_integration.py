@@ -26,7 +26,8 @@ from botocore.exceptions import ClientError
 
 from .cloud_bom_generator import CloudBOMGenerator, MultiAccountConfig
 from ..reporting.bom_processor import BOMData
-from ..security.safe_output import ensure_private_dir, open_private
+from ..reporting.safe_save import save_atomically
+from ..security.safe_output import ensure_private_dir
 from .s3_upload import ensure_lifecycle_rule, upload_files
 
 
@@ -534,8 +535,13 @@ class CICDIntegration:
             ensure_private_dir(self.artifacts_dir)
             for artifact_name, artifact_data in artifacts.items():
                 artifact_path = self.artifacts_dir / artifact_name
-                with open_private(artifact_path, "w") as f:
-                    json.dump(artifact_data, f, indent=2, default=str)
+
+                def write_artifact(temp_path, artifact_data=artifact_data):
+                    with open(temp_path, "w") as f:
+                        json.dump(artifact_data, f, indent=2, default=str)
+
+                # Whole or not at all; an older file stays (A-14).
+                save_atomically(artifact_path, write_artifact)
 
                 self.logger.info(f"Generated CI/CD artifact: {artifact_path}")
 
@@ -907,8 +913,12 @@ inventag_s3_upload_time_seconds {metrics.s3_upload_time}
             # Export to file
             ensure_private_dir(self.artifacts_dir)
             metrics_file = self.artifacts_dir / "inventag_metrics.prom"
-            with open_private(metrics_file, "w") as f:
-                f.write(metrics_content)
+
+            def write_metrics(temp_path):
+                with open(temp_path, "w") as f:
+                    f.write(metrics_content)
+
+            save_atomically(metrics_file, write_metrics)
 
             self.logger.info(f"Exported Prometheus metrics to: {metrics_file}")
 

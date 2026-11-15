@@ -42,13 +42,27 @@ from ..security.arn import (
 from ..security.iam_policy import build_read_only_policy
 from ..security.read_only_guard import ReadOnlyViolationError
 from ..security.redaction import register_secrets
-from ..security.safe_output import open_private
+from ..reporting.safe_save import save_atomically
 
 # PBKDF2-HMAC-SHA256 work factor for new credential files (OWASP Password
 # Storage Cheat Sheet recommendation). Files written by older versions record
 # no iteration count and are read with LEGACY_PBKDF2_ITERATIONS.
 PBKDF2_ITERATIONS = 600_000
 LEGACY_PBKDF2_ITERATIONS = 100_000
+
+
+def _write_data_file(path: Path, data) -> None:
+    """Write ``data`` as YAML (.yaml/.yml) or JSON, owner-only, whole or not
+    at all: an older file stays when the write fails (A-14)."""
+
+    def write(temp_path):
+        with open(temp_path, "w") as f:
+            if path.suffix.lower() in [".yaml", ".yml"]:
+                yaml.safe_dump(data, f, default_flow_style=False)
+            else:
+                json.dump(data, f, indent=2)
+
+    save_atomically(path, write)
 
 
 @dataclass
@@ -158,20 +172,12 @@ class CredentialManager:
             # Encrypt and save
             encrypted_data = self._encrypt_credential_data(credential_data, password)
 
-            with open_private(output_path, "w") as f:
-                if output_path.suffix.lower() in [".yaml", ".yml"]:
-                    yaml.safe_dump(encrypted_data, f, default_flow_style=False)
-                else:
-                    json.dump(encrypted_data, f, indent=2)
+            _write_data_file(output_path, encrypted_data)
         else:
             # Save unencrypted
             data = asdict(credential_data)
 
-            with open_private(output_path, "w") as f:
-                if output_path.suffix.lower() in [".yaml", ".yml"]:
-                    yaml.safe_dump(data, f, default_flow_style=False)
-                else:
-                    json.dump(data, f, indent=2)
+            _write_data_file(output_path, data)
 
         self.logger.info(f"Created credential file with {len(accounts)} accounts")
         return str(output_path)
