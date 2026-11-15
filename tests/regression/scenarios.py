@@ -1302,7 +1302,12 @@ MATRIX: Dict[str, Dict[str, Any]] = {
         slow=True,  # 14 to 22 s: after Ctrl-C the scan runs on
         faults=(Fault(service="ec2", op="DescribeVpcs", sleep=6.0),),
         args=("--account-services", "VPC"),
-        current=(("code", 1), ("report", False)),
+        # fix2/track-c (A-17, message part): one visible line; exit stays 1
+        current=(
+            ("code", 1),
+            ("report", False),
+            ("out", "Stopped by the user (Ctrl-C). No report was written."),
+        ),
         code=130,
         target=(("code", 130),),
         wp="WP-F1a",
