@@ -20,12 +20,13 @@ import os
 import sys
 import tempfile
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
 from ..core import CloudBOMGenerator
 from ..reporting import BOMDataProcessor
+from ..reporting.safe_save import save_atomically
 from .errors import TemplateError, TemplateIssue
 from .loader import safe_relative_path
 from .registry import ResolvedTemplate, TemplateRegistry
@@ -395,8 +396,47 @@ def unused_option_warnings(args, run: Optional[TemplateRun] = None) -> List[str]
     return messages
 
 
+def _reason(error: BaseException) -> str:
+    """The exception type, and for a file error the system's own words.
+
+    Never the full exception text: it can hold values the caller passed in.
+    """
+    name = type(error).__name__
+    text = getattr(error, "strerror", None) if isinstance(error, OSError) else None
+    return f"{name}: {text}" if text else name
+
+
+def _write_json_atomically(path: str, data: Any) -> None:
+    """Write ``data`` as JSON to ``path``, whole or not at all.
+
+    The file gets the mode a plain ``open(path, "w")`` gives (0666 minus the
+    umask), as in v1.2.1; ``save_atomically`` itself creates files 0600.
+    """
+
+    def write(temporary: str) -> None:
+        with open(temporary, "w", encoding="utf-8") as handle:
+            json.dump(data, handle, indent=2, default=str)
+        umask = os.umask(0)
+        os.umask(umask)
+        os.chmod(temporary, 0o666 & ~umask)
+
+    save_atomically(path, write)
+
+
 class TemplatedCloudBOMGenerator(CloudBOMGenerator):
     """``CloudBOMGenerator`` that writes Excel and Word files from templates."""
+
+    def _report_failed_output(
+        self, what: str, error: BaseException, failed: List[Tuple[str, str]]
+    ) -> None:
+        """Name one output that could not be written (one ERROR line)."""
+        reason = _reason(error)
+        failed.append((what, reason))
+        self.logger.error(
+            f"Could not write the {what} ({reason}). Run again with --debug to "
+            "log the traceback."
+        )
+        self.logger.debug("Output failure", exc_info=error)
 
     def __init__(self, config, run: TemplateRun):
         super().__init__(config)
@@ -428,48 +468,85 @@ class TemplatedCloudBOMGenerator(CloudBOMGenerator):
             # whatever else the generator adds): one list for every report.
             notes = self._run_notes()
 
+            failed: List[Tuple[str, str]] = []  # (what, reason) for each output
+            written: List[Tuple[str, str, Any]] = []  # (label, path, renderer)
+
             if run.policy is not None:
                 run.compliance = evaluate(processed, run.policy)
                 path = self.output_dir / f"tag_compliance_{stamp}.json"
-                with open(path, "w", encoding="utf-8") as handle:
-                    json.dump(run.compliance.to_dict(), handle, indent=2, default=str)
-                generated.append(str(path))
+                try:
+                    _write_json_atomically(str(path), run.compliance.to_dict())
+                    generated.append(str(path))
+                except Exception as error:
+                    self._report_failed_output("tag compliance file", error, failed)
 
+            renderers = {
+                "excel": ("Excel", "xlsx", render_excel),
+                "word": ("Word", "docx", render_word),
+            }
             for fmt in output_formats:
                 fmt = fmt.lower()
-                if fmt == "excel":
-                    path = self.output_dir / f"multi_account_bom_{stamp}.xlsx"
-                    render_excel(
-                        str(path),
-                        processed,
-                        run.report,
-                        run.compliance,
-                        metadata,
-                        notes,
-                    )
-                elif fmt == "word":
-                    path = self.output_dir / f"multi_account_bom_{stamp}.docx"
-                    render_word(
-                        str(path),
-                        processed,
-                        run.report,
-                        run.compliance,
-                        metadata,
-                        notes,
-                    )
-                else:
+                if fmt not in renderers:
                     self.logger.warning(
                         f"Output format '{fmt}' is not supported with "
                         "--template; skipped"
                     )
                     continue
+                label, extension, renderer = renderers[fmt]
+                path = self.output_dir / f"multi_account_bom_{stamp}.{extension}"
+                try:
+                    renderer(
+                        str(path),
+                        processed,
+                        run.report,
+                        run.compliance,
+                        metadata,
+                        notes,
+                    )
+                except Exception as error:
+                    self._report_failed_output(f"{label} report", error, failed)
+                    continue
                 generated.append(str(path))
+                written.append((label, str(path), renderer))
+
+            if failed and written:
+                # The files written before the failure must say what is missing.
+                failure_notes = [
+                    f"The {what} was not written ({reason}); see the ERROR line "
+                    "in the log."
+                    for what, reason in failed
+                    if what.endswith(" report")
+                ]
+                for label, path, renderer in written:
+                    try:
+                        renderer(
+                            path,
+                            processed,
+                            run.report,
+                            run.compliance,
+                            metadata,
+                            notes + failure_notes,
+                        )
+                    except Exception as error:  # the first file stays as it was
+                        self.logger.warning(
+                            f"Could not add the missing-report note to the {label} "
+                            f"report ({_reason(error)}); it was written without it."
+                        )
 
             if not processed:
                 self.logger.warning(
                     "No resources to report (none found, or the filters removed "
                     "all of them). The report files list no resources."
                 )
+            if failed:
+                return {
+                    "success": False,
+                    "error": "Could not write: "
+                    + "; ".join(f"{what} ({reason})" for what, reason in failed),
+                    "generated_files": generated,
+                    "total_resources": len(processed),
+                    "generation_timestamp": now.isoformat(),
+                }
             return {
                 "success": True,
                 "generated_files": generated,
