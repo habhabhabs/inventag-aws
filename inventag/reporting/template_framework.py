@@ -32,6 +32,7 @@ from abc import ABC, abstractmethod
 import re
 from collections import OrderedDict
 
+from .safe_save import save_atomically
 from .document_generator import BrandingConfig
 from .report_template import (
     MAX_TEMPLATE_BYTES,
@@ -644,17 +645,23 @@ class TemplateManager:
             template_data = self._template_to_dict(template)
 
             # Save based on file extension
-            with open(output_path, "w", encoding="utf-8") as f:
-                if output_path.endswith(".json"):
-                    json.dump(
-                        template_data, f, indent=2, ensure_ascii=False, default=str
-                    )
-                elif output_path.endswith((".yaml", ".yml")):
-                    yaml.dump(
-                        template_data, f, default_flow_style=False, allow_unicode=True
-                    )
-                else:
-                    raise ValueError(f"Unsupported output format: {output_path}")
+            def write(temp_path: str) -> None:
+                with open(temp_path, "w", encoding="utf-8") as f:
+                    if output_path.endswith(".json"):
+                        json.dump(
+                            template_data, f, indent=2, ensure_ascii=False, default=str
+                        )
+                    elif output_path.endswith((".yaml", ".yml")):
+                        yaml.dump(
+                            template_data,
+                            f,
+                            default_flow_style=False,
+                            allow_unicode=True,
+                        )
+                    else:
+                        raise ValueError(f"Unsupported output format: {output_path}")
+
+            save_atomically(output_path, write)
 
             self.logger.info(f"Template saved successfully: {output_path}")
 

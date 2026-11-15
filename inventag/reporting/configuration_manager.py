@@ -38,6 +38,7 @@ except ImportError:
             super().__init__(message)
 
 
+from .safe_save import save_atomically
 from .template_framework import DocumentTemplate, TemplateManager
 from .branding_system import AdvancedBrandingConfig, BrandingThemeManager
 from .document_generator import BrandingConfig
@@ -633,15 +634,20 @@ class ConfigurationManager:
             config_data = self._config_set_to_dict(config_set)
 
             # Save based on file extension
-            with open(output_path, "w", encoding="utf-8") as f:
-                if output_path.endswith(".json"):
-                    json.dump(config_data, f, indent=2, ensure_ascii=False, default=str)
-                elif output_path.endswith((".yaml", ".yml")):
-                    yaml.dump(
-                        config_data, f, default_flow_style=False, allow_unicode=True
-                    )
-                else:
-                    raise ValueError(f"Unsupported output format: {output_path}")
+            def write(temp_path: str) -> None:
+                with open(temp_path, "w", encoding="utf-8") as f:
+                    if output_path.endswith(".json"):
+                        json.dump(
+                            config_data, f, indent=2, ensure_ascii=False, default=str
+                        )
+                    elif output_path.endswith((".yaml", ".yml")):
+                        yaml.dump(
+                            config_data, f, default_flow_style=False, allow_unicode=True
+                        )
+                    else:
+                        raise ValueError(f"Unsupported output format: {output_path}")
+
+            save_atomically(output_path, write)
 
             self.logger.info(f"Configuration saved successfully: {output_path}")
 

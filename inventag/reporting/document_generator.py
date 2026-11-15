@@ -747,8 +747,11 @@ class DocumentGenerator:
                 "warnings": summary.warnings,
             }
 
-            with open_private(output_path, "w", encoding="utf-8") as f:
-                json.dump(report, f, indent=2, ensure_ascii=False)
+            def write(temp_path: str) -> None:
+                with open_private(temp_path, "w", encoding="utf-8") as f:
+                    json.dump(report, f, indent=2, ensure_ascii=False)
+
+            save_atomically(output_path, write)
 
             self.logger.info(f"Generation report saved: {output_path}")
 
