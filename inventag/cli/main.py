@@ -1540,9 +1540,22 @@ def _log_run_notes(results, logger, already_logged=frozenset()):
         f"{'; '.join(item['errors'])[:300]}"
         for item in failed
     } | set(already_logged)
+    # With --resume the generator already warned "<id>: reusing results ..."
+    # for each reused account; the notes about them would name them twice.
+    reused = {
+        f"{account_id}: {scanned_at}"
+        for account_id, scanned_at in (results.get("reused_accounts") or {}).items()
+        if f"{account_id}: reusing results scanned {scanned_at} (--resume)"
+        in already_logged
+    }
+    reused_header = bool(reused) and len(reused) == len(
+        results.get("reused_accounts") or {}
+    )
     pending = []
     for note in results.get("run_notes") or []:
-        if note in printed:
+        if note in printed or note in reused:
+            continue
+        if reused_header and "were not scanned again" in note:
             continue
         if failed and re.match(r"\d+ of \d+ account\(s\) (were|failed)", note):
             continue  # the header of the block printed above
