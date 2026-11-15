@@ -40,7 +40,7 @@ from botocore.exceptions import (
 
 # Import InvenTag components
 from ..discovery import AWSResourceInventory
-from ..discovery.coverage import EMPTY, FAILED_OUTCOMES, OK
+from ..discovery.coverage import DETAIL_SOURCE, EMPTY, FAILED_OUTCOMES, OK
 from ..discovery.regions import discover_regions
 from .log_context import account_log_context
 from ..compliance import ComprehensiveTagComplianceChecker
@@ -79,9 +79,6 @@ _EXPIRED_SESSION_CODES = frozenset(
 )
 
 
-# Ledger source of a failed detail call (discovery, A-22); a plain string so
-# that this works whether or not discovery writes such records.
-_DETAIL_SOURCE = "service-api-detail"
 # At most this many service/region items in one "Not read" note.
 _NOT_READ_LIMIT = 10
 # The error code of a listing whose service the endpoint does not know (moto
@@ -886,7 +883,7 @@ class CloudBOMGenerator:
         some fields missing. None when there is no such record."""
         groups: Dict[tuple, Dict[str, int]] = {}
         for e in _coverage_of(ctx):
-            if e.get("source") != _DETAIL_SOURCE:
+            if e.get("source") != DETAIL_SOURCE:
                 continue
             if e.get("outcome") not in FAILED_OUTCOMES:
                 continue
