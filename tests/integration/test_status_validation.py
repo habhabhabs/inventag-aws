@@ -573,5 +573,6 @@ def test_cost_explorer_denied_is_a_warning(estate, caplog):
     with caplog.at_level(logging.WARNING):
         disc._discover_billing_services()
     assert any(
-        "Cost Explorer data is not available" in r.message for r in caplog.records
+        "Cost Explorer was denied (AccessDeniedException)" in r.message
+        for r in caplog.records
     )
