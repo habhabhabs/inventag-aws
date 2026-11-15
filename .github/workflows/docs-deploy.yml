@@ -34,7 +34,10 @@ concurrency:
 jobs:
   # Build job
   build:
-    runs-on: ubuntu-latest
+    # Pinned: on the ubuntu-26.04 image that ubuntu-latest now gives, Playwright 1.60.0
+    # cannot install Chromium, so the accessibility check step fails. Move to a newer
+    # image together with a Playwright version that supports it.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       pages: read  # actions/configure-pages reads the Pages site settings
