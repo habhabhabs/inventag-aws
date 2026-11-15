@@ -840,9 +840,9 @@ class BOMConverter:
                 if found is not None:
                     self.network_analysis = found
                 else:
-                    self.network_analysis = NetworkAnalyzer().analyze_vpc_resources(
-                        self.data
-                    )
+                    self.network_analysis = NetworkAnalyzer(
+                        self.session
+                    ).analyze_vpc_resources(self.data)
 
                 # Enrich resources with network analysis data
                 for resource in self.data:
@@ -902,9 +902,9 @@ class BOMConverter:
                 if found is not None:
                     self.security_analysis = found
                 else:
-                    self.security_analysis = SecurityAnalyzer().analyze_security_groups(
-                        self.data
-                    )
+                    self.security_analysis = SecurityAnalyzer(
+                        self.session
+                    ).analyze_security_groups(self.data)
 
                 # Enrich resources with security analysis data
                 for resource in self.data:
