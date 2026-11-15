@@ -5,10 +5,8 @@ all (A-14)."""
 import json
 import logging
 import os
-import stat
 from unittest.mock import MagicMock
 
-import pytest
 from docx import Document
 from openpyxl import load_workbook
 
