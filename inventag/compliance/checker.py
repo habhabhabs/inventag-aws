@@ -17,6 +17,7 @@ framework.
 """
 
 import json
+import os
 import yaml
 import boto3
 import logging
@@ -782,6 +783,11 @@ class ComprehensiveTagComplianceChecker:
                     f.write("Resources by Service:\n")
                     for service, count in sorted(services.items()):
                         f.write(f"  {service}: {count}\n")
+                # Keep the mode a plain open() gave (0666 minus the umask), not
+                # the owner-only mode of the temporary file.
+                umask = os.umask(0)
+                os.umask(umask)
+                os.chmod(temp_path, 0o666 & ~umask)
 
             save_atomically(filename.replace(".docx", ".txt"), write_text)
 
