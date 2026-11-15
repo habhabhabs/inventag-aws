@@ -1269,7 +1269,9 @@ MATRIX: Dict[str, Dict[str, Any]] = {
             ("code", 1),
             ("report", False),
             ("out", NO_RESOURCES),
-            ("out", "S3 upload failed for 1 file(s)"),
+            # fix2/track-a (A-29, message part): nothing to upload, not a failure
+            ("out", "Nothing to upload to s3://regression-upload/"),
+            ("not", ("out", "S3 upload failed")),
         ),
         target=(("code", 0), ("out", "nothing was uploaded")),
         wp="WP-F1a",
