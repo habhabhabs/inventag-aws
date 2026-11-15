@@ -1749,7 +1749,19 @@ def _run(args, logger):
         logger.info(f"BOM generation completed in {processing_time:.2f} seconds")
 
         if results.get("success", False):
-            logger.info("✓ BOM generation successful")
+            state = results.get("state_management") or {}
+            delta = state.get("delta_detection") or {}
+            if (
+                (state.get("state_saved") is False and state.get("error"))
+                or state.get("state_index_error")
+                or (isinstance(delta, dict) and delta.get("error"))
+            ):
+                logger.info(
+                    "✓ Reports written; the state snapshot or the change report "
+                    "had a problem (see the notes below)"
+                )
+            else:
+                logger.info("✓ BOM generation successful")
             bom_results = results.get("bom_generation", {})
             generated_files = bom_results.get("generated_files", [])
             logger.info(f"Generated documents: {len(generated_files)}")
