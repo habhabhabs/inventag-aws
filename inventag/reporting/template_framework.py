@@ -660,6 +660,11 @@ class TemplateManager:
                         )
                     else:
                         raise ValueError(f"Unsupported output format: {output_path}")
+                # save_atomically creates files 0600; a plain open() gave
+                # 0666 minus the umask, and the file keeps that mode.
+                umask = os.umask(0)
+                os.umask(umask)
+                os.chmod(temp_path, 0o666 & ~umask)
 
             save_atomically(output_path, write)
 
