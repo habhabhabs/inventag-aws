@@ -79,6 +79,9 @@ _EXPIRED_SESSION_CODES = frozenset(
 )
 
 
+# Ledger source of a failed detail call (discovery, A-22); a plain string so
+# that this works whether or not discovery writes such records.
+_DETAIL_SOURCE = "service-api-detail"
 # At most this many service/region items in one "Not read" note.
 _NOT_READ_LIMIT = 10
 # The error code of a listing whose service the endpoint does not know (moto
@@ -858,6 +861,9 @@ class CloudBOMGenerator:
                     f"Not read in account {acc_id}, so the report is partial "
                     f"there: {text}."
                 )
+            details = self._detail_note(acc_id, ctx)
+            if details:
+                notes.append(details)
             unknown = self._unknown_regions.get(str(acc_id)) or []
             if unknown:
                 notes.append(
@@ -872,6 +878,44 @@ class CloudBOMGenerator:
                     f"{', '.join(skipped)}."
                 )
         return notes
+
+    @staticmethod
+    def _detail_note(acc_id: str, ctx) -> Optional[str]:
+        """Detail calls that failed (ledger source ``service-api-detail``,
+        written by discovery since A-22): their rows are in the report with
+        some fields missing. None when there is no such record."""
+        groups: Dict[tuple, Dict[str, int]] = {}
+        for e in _coverage_of(ctx):
+            if e.get("source") != _DETAIL_SOURCE:
+                continue
+            if e.get("outcome") not in FAILED_OUTCOMES:
+                continue
+            if str(e.get("error_code", "")) == _NO_SUCH_SERVICE_CODE:
+                continue
+            key = (
+                str(e.get("service", "")),
+                str(e.get("operation", "")),
+                str(e.get("region", "")),
+            )
+            outcome = str(e.get("outcome"))
+            counts = groups.setdefault(key, {})
+            counts[outcome] = counts.get(outcome, 0) + int(e.get("count") or 0)
+        if not groups:
+            return None
+        total = sum(sum(c.values()) for c in groups.values())
+        items = [
+            f"{service} {operation} in {region} ("
+            + ", ".join(f"{o}, {n}" for o, n in sorted(counts.items()))
+            + ")"
+            for (service, operation, region), counts in sorted(groups.items())
+        ]
+        text = "; ".join(items[:_NOT_READ_LIMIT])
+        if len(items) > _NOT_READ_LIMIT:
+            text += f", and {len(items) - _NOT_READ_LIMIT} more"
+        return (
+            f"Details of {total} resource(s) in account {acc_id} could not be "
+            f"read, so those rows have some fields missing: {text}."
+        )
 
     def _notes_for_state(self, state: Dict[str, Any]) -> List[str]:
         """Run notes for a snapshot, an index or a change report that could
