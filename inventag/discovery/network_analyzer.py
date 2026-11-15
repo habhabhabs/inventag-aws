@@ -506,10 +506,71 @@ class NetworkAnalyzer:
             if vpc.region == region:
                 vpc.network_interface_count = counts.get(vpc_id, 0)
 
+    @staticmethod
+    def _cache_group_key(resource: Dict[str, Any]) -> Optional[Tuple[str, str]]:
+        """(region, subnet group name) of an ElastiCache cluster, else None."""
+        if str(resource.get("service") or "").upper() != "ELASTICACHE":
+            return None
+        raw = resource.get("raw_data")
+        name = raw.get("CacheSubnetGroupName") if isinstance(raw, dict) else None
+        region = resource.get("region")
+        if isinstance(name, str) and name and region and region != "global":
+            return (region, name)
+        return None
+
+    def _read_cache_subnet_groups(
+        self, resources: List[Dict[str, Any]]
+    ) -> Dict[Tuple[str, str], Tuple[Optional[str], List[str]]]:
+        """(VPC ID, subnet IDs) of each cache subnet group the clusters name.
+
+        One ``DescribeCacheSubnetGroups`` call series for each region that has
+        a cluster; none when there is no cluster. A region that cannot be read
+        is reported and its clusters are not counted in a VPC or subnet.
+        """
+        regions = sorted(
+            {key[0] for key in map(self._cache_group_key, resources) if key}
+        )
+        groups: Dict[Tuple[str, str], Tuple[Optional[str], List[str]]] = {}
+        for region in regions:
+            try:
+                client = self.session.client("elasticache", region_name=region)
+                marker = None
+                while True:
+                    params = {"Marker": marker} if marker else {}
+                    response = client.describe_cache_subnet_groups(**params)
+                    for group in response.get("CacheSubnetGroups", []):
+                        groups[(region, group["CacheSubnetGroupName"])] = (
+                            group.get("VpcId"),
+                            [
+                                s["SubnetIdentifier"]
+                                for s in group.get("Subnets", [])
+                                if s.get("SubnetIdentifier")
+                            ],
+                        )
+                    marker = response.get("Marker")
+                    if not isinstance(marker, str) or not marker:
+                        break
+            except ClientError as error:
+                code = error.response.get("Error", {}).get("Code", "unknown")
+                logger.warning(
+                    f"Could not read the ElastiCache subnet groups in {region} "
+                    f"({code}), so ElastiCache clusters there are not counted in "
+                    "a VPC or subnet. Allow elasticache:DescribeCacheSubnetGroups "
+                    "to count them."
+                )
+        return groups
+
     def _map_resources_to_network(self, resources: List[Dict[str, Any]]):
         """Map resources to their VPC and subnet context."""
+        cache_groups = self._read_cache_subnet_groups(resources)
         for resource in resources:
             vpc_id = self._extract_vpc_id(resource)
+            subnet_ids = self._extract_subnet_ids(resource)
+            group = cache_groups.get(self._cache_group_key(resource))
+            if group:
+                # An ElastiCache cluster names only its subnet group (A-59).
+                vpc_id = vpc_id or group[0]
+                subnet_ids = subnet_ids + [s for s in group[1] if s not in subnet_ids]
             resource_id = resource.get("id", "unknown")
             if resource_id in self.vpc_cache or resource_id in self.subnet_cache:
                 continue  # a VPC or subnet is not a resource inside itself
@@ -522,7 +583,7 @@ class NetworkAnalyzer:
                     self.vpc_cache[vpc_id].associated_resources.append(resource_id)
 
             # Add resource to every subnet it names
-            for subnet_id in self._extract_subnet_ids(resource):
+            for subnet_id in subnet_ids:
                 if subnet_id in self.subnet_cache:
                     members = self.subnet_cache[subnet_id].associated_resources
                     if resource_id not in members:
