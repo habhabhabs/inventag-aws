@@ -1139,7 +1139,15 @@ MATRIX: Dict[str, Dict[str, Any]] = {
     "D7": dict(
         source="run",
         faults=(Fault(service="sqs", op="ListQueues", replace={"QueueUrls": "oops"}),),
-        current=(("code", 0), ("report", True), ("row", "oops")),
+        current=(
+            ("code", 0),
+            ("report", True),
+            ("no_row", "oops"),
+            (
+                "out",
+                "sqs list_queues in us-east-1 returned an answer InvenTag could not read",
+            ),
+        ),
         issue_keys=("internal_error:sqs",),
         target=(("no_row", "oops"),),
         wp="WP-F2",

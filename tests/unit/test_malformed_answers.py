@@ -64,14 +64,14 @@ def test_a_string_where_a_list_belongs_makes_no_row(caplog):
 
 def test_bad_items_are_skipped_and_good_items_kept(caplog):
     with caplog.at_level(logging.WARNING):
-        disc = _run("sqs", {"QueueUrls": [URL, None, 5, URL + "2"]})
-    assert [r["resource_id"] for r in disc.resources] == [URL, URL + "2"]
+        disc = _run("sqs", {"QueueUrls": [URL, None, 5, URL + "2", URL + "3"]})
+    assert [r["resource_id"] for r in disc.resources] == [URL, URL + "2", URL + "3"]
     assert _warnings(caplog) == [
         "sqs list_queues in us-east-1 returned 2 item(s) InvenTag could not "
         "read; they are skipped and the other items are kept. " + NEXT
     ]
     (entry,) = disc.coverage.to_dict()
-    assert (entry["outcome"], entry["count"]) == ("error", 2)
+    assert (entry["outcome"], entry["count"]) == ("error", 3)  # 3 rows found
 
 
 def test_a_list_of_wrong_items_makes_no_row(caplog):
