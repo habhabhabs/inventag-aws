@@ -865,14 +865,27 @@ class ComprehensiveAWSDiscovery:
                 if isinstance(e, ClientError)
                 else type(e).__name__
             )
+            # The inventory step may have read the same failure a moment ago and
+            # said so; one warning is enough, the detail stays at DEBUG.
+            already_said = self._billing_failure_recorded()
             self._record_billing(
                 coverage_mod.outcome_for_error(code, self.DENIED_CODES), 0, code
             )
-            self._warn_once(
-                "billing",
+            message = (
                 f"Cost Explorer data is not available, so billing "
-                f"checks are skipped: {e}",
+                f"checks are skipped: {e}"
             )
+            if already_said:
+                self.logger.debug(message)
+            else:
+                self._warn_once("billing", message)
+
+    def _billing_failure_recorded(self) -> bool:
+        """True when the ledger already holds a failed Cost Explorer read."""
+        return any(
+            e.source == "billing" and e.outcome in coverage_mod.FAILED_OUTCOMES
+            for e in self.coverage.entries
+        )
 
     def _service_regions(self, client_service: str, partition: str) -> set:
         """Regions where botocore knows an endpoint for the service.
@@ -1844,9 +1857,14 @@ class ComprehensiveAWSDiscovery:
     def _validate_with_billing(self):
         """Comprehensive validation of discovered resources against billing data."""
         if not self.billing_services:
-            self.logger.warning(
+            message = (
                 "💸 No billing data available - cannot validate discovery completeness"
             )
+            if self._billing_failure_recorded():
+                # The failed read was already reported with its cause.
+                self.logger.debug(message)
+            else:
+                self.logger.warning(message)
             return
 
         discovered_services = {r["service"].lower() for r in self.resources}
