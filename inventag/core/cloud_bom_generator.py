@@ -614,7 +614,27 @@ class CloudBOMGenerator:
             output_formats=output_formats, compliance_policies=compliance_policies
         )
 
-        if s3_upload_config and results.get("success"):
+        if (
+            s3_upload_config
+            and results.get("success")
+            and not (results.get("bom_generation") or {}).get("generated_files")
+            and (results.get("bom_generation") or {}).get("total_resources") == 0
+        ):
+            # Nothing was written, so nothing failed to upload (A-29). The run
+            # still ends with code 1 as in v1.2.1 (owner decision O3).
+            from .s3_upload import normalize_key_prefix
+
+            prefix = normalize_key_prefix(s3_upload_config.key_prefix)
+            bom_results = results.setdefault("bom_generation", {})
+            bom_results["s3_uploads"] = []
+            bom_results["s3_upload_errors"] = []
+            results["success"] = False
+            results["error"] = (
+                f"Nothing to upload to s3://{s3_upload_config.bucket_name}/"
+                f"{prefix + '/' if prefix else ''}: the run wrote no report file "
+                "because there are no resources to report."
+            )
+        elif s3_upload_config and results.get("success"):
             bom_results = results.setdefault("bom_generation", {})
             upload = self.upload_reports_to_s3(
                 bom_results.get("generated_files", []), s3_upload_config
