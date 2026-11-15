@@ -209,7 +209,7 @@ def test_an_empty_result_with_an_upload_gives_one_line_about_the_upload(
 
 # ------------------ A-24 note with discovery's one Cost Explorer warning
 def test_a_slow_cost_explorer_tells_one_story_about_billing(
-    aws, tmp_path, monkeypatch, capsys  # noqa: F811
+    aws, tmp_path, monkeypatch, caplog  # noqa: F811
 ):
     """Cost Explorer does not answer within lead A's bound: discovery prints
     ONE Cost Explorer warning (senior D), and it tells the same story as lead
@@ -219,9 +219,15 @@ def test_a_slow_cost_explorer_tells_one_story_about_billing(
     short_limit(monkeypatch, clock)
     slow_cost_explorer(monkeypatch, clock)
     assert run_cli(*ce_args(accounts_file(tmp_path, [GOOD]))) == 0
-    out = capsys.readouterr()
-    text = out.out + out.err
-    warnings = re.findall(r"WARNING - (Cost Explorer[^\n]*)", text)
+    # Log records, not the console stream: a handler left by an earlier test
+    # can write discovery's lines to another stream than capsys reads.
+    warnings = [
+        r.getMessage()
+        for r in caplog.records
+        if r.levelno == logging.WARNING
+        and r.name.startswith("inventag.discovery")
+        and r.getMessage().startswith("Cost Explorer")
+    ]
     assert len(warnings) == 1, warnings
     assert "did not answer in time" in warnings[0], warnings
     notes = run_notes(reports(tmp_path / "out")[0])
