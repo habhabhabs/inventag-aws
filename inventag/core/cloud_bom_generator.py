@@ -1499,13 +1499,38 @@ class CloudBOMGenerator:
             aws_session_token=temp["SessionToken"],
         )
 
+    def _identity_region(self, session) -> Optional[str]:
+        """The region for STS identity checks (A-44): the session's own region,
+        unless the scan's regions are in another partition (for example every
+        configured region is in GovCloud while the default region is
+        commercial); then the first configured region of that partition."""
+        regions = [
+            str(r)
+            for account in (self.config.accounts or [])
+            for r in (getattr(account, "regions", None) or [])
+        ]
+        if not regions:
+            return None
+        try:
+            scan_partition = session.get_partition_for_region(regions[0])
+            own = session.region_name
+            if own and session.get_partition_for_region(own) == scan_partition:
+                return None
+        except Exception:
+            return None
+        return regions[0]
+
     def _sts(self, session):
-        """STS client bounded by --credential-timeout (sign-in and role checks)."""
+        """STS client bounded by --credential-timeout (sign-in and role checks),
+        in the scan's partition."""
         timeout = self.config.credential_validation_timeout
+        region = self._identity_region(session)
+        extra = {"region_name": region} if region else {}
         if not timeout:
-            return session.client("sts")
+            return session.client("sts", **extra)
         return session.client(
             "sts",
+            **extra,
             config=BotoConfig(
                 connect_timeout=timeout,
                 read_timeout=timeout,
@@ -1541,8 +1566,10 @@ class CloudBOMGenerator:
             # --credential-timeout bounds this call, so a wrong endpoint or a
             # blocked network fails quickly instead of hanging.
             timeout = self.config.credential_validation_timeout
+            region = self._identity_region(session)
             sts = session.client(
                 "sts",
+                **({"region_name": region} if region else {}),
                 config=BotoConfig(
                     connect_timeout=timeout,
                     read_timeout=timeout,
