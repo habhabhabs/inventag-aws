@@ -20,8 +20,8 @@ The rules the code follows (delta_detector.py, v1.2.0):
   is in the changed service's ``affects`` list: EC2 -> ELB, EBS; RDS -> EC2;
   S3 -> EC2; VPC -> EC2, RDS, ELB, NAT, and the mixed-case entries (Lambda,
   AutoScalingGroup, CloudFront, ...) without regard to case.
-* A row found by both passes is listed twice, pass 1 first. Each pass keeps the
-  order of the new snapshot.
+* A row found by both passes is listed once, where pass 1 found it (A-48;
+  before, twice). Each pass keeps the order of the new snapshot.
 * The changed resource's own data comes from the new snapshot, else the old
   one (a removed resource); without either, nothing is related.
 * Two rows are related when one of ``vpc_id``, ``subnet_id``,
@@ -168,7 +168,7 @@ def test_related_resources_of_every_change_in_order(report):
         ("removed", "EC2", "high", GONE, [LB, ASG]),
         # VPC: pass 1 (EC2, RDS, Lambda, SecurityGroup rows depend on VPC),
         # then pass 2 (EC2, RDS, Lambda, ELB, NAT rows).
-        ("modified", "VPC", "medium", VPC, [I1, DB, FN, SG, I1, DB, LB, NAT, FN]),
+        ("modified", "VPC", "medium", VPC, [I1, DB, FN, SG, LB, NAT]),
         ("modified", "EC2", "medium", I1, [LB, ASG]),
         ("modified", "ec2", "medium", I2, []),
         # RDS affects Lambda and EC2: i-1 by vpc_id, i-3 by kms_key_id (its
@@ -179,7 +179,7 @@ def test_related_resources_of_every_change_in_order(report):
         # S3 affects Lambda and EC2: i-1 and fn-1 by iam_role, i-3 by kms.
         ("modified", "S3", "medium", BKT, [I1, I3, FN]),
         # SecurityGroup depends on VPC and affects EC2, RDS, Lambda, ELB.
-        ("modified", "SecurityGroup", "medium", SG, [I1, DB, FN, I1, DB, LB, FN]),
+        ("modified", "SecurityGroup", "medium", SG, [I1, DB, FN, LB]),
     ]
 
 
@@ -202,7 +202,7 @@ EXPECTED_IMPACT = {
         "VPC": [
             {
                 "changed_resource": VPC,
-                "affected_resources": [I1, DB, FN, SG, I1, DB, LB, NAT, FN],
+                "affected_resources": [I1, DB, FN, SG, LB, NAT],
             }
         ],
         "RDS": [{"changed_resource": DB, "affected_resources": [I1, I3, FN]}],
@@ -211,7 +211,7 @@ EXPECTED_IMPACT = {
         "SECURITYGROUP": [
             {
                 "changed_resource": SG,
-                "affected_resources": [I1, DB, FN, I1, DB, LB, FN],
+                "affected_resources": [I1, DB, FN, LB],
             }
         ],
     },
@@ -236,25 +236,25 @@ EXPECTED_IMPACT = {
             "resource_arn": I1,
             "service": "EC2",
             "type": "Instance",
-            "affecting_changes": [VPC, VPC, DB, BKT, SG, SG],
+            "affecting_changes": [VPC, DB, BKT, SG],
             "risk_level": "high",
-            "description": "Resource depends on 6 resources that have changed",
+            "description": "Resource depends on 4 resources that have changed",
         },
         {
             "resource_arn": DB,
             "service": "RDS",
             "type": "DBInstance",
-            "affecting_changes": [VPC, VPC, SG, SG],
-            "risk_level": "high",
-            "description": "Resource depends on 4 resources that have changed",
+            "affecting_changes": [VPC, SG],
+            "risk_level": "medium",
+            "description": "Resource depends on 2 resources that have changed",
         },
         {
             "resource_arn": FN,
             "service": "Lambda",
             "type": "Function",
-            "affecting_changes": [VPC, VPC, DB, BKT, SG, SG],
+            "affecting_changes": [VPC, DB, BKT, SG],
             "risk_level": "high",
-            "description": "Resource depends on 6 resources that have changed",
+            "description": "Resource depends on 4 resources that have changed",
         },
         {
             "resource_arn": I3,
@@ -290,11 +290,11 @@ def test_change_record_and_impact_entry_share_one_list(report):
 
 def test_changelog_counts_related_resources(report):
     markdown = ChangelogGenerator().generate_changelog(report).to_markdown()
-    for count in (1, 2, 3, 7, 9):
+    for count in (1, 2, 3, 4, 6):
         assert f"This change may affect {count} related resource(s)." in markdown
 
 
-REPORT_SHA256 = "75cccc0cb94e1261b4b4ef7abf03c3528ce1a15a7fae82c171decd6c35981d4a"
+REPORT_SHA256 = "dadc7776a4d1d70e81623197221b86987a78485b1680b4b2c8aeae93c43524a7"
 
 
 def test_delta_report_json_without_clocks(report):
@@ -312,7 +312,7 @@ def test_delta_report_json_without_clocks(report):
     related = {
         c["resource_arn"]: c["related_resources"] for c in data["modified_resources"]
     }
-    assert related[VPC] == [I1, DB, FN, SG, I1, DB, LB, NAT, FN]
+    assert related[VPC] == [I1, DB, FN, SG, LB, NAT]
     # The whole report, byte for byte (recorded on v1.2.0).
     assert hashlib.sha256(text.encode()).hexdigest() == REPORT_SHA256
 
@@ -364,22 +364,19 @@ def test_high_impact_only_for_critical_or_high(detector):
     ]
     new = [old[1]]  # the VPC is removed: HIGH severity
     report = detector.detect_changes(old, new, "s1", "s2")
-    assert report.removed_resources[0].related_resources == [I1, I1]
+    assert report.removed_resources[0].related_resources == [I1]
     assert report.impact_analysis["high_impact_changes"] == [
         {
             "resource_arn": VPC,
             "service": "VPC",
             "change_type": "removed",
             "severity": "high",
-            "related_resources": [I1, I1],
-            "potential_impact": "Changes to VPC may affect 2 related resources",
+            "related_resources": [I1],
+            "potential_impact": "Changes to VPC may affect 1 related resources",
         }
     ]
-    # Related twice to one change: one affecting change counted twice.
-    assert report.impact_analysis["cascade_risks"][0]["affecting_changes"] == [
-        VPC,
-        VPC,
-    ]
+    # One change is one affecting change: no cascade risk.
+    assert report.impact_analysis["cascade_risks"] == []
 
 
 # ----------------------------------------------- _analyze_change_impact direct
@@ -411,7 +408,7 @@ def test_analyze_change_impact_direct(detector):
         _change(FN, "LAMBDA"),
     ]
     impact = detector._analyze_change_impact(changes, old, new)
-    assert changes[0].related_resources == [I1, DB, FN, SG, I1, DB, LB, NAT, FN]
+    assert changes[0].related_resources == [I1, DB, FN, SG, LB, NAT]
     assert changes[1].related_resources == [I1, I3, FN]
     assert changes[2].related_resources == [BKT]
     assert impact == {
@@ -421,15 +418,15 @@ def test_analyze_change_impact_direct(detector):
                 "service": "vpc",
                 "change_type": "modified",
                 "severity": "critical",
-                "related_resources": [I1, DB, FN, SG, I1, DB, LB, NAT, FN],
-                "potential_impact": "Changes to VPC may affect 9 related resources",
+                "related_resources": [I1, DB, FN, SG, LB, NAT],
+                "potential_impact": "Changes to VPC may affect 6 related resources",
             }
         ],
         "dependency_impacts": {
             "VPC": [
                 {
                     "changed_resource": VPC,
-                    "affected_resources": [I1, DB, FN, SG, I1, DB, LB, NAT, FN],
+                    "affected_resources": [I1, DB, FN, SG, LB, NAT],
                 }
             ],
             "S3": [{"changed_resource": BKT, "affected_resources": [I1, I3, FN]}],
@@ -440,15 +437,7 @@ def test_analyze_change_impact_direct(detector):
                 "resource_arn": I1,
                 "service": "EC2",
                 "type": "Instance",
-                "affecting_changes": [VPC, VPC, BKT],
-                "risk_level": "high",
-                "description": "Resource depends on 3 resources that have changed",
-            },
-            {
-                "resource_arn": DB,
-                "service": "RDS",
-                "type": "DBInstance",
-                "affecting_changes": [VPC, VPC],
+                "affecting_changes": [VPC, BKT],
                 "risk_level": "medium",
                 "description": "Resource depends on 2 resources that have changed",
             },
@@ -456,9 +445,9 @@ def test_analyze_change_impact_direct(detector):
                 "resource_arn": FN,
                 "service": "Lambda",
                 "type": "Function",
-                "affecting_changes": [VPC, VPC, BKT],
-                "risk_level": "high",
-                "description": "Resource depends on 3 resources that have changed",
+                "affecting_changes": [VPC, BKT],
+                "risk_level": "medium",
+                "description": "Resource depends on 2 resources that have changed",
             },
         ],
     }
@@ -521,7 +510,7 @@ def test_order_follows_the_new_snapshot(detector):
     got = detector._find_related_resources(
         change, detector.dependency_patterns["VPC"], old, reordered
     )
-    assert got == [SG, FN, DB, I1, FN, NAT, LB, DB, I1]
+    assert got == [SG, FN, DB, I1, NAT, LB]
 
 
 # ------------------------------------------------ _resources_are_related rules

@@ -133,18 +133,15 @@ def test_a_changed_security_group_lists_the_resources_that_use_it():
     report = DeltaDetector().detect_changes(
         _estate(), _estate(sg1_tags={"Name": "sg-1", "Env": "x"}), "s1", "s2"
     )
-    # Pass 1 (EC2 and Lambda depend on VPC-service rows), then pass 2 (VPC
-    # affects EC2, Lambda): the instance and the function in sg-1, not i-2.
-    assert _related(report, SG1) == [I1, FN, I1, FN]
-    markdown = ChangelogGenerator().generate_changelog(report).to_markdown()
-    assert "This change may affect 4 related resource(s)." in markdown
+    # The instance and the function in sg-1, not i-2 (same VPC, other group).
+    assert _related(report, SG1) == [I1, FN]
 
 
 def test_a_changed_vpc_lists_its_members_not_its_plumbing():
     report = DeltaDetector().detect_changes(
         _estate(), _estate(vpc_tags={"Name": "vpc-1", "Env": "x"}), "s1", "s2"
     )
-    assert _related(report, VPC) == [I1, I2, FN, DB, I1, I2, FN, DB]
+    assert _related(report, VPC) == [I1, I2, FN, DB]
 
 
 def test_a_related_resource_is_listed_once():

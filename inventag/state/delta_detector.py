@@ -2202,7 +2202,9 @@ class DeltaDetector:
                 if self._resources_are_related(resource_data, resource):
                     related_resources.append(arn)
 
-        return related_resources
+        # A resource found by both passes is one resource (the change log
+        # counts them).
+        return list(dict.fromkeys(related_resources))
 
     def _resources_are_related(self, resource1: Dict, resource2: Dict) -> bool:
         """Check if two resources are actually related"""
