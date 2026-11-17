@@ -840,9 +840,13 @@ class BOMConverter:
                 if found is not None:
                     self.network_analysis = found
                 else:
-                    self.network_analysis = NetworkAnalyzer(
-                        self.session
-                    ).analyze_vpc_resources(self.data)
+                    analyzer = NetworkAnalyzer(self.session)
+                    self.network_analysis = analyzer.analyze_vpc_resources(self.data)
+                    self.run_notes = self.run_notes + [
+                        note
+                        for note in analyzer.cache_group_notes()
+                        if note not in self.run_notes
+                    ]
 
                 # Enrich resources with network analysis data
                 for resource in self.data:

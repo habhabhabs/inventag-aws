@@ -16,6 +16,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Error codes of a DescribeCacheSubnetGroups call that lacks the permission.
+_DENIED_CODES = frozenset(
+    {"AccessDenied", "AccessDeniedException", "UnauthorizedOperation"}
+)
+
 # NAT gateway and peering states that mean the resource is gone or never worked.
 _DEAD_NAT_STATES = {"deleted", "deleting", "failed"}
 _DEAD_PEERING_STATES = {"deleted", "deleting", "rejected", "failed", "expired"}
@@ -114,6 +119,9 @@ class NetworkAnalyzer:
         self.vpc_cache: Dict[str, VPCAnalysis] = {}
         self.subnet_cache: Dict[str, SubnetAnalysis] = {}
         self.region_clients: Dict[str, Any] = {}
+        # Regions whose cache subnet groups could not be read, with the error
+        # code or name: their ElastiCache clusters are not counted (A-59).
+        self.unread_cache_regions: Dict[str, str] = {}
 
         # Thresholds for warnings and recommendations
         self.high_utilization_threshold = 80.0  # Percentage
@@ -570,15 +578,36 @@ class NetworkAnalyzer:
                     marker = response.get("Marker")
                     if not isinstance(marker, str) or not marker:
                         break
-            except ClientError as error:
-                code = error.response.get("Error", {}).get("Code", "unknown")
+            except Exception as error:  # noqa: BLE001 - optional counts only
+                # Any failure (denied, throttled, no connection ...) leaves the
+                # analysis as it was without the ElastiCache counts.
+                if isinstance(error, ClientError):
+                    code = error.response.get("Error", {}).get("Code", "unknown")
+                else:
+                    code = type(error).__name__
+                self.unread_cache_regions[region] = code
+                if code in _DENIED_CODES:
+                    step = "Allow elasticache:DescribeCacheSubnetGroups to count them."
+                else:
+                    step = (
+                        "Run the scan again; if it repeats, report it with the "
+                        "--debug log."
+                    )
                 logger.warning(
                     f"Could not read the ElastiCache subnet groups in {region} "
                     f"({code}), so ElastiCache clusters there are not counted in "
-                    "a VPC or subnet. Allow elasticache:DescribeCacheSubnetGroups "
-                    "to count them."
+                    f"a VPC or subnet. {step}"
                 )
         return groups
+
+    def cache_group_notes(self) -> List[str]:
+        """Run notes for the regions whose cache subnet groups were not read."""
+        return [
+            f"ElastiCache subnet groups could not be read in {region} ({code}), "
+            "so ElastiCache clusters there are not counted in the Network "
+            "Analysis sheet."
+            for region, code in sorted(self.unread_cache_regions.items())
+        ]
 
     def _map_resources_to_network(self, resources: List[Dict[str, Any]]):
         """Map resources to their VPC and subnet context."""

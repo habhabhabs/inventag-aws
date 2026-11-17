@@ -2066,7 +2066,12 @@ class CloudBOMGenerator:
             format_errors = []
             google_urls: List[Dict[str, str]] = []
             notes = self._run_notes()
-            bom_converter.run_notes = notes
+            # The processor's network analysis may have left out the
+            # ElastiCache counts of a region (A-59); its sheet says so.
+            analyzer = getattr(bom_processor, "network_analyzer", None)
+            bom_converter.run_notes = notes + (
+                analyzer.cache_group_notes() if analyzer is not None else []
+            )
             stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
             for prefix, label, scope_data in self._report_scopes(bom_data):
