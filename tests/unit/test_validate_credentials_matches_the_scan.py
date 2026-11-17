@@ -11,10 +11,11 @@ valid, 1 otherwise (as before).
 
 import logging
 
+from tests.regression.faults import Fault, FaultInjector
+
 from tests.unit.test_docs_claims_v120 import (  # noqa: F401 (fixtures)
     BASE,
     GOOD_ID,
-    RoleControl,
     accounts_file,
     aws,
     empty_aws,
@@ -63,9 +64,12 @@ def test_an_entry_for_the_default_account_stays_valid(
 def test_a_role_that_cannot_be_assumed_fails_both(
     aws, tmp_path, monkeypatch, caplog  # noqa: F811
 ):
-    """The scan cannot use the account (exit 1: every account failed); the
-    validation says it is not valid (exit 1), as before for this case."""
-    RoleControl(monkeypatch, failing={OTHER_ID})
+    """sts:AssumeRole denied (injected by operation): the scan cannot use the
+    account (exit 1: every account failed); the validation says it is not
+    valid (exit 1), as before for this case."""
     path = accounts_file(tmp_path, [{"account_id": OTHER_ID, "regions": ["us-east-1"]}])
-    assert scan(path) == 1
-    assert validate(path) == 1
+    deny = Fault(service="sts", op="AssumeRole", error="AccessDenied")
+    with FaultInjector([deny]) as injector:
+        injector.arm()
+        assert scan(path) == 1
+        assert validate(path) == 1
