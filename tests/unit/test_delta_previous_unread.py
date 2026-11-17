@@ -194,3 +194,13 @@ def test_malformed_entries_are_ignored(tmp_path):
 
 def test_snapshot_version_is_unchanged():
     assert SNAPSHOT_VERSION == "1.1"
+
+
+def test_previous_tagging_failure_hides_the_tagged_flag(tmp_path):
+    """Moto CLI run 1 with GetResources throttled: 100 rows differ only in ``tagged``."""
+    old = [_queue("q1", tags={}, tagged=False)]
+    new = [_queue("q1", tags={"Env": "prod"}, tagged=True)]
+    units = [_unit("resourcegroupstaggingapi", source="tagging-api")]
+    report = _compare(tmp_path, old, new, units)
+    assert report.summary["modified_count"] == 0
+    assert report.summary["not_compared_count"] == 1

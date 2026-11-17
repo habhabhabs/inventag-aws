@@ -95,3 +95,12 @@ def test_a_failure_in_another_region_does_not_matter():
 def test_without_current_run_tags_are_compared_as_before():
     report = DeltaDetector().detect_changes([_queue()], [_queue(tags={})], "s1", "s2")
     assert report.summary["modified_count"] == 1
+
+
+def test_the_tagged_flag_follows_the_tags():
+    """Rows carry ``tagged`` (True when the Tagging API returned tags)."""
+    old = [_queue(tagged=True)]
+    new = [_queue(tags={}, tagged=False)]
+    report = _detect(old, new, _run("throttled"))
+    assert report.summary["modified_count"] == 0
+    assert report.summary["not_compared_count"] == 1
