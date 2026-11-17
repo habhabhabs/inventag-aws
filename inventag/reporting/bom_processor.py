@@ -142,11 +142,21 @@ class BOMDataProcessor:
     """
 
     def __init__(
-        self, config: BOMProcessingConfig, session: Optional[boto3.Session] = None
+        self,
+        config: BOMProcessingConfig,
+        session: Optional[boto3.Session] = None,
+        account_sessions: Optional[Dict[str, boto3.Session]] = None,
     ):
-        """Initialize the BOM data processor."""
+        """Initialize the BOM data processor.
+
+        ``session`` reads everything when no other is given. In a multi-account
+        run ``account_sessions`` (account ID, as in ``source_account_id`` of
+        the rows, to that account's session) makes the network and security
+        analysis read each account with its own session.
+        """
         self.config = config
         self.session = session or boto3.Session()
+        self.account_sessions: Dict[str, boto3.Session] = dict(account_sessions or {})
         self.logger = logging.getLogger(f"{__name__}.BOMDataProcessor")
 
         # Initialize analyzers and enrichers
@@ -805,6 +815,78 @@ class BOMDataProcessor:
 
         return resource
 
+    def _rows_by_account(
+        self, resources: List[Dict[str, Any]]
+    ) -> Optional[Dict[str, List[Dict[str, Any]]]]:
+        """The rows of each account, when each account is read with its own session.
+
+        None means one analysis with the processor's session (one account, no
+        account sessions, or the same session for the only account).
+        """
+        if not self.account_sessions:
+            return None
+        groups: Dict[str, List[Dict[str, Any]]] = {}
+        for resource in resources:
+            groups.setdefault(str(resource.get("source_account_id") or ""), []).append(
+                resource
+            )
+        if len(groups) == 1:
+            (account,) = groups
+            if self.account_sessions.get(account, self.session) is self.session:
+                return None
+        return groups
+
+    def _analysis_failed(self, kind: str, account: str) -> None:
+        message = (
+            f"{kind} analysis of account {account or 'unknown'} failed, so its "
+            "resources are not in the analysis. Run again with --debug for the cause."
+        )
+        self.logger.warning(message)
+        self.statistics.warnings.append(message)
+
+    def _analyse_network(self, resources: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Analyse the VPCs: one analysis, or one for each account, merged."""
+        groups = self._rows_by_account(resources)
+        if groups is None:
+            return self.network_analyzer.analyze_vpc_resources(resources)
+        vpcs: Dict[str, Any] = {}
+        subnets: Dict[str, Any] = {}
+        for account, rows in groups.items():
+            if not any(r.get("service") == "VPC" for r in rows):
+                continue
+            analyzer = NetworkAnalyzer(self.account_sessions.get(account, self.session))
+            try:
+                vpcs.update(analyzer.analyze_vpc_resources(rows))
+            except Exception as e:
+                self.logger.debug(f"Network analysis detail: {e}")
+                self._analysis_failed("Network", account)
+                continue
+            subnets.update(analyzer.subnet_cache)
+        # The row mapping reads the analyzer's caches: they hold every account
+        self.network_analyzer.vpc_cache = vpcs
+        self.network_analyzer.subnet_cache = subnets
+        return vpcs
+
+    def _analyse_security(self, resources: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Analyse the security groups: one analysis, or one for each account."""
+        groups = self._rows_by_account(resources)
+        if groups is None:
+            return self.security_analyzer.analyze_security_groups(resources)
+        found: Dict[str, Any] = {}
+        for account, rows in groups.items():
+            if not any(r.get("type") == "SecurityGroup" for r in rows):
+                continue
+            analyzer = SecurityAnalyzer(
+                self.account_sessions.get(account, self.session)
+            )
+            try:
+                found.update(analyzer.analyze_security_groups(rows))
+            except Exception as e:
+                self.logger.debug(f"Security analysis detail: {e}")
+                self._analysis_failed("Security", account)
+        self.security_analyzer.sg_cache = found
+        return found
+
     def _generate_network_analysis(
         self, resources: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
@@ -823,7 +905,7 @@ class BOMDataProcessor:
             if vpc_resources:
                 # All resources go in: the analyzer uses them to list which
                 # resources sit in each VPC and subnet.
-                vpc_analysis = self.network_analyzer.analyze_vpc_resources(resources)
+                vpc_analysis = self._analyse_network(resources)
                 summary = self.network_analyzer.generate_network_summary(vpc_analysis)
                 result = self._network_summary_to_dict(summary, vpc_analysis)
                 self._analysis_found["vpcs"] = vpc_analysis
@@ -850,7 +932,7 @@ class BOMDataProcessor:
                 if r.get("service") == "VPC" and r.get("type") == "SecurityGroup"
             ]
             if sg_resources:
-                sg_analysis = self.security_analyzer.analyze_security_groups(resources)
+                sg_analysis = self._analyse_security(resources)
                 # generate_security_summary expects the analysis keyed by kind
                 summary = self.security_analyzer.generate_security_summary(
                     {"security_groups": sg_analysis}

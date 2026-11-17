@@ -150,7 +150,8 @@ def test_the_consolidated_sheets_hold_the_vpcs_and_groups_of_every_account(
         assert account["vpc"] in network and account["subnet"] in network
         assert account["group"] in security
     assert bom_data.network_analysis["total_vpcs"] == 2
-    assert bom_data.security_analysis["total_security_groups"] == 2
+    # each VPC also has its default group
+    assert bom_data.security_analysis["total_security_groups"] == 4
 
 
 def test_each_account_is_read_with_its_own_session_and_the_calls_stay_the_same(
@@ -212,3 +213,13 @@ def test_an_account_whose_analysis_fails_is_named_and_the_others_are_kept(
     bom_data = _process(accounts)
     assert accounts["111111111111"]["vpc"] in bom_data.analysis_results.vpcs
     assert accounts["222222222222"]["vpc"] not in bom_data.analysis_results.vpcs
+    warnings = [
+        r.getMessage() for r in caplog.records if "of account" in r.getMessage()
+    ]
+    assert warnings == [
+        "Network analysis of account 222222222222 failed, so its resources are not "
+        "in the analysis. Run again with --debug for the cause.",
+        "Security analysis of account 222222222222 failed, so its resources are not "
+        "in the analysis. Run again with --debug for the cause.",
+    ]
+    assert "secret-detail" not in caplog.text
