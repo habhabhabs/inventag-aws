@@ -100,3 +100,40 @@ def test_no_module_under_inventag_calls_os_umask():
             if pattern.search(line):
                 found.append(f"{relative}:{number}")
     assert found == []
+
+
+@pytest.mark.parametrize("mask,mode", [(0o022, 0o644), (0o077, 0o600), (0, 0o666)])
+def test_plain_open_mode_follows_the_umask(mask, mode, tmp_path):
+    import os
+
+    from inventag.reporting.safe_save import plain_open_mode
+
+    previous = os.umask(mask)
+    try:
+        assert plain_open_mode(tmp_path / "x.json") == mode
+    finally:
+        os.umask(previous)
+
+
+def test_plain_open_mode_probe_fallback_matches_and_leaves_nothing(
+    tmp_path, monkeypatch
+):
+    import builtins
+    import os
+
+    from inventag.reporting.safe_save import plain_open_mode
+
+    real_open = builtins.open
+
+    def no_proc(path, *args, **kwargs):
+        if path == "/proc/self/status":
+            raise FileNotFoundError(path)
+        return real_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "open", no_proc)
+    previous = os.umask(0o027)
+    try:
+        assert plain_open_mode(tmp_path / "x.json") == 0o640
+    finally:
+        os.umask(previous)
+    assert list(tmp_path.iterdir()) == []

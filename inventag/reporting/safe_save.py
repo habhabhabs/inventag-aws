@@ -12,6 +12,35 @@ from ..security.safe_output import precreate_private
 PathLike = Union[str, "os.PathLike[str]"]
 
 
+def plain_open_mode(near: PathLike) -> int:
+    """Return the mode a plain ``open(path, "w")`` gives a new file in the
+    folder of ``near`` (0666 minus the umask), without changing the umask.
+
+    The process umask is never touched, not even for a moment: another thread
+    that creates a file at that moment would get a wider mode. Where
+    ``/proc/self/status`` has the umask it is read from there; elsewhere a
+    probe file is created, measured and removed in that folder.
+    """
+    try:
+        with open("/proc/self/status", encoding="ascii") as status:
+            for line in status:
+                if line.startswith("Umask:"):
+                    return 0o666 & ~int(line.split()[1], 8)
+    except (OSError, ValueError, IndexError):
+        pass
+    folder = Path(os.fspath(near)).parent
+    probe = folder / f".{uuid.uuid4().hex[:8]}.mode"
+    descriptor = os.open(probe, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666)
+    try:
+        return os.fstat(descriptor).st_mode & 0o777
+    finally:
+        os.close(descriptor)
+        try:
+            probe.unlink()
+        except OSError:
+            pass
+
+
 def save_atomically(path: PathLike, writer: Callable[[str], None]) -> str:
     """Call ``writer(temp_path)``, then move the result to ``path``.
 

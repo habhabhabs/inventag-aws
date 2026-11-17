@@ -26,7 +26,7 @@ import yaml
 
 from ..core import CloudBOMGenerator
 from ..reporting import BOMDataProcessor
-from ..reporting.safe_save import save_atomically
+from ..reporting.safe_save import plain_open_mode, save_atomically
 from .errors import TemplateError, TemplateIssue
 from .loader import safe_relative_path
 from .registry import ResolvedTemplate, TemplateRegistry
@@ -416,9 +416,7 @@ def _write_json_atomically(path: str, data: Any) -> None:
     def write(temporary: str) -> None:
         with open(temporary, "w", encoding="utf-8") as handle:
             json.dump(data, handle, indent=2, default=str)
-        umask = os.umask(0)
-        os.umask(umask)
-        os.chmod(temporary, 0o666 & ~umask)
+        os.chmod(temporary, plain_open_mode(path))
 
     save_atomically(path, write)
 

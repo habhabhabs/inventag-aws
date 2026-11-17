@@ -762,7 +762,7 @@ class ComprehensiveTagComplianceChecker:
             self.logger.warning(
                 "Word document generation not available, creating text report"
             )
-            from ..reporting.safe_save import save_atomically
+            from ..reporting.safe_save import plain_open_mode, save_atomically
 
             def write_text(temp_path: str) -> None:
                 with open(temp_path, "w") as f:
@@ -785,9 +785,7 @@ class ComprehensiveTagComplianceChecker:
                         f.write(f"  {service}: {count}\n")
                 # Keep the mode a plain open() gave (0666 minus the umask), not
                 # the owner-only mode of the temporary file.
-                umask = os.umask(0)
-                os.umask(umask)
-                os.chmod(temp_path, 0o666 & ~umask)
+                os.chmod(temp_path, plain_open_mode(temp_path))
 
             save_atomically(filename.replace(".docx", ".txt"), write_text)
 

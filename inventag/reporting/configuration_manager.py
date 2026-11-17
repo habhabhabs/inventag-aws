@@ -38,7 +38,7 @@ except ImportError:
             super().__init__(message)
 
 
-from .safe_save import save_atomically
+from .safe_save import plain_open_mode, save_atomically
 from .template_framework import DocumentTemplate, TemplateManager
 from .branding_system import AdvancedBrandingConfig, BrandingThemeManager
 from .document_generator import BrandingConfig
@@ -648,9 +648,7 @@ class ConfigurationManager:
                         raise ValueError(f"Unsupported output format: {output_path}")
                 # save_atomically creates files 0600; a plain open() gave
                 # 0666 minus the umask, and the file keeps that mode.
-                umask = os.umask(0)
-                os.umask(umask)
-                os.chmod(temp_path, 0o666 & ~umask)
+                os.chmod(temp_path, plain_open_mode(temp_path))
 
             save_atomically(output_path, write)
 
