@@ -32,7 +32,7 @@ from abc import ABC, abstractmethod
 import re
 from collections import OrderedDict
 
-from .safe_save import plain_open_mode, save_atomically
+from .safe_save import plain_open_mode_for, save_atomically
 from .document_generator import BrandingConfig
 from .report_template import (
     MAX_TEMPLATE_BYTES,
@@ -661,8 +661,9 @@ class TemplateManager:
                     else:
                         raise ValueError(f"Unsupported output format: {output_path}")
                 # save_atomically creates files 0600; a plain open() gave
-                # 0666 minus the umask, and the file keeps that mode.
-                os.chmod(temp_path, plain_open_mode(temp_path))
+                # 0666 minus the umask for a new file, and an existing file kept
+                # its mode.
+                os.chmod(temp_path, plain_open_mode_for(output_path))
 
             save_atomically(output_path, write)
 

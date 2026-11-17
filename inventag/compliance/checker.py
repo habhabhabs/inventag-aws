@@ -762,7 +762,9 @@ class ComprehensiveTagComplianceChecker:
             self.logger.warning(
                 "Word document generation not available, creating text report"
             )
-            from ..reporting.safe_save import plain_open_mode, save_atomically
+            from ..reporting.safe_save import plain_open_mode_for, save_atomically
+
+            text_path = filename.replace(".docx", ".txt")
 
             def write_text(temp_path: str) -> None:
                 with open(temp_path, "w") as f:
@@ -783,11 +785,12 @@ class ComprehensiveTagComplianceChecker:
                     f.write("Resources by Service:\n")
                     for service, count in sorted(services.items()):
                         f.write(f"  {service}: {count}\n")
-                # Keep the mode a plain open() gave (0666 minus the umask), not
-                # the owner-only mode of the temporary file.
-                os.chmod(temp_path, plain_open_mode(temp_path))
+                # Keep the mode a plain open() gave (an existing file's own
+                # mode, else 0666 minus the umask), not the owner-only mode of
+                # the temporary file.
+                os.chmod(temp_path, plain_open_mode_for(text_path))
 
-            save_atomically(filename.replace(".docx", ".txt"), write_text)
+            save_atomically(text_path, write_text)
 
     def _generate_csv_bom(self, bom_data, filename: str):
         """Generate CSV BOM document."""

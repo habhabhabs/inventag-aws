@@ -41,6 +41,16 @@ def plain_open_mode(near: PathLike) -> int:
             pass
 
 
+def plain_open_mode_for(path: PathLike) -> int:
+    """Return the mode ``path`` has after a plain ``open(path, "w")``: the
+    mode of the existing file (open keeps it), else the mode of a new file
+    (:func:`plain_open_mode`)."""
+    try:
+        return os.stat(os.fspath(path)).st_mode & 0o7777
+    except FileNotFoundError:
+        return plain_open_mode(path)
+
+
 def save_atomically(path: PathLike, writer: Callable[[str], None]) -> str:
     """Call ``writer(temp_path)``, then move the result to ``path``.
 

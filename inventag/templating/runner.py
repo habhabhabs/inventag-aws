@@ -26,7 +26,7 @@ import yaml
 
 from ..core import CloudBOMGenerator
 from ..reporting import BOMDataProcessor
-from ..reporting.safe_save import plain_open_mode, save_atomically
+from ..reporting.safe_save import plain_open_mode_for, save_atomically
 from .errors import TemplateError, TemplateIssue
 from .loader import safe_relative_path
 from .registry import ResolvedTemplate, TemplateRegistry
@@ -409,14 +409,15 @@ def _reason(error: BaseException) -> str:
 def _write_json_atomically(path: str, data: Any) -> None:
     """Write ``data`` as JSON to ``path``, whole or not at all.
 
-    The file gets the mode a plain ``open(path, "w")`` gives (0666 minus the
-    umask), as in v1.2.1; ``save_atomically`` itself creates files 0600.
+    The file gets the mode a plain ``open(path, "w")`` gives (an existing
+    file's own mode, else 0666 minus the umask), as in v1.2.1;
+    ``save_atomically`` itself creates files 0600.
     """
 
     def write(temporary: str) -> None:
         with open(temporary, "w", encoding="utf-8") as handle:
             json.dump(data, handle, indent=2, default=str)
-        os.chmod(temporary, plain_open_mode(path))
+        os.chmod(temporary, plain_open_mode_for(path))
 
     save_atomically(path, write)
 
