@@ -804,12 +804,7 @@ class IntelligentAWSDiscovery:
                         )
                         service_resources.extend(resources)
                     except Exception as e:
-                        self.logger.warning(
-                            (
-                                f"Operation {operation_name} failed for {service_name}: {type(e).__name__}"
-                            )
-                            + " Run with --debug for the detail."
-                        )
+                        # silent-ok: this engine's result is not used by any report (D-02) and fails the same way in every run
                         self.logger.debug(
                             f"Operation {operation_name} failed for {service_name}: {e}"
                         )
@@ -856,10 +851,7 @@ class IntelligentAWSDiscovery:
                     resources.extend(extracted_resources)
 
         except Exception as e:
-            self.logger.warning(
-                (f"Failed to call {operation_name}: {type(e).__name__}")
-                + " Run with --debug for the detail."
-            )
+            # silent-ok: this engine's result is not used by any report (D-02) and fails the same way in every run
             self.logger.debug(f"Failed to call {operation_name}: {e}")
 
         return resources

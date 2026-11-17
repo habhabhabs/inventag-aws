@@ -1201,10 +1201,7 @@ class OptimizedAWSDiscovery(IntelligentAWSDiscovery):
             )
 
         except Exception as e:
-            self.logger.warning(
-                (f"Operation {operation_name} failed: {type(e).__name__}")
-                + " Run with --debug for the detail."
-            )
+            # silent-ok: this engine's result is not used by any report (D-02) and fails the same way in every run
             self.logger.debug(f"Operation {operation_name} failed: {e}")
 
         return resources
