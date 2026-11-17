@@ -610,6 +610,49 @@ class NetworkAnalyzer:
         ]
 
     @staticmethod
+    def _cluster_network_of(
+        resource: Dict[str, Any],
+    ) -> Tuple[Optional[str], List[str]]:
+        """(VPC ID or None, subnet IDs) an MSK or EKS cluster row carries.
+
+        MSK: broker client subnets (provisioned) or the VPC configs
+        (serverless). EKS: ``resourcesVpcConfig``, present only if the row
+        holds the DescribeCluster answer; a row with the name only gives
+        nothing. No API call is made.
+        """
+        service = str(resource.get("service") or "").upper()
+        raw = resource.get("raw_data")
+        if not isinstance(raw, dict):
+            return None, []
+        found: List[str] = []
+        vpc_id = None
+
+        def add(values: Any) -> None:
+            for value in values if isinstance(values, list) else []:
+                if isinstance(value, str) and value.startswith("subnet-"):
+                    if value not in found:
+                        found.append(value)
+
+        if service in ("KAFKA", "MSK"):
+            provisioned = raw.get("Provisioned")
+            if isinstance(provisioned, dict):
+                group = provisioned.get("BrokerNodeGroupInfo")
+                if isinstance(group, dict):
+                    add(group.get("ClientSubnets"))
+            serverless = raw.get("Serverless")
+            if isinstance(serverless, dict):
+                for config in serverless.get("VpcConfigs") or []:
+                    if isinstance(config, dict):
+                        add(config.get("SubnetIds"))
+        elif service == "EKS":
+            config = raw.get("resourcesVpcConfig")
+            if isinstance(config, dict):
+                add(config.get("subnetIds"))
+                value = config.get("vpcId")
+                vpc_id = value if isinstance(value, str) else None
+        return vpc_id, found
+
+    @staticmethod
     def _db_cluster_group_key(resource: Dict[str, Any]) -> Optional[Tuple[str, str]]:
         """(region, DB subnet group name) of an RDS cluster row, else None."""
         if str(resource.get("service") or "").upper() != "RDS":
@@ -651,6 +694,22 @@ class NetworkAnalyzer:
         for resource in resources:
             vpc_id = self._extract_vpc_id(resource)
             subnet_ids = self._extract_subnet_ids(resource)
+            extra_vpc, extra_subnets = self._cluster_network_of(resource)
+            if extra_subnets:
+                # MSK and EKS rows that carry their subnets (A-08a).
+                vpc_id = vpc_id or extra_vpc
+                if not vpc_id:
+                    vpc_id = next(
+                        (
+                            self.subnet_cache[x].vpc_id
+                            for x in extra_subnets
+                            if x in self.subnet_cache
+                        ),
+                        None,
+                    )
+                subnet_ids = subnet_ids + [
+                    x for x in extra_subnets if x not in subnet_ids
+                ]
             cluster_group = db_groups.get(self._db_cluster_group_key(resource))
             if cluster_group:
                 # An RDS or Aurora cluster names only its DB subnet group (A-72).
