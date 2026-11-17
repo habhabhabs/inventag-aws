@@ -294,14 +294,21 @@ class _AccountDeadline:
         if self.abandoned_at is None:
             self.abandoned_at = time.monotonic()
 
+    def _hook_id(self, event: str) -> str:
+        return f"{self.UNIQUE_ID}-{event}-{id(self)}"
+
     def attach(self, session) -> None:
         events = getattr(session, "events", None)
         if events is not None:
-            events.register("before-call", self.before_call, unique_id=self.UNIQUE_ID)
+            # One id per deadline: two accounts can share one session object
+            # (library use), and botocore keeps only the first hook of an id.
+            events.register(
+                "before-call", self.before_call, unique_id=self._hook_id("call")
+            )
             # Also before every retry attempt of a call already under way,
             # so a call does not go on for up to ten attempts after the limit.
             events.register(
-                "before-send", self.before_call, unique_id=self.UNIQUE_ID + "-send"
+                "before-send", self.before_call, unique_id=self._hook_id("send")
             )
 
     def detach(self, session) -> None:
@@ -309,8 +316,8 @@ class _AccountDeadline:
         self.finished_at = self._clock()
         events = getattr(session, "events", None)
         if events is not None:
-            events.unregister("before-call", unique_id=self.UNIQUE_ID)
-            events.unregister("before-send", unique_id=self.UNIQUE_ID + "-send")
+            events.unregister("before-call", unique_id=self._hook_id("call"))
+            events.unregister("before-send", unique_id=self._hook_id("send"))
 
 
 @dataclass
