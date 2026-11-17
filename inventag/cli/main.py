@@ -349,7 +349,9 @@ Examples:
     analysis_group.add_argument(
         "--enable-cost-analysis",
         action="store_true",
-        help="Enable cost analysis and optimization recommendations",
+        help="Enable cost analysis and optimization recommendations. "
+        "--no-billing-validation is independent of it: the cost analysis "
+        "still calls Cost Explorer when billing validation is off",
     )
     analysis_group.add_argument(
         "--fallback-display",
@@ -423,7 +425,9 @@ Examples:
         default=True,
         help="Use Cost Explorer during discovery to find services that have "
         "spend (default: enabled). AWS charges for each Cost Explorer API "
-        "request; use --no-billing-validation to make no Cost Explorer calls",
+        "request; use --no-billing-validation to make no Cost Explorer calls "
+        "during discovery. --enable-cost-analysis is independent of it and "
+        "still calls Cost Explorer",
     )
     override_group.add_argument(
         "--account-tags",
