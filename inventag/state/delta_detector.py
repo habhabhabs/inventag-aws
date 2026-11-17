@@ -459,9 +459,13 @@ class _PreviousUnread:
 
 
 def _is_tag_path(change: "AttributeChange") -> bool:
-    """True for a change of the ``tags`` field or of one tag."""
+    """True for a change of the ``tags`` field, one tag, or the ``tagged`` flag."""
     path = change.attribute_path
-    return path == "tags" or path.startswith("tags.") or path.startswith("tags[")
+    return (
+        path in ("tags", "tagged")
+        or path.startswith("tags.")
+        or path.startswith("tags[")
+    )
 
 
 def _found_by_tagging_only(resource: Dict) -> bool:
