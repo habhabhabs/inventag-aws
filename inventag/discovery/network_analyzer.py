@@ -507,20 +507,35 @@ class NetworkAnalyzer:
                 vpc.network_interface_count = counts.get(vpc_id, 0)
 
     @staticmethod
-    def _cache_group_key(resource: Dict[str, Any]) -> Optional[Tuple[str, str]]:
-        """(region, subnet group name) of an ElastiCache cluster, else None."""
+    def _arn_account(arn: Any) -> str:
+        """The account field of an ARN, "" when there is none."""
+        parts = arn.split(":") if isinstance(arn, str) else []
+        return parts[4] if len(parts) > 5 else ""
+
+    @classmethod
+    def _cache_group_key(
+        cls, resource: Dict[str, Any]
+    ) -> Optional[Tuple[str, str, str]]:
+        """(account, region, subnet group name) of an ElastiCache cluster, else
+        None. Group names repeat across accounts (every account has a group
+        called "default"), so the account is part of the key."""
         if str(resource.get("service") or "").upper() != "ELASTICACHE":
             return None
         raw = resource.get("raw_data")
         name = raw.get("CacheSubnetGroupName") if isinstance(raw, dict) else None
         region = resource.get("region")
-        if isinstance(name, str) and name and region and region != "global":
-            return (region, name)
-        return None
+        if not (isinstance(name, str) and name and region and region != "global"):
+            return None
+        account = str(resource.get("account_id") or "") or cls._arn_account(
+            resource.get("arn")
+        )
+        if not account and isinstance(raw, dict):
+            account = cls._arn_account(raw.get("ARN"))
+        return (account, region, name)
 
     def _read_cache_subnet_groups(
         self, resources: List[Dict[str, Any]]
-    ) -> Dict[Tuple[str, str], Tuple[Optional[str], List[str]]]:
+    ) -> Dict[Tuple[str, str, str], Tuple[Optional[str], List[str]]]:
         """(VPC ID, subnet IDs) of each cache subnet group the clusters name.
 
         One ``DescribeCacheSubnetGroups`` call series for each region that has
@@ -528,9 +543,9 @@ class NetworkAnalyzer:
         is reported and its clusters are not counted in a VPC or subnet.
         """
         regions = sorted(
-            {key[0] for key in map(self._cache_group_key, resources) if key}
+            {key[1] for key in map(self._cache_group_key, resources) if key}
         )
-        groups: Dict[Tuple[str, str], Tuple[Optional[str], List[str]]] = {}
+        groups: Dict[Tuple[str, str, str], Tuple[Optional[str], List[str]]] = {}
         for region in regions:
             try:
                 client = self.session.client("elasticache", region_name=region)
@@ -539,7 +554,12 @@ class NetworkAnalyzer:
                     params = {"Marker": marker} if marker else {}
                     response = client.describe_cache_subnet_groups(**params)
                     for group in response.get("CacheSubnetGroups", []):
-                        groups[(region, group["CacheSubnetGroupName"])] = (
+                        key = (
+                            self._arn_account(group.get("ARN")),
+                            region,
+                            group["CacheSubnetGroupName"],
+                        )
+                        groups[key] = (
                             group.get("VpcId"),
                             [
                                 s["SubnetIdentifier"]
