@@ -951,6 +951,42 @@ class CloudBOMGenerator:
             f"read, so those rows have some fields missing: {text}."
         )
 
+    def _units_not_read(self) -> List[Dict[str, str]]:
+        """One entry per (account, service, region, source) whose service or
+        Tagging API listing failed in this run; the worst outcome wins
+        (timeout, throttled, error, denied). Billing, detail calls and the
+        no-such-service code are not units."""
+        rank = {"timeout": 0, "throttled": 1, "error": 2, "denied": 3}
+        units: Dict[tuple, str] = {}
+        for ctx in self.account_contexts.values():
+            for e in _coverage_of(ctx):
+                source = e.get("source")
+                outcome = str(e.get("outcome", ""))
+                if source not in ("service-api", "tagging-api"):
+                    continue
+                if outcome not in rank:
+                    continue
+                if str(e.get("error_code", "")) == _NO_SUCH_SERVICE_CODE:
+                    continue
+                key = (
+                    str(e.get("account_id", "")),
+                    str(e.get("service", "")),
+                    str(e.get("region", "")),
+                    str(source),
+                )
+                if key not in units or rank[outcome] < rank[units[key]]:
+                    units[key] = outcome
+        return [
+            {
+                "account": account,
+                "service": service,
+                "region": region,
+                "source": source,
+                "outcome": outcome,
+            }
+            for (account, service, region, source), outcome in sorted(units.items())
+        ]
+
     def _filter_texts(self) -> List[str]:
         """The service and tag filters of this run, as the options that set
         them (A-20); empty when no filter is set."""
@@ -2464,20 +2500,28 @@ class CloudBOMGenerator:
                 )
                 return {"state_saved": False, "reason": "nothing was read"}
 
+            snapshot_tags = {
+                "multi_account": True,
+                "total_accounts": len(self.account_contexts),
+                "generation_type": "multi_account_bom",
+                "reused_accounts": dict(self.reused_accounts),
+                # Listing outcomes per account (ok, empty, denied,
+                # throttled, error, timeout): how complete the snapshot is.
+                "coverage_summary": self._coverage_summary(),
+            }
+            # The units this run did not read (decision 6, additive key): the
+            # next change report does not call their resources "added" (A-05,
+            # A-68). Only when there are any, so a clean snapshot is as before.
+            units = self._units_not_read()
+            if units:
+                snapshot_tags["units_not_read"] = units
+
             state_id = state_manager.save_state(
                 resources=resources,
                 account_id=primary_account,
                 regions=all_regions,
                 discovery_method="multi-account",
-                tags={
-                    "multi_account": True,
-                    "total_accounts": len(self.account_contexts),
-                    "generation_type": "multi_account_bom",
-                    "reused_accounts": dict(self.reused_accounts),
-                    # Listing outcomes per account (ok, empty, denied,
-                    # throttled, error, timeout): how complete the snapshot is.
-                    "coverage_summary": self._coverage_summary(),
-                },
+                tags=snapshot_tags,
                 # Accounts that failed (or were only partly scanned) are left
                 # out of the next comparison instead of showing every resource
                 # in them as removed.
