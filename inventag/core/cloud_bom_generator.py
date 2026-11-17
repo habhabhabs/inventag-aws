@@ -54,7 +54,7 @@ from ..security.arn import (
     validate_role_arn,
 )
 from ..security.read_only_guard import get_installed_guard
-from ..security.redaction import register_secrets
+from ..security.redaction import redact, register_secrets
 from ..security.secret_values import mask_secret_values
 from .._version import __version__
 
@@ -1059,7 +1059,9 @@ class CloudBOMGenerator:
             )
             for account_id, scanned_at in sorted(self.reused_accounts.items()):
                 notes.append(f"{account_id}: {scanned_at}")
-        return notes
+        # The notes go into the report and the result as well as the log, and
+        # some carry error texts: mask secrets as the log filter does (A-69).
+        return [redact(note) for note in notes]
 
     # ------------------------------------------------------------ checkpoints
     def _checkpoint_scope(self, account_contexts: Dict[str, AccountContext]) -> Dict:
