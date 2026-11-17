@@ -129,6 +129,7 @@ class DescriptionTemplateEngine:
 
             return value
         except Exception:
+            # silent-ok: a missing template value renders as empty
             return None
 
     def _attribute_to_variable_name(self, attr_path: str) -> str:

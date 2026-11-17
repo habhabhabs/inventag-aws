@@ -903,6 +903,7 @@ class ComprehensiveAWSDiscovery:
             )
             return set(found) if isinstance(found, list) else set()
         except Exception:
+            # silent-ok: the endpoint lookup is only a hint, an empty set means every region is tried
             return set()
 
     def _discover_all_service_resources(self, max_workers: int):
@@ -1106,6 +1107,10 @@ class ComprehensiveAWSDiscovery:
                         self.logger.debug(f"Operation failed for {service_name}: {e}")
                         continue
                 except Exception as e:
+                    self.logger.warning(
+                        (f"Operation error for {service_name}: {type(e).__name__}")
+                        + " Run with --debug for the detail."
+                    )
                     self.logger.debug(f"Operation error for {service_name}: {e}")
                     continue
 
@@ -1191,6 +1196,7 @@ class ComprehensiveAWSDiscovery:
         try:
             return client.meta.service_model.service_name
         except Exception:
+            # silent-ok: the service name only picks a page size
             return ""
 
     def _pages(self, client, operation_name: str, params: Dict[str, Any]):
@@ -1273,6 +1279,7 @@ class ComprehensiveAWSDiscovery:
                 operation_name, operation_name
             )
         except Exception:
+            # silent-ok: the API name only labels the ledger entry, the operation name is used instead
             pass
         started = time.time()
         found = 0
@@ -1470,6 +1477,7 @@ class ComprehensiveAWSDiscovery:
                             spec,
                         )
                 except Exception as e:
+                    # silent-ok: the item is counted as skipped and warned about once below
                     self.logger.debug(f"Item of {service_name} not readable: {e}")
                 if resource:
                     self.resources.append(resource)
@@ -1592,6 +1600,7 @@ class ComprehensiveAWSDiscovery:
             return resource
 
         except Exception as e:
+            # silent-ok: the caller counts the item as unreadable and warns once
             self.logger.debug(f"Resource normalization failed: {e}")
             return None
 
@@ -1639,6 +1648,7 @@ class ComprehensiveAWSDiscovery:
             return resource
 
         except Exception as e:
+            # silent-ok: the caller counts the item as unreadable and warns once
             self.logger.debug(f"String resource creation failed: {e}")
             return None
 
@@ -1763,8 +1773,15 @@ class ComprehensiveAWSDiscovery:
             try:
                 sts = self._client("sts")
                 account_id = sts.get_caller_identity()["Account"]
-            except Exception:
+            except Exception as e:
                 account_id = "000000000000"  # Placeholder
+                self._warn_once(
+                    "account-id",
+                    "The account ID could not be read "
+                    f"(GetCallerIdentity: {type(e).__name__}); rows without an "
+                    "ARN carry the placeholder 000000000000. Run with --debug "
+                    "for the detail.",
+                )
             self._cached_account_id = account_id
         return account_id
 
@@ -1956,6 +1973,10 @@ class ComprehensiveAWSDiscovery:
                     index.add(new_resource)
                     new_resources_found += 1
                 except Exception as e:
+                    self.logger.warning(
+                        (f"Failed to process tagged resource {arn}: {type(e).__name__}")
+                        + " Run with --debug for the detail."
+                    )
                     self.logger.debug(f"Failed to process tagged resource {arn}: {e}")
 
         # Report services with primary resources for transparency

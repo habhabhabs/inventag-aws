@@ -295,6 +295,7 @@ class IntelligentFieldMapper:
                             return resource_part.split("/")[-1]
                         return resource_part
                     except Exception:
+                        # silent-ok: an ARN that does not parse is used as it is
                         return arn
 
         # Try hierarchical ID field lookup
@@ -366,6 +367,7 @@ class IntelligentFieldMapper:
                             return resource_part.split("/")[-1]
                         return resource_part
                     except Exception:
+                        # silent-ok: an ARN that does not parse gives no id here, the next field is tried
                         pass
 
         return None
@@ -512,6 +514,7 @@ class IntelligentFieldMapper:
                     try:
                         return arn.split(":")[4]  # Account ID is 5th element
                     except Exception:
+                        # silent-ok: an ARN that does not parse gives no account id, the next field is tried
                         pass
 
         # Direct account fields
@@ -801,6 +804,12 @@ class IntelligentAWSDiscovery:
                         )
                         service_resources.extend(resources)
                     except Exception as e:
+                        self.logger.warning(
+                            (
+                                f"Operation {operation_name} failed for {service_name}: {type(e).__name__}"
+                            )
+                            + " Run with --debug for the detail."
+                        )
                         self.logger.debug(
                             f"Operation {operation_name} failed for {service_name}: {e}"
                         )
@@ -834,6 +843,7 @@ class IntelligentAWSDiscovery:
                 paginator = client.get_paginator(snake_case_op)
                 responses = paginator.paginate()
             except Exception:
+                # silent-ok: no paginator, the direct call follows
                 # Fallback to direct call
                 responses = [operation()]
 
@@ -846,6 +856,10 @@ class IntelligentAWSDiscovery:
                     resources.extend(extracted_resources)
 
         except Exception as e:
+            self.logger.warning(
+                (f"Failed to call {operation_name}: {type(e).__name__}")
+                + " Run with --debug for the detail."
+            )
             self.logger.debug(f"Failed to call {operation_name}: {e}")
 
         return resources

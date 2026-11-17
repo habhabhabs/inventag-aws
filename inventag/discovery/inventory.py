@@ -434,6 +434,12 @@ class AWSResourceInventory:
                         try:
                             self._discover_service_by_name(service_name)
                         except Exception as fallback_error:
+                            self.logger.warning(
+                                (
+                                    f"Fallback discovery failed for {service_name}: {type(fallback_error).__name__}"
+                                )
+                                + " Run with --debug for the detail."
+                            )
                             self.logger.debug(
                                 f"Fallback discovery failed for {service_name}: {fallback_error}"
                             )
@@ -469,6 +475,10 @@ class AWSResourceInventory:
                 try:
                     self._discover_service_by_name(service)
                 except Exception as e:
+                    self.logger.warning(
+                        (f"Basic discovery failed for {service}: {type(e).__name__}")
+                        + " Run with --debug for the detail."
+                    )
                     self.logger.debug(f"Basic discovery failed for {service}: {e}")
 
         # Step 7: Remove duplicates based on ARN
@@ -1535,6 +1545,12 @@ class AWSResourceInventory:
                         client, operation_name, service_display_name, region
                     )
                 except Exception as e:
+                    self.logger.warning(
+                        (
+                            f"Operation {operation_name} failed for {service_display_name}: {type(e).__name__}"
+                        )
+                        + " Run with --debug for the detail."
+                    )
                     self.logger.debug(
                         f"Operation {operation_name} failed for {service_display_name}: {e}"
                     )
@@ -1565,6 +1581,7 @@ class AWSResourceInventory:
                     for page in paginator.paginate():
                         response_data.append(page)
                 except Exception:
+                    # silent-ok: no paginator, the direct call follows
                     # Fallback to direct call
                     response_data = [operation()]
             else:
@@ -1675,6 +1692,10 @@ class AWSResourceInventory:
             self.resources.append(resource_entry)
 
         except Exception as e:
+            self.logger.warning(
+                (f"Failed to create resource from API data: {type(e).__name__}")
+                + " Run with --debug for the detail."
+            )
             self.logger.debug(f"Failed to create resource from API data: {e}")
 
     def _extract_resource_id(self, resource_data: dict) -> Optional[str]:
@@ -1739,6 +1760,7 @@ class AWSResourceInventory:
                                 return resource_part.split("/")[-1]  # Get resource name
                             return resource_part
                     except Exception:
+                        # silent-ok: an ARN that does not parse is used as it is
                         pass
 
                 return value
@@ -1819,6 +1841,7 @@ class AWSResourceInventory:
                             return resource_part.split("/")[-1]
                         return resource_part
                     except Exception:
+                        # silent-ok: an ARN that does not parse gives no id, the next field is tried
                         pass
 
         return None

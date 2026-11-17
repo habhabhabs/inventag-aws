@@ -732,6 +732,7 @@ class OptimizedFieldMapper(IntelligentFieldMapper):
                 ):
                     return True
         except Exception as e:
+            # silent-ok: a policy that does not parse is not treated as AWS-managed, the row is kept
             self.logger.debug(f"Failed to parse assume role policy: {e}")
 
         return False
@@ -756,6 +757,7 @@ class OptimizedFieldMapper(IntelligentFieldMapper):
             return create_dt < aws_early_date
 
         except Exception as e:
+            # silent-ok: a date that does not parse is not treated as AWS-managed, the row is kept
             self.logger.debug(f"Failed to parse create date {create_date}: {e}")
             return False
 
@@ -891,6 +893,7 @@ class OptimizedFieldMapper(IntelligentFieldMapper):
                     if region_hint and region_hint != "":
                         return region_hint if region_hint != "null" else "us-east-1"
                 except Exception:
+                    # silent-ok: no region hint in the data, the next field is tried
                     pass
 
         # For other services, check if region is specified in the data
@@ -1101,6 +1104,12 @@ class OptimizedAWSDiscovery(IntelligentAWSDiscovery):
                             discovery_successful = True
 
                     except Exception as e:
+                        self.logger.warning(
+                            (
+                                f"Operation {operation_name} failed for {service_name} in {region}: {type(e).__name__}"
+                            )
+                            + " Run with --debug for the detail."
+                        )
                         self.logger.debug(
                             f"Operation {operation_name} failed for {service_name} in {region}: {e}"
                         )
@@ -1192,6 +1201,10 @@ class OptimizedAWSDiscovery(IntelligentAWSDiscovery):
             )
 
         except Exception as e:
+            self.logger.warning(
+                (f"Operation {operation_name} failed: {type(e).__name__}")
+                + " Run with --debug for the detail."
+            )
             self.logger.debug(f"Operation {operation_name} failed: {e}")
 
         return resources
@@ -1225,6 +1238,10 @@ class OptimizedAWSDiscovery(IntelligentAWSDiscovery):
                             resources.append(resource)
 
                     except Exception as e:
+                        self.logger.warning(
+                            (f"Failed to map resource: {type(e).__name__}")
+                            + " Run with --debug for the detail."
+                        )
                         self.logger.debug(f"Failed to map resource: {e}")
 
         return resources
@@ -1270,6 +1287,12 @@ class OptimizedAWSDiscovery(IntelligentAWSDiscovery):
                             self.s3_region_cache[bucket_name] = actual_region
 
                         except Exception as e:
+                            self.logger.warning(
+                                (
+                                    f"Failed to get bucket location for {bucket_name}: {type(e).__name__}"
+                                )
+                                + " Run with --debug for the detail."
+                            )
                             self.logger.debug(
                                 f"Failed to get bucket location for {bucket_name}: {e}"
                             )
@@ -1280,6 +1303,12 @@ class OptimizedAWSDiscovery(IntelligentAWSDiscovery):
                     enhanced_resources.append(resource)
 
                 except Exception as e:
+                    self.logger.warning(
+                        (
+                            f"Failed to enhance S3 bucket {resource.resource_id}: {type(e).__name__}"
+                        )
+                        + " Run with --debug for the detail."
+                    )
                     self.logger.debug(
                         f"Failed to enhance S3 bucket {resource.resource_id}: {e}"
                     )
@@ -1351,6 +1380,12 @@ class OptimizedAWSDiscovery(IntelligentAWSDiscovery):
                             )
 
                         except Exception as e:
+                            self.logger.warning(
+                                (
+                                    f"Failed to get bucket location for {bucket_name}: {type(e).__name__}"
+                                )
+                                + " Run with --debug for the detail."
+                            )
                             self.logger.debug(
                                 f"Failed to get bucket location for {bucket_name}: {e}"
                             )
@@ -1365,6 +1400,12 @@ class OptimizedAWSDiscovery(IntelligentAWSDiscovery):
                     enhanced_resources.append(bucket_resource)
 
                 except Exception as e:
+                    self.logger.warning(
+                        (
+                            f"Failed to enhance S3 bucket {bucket_resource.resource_id}: {type(e).__name__}"
+                        )
+                        + " Run with --debug for the detail."
+                    )
                     self.logger.debug(
                         f"Failed to enhance S3 bucket {bucket_resource.resource_id}: {e}"
                     )

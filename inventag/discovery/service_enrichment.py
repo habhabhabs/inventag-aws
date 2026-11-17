@@ -458,6 +458,12 @@ class DynamicServiceHandler(ServiceHandler):
                                     break
 
                         except Exception as e:
+                            self.logger.warning(
+                                (
+                                    f"Parameter pattern {param_pattern} failed for {pattern}: {type(e).__name__}"
+                                )
+                                + " Run with --debug for the detail."
+                            )
                             self.logger.debug(
                                 f"Parameter pattern {param_pattern} failed for {pattern}: {e}"
                             )
@@ -467,6 +473,10 @@ class DynamicServiceHandler(ServiceHandler):
                         break
 
                 except Exception as e:
+                    self.logger.warning(
+                        (f"Operation pattern {pattern} failed: {type(e).__name__}")
+                        + " Run with --debug for the detail."
+                    )
                     self.logger.debug(f"Operation pattern {pattern} failed: {e}")
                     self._cache_failed_pattern(service, pattern)
                     continue

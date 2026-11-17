@@ -374,6 +374,12 @@ class ReadOnlyAccessDiscovery(OptimizedAWSDiscovery):
                         )
                     )
                 except Exception as e:
+                    self.logger.warning(
+                        (
+                            f"Operation {operation} failed for {service_name}: {type(e).__name__}"
+                        )
+                        + " Run with --debug for the detail."
+                    )
                     self.logger.debug(
                         f"Operation {operation} failed for {service_name}: {e}"
                     )
@@ -447,6 +453,12 @@ class ReadOnlyAccessDiscovery(OptimizedAWSDiscovery):
                 # Add more service-specific enhancements as needed
 
             except Exception as e:
+                self.logger.warning(
+                    (
+                        f"Failed to enhance {resource.resource_id} with {operation}: {type(e).__name__}"
+                    )
+                    + " Run with --debug for the detail."
+                )
                 self.logger.debug(
                     f"Failed to enhance {resource.resource_id} with {operation}: {e}"
                 )
@@ -562,6 +574,12 @@ class ReadOnlyAccessDiscovery(OptimizedAWSDiscovery):
                         resource.resource_arn = f"arn:aws:s3:::{resource.resource_name}"
 
                     except Exception as e:
+                        self.logger.warning(
+                            (
+                                f"Failed to get location for bucket {resource.resource_name}: {type(e).__name__}"
+                            )
+                            + " Run with --debug for the detail."
+                        )
                         self.logger.debug(
                             f"Failed to get location for bucket {resource.resource_name}: {e}"
                         )

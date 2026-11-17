@@ -56,6 +56,7 @@ def _partition(region: str, session=None) -> str:
             if isinstance(found, str) and found:
                 return found
     except Exception:
+        # silent-ok: the session cannot name the partition, the region prefix decides
         pass
     return partition_for_region(region)
 
@@ -89,6 +90,7 @@ def _from_botocore(session, partition: str) -> List[str]:
     try:
         return sorted(session.get_available_regions("ec2", partition_name=partition))
     except Exception:
+        # silent-ok: botocore knows no regions, the caller falls back to its own list
         return []
 
 

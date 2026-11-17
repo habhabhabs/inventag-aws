@@ -293,6 +293,12 @@ class OptimizedDynamicDiscovery:
                         self._record_successful_operation(service_name, operation_name)
 
                 except Exception as e:
+                    self.logger.warning(
+                        (
+                            f"Operation {operation_name} failed for {service_name}: {type(e).__name__}"
+                        )
+                        + " Run with --debug for the detail."
+                    )
                     self.logger.debug(
                         f"Operation {operation_name} failed for {service_name}: {e}"
                     )
@@ -312,6 +318,10 @@ class OptimizedDynamicDiscovery:
             return result
 
         except Exception as e:
+            self.logger.warning(
+                f"{service_name} in {region} failed ({type(e).__name__}); its "
+                "resources there are not listed. Run with --debug for the detail."
+            )
             # Record failed service to avoid future attempts
             with self._cache_lock:
                 self._failed_services.add(service_name)
@@ -345,6 +355,10 @@ class OptimizedDynamicDiscovery:
             return client
 
         except Exception as e:
+            self.logger.warning(
+                (f"Failed to create client for {service_name}: {type(e).__name__}")
+                + " Run with --debug for the detail."
+            )
             self.logger.debug(f"Failed to create client for {service_name}: {e}")
             return None
 
@@ -385,6 +399,10 @@ class OptimizedDynamicDiscovery:
                 operations = (list_ops[:3] + describe_ops[:3])[:5]
 
             except Exception as e:
+                self.logger.warning(
+                    (f"Failed to get operations for {service_name}: {type(e).__name__}")
+                    + " Run with --debug for the detail."
+                )
                 self.logger.debug(f"Failed to get operations for {service_name}: {e}")
                 operations = []
 
@@ -424,6 +442,7 @@ class OptimizedDynamicDiscovery:
                     return resources
 
                 except Exception:
+                    # silent-ok: no paginator, the direct call follows
                     # Fall back to direct operation call
                     pass
 
@@ -453,6 +472,10 @@ class OptimizedDynamicDiscovery:
             return []
 
         except Exception as e:
+            self.logger.warning(
+                (f"Operation error in {operation_name}: {type(e).__name__}")
+                + " Run with --debug for the detail."
+            )
             self.logger.debug(f"Operation error in {operation_name}: {e}")
             return []
 
