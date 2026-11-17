@@ -5,9 +5,9 @@ Every discovery client gets the same retry settings, so a throttled call
 is retried with backoff instead of losing that service's resources.
 
 - Retry mode ``standard`` with up to 10 attempts in total, the first call
-  included (botocore's default is
-  ``legacy`` with 5). ``standard`` retries throttling and transient errors
-  with exponential backoff and jitter.
+  included (botocore's default is also ``standard``, with 3 attempts).
+  ``standard`` retries throttling and transient errors with exponential
+  backoff and jitter.
 - If the user set ``AWS_RETRY_MODE`` or ``AWS_MAX_ATTEMPTS`` in the
   environment, those values win and InvenTag does not override them.
   (Values set only in ``~/.aws/config`` are overridden by the settings above.)
