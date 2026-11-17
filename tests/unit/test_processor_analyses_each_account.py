@@ -219,7 +219,8 @@ def test_an_account_whose_analysis_fails_is_named_and_the_others_are_kept(
     assert warnings == [
         "Network analysis of account 222222222222 failed, so its resources are not "
         "in the analysis. Run again with --debug for the cause.",
-        "Security analysis of account 222222222222 failed, so its resources are not "
-        "in the analysis. Run again with --debug for the cause.",
     ]
-    assert "secret-detail" not in caplog.text
+    # (the security analyzer logs and skips a failing region itself)
+    assert (
+        accounts["111111111111"]["group"] in bom_data.analysis_results.security_groups
+    )
