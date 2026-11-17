@@ -25,6 +25,7 @@ from botocore.exceptions import ClientError, NoCredentialsError
 
 # Import base classes
 from .optimized_discovery import OptimizedAWSDiscovery, StandardResource
+from .aws_clients import create_client
 
 
 class ReadOnlyAccessDiscovery(OptimizedAWSDiscovery):
@@ -195,11 +196,11 @@ class ReadOnlyAccessDiscovery(OptimizedAWSDiscovery):
         """Detect IAM permission level (minimal vs ReadOnlyAccess)."""
         try:
             # Test for ReadOnlyAccess by attempting a read operation
-            iam_client = self.session.client("iam", region_name="us-east-1")
+            iam_client = create_client(self.session, "iam", "us-east-1")
             iam_client.list_roles(MaxItems=1)
 
             # Test Cost Explorer access
-            ce_client = self.session.client("ce", region_name="us-east-1")
+            ce_client = create_client(self.session, "ce", "us-east-1")
             ce_client.get_cost_and_usage(
                 TimePeriod={
                     "Start": (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d"),
@@ -310,7 +311,7 @@ class ReadOnlyAccessDiscovery(OptimizedAWSDiscovery):
     def _discover_active_services_from_billing(self) -> Set[str]:
         """Discover active services from Cost Explorer billing data."""
         try:
-            ce_client = self.session.client("ce", region_name="us-east-1")
+            ce_client = create_client(self.session, "ce", "us-east-1")
 
             end_date = datetime.now()
             start_date = end_date - timedelta(days=30)
@@ -363,7 +364,7 @@ class ReadOnlyAccessDiscovery(OptimizedAWSDiscovery):
                 # Fallback to basic discovery
                 return self._discover_service_resources_basic(service_name, region)
 
-            client = self.session.client(service_name, region_name=region)
+            client = create_client(self.session, service_name, region)
 
             # Step 1: Basic resource discovery
             for operation in pattern.get("operations", []):
@@ -555,7 +556,7 @@ class ReadOnlyAccessDiscovery(OptimizedAWSDiscovery):
             return
 
         try:
-            s3_client = self.session.client("s3", region_name="us-east-1")
+            s3_client = create_client(self.session, "s3", "us-east-1")
 
             for resource in s3_resources:
                 if resource.resource_type == "Bucket":

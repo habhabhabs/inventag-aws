@@ -2251,7 +2251,7 @@ class AWSResourceInventory:
     def _discover_rds_comprehensive(self, region: str):
         """Comprehensive RDS discovery including all resource types."""
         try:
-            rds = self.session.client("rds", region_name=region)
+            rds = create_client(self.session, "rds", region)
 
             # DB Instances, Clusters, Snapshots, Parameter Groups, etc.
             resources_found = []
@@ -2313,7 +2313,7 @@ class AWSResourceInventory:
     def _discover_dynamodb_resources(self, region: str):
         """Discover DynamoDB resources."""
         try:
-            dynamodb = self.session.client("dynamodb", region_name=region)
+            dynamodb = create_client(self.session, "dynamodb", region)
 
             tables = dynamodb.list_tables()
             for table_name in tables["TableNames"]:
@@ -2345,7 +2345,7 @@ class AWSResourceInventory:
     def _discover_elasticache_resources(self, region: str):
         """Discover ElastiCache resources."""
         try:
-            elasticache = self.session.client("elasticache", region_name=region)
+            elasticache = create_client(self.session, "elasticache", region)
 
             # Redis clusters
             try:
@@ -2375,7 +2375,7 @@ class AWSResourceInventory:
     def _discover_redshift_resources(self, region: str):
         """Discover Redshift resources."""
         try:
-            redshift = self.session.client("redshift", region_name=region)
+            redshift = create_client(self.session, "redshift", region)
 
             clusters = redshift.describe_clusters()
             for cluster in clusters["Clusters"]:
@@ -2399,7 +2399,7 @@ class AWSResourceInventory:
         """Discover ELB/ALB/NLB resources."""
         try:
             # ELBv2 (ALB/NLB)
-            elbv2 = self.session.client("elbv2", region_name=region)
+            elbv2 = create_client(self.session, "elbv2", region)
             load_balancers = elbv2.describe_load_balancers()
 
             for lb in load_balancers["LoadBalancers"]:
@@ -2423,7 +2423,7 @@ class AWSResourceInventory:
     def _discover_apigateway_resources(self, region: str):
         """Discover API Gateway resources."""
         try:
-            apigw = self.session.client("apigateway", region_name=region)
+            apigw = create_client(self.session, "apigateway", region)
 
             # REST APIs
             rest_apis = apigw.get_rest_apis()
@@ -2446,7 +2446,7 @@ class AWSResourceInventory:
     def _discover_sns_resources(self, region: str):
         """Discover SNS resources."""
         try:
-            sns = self.session.client("sns", region_name=region)
+            sns = create_client(self.session, "sns", region)
 
             topics = sns.list_topics()
             for topic in topics["Topics"]:
@@ -2472,7 +2472,7 @@ class AWSResourceInventory:
     def _discover_sqs_resources(self, region: str):
         """Discover SQS resources."""
         try:
-            sqs = self.session.client("sqs", region_name=region)
+            sqs = create_client(self.session, "sqs", region)
 
             queues = sqs.list_queues()
             for queue_url in queues.get("QueueUrls", []):
@@ -2497,7 +2497,7 @@ class AWSResourceInventory:
     def _discover_kinesis_resources(self, region: str):
         """Discover Kinesis resources."""
         try:
-            kinesis = self.session.client("kinesis", region_name=region)
+            kinesis = create_client(self.session, "kinesis", region)
 
             streams = kinesis.list_streams()
             for stream_name in streams["StreamNames"]:
@@ -2519,7 +2519,7 @@ class AWSResourceInventory:
     def _discover_stepfunctions_resources(self, region: str):
         """Discover Step Functions resources."""
         try:
-            sfn = self.session.client("stepfunctions", region_name=region)
+            sfn = create_client(self.session, "stepfunctions", region)
 
             state_machines = sfn.list_state_machines()
             for sm in state_machines["stateMachines"]:
@@ -2542,7 +2542,7 @@ class AWSResourceInventory:
     def _discover_secretsmanager_resources(self, region: str):
         """Discover Secrets Manager resources."""
         try:
-            secrets = self.session.client("secretsmanager", region_name=region)
+            secrets = create_client(self.session, "secretsmanager", region)
 
             secret_list = secrets.list_secrets()
             for secret in secret_list["SecretList"]:
@@ -2565,7 +2565,7 @@ class AWSResourceInventory:
     def _discover_ssm_resources(self, region: str):
         """Discover Systems Manager resources."""
         try:
-            ssm = self.session.client("ssm", region_name=region)
+            ssm = create_client(self.session, "ssm", region)
 
             # Parameters
             try:
@@ -2596,7 +2596,7 @@ class AWSResourceInventory:
             return
 
         try:
-            route53 = self.session.client("route53", region_name=region)
+            route53 = create_client(self.session, "route53", region)
 
             hosted_zones = route53.list_hosted_zones()
             for zone in hosted_zones["HostedZones"]:
@@ -2621,7 +2621,7 @@ class AWSResourceInventory:
             return
 
         try:
-            cloudfront = self.session.client("cloudfront", region_name=region)
+            cloudfront = create_client(self.session, "cloudfront", region)
 
             distributions = cloudfront.list_distributions()
             for dist in distributions.get("DistributionList", {}).get("Items", []):
@@ -2644,7 +2644,7 @@ class AWSResourceInventory:
     def _discover_acm_resources(self, region: str):
         """Discover ACM (Certificate Manager) resources."""
         try:
-            acm = self.session.client("acm", region_name=region)
+            acm = create_client(self.session, "acm", region)
 
             certificates = acm.list_certificates()
             for cert in certificates["CertificateSummaryList"]:
@@ -2668,7 +2668,7 @@ class AWSResourceInventory:
     def _discover_waf_resources(self, region: str):
         """Discover WAF resources."""
         try:
-            waf = self.session.client("wafv2", region_name=region)
+            waf = create_client(self.session, "wafv2", region)
 
             # Web ACLs
             web_acls = waf.list_web_acls(Scope="REGIONAL")
@@ -2692,7 +2692,7 @@ class AWSResourceInventory:
     def _enhance_ec2_resources(self, region: str):
         """Enhance EC2 resources with additional details from EC2 API."""
         try:
-            ec2 = self.session.client("ec2", region_name=region)
+            ec2 = create_client(self.session, "ec2", region)
 
             # EC2 Instances
             instances = ec2.describe_instances()
@@ -2771,7 +2771,7 @@ class AWSResourceInventory:
     def _enhance_s3_resources(self, region: str):
         """Enhance S3 resources with additional details from S3 API."""
         try:
-            s3 = self.session.client("s3", region_name=region)
+            s3 = create_client(self.session, "s3", region)
 
             # S3 Buckets (global service, only check once)
             if region == "us-east-1":  # Only check from one region
@@ -2816,7 +2816,7 @@ class AWSResourceInventory:
     def _enhance_rds_resources(self, region: str):
         """Enhance RDS resources with additional details from RDS API."""
         try:
-            rds = self.session.client("rds", region_name=region)
+            rds = create_client(self.session, "rds", region)
 
             # RDS Instances
             instances = rds.describe_db_instances()
@@ -2857,7 +2857,7 @@ class AWSResourceInventory:
     def _enhance_lambda_resources(self, region: str):
         """Enhance Lambda resources with additional details from Lambda API."""
         try:
-            lambda_client = self.session.client("lambda", region_name=region)
+            lambda_client = create_client(self.session, "lambda", region)
 
             functions = lambda_client.list_functions()
             for function in functions["Functions"]:
@@ -2895,7 +2895,7 @@ class AWSResourceInventory:
             return
 
         try:
-            iam = self.session.client("iam")
+            iam = create_client(self.session, "iam")
 
             # IAM Roles
             roles = iam.list_roles()
@@ -2957,7 +2957,7 @@ class AWSResourceInventory:
     def _enhance_vpc_resources(self, region: str):
         """Enhance VPC resources with additional details from VPC API."""
         try:
-            ec2 = self.session.client("ec2", region_name=region)
+            ec2 = create_client(self.session, "ec2", region)
 
             # VPCs
             vpcs = ec2.describe_vpcs()
@@ -3006,7 +3006,7 @@ class AWSResourceInventory:
     def _enhance_cloudformation_resources(self, region: str):
         """Enhance CloudFormation resources with additional details from CloudFormation API."""
         try:
-            cf = self.session.client("cloudformation", region_name=region)
+            cf = create_client(self.session, "cloudformation", region)
 
             stacks = cf.list_stacks(
                 StackStatusFilter=[
@@ -3048,7 +3048,7 @@ class AWSResourceInventory:
     def _enhance_ecs_resources(self, region: str):
         """Enhance ECS resources with additional details from ECS API."""
         try:
-            ecs = self.session.client("ecs", region_name=region)
+            ecs = create_client(self.session, "ecs", region)
 
             # ECS Clusters
             clusters = ecs.list_clusters()
@@ -3089,7 +3089,7 @@ class AWSResourceInventory:
     def _enhance_eks_resources(self, region: str):
         """Enhance EKS resources with additional details from EKS API."""
         try:
-            eks = self.session.client("eks", region_name=region)
+            eks = create_client(self.session, "eks", region)
 
             clusters = eks.list_clusters()
             for cluster_name in clusters["clusters"]:
@@ -3122,7 +3122,7 @@ class AWSResourceInventory:
     def _discover_cloudwatch_resources(self, region: str):
         """Discover CloudWatch resources using CloudWatch API."""
         try:
-            cw = self.session.client("cloudwatch", region_name=region)
+            cw = create_client(self.session, "cloudwatch", region)
 
             # CloudWatch Alarms
             alarms = cw.describe_alarms()
@@ -3157,7 +3157,7 @@ class AWSResourceInventory:
     def _discover_cloudtrail_resources(self, region: str):
         """Discover CloudTrail resources."""
         try:
-            client = self.session.client("cloudtrail", region_name=region)
+            client = create_client(self.session, "cloudtrail", region)
 
             # CloudTrail trails
             trails_response = client.describe_trails()
@@ -3186,7 +3186,7 @@ class AWSResourceInventory:
     def _discover_kms_resources(self, region: str):
         """Discover KMS resources."""
         try:
-            client = self.session.client("kms", region_name=region)
+            client = create_client(self.session, "kms", region)
 
             # KMS keys
             keys_response = client.list_keys()
@@ -3218,7 +3218,7 @@ class AWSResourceInventory:
     def _discover_glue_resources(self, region: str):
         """Discover Glue resources."""
         try:
-            client = self.session.client("glue", region_name=region)
+            client = create_client(self.session, "glue", region)
 
             # Glue databases
             try:
@@ -3262,7 +3262,7 @@ class AWSResourceInventory:
     def _discover_cloudwatch_events_resources(self, region: str):
         """Discover CloudWatch Events resources."""
         try:
-            client = self.session.client("events", region_name=region)
+            client = create_client(self.session, "events", region)
 
             # EventBridge rules
             rules_response = client.list_rules()
@@ -3304,7 +3304,7 @@ class AWSResourceInventory:
     def _discover_workmail_resources(self, region: str):
         """Discover WorkMail resources."""
         try:
-            client = self.session.client("workmail", region_name=region)
+            client = create_client(self.session, "workmail", region)
 
             # WorkMail organizations
             try:
@@ -3373,7 +3373,7 @@ class AWSResourceInventory:
                 "call it with allow_write=True to upload to a bucket you choose"
             )
         try:
-            s3 = self.session.client("s3")
+            s3 = create_client(self.session, "s3")
             ReadOnlyGuard.allow_on_client(s3, {"PutObject"}, bucket=bucket_name)
 
             if format_type.lower() == "json":

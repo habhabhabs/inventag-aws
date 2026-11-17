@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
+from .aws_clients import create_client
 
 
 @dataclass
@@ -727,7 +728,7 @@ class IntelligentAWSDiscovery:
             self._clients_in_progress.add(client_key)
 
         try:
-            client = self.session.client(service_name, region_name=region)
+            client = create_client(self.session, service_name, region)
             return client
         except Exception as e:
             self.logger.error(

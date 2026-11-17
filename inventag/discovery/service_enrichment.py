@@ -13,6 +13,7 @@ from typing import Dict, List, Any, Optional, Set, Type
 from botocore.exceptions import ClientError
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from .aws_clients import create_client
 
 
 @dataclass
@@ -378,7 +379,7 @@ class DynamicServiceHandler(ServiceHandler):
 
         try:
             # Try to get a client for the service
-            client = self.session.client(service)
+            client = create_client(self.session, service)
 
             # Get available operations for this service
             available_operations = self._get_service_operations(client)

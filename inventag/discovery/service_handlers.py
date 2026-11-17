@@ -11,6 +11,7 @@ import logging
 from typing import Dict, List, Any, Optional
 from botocore.exceptions import ClientError
 from ..security.secret_values import mask_secret_values
+from .aws_clients import create_client
 from .service_enrichment import ServiceHandler
 
 
@@ -54,7 +55,7 @@ class S3Handler(ServiceHandler):
             return resource
 
         try:
-            s3_client = self.session.client("s3")
+            s3_client = create_client(self.session, "s3")
             attributes = {}
 
             # Get bucket encryption
@@ -161,7 +162,7 @@ class RDSHandler(ServiceHandler):
             return resource
 
         try:
-            rds_client = self.session.client("rds")
+            rds_client = create_client(self.session, "rds")
             attributes = {}
 
             if resource_type == "DBInstance":
@@ -319,7 +320,7 @@ class EC2Handler(ServiceHandler):
             return resource
 
         try:
-            ec2_client = self.session.client("ec2")
+            ec2_client = create_client(self.session, "ec2")
             attributes = {}
 
             if resource_type == "Instance":
@@ -482,7 +483,7 @@ class LambdaHandler(ServiceHandler):
             return resource
 
         try:
-            lambda_client = self.session.client("lambda")
+            lambda_client = create_client(self.session, "lambda")
             attributes = {}
 
             # GetFunctionConfiguration, not GetFunction: GetFunction also
@@ -590,7 +591,7 @@ class ECSHandler(ServiceHandler):
             return resource
 
         try:
-            ecs_client = self.session.client("ecs")
+            ecs_client = create_client(self.session, "ecs")
             attributes = {}
 
             if resource_type == "Cluster":
@@ -712,7 +713,7 @@ class EKSHandler(ServiceHandler):
             return resource
 
         try:
-            eks_client = self.session.client("eks")
+            eks_client = create_client(self.session, "eks")
             attributes = {}
 
             if resource_type == "Cluster":
