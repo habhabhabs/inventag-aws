@@ -275,3 +275,91 @@ def test_a_cluster_row_without_account_id_uses_the_account_of_its_arn(estate):
     analyzer = _analyse(rows)
     vpc = analyzer.vpc_cache[estate["vpc"]].associated_resources
     assert "cache1" in vpc and "cacheC" not in vpc
+
+
+class _NoCacheEndpoint:
+    """A session whose ElastiCache endpoint cannot be reached."""
+
+    def __init__(self):
+        self._real = boto3.Session(region_name=R)
+        self.region_name = R
+
+    def client(self, service, region_name=None, **kwargs):
+        if service == "elasticache":
+            from botocore.exceptions import EndpointConnectionError
+
+            class Unreachable:
+                def describe_cache_subnet_groups(self, **kwargs):
+                    raise EndpointConnectionError(
+                        endpoint_url="https://elasticache.us-east-1.amazonaws.com/"
+                    )
+
+            return Unreachable()
+        return self._real.client(service, region_name=region_name or R, **kwargs)
+
+
+def test_an_unreachable_elasticache_endpoint_does_not_stop_the_analysis(estate, caplog):
+    """Review H2: any failure of DescribeCacheSubnetGroups (here a connection
+    error, which is not a ClientError) leaves the analysis as without the
+    ElastiCache counts, with one warning."""
+    analyzer = NetworkAnalyzer(_NoCacheEndpoint())
+    with caplog.at_level(logging.WARNING, logger="inventag.discovery.network_analyzer"):
+        analyzer.analyze_vpc_resources(estate["rows"])
+    vpc = analyzer.vpc_cache[estate["vpc"]].associated_resources
+    assert "db1" in vpc and "cache1" not in vpc
+    messages = [
+        r.getMessage() for r in caplog.records if "ElastiCache" in r.getMessage()
+    ]
+    assert messages == [
+        "Could not read the ElastiCache subnet groups in us-east-1 "
+        "(EndpointConnectionError), so ElastiCache clusters there are not counted "
+        "in a VPC or subnet. Run the scan again; if it repeats, report it with "
+        "the --debug log."
+    ]
+
+
+def test_the_network_sheet_stays_and_a_run_note_names_the_unread_groups(
+    estate, tmp_path
+):
+    """Review H2, whole report: the consolidated workbook keeps its Network
+    Analysis sheet, and its run notes say the ElastiCache clusters of that
+    region are not counted. Exit paths are unchanged (the result is a success)."""
+    from openpyxl import load_workbook
+
+    from inventag.core.cloud_bom_generator import (
+        AccountContext,
+        AccountCredentials,
+        CloudBOMGenerator,
+        MultiAccountConfig,
+    )
+
+    generator = CloudBOMGenerator(
+        MultiAccountConfig(
+            accounts=[], output_directory=str(tmp_path), enable_state_management=False
+        )
+    )
+    generator.config.bom_processing_config.enable_network_analysis = True
+    generator.account_contexts = {
+        "123456789012": AccountContext(
+            credentials=AccountCredentials(account_id="123456789012"),
+            session=_NoCacheEndpoint(),
+            caller_identity={"Account": "123456789012"},
+            accessible_regions=[R],
+        )
+    }
+    rows = [dict(r, account_id="123456789012") for r in estate["rows"]]
+    result = generator._generate_bom_documents(rows, {}, ["excel"])
+    assert result["success"] is True, result
+    book = load_workbook(next(tmp_path.glob("multi_account_bom_*.xlsx")))
+    assert "Network Analysis" in book.sheetnames
+    cells = [
+        str(c)
+        for row in book["Summary"].iter_rows(values_only=True)
+        for c in row
+        if c is not None
+    ]
+    assert (
+        "ElastiCache subnet groups could not be read in us-east-1 "
+        "(EndpointConnectionError), so ElastiCache clusters there are not counted "
+        "in the Network Analysis sheet."
+    ) in cells, cells
