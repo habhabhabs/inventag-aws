@@ -65,7 +65,6 @@ settings:                              # optional
 損壞的帳戶檔案會在掃描之前就讓執行停止。例如，沒有加引號的帳戶 ID（範例資料）：
 
 ```text title="輸出"
-inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - WARNING -    - Account 1: no credentials given; InvenTag will assume the --cross-account-role role (default InvenTagCrossAccountRole) in this account, or use the default credentials only if they belong to this account
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string

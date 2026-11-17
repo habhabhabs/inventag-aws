@@ -114,7 +114,7 @@ InvenTag ne réutilise un résultat enregistré que si la commande utilisait les
 et que le résultat n’est pas plus ancien que `--resume-max-age-hours` (24 par défaut, 168 au maximum).
 Cela nécessite la gestion d’état : `--resume` avec `--disable-state-management` s’arrête donc avec le code de sortie 2.
 Le journal indique `123456789012: reusing results scanned 2026-11-14 06:13 UTC (--resume)`, et les notes du rapport
-listent chaque compte réutilisé avec son heure d’analyse. Sans `--resume`, un avertissement signale que des résultats enregistrés existent
+listent chaque compte réutilisé avec son heure d’analyse. La console nomme un compte réutilisé une seule fois, dans cette ligne du journal. Sans `--resume`, un avertissement signale que des résultats enregistrés existent
 et qu’ils sont analysés de nouveau. InvenTag supprime les résultats enregistrés après une exécution où tous les comptes se terminent. Un compte dont la session a expiré en cours d’analyse n’est pas enregistré, donc `--resume` l’analyse de nouveau.
 
 ## Choisir les fichiers de sortie {#choose-the-output-files}
@@ -126,10 +126,10 @@ et qu’ils sont analysés de nouveau. InvenTag supprime les résultats enregist
 | `--template <name>` | Les mêmes fichiers, mis en page par un [modèle de rapport](../templates/index.md) |
 | `--output-directory reports` | Écrit tout dans `reports/` au lieu de `bom_output/` |
 
-Si vous ne donnez aucune option de sortie, InvenTag n’écrit que le fichier Excel. Si l’analyse ne trouve
+Si vous ne donnez aucune option de sortie, InvenTag n’écrit que le fichier Excel et journalise une ligne, `No output formats specified. Defaulting to Excel format.` Si l’analyse ne trouve
 aucune ressource, ou si vos filtres les écartent toutes, InvenTag n’écrit aucun fichier, journalise
 `No resources to report (none found, or the filters removed all of them).` et se termine tout de même avec le code 0. Avec `--template`, il écrit un rapport qui ne liste aucune ressource. Ajoutez `--s3-bucket` pour téléverser aussi les fichiers : voir
-[Téléverser les rapports vers S3 selon un calendrier](../examples/scheduled-s3-upload.md).
+[Téléverser les rapports vers S3 selon un calendrier](../examples/scheduled-s3-upload.md). Avec `--s3-bucket` et sans ressource, l’exécution dit `Nothing to upload to s3://<bucket>/<prefix>/: the run wrote no report file because there are no resources to report.` et se termine avec le code 1.
 
 Exemple de sortie d’une exécution avec `--template standard-bom --create-excel
 --create-word --account-regions us-east-1` (hors ligne, données d’exemple) :
@@ -175,7 +175,6 @@ Le code de sortie 0 signifie que les fichiers sont valides. Avec `--skip-credent
 n’effectue aucun appel AWS. Un fichier de comptes incorrect ressemble à ceci (données d’exemple) :
 
 ```text title="Sortie"
-inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - WARNING -    - Account 1: no credentials given; InvenTag will assume the --cross-account-role role (default InvenTagCrossAccountRole) in this account, or use the default credentials only if they belong to this account
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string

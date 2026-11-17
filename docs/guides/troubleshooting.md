@@ -128,7 +128,6 @@ to scan only the accounts that are missing.
 <!-- BEGIN EXAMPLE OUTPUT: bare-role -->
 
 ```text title="Output"
-inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag.cli.main - ERROR - --cross-account-role was given a role name without --accounts-file. Pass a full role ARN (arn:aws:iam::<account-id>:role/<name>), or list the target account IDs in --accounts-file.
 ```
 
@@ -150,7 +149,8 @@ IDs.
 ### Cost Explorer access denied
 
 InvenTag carries on without billing data and the run succeeds, so the problem
-is easy to miss. It only shows with `--debug`:
+is easy to miss. A default run prints one warning that names the cause, and
+`--debug` adds the AWS error text:
 
 <!-- BEGIN EXAMPLE OUTPUT: error-access-denied-ce -->
 
@@ -172,8 +172,9 @@ echo $?
 ```
 
 ```text title="Output (simulated AWS error response)"
-[AWS Account 123456789012 (moto)] inventag.discovery.inventory - WARNING - No permission for the Cost Explorer API (AccessDeniedException). Skipping billing validation; add ce:GetCostAndUsage or use --no-billing-validation.
-[AWS Account 123456789012 (moto)] inventag.discovery.comprehensive_discovery - WARNING - Cost Explorer data is not available, so billing checks are skipped: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
+[AWS Account 123456789012 (moto)] inventag.discovery.inventory - WARNING - Cost Explorer was denied (AccessDeniedException), so billing data is missing and billing checks are skipped. Allow ce:GetCostAndUsage for this role.
+[AWS Account 123456789012 (moto)] inventag.discovery.inventory - DEBUG - Cost Explorer detail: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
+[AWS Account 123456789012 (moto)] inventag.discovery.comprehensive_discovery - DEBUG - Cost Explorer detail: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
 ```
 
 <!-- END EXAMPLE OUTPUT: error-access-denied-ce -->
@@ -191,9 +192,16 @@ and carries on without its resources:
 No permission for sqs (list_queues in us-east-1: AccessDenied). Resources of sqs are skipped; add the read permission to see them.
 ```
 
-For a call that fills in one detail of a resource, discovery carries on without
-a message and leaves that detail empty. The AWS error is logged only at debug
-level. Run the matching AWS CLI call with the same identity to check.
+For a call that fills in one detail of a resource (a bucket's location, a
+function's configuration), discovery keeps the resource, leaves that detail
+empty and says so in the report's "Run notes":
+
+```text
+Details of 5 resource(s) in account 111111111111 could not be read, so those rows have some fields missing: lambda GetFunctionConfiguration in us-east-1 (throttled, 2); s3 GetBucketLocation in us-east-1 (denied, 3).
+```
+
+The AWS error is logged at debug level. Run the matching AWS CLI call with
+the same identity to check.
 
 **Fix:** use the policy in `config/defaults/iam-policy-read-only.json`, which
 covers every call InvenTag makes. See [IAM permissions](../reference/iam-permissions.md).
@@ -246,6 +254,22 @@ The run carries on with the regions that work.
 account in the AWS console (Account settings, AWS Regions).
 
 Not verified against real AWS: the console path to enable a region.
+
+### A region name is misspelled
+
+A region name that AWS does not know, such as `us-east-9` in
+`--account-regions`, is named once with the command that lists the valid
+ones:
+
+```text
+Region 'us-east-9' is not a known AWS region; check its spelling in --account-regions or in the accounts file. To list the regions of your account, run: aws ec2 describe-regions --query 'Regions[].RegionName' --output text
+```
+
+The run exits with code 0. When other regions work, they are scanned, and the
+"Run notes" say `Regions not scanned in account 123456789012 because they are
+not known AWS regions (check the spelling): us-east-9.`
+
+**Fix:** correct the region name.
 
 ### The list of regions cannot be read
 
@@ -304,6 +328,32 @@ code 1. (Message text from an offline run with a 60-second limit.)
 **Fix:** raise `--account-processing-timeout` (default 1800), scan fewer
 regions or services, or scan fewer accounts at the same time. Run the same
 command with `--resume` to scan only the accounts that did not finish.
+
+### A slow Cost Explorer
+
+With `--account-processing-timeout` under 1200 seconds, Cost Explorer gets at
+most a tenth of the limit. If it does not answer in time, the account is
+still scanned and its resources are in the report. The "Run notes" say:
+
+```text
+Cost Explorer did not answer in time for account 123456789012, so its billing checks were skipped and services that only billing shows are not listed for it.
+```
+
+**Fix:** add `--no-billing-validation` to make no Cost Explorer calls, or
+set `--account-processing-timeout` to 1200 or more.
+
+### The run is stopped with Ctrl-C or SIGTERM
+
+Ctrl-C and SIGTERM each print one line that says what was written:
+
+```text
+Stopped by the user (Ctrl-C). No report was written.
+Terminated (SIGTERM). No report was written.
+```
+
+When a report file was already written, the line says
+`1 report file(s) already written stay in <output folder>.` instead. Ctrl-C
+exits with code 1. A SIGTERM ends the process by the signal after the line.
 
 ### Saved results are not reused
 
@@ -369,7 +419,6 @@ templates must be in `.inventag/templates/` in the folder you run from.
 <!-- BEGIN EXAMPLE OUTPUT: error-bad-accounts -->
 
 ```text title="Output"
-inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - WARNING -    - Account 1: no credentials given; InvenTag will assume the --cross-account-role role (default InvenTagCrossAccountRole) in this account, or use the default credentials only if they belong to this account
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
@@ -481,6 +530,9 @@ The reports are written first. If more than one applies, 5 comes first, then
 | `Skipped unreadable snapshot 20261113_222847: Snapshot ... is corrupt or truncated (...). The file was not changed or deleted` | The latest snapshot is damaged, so InvenTag compares with the one before it. The file stays in `state/`. Delete it if you do not need it. |
 | `Account 222222222222 left out of the comparison: the previous run could not scan it` | One of the two runs could not scan that account. The change report names it under `accounts_not_compared`. |
 | `Excel sheet name 'x' is not allowed or is already used; the sheet is called 'y'` | Excel does not allow some characters in sheet names (they become `-`), and names must be unique and at most 31 characters. The report is still complete. |
+| `Nothing to upload to s3://<bucket>/<prefix>/: the run wrote no report file because there are no resources to report.` | `--s3-bucket` was given, but the scan found no resources, or the filters removed them all, so no file was written. The run exits with code 1. Check the scan with the "No report file" row above. |
+| `Reports written; the state snapshot or the change report had a problem (see the notes below)` | The state snapshot or its list could not be saved, or the change report failed. The notes after the summary name the problem and the folder to check. The run exits with code 0. |
+| With `--template`, one report format is missing | A format that cannot be written does not stop the other formats. The log names the failed format, the "Run notes" of the written files say it, and the run exits with code 1. |
 | Another user can't open `bom_output/` | Output files are private to the user who ran InvenTag. Share them on purpose. |
 
 Not verified against Microsoft Excel: the sheet name rules.

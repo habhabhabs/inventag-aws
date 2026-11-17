@@ -112,7 +112,6 @@ votre identité. InvenTag n’analyse pas le compte avec des identifiants appart
 ### Un nom de rôle sans fichier de comptes {#a-role-name-without-an-accounts-file}
 
 ```text title="Sortie"
-inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag.cli.main - ERROR - --cross-account-role was given a role name without --accounts-file. Pass a full role ARN (arn:aws:iam::<account-id>:role/<name>), or list the target account IDs in --accounts-file.
 ```
 
@@ -132,7 +131,7 @@ de compte.
 ### Accès à Cost Explorer refusé {#cost-explorer-access-denied}
 
 InvenTag continue sans données de facturation et l’exécution réussit ; le problème
-passe donc facilement inaperçu. Il n’apparaît qu’avec `--debug` :
+passe donc facilement inaperçu. Une exécution par défaut affiche un avertissement qui nomme la cause, et `--debug` ajoute le texte de l’erreur AWS :
 
 ```text title="Sortie (simulated AWS error response)"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
@@ -152,8 +151,9 @@ echo $?
 ```
 
 ```text title="Sortie (simulated AWS error response)"
-[AWS Account 123456789012 (moto)] inventag.discovery.inventory - WARNING - No permission for the Cost Explorer API (AccessDeniedException). Skipping billing validation; add ce:GetCostAndUsage or use --no-billing-validation.
-[AWS Account 123456789012 (moto)] inventag.discovery.comprehensive_discovery - WARNING - Cost Explorer data is not available, so billing checks are skipped: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
+[AWS Account 123456789012 (moto)] inventag.discovery.inventory - WARNING - Cost Explorer was denied (AccessDeniedException), so billing data is missing and billing checks are skipped. Allow ce:GetCostAndUsage for this role.
+[AWS Account 123456789012 (moto)] inventag.discovery.inventory - DEBUG - Cost Explorer detail: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
+[AWS Account 123456789012 (moto)] inventag.discovery.comprehensive_discovery - DEBUG - Cost Explorer detail: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
 ```
 
 **Correction :** ajoutez `ce:GetCostAndUsage` à la politique, ou acceptez que les données
@@ -168,7 +168,13 @@ ce service. Pour un appel de liste, InvenTag consigne un avertissement pour le s
 No permission for sqs (list_queues in us-east-1: AccessDenied). Resources of sqs are skipped; add the read permission to see them.
 ```
 
-Pour un appel qui complète un détail d’une ressource, la découverte continue sans message et laisse ce détail vide. L’erreur AWS n’est consignée qu’au niveau de débogage. Exécutez l’appel AWS CLI correspondant avec la même identité pour vérifier.
+Pour un appel qui complète un détail d’une ressource (l’emplacement d’un bucket, la configuration d’une fonction), la découverte garde la ressource, laisse ce détail vide et le dit dans les « Run notes » (notes d’exécution) du rapport :
+
+```text
+Details of 5 resource(s) in account 111111111111 could not be read, so those rows have some fields missing: lambda GetFunctionConfiguration in us-east-1 (throttled, 2); s3 GetBucketLocation in us-east-1 (denied, 3).
+```
+
+L’erreur AWS est consignée au niveau de débogage. Exécutez l’appel AWS CLI correspondant avec la même identité pour vérifier.
 
 **Correction :** utilisez la politique de `config/defaults/iam-policy-read-only.json`, qui
 couvre chaque appel qu’InvenTag effectue. Voir [Autorisations IAM](../reference/iam-permissions.md).
@@ -210,6 +216,18 @@ L’exécution continue avec les régions qui fonctionnent.
 compte dans la console AWS (Account settings, AWS Regions).
 
 Non vérifié sur un vrai AWS : le chemin dans la console pour activer une région.
+
+### Un nom de région mal orthographié {#a-region-name-is-misspelled}
+
+Un nom de région que AWS ne connaît pas, comme `us-east-9` dans `--account-regions`, est nommé une seule fois avec la commande qui liste les régions valides :
+
+```text
+Region 'us-east-9' is not a known AWS region; check its spelling in --account-regions or in the accounts file. To list the regions of your account, run: aws ec2 describe-regions --query 'Regions[].RegionName' --output text
+```
+
+L’exécution se termine avec le code 0. Quand d’autres régions fonctionnent, elles sont analysées, et les « Run notes » disent `Regions not scanned in account 123456789012 because they are not known AWS regions (check the spelling): us-east-9.`
+
+**Correction :** corrigez le nom de la région.
 
 ### La liste des régions ne peut pas être lue {#the-list-of-regions-cannot-be-read}
 
@@ -258,6 +276,27 @@ Resource discovery failed for account 123456789012: timed out after 60 seconds (
 Le compte compte comme échoué, mais les ressources trouvées avant la limite sont dans le rapport, et les « Run notes » nomment le compte. Les autres comptes sont conservés. Si aucun compte ne se termine, InvenTag écrit quand même le rapport, consigne `No account finished within its time limit (--account-processing-timeout)` et se termine avec le code 1. (Texte des messages issu d’une exécution hors ligne avec une limite de 60 secondes.)
 
 **Correction :** augmentez `--account-processing-timeout` (1800 par défaut), analysez moins de régions ou de services, ou analysez moins de comptes à la fois. Exécutez la même commande avec `--resume` pour n’analyser que les comptes qui ne se sont pas terminés.
+
+### Un Cost Explorer lent {#a-slow-cost-explorer}
+
+Avec `--account-processing-timeout` inférieur à 1200 secondes, Cost Explorer reçoit au plus un dixième de la limite. S’il ne répond pas à temps, le compte est quand même analysé et ses ressources sont dans le rapport. Les « Run notes » disent :
+
+```text
+Cost Explorer did not answer in time for account 123456789012, so its billing checks were skipped and services that only billing shows are not listed for it.
+```
+
+**Correction :** ajoutez `--no-billing-validation` pour ne faire aucun appel à Cost Explorer, ou réglez `--account-processing-timeout` sur 1200 ou plus.
+
+### L’exécution est arrêtée avec Ctrl-C ou SIGTERM {#the-run-is-stopped-with-ctrl-c-or-sigterm}
+
+Ctrl-C et SIGTERM affichent chacun une ligne qui dit ce qui a été écrit :
+
+```text
+Stopped by the user (Ctrl-C). No report was written.
+Terminated (SIGTERM). No report was written.
+```
+
+Si un fichier de rapport avait déjà été écrit, la ligne dit à la place `1 report file(s) already written stay in <output folder>.` Ctrl-C se termine avec le code 1. Un SIGTERM termine le processus par le signal après la ligne.
 
 ### Les résultats enregistrés ne sont pas réutilisés {#saved-results-are-not-reused}
 
@@ -310,7 +349,6 @@ doivent se trouver dans `.inventag/templates/`, dans le dossier d’où vous lan
 ### Fichier de comptes non valide {#invalid-accounts-file}
 
 ```text title="Sortie"
-inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - WARNING -    - Account 1: no credentials given; InvenTag will assume the --cross-account-role role (default InvenTagCrossAccountRole) in this account, or use the default credentials only if they belong to this account
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
@@ -404,6 +442,9 @@ Les rapports sont écrits d’abord. Si plusieurs cas s’appliquent, le 5 passe
 | `Skipped unreadable snapshot 20261113_222847: Snapshot ... is corrupt or truncated (...). The file was not changed or deleted` | Le dernier instantané est endommagé, donc InvenTag compare avec le précédent. Le fichier reste dans `state/`. Supprimez-le si vous n’en avez pas besoin. |
 | `Account 222222222222 left out of the comparison: the previous run could not scan it` | L’une des deux exécutions n’a pas pu analyser ce compte. Le rapport des changements le nomme sous `accounts_not_compared`. |
 | `Excel sheet name 'x' is not allowed or is already used; the sheet is called 'y'` | Excel n’autorise pas certains caractères dans les noms de feuille (ils deviennent `-`), et les noms doivent être uniques et de 31 caractères au plus. Le rapport reste complet. |
+| `Nothing to upload to s3://<bucket>/<prefix>/: the run wrote no report file because there are no resources to report.` | `--s3-bucket` a été passé, mais l’analyse n’a trouvé aucune ressource, ou les filtres les ont toutes retirées, donc aucun fichier n’a été écrit. L’exécution se termine avec le code 1. Vérifiez l’analyse avec la ligne « Aucun fichier de rapport » ci-dessus. |
+| `Reports written; the state snapshot or the change report had a problem (see the notes below)` | L’instantané d’état ou sa liste n’a pas pu être enregistré, ou le rapport de changements a échoué. Les notes après le résumé nomment le problème et le dossier à vérifier. L’exécution se termine avec le code 0. |
+| Avec `--template`, un format de rapport manque | Un format qui ne peut pas être écrit n’arrête pas l’autre format. Le journal nomme le format en échec, les « Run notes » du fichier écrit le disent, et l’exécution se termine avec le code 1. |
 | Un autre utilisateur ne peut pas ouvrir `bom_output/` | Les fichiers de sortie sont privés pour l’utilisateur qui a exécuté InvenTag. Partagez-les volontairement. |
 
 Non vérifié sur Microsoft Excel : les règles des noms de feuille.

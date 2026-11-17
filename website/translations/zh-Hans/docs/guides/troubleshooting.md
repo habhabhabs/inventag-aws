@@ -108,7 +108,6 @@ InvenTag 不会用属于其他账户的凭证扫描该账户，因此在角色�
 ### 给了角色名称但没有账户文件 {#a-role-name-without-an-accounts-file}
 
 ```text title="输出"
-inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag.cli.main - ERROR - --cross-account-role was given a role name without --accounts-file. Pass a full role ARN (arn:aws:iam::<account-id>:role/<name>), or list the target account IDs in --accounts-file.
 ```
 
@@ -126,7 +125,7 @@ echo $?
 
 ### Cost Explorer 访问被拒绝 {#cost-explorer-access-denied}
 
-InvenTag 会在没有账单数据的情况下继续，运行也会成功，所以这个问题很容易被忽略。它只会在使用 `--debug` 时显示：
+InvenTag 会在没有账单数据的情况下继续，运行也会成功，所以这个问题很容易被忽略。默认运行会输出一条指明原因的警告，`--debug` 会再加上 AWS 的错误文本：
 
 ```text title="输出 (simulated AWS error response)"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
@@ -146,8 +145,9 @@ echo $?
 ```
 
 ```text title="输出 (simulated AWS error response)"
-[AWS Account 123456789012 (moto)] inventag.discovery.inventory - WARNING - No permission for the Cost Explorer API (AccessDeniedException). Skipping billing validation; add ce:GetCostAndUsage or use --no-billing-validation.
-[AWS Account 123456789012 (moto)] inventag.discovery.comprehensive_discovery - WARNING - Cost Explorer data is not available, so billing checks are skipped: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
+[AWS Account 123456789012 (moto)] inventag.discovery.inventory - WARNING - Cost Explorer was denied (AccessDeniedException), so billing data is missing and billing checks are skipped. Allow ce:GetCostAndUsage for this role.
+[AWS Account 123456789012 (moto)] inventag.discovery.inventory - DEBUG - Cost Explorer detail: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
+[AWS Account 123456789012 (moto)] inventag.discovery.comprehensive_discovery - DEBUG - Cost Explorer detail: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
 ```
 
 **解决办法：** 把 `ce:GetCostAndUsage` 添加到策略中，或者接受缺少账单数据。
@@ -160,7 +160,13 @@ echo $?
 No permission for sqs (list_queues in us-east-1: AccessDenied). Resources of sqs are skipped; add the read permission to see them.
 ```
 
-对于只补充资源某个细节的调用，发现过程会在没有消息的情况下继续，并让该细节留空。AWS 错误只在调试级别记录。请用同一个身份运行对应的 AWS CLI 调用来检查。
+对于只补充资源某个细节的调用（存储桶的位置、函数的配置），发现过程会保留该资源，让该细节留空，并在报告的“运行备注”（Run notes）中说明：
+
+```text
+Details of 5 resource(s) in account 111111111111 could not be read, so those rows have some fields missing: lambda GetFunctionConfiguration in us-east-1 (throttled, 2); s3 GetBucketLocation in us-east-1 (denied, 3).
+```
+
+AWS 错误在调试级别记录。请用同一个身份运行对应的 AWS CLI 调用来检查。
 
 **解决办法：** 使用 `config/defaults/iam-policy-read-only.json` 中的策略，它涵盖了 InvenTag 发出的每个调用。
 见 [IAM 权限](../reference/iam-permissions.md)。
@@ -199,6 +205,18 @@ echo $?
 **解决办法：** 从 `--account-regions` 中删除该区域，或在 AWS 控制台中为该账户启用它（Account settings，AWS Regions）。
 
 未针对真实的 AWS 验证：在控制台中启用区域的路径。
+
+### 区域名称拼写错误 {#a-region-name-is-misspelled}
+
+AWS 不认识的区域名称，例如 `--account-regions` 中的 `us-east-9`，只会被指出一次，并附上列出有效区域的命令：
+
+```text
+Region 'us-east-9' is not a known AWS region; check its spelling in --account-regions or in the accounts file. To list the regions of your account, run: aws ec2 describe-regions --query 'Regions[].RegionName' --output text
+```
+
+运行以退出码 0 结束。其他区域正常时，它们会被扫描，并且“运行备注”会写明 `Regions not scanned in account 123456789012 because they are not known AWS regions (check the spelling): us-east-9.`
+
+**解决办法：** 更正区域名称。
 
 ### 无法读取区域列表 {#the-list-of-regions-cannot-be-read}
 
@@ -244,6 +262,27 @@ Resource discovery failed for account 123456789012: timed out after 60 seconds (
 该账户算作失败，但在限制之前找到的资源会进入报告，并且“运行备注”会写出该账户。其他账户会保留。如果没有任何账户完成，InvenTag 仍会写出报告，记录 `No account finished within its time limit (--account-processing-timeout)`，并以退出码 1 结束。（消息文本来自 60 秒限制的离线运行。）
 
 **解决办法：** 提高 `--account-processing-timeout`（默认 1800），扫描更少的区域或服务，或减少同时扫描的账户数。用 `--resume` 运行同一条命令，只扫描没有完成的账户。
+
+### Cost Explorer 响应缓慢 {#a-slow-cost-explorer}
+
+`--account-processing-timeout` 小于 1200 秒时，Cost Explorer 最多获得该限制的十分之一。如果它没有及时响应，账户仍会被扫描，其资源会进入报告。“运行备注”会写明：
+
+```text
+Cost Explorer did not answer in time for account 123456789012, so its billing checks were skipped and services that only billing shows are not listed for it.
+```
+
+**解决办法：** 添加 `--no-billing-validation`，不再调用 Cost Explorer，或者把 `--account-processing-timeout` 设为 1200 或更大。
+
+### 用 Ctrl-C 或 SIGTERM 停止运行 {#the-run-is-stopped-with-ctrl-c-or-sigterm}
+
+Ctrl-C 和 SIGTERM 都会输出一行说明已写出什么的消息：
+
+```text
+Stopped by the user (Ctrl-C). No report was written.
+Terminated (SIGTERM). No report was written.
+```
+
+如果已经写出了报告文件，这行消息会改为 `1 report file(s) already written stay in <output folder>.`。Ctrl-C 以退出码 1 结束。SIGTERM 在输出这行消息后，由该信号结束进程。
 
 ### 已保存的结果没有被重用 {#saved-results-are-not-reused}
 
@@ -294,7 +333,6 @@ echo $?
 ### 无效的账户文件 {#invalid-accounts-file}
 
 ```text title="输出"
-inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - WARNING -    - Account 1: no credentials given; InvenTag will assume the --cross-account-role role (default InvenTagCrossAccountRole) in this account, or use the default credentials only if they belong to this account
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
@@ -386,6 +424,9 @@ inventag: error: --resume: needs state management (saved results live in the sta
 | `Skipped unreadable snapshot 20261113_222847: Snapshot ... is corrupt or truncated (...). The file was not changed or deleted` | 最新的快照已损坏，所以 InvenTag 改与它之前的快照比较。该文件仍留在 `state/` 中。如果不需要它，请删除。 |
 | `Account 222222222222 left out of the comparison: the previous run could not scan it` | 两次运行中有一次无法扫描该账户。变更报告会在 `accounts_not_compared` 下写出它。 |
 | `Excel sheet name 'x' is not allowed or is already used; the sheet is called 'y'` | Excel 不允许工作表名称使用某些字符（它们会变成 `-`），名称必须唯一，且最多 31 个字符。报告仍然完整。 |
+| `Nothing to upload to s3://<bucket>/<prefix>/: the run wrote no report file because there are no resources to report.` | 传入了 `--s3-bucket`，但扫描没有找到资源，或者筛选条件把它们全部去掉了，所以没有写出任何文件。运行以退出码 1 结束。请按上面“没有报告文件”一行检查扫描。 |
+| `Reports written; the state snapshot or the change report had a problem (see the notes below)` | 状态快照或其列表无法保存，或者变更报告失败。摘要之后的说明会指出问题和要检查的文件夹。运行以退出码 0 结束。 |
+| 使用 `--template` 时缺少某个报告格式 | 无法写出的格式不会让另一个格式停止。日志会指出失败的格式，已写出文件的“运行备注”也会说明，运行以退出码 1 结束。 |
 | 其他用户无法打开 `bom_output/` | 输出文件只对运行 InvenTag 的用户私有。请有意识地共享它们。 |
 
 未针对 Microsoft Excel 验证：工作表名称规则。

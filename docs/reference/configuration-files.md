@@ -75,7 +75,6 @@ unquoted account ID (sample data):
 <!-- BEGIN EXAMPLE OUTPUT: error-bad-accounts -->
 
 ```text title="Output"
-inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - WARNING -    - Account 1: no credentials given; InvenTag will assume the --cross-account-role role (default InvenTagCrossAccountRole) in this account, or use the default credentials only if they belong to this account
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string

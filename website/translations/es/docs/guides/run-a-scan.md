@@ -118,7 +118,7 @@ InvenTag reutiliza un resultado guardado solo si el comando usó las mismas cuen
 y el resultado no es más antiguo que `--resume-max-age-hours` (por defecto 24, como máximo 168).
 Necesita la gestión de estado, así que `--resume` con `--disable-state-management` se detiene con código de salida 2.
 El registro dice `123456789012: reusing results scanned 2026-11-14 06:13 UTC (--resume)`, y las notas del informe
-listan cada cuenta reutilizada con su hora de análisis. Sin `--resume`, una advertencia indica que existen resultados guardados
+listan cada cuenta reutilizada con su hora de análisis. La consola nombra una cuenta reutilizada una sola vez, en esa línea del registro. Sin `--resume`, una advertencia indica que existen resultados guardados
 y que se analizan de nuevo. InvenTag borra los resultados guardados tras una ejecución en la que todas las cuentas terminan. Una cuenta cuya sesión caducó a mitad del análisis no se guarda, así que `--resume` la analiza de nuevo.
 
 ## Elige los archivos de salida {#choose-the-output-files}
@@ -130,11 +130,11 @@ y que se analizan de nuevo. InvenTag borra los resultados guardados tras una eje
 | `--template <name>` | Los mismos archivos, con el diseño de una [plantilla de informe](../templates/index.md) |
 | `--output-directory reports` | Escribe todo en `reports/` en lugar de `bom_output/` |
 
-Si no indicas ninguna opción de salida, InvenTag escribe solo Excel. Si el
+Si no indicas ninguna opción de salida, InvenTag escribe solo Excel y registra una línea, `No output formats specified. Defaulting to Excel format.` Si el
 análisis no encuentra recursos, o tus filtros los eliminan todos, InvenTag no
 escribe ningún archivo, registra `No resources to report (none found, or the filters removed all of them).` y aun así termina con el código 0. Con `--template`, escribe un informe que no lista ningún recurso. Añade `--s3-bucket`
 para subir también los archivos: consulta
-[Subir informes a S3 de forma programada](../examples/scheduled-s3-upload.md).
+[Subir informes a S3 de forma programada](../examples/scheduled-s3-upload.md). Con `--s3-bucket` y sin recursos, la ejecución dice `Nothing to upload to s3://<bucket>/<prefix>/: the run wrote no report file because there are no resources to report.` y termina con el código 1.
 
 Ejemplo de salida de una ejecución con `--template standard-bom --create-excel
 --create-word --account-regions us-east-1` (sin conexión, datos de ejemplo):
@@ -181,7 +181,6 @@ el primer comando no hace ninguna llamada a AWS. Un archivo de cuentas erróneo 
 así (datos de ejemplo):
 
 ```text title="Salida"
-inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - WARNING -    - Account 1: no credentials given; InvenTag will assume the --cross-account-role role (default InvenTagCrossAccountRole) in this account, or use the default credentials only if they belong to this account
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string

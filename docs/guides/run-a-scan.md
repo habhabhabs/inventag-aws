@@ -127,7 +127,8 @@ regions, services and filters, and the result is not older than
 `--resume-max-age-hours` (default 24, at most 168). It needs state management,
 so `--resume` with `--disable-state-management` stops with exit code 2. The log
 says `123456789012: reusing results scanned 2026-11-14 06:13 UTC (--resume)`,
-and the report's notes list each reused account with its scan time. Without
+and the report's notes list each reused account with its scan time. The
+console names a reused account once, in that log line. Without
 `--resume`, a warning says that saved results exist and are scanned again.
 InvenTag deletes the saved results after a run in which every account
 finishes.
@@ -143,12 +144,16 @@ again.
 | `--template <name>` | The same files, laid out by a [report template](../templates/index.md) |
 | `--output-directory reports` | Writes everything to `reports/` instead of `bom_output/` |
 
-If you give no output flag, InvenTag writes Excel only. If the scan finds
+If you give no output flag, InvenTag writes Excel only and logs one line,
+`No output formats specified. Defaulting to Excel format.` If the scan finds
 no resources, or your filters remove them all, InvenTag writes no file, logs
 `No resources to report (none found, or the filters removed all of them).`
 and still exits with code 0. With `--template`, it writes a report that lists
 no resources. Add `--s3-bucket` to also upload the files: see
-[Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
+[Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md). With
+`--s3-bucket` and no resources, the run says `Nothing to upload to
+s3://<bucket>/<prefix>/: the run wrote no report file because there are no
+resources to report.` and exits with code 1.
 
 Sample output of a run with `--template standard-bom --create-excel
 --create-word --account-regions us-east-1` (offline, sample data):
@@ -201,7 +206,6 @@ the first command makes no AWS call. A broken accounts file looks like this
 <!-- BEGIN EXAMPLE OUTPUT: error-bad-accounts -->
 
 ```text title="Output"
-inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - WARNING -    - Account 1: no credentials given; InvenTag will assume the --cross-account-role role (default InvenTagCrossAccountRole) in this account, or use the default credentials only if they belong to this account
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string

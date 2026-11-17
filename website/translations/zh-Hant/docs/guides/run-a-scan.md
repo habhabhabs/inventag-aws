@@ -103,7 +103,7 @@ inventag --accounts-file accounts.yaml --create-excel --resume
 
 只有當命令使用相同的帳戶、區域、服務和篩選條件，並且儲存的結果不早於 `--resume-max-age-hours`（預設 24，最多 168）時，InvenTag 才會複用它。
 它需要狀態管理，所以 `--resume` 與 `--disable-state-management` 同用會以結束代碼 2 停止。
-日誌會顯示 `123456789012: reusing results scanned 2026-11-14 06:13 UTC (--resume)`，報告的備註會列出每個被複用的帳戶及其掃描時間。
+日誌會顯示 `123456789012: reusing results scanned 2026-11-14 06:13 UTC (--resume)`，報告的備註會列出每個被複用的帳戶及其掃描時間。控制檯只在這一行日誌中指出被複用的帳戶一次。
 不帶 `--resume` 時，警告會說明存在已儲存的結果，並且它們會被重新掃描。所有帳戶都完成的執行結束後，InvenTag 會刪除已儲存的結果。一個會話在中途過期的帳戶不會被儲存，所以 `--resume` 會重新掃描它。
 
 ## 選擇輸出檔案 {#choose-the-output-files}
@@ -115,9 +115,9 @@ inventag --accounts-file accounts.yaml --create-excel --resume
 | `--template <name>` | 同樣的檔案，由[報告範本](../templates/index.md)決定版面配置 |
 | `--output-directory reports` | 把所有內容寫入 `reports/`，而不是 `bom_output/` |
 
-如果不指定輸出引數，InvenTag 只寫出 Excel。如果掃描沒有發現任何資源，或者你的過濾條件把它們全部排除了，
+如果不指定輸出引數，InvenTag 只寫出 Excel，並記錄一行 `No output formats specified. Defaulting to Excel format.`。如果掃描沒有發現任何資源，或者你的過濾條件把它們全部排除了，
 InvenTag 不會寫出任何檔案，記錄 `No resources to report (none found, or the filters removed all of them).`，並且仍以結束代碼 0 退出。使用 `--template` 時，它會寫出一份不列出任何資源的報告。新增 `--s3-bucket` 還可以上傳這些檔案：
-參見[定時把報告上傳到 S3](../examples/scheduled-s3-upload.md)。
+參見[定時把報告上傳到 S3](../examples/scheduled-s3-upload.md)。使用 `--s3-bucket` 且沒有資源時，執行會輸出 `Nothing to upload to s3://<bucket>/<prefix>/: the run wrote no report file because there are no resources to report.`，並以結束代碼 1 結束。
 
 使用 `--template standard-bom --create-excel
 --create-word --account-regions us-east-1` 執行時的範例輸出（離線，範例資料）：
@@ -161,7 +161,6 @@ inventag templates validate my-scan
 結束代碼 0 表示檔案有效。使用 `--skip-credential-validation` 時，第一條命令不發出任何 AWS 呼叫。損壞的帳戶檔案如下所示（範例資料）：
 
 ```text title="輸出"
-inventag - WARNING -   - No output format specified. Use --create-word or --create-excel
 inventag - WARNING -    - Account 1: no credentials given; InvenTag will assume the --cross-account-role role (default InvenTagCrossAccountRole) in this account, or use the default credentials only if they belong to this account
 inventag - ERROR - ❌ Accounts configuration is invalid:
 inventag - ERROR -    - Account 1: 'account_id' must be a non-empty string
