@@ -609,12 +609,55 @@ class NetworkAnalyzer:
             for region, code in sorted(self.unread_cache_regions.items())
         ]
 
+    @staticmethod
+    def _db_cluster_group_key(resource: Dict[str, Any]) -> Optional[Tuple[str, str]]:
+        """(region, DB subnet group name) of an RDS cluster row, else None."""
+        if str(resource.get("service") or "").upper() != "RDS":
+            return None
+        if resource.get("type") != "DBCluster":
+            return None
+        raw = resource.get("raw_data")
+        name = raw.get("DBSubnetGroup") if isinstance(raw, dict) else None
+        region = resource.get("region")
+        if isinstance(name, str) and name and region and region != "global":
+            return (region, name)
+        return None
+
+    @staticmethod
+    def _db_subnet_groups_of(
+        resources: List[Dict[str, Any]],
+    ) -> Dict[Tuple[str, str], Tuple[Optional[str], List[str]]]:
+        """(VPC ID, subnet IDs) of each DB subnet group row in the inventory."""
+        groups: Dict[Tuple[str, str], Tuple[Optional[str], List[str]]] = {}
+        for resource in resources:
+            if resource.get("type") != "DBSubnetGroup":
+                continue
+            raw = resource.get("raw_data")
+            if not isinstance(raw, dict) or not resource.get("region"):
+                continue
+            name = raw.get("DBSubnetGroupName") or resource.get("id")
+            subnets = [
+                item.get("SubnetIdentifier")
+                for item in raw.get("Subnets") or []
+                if isinstance(item, dict) and item.get("SubnetIdentifier")
+            ]
+            groups[(resource["region"], name)] = (raw.get("VpcId"), subnets)
+        return groups
+
     def _map_resources_to_network(self, resources: List[Dict[str, Any]]):
         """Map resources to their VPC and subnet context."""
         cache_groups = self._read_cache_subnet_groups(resources)
+        db_groups = self._db_subnet_groups_of(resources)
         for resource in resources:
             vpc_id = self._extract_vpc_id(resource)
             subnet_ids = self._extract_subnet_ids(resource)
+            cluster_group = db_groups.get(self._db_cluster_group_key(resource))
+            if cluster_group:
+                # An RDS or Aurora cluster names only its DB subnet group (A-72).
+                vpc_id = vpc_id or cluster_group[0]
+                subnet_ids = subnet_ids + [
+                    s for s in cluster_group[1] if s not in subnet_ids
+                ]
             group = cache_groups.get(self._cache_group_key(resource))
             if group:
                 # An ElastiCache cluster names only its subnet group (A-59).
