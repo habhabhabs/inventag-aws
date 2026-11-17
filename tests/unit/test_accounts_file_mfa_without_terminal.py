@@ -35,7 +35,7 @@ region = us-east-1
 """
 
 
-def child(tmp_path, stdin):
+def child(tmp_path, stdin, extra=("--create-excel",)):
     (tmp_path / "aws-config").write_text(CONFIG)
     (tmp_path / "accounts.json").write_text(
         json.dumps(
@@ -70,7 +70,7 @@ def child(tmp_path, stdin):
                 "inventag",
                 "--accounts-file",
                 "accounts.json",
-                "--create-excel",
+                *extra,
             ],
             stdin=stdin,
             stdout=sink,
@@ -105,5 +105,13 @@ WANTED = (
 def test_an_mfa_profile_entry_fails_at_once_with_a_message(tmp_path, stdin):
     code, out = child(tmp_path, stdin)
     assert code == 1, out  # no account could be used: 1, as before
+    assert WANTED in out, out
+    assert "Password input may be echoed" not in out
+
+
+@pytest.mark.parametrize("stdin", [subprocess.DEVNULL, subprocess.PIPE])
+def test_validate_credentials_gives_the_same_message(tmp_path, stdin):
+    code, out = child(tmp_path, stdin, extra=("--validate-credentials",))
+    assert code == 1, out  # not valid: 1, as before
     assert WANTED in out, out
     assert "Password input may be echoed" not in out
