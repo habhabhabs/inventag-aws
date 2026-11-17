@@ -130,3 +130,19 @@ def test_close_without_a_monitor_does_nothing():
     )
     with patch("boto3.Session"):
         ComplianceManager(config).close()
+
+
+def test_no_monitor_thread_is_left_after_the_manager_tests():
+    """Runs the manager's own tests without the suite's stray-thread fixture."""
+    code = (
+        "import sys, threading, unittest\n"
+        "from tests.unit.test_compliance_manager import TestComplianceManager\n"
+        "suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestComplianceManager)\n"
+        "result = unittest.TextTestRunner(stream=open('/dev/null', 'w')).run(suite)\n"
+        "left = [t.name for t in threading.enumerate() if "
+        "'_performance_monitoring_loop' in t.name]\n"
+        "print('RAN', result.testsRun, 'FAILED', len(result.failures + result.errors),"
+        " 'LEFT', len(left))\n"
+    )
+    done = child(["-c", code])
+    assert "FAILED 0 LEFT 0" in done.stdout, done.stdout + done.stderr[-300:]
