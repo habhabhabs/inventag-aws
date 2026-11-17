@@ -363,3 +363,31 @@ def test_the_network_sheet_stays_and_a_run_note_names_the_unread_groups(
         "(EndpointConnectionError), so ElastiCache clusters there are not counted "
         "in the Network Analysis sheet."
     ) in cells, cells
+
+
+def test_a_report_that_runs_its_own_analysis_keeps_the_sheet_and_gets_the_note(
+    estate, tmp_path
+):
+    """Review H2, the converter's own analysis (a per-account report, or rows
+    the processor did not analyse): the same sheet and note."""
+    from openpyxl import load_workbook
+
+    from inventag.reporting.converter import BOMConverter
+
+    converter = BOMConverter(session=_NoCacheEndpoint())
+    converter.analyze_network = True
+    converter.run_notes = ["an earlier note"]
+    path = tmp_path / "own.xlsx"
+    converter.generate_excel_bom([dict(r) for r in estate["rows"]], str(path))
+    book = load_workbook(path)
+    assert "Network Analysis" in book.sheetnames
+    cells = [
+        str(c)
+        for row in book["Summary"].iter_rows(values_only=True)
+        for c in row
+        if c is not None
+    ]
+    assert "an earlier note" in cells
+    assert any(
+        c.startswith("ElastiCache subnet groups could not be read") for c in cells
+    )
