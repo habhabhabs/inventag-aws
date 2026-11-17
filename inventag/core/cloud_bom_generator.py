@@ -922,6 +922,26 @@ class CloudBOMGenerator:
             f"read, so those rows have some fields missing: {text}."
         )
 
+    def _filter_texts(self) -> List[str]:
+        """The service and tag filters of this run, as the options that set
+        them (A-20); empty when no filter is set."""
+        services = sorted(
+            {
+                str(s)
+                for ctx in self.account_contexts.values()
+                for s in (ctx.credentials.services or [])
+            }
+        )
+        tags: Dict[str, Any] = {}
+        for ctx in self.account_contexts.values():
+            tags.update(ctx.credentials.tags or {})
+        texts = []
+        if services:
+            texts.append(f"--account-services {','.join(services)}")
+        if tags:
+            texts.append(f"--account-tags {json.dumps(tags, sort_keys=True)}")
+        return texts
+
     def _notes_for_state(self, state: Dict[str, Any]) -> List[str]:
         """Run notes for a snapshot, an index or a change report that could
         not be made (A-18). A snapshot left out on purpose (nothing was read,
@@ -2172,6 +2192,15 @@ class CloudBOMGenerator:
                     self.logger.warning(
                         "No resources to report: nothing could be read (see the "
                         "messages above). No report file was written."
+                    )
+                elif self._filter_texts():
+                    filters = self._filter_texts()
+                    self.logger.warning(
+                        "No resources to report: none found with "
+                        f"{' and '.join(filters)} (from the command line or the "
+                        "accounts file). No report file was written; run without "
+                        f"{'that filter' if len(filters) == 1 else 'those filters'} "
+                        "to see every resource."
                     )
                 else:
                     self.logger.warning(
