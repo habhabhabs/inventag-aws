@@ -25,6 +25,7 @@ from .comprehensive_discovery import ComprehensiveAWSDiscovery
 from .arn_utils import build_arn, normalize_arn
 from .aws_clients import create_client
 from .coverage import billing_failure_message, outcome_for_error
+from ..security.read_only_guard import ReadOnlyGuard
 from ..security.secret_values import mask_secret_values
 from .service_filter import (
     canonical_service,
@@ -280,12 +281,11 @@ class AWSResourceInventory:
             initial_resource_count = len(self.resources)
 
             if self.use_optimized_discovery:
-                spinner = ProgressSpinner("🚀 Optimized intelligent resource discovery")
-                spinner.start()
-                try:
-                    self._perform_optimized_discovery()
-                finally:
-                    spinner.stop()
+                # The optimized engine is not run: every one of its operations
+                # failed on an attribute error before any API call, and no
+                # report used its result (D-02). The comprehensive step below
+                # lists the services.
+                self.logger.debug("The optimized discovery engine is not run.")
             else:
                 spinner = ProgressSpinner(
                     "🧠 AI-capable intelligent resource discovery"
@@ -296,10 +296,11 @@ class AWSResourceInventory:
                 finally:
                     spinner.stop()
 
-            intelligent_resource_count = len(self.resources)
-            self.logger.info(
-                f"Intelligent discovery found {intelligent_resource_count - initial_resource_count} resources with enhanced detection"
-            )
+            if not self.use_optimized_discovery:
+                intelligent_resource_count = len(self.resources)
+                self.logger.info(
+                    f"Intelligent discovery found {intelligent_resource_count - initial_resource_count} resources with enhanced detection"
+                )
 
         # Step 3: Comprehensive discovery - service-specific APIs first, then ResourceGroupsTagging for enrichment
         if self.use_comprehensive_discovery:
@@ -3367,10 +3368,26 @@ class AWSResourceInventory:
 
         self.logger.info(f"Resources saved to {filename}")
 
-    def upload_to_s3(self, bucket_name: str, key: str, format_type: str = "json"):
-        """Upload resources to S3."""
+    def upload_to_s3(
+        self,
+        bucket_name: str,
+        key: str,
+        format_type: str = "json",
+        allow_write: bool = False,
+    ):
+        """Upload resources to S3 (a write: ``s3:PutObject``).
+
+        InvenTag is read-only by default, so this refuses unless the caller
+        passes ``allow_write=True``. The object is encrypted with SSE-S3.
+        """
+        if not allow_write:
+            raise PermissionError(
+                "upload_to_s3 writes an object to S3 and is disabled by default; "
+                "call it with allow_write=True to upload to a bucket you choose"
+            )
         try:
             s3 = self.session.client("s3")
+            ReadOnlyGuard.allow_on_client(s3, {"PutObject"}, bucket=bucket_name)
 
             if format_type.lower() == "json":
                 content = json.dumps(self.resources, indent=2, default=str)
@@ -3387,7 +3404,11 @@ class AWSResourceInventory:
                 raise ValueError("Format must be 'json' or 'yaml'")
 
             s3.put_object(
-                Bucket=bucket_name, Key=key, Body=content, ContentType=content_type
+                Bucket=bucket_name,
+                Key=key,
+                Body=content,
+                ContentType=content_type,
+                ServerSideEncryption="AES256",
             )
 
             self.logger.info(f"Resources uploaded to s3://{bucket_name}/{key}")
