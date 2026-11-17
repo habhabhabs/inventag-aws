@@ -180,3 +180,33 @@ def test_with_the_default_limit_cost_explorer_keeps_botocores_settings(
         == 0
     )
     assert seen and all(s == (60, 60) for s in seen), seen
+
+
+def test_a_cost_explorer_answer_of_three_seconds_is_read_under_a_60_second_limit(
+    aws, tmp_path, monkeypatch, caplog  # noqa: F811
+):
+    """Review M3: under the shortest allowed limit (60 s) a Cost Explorer that
+    answers in 3 s is slow but working, as in v1.2.1: its answer is read, no
+    timeout warning or note, exit 0. (A tenth of the limit gave 1.5 s per step,
+    so the answer was lost.)"""
+    import tests.unit.test_slow_cost_explorer_keeps_the_account as this
+
+    monkeypatch.setattr(this, "DELAY", 3.0)
+    caplog.set_level(logging.INFO)
+    clock = FakeClock()
+    short_limit(monkeypatch, clock)
+    slow_cost_explorer(monkeypatch, clock)
+    assert run_cli(*args(accounts_file(tmp_path, [GOOD]))) == 0
+    assert not [m for m in logged(caplog) if "did not answer in time" in m]
+    notes = run_notes(reports(tmp_path / "out")[0])
+    assert not [n for n in notes if "Cost Explorer" in n], notes
+
+
+def test_the_cost_explorer_bound_has_a_floor_and_stays_a_third_of_the_limit():
+    """The bound per step is at least 5 s; two reads of two attempts stay
+    within a third of the shortest allowed limit (60 s)."""
+    config = cbg._cost_explorer_config(60)
+    assert config.read_timeout == 5.0 and config.connect_timeout == 5.0
+    assert 2 * 2 * config.read_timeout <= 60 / 3
+    assert cbg._cost_explorer_config(1000).read_timeout == 25.0  # limit / 40
+    assert cbg._cost_explorer_config(1800) is None  # default limit: botocore's
