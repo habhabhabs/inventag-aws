@@ -166,7 +166,7 @@ def _mfa_serial_without_terminal(session) -> Optional[str]:
         serial = session._session.get_scoped_config().get("mfa_serial")
     except Exception:
         return None
-    if not serial:
+    if not isinstance(serial, str) or not serial:
         return None
     try:
         if sys.stdin is not None and sys.stdin.isatty():

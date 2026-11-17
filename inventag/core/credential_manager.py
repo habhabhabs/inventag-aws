@@ -31,7 +31,12 @@ import os
 from botocore.config import Config
 
 from ..timeutil import parse_timestamp
-from .cloud_bom_generator import AccountCredentials, AccountContext
+from .cloud_bom_generator import (
+    AccountContext,
+    AccountCredentials,
+    _mfa_serial_without_terminal,
+    mfa_without_terminal_message,
+)
 from ..security.arn import (
     build_role_arn,
     is_valid_account_id,
@@ -503,9 +508,10 @@ class CredentialManager:
             )
 
         except Exception as e:
-            result.error_message = str(e)
+            result.error_message = str(e) or type(e).__name__
             self.logger.warning(
-                f"Credential validation failed for account {credentials.account_id}: {e}"
+                f"Credential validation failed for account {credentials.account_id}: "
+                f"{result.error_message}"
             )
 
         # Cache result
@@ -782,7 +788,16 @@ class CredentialManager:
         register_secrets([credentials.secret_access_key, credentials.session_token])
         # Try profile first
         if credentials.profile_name:
-            return boto3.Session(profile_name=credentials.profile_name)
+            session = boto3.Session(profile_name=credentials.profile_name)
+            serial = _mfa_serial_without_terminal(session)
+            if serial:
+                # botocore would ask for the code on stdin (A-11, A-65).
+                raise ValueError(
+                    mfa_without_terminal_message(
+                        credentials.profile_name, credentials.account_id, serial
+                    )
+                )
+            return session
 
         # Try direct credentials
         if credentials.access_key_id and credentials.secret_access_key:
