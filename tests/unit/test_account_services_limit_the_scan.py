@@ -128,3 +128,26 @@ def test_without_a_filter_every_service_is_listed_as_before(estate, calls):
     disc, rows = _scan()
     assert {"ec2", "s3", "sqs", "sns"} <= {service for service, _ in calls}
     assert not [e for e in disc.coverage.entries if e.outcome == "out_of_scope"]
+
+
+def test_the_change_report_does_not_read_out_of_scope_as_a_failure():
+    from inventag.state.delta_detector import _RunScope
+
+    entry = dict(
+        account_id="111122223333",
+        region="global",
+        source="service-api",
+        service="ec2",
+        resource_type="",
+        operation="",
+        outcome="out_of_scope",
+        count=0,
+        error_code="",
+        seconds=0.0,
+    )
+    scope = _RunScope({"coverage": [entry], "services": {"111122223333": ["SQS"]}})
+    assert scope.failed == {}
+    resource = {"service": "EC2", "region": "us-east-1", "account_id": "111122223333"}
+    assert (
+        scope.failed_listing(resource, "arn:aws:ec2:us-east-1:111122223333:x") is None
+    )
