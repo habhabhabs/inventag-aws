@@ -397,6 +397,8 @@ class _RunScope:
         self.listed: Set[Tuple[str, str, str]] = set()
         self.tagging_failed: Dict[Tuple[str, str], str] = {}
         self.tagging_read: Set[Tuple[str, str]] = set()
+        self.out_of_scope: Set[Tuple[str, str]] = set()
+        self.listed_services: Set[Tuple[str, str]] = set()
         for entry in current_run.get("coverage") or []:
             if not isinstance(entry, dict):
                 continue
@@ -414,8 +416,16 @@ class _RunScope:
             if source != "service-api":
                 # Billing (Cost Explorer) and anything else is not a listing.
                 continue
+            if outcome == "out_of_scope":
+                # Left out by the service filter (senior D's ledger entry):
+                # outside the scope of this run, not a failed listing.
+                self.out_of_scope.add(
+                    (account, canonical_service(entry.get("service")))
+                )
+                continue
             unit = (account, canonical_service(entry.get("service")), region)
             self.listed.add(unit)
+            self.listed_services.add(unit[:2])
             if failed:
                 self.failed.setdefault(unit, outcome)
         self.regions = {
@@ -458,6 +468,20 @@ class _RunScope:
                 return f"{service} in {listed_region} of account {account}: {outcome}"
         return None
 
+    def _out_of_scope(self, resource: Dict, key: str, account: str) -> bool:
+        """True when the service filter left the resource's service out.
+
+        The row's own service decides when the ledger knows it (VPC rows have
+        ec2 ARNs but their own ``vpc`` listing); else its ARN service.
+        """
+        own = canonical_service(resource.get("service"))
+        if (account, own) in self.out_of_scope:
+            return True
+        if (account, own) in self.listed_services:
+            return False
+        parsed = parse_arn(resource.get("arn") or key) or {}
+        return (account, canonical_service(parsed.get("service"))) in self.out_of_scope
+
     def tagging_not_read(self, resource: Dict, key: str) -> Optional[str]:
         """Why the tags of ``resource`` were not read in this run (or None)."""
         account = self._account(resource, key)
@@ -472,7 +496,10 @@ class _RunScope:
         account = self._account(resource, key)
         region = str(resource.get("region") or "")
         allowed = self.services.get(account)
-        if allowed and not service_matches(resource.get("service"), allowed):
+        outside = bool(
+            allowed and not service_matches(resource.get("service"), allowed)
+        ) or self._out_of_scope(resource, key, account)
+        if outside:
             return (
                 f"service {resource.get('service')} of account {account} "
                 "was not in this run's services"

@@ -76,3 +76,26 @@ def test_out_of_scope_in_units_not_read_is_not_a_failure(tmp_path):
     report = DeltaDetector().detect_changes_by_state_id(sm, first, second)
     assert [c.resource_id for c in report.added_resources] == ["q1"]
     assert "previous_run_incomplete" not in report.change_statistics
+
+
+def test_the_row_s_own_service_decides_before_the_arn_service():
+    vpc = {
+        "service": "VPC",
+        "type": "VPC",
+        "id": "vpc-1",
+        "arn": f"arn:aws:ec2:{REG}:{ACC}:vpc/vpc-1",
+        "region": REG,
+        "account_id": ACC,
+        "source_account_id": ACC,
+        "source": "service-api",
+        "tags": {},
+    }
+    run = {
+        "coverage": [
+            _entry("ec2", "out_of_scope", region="global"),
+            _entry("vpc", "ok"),
+        ],
+        "regions": {ACC: [REG]},
+    }
+    report = DeltaDetector().detect_changes([vpc], [], "s1", "s2", current_run=run)
+    assert [c.resource_id for c in report.removed_resources] == ["vpc-1"]
