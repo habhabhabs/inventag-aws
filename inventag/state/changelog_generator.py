@@ -361,6 +361,10 @@ class ChangelogGenerator:
             state_comparison["previous_run_incomplete"] = statistics[
                 "previous_run_incomplete"
             ]
+        if statistics.get("new_fields_not_compared"):
+            state_comparison["new_fields_not_compared"] = statistics[
+                "new_fields_not_compared"
+            ]
 
         # Create changelog
         changelog = Changelog(
@@ -1102,6 +1106,10 @@ class ChangelogGenerator:
         if changelog.state_comparison.get("previous_run_incomplete"):
             lines.append(
                 f"**Note:** {changelog.state_comparison['previous_run_incomplete']}"
+            )
+        if changelog.state_comparison.get("new_fields_not_compared"):
+            lines.append(
+                f"**Note:** {changelog.state_comparison['new_fields_not_compared']}"
             )
         lines.append("")
 

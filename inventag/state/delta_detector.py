@@ -20,6 +20,7 @@ from ..discovery.service_filter import (
     canonical_service_set,
     service_matches,
 )
+from .._version import __version__ as _RUNNING_VERSION
 from .state_manager import SNAPSHOT_VERSION, StateLoadError
 
 logger = logging.getLogger(__name__)
@@ -619,6 +620,30 @@ class _PreviousUnread:
         )
 
 
+_NOT_GIVEN = object()
+
+
+def _version_tuple(value: Any) -> Optional[Tuple[int, ...]]:
+    """``"1.2.1"`` -> ``(1, 2, 1)``; None for anything else."""
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return tuple(int(part) for part in value.split("."))
+    except ValueError:
+        return None
+
+
+def _raw_field(path: str) -> Optional[str]:
+    """``raw_data.<field>...`` -> ``<field>`` (None for other paths)."""
+    if not path.startswith("raw_data."):
+        return None
+    rest = path[len("raw_data.") :]
+    for i, ch in enumerate(rest):
+        if ch in ".[":
+            return rest[:i]
+    return rest
+
+
 def _is_tag_path(change: "AttributeChange") -> bool:
     """True for a change of the ``tags`` field, one tag, or the ``tagged`` flag."""
     path = change.attribute_path
@@ -752,6 +777,7 @@ class DeltaDetector:
         skip_accounts: Optional[Dict[str, str]] = None,
         current_run: Optional[Dict[str, Any]] = None,
         previous_units_not_read: Any = None,
+        previous_inventag_version: Any = _NOT_GIVEN,
     ) -> DeltaReport:
         """
         Detect comprehensive changes between two resource states.
@@ -776,6 +802,12 @@ class DeltaDetector:
                 previous snapshot (decision 6): resources of those units that
                 appear now are "not compared", not "added". None or missing:
                 as before.
+            previous_inventag_version: ``metadata.tags.inventag_version`` of
+                the previous snapshot (None when it has none). When it is
+                absent or older than this version, a ``raw_data`` field that no
+                previous row of the same service and type had is a field this
+                version reads for the first time: not a modification. Not
+                given: every field is compared, as before.
 
         Returns:
             DeltaReport with comprehensive change analysis
@@ -820,6 +852,17 @@ class DeltaDetector:
         modified_resources, unchanged_resources = self._detect_modified_resources(
             old_resources_map, new_resources_map, route_changed
         )
+        new_fields_line = None
+        if previous_inventag_version is not _NOT_GIVEN:
+            modified_resources, newly_unchanged, new_fields_line = (
+                self._leave_out_new_fields(
+                    previous_inventag_version,
+                    modified_resources,
+                    old_resources_map,
+                    new_resources_map,
+                )
+            )
+            unchanged_resources = unchanged_resources + newly_unchanged
         not_compared: Dict[str, int] = {}
         if current_run is not None:
             removed_resources, modified_resources = self._leave_out_unread(
@@ -890,6 +933,8 @@ class DeltaDetector:
         }
         if not_compared:
             change_statistics["not_compared"] = dict(sorted(not_compared.items()))
+        if new_fields_line:
+            change_statistics["new_fields_not_compared"] = new_fields_line
         if previous_unread.line():
             change_statistics["previous_run_incomplete"] = previous_unread.line()
 
@@ -959,6 +1004,78 @@ class DeltaDetector:
             else:
                 kept_modified.append(change)
         return kept_removed, kept_modified
+
+    def _leave_out_new_fields(
+        self,
+        previous_version: Any,
+        modified: List[ResourceChange],
+        old_map: Dict[str, Dict],
+        new_map: Dict[str, Dict],
+    ) -> Tuple[List[ResourceChange], List[ResourceChange], Optional[str]]:
+        """Drop ``raw_data`` fields this InvenTag version reads for the first time.
+
+        Only when the previous snapshot has no version or an older one, and
+        only fields that no previous row of the same service and type had.
+        A resource with nothing else changed becomes unchanged.
+        """
+        previous = _version_tuple(previous_version)
+        running = _version_tuple(_RUNNING_VERSION)
+        if previous is not None and (running is None or previous >= running):
+            return modified, [], None
+        known: Dict[Tuple[str, str], Set[str]] = {}
+        for row in old_map.values():
+            raw = row.get("raw_data") if isinstance(row, dict) else None
+            kind = (str(row.get("service", "")), str(row.get("type", "")))
+            fields = known.setdefault(kind, set())
+            if isinstance(raw, dict):
+                fields.update(str(k) for k in raw)
+        dropped: Set[Tuple[str, str, str]] = set()
+        kept_modified: List[ResourceChange] = []
+        unchanged: List[ResourceChange] = []
+        for change in modified:
+            new_row = new_map[change.resource_arn]
+            kind = (str(new_row.get("service", "")), str(new_row.get("type", "")))
+            seen = known.get(kind, set())
+            keep = []
+            for attr in change.attribute_changes:
+                field_name = _raw_field(attr.attribute_path)
+                if (
+                    field_name is not None
+                    and field_name not in seen
+                    and attr.change_type == ChangeType.ADDED
+                ):
+                    dropped.add(kind + (field_name,))
+                    continue
+                keep.append(attr)
+            if len(keep) == len(change.attribute_changes):
+                kept_modified.append(change)
+                continue
+            if not any(_raw_field(a.attribute_path) for a in keep):
+                keep = [a for a in keep if a.attribute_path != "raw_data"]
+            if keep:
+                change.attribute_changes = keep
+                change.severity = self._determine_change_severity(keep)
+                kept_modified.append(change)
+            else:
+                unchanged.append(
+                    ResourceChange(
+                        resource_arn=change.resource_arn,
+                        resource_id=change.resource_id,
+                        service=change.service,
+                        resource_type=change.resource_type,
+                        region=change.region,
+                        change_type=ChangeType.UNCHANGED,
+                        severity=ChangeSeverity.INFO,
+                    )
+                )
+        if not dropped:
+            return modified, [], None
+        written_by = previous_version if previous is not None else "an earlier version"
+        line = (
+            f"{len(dropped)} field(s) that this InvenTag version reads for the first "
+            f"time were not compared (snapshot written by {written_by})."
+        )
+        return kept_modified, unchanged, line
 
     def _leave_out_unseen_before(
         self,
@@ -1107,7 +1224,16 @@ class DeltaDetector:
             skip_accounts=skip,
             current_run=current_run,
             previous_units_not_read=self._units_not_read(previous_state),
+            previous_inventag_version=self._inventag_version(previous_state),
         )
+
+    @staticmethod
+    def _inventag_version(snapshot) -> Any:
+        """``metadata.tags.inventag_version`` of a snapshot (None when absent)."""
+        tags = getattr(snapshot.metadata, "tags", None)
+        if not isinstance(tags, dict):
+            return None
+        return tags.get("inventag_version")
 
     @staticmethod
     def _units_not_read(snapshot) -> Any:

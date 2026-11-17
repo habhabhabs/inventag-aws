@@ -17,6 +17,7 @@ from typing import Dict, Iterable, List, Optional, Any, Tuple
 from dataclasses import dataclass, asdict, fields
 import logging
 
+from .._version import __version__
 from ..security.safe_output import ensure_private_dir, open_private, write_safe_csv
 from ..security.secret_values import MASK, mask_secret_values
 
@@ -344,6 +345,12 @@ class StateManager:
         if self._unindexed_files():
             self._reconcile_index()
         previous_id = max(self.metadata_index) if self.metadata_index else None
+
+        # Which InvenTag wrote the snapshot (additive key, schema stays 1.1):
+        # the next comparison can tell a field this version reads for the first
+        # time from a change. A caller's own value is kept.
+        tags = dict(tags or {})
+        tags.setdefault("inventag_version", __version__)
 
         failed = sorted({str(a) for a in (accounts_failed or [])})
         if accounts_scanned is not None:
