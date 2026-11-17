@@ -357,6 +357,10 @@ class ChangelogGenerator:
                 + "; ".join(f"{reason}: {n}" for reason, n in not_compared.items())
                 + ")"
             )
+        if statistics.get("previous_run_incomplete"):
+            state_comparison["previous_run_incomplete"] = statistics[
+                "previous_run_incomplete"
+            ]
 
         # Create changelog
         changelog = Changelog(
@@ -1094,6 +1098,10 @@ class ChangelogGenerator:
         if changelog.state_comparison.get("resources_not_compared"):
             lines.append(
                 f"**Resources not compared:** {changelog.state_comparison['resources_not_compared']}"
+            )
+        if changelog.state_comparison.get("previous_run_incomplete"):
+            lines.append(
+                f"**Note:** {changelog.state_comparison['previous_run_incomplete']}"
             )
         lines.append("")
 

@@ -372,6 +372,92 @@ def _set_text(items) -> str:
     return "{" + ", ".join(sorted(repr(i) for i in items)) + "}"
 
 
+class _PreviousUnread:
+    """Listings the previous run did not read (``metadata.tags.units_not_read``).
+
+    Decision 6: the snapshot records a list of ``{account, service, region,
+    source, outcome}``. A resource of such a unit that appears in this run was
+    not seen by the previous run, so it is "not compared", not "added". A key
+    that is missing or not a list gives an empty set (v1.2.1 behaviour);
+    malformed entries are skipped.
+    """
+
+    def __init__(self, units: Any, skipped: Dict[str, str]):
+        self.service: Dict[Tuple[str, str, str], str] = {}
+        self.tagging: Dict[Tuple[str, str], str] = {}
+        self.named: Dict[Tuple[str, str, str], str] = {}
+        if not isinstance(units, list):
+            return
+        for unit in units:
+            if not isinstance(unit, dict):
+                continue
+            account = str(unit.get("account") or "")
+            region = str(unit.get("region") or "")
+            outcome = str(unit.get("outcome") or "")
+            if not account or not region or outcome not in _FAILED_OUTCOMES:
+                continue
+            if account in skipped:
+                continue
+            if unit.get("source") == "tagging-api":
+                self.tagging.setdefault((account, region), outcome)
+                self.named.setdefault((account, "tagging API", region), outcome)
+                continue
+            if unit.get("source") != "service-api":
+                continue
+            service = canonical_service(unit.get("service"))
+            if not service:
+                continue
+            self.service.setdefault((account, service, region), outcome)
+            self.named.setdefault((account, str(unit.get("service")), region), outcome)
+
+    def __bool__(self) -> bool:
+        return bool(self.service or self.tagging)
+
+    def added_reason(self, resource: Dict, key: str) -> Optional[str]:
+        """Why a resource that appears in this run is not compared (or None)."""
+        account = _RunScope._account(resource, key)
+        region = str(resource.get("region") or "")
+        parsed = parse_arn(resource.get("arn") or key) or {}
+        services = [canonical_service(resource.get("service"))]
+        services.append(canonical_service(parsed.get("service")))
+        for service in services:
+            for listed_region in (region, "global"):
+                outcome = self.service.get((account, service, listed_region))
+                if service and outcome:
+                    return (
+                        f"{service} in {listed_region} of account {account} was not "
+                        f"read by the previous run ({outcome})"
+                    )
+        if _found_by_tagging_only(resource):
+            return self.tags_reason(resource, key)
+        return None
+
+    def tags_reason(self, resource: Dict, key: str) -> Optional[str]:
+        """Why the previous tags of ``resource`` are unknown (or None)."""
+        account = _RunScope._account(resource, key)
+        region = str(resource.get("region") or "")
+        outcome = self.tagging.get((account, region))
+        if outcome:
+            return (
+                f"tagging API in {region} of account {account} was not read by "
+                f"the previous run ({outcome})"
+            )
+        return None
+
+    def line(self) -> Optional[str]:
+        """The change report's line that names the units (None if none)."""
+        if not self.named:
+            return None
+        parts = [
+            f"{service} in {region} of account {account} ({outcome})"
+            for (account, service, region), outcome in sorted(self.named.items())
+        ]
+        return (
+            f"The previous run did not read {'; '.join(parts)}. Resources found "
+            "there in this run are not compared."
+        )
+
+
 def _is_tag_path(change: "AttributeChange") -> bool:
     """True for a change of the ``tags`` field or of one tag."""
     path = change.attribute_path
@@ -500,6 +586,7 @@ class DeltaDetector:
         state2_id: str,
         skip_accounts: Optional[Dict[str, str]] = None,
         current_run: Optional[Dict[str, Any]] = None,
+        previous_units_not_read: Any = None,
     ) -> DeltaReport:
         """
         Detect comprehensive changes between two resource states.
@@ -520,6 +607,10 @@ class DeltaDetector:
                 ``regions`` (account ID -> regions scanned) and ``services``
                 (account ID -> the account's service filter; empty means
                 all). None: every missing resource is "removed", as before.
+            previous_units_not_read: ``metadata.tags.units_not_read`` of the
+                previous snapshot (decision 6): resources of those units that
+                appear now are "not compared", not "added". None or missing:
+                as before.
 
         Returns:
             DeltaReport with comprehensive change analysis
@@ -574,6 +665,15 @@ class DeltaDetector:
                 new_resources_map,
                 not_compared,
             )
+        previous_unread = _PreviousUnread(previous_units_not_read, skipped)
+        if previous_unread:
+            added_resources, modified_resources = self._leave_out_unseen_before(
+                previous_unread,
+                added_resources,
+                modified_resources,
+                new_resources_map,
+                not_compared,
+            )
 
         # Analyze compliance changes
         compliance_changes = self._analyze_compliance_changes(
@@ -625,6 +725,8 @@ class DeltaDetector:
         }
         if not_compared:
             change_statistics["not_compared"] = dict(sorted(not_compared.items()))
+        if previous_unread.line():
+            change_statistics["previous_run_incomplete"] = previous_unread.line()
 
         return DeltaReport(
             state1_id=state1_id,
@@ -692,6 +794,45 @@ class DeltaDetector:
             else:
                 kept_modified.append(change)
         return kept_removed, kept_modified
+
+    def _leave_out_unseen_before(
+        self,
+        previous: "_PreviousUnread",
+        added: List[ResourceChange],
+        modified: List[ResourceChange],
+        new_map: Dict[str, Dict],
+        not_compared: Dict[str, int],
+    ) -> Tuple[List[ResourceChange], List[ResourceChange]]:
+        """Drop the changes that come from what the previous run did not read.
+
+        An added resource of a unit the previous run did not read; tag
+        changes of a resource whose region's Tagging API the previous run did
+        not read. Counts per reason go into ``not_compared``.
+        """
+        kept_added = []
+        for change in added:
+            reason = previous.added_reason(
+                new_map[change.resource_arn], change.resource_arn
+            )
+            if reason:
+                not_compared[reason] = not_compared.get(reason, 0) + 1
+            else:
+                kept_added.append(change)
+        kept_modified = []
+        for change in modified:
+            reason = previous.tags_reason(
+                new_map[change.resource_arn], change.resource_arn
+            )
+            if reason:
+                kept = [c for c in change.attribute_changes if not _is_tag_path(c)]
+                if not kept:
+                    not_compared[reason] = not_compared.get(reason, 0) + 1
+                    continue
+                if len(kept) < len(change.attribute_changes):
+                    change.attribute_changes = kept
+                    change.severity = self._determine_change_severity(kept)
+            kept_modified.append(change)
+        return kept_added, kept_modified
 
     @staticmethod
     def _account_of(resource: Dict) -> str:
@@ -800,7 +941,16 @@ class DeltaDetector:
             state2_id=current_state_id,
             skip_accounts=skip,
             current_run=current_run,
+            previous_units_not_read=self._units_not_read(previous_state),
         )
+
+    @staticmethod
+    def _units_not_read(snapshot) -> Any:
+        """``metadata.tags.units_not_read`` of a snapshot (None when absent)."""
+        tags = getattr(snapshot.metadata, "tags", None)
+        if not isinstance(tags, dict):
+            return None
+        return tags.get("units_not_read")
 
     @staticmethod
     def _warn_if_older_format(state_id: str, snapshot) -> None:
