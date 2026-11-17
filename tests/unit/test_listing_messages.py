@@ -165,9 +165,10 @@ def test_inventory_says_one_true_line_for_a_cost_explorer_failure(
     inv.logger = logging.getLogger("test.inventory.billing")
     inv.coverage = CoverageLedger("111122223333")
     inv.enable_billing_validation = True
-    monkeypatch.setattr(
-        inventory_module, "create_client", lambda *a, **k: _billing_client(answer)
+    inv.comprehensive_discovery = ComprehensiveAWSDiscovery(
+        session=mock.MagicMock(), regions=[R], enable_billing_validation=True
     )
+    inv.comprehensive_discovery._client = lambda *a, **k: _billing_client(answer)
     with caplog.at_level(logging.WARNING):
         inv._discover_services_via_billing()
     assert _warnings(caplog) == [text]
