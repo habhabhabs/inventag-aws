@@ -165,6 +165,7 @@ class ProductionSafetyMonitor:
         # Performance monitoring thread
         self.monitoring_active = False
         self.monitoring_thread = None
+        self._stop_event = threading.Event()
 
         # Circuit breaker state
         self.circuit_breaker_state = defaultdict(
@@ -428,6 +429,7 @@ class ProductionSafetyMonitor:
             return
 
         self.monitoring_active = True
+        self._stop_event.clear()
         self.monitoring_thread = threading.Thread(
             target=self._performance_monitoring_loop, daemon=True
         )
@@ -437,6 +439,7 @@ class ProductionSafetyMonitor:
     def stop_performance_monitoring(self):
         """Stop background performance monitoring."""
         self.monitoring_active = False
+        self._stop_event.set()  # wakes the loop out of its wait at once
         if self.monitoring_thread:
             self.monitoring_thread.join(timeout=5)
         self.logger.info("Performance monitoring stopped")
@@ -501,11 +504,11 @@ class ProductionSafetyMonitor:
                 for metric in metrics:
                     metrics_logger.info(json.dumps(asdict(metric), default=str))
 
-                time.sleep(30)  # Monitor every 30 seconds
+                self._stop_event.wait(30)  # Monitor every 30 seconds
 
             except Exception as e:
                 self.logger.error(f"Error in performance monitoring: {e}")
-                time.sleep(60)  # Wait longer on error
+                self._stop_event.wait(60)  # Wait longer on error
 
     def record_operation(
         self, operation: str, service: str, duration: float, success: bool

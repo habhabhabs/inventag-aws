@@ -37,6 +37,7 @@ class TestComplianceManager(unittest.TestCase):
             patch("psutil.disk_usage"),
         ):
             self.manager = ComplianceManager(self.config)
+        self.addCleanup(self.manager.close)
 
     def test_initialization(self):
         """Test compliance manager initialization."""
@@ -279,6 +280,7 @@ class TestComplianceManager(unittest.TestCase):
             patch("psutil.disk_usage"),
         ):
             manager = ComplianceManager(config)
+        self.addCleanup(manager.close)
 
         mock_operation = Mock(return_value={"result": "success"})
 

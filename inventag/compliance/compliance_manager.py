@@ -89,6 +89,11 @@ class ComplianceManager:
 
         self.logger.info("Compliance manager initialized with comprehensive monitoring")
 
+    def close(self) -> None:
+        """Stop the monitor's background thread. Safe to call more than once."""
+        if self.production_monitor is not None:
+            self.production_monitor.stop_performance_monitoring()
+
     def _setup_logging(self) -> logging.Logger:
         """Set up compliance management logging."""
         logger = logging.getLogger(f"{__name__}.compliance_manager")
