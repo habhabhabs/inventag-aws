@@ -145,3 +145,14 @@ def test_a_changed_vpc_lists_its_members_not_its_plumbing():
         _estate(), _estate(vpc_tags={"Name": "vpc-1", "Env": "x"}), "s1", "s2"
     )
     assert _related(report, VPC) == [I1, I2, FN, DB, I1, I2, FN, DB]
+
+
+def test_a_related_resource_is_listed_once():
+    """Found by both passes (it depends on the change and the change affects
+    it), it is still one resource: the count in the change log is true."""
+    report = DeltaDetector().detect_changes(
+        _estate(), _estate(sg1_tags={"Name": "sg-1", "Env": "x"}), "s1", "s2"
+    )
+    assert _related(report, SG1) == [I1, FN]
+    markdown = ChangelogGenerator().generate_changelog(report).to_markdown()
+    assert "This change may affect 2 related resource(s)." in markdown
