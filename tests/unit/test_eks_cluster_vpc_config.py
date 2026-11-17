@@ -128,7 +128,6 @@ def test_the_post_processing_step_runs_it():
     eks = Eks({"c1": CONFIG})
     disc = _disc([_row("c1")], eks)
     for name in (
-        "_enhance_s3_buckets",
         "_enhance_lambda_functions",
         "_enhance_rds_resources",
         "_enhance_cloudformation_stacks",

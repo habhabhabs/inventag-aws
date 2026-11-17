@@ -2344,6 +2344,9 @@ class ComprehensiveAWSDiscovery:
         # CloudFormation stack region/status enhancement
         self._enhance_cloudformation_stacks()
 
+        # EKS cluster subnets (one DescribeCluster per cluster)
+        self._enhance_eks_clusters()
+
     def _detail_failure(self, failures: Dict, operation: str, error: Exception):
         """Count one failed detail call. An answer of "nothing configured" (or
         "gone") is not a failure and is not counted."""
@@ -2558,6 +2561,40 @@ class ComprehensiveAWSDiscovery:
                     "cloudformation", region, "Stack", failures
                 )
                 continue
+
+    def _enhance_eks_clusters(self):
+        """Add ``resourcesVpcConfig`` (subnets, VPC) to EKS cluster rows (A-08a).
+
+        ListClusters gives names only. One ``DescribeCluster`` per cluster is
+        read in the region the cluster was listed in. A failure keeps the row
+        and is recorded as a detail record (``_record_detail_failures``).
+        """
+        grouped = self._resources_by_region("EKS", lambda t: t == "Cluster")
+        for region, clusters in grouped.items():
+            failures: Dict = {}
+            try:
+                eks_client = self._client("eks", region)
+
+                for resource in clusters:
+                    name = resource.get("resource_id")
+                    try:
+                        answer = eks_client.describe_cluster(name=name)
+                        config = (answer.get("cluster") or {}).get("resourcesVpcConfig")
+                        if isinstance(config, dict):
+                            resource["raw_data"]["resourcesVpcConfig"] = (
+                                mask_secret_values(config)
+                            )
+                    except Exception as e:
+                        self.logger.debug(f"Failed to describe EKS cluster {name}: {e}")
+                        self._detail_failure(failures, "DescribeCluster", e)
+
+                self._record_detail_failures("eks", region, "Cluster", failures)
+
+            except Exception as e:
+                self.logger.debug(f"Failed to create EKS client for {region}: {e}")
+                for _ in clusters:
+                    self._detail_failure(failures, "", e)
+                self._record_detail_failures("eks", region, "Cluster", failures)
 
     def _remove_duplicates_with_priority(self):
         """Remove duplicates prioritizing service API discoveries over fallback methods."""
