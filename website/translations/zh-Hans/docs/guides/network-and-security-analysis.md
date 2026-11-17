@@ -72,8 +72,8 @@ Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
   VPC 有互联网网关但没有这样的路由，并不会让它的子网变成公有。工作表不显示这一属性。
 - `Total IPs` 来自 VPC 的 CIDR 块。`Available IPs` 和 `Utilization %` 来自它的子网，所以这三列加起来对不上，
   没有子网的 VPC 显示可用数为 0。IPv6 地址不计入。
-- `Associated Resources` 统计 API 数据中指明了该 VPC 或子网的资源：EC2 实例、位于 VPC 中的 Lambda 函数、RDS 资源。位于多个子网中的资源（例如负载均衡器或 Lambda 函数）会在每个子网中各统计一次。
-  安全组、网络 ACL、路由表和网关属于 VPC 自身的网络组件，不计入。
+- `Associated Resources` 统计 API 数据中指明了该 VPC 或子网的资源：EC2 实例、位于 VPC 中的 Lambda 函数、RDS 数据库实例和 ElastiCache 集群（后两者通过各自的子网组）。位于多个子网中的资源（例如负载均衡器或 Lambda 函数）会在每个子网中各统计一次。
+  安全组、网络 ACL、路由表和网关属于 VPC 自身的网络组件，不计入。数据库子网组是配置，不计入；RDS 集群（例如 Aurora）也不计入。为了统计 ElastiCache 集群，InvenTag 会读取 `elasticache:DescribeCacheSubnetGroups`；如果该调用失败，会给出一条警告，这些集群不计入。
 - 它只读取你所扫描区域中的 VPC 和子网。它不检查网络 ACL、安全组、`MapPublicIpOnLaunch`、Direct Connect、VPN 连接、Network Firewall 或对等连接路由。
 
 ### 安全分析做什么 {#what-the-security-analysis-does}

@@ -146,7 +146,7 @@ YAML or JSON file. See [Layout files for one report](../templates/layout-flags.m
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--fail-on-account-error` | off | Works | Exit with code 5 when an account could not be scanned or ran out of time. The reports are still written. |
+| `--fail-on-account-error` | off | Works | Exit with code 5 when an account could not be scanned or ran out of time. The reports are still written. Without the flag, such a run exits with code 0 unless every account failed. |
 | `--fail-if-empty` | off | Works | Exit with code 6 when no resources were found or the filters removed all of them. |
 
 If more than one applies, 5 comes first, then 6, then 3, then 4. Reports are

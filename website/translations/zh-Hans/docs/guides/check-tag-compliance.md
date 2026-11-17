@@ -166,7 +166,7 @@ spec:
 所以只有 `aws:` 标签的资源算作未打标签，而以 `aws:` 开头的必需标签键会报错。除此之外，本文档不涵盖它。请优先使用标签策略模板。
 
 `scripts/legacy/` 中的旧脚本在只读防护下运行，写出的文件只有所有者可读写。
-`aws_resource_inventory.py --s3-bucket` 上传时使用 SSE-S3 加密。标签检查器的上传也会加密。
+`aws_resource_inventory.py --s3-bucket` 上传时使用 SSE-S3 加密。标签检查器的上传也会加密。两种上传都只允许写入你指定的存储桶；写入任何其他存储桶都会被只读防护阻止。
 
 ## 下一步 {#next-steps}
 

@@ -147,7 +147,7 @@ con un archivo YAML o JSON. Consulta [Archivos de diseño para un informe](../te
 
 | Opción | Predeterminado | Estado | Qué hace |
 |---|---|---|---|
-| `--fail-on-account-error` | desactivado | Funciona | Termina con el código 5 cuando una cuenta no se pudo analizar o se quedó sin tiempo. Los informes se escriben igualmente. |
+| `--fail-on-account-error` | desactivado | Funciona | Termina con el código 5 cuando una cuenta no se pudo analizar o se quedó sin tiempo. Los informes se escriben igualmente. Sin la opción, una ejecución así termina con el código 0 salvo que todas las cuentas fallen. |
 | `--fail-if-empty` | desactivado | Funciona | Termina con el código 6 cuando no se encontraron recursos o los filtros los quitaron todos. |
 
 Si se aplica más de uno, primero va el 5, luego el 6, después el 3 y por último

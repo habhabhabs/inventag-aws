@@ -194,7 +194,9 @@ templates.
 
 The legacy scripts in `scripts/legacy/` run under the read-only guard and write
 owner-only files. `aws_resource_inventory.py --s3-bucket` uploads with SSE-S3
-encryption. The tag checker upload is encrypted too.
+encryption. The tag checker upload is encrypted too. Both uploads are allowed
+only to the bucket you name; a write to any other bucket is blocked by the
+read-only guard.
 
 ## Next steps
 

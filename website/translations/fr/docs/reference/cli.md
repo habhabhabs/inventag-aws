@@ -147,7 +147,7 @@ un fichier YAML ou JSON. Voir [Fichiers de mise en page pour un rapport](../temp
 
 | Option | Par défaut | État | Ce qu’elle fait |
 |---|---|---|---|
-| `--fail-on-account-error` | désactivé | Fonctionne | Se termine avec le code 5 quand un compte n’a pas pu être analysé ou a dépassé le temps imparti. Les rapports sont quand même écrits. |
+| `--fail-on-account-error` | désactivé | Fonctionne | Se termine avec le code 5 quand un compte n’a pas pu être analysé ou a dépassé le temps imparti. Les rapports sont quand même écrits. Sans l’option, une telle exécution se termine avec le code 0 sauf si tous les comptes échouent. |
 | `--fail-if-empty` | désactivé | Fonctionne | Se termine avec le code 6 quand aucune ressource n’a été trouvée ou que les filtres les ont toutes retirées. |
 
 Si plusieurs codes s’appliquent, le 5 passe en premier, puis le 6, puis le 3,

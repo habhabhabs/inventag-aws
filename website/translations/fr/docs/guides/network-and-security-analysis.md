@@ -80,8 +80,8 @@ Feuille `Security Analysis`, premières lignes :
 - `Total IPs` vient des blocs CIDR du VPC. `Available IPs` et `Utilization %` viennent de ses sous-réseaux : les trois colonnes ne concordent donc pas,
   et un VPC sans sous-réseau affiche 0 disponible. Les adresses IPv6 ne sont pas comptées.
 - `Associated Resources` compte les ressources dont les données d’API nomment le VPC ou le sous-réseau : instances EC2, fonctions Lambda dans un VPC,
-  ressources RDS. Une ressource présente dans plusieurs sous-réseaux, comme un équilibreur de charge ou une fonction Lambda, est comptée une fois dans chacun d’eux. Les groupes de sécurité, les ACL réseau, les tables de routage et les passerelles
-  sont la plomberie propre du VPC et ne sont pas comptés.
+  instances de base de données RDS et clusters ElastiCache (les deux par leur groupe de sous-réseaux). Une ressource présente dans plusieurs sous-réseaux, comme un équilibreur de charge ou une fonction Lambda, est comptée une fois dans chacun d’eux. Les groupes de sécurité, les ACL réseau, les tables de routage et les passerelles
+  sont la plomberie propre du VPC et ne sont pas comptés. Un groupe de sous-réseaux de base de données est de la configuration et n’est pas compté, et un cluster RDS (par exemple Aurora) n’est pas compté non plus. Pour compter les clusters ElastiCache, InvenTag lit `elasticache:DescribeCacheSubnetGroups` ; si cet appel échoue, un avertissement l’indique et les clusters ne sont pas comptés.
 - Elle ne lit que les VPC et sous-réseaux des régions que vous analysez. Elle ne vérifie pas les ACL réseau, les groupes de sécurité, `MapPublicIpOnLaunch`,
   Direct Connect, les connexions VPN, Network Firewall ni les routes d’appairage.
 
