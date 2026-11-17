@@ -180,3 +180,49 @@ def test_the_new_field_is_not_a_modification_after_the_upgrade():
     )
     assert len(report.modified_resources) == 0
     assert len(report.unchanged_resources) == 1
+
+
+# ---------------------------------------------------- no new report columns
+def _flatteners():
+    from inventag.reporting.converter import BOMConverter
+    from inventag.reporting.csv_builder import CSVBuilder
+    from inventag.reporting.excel_builder import ExcelWorkbookBuilder
+    from inventag.templating.columns import flatten
+
+    return {
+        "excel": ExcelWorkbookBuilder._flatten_dict.__get__(
+            object.__new__(ExcelWorkbookBuilder)
+        ),
+        "csv": CSVBuilder._flatten_dict.__get__(object.__new__(CSVBuilder)),
+        "converter (word, google)": BOMConverter._flatten_dict.__get__(
+            object.__new__(BOMConverter)
+        ),
+        "template reports": flatten,
+    }
+
+
+@pytest.mark.xfail(
+    reason="the report writers (excel_builder, csv_builder, converter, "
+    "templating/columns, not track D files) must skip raw_data.resourcesVpcConfig; "
+    "see the patch under 'Needs from another track' in p3-track-d.md. The "
+    "assembly applies it with D5 and removes this marker.",
+    strict=False,
+)
+@pytest.mark.parametrize("writer", list(_flatteners()))
+def test_the_field_adds_no_column_to_any_report(writer):
+    """Sheet and column names are a published interface: the EKS header row is
+    the same with and without the field. The row keeps the field for the
+    network analysis (``raw_data["resourcesVpcConfig"]``) and the snapshot."""
+    flat = _flatteners()[writer]
+    without = _row("c1")
+    with_field = _row("c1")
+    with_field["raw_data"]["resourcesVpcConfig"] = dict(CONFIG)
+    assert sorted(flat(with_field)) == sorted(flat(without))
+
+
+def test_the_row_keeps_the_field_for_the_analysis():
+    eks = Eks({"c1": CONFIG})
+    disc = _disc([_row("c1")], eks)
+    disc._enhance_eks_clusters()
+    raw = disc.resources[0]["raw_data"]
+    assert raw["resourcesVpcConfig"]["subnetIds"] == ["subnet-a", "subnet-b"]
