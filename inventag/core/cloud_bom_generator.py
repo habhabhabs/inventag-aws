@@ -821,7 +821,8 @@ class CloudBOMGenerator:
                 continue
             entries = _coverage_of(ctx)
             if any(
-                e.get("source") == "service-api" and e.get("outcome") in (OK, EMPTY)
+                e.get("source") == "service-api"
+                and (e.get("outcome") in (OK, EMPTY) or int(e.get("count") or 0) > 0)
                 for e in entries
             ):
                 continue
