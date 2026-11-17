@@ -362,7 +362,13 @@ ACCOUNT = Field(
             pattern=ACCOUNT_ID_PATTERN,
             pattern_hint='a 12-digit account ID in quotes, for example "012345678901"',
         ),
-        "account_name": Field("string", "Friendly name used in reports.", default=""),
+        "account_name": Field(
+            "string",
+            "Friendly name for the account. It is shown in the Run notes when the "
+            "account fails, and is the `source_account_name` field that a column "
+            "can list. The default columns do not show it.",
+            default="",
+        ),
         "profile_name": Field(
             "string", "AWS CLI profile to use for this account.", default=None
         ),

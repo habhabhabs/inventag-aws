@@ -273,3 +273,13 @@ def test_schema_defaults_match_the_cli_defaults():
     assert args.account_processing_timeout == 1800
     assert CONFIG_SPEC["max_concurrent_accounts"].default == 4
     assert args.max_concurrent_accounts == 4
+
+
+def test_account_name_is_in_the_run_notes_of_a_failed_account(registry, tmp_path):
+    from .test_template_run_notes import _generate, _generator, _workbook_text
+
+    xlsx, _ = _generate(_generator(registry, tmp_path, failed=True))
+    cells = _workbook_text(xlsx)["Summary"]
+    assert any("222222222222 (bad):" in c for c in cells), cells
+    text = CONFIG_SPEC["accounts"].item.fields["account_name"].description
+    assert "Run notes" in text and "source_account_name" in text
