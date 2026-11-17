@@ -94,6 +94,7 @@ _NO_SUCH_SERVICE_CODE = "404"
 # Cost Explorer client of the account gets at most a tenth of it.
 _CE_BOUND_BELOW_SECONDS = 1200
 _CE_ATTEMPTS = 2
+_CE_STEP_FLOOR_SECONDS = 5.0
 # Error names of a Cost Explorer call that did not answer in time.
 _TIMEOUT_ERRORS = frozenset({"ReadTimeoutError", "ConnectTimeoutError"})
 
@@ -107,9 +108,14 @@ def _cost_explorer_config(limit_seconds) -> Optional[BotoConfig]:
         return None
     if limit <= 0 or limit >= _CE_BOUND_BELOW_SECONDS:
         return None
-    # Each attempt: at most limit/40 to connect and limit/40 to read, so two
-    # attempts take at most a tenth of the limit (at least 1 s per step).
-    per_step = max(1.0, limit / (2 * _CE_ATTEMPTS * 10))
+    # Each attempt: limit/40 to connect and limit/40 to read, but at least
+    # _CE_STEP_FLOOR_SECONDS for each. The floor keeps a slow but working
+    # answer (seconds) readable under a short limit; botocore's own defaults
+    # are 60 s for each step. Cost Explorer is read twice per account
+    # (inventory, then comprehensive discovery), two attempts each: at the
+    # shortest allowed limit (60 s) a hung endpoint costs 4 x 5 s = 20 s, a
+    # third of the limit, so the listings still run (A-24).
+    per_step = max(_CE_STEP_FLOOR_SECONDS, limit / (2 * _CE_ATTEMPTS * 10))
     settings = {"connect_timeout": per_step, "read_timeout": per_step}
     if not (os.environ.get("AWS_RETRY_MODE") or os.environ.get("AWS_MAX_ATTEMPTS")):
         settings["retries"] = {"mode": "standard", "total_max_attempts": _CE_ATTEMPTS}
