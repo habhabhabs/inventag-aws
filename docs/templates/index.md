@@ -59,6 +59,11 @@ account and the reason. A template with `summary_sheet: false` still gets the
 `Summary` sheet when there are notes. Without notes, the files are the same as
 before.
 
+With `--template`, Excel and Word are written one by one. A format that
+cannot be written does not stop the other: the log names the failed format, the
+"Run notes" of the file that was written say that the other format was not
+written, and the run exits with code 1.
+
 `--tag-mappings` and `--service-descriptions` add columns to that original
 layout. With `--template`, a report shows only the columns it lists, so those
 columns stay out until you list them under `columns`, for example

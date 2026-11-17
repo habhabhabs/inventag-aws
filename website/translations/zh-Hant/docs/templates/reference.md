@@ -63,20 +63,20 @@ spec:                      # the settings for this kind
 |---|---|---|---|
 | `spec.title` | 文字 | `AWS Resource Inventory` | 報告標題，用於 Word 封面和 Excel 摘要工作表。 |
 | `spec.subtitle` | 文字 | 空 | 標題下方的可選一行。 |
-| `spec.company_name` | 文字 | 空 | 顯示在封面上並存入檔案屬性的組織名稱。 |
+| `spec.company_name` | 文字 | 空 | 顯示在 Word 封面和 Excel 的 Summary 工作表上的組織名稱。它不會存入檔案屬性。 |
 | `spec.colors` | 對應 | 見下文 | 表頭顏色，六位十六進位制值（帶或不帶 `#`）。 |
 | `spec.logo` | 相對檔案路徑 | 未設定 | 顯示在 Word 封面上的影象（PNG、JPEG、GIF 或 BMP）。路徑相對於範本檔案，並且必須位於其資料夾之內。 |
-| `spec.logo_alt_text` | 文字 | 空 | 徽標的替代文字，供螢幕閱讀器朗讀。預設為 `<company_name> logo`。 |
+| `spec.logo_alt_text` | 文字 | 空 | 徽標的替代文字，供螢幕閱讀器朗讀。預設為 `<company_name> logo`，沒有 `company_name` 時為 `Logo`。 |
 | `spec.columns` | 對應列表 | 見內建的 `standard-bom` | 資源表的欄，按順序排列。 |
 | `spec.tag_columns` | `all`、`none` 或標籤鍵列表 | `all` | 額外的欄，每個標籤鍵一欄，新增在 `columns` 之後。可以是標籤鍵列表，或 `all`（該表中資源上找到的每個標籤鍵），或 `none`。 |
-| `spec.tag_policy` | 範本名稱或相對路徑 | 未設定 | 要檢查的標籤策略，按名稱或相對路徑指定。命令列上帶標籤策略的 `--template` 優先。 |
+| `spec.tag_policy` | 範本名稱或相對路徑 | 未設定 | 要檢查的標籤策略，按名稱或相對路徑指定。命令列上帶標籤策略的 `--template` 優先，其次是設定範本的 `tag_policy`。 |
 | `spec.excel` | 對應 | 見下文 | Excel 工作簿版面配置。 |
 | `spec.word` | 對應 | 見下文 | Word 文件版面配置。 |
 | `spec.colors.header_fill` | 十六進位制顏色 | `1F3A5F` | 表頭列的背景。 |
 | `spec.colors.header_text` | 十六進位制顏色 | `FFFFFF` | 表頭列的文字顏色。 |
 | `spec.columns[].field` | 文字 | 必填 | 要顯示的資源欄位。巢狀值用點表示：`tags.Owner` 是 `Owner` 標籤，`raw_data.InstanceType` 是 AWS API 回應中的值。 |
 | `spec.columns[].header` | 文字 | 未設定 | 欄標題。預設是用普通詞語寫出的欄位名（`resource_name` 變為 `Resource name`）。 |
-| `spec.columns[].width` | 整數（最小 4，最大 120） | 未設定 | Excel 欄寬，以字元數計。預設是適合內容的寬度，上限為 `excel.max_column_width`。 |
+| `spec.columns[].width` | 整數（最小 4，最大 120） | 未設定 | Excel 欄寬，以字元數計；Word 表格忽略它。預設是適合內容的寬度，上限為 `excel.max_column_width`。 |
 | `spec.excel.summary_sheet` | true 或 false | `true` | 新增一個 Summary 工作表，列出每個服務的資源數量。 |
 | `spec.excel.layout` | `per-service`、`single-sheet` 之一 | `per-service` | `per-service` 把每個服務放在各自的工作表上。`single-sheet` 把所有資源放在一個帶 Service 欄的工作表上。 |
 | `spec.excel.single_sheet_name` | 文字 | `Resources` | `layout` 為 `single-sheet` 時的工作表名稱。 |
@@ -93,7 +93,7 @@ spec:                      # the settings for this kind
 | `spec.word.max_noncompliant_rows` | 整數（最小 1，最大 10000） | `100` | 不合規資源表中顯示的列數。 |
 | `spec.word.columns[].field` | 文字 | 必填 | 要顯示的資源欄位。巢狀值用點表示：`tags.Owner` 是 `Owner` 標籤，`raw_data.InstanceType` 是 AWS API 回應中的值。 |
 | `spec.word.columns[].header` | 文字 | 未設定 | 欄標題。預設是用普通詞語寫出的欄位名（`resource_name` 變為 `Resource name`）。 |
-| `spec.word.columns[].width` | 整數（最小 4，最大 120） | 未設定 | Excel 欄寬，以字元數計。預設是適合內容的寬度，上限為 `excel.max_column_width`。 |
+| `spec.word.columns[].width` | 整數（最小 4，最大 120） | 未設定 | Excel 欄寬，以字元數計；Word 表格忽略它。預設是適合內容的寬度，上限為 `excel.max_column_width`。 |
 
 ### 標籤策略範本（`kind: tag-policy`） {#tag-policy-templates-kind-tag-policy}
 
@@ -102,7 +102,7 @@ spec:                      # the settings for this kind
 | `spec.required_tags` | 對應列表 | 必填 | 範圍內的資源必須具有的標籤。當一個範本 `extends` 另一個範本時，條目按 `key` 合併：相同的鍵會替換，新鍵會新增，`remove: true` 會刪除一個。 |
 | `spec.scope` | 對應 | 見下文 | 策略適用於哪些資源。範圍之外的資源會被計數但不會被檢查。 |
 | `spec.required_tags[].key` | 文字 | 必填 | 標籤鍵。AWS 標籤鍵區分大小寫，因此 `costcenter` 不能滿足 `CostCenter`。 |
-| `spec.required_tags[].description` | 文字 | 空 | 該標籤存在的原因。顯示在報告中。 |
+| `spec.required_tags[].description` | 文字 | 空 | 該標籤存在的原因。供閱讀策略檔案的人看；不會顯示在報告中。 |
 | `spec.required_tags[].allowed_values` | 文字列表 | 未設定 | 如果設定，標籤值必須是其中之一。 |
 | `spec.required_tags[].case_sensitive` | true 或 false | `false` | 對 `allowed_values` 區分大小寫地比較。 |
 | `spec.required_tags[].pattern` | 正規表示式 | 未設定 | 如果設定，整個標籤值必須匹配此正規表示式（Python 語法）。 |

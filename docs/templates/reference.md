@@ -73,20 +73,20 @@ the validator accepts.
 |---|---|---|---|
 | `spec.title` | text | `AWS Resource Inventory` | Report title, used on the Word cover and the Excel summary sheet. |
 | `spec.subtitle` | text | empty | Optional line under the title. |
-| `spec.company_name` | text | empty | Organisation name shown on the cover and stored in the file properties. |
+| `spec.company_name` | text | empty | Organisation name shown on the Word cover and in the Excel Summary sheet. It is not stored in the file properties. |
 | `spec.colors` | mapping | see below | Header colours as six-digit hex values (with or without `#`). |
 | `spec.logo` | relative file path | not set | Image shown on the Word cover (PNG, JPEG, GIF or BMP). The path is relative to the template file and must stay inside its folder. |
-| `spec.logo_alt_text` | text | empty | Alternative text for the logo, read by screen readers. Defaults to `<company_name> logo`. |
+| `spec.logo_alt_text` | text | empty | Alternative text for the logo, read by screen readers. Defaults to `<company_name> logo`, or `Logo` when there is no `company_name`. |
 | `spec.columns` | list of mappings | see the built-in `standard-bom` | Columns for resource tables, in order. |
 | `spec.tag_columns` | `all`, `none` or list of tag keys | `all` | Extra columns, one per tag key, added after `columns`. Either a list of tag keys, or `all` for every tag key found on the resources in that table, or `none`. |
-| `spec.tag_policy` | template name or relative path | not set | Tag policy to check, by name or by relative path. A `--template` with a tag policy on the command line takes precedence. |
+| `spec.tag_policy` | template name or relative path | not set | Tag policy to check, by name or by relative path. A `--template` with a tag policy on the command line takes precedence, then the `tag_policy` of a config template. |
 | `spec.excel` | mapping | see below | Excel workbook layout. |
 | `spec.word` | mapping | see below | Word document layout. |
 | `spec.colors.header_fill` | hex colour | `1F3A5F` | Background of table header rows. |
 | `spec.colors.header_text` | hex colour | `FFFFFF` | Text colour of table header rows. |
 | `spec.columns[].field` | text | required | Resource field to show. Use dots for nested values: `tags.Owner` is the `Owner` tag, `raw_data.InstanceType` is a value from the AWS API response. |
 | `spec.columns[].header` | text | not set | Column heading. Defaults to the field name in plain words (`resource_name` becomes `Resource name`). |
-| `spec.columns[].width` | whole number (min 4, max 120) | not set | Excel column width in characters. Defaults to a width that fits the content, capped by `excel.max_column_width`. |
+| `spec.columns[].width` | whole number (min 4, max 120) | not set | Excel column width in characters; Word tables ignore it. Defaults to a width that fits the content, capped by `excel.max_column_width`. |
 | `spec.excel.summary_sheet` | true or false | `true` | Add a Summary sheet with resource counts per service. |
 | `spec.excel.layout` | one of `per-service`, `single-sheet` | `per-service` | `per-service` puts each service on its own sheet. `single-sheet` puts every resource on one sheet with a Service column. |
 | `spec.excel.single_sheet_name` | text | `Resources` | Sheet name when `layout` is `single-sheet`. |
@@ -103,7 +103,7 @@ the validator accepts.
 | `spec.word.max_noncompliant_rows` | whole number (min 1, max 10000) | `100` | Rows shown in the non-compliant resources table. |
 | `spec.word.columns[].field` | text | required | Resource field to show. Use dots for nested values: `tags.Owner` is the `Owner` tag, `raw_data.InstanceType` is a value from the AWS API response. |
 | `spec.word.columns[].header` | text | not set | Column heading. Defaults to the field name in plain words (`resource_name` becomes `Resource name`). |
-| `spec.word.columns[].width` | whole number (min 4, max 120) | not set | Excel column width in characters. Defaults to a width that fits the content, capped by `excel.max_column_width`. |
+| `spec.word.columns[].width` | whole number (min 4, max 120) | not set | Excel column width in characters; Word tables ignore it. Defaults to a width that fits the content, capped by `excel.max_column_width`. |
 
 ### Tag-policy templates (`kind: tag-policy`)
 
@@ -112,7 +112,7 @@ the validator accepts.
 | `spec.required_tags` | list of mappings | required | Tags that in-scope resources must have. When a template `extends` another, entries are merged by `key`: same key replaces, new keys are added, and `remove: true` drops one. |
 | `spec.scope` | mapping | see below | Which resources the policy applies to. Resources outside the scope are counted but not checked. |
 | `spec.required_tags[].key` | text | required | Tag key. AWS tag keys are case-sensitive, so `costcenter` does not satisfy `CostCenter`. |
-| `spec.required_tags[].description` | text | empty | Why the tag exists. Shown in reports. |
+| `spec.required_tags[].description` | text | empty | Why the tag exists. For people who read the policy file; it is not shown in the reports. |
 | `spec.required_tags[].allowed_values` | list of text | not set | If set, the tag value must be one of these. |
 | `spec.required_tags[].case_sensitive` | true or false | `false` | Compare `allowed_values` case-sensitively. |
 | `spec.required_tags[].pattern` | regular expression | not set | If set, the whole tag value must match this regular expression (Python syntax). |

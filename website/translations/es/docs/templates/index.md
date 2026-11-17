@@ -58,6 +58,8 @@ Las ejecuciones sin `--template` usan el diseño de informe original.
 
 Cuando una cuenta no se analizó, o solo en parte, un informe hecho con una plantilla termina su hoja `Summary` y su documento Word con «Run notes» que nombran la cuenta y el motivo. Una plantilla con `summary_sheet: false` sigue recibiendo la hoja `Summary` cuando hay notas. Sin notas, los archivos son los mismos que antes.
 
+Con `--template`, Excel y Word se escriben uno por uno. Un formato que no se puede escribir no detiene al otro: el registro nombra el formato que falló, las «Run notes» del archivo escrito dicen que el otro formato no se escribió, y la ejecución termina con el código 1.
+
 `--tag-mappings` y `--service-descriptions` añaden columnas a ese diseño
 original. Con `--template`, un informe muestra solo las columnas que enumera,
 así que esas columnas no aparecen hasta que las indicas en `columns`, por

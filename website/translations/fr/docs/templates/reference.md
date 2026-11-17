@@ -72,20 +72,20 @@ le validateur accepte.
 |---|---|---|---|
 | `spec.title` | texte | `AWS Resource Inventory` | Titre du rapport, utilisé sur la couverture Word et sur la feuille de synthèse Excel. |
 | `spec.subtitle` | texte | vide | Ligne facultative sous le titre. |
-| `spec.company_name` | texte | vide | Nom de l’organisation affiché sur la couverture et enregistré dans les propriétés du fichier. |
+| `spec.company_name` | texte | vide | Nom de l’organisation affiché sur la couverture Word et dans la feuille Summary d’Excel. Il n’est pas enregistré dans les propriétés du fichier. |
 | `spec.colors` | mapping | voir ci-dessous | Couleurs d’en-tête sous forme de valeurs hexadécimales à six chiffres (avec ou sans `#`). |
 | `spec.logo` | chemin de fichier relatif | non défini | Image affichée sur la couverture Word (PNG, JPEG, GIF ou BMP). Le chemin est relatif au fichier de modèle et doit rester dans son dossier. |
-| `spec.logo_alt_text` | texte | vide | Texte alternatif du logo, lu par les lecteurs d’écran. Par défaut `<company_name> logo`. |
+| `spec.logo_alt_text` | texte | vide | Texte alternatif du logo, lu par les lecteurs d’écran. Par défaut `<company_name> logo`, ou `Logo` quand il n’y a pas de `company_name`. |
 | `spec.columns` | liste de mappings | voir le modèle intégré `standard-bom` | Colonnes des tableaux de ressources, dans l’ordre. |
 | `spec.tag_columns` | `all`, `none` ou liste de clés d’étiquettes | `all` | Colonnes supplémentaires, une par clé d’étiquette, ajoutées après `columns`. Soit une liste de clés d’étiquettes, soit `all` pour toutes les clés d’étiquettes trouvées sur les ressources de ce tableau, soit `none`. |
-| `spec.tag_policy` | nom de modèle ou chemin relatif | non défini | Politique d’étiquetage à vérifier, par nom ou par chemin relatif. Un `--template` avec une politique d’étiquetage en ligne de commande est prioritaire. |
+| `spec.tag_policy` | nom de modèle ou chemin relatif | non défini | Politique d’étiquetage à vérifier, par nom ou par chemin relatif. Un `--template` avec une politique d’étiquetage en ligne de commande est prioritaire, puis le `tag_policy` d’un modèle de configuration. |
 | `spec.excel` | mapping | voir ci-dessous | Mise en page du classeur Excel. |
 | `spec.word` | mapping | voir ci-dessous | Mise en page du document Word. |
 | `spec.colors.header_fill` | couleur hexadécimale | `1F3A5F` | Arrière-plan des lignes d’en-tête des tableaux. |
 | `spec.colors.header_text` | couleur hexadécimale | `FFFFFF` | Couleur du texte des lignes d’en-tête des tableaux. |
 | `spec.columns[].field` | texte | obligatoire | Champ de ressource à afficher. Utilisez des points pour les valeurs imbriquées : `tags.Owner` est l’étiquette `Owner`, `raw_data.InstanceType` est une valeur de la réponse de l’API AWS. |
 | `spec.columns[].header` | texte | non défini | Titre de la colonne. Par défaut, le nom du champ en langage courant (`resource_name` devient `Resource name`). |
-| `spec.columns[].width` | nombre entier (min 4, max 120) | non défini | Largeur de colonne Excel en caractères. Par défaut, une largeur adaptée au contenu, plafonnée par `excel.max_column_width`. |
+| `spec.columns[].width` | nombre entier (min 4, max 120) | non défini | Largeur de colonne Excel en caractères ; les tableaux Word l’ignorent. Par défaut, une largeur adaptée au contenu, plafonnée par `excel.max_column_width`. |
 | `spec.excel.summary_sheet` | true ou false | `true` | Ajoute une feuille Summary avec le nombre de ressources par service. |
 | `spec.excel.layout` | l’une de `per-service`, `single-sheet` | `per-service` | `per-service` place chaque service sur sa propre feuille. `single-sheet` place toutes les ressources sur une seule feuille avec une colonne Service. |
 | `spec.excel.single_sheet_name` | texte | `Resources` | Nom de la feuille lorsque `layout` vaut `single-sheet`. |
@@ -102,7 +102,7 @@ le validateur accepte.
 | `spec.word.max_noncompliant_rows` | nombre entier (min 1, max 10000) | `100` | Lignes affichées dans le tableau des ressources non conformes. |
 | `spec.word.columns[].field` | texte | obligatoire | Champ de ressource à afficher. Utilisez des points pour les valeurs imbriquées : `tags.Owner` est l’étiquette `Owner`, `raw_data.InstanceType` est une valeur de la réponse de l’API AWS. |
 | `spec.word.columns[].header` | texte | non défini | Titre de la colonne. Par défaut, le nom du champ en langage courant (`resource_name` devient `Resource name`). |
-| `spec.word.columns[].width` | nombre entier (min 4, max 120) | non défini | Largeur de colonne Excel en caractères. Par défaut, une largeur adaptée au contenu, plafonnée par `excel.max_column_width`. |
+| `spec.word.columns[].width` | nombre entier (min 4, max 120) | non défini | Largeur de colonne Excel en caractères ; les tableaux Word l’ignorent. Par défaut, une largeur adaptée au contenu, plafonnée par `excel.max_column_width`. |
 
 ### Modèles de politique d’étiquetage (`kind: tag-policy`) {#tag-policy-templates-kind-tag-policy}
 
@@ -111,7 +111,7 @@ le validateur accepte.
 | `spec.required_tags` | liste de mappings | obligatoire | Étiquettes que les ressources concernées doivent avoir. Lorsqu’un modèle `extends` un autre, les entrées sont fusionnées par `key` : la même clé remplace, les nouvelles clés sont ajoutées, et `remove: true` en supprime une. |
 | `spec.scope` | mapping | voir ci-dessous | Ressources auxquelles la politique s’applique. Les ressources hors périmètre sont comptées mais non vérifiées. |
 | `spec.required_tags[].key` | texte | obligatoire | Clé d’étiquette. Les clés d’étiquettes AWS respectent la casse : `costcenter` ne satisfait donc pas `CostCenter`. |
-| `spec.required_tags[].description` | texte | vide | Pourquoi l’étiquette existe. Affichée dans les rapports. |
+| `spec.required_tags[].description` | texte | vide | Pourquoi l’étiquette existe. Destinée à ceux qui lisent le fichier de politique ; elle n’est pas affichée dans les rapports. |
 | `spec.required_tags[].allowed_values` | liste de textes | non défini | Si défini, la valeur de l’étiquette doit être l’une d’elles. |
 | `spec.required_tags[].case_sensitive` | true ou false | `false` | Compare `allowed_values` en respectant la casse. |
 | `spec.required_tags[].pattern` | expression régulière | non défini | Si défini, toute la valeur de l’étiquette doit correspondre à cette expression régulière (syntaxe Python). |

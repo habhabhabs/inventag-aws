@@ -73,20 +73,20 @@ con lo que acepta el validador.
 |---|---|---|---|
 | `spec.title` | texto | `AWS Resource Inventory` | Título del informe, usado en la portada de Word y en la hoja de resumen de Excel. |
 | `spec.subtitle` | texto | vacío | Línea opcional bajo el título. |
-| `spec.company_name` | texto | vacío | Nombre de la organización que se muestra en la portada y se guarda en las propiedades del archivo. |
+| `spec.company_name` | texto | vacío | Nombre de la organización que se muestra en la portada de Word y en la hoja Summary de Excel. No se guarda en las propiedades del archivo. |
 | `spec.colors` | mapeo | ver más abajo | Colores del encabezado como valores hexadecimales de seis dígitos (con o sin `#`). |
 | `spec.logo` | ruta de archivo relativa | sin definir | Imagen que se muestra en la portada de Word (PNG, JPEG, GIF o BMP). La ruta es relativa al archivo de plantilla y debe permanecer dentro de su carpeta. |
-| `spec.logo_alt_text` | texto | vacío | Texto alternativo del logotipo, que leen los lectores de pantalla. Por defecto es `<company_name> logo`. |
+| `spec.logo_alt_text` | texto | vacío | Texto alternativo del logotipo, que leen los lectores de pantalla. Por defecto es `<company_name> logo`, o `Logo` cuando no hay `company_name`. |
 | `spec.columns` | lista de mapeos | ver el `standard-bom` integrado | Columnas de las tablas de recursos, en orden. |
 | `spec.tag_columns` | `all`, `none` o lista de claves de etiqueta | `all` | Columnas adicionales, una por clave de etiqueta, añadidas después de `columns`. Puede ser una lista de claves de etiqueta, `all` para todas las claves de etiqueta que se encuentren en los recursos de esa tabla, o `none`. |
-| `spec.tag_policy` | nombre de plantilla o ruta relativa | sin definir | Política de etiquetas que se comprueba, por nombre o por ruta relativa. Un `--template` con una política de etiquetas en la línea de comandos tiene prioridad. |
+| `spec.tag_policy` | nombre de plantilla o ruta relativa | sin definir | Política de etiquetas que se comprueba, por nombre o por ruta relativa. Un `--template` con una política de etiquetas en la línea de comandos tiene prioridad, y después el `tag_policy` de una plantilla de configuración. |
 | `spec.excel` | mapeo | ver más abajo | Diseño del libro de Excel. |
 | `spec.word` | mapeo | ver más abajo | Diseño del documento de Word. |
 | `spec.colors.header_fill` | color hexadecimal | `1F3A5F` | Fondo de las filas de encabezado de las tablas. |
 | `spec.colors.header_text` | color hexadecimal | `FFFFFF` | Color del texto de las filas de encabezado de las tablas. |
 | `spec.columns[].field` | texto | obligatorio | Campo del recurso que se muestra. Usa puntos para los valores anidados: `tags.Owner` es la etiqueta `Owner`, `raw_data.InstanceType` es un valor de la respuesta de la API de AWS. |
 | `spec.columns[].header` | texto | sin definir | Encabezado de la columna. Por defecto es el nombre del campo en lenguaje llano (`resource_name` pasa a ser `Resource name`). |
-| `spec.columns[].width` | número entero (mín. 4, máx. 120) | sin definir | Ancho de la columna de Excel en caracteres. Por defecto es un ancho que se ajusta al contenido, limitado por `excel.max_column_width`. |
+| `spec.columns[].width` | número entero (mín. 4, máx. 120) | sin definir | Ancho de la columna de Excel en caracteres; las tablas de Word lo ignoran. Por defecto es un ancho que se ajusta al contenido, limitado por `excel.max_column_width`. |
 | `spec.excel.summary_sheet` | verdadero o falso | `true` | Añade una hoja Summary con el recuento de recursos por servicio. |
 | `spec.excel.layout` | uno de `per-service`, `single-sheet` | `per-service` | `per-service` pone cada servicio en su propia hoja. `single-sheet` pone todos los recursos en una hoja con una columna Service. |
 | `spec.excel.single_sheet_name` | texto | `Resources` | Nombre de la hoja cuando `layout` es `single-sheet`. |
@@ -103,7 +103,7 @@ con lo que acepta el validador.
 | `spec.word.max_noncompliant_rows` | número entero (mín. 1, máx. 10000) | `100` | Filas que se muestran en la tabla de recursos que no cumplen. |
 | `spec.word.columns[].field` | texto | obligatorio | Campo del recurso que se muestra. Usa puntos para los valores anidados: `tags.Owner` es la etiqueta `Owner`, `raw_data.InstanceType` es un valor de la respuesta de la API de AWS. |
 | `spec.word.columns[].header` | texto | sin definir | Encabezado de la columna. Por defecto es el nombre del campo en lenguaje llano (`resource_name` pasa a ser `Resource name`). |
-| `spec.word.columns[].width` | número entero (mín. 4, máx. 120) | sin definir | Ancho de la columna de Excel en caracteres. Por defecto es un ancho que se ajusta al contenido, limitado por `excel.max_column_width`. |
+| `spec.word.columns[].width` | número entero (mín. 4, máx. 120) | sin definir | Ancho de la columna de Excel en caracteres; las tablas de Word lo ignoran. Por defecto es un ancho que se ajusta al contenido, limitado por `excel.max_column_width`. |
 
 ### Plantillas de política de etiquetas (`kind: tag-policy`) {#tag-policy-templates-kind-tag-policy}
 
@@ -112,7 +112,7 @@ con lo que acepta el validador.
 | `spec.required_tags` | lista de mapeos | obligatorio | Etiquetas que deben tener los recursos dentro del alcance. Cuando una plantilla usa `extends` con otra, las entradas se combinan por `key`: la misma clave sustituye, las claves nuevas se añaden y `remove: true` elimina una. |
 | `spec.scope` | mapeo | ver más abajo | A qué recursos se aplica la política. Los recursos fuera del alcance se cuentan, pero no se comprueban. |
 | `spec.required_tags[].key` | texto | obligatorio | Clave de la etiqueta. Las claves de etiqueta de AWS distinguen mayúsculas y minúsculas, así que `costcenter` no satisface `CostCenter`. |
-| `spec.required_tags[].description` | texto | vacío | Por qué existe la etiqueta. Se muestra en los informes. |
+| `spec.required_tags[].description` | texto | vacío | Por qué existe la etiqueta. Es para quien lee el archivo de la política; no se muestra en los informes. |
 | `spec.required_tags[].allowed_values` | lista de textos | sin definir | Si se define, el valor de la etiqueta debe ser uno de estos. |
 | `spec.required_tags[].case_sensitive` | verdadero o falso | `false` | Compara `allowed_values` distinguiendo mayúsculas y minúsculas. |
 | `spec.required_tags[].pattern` | expresión regular | sin definir | Si se define, todo el valor de la etiqueta debe coincidir con esta expresión regular (sintaxis de Python). |

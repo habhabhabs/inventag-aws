@@ -56,6 +56,8 @@ Les exécutions sans `--template` utilisent la mise en page d’origine du rappo
 
 Quand un compte n’a pas été analysé, ou seulement en partie, un rapport fait avec un modèle se termine, dans sa feuille `Summary` et dans son document Word, par des « Run notes » qui nomment le compte et la raison. Un modèle avec `summary_sheet: false` reçoit quand même la feuille `Summary` quand il y a des notes. Sans notes, les fichiers sont les mêmes qu’avant.
 
+Avec `--template`, Excel et Word sont écrits l’un après l’autre. Un format qui ne peut pas être écrit n’arrête pas l’autre : le journal nomme le format en échec, les « Run notes » du fichier écrit disent que l’autre format n’a pas été écrit, et l’exécution se termine avec le code 1.
+
 `--tag-mappings` et `--service-descriptions` ajoutent des colonnes à cette mise
 en page d’origine. Avec `--template`, un rapport n’affiche que les colonnes qu’il
 liste ; ces colonnes n’apparaissent donc pas tant que vous ne les indiquez pas

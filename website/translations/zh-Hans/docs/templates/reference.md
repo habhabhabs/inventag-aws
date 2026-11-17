@@ -63,20 +63,20 @@ spec:                      # the settings for this kind
 |---|---|---|---|
 | `spec.title` | 文本 | `AWS Resource Inventory` | 报告标题，用于 Word 封面和 Excel 摘要工作表。 |
 | `spec.subtitle` | 文本 | 空 | 标题下方的可选一行。 |
-| `spec.company_name` | 文本 | 空 | 显示在封面上并存入文件属性的组织名称。 |
+| `spec.company_name` | 文本 | 空 | 显示在 Word 封面和 Excel 的 Summary 工作表上的组织名称。它不会存入文件属性。 |
 | `spec.colors` | 映射 | 见下文 | 表头颜色，六位十六进制值（带或不带 `#`）。 |
 | `spec.logo` | 相对文件路径 | 未设置 | 显示在 Word 封面上的图像（PNG、JPEG、GIF 或 BMP）。路径相对于模板文件，并且必须位于其文件夹之内。 |
-| `spec.logo_alt_text` | 文本 | 空 | 徽标的替代文本，供屏幕阅读器朗读。默认为 `<company_name> logo`。 |
+| `spec.logo_alt_text` | 文本 | 空 | 徽标的替代文本，供屏幕阅读器朗读。默认为 `<company_name> logo`，没有 `company_name` 时为 `Logo`。 |
 | `spec.columns` | 映射列表 | 见内置的 `standard-bom` | 资源表的列，按顺序排列。 |
 | `spec.tag_columns` | `all`、`none` 或标签键列表 | `all` | 额外的列，每个标签键一列，添加在 `columns` 之后。可以是标签键列表，或 `all`（该表中资源上找到的每个标签键），或 `none`。 |
-| `spec.tag_policy` | 模板名称或相对路径 | 未设置 | 要检查的标签策略，按名称或相对路径指定。命令行上带标签策略的 `--template` 优先。 |
+| `spec.tag_policy` | 模板名称或相对路径 | 未设置 | 要检查的标签策略，按名称或相对路径指定。命令行上带标签策略的 `--template` 优先，其次是配置模板的 `tag_policy`。 |
 | `spec.excel` | 映射 | 见下文 | Excel 工作簿版式。 |
 | `spec.word` | 映射 | 见下文 | Word 文档版式。 |
 | `spec.colors.header_fill` | 十六进制颜色 | `1F3A5F` | 表头行的背景。 |
 | `spec.colors.header_text` | 十六进制颜色 | `FFFFFF` | 表头行的文字颜色。 |
 | `spec.columns[].field` | 文本 | 必填 | 要显示的资源字段。嵌套值用点表示：`tags.Owner` 是 `Owner` 标签，`raw_data.InstanceType` 是 AWS API 响应中的值。 |
 | `spec.columns[].header` | 文本 | 未设置 | 列标题。默认是用普通词语写出的字段名（`resource_name` 变为 `Resource name`）。 |
-| `spec.columns[].width` | 整数（最小 4，最大 120） | 未设置 | Excel 列宽，以字符数计。默认是适合内容的宽度，上限为 `excel.max_column_width`。 |
+| `spec.columns[].width` | 整数（最小 4，最大 120） | 未设置 | Excel 列宽，以字符数计；Word 表格忽略它。默认是适合内容的宽度，上限为 `excel.max_column_width`。 |
 | `spec.excel.summary_sheet` | true 或 false | `true` | 添加一个 Summary 工作表，列出每个服务的资源数量。 |
 | `spec.excel.layout` | `per-service`、`single-sheet` 之一 | `per-service` | `per-service` 把每个服务放在各自的工作表上。`single-sheet` 把所有资源放在一个带 Service 列的工作表上。 |
 | `spec.excel.single_sheet_name` | 文本 | `Resources` | `layout` 为 `single-sheet` 时的工作表名称。 |
@@ -93,7 +93,7 @@ spec:                      # the settings for this kind
 | `spec.word.max_noncompliant_rows` | 整数（最小 1，最大 10000） | `100` | 不合规资源表中显示的行数。 |
 | `spec.word.columns[].field` | 文本 | 必填 | 要显示的资源字段。嵌套值用点表示：`tags.Owner` 是 `Owner` 标签，`raw_data.InstanceType` 是 AWS API 响应中的值。 |
 | `spec.word.columns[].header` | 文本 | 未设置 | 列标题。默认是用普通词语写出的字段名（`resource_name` 变为 `Resource name`）。 |
-| `spec.word.columns[].width` | 整数（最小 4，最大 120） | 未设置 | Excel 列宽，以字符数计。默认是适合内容的宽度，上限为 `excel.max_column_width`。 |
+| `spec.word.columns[].width` | 整数（最小 4，最大 120） | 未设置 | Excel 列宽，以字符数计；Word 表格忽略它。默认是适合内容的宽度，上限为 `excel.max_column_width`。 |
 
 ### 标签策略模板（`kind: tag-policy`） {#tag-policy-templates-kind-tag-policy}
 
@@ -102,7 +102,7 @@ spec:                      # the settings for this kind
 | `spec.required_tags` | 映射列表 | 必填 | 范围内的资源必须具有的标签。当一个模板 `extends` 另一个模板时，条目按 `key` 合并：相同的键会替换，新键会添加，`remove: true` 会删除一个。 |
 | `spec.scope` | 映射 | 见下文 | 策略适用于哪些资源。范围之外的资源会被计数但不会被检查。 |
 | `spec.required_tags[].key` | 文本 | 必填 | 标签键。AWS 标签键区分大小写，因此 `costcenter` 不能满足 `CostCenter`。 |
-| `spec.required_tags[].description` | 文本 | 空 | 该标签存在的原因。显示在报告中。 |
+| `spec.required_tags[].description` | 文本 | 空 | 该标签存在的原因。供阅读策略文件的人看；不会显示在报告中。 |
 | `spec.required_tags[].allowed_values` | 文本列表 | 未设置 | 如果设置，标签值必须是其中之一。 |
 | `spec.required_tags[].case_sensitive` | true 或 false | `false` | 对 `allowed_values` 区分大小写地比较。 |
 | `spec.required_tags[].pattern` | 正则表达式 | 未设置 | 如果设置，整个标签值必须匹配此正则表达式（Python 语法）。 |

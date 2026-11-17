@@ -50,6 +50,8 @@ inventag --template standard-bom --template security-baseline --create-excel
 
 當有帳戶沒有被掃描，或只被部分掃描時，用範本生成的報告會在其 `Summary` 工作表和 Word 文件末尾加上「Run notes」，指出該帳戶和原因。設定了 `summary_sheet: false` 的範本在有備註時仍會得到 `Summary` 工作表。沒有備註時，檔案與以前相同。
 
+使用 `--template` 時，Excel 和 Word 會逐個寫出。無法寫出的格式不會讓另一個格式停止：日誌會指出失敗的格式，已寫出檔案的「Run notes」會說明另一個格式沒有寫出，執行以結束代碼 1 結束。
+
 `--tag-mappings` 和 `--service-descriptions` 會為原來的版面配置新增欄。使用 `--template` 時，報告只顯示它列出的欄，所以這些列在你把它們寫進 `columns`（例如 `- field: service_description`）之前不會出現。InvenTag 會記錄一條警告，指出缺少的欄。參見[欄位列表](./reference.md#resource-fields-you-can-use-as-columns)。
 
 ## 標籤策略為報告增加什麼 {#what-a-tag-policy-adds-to-your-reports}
