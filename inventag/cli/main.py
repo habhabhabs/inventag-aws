@@ -1224,6 +1224,31 @@ def _profile_name(session) -> str:
     )
 
 
+def _needs_mfa_code(session) -> bool:
+    """True when the profile of this session has an ``mfa_serial``."""
+    try:
+        return bool(session._session.get_scoped_config().get("mfa_serial"))
+    except Exception:  # an unknown profile is reported by the call itself
+        return False
+
+
+def _log_mfa_without_terminal(logger, session) -> None:
+    profile = _profile_name(session)
+    logger.error(
+        f"❌ Profile '{profile}' needs an MFA code, and there is no "
+        "terminal to type it."
+    )
+    logger.error(
+        "   Run InvenTag in a terminal, or get temporary credentials first "
+        "and set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and "
+        "AWS_SESSION_TOKEN:"
+    )
+    logger.error(
+        "   aws sts get-session-token --serial-number <MFA device ARN> "
+        "--token-code <code>"
+    )
+
+
 def validate_aws_credentials_early(timeout: Optional[int] = None) -> bool:
     """
     Validate AWS credentials early before any BOM processing.
@@ -1237,6 +1262,13 @@ def validate_aws_credentials_early(timeout: Optional[int] = None) -> bool:
     try:
         # Test default session first
         session = boto3.Session()
+
+        # A profile that needs an MFA code cannot get it with no terminal:
+        # stop now with our message instead of letting the SDK prompt (it
+        # would wait on an idle stdin, or print its own warning first).
+        if _needs_mfa_code(session) and not sys.stdin.isatty():
+            _log_mfa_without_terminal(logger, session)
+            return False
         if timeout:
             from botocore.config import Config
 
@@ -1320,20 +1352,7 @@ def validate_aws_credentials_early(timeout: Optional[int] = None) -> bool:
         return False
 
     except EOFError:
-        profile = _profile_name(session)
-        logger.error(
-            f"❌ Profile '{profile}' needs an MFA code, and there is no "
-            "terminal to type it."
-        )
-        logger.error(
-            "   Run InvenTag in a terminal, or get temporary credentials first "
-            "and set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and "
-            "AWS_SESSION_TOKEN:"
-        )
-        logger.error(
-            "   aws sts get-session-token --serial-number <MFA device ARN> "
-            "--token-code <code>"
-        )
+        _log_mfa_without_terminal(logger, session)
         return False
 
     except NoCredentialsError:
