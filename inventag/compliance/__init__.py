@@ -15,30 +15,44 @@ HIPAA, GDPR, ISO 27001 or any other framework.
 
 from .checker import ComprehensiveTagComplianceChecker
 
-from .security_validator import (
-    ReadOnlyAccessValidator,
-    OperationType,
-    ComplianceStandard,
-    SecurityValidationResult,
-    AuditLogEntry,
-    ComplianceReport,
-)
+# The classes below are not used by the ``inventag`` command. Their modules
+# (``psutil``, a monitor thread) load on first use, so ``inventag --version``
+# and every scan start without them. ``from inventag.compliance import X`` works
+# for every name in ``__all__`` as before.
+_LAZY = {
+    "ReadOnlyAccessValidator": "security_validator",
+    "OperationType": "security_validator",
+    "ComplianceStandard": "security_validator",
+    "SecurityValidationResult": "security_validator",
+    "AuditLogEntry": "security_validator",
+    "ComplianceReport": "security_validator",
+    "ProductionSafetyMonitor": "production_monitor",
+    "ErrorSeverity": "production_monitor",
+    "MonitoringMetric": "production_monitor",
+    "ErrorContext": "production_monitor",
+    "PerformanceMetric": "production_monitor",
+    "CloudTrailEvent": "production_monitor",
+    "SecurityValidationReport": "production_monitor",
+    "ComplianceManager": "compliance_manager",
+    "ComplianceConfiguration": "compliance_manager",
+    "ComplianceStatus": "compliance_manager",
+}
 
-from .production_monitor import (
-    ProductionSafetyMonitor,
-    ErrorSeverity,
-    MonitoringMetric,
-    ErrorContext,
-    PerformanceMetric,
-    CloudTrailEvent,
-    SecurityValidationReport,
-)
 
-from .compliance_manager import (
-    ComplianceManager,
-    ComplianceConfiguration,
-    ComplianceStatus,
-)
+def __getattr__(name):
+    module_name = _LAZY.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    import importlib
+
+    value = getattr(importlib.import_module(f".{module_name}", __name__), name)
+    globals()[name] = value
+    return value
+
+
+def __dir__():
+    return sorted(set(globals()) | set(_LAZY))
+
 
 __all__ = [
     "ComprehensiveTagComplianceChecker",
