@@ -67,6 +67,13 @@ class _logging_state:
     ``main()`` and the discovery classes attach handlers (bound to the stream of that
     run) and change ``propagate``; in one process, a second run would otherwise write
     into the first run's buffer.
+
+    On entry the same loggers are also reset to a fresh process (no handler, level
+    unset, propagating). Another test that ran earlier in the same session (for
+    example one that builds ``AWSResourceInventory``) leaves a ``StreamHandler``
+    bound to its own captured stderr on ``inventag.discovery.inventory``; the
+    product adds a handler only when there is none, so the run's warnings went
+    into that dead stream and rows E1 and E3 saw no "Cost Explorer" line.
     """
 
     def __enter__(self):
@@ -75,6 +82,11 @@ class _logging_state:
             for name, lg in logging.root.manager.loggerDict.items()
             if name.startswith("inventag") and isinstance(lg, logging.Logger)
         }
+        for name in self.saved:
+            lg = logging.getLogger(name)
+            lg.handlers[:] = []
+            lg.propagate = True
+            lg.setLevel(logging.NOTSET)
         return self
 
     def __exit__(self, *exc):
