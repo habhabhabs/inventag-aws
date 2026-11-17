@@ -133,6 +133,7 @@ class AWSResourceInventory:
             fallback_display_mode=self.fallback_display_mode,
             enable_billing_validation=enable_billing_validation,
             discovery_timeout=discovery_timeout,
+            services=services,
         )
         # What each listing call returned (ok, empty, denied, throttled ...)
         self.coverage = self.comprehensive_discovery.coverage

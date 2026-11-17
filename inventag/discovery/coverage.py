@@ -17,6 +17,9 @@ DENIED = "denied"  # no permission (or region/service not enabled)
 THROTTLED = "throttled"  # still throttled after the retries
 ERROR = "error"  # any other failure
 TIMEOUT = "timeout"  # not finished before the discovery time limit
+# Not listed because ``--account-services`` (or a template's ``services``)
+# left the service out. Not a failure: it is not in ``FAILED_OUTCOMES``.
+OUT_OF_SCOPE = "out_of_scope"
 
 FAILED_OUTCOMES = frozenset({DENIED, THROTTLED, ERROR, TIMEOUT})
 

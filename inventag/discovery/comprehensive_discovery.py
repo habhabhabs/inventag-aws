@@ -29,7 +29,7 @@ from .aws_clients import create_client
 from .coverage import CoverageLedger
 from .regions import cost_explorer_region, global_home_region, partition_of
 from ..security.secret_values import mask_secret_values
-from .service_filter import canonical_service
+from .service_filter import canonical_service, canonical_service_set
 from .arn_utils import (
     ResourceArnIndex,
     arn_service,
@@ -427,8 +427,15 @@ class ComprehensiveAWSDiscovery:
         enable_billing_validation: bool = True,
         discovery_timeout: Optional[float] = 600,
         coverage: Optional[CoverageLedger] = None,
+        services: Optional[List[str]] = None,
     ):
         self.session = session or boto3.Session()
+        # Services to list (``--account-services``, a template's ``services``).
+        # Empty: every service, as before.
+        self._scope = canonical_service_set(services)
+        if self._scope & {"ec2", "vpc"}:
+            # VPC rows come from the EC2 client and the other way round
+            self._scope |= {"ec2", "vpc"}
         # False: never call Cost Explorer (AWS charges for each request)
         self.enable_billing_validation = enable_billing_validation
         # Propagates to the "inventag" logger the CLI configures (format,
@@ -878,6 +885,8 @@ class ComprehensiveAWSDiscovery:
                         normalized_service = self._normalize_billing_service_name(
                             service_name
                         )
+                        if not self._name_in_scope(normalized_service):
+                            continue
                         self.billing_services.add(normalized_service)
                         self.billing_spend[normalized_service] = cost
 
@@ -914,6 +923,44 @@ class ComprehensiveAWSDiscovery:
             for e in self.coverage.entries
         )
 
+    def _pattern_in_scope(self, key: str, config: Dict[str, Any]) -> bool:
+        """Whether the service-limit filter wants this table entry listed."""
+        if not self._scope:
+            return True
+        names = (
+            key,
+            config.get("label"),
+            config.get("client_service"),
+            config.get("arn_service"),
+        )
+        return bool({canonical_service(n) for n in names if n} & self._scope)
+
+    def _name_in_scope(self, name: Optional[str]) -> bool:
+        """Whether a service name (billing name, ARN service code) is wanted."""
+        if not self._scope:
+            return True
+        wanted = canonical_service(name)
+        if wanted in self._scope:
+            return True
+        # An ARN service code of a wanted table entry ("states" for Step Functions)
+        return any(
+            wanted == canonical_service(cfg.get("arn_service") or arn_service(key))
+            for key, cfg in self.service_discovery_patterns.items()
+            if self._pattern_in_scope(key, cfg)
+        )
+
+    def _record_out_of_scope(self, key: str) -> None:
+        """A listing the service limit left out: not a failure, not read."""
+        self.coverage.record(
+            region=GLOBAL_REGION_LABEL,
+            source="service-api",
+            service=key,
+            resource_type="",
+            operation="",
+            outcome=coverage_mod.OUT_OF_SCOPE,
+            count=0,
+        )
+
     def _service_regions(self, client_service: str, partition: str) -> set:
         """Regions where botocore knows an endpoint for the service.
 
@@ -940,6 +987,9 @@ class ComprehensiveAWSDiscovery:
         partition = partition_of(self.regions)
         for service_name, config in self.service_discovery_patterns.items():
             if partition not in config.get("partitions", [partition]):
+                continue
+            if not self._pattern_in_scope(service_name, config):
+                self._record_out_of_scope(service_name)
                 continue
             if config.get("regional", True):
                 # Regional service - discover in all regions where it exists
@@ -972,7 +1022,11 @@ class ComprehensiveAWSDiscovery:
         # Certificates CloudFront uses must be in us-east-1. Read them even
         # when us-east-1 is not one of the requested regions.
         # (CloudFront certificates exist only in the aws partition.)
-        if self.home_region not in self.regions and self.home_region == "us-east-1":
+        if (
+            self.home_region not in self.regions
+            and self.home_region == "us-east-1"
+            and self._name_in_scope("acm")
+        ):
             self._discover_cloudfront_certificates()
 
         # Sort by priority (critical services first)
@@ -1947,6 +2001,8 @@ class ComprehensiveAWSDiscovery:
                 arn = resource.get("ResourceARN", "")
                 tags = {tag["Key"]: tag["Value"] for tag in resource.get("Tags", [])}
                 parsed = parse_arn(arn) or {}
+                if self._scope and not self._name_in_scope(parsed.get("service")):
+                    continue  # the Tagging API pass follows the service limit
                 is_global = parsed.get(
                     "service"
                 ) in self.GLOBAL_ARN_SERVICES or not parsed.get("region")

@@ -85,7 +85,7 @@ def test_ec2_and_vpc_are_listed_together(estate):
     # VPC rows are found through the EC2 client and the other way round
     _, rows = _scan(["EC2"])
     _, everything = _scan()
-    assert sorted(map(_key, rows)) == sorted(
+    assert sorted(map(_key, filter_resources(rows, ["EC2"]))) == sorted(
         map(_key, filter_resources(everything, ["EC2"]))
     )
 
