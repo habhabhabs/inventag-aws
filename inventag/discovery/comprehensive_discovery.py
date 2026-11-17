@@ -961,6 +961,18 @@ class ComprehensiveAWSDiscovery:
             count=0,
         )
 
+    @staticmethod
+    def _make_pool(workers: int):
+        """Thread pool for listings. Daemon threads when ``inventag.core`` has
+        them (A-25): a listing still waiting on the network after the account's
+        limit then does not keep the process alive. Imported here because
+        ``inventag.core`` imports this module."""
+        try:
+            from ..core.daemon_pool import DaemonThreadPool
+        except ImportError:
+            return ThreadPoolExecutor(max_workers=workers)
+        return DaemonThreadPool(workers)
+
     def _service_regions(self, client_service: str, partition: str) -> set:
         """Regions where botocore knows an endpoint for the service.
 
@@ -1038,7 +1050,7 @@ class ComprehensiveAWSDiscovery:
 
         # Execute parallel discovery
         self._stop.clear()
-        executor = ThreadPoolExecutor(max_workers=max_workers)
+        executor = self._make_pool(max_workers)
         future_to_task = {
             executor.submit(self._discover_service_in_region, task): task
             for task in discovery_tasks
@@ -1955,7 +1967,7 @@ class ComprehensiveAWSDiscovery:
 
         results: Dict[str, List[Dict[str, Any]]] = {}
         regions = self._tagging_regions()
-        with ThreadPoolExecutor(max_workers=min(8, len(regions))) as pool:
+        with self._make_pool(min(8, len(regions))) as pool:
             futures = {pool.submit(fetch, r): r for r in regions}
             for fut, region in futures.items():
                 try:
