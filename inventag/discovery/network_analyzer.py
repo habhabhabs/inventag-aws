@@ -12,6 +12,7 @@ from typing import Dict, List, Any, Optional, Set, Tuple
 from dataclasses import dataclass, field
 from collections import defaultdict
 from botocore.exceptions import ClientError
+from .aws_clients import create_client
 import logging
 
 logger = logging.getLogger(__name__)
@@ -308,7 +309,7 @@ class NetworkAnalyzer:
         """Cache VPC and subnet information for a region."""
         try:
             logger.info(f"Caching network information for region: {region}")
-            ec2 = self.session.client("ec2", region_name=region)
+            ec2 = create_client(self.session, "ec2", region)
             self.region_clients[region] = ec2
 
             # Cache VPC information
@@ -556,7 +557,7 @@ class NetworkAnalyzer:
         groups: Dict[Tuple[str, str, str], Tuple[Optional[str], List[str]]] = {}
         for region in regions:
             try:
-                client = self.session.client("elasticache", region_name=region)
+                client = create_client(self.session, "elasticache", region)
                 marker = None
                 while True:
                     params = {"Marker": marker} if marker else {}

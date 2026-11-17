@@ -22,6 +22,7 @@ from ..security.safe_output import (
     write_safe_csv,
 )
 from ..security.secret_values import mask_resources
+from ..discovery.aws_clients import create_client
 from .bom_processor import analysis_resource_key
 from .safe_save import save_atomically
 from .report_template import (
@@ -389,7 +390,7 @@ class BOMConverter:
     def _cache_vpc_subnet_info(self, region: str):
         """Cache VPC and subnet information for a region."""
         try:
-            ec2 = self.session.client("ec2", region_name=region)
+            ec2 = create_client(self.session, "ec2", region)
 
             # Cache VPC information
             vpcs = ec2.describe_vpcs()

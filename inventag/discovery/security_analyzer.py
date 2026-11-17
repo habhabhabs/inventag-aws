@@ -17,6 +17,7 @@ from typing import Dict, List, Any, Optional, Set, Tuple
 from dataclasses import dataclass, field
 from collections import defaultdict
 from botocore.exceptions import ClientError
+from .aws_clients import create_client
 import logging
 
 logger = logging.getLogger(__name__)
@@ -410,7 +411,7 @@ class SecurityAnalyzer:
         """Cache security group information for a region."""
         try:
             logger.info(f"Caching security group information for region: {region}")
-            ec2 = self.session.client("ec2", region_name=region)
+            ec2 = create_client(self.session, "ec2", region)
             self.region_clients[region] = ec2
 
             # Get security groups
@@ -620,7 +621,7 @@ class SecurityAnalyzer:
         """Cache NACL information for a region."""
         try:
             logger.info(f"Caching NACL information for region: {region}")
-            ec2 = self.session.client("ec2", region_name=region)
+            ec2 = create_client(self.session, "ec2", region)
 
             # Get NACLs
             for nacl in _collect(ec2, "describe_network_acls", "NetworkAcls"):
