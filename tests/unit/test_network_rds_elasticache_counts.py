@@ -235,3 +235,43 @@ def test_unreadable_cache_subnet_groups_say_so_once_and_do_not_stop_the_analysis
         "Allow elasticache:DescribeCacheSubnetGroups to count them."
     ]
     assert "db1" in analyzer.vpc_cache[estate["vpc"]].associated_resources
+
+
+def test_a_cluster_of_another_account_is_not_counted_through_a_group_of_the_same_name(
+    estate,
+):
+    """Review H1: in a consolidated multi-account report the subnet groups are
+    read with the first account's session. A cluster of another account whose
+    group has the same name (every account has an ElastiCache group called
+    "default") must not be counted in the first account's VPC and subnets."""
+    rows = [dict(r) for r in estate["rows"]]
+    own = next(r for r in rows if r["id"] == "cache1")
+    own["account_id"] = "123456789012"  # moto's account: the groups' account
+    other = dict(own, id="cacheB", account_id="222222222222")
+    other["raw_data"] = dict(
+        own["raw_data"],
+        CacheClusterId="cacheB",
+        ARN="arn:aws:elasticache:us-east-1:222222222222:cluster:cacheB",
+    )
+    rows.append(other)
+    analyzer = _analyse(rows)
+    vpc = analyzer.vpc_cache[estate["vpc"]].associated_resources
+    assert "cache1" in vpc and "cacheB" not in vpc
+    for subnet in (estate["a"], estate["b"]):
+        members = analyzer.subnet_cache[subnet].associated_resources
+        assert "cache1" in members and "cacheB" not in members
+
+
+def test_a_cluster_row_without_account_id_uses_the_account_of_its_arn(estate):
+    """The account of a cluster row comes from ``account_id``, else from its ARN
+    (the row's own or the one in its API data)."""
+    rows = [dict(r) for r in estate["rows"]]
+    other = dict(next(r for r in rows if r["id"] == "cache1"), id="cacheC")
+    other["raw_data"] = dict(
+        other["raw_data"],
+        ARN="arn:aws:elasticache:us-east-1:333333333333:cluster:cacheC",
+    )
+    rows.append(other)
+    analyzer = _analyse(rows)
+    vpc = analyzer.vpc_cache[estate["vpc"]].associated_resources
+    assert "cache1" in vpc and "cacheC" not in vpc
