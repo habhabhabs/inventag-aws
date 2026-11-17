@@ -1904,6 +1904,18 @@ class CloudBOMGenerator:
             discovery_timeout=self._discovery_time_limit(deadline),
         )
 
+        # The account was resolved when its context was made; discovery's
+        # own lookup ran once per region thread, racing (A-70). Hand it over
+        # when the engine has that cache (feature-detected).
+        engine = getattr(inventory, "comprehensive_discovery", None)
+        known_account = str((context.caller_identity or {}).get("Account") or "")
+        if (
+            engine is not None
+            and callable(getattr(engine, "_get_account_id", None))
+            and is_valid_account_id(known_account)
+        ):
+            engine._cached_account_id = known_account
+
         # Discover resources. Secret values that some read calls return
         # (Lambda environment variables, passwords in Describe output ...)
         # are removed here, before any report, snapshot or log sees them.
