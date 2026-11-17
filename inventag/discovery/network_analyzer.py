@@ -706,20 +706,29 @@ class NetworkAnalyzer:
 
     @staticmethod
     def _has_internet_route(route_table: Dict[str, Any]) -> bool:
-        """True if the table has an active default route to an internet gateway."""
+        """True if active routes to an internet gateway cover the whole address space.
+
+        One default route (0.0.0.0/0 or ::/0) does; so do the two halves
+        (0.0.0.0/1 with 128.0.0.0/1, ::/1 with 8000::/1).
+        """
+        v4: Set[str] = set()
+        v6: Set[str] = set()
         for route in route_table.get("Routes", []):
-            default = (
-                route.get("DestinationCidrBlock") == "0.0.0.0/0"
-                or route.get("DestinationIpv6CidrBlock") == "::/0"
-            )
             gateway = route.get("GatewayId") or ""
-            if (
-                default
-                and gateway.startswith("igw-")
-                and route.get("State", "active") == "active"
+            if not gateway.startswith("igw-") or route.get("State", "active") != (
+                "active"
             ):
-                return True
-        return False
+                continue
+            if route.get("DestinationCidrBlock"):
+                v4.add(route["DestinationCidrBlock"])
+            if route.get("DestinationIpv6CidrBlock"):
+                v6.add(route["DestinationIpv6CidrBlock"])
+        return (
+            "0.0.0.0/0" in v4
+            or {"0.0.0.0/1", "128.0.0.0/1"} <= v4
+            or "::/0" in v6
+            or {"::/1", "8000::/1"} <= v6
+        )
 
     def _determine_subnet_publicity(self, vpc_analysis: VPCAnalysis):
         """Mark subnets whose route table has a default route to an internet gateway.
