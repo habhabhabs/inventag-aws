@@ -65,6 +65,11 @@ def _write_data_file(path: Path, data) -> None:
     save_atomically(path, write)
 
 
+# The scan's default cross-account role name (MultiAccountConfig default and
+# --cross-account-role's default).
+_SCAN_DEFAULT_ROLE = "InvenTagCrossAccountRole"
+
+
 @dataclass
 class CredentialValidationResult:
     """Result of credential validation."""
@@ -388,6 +393,7 @@ class CredentialManager:
         test_regions: bool = True,
         test_services: bool = True,
         timeout: Optional[int] = None,
+        cross_account_role_name: Optional[str] = _SCAN_DEFAULT_ROLE,
     ) -> CredentialValidationResult:
         """
         Validate credentials and test account accessibility.
@@ -397,6 +403,10 @@ class CredentialManager:
             test_regions: Whether to test region accessibility
             test_services: Whether to test service availability
             timeout: Connect/read timeout in seconds for each AWS call
+            cross_account_role_name: for an entry with no credentials, the role
+                the scan would assume in the account (``--cross-account-role``);
+                the entry is resolved as the scan resolves it (A-39). None:
+                always the default credentials, as before.
 
         Returns:
             Validation result with detailed information
@@ -423,6 +433,7 @@ class CredentialManager:
                     credentials.profile_name,
                     credentials.role_arn,
                     credentials.external_id,
+                    cross_account_role_name,
                 )
             ),
         )
@@ -439,7 +450,11 @@ class CredentialManager:
 
         try:
             # Create session
-            session = self._create_session_from_credentials(credentials, client_config)
+            session = self._create_session_from_credentials(
+                credentials,
+                client_config,
+                cross_account_role_name=cross_account_role_name,
+            )
 
             # Test basic connectivity with STS
             sts = session.client("sts", config=client_config)
@@ -751,9 +766,19 @@ class CredentialManager:
         return SecureCredentialFile(**data_dict)
 
     def _create_session_from_credentials(
-        self, credentials: AccountCredentials, client_config=None
+        self,
+        credentials: AccountCredentials,
+        client_config=None,
+        cross_account_role_name: Optional[str] = None,
     ) -> boto3.Session:
-        """Create boto3 session from credentials."""
+        """Create boto3 session from credentials.
+
+        With ``cross_account_role_name``, an entry with no credentials is
+        resolved as the scan does (``CloudBOMGenerator._create_account_session``):
+        the default credentials when they belong to the account and the role
+        name is the default one, else the role in the account, and the default
+        credentials when the role cannot be assumed.
+        """
         register_secrets([credentials.secret_access_key, credentials.session_token])
         # Try profile first
         if credentials.profile_name:
@@ -792,8 +817,62 @@ class CredentialManager:
                 aws_session_token=temp_credentials["SessionToken"],
             )
 
+        if cross_account_role_name and is_valid_account_id(credentials.account_id):
+            session = self._session_as_the_scan_resolves_it(
+                credentials, client_config, cross_account_role_name
+            )
+            if session is not None:
+                return session
+
         # Fallback to default session
         return boto3.Session()
+
+    def _session_as_the_scan_resolves_it(
+        self, credentials: AccountCredentials, client_config, role_name: str
+    ) -> Optional[boto3.Session]:
+        """The scan's choice for an entry with no credentials, or None (then
+        the default credentials are used, as the scan's last step does)."""
+        default_session = boto3.Session()
+        try:
+            identity = default_session.client(
+                "sts", config=client_config
+            ).get_caller_identity()
+        except Exception:
+            return None
+        if role_name == _SCAN_DEFAULT_ROLE and str(identity.get("Account", "")) == str(
+            credentials.account_id
+        ):
+            return default_session
+        try:
+            role_arn = build_role_arn(
+                credentials.account_id,
+                role_name,
+                partition=partition_from_arn(identity.get("Arn")),
+            )
+            response = default_session.client("sts", config=client_config).assume_role(
+                RoleArn=role_arn,
+                RoleSessionName=f"InvenTag-{credentials.account_id}-"
+                f"{int(datetime.now().timestamp())}",
+                **(
+                    {"ExternalId": credentials.external_id}
+                    if credentials.external_id
+                    else {}
+                ),
+            )
+        except Exception as e:
+            self.logger.info(
+                f"Cross-account role not usable for account "
+                f"{credentials.account_id} ({type(e).__name__}); checking the "
+                "default credentials"
+            )
+            return None
+        temp = response["Credentials"]
+        register_secrets([temp["SecretAccessKey"], temp["SessionToken"]])
+        return boto3.Session(
+            aws_access_key_id=temp["AccessKeyId"],
+            aws_secret_access_key=temp["SecretAccessKey"],
+            aws_session_token=temp["SessionToken"],
+        )
 
     def _test_region_accessibility(
         self, session: boto3.Session, regions: List[str], client_config=None
