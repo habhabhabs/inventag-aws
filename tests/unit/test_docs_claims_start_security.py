@@ -392,7 +392,8 @@ def test_excel_sheet_names_are_cut_to_31_characters(caplog):
 def test_snapshot_that_cannot_be_saved_still_exits_0(
     aws, tmp_path, monkeypatch, caplog
 ):
-    """Status: a snapshot that cannot be saved is logged as an error; exit code 0."""
+    """Status: a snapshot that cannot be saved is logged as an error and named in the
+    run notes; exit code 0."""
     from inventag.state.state_manager import StateManager
 
     def boom(self, *a, **k):
@@ -410,6 +411,12 @@ def test_snapshot_that_cannot_be_saved_still_exits_0(
     assert code == 0
     assert len(reports(tmp_path / "o")) == 1
     assert any(r.levelname == "ERROR" for r in caplog.records)
+    # The run notes after the summary name it, with the folder to check.
+    assert any(
+        "The state snapshot was not saved (disk full), so the next change report "
+        "will compare with an older snapshot; check that" in r.getMessage()
+        for r in caplog.records
+    ), [r.getMessage() for r in caplog.records]
 
 
 def test_every_call_denied_exits_0_with_no_resources(
@@ -1084,3 +1091,116 @@ def test_after_a_tagging_only_run_the_next_full_run_lists_untagged_resources_as_
     report = delta(second)
     assert report is not None, second["state_management"]
     assert untagged_arn in arns(report.added_resources)
+
+
+# ------------------------------------------------------------ the second patch
+@pytest.mark.parametrize("extra", [[], ["--fail-if-empty"]])
+def test_an_empty_result_with_s3_bucket_says_nothing_to_upload_and_exits_1(
+    empty_aws, tmp_path, caplog, capsys, extra
+):
+    """Status: an empty result with --s3-bucket exits with code 1 and says
+    "Nothing to upload to s3://<bucket>/<prefix>/: ...", also with
+    --fail-if-empty."""
+    import boto3
+
+    boto3.client("s3", region_name="us-east-1").create_bucket(
+        Bucket="regression-upload"
+    )
+    code = run_cli(
+        "--create-excel",
+        "--no-billing-validation",
+        "--account-regions",
+        "us-east-1",
+        "--account-services",
+        "SQS",
+        "--s3-bucket",
+        "regression-upload",
+        "--s3-key-prefix",
+        "nightly/",
+        "--output-directory",
+        str(tmp_path / "o"),
+        *extra,
+    )
+    text = capsys.readouterr().out + "\n".join(r.getMessage() for r in caplog.records)
+    assert code == 1
+    assert (
+        "Nothing to upload to s3://regression-upload/nightly/: the run wrote no "
+        "report file because there are no resources to report."
+    ) in text
+
+
+def _source_text():
+    """The code with neighbouring string literals joined, white space collapsed."""
+    texts = (p.read_text() for p in (ROOT / "inventag").rglob("*.py"))
+    return " ".join(" ".join(re.sub(r'"\s*\n\s*f?"', "", t).split()) for t in texts)
+
+
+def _page(path):
+    return " ".join((ROOT / path).read_text().split())
+
+
+QUOTED_MESSAGES = [
+    # (page, text the page quotes, the same text as the code builds it)
+    (
+        "docs/guides/troubleshooting.md",
+        "Stopped by the user (Ctrl-C). No report was written.",
+        "Stopped by the user (Ctrl-C). ",
+    ),
+    (
+        "docs/guides/troubleshooting.md",
+        "Terminated (SIGTERM). No report was written.",
+        "Terminated (SIGTERM). ",
+    ),
+    (
+        "docs/guides/troubleshooting.md",
+        "1 report file(s) already written stay in <output folder>.",
+        "report file(s) already written stay in ",
+    ),
+    (
+        "docs/guides/troubleshooting.md",
+        "Region 'us-east-9' is not a known AWS region; check its spelling in "
+        "--account-regions or in the accounts file.",
+        "is not a known AWS region; check its spelling in --account-regions or in "
+        "the accounts file.",
+    ),
+    (
+        "docs/guides/troubleshooting.md",
+        "Cost Explorer did not answer in time for account 123456789012, so its "
+        "billing checks were skipped and services that only billing shows are not "
+        "listed for it.",
+        "so its billing checks were skipped and services that only billing shows "
+        "are not listed for it.",
+    ),
+    (
+        "docs/guides/troubleshooting.md",
+        "could not be read, so those rows have some fields missing:",
+        "could not be read, so those rows have some fields missing: ",
+    ),
+    (
+        "docs/guides/troubleshooting.md",
+        "Reports written; the state snapshot or the change report had a problem "
+        "(see the notes below)",
+        "Reports written; the state snapshot or the change report had a problem "
+        "(see the notes below)",
+    ),
+    (
+        "docs/guides/run-a-scan.md",
+        "No output formats specified. Defaulting to Excel format.",
+        "No output formats specified. Defaulting to Excel format.",
+    ),
+    (
+        "docs/getting-started/status.md",
+        "the run wrote no report file because there are no resources to report.",
+        "the run wrote no report file because there are no resources to report.",
+    ),
+]
+
+
+@pytest.mark.parametrize("page, quoted, in_code", QUOTED_MESSAGES)
+def test_a_message_that_the_docs_quote_is_the_one_the_code_prints(
+    page, quoted, in_code
+):
+    """The guides and the status page quote these messages of the patched
+    release; the page text and the code text must stay the same."""
+    assert " ".join(quoted.split()) in _page(page)
+    assert " ".join(in_code.split()) in _source_text()

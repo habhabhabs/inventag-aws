@@ -842,3 +842,48 @@ def test_a_service_description_entry_replaces_the_built_in_text(aws, tmp_path):
     sqs_head = list(sqs[0])
     texts = {r[sqs_head.index("service_description")] for r in sqs[1:]}
     assert texts and "Object bucket" not in texts and None not in texts
+
+
+def test_the_consolidated_report_reads_its_analysis_with_the_first_accounts_session(
+    empty_aws, tmp_path, monkeypatch
+):
+    """Status: the consolidated multi-account report reads its Network and
+    Security analysis with the first account's session; a per-account report
+    uses its own account's session."""
+    from unittest.mock import patch
+
+    from inventag.core import cloud_bom_generator as cbg
+    from tests.unit.test_per_account_report_uses_the_accounts_session import (
+        CloudBOMGenerator,
+        CountingInventory,
+        MultiAccountConfig,
+        _contexts,
+    )
+
+    generator = CloudBOMGenerator(
+        MultiAccountConfig(
+            accounts=[object(), object()],
+            output_directory=str(tmp_path),
+            enable_state_management=False,
+            generate_per_account_reports=True,
+        )
+    )
+    contexts = _contexts(["111111111111", "222222222222"])
+    for account_id, ctx in contexts.items():
+        ctx.session._account = account_id
+    generator._establish_account_contexts = lambda: (
+        setattr(generator, "account_contexts", dict(contexts)) or contexts
+    )
+    sessions = []
+    original = cbg.BOMConverter.__init__
+
+    def spy(self, *args, **kwargs):
+        sessions.append(getattr(kwargs.get("session"), "_account", None))
+        original(self, *args, **kwargs)
+
+    monkeypatch.setattr(cbg.BOMConverter, "__init__", spy)
+    CountingInventory.fail = set()
+    with patch.object(cbg, "AWSResourceInventory", CountingInventory):
+        generator.generate_multi_account_bom(output_formats=["json"])
+    # The first converter is the consolidated one, then one per account.
+    assert sessions == ["111111111111", "111111111111", "222222222222"], sessions
