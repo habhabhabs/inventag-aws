@@ -3,6 +3,8 @@ Unit tests for StateManager - Comprehensive inventory state persistence
 """
 
 import pytest
+
+from inventag._version import __version__
 import json
 import tempfile
 import shutil
@@ -132,7 +134,8 @@ class TestStateManager:
         assert snapshot.compliance_data == sample_compliance_data
         assert snapshot.network_analysis == network_analysis
         assert snapshot.security_analysis == security_analysis
-        assert snapshot.metadata.tags == tags
+        # Every snapshot also records the InvenTag version that wrote it.
+        assert snapshot.metadata.tags == {**tags, "inventag_version": __version__}
 
     def test_load_state_existing(self, state_manager, sample_resources):
         """Test loading existing state"""

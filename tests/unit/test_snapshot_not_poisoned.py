@@ -60,6 +60,9 @@ V120_TAG_KEYS = {
     "reused_accounts",
     "coverage_summary",
 }
+# Additive keys of the final v1.2 patch (decision 6 and memo 8.2): older
+# readers ignore them; the schema stays 1.1.
+ADDED_TAG_KEYS = {"units_not_read", "inventag_version"}
 
 
 class DenyEverything:
@@ -162,7 +165,7 @@ def test_an_all_denied_run_does_not_poison_the_next_change_report(
     data = json.loads(files[-1].read_text())
     assert set(data) == V120_TOP_KEYS
     assert set(data["metadata"]) == V120_METADATA_KEYS
-    assert set(data["metadata"]["tags"]) <= V120_TAG_KEYS
+    assert set(data["metadata"]["tags"]) <= V120_TAG_KEYS | ADDED_TAG_KEYS
     assert data["metadata"]["version"] == "1.1"
     assert not data["metadata"]["accounts_failed"]
     assert data["metadata"]["accounts_scanned"] == [GOOD_ID]
