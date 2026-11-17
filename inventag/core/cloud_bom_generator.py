@@ -1314,6 +1314,13 @@ class CloudBOMGenerator:
                         f"account {credentials.account_id} (from {source})"
                     )
 
+                self._warn_other_partition_regions(
+                    session,
+                    credentials.account_id,
+                    caller_identity.get("Arn", ""),
+                    target_regions,
+                )
+
                 # Test accessible regions
                 accessible_regions = self._test_accessible_regions(
                     session, target_regions
@@ -1498,6 +1505,27 @@ class CloudBOMGenerator:
             aws_secret_access_key=temp["SecretAccessKey"],
             aws_session_token=temp["SessionToken"],
         )
+
+    def _warn_other_partition_regions(
+        self, session, account_id: str, identity_arn: str, regions: List[str]
+    ) -> None:
+        """Name each region of another partition than the credentials' (A-44).
+        It is still tried, as before; it cannot work with these credentials."""
+        own = partition_from_arn(identity_arn) if identity_arn else ""
+        if not own:
+            return
+        for region in regions or []:
+            try:
+                other = session.get_partition_for_region(region)
+            except Exception:
+                continue
+            if other and other != own:
+                self.logger.warning(
+                    f"Region '{region}' is in the {other} partition, but the "
+                    f"credentials of account {account_id} are for the {own} "
+                    "partition, so it cannot be scanned with them; scan it with "
+                    "credentials of that partition."
+                )
 
     def _identity_region(self, session) -> Optional[str]:
         """The region for STS identity checks (A-44): the session's own region,
