@@ -37,6 +37,17 @@ class S3UploadError(Exception):
     """Raised for invalid S3 upload configuration."""
 
 
+def create_upload_client(session, region_name: Optional[str] = None):
+    """The S3 client for uploads, with the shared retry settings of discovery.
+
+    Standard mode with 10 tries in total, unless the user set ``AWS_RETRY_MODE``
+    or ``AWS_MAX_ATTEMPTS``. There is no retry loop of our own.
+    """
+    from ..discovery.aws_clients import create_client
+
+    return create_client(session, "s3", region_name)
+
+
 def skipped_upload_message(bucket: str, key_prefix: Optional[str] = None) -> str:
     """The line to log when a report format failed, so no report was uploaded."""
     prefix = normalize_key_prefix(key_prefix)

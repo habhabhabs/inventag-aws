@@ -72,6 +72,13 @@ def _resource_key(resource: Dict[str, Any]):
     )
 
 
+def _client(session, service_name, region_name=None):
+    """A client with the shared retry settings (loaded when first needed)."""
+    from ..discovery.aws_clients import create_client
+
+    return create_client(session, service_name, region_name)
+
+
 class ComprehensiveTagComplianceChecker:
     def __init__(
         self,
@@ -125,7 +132,7 @@ class ComprehensiveTagComplianceChecker:
     def _get_available_regions(self) -> List[str]:
         """Get all available AWS regions with fallback."""
         try:
-            ec2 = self.session.client("ec2", region_name="us-east-1")
+            ec2 = _client(self.session, "ec2", "us-east-1")
             regions = ec2.describe_regions()["Regions"]
             region_list = [region["RegionName"] for region in regions]
             self.logger.info(f"Successfully retrieved {len(region_list)} AWS regions")
@@ -258,9 +265,7 @@ class ComprehensiveTagComplianceChecker:
 
         for region in self.regions:
             try:
-                rgt_client = self.session.client(
-                    "resourcegroupstaggingapi", region_name=region
-                )
+                rgt_client = _client(self.session, "resourcegroupstaggingapi", region)
 
                 # Get all resources (paginated)
                 paginator = rgt_client.get_paginator("get_resources")
@@ -823,7 +828,7 @@ class ComprehensiveTagComplianceChecker:
                 "call it with allow_write=True to upload to a bucket you choose"
             )
         try:
-            s3 = self.session.client("s3")
+            s3 = _client(self.session, "s3")
             ReadOnlyGuard.allow_on_client(s3, {"PutObject"}, bucket=bucket_name)
 
             if format_type.lower() == "json":

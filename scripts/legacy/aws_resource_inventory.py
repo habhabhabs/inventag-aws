@@ -45,11 +45,11 @@ def _upload_report(session, filename, bucket, key):
     the object is encrypted (SSE-S3) and the bucket name is checked. Every
     other write stays blocked.
     """
-    from inventag.core.s3_upload import validate_bucket_name
+    from inventag.core.s3_upload import create_upload_client, validate_bucket_name
     from inventag.security.read_only_guard import ReadOnlyGuard
 
     validate_bucket_name(bucket)
-    s3 = session.client("s3")
+    s3 = create_upload_client(session)
     ReadOnlyGuard.allow_on_client(s3, {"PutObject"}, bucket=bucket)
     content_type = "text/yaml" if filename.endswith(".yaml") else "application/json"
     with open(filename, "rb") as body:

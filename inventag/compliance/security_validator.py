@@ -14,6 +14,7 @@ import time
 from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional, Set, Tuple
 from dataclasses import dataclass, asdict
+from .checker import _client
 from botocore.exceptions import ClientError, NoCredentialsError
 from enum import Enum
 
@@ -335,7 +336,7 @@ class ReadOnlyAccessValidator:
         # Initialize AWS session for identity validation
         try:
             self.session = boto3.Session()
-            self.sts_client = self.session.client("sts")
+            self.sts_client = _client(self.session, "sts")
             self.user_identity = self._get_user_identity()
         except Exception as e:
             self.logger.error(f"Failed to initialize AWS session: {e}")
@@ -610,7 +611,7 @@ class ReadOnlyAccessValidator:
 
         for service, operation, params in read_tests:
             try:
-                client = self.session.client(service)
+                client = _client(self.session, service)
                 method = getattr(client, operation)
 
                 # Validate the operation first

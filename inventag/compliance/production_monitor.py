@@ -17,6 +17,7 @@ import threading
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Any, Optional, Callable, Union
 from dataclasses import dataclass, asdict, field
+from .checker import _client
 from botocore.exceptions import ClientError, NoCredentialsError, BotoCoreError
 from enum import Enum
 import traceback
@@ -145,9 +146,9 @@ class ProductionSafetyMonitor:
         try:
             self.session = boto3.Session()
             self.cloudtrail_client = (
-                self.session.client("cloudtrail") if enable_cloudtrail else None
+                _client(self.session, "cloudtrail") if enable_cloudtrail else None
             )
-            self.sts_client = self.session.client("sts")
+            self.sts_client = _client(self.session, "sts")
             self.account_id = self._get_account_id()
         except Exception as e:
             self.logger.error(f"Failed to initialize AWS clients: {e}")
