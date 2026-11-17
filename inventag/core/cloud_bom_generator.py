@@ -29,7 +29,7 @@ import getpass
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+from concurrent.futures import FIRST_COMPLETED, wait
 import threading
 import time
 from pathlib import Path
@@ -44,6 +44,7 @@ from botocore.exceptions import (
 from ..discovery import AWSResourceInventory
 from ..discovery.coverage import DETAIL_SOURCE, EMPTY, FAILED_OUTCOMES, OK
 from ..discovery.regions import discover_regions
+from .daemon_pool import DaemonThreadPool
 from .log_context import account_log_context
 from ..compliance import ComprehensiveTagComplianceChecker
 from ..reporting import BOMConverter, BOMDataProcessor, BOMProcessingConfig
@@ -1750,7 +1751,7 @@ class CloudBOMGenerator:
         deadlines = {
             account_id: self._new_deadline(account_id) for account_id in to_scan
         }
-        executor = ThreadPoolExecutor(max_workers=self.config.max_concurrent_accounts)
+        executor = DaemonThreadPool(self.config.max_concurrent_accounts)
         try:
             future_to_account = {
                 executor.submit(
