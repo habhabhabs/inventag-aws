@@ -132,7 +132,9 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   avec `--fail-on-account-error`, et n’écrit aucun rapport, sauf si les comptes ont
   dépassé leur délai : le rapport montre alors ce qui a été trouvé.
 - **Un compte dépasse son temps :** il compte comme en échec, et les ressources
-  trouvées avant la limite restent dans le rapport.
+  trouvées avant la limite restent dans le rapport. Un appel encore en cours n’est
+  pas relancé, mais le processus peut rester actif un moment, jusqu’à la fin de
+  cet appel.
 - **Aucune ressource trouvée, ou les filtres les ont toutes retirées :**
   InvenTag n’écrit aucun rapport sans `--template` et un rapport vide avec
   `--template`, et se termine avec le code 0 sauf si vous passez
@@ -158,9 +160,14 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   code 0, y compris avec `--fail-on-account-error`.
 - **Une session déjà expirée au début de l’analyse** ne donne aucun fichier de
   rapport et le code 0.
-- **Accès refusé à Cost Explorer :** l’exécution continue sans données de
-  facturation, et les deux avertissements à ce sujet ne s’affichent qu’avec
-  `--debug`.
+- **Accès refusé ou limité à Cost Explorer :** l’exécution continue sans données de
+  facturation et affiche un avertissement qui nomme la cause. Le texte de l’erreur AWS
+  ne s’affiche qu’avec `--debug`.
+- **Avec `--account-processing-timeout` inférieur à 1200 secondes,** Cost Explorer
+  reçoit au plus un dixième de la limite. S’il ne répond pas à temps, le compte est
+  quand même analysé et une note d’exécution indique que ses données de facturation
+  manquent. Non vérifié sur un vrai AWS : un Cost Explorer lent se termine par un
+  délai dépassé dans cette limite.
 - **Un appel bloqué par la protection en lecture seule** dans un listage ignore
   ce listage avec une ligne d’erreur, et l’exécution se termine quand même avec
   le code 0.
@@ -168,8 +175,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   code 1, après l’écriture locale des rapports.
 - **Un format de rapport en échec** fait se terminer l’exécution avec le code 1
   et ne téléverse rien vers S3, pas même les formats qui ont été écrits.
-- **Un instantané qui ne peut pas être enregistré** n’est qu’une ligne d’erreur,
-  et l’exécution se termine quand même avec le code 0.
+- **Un instantané qui ne peut pas être enregistré** (ou une liste d’instantanés ou un
+  rapport de changements qui échoue) est nommé dans une note après le résumé de
+  l’exécution, avec le dossier à vérifier, et l’exécution se termine quand même avec
+  le code 0.
 - **La sortie Google avec `--template`** est ignorée, et l’exécution se termine
   avec le code 0.
 - **Certaines valeurs non valides s’arrêtent avec le code de sortie 1, pas 2,**
@@ -178,14 +187,15 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   options de ligne de commande correspondantes**, par exemple
   `max_concurrent_accounts`.
 - **Un résultat vide avec `--s3-bucket`** fait se terminer l’exécution avec le
-  code 1 (`S3 upload of reports failed: no files`), y compris avec
+  code 1 et dit `Nothing to upload to s3://<bucket>/<prefix>/: the run wrote no
+  report file because there are no resources to report.`, y compris avec
   `--fail-if-empty`.
-- **Un nom de région mal saisi dans `--account-regions`** termine l’exécution
-  avec le code 0, un texte `KeyError` brut et aucun rapport.
+- **Un nom de région mal saisi dans `--account-regions`** est nommé une seule fois,
+  avec la commande qui liste les régions valides, et l’exécution se termine avec le
+  code 0. Quand d’autres régions fonctionnent, le rapport est écrit sans elle et une
+  note d’exécution le dit.
 - **Un profil qui exige la MFA, lancé sans terminal,** attend indéfiniment tant
   que l’entrée reste ouverte.
-- **Ctrl-C** arrête l’exécution sans message visible, et un SIGTERM l’arrête
-  sans aucun message.
 - **Une deuxième entrée avec le même ID de compte** dans un fichier de comptes
   est ignorée avec un avertissement, donc ses régions ne sont pas analysées.
 - **Deux exécutions qui utilisent en même temps le même dossier de sortie** ne
@@ -241,7 +251,8 @@ standard) ; `AWS_RETRY_MODE` et `AWS_MAX_ATTEMPTS` modifient ce réglage.
   L’instantané qui vient d’être écrit et celui avec lequel il est comparé ne sont
   jamais supprimés. Modifiez ces limites avec `--state-retention-days` et
   `--state-max-snapshots`, ou gardez tout avec `none`.
-- L’analyse réseau ne compte pas les clusters ElastiCache comme ressources associées d’un VPC ou d’un sous-réseau.
+- L’analyse réseau ne compte pas un cluster RDS (par exemple Aurora) comme ressource associée d’un VPC ou d’un sous-réseau.
+- Le rapport consolidé de plusieurs comptes lit son analyse réseau et sécurité avec la session du premier compte ; un rapport par compte utilise la session de son propre compte.
 - L’enrichissement des attributs de service (`enable_service_enrichment` dans
   les réglages de la BOM) ne s’exécute pas ; les rapports contiennent les champs
   que renvoie la découverte.

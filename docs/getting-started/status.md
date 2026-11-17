@@ -129,7 +129,8 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   `--fail-on-account-error`, and writes no report unless the accounts ran out
   of time, in which case the report lists what was found.
 - **An account runs out of time:** it counts as failed, and the resources
-  found before the limit stay in the report.
+  found before the limit stay in the report. A call that is still running is
+  not retried, but the process can stay alive for a time until that call ends.
 - **No resources found, or the filters removed all of them:** InvenTag writes
   no report without `--template` and an empty report with `--template`, and
   exits with code 0 unless you pass `--fail-if-empty` (code 6).
@@ -153,30 +154,37 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   `--fail-on-account-error`.
 - **A session that is already expired when the scan starts** gives no report
   file and exit code 0.
-- **Cost Explorer access denied:** the run carries on without billing data,
-  and the two warnings about it show only with `--debug`.
+- **Cost Explorer access denied or throttled:** the run carries on without
+  billing data and prints one warning that names the cause. The AWS error
+  text shows only with `--debug`.
+- **With `--account-processing-timeout` under 1200 seconds,** Cost Explorer
+  gets at most a tenth of the limit. If it does not answer in time, the
+  account is still scanned, and a run note says that its billing data is
+  missing. Not verified against real AWS: a slow Cost Explorer ends with a
+  timeout within that bound.
 - **A call blocked by the read-only guard** inside a listing skips that
   listing with an error line, and the run still exits with code 0.
 - **A failed S3 upload** makes the whole run exit with code 1, after the
   reports are written locally.
 - **A failed report format** makes the run exit with code 1 and upload nothing
   to S3, not even the formats that were written.
-- **A snapshot that cannot be saved** is an error line only, and the run still
-  exits with code 0.
+- **A snapshot that cannot be saved** (or a snapshot list or change report that
+  fails) is named in a note after the run summary, with the folder to check,
+  and the run still exits with code 0.
 - **Google output with `--template`** is skipped, and the run exits with
   code 0.
 - **Some invalid values stop with exit code 1, not 2,** for example
   `--max-concurrent-accounts 0` or `--account-processing-timeout 0`.
 - **Values in the `settings` block of an accounts file override the matching
   command-line flags**, for example `max_concurrent_accounts`.
-- **An empty result with `--s3-bucket`** makes the run exit with code 1
-  (`S3 upload of reports failed: no files`), also with `--fail-if-empty`.
-- **A region name typed wrong in `--account-regions`** ends the run with exit
-  code 0, a raw `KeyError` text and no report.
+- **An empty result with `--s3-bucket`** makes the run exit with code 1 and
+  says `Nothing to upload to s3://<bucket>/<prefix>/: the run wrote no report
+  file because there are no resources to report.`, also with `--fail-if-empty`.
+- **A region name typed wrong in `--account-regions`** is named once, with the
+  command that lists the valid regions, and the run exits with code 0. When
+  other regions work, the report is written without it and a run note says so.
 - **A profile that needs MFA, run without a terminal,** waits for ever when
   the input stays open.
-- **Ctrl-C** stops the run without a visible message, and a SIGTERM stops it
-  without any message.
 - **A second entry with the same account ID** in an accounts file is dropped
   with a warning, so its regions are not scanned.
 - **Two runs that use the same output folder at the same time** are not
@@ -231,7 +239,11 @@ InvenTag retries a throttled call up to 10 times (standard retry mode);
   written and the one it is compared with are never removed. Change the limits
   with `--state-retention-days` and `--state-max-snapshots`, or keep everything
   with `none`.
-- Network analysis does not count ElastiCache clusters as associated resources of a VPC or a subnet.
+- Network analysis does not count an RDS cluster (for example Aurora) as an
+  associated resource of a VPC or a subnet.
+- The consolidated multi-account report reads its Network and Security
+  analysis with the first account's session; a per-account report uses its
+  own account's session.
 - Service attribute enrichment (`enable_service_enrichment` in the BOM
   settings) does not run; reports contain the fields that discovery returns.
 - In a template report, the Name column is empty when AWS returns no `Name`

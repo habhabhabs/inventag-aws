@@ -133,7 +133,9 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   `--fail-on-account-error`, y no escribe ningún informe salvo que las cuentas se
   hayan quedado sin tiempo; en ese caso el informe muestra lo que se encontró.
 - **Una cuenta se queda sin tiempo:** cuenta como fallida, y los recursos
-  encontrados antes del límite se quedan en el informe.
+  encontrados antes del límite se quedan en el informe. Una llamada que sigue en
+  curso no se reintenta, pero el proceso puede seguir vivo un tiempo hasta que
+  esa llamada termine.
 - **No se encontraron recursos, o los filtros los quitaron todos:** InvenTag no
   escribe ningún informe sin `--template` y escribe un informe vacío con
   `--template`, y termina con el código 0 salvo que pases `--fail-if-empty`
@@ -158,8 +160,14 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   con `--fail-on-account-error`.
 - **Una sesión que ya ha caducado cuando empieza el análisis** no da ningún
   archivo de informe y termina con el código 0.
-- **Acceso denegado a Cost Explorer:** la ejecución continúa sin datos de
-  facturación, y las dos advertencias sobre ello solo se muestran con `--debug`.
+- **Acceso denegado o limitado en Cost Explorer:** la ejecución continúa sin datos de
+  facturación y muestra una advertencia que nombra la causa. El texto del error de AWS
+  solo se muestra con `--debug`.
+- **Con `--account-processing-timeout` por debajo de 1200 segundos,** Cost Explorer
+  recibe como máximo una décima parte del límite. Si no responde a tiempo, la cuenta
+  se analiza igualmente y una nota de la ejecución indica que faltan sus datos de
+  facturación. No verificado contra AWS real: un Cost Explorer lento termina con un
+  tiempo de espera dentro de ese límite.
 - **Una llamada bloqueada por la protección de solo lectura** dentro de un
   listado omite ese listado con una línea de error, y la ejecución termina
   igualmente con el código 0.
@@ -167,8 +175,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   código 1, después de escribir los informes en local.
 - **Un formato de informe que falla** hace que la ejecución termine con el
   código 1 y no suba nada a S3, ni siquiera los formatos que sí se escribieron.
-- **Una instantánea que no se puede guardar** es solo una línea de error, y la
-  ejecución termina igualmente con el código 0.
+- **Una instantánea que no se puede guardar** (o una lista de instantáneas o un
+  informe de cambios que fallan) se nombra en una nota después del resumen de la
+  ejecución, con la carpeta que hay que revisar, y la ejecución termina igualmente
+  con el código 0.
 - **La salida a Google con `--template`** se omite, y la ejecución termina con
   el código 0.
 - **Algunos valores no válidos se detienen con el código de salida 1, no 2,**
@@ -177,14 +187,15 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   opciones de línea de comandos correspondientes**, por ejemplo
   `max_concurrent_accounts`.
 - **Un resultado vacío con `--s3-bucket`** hace que la ejecución termine con el
-  código 1 (`S3 upload of reports failed: no files`), también con
+  código 1 y dice `Nothing to upload to s3://<bucket>/<prefix>/: the run wrote no
+  report file because there are no resources to report.`, también con
   `--fail-if-empty`.
-- **Un nombre de región mal escrito en `--account-regions`** termina la
-  ejecución con el código 0, un texto `KeyError` sin procesar y ningún informe.
+- **Un nombre de región mal escrito en `--account-regions`** se nombra una sola vez,
+  con el comando que lista las regiones válidas, y la ejecución termina con el
+  código 0. Cuando otras regiones funcionan, el informe se escribe sin ella y una
+  nota de la ejecución lo indica.
 - **Un perfil que necesita MFA, ejecutado sin terminal,** espera para siempre
   cuando la entrada sigue abierta.
-- **Ctrl-C** detiene la ejecución sin un mensaje visible, y un SIGTERM la
-  detiene sin ningún mensaje.
 - **Una segunda entrada con el mismo ID de cuenta** en un archivo de cuentas se
   descarta con una advertencia, así que sus regiones no se analizan.
 - **Dos ejecuciones que usan la misma carpeta de salida a la vez** no se
@@ -240,7 +251,8 @@ standard); `AWS_RETRY_MODE` y `AWS_MAX_ATTEMPTS` cambian este ajuste.
   instantánea recién escrita y la que se usa para comparar nunca se borran.
   Cambia los límites con `--state-retention-days` y `--state-max-snapshots`, o
   consérvalo todo con `none`.
-- El análisis de red no cuenta los clústeres de ElastiCache como recursos asociados de una VPC ni de una subred.
+- El análisis de red no cuenta un clúster de RDS (por ejemplo Aurora) como recurso asociado de una VPC ni de una subred.
+- El informe consolidado de varias cuentas lee su análisis de red y de seguridad con la sesión de la primera cuenta; un informe por cuenta usa la sesión de su propia cuenta.
 - El enriquecimiento de atributos de servicio (`enable_service_enrichment` en
   los ajustes de la BOM) no se ejecuta; los informes contienen los campos que
   devuelve el descubrimiento.

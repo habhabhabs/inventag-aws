@@ -99,7 +99,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 - **一个账户失败，其他账户正常：** 运行以退出码 0 结束；传入 `--fail-on-account-error` 时以退出码 5 结束。
 - **所有账户都失败：** 运行以退出码 1 结束，使用 `--fail-on-account-error` 时也是如此；除非这些账户是因超时而失败，否则不写报告，超时时报告会列出已找到的资源。
-- **账户超时：** 它算作失败，超时前找到的资源保留在报告中。
+- **账户超时：** 它算作失败，超时前找到的资源保留在报告中。仍在运行的调用不会被重试，但进程可能会继续存活一段时间，直到该调用结束。
 - **没有找到资源，或筛选条件把它们全部去掉了：** 不使用 `--template` 时 InvenTag 不写报告，使用 `--template` 时写出一份空报告；除非你传入 `--fail-if-empty`（退出码 6），否则运行以退出码 0 结束。
 - **范围内没有任何资源的标签策略**会报告 `0 of 0 resources compliant (100.0%)`，尽管什么都没有检查。
 - **你没有权限的服务**会被跳过并记录一条警告；只有 Resource Groups Tagging API 返回时，它的资源才会出现。
@@ -110,19 +110,19 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **从 v1.1.4 升级后的第一份变更报告**会把新覆盖服务的资源列为新增，尽管它们之前就存在。
 - **扫描过程中会话过期**时，报告只包含会话过期前读取到的内容，运行以退出码 0 结束，使用 `--fail-on-account-error` 时也是如此。
 - **扫描开始时会话已经过期**时，不会生成报告文件，退出码为 0。
-- **Cost Explorer 访问被拒绝：** 运行在没有账单数据的情况下继续，关于它的两条警告只在使用 `--debug` 时显示。
+- **Cost Explorer 访问被拒绝或被限流：** 运行在没有账单数据的情况下继续，并输出一条指明原因的警告。AWS 错误文本只在使用 `--debug` 时显示。
+- **`--account-processing-timeout` 小于 1200 秒时，** Cost Explorer 最多获得该限制的十分之一。如果它没有及时响应，账户仍会被扫描，并且运行备注（Run notes）会指出其账单数据缺失。未针对真实的 AWS 验证：响应缓慢的 Cost Explorer 会在该上限内以超时结束。
 - **被只读防护阻止的调用**如果发生在列出调用中，该列出会被跳过并输出一行错误，运行仍以退出码 0 结束。
 - **S3 上传失败**会让整个运行以退出码 1 结束，此时报告已写到本地。
 - **某个报告格式写入失败**会让运行以退出码 1 结束，并且不会向 S3 上传任何文件，已写出的格式也不会上传。
-- **无法保存的快照**只会输出一行错误，运行仍以退出码 0 结束。
+- **无法保存的快照**（或失败的快照列表、变更报告）会在运行摘要之后的说明中列出，并给出要检查的文件夹，运行仍以退出码 0 结束。
 - **与 `--template` 一起使用的 Google 输出**会被跳过，运行以退出码 0 结束。
 - **有些无效值以退出码 1 而不是 2 停止，** 例如 `--max-concurrent-accounts 0` 或
   `--account-processing-timeout 0`。
 - **账户文件 `settings` 块中的值会覆盖对应的命令行参数，** 例如 `max_concurrent_accounts`。
-- **使用 `--s3-bucket` 时结果为空**会让运行以退出码 1 结束（`S3 upload of reports failed: no files`），使用 `--fail-if-empty` 时也是如此。
-- **`--account-regions` 中输入错误的区域名称**会让运行以退出码 0 结束，输出原始的 `KeyError` 文本，并且不写报告。
+- **使用 `--s3-bucket` 时结果为空**会让运行以退出码 1 结束，并输出 `Nothing to upload to s3://<bucket>/<prefix>/: the run wrote no report file because there are no resources to report.`，使用 `--fail-if-empty` 时也是如此。
+- **`--account-regions` 中输入错误的区域名称**只会被指出一次，并附上列出有效区域的命令，运行以退出码 0 结束。其他区域正常时，报告会不含该区域写出，并且运行备注会说明这一点。
 - **需要 MFA 的配置文件在没有终端的情况下运行**时，会在输入保持打开时一直等待。
-- **Ctrl-C** 会让运行停止且没有可见消息，SIGTERM 会让它停止且没有任何消息。
 - **账户文件中账户 ID 相同的第二个条目**会被丢弃并给出一条警告，因此它的区域不会被扫描。
 - **两个同时使用同一输出文件夹的运行**不会被阻止。
 - **带有值有误的 `--bom-config` 文件的 `--validate-config-only`** 会输出一条警告并以退出码 0 结束，而真正运行时会以退出码 1 停止。
@@ -157,7 +157,8 @@ InvenTag 会把被限流的调用最多重试 10 次（standard 重试模式）�
 - 当运行保存快照时，InvenTag 会删除 `bom_output/state/` 中超过 30 天或超出最新 100 个的快照。
   刚写入的快照和与之比较的快照永远不会被删除。用 `--state-retention-days` 和 `--state-max-snapshots`
   修改这些限制，或用 `none` 保留全部。
-- 网络分析不会把 ElastiCache 集群计为 VPC 或子网的关联资源。
+- 网络分析不会把 RDS 集群（例如 Aurora）计为 VPC 或子网的关联资源。
+- 合并的多账户报告用第一个账户的会话读取它的网络和安全分析；按账户生成的报告使用各自账户的会话。
 - 服务属性补充（BOM 设置中的 `enable_service_enrichment`）不会运行；报告包含发现过程返回的字段。
 - 在模板报告中，如果 AWS 没有为资源返回 `Name` 字段或 `Name` 标签，Name 列为空；ID 列用于识别该资源。
   对于 Lambda 函数、IAM 角色和 KMS 别名，模板报告会把 ID 显示为名称。
