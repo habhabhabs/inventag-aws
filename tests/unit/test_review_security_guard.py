@@ -267,14 +267,61 @@ def test_review_additions_to_the_deny_list(service, operation):
     assert not ReadOnlyGuard().evaluate(service, operation)[0]
 
 
-def test_every_denied_operation_exists_in_botocore():
-    """A typo in the deny-list would silently allow the real operation."""
+# Deny-listed operations that botocore 1.35.0 (the floor in requirements.txt)
+# does not have yet. They exist in newer botocore, and the guard must block them
+# there, so they stay in the table. The test below skips an operation the
+# installed botocore lacks ONLY if it is in this list; a name that is in no
+# botocore (a typo) still fails. Add a name here only after checking it in the
+# newest botocore's service model.
+ADDED_AFTER_BOTOCORE_FLOOR = frozenset(
+    {
+        ("acm", "GetAcmeExternalAccountBindingCredentials"),
+        ("cognito-idp", "GetClientToken"),
+        ("cognito-idp", "GetTokensFromRefreshToken"),
+        ("cognito-idp", "ListUserPoolClientSecrets"),
+        ("emr", "GetOnClusterAppUIPresignedURL"),
+        ("emr", "GetPersistentAppUIPresignedURL"),
+        ("groundstation", "GetAgentTaskResponseUrl"),
+        ("logs", "GetLogObject"),
+        ("support", "GetAttachmentDownloadLink"),
+        ("support", "GetAttachmentUploadLinks"),
+    }
+)
+
+
+def denied_operations_missing_from_botocore(operations):
+    """Names in ``operations`` that the installed botocore lacks and that are not
+    a known newer operation. Services the installed botocore lacks are skipped."""
     session = botocore.session.get_session()
     available = set(session.get_available_services())
     missing = []
-    for service, operation in rog.DENIED_OPERATIONS:
+    for service, operation in operations:
         if service == "*" or service not in available:
             continue
-        if operation not in session.get_service_model(service).operation_names:
-            missing.append(f"{service}:{operation}")
-    assert not missing, missing
+        if operation in session.get_service_model(service).operation_names:
+            continue
+        if (service, operation) in ADDED_AFTER_BOTOCORE_FLOOR:
+            continue
+        missing.append(f"{service}:{operation}")
+    return sorted(missing)
+
+
+def test_every_denied_operation_exists_in_botocore():
+    """A typo in the deny-list would silently allow the real operation."""
+    assert denied_operations_missing_from_botocore(rog.DENIED_OPERATIONS) == []
+
+
+def test_a_typo_in_the_deny_list_is_found():
+    planted = set(rog.DENIED_OPERATIONS) | {("secretsmanager", "GetSecretValu")}
+    assert denied_operations_missing_from_botocore(planted) == [
+        "secretsmanager:GetSecretValu"
+    ]
+    # also a typo in a name of the newer-operation list's services
+    planted = set(rog.DENIED_OPERATIONS) | {("emr", "GetPersistentAppUIPresignedUrl")}
+    assert denied_operations_missing_from_botocore(planted) == [
+        "emr:GetPersistentAppUIPresignedUrl"
+    ]
+
+
+def test_the_newer_operation_list_only_names_operations_of_the_deny_list():
+    assert ADDED_AFTER_BOTOCORE_FLOOR <= set(rog.DENIED_OPERATIONS)
