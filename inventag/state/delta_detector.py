@@ -324,6 +324,15 @@ class _RunScope:
                 return f"{service} in {listed_region} of account {account}: {outcome}"
         return None
 
+    def tagging_not_read(self, resource: Dict, key: str) -> Optional[str]:
+        """Why the tags of ``resource`` were not read in this run (or None)."""
+        account = self._account(resource, key)
+        region = str(resource.get("region") or "")
+        outcome = self.tagging_failed.get((account, region))
+        if outcome:
+            return f"tagging API in {region} of account {account}: {outcome}"
+        return None
+
     def missing_reason(self, resource: Dict, key: str) -> Optional[str]:
         """Why a resource missing from the current run is not compared."""
         account = self._account(resource, key)
@@ -361,6 +370,12 @@ class _RunScope:
 def _set_text(items) -> str:
     """A set written as Python writes it, in a fixed order."""
     return "{" + ", ".join(sorted(repr(i) for i in items)) + "}"
+
+
+def _is_tag_path(change: "AttributeChange") -> bool:
+    """True for a change of the ``tags`` field or of one tag."""
+    path = change.attribute_path
+    return path == "tags" or path.startswith("tags.") or path.startswith("tags[")
 
 
 def _found_by_tagging_only(resource: Dict) -> bool:
@@ -628,8 +643,8 @@ class DeltaDetector:
             skipped_accounts=skipped,
         )
 
-    @staticmethod
     def _leave_out_unread(
+        self,
         scope: "_RunScope",
         removed: List[ResourceChange],
         modified: List[ResourceChange],
@@ -644,6 +659,7 @@ class DeltaDetector:
         the Tagging API returned this time because its service listing
         failed. Counts per reason go into ``not_compared``.
         """
+        detector = self
         kept_removed = []
         for change in removed:
             reason = scope.missing_reason(
@@ -660,6 +676,17 @@ class DeltaDetector:
             reason = None
             if _found_by_tagging_only(new) and not _found_by_tagging_only(old):
                 reason = scope.failed_listing(new, change.resource_arn)
+            if not reason:
+                tagging = scope.tagging_not_read(new, change.resource_arn)
+                if tagging:
+                    # The Tagging API did not answer for this region: its
+                    # tags were not read, so they are not compared.
+                    kept = [c for c in change.attribute_changes if not _is_tag_path(c)]
+                    if not kept:
+                        reason = tagging
+                    elif len(kept) < len(change.attribute_changes):
+                        change.attribute_changes = kept
+                        change.severity = detector._determine_change_severity(kept)
             if reason:
                 not_compared[reason] = not_compared.get(reason, 0) + 1
             else:
