@@ -141,15 +141,26 @@ def test_an_rds_db_instance_is_counted_in_its_vpc_and_each_subnet_of_its_group(e
     assert "db1" not in analyzer.subnet_cache[estate["c"]].associated_resources
 
 
-def test_an_rds_cluster_is_not_counted_today(estate):
-    """Characterisation, reported to the manager and not changed in this patch.
-
-    The cluster's data holds its subnet group by name only, so it is counted
-    in neither the VPC nor a subnet.
-    """
+def test_an_rds_cluster_is_counted_in_its_vpc_and_each_subnet_of_its_group(estate):
+    """A-72: the cluster's data holds its subnet group by name; the group is
+    one of the inventory's own rows, so no API call is needed."""
     analyzer = _analyse(estate["rows"])
-    assert "cl1" not in analyzer.vpc_cache[estate["vpc"]].associated_resources
+    assert analyzer.vpc_cache[estate["vpc"]].associated_resources.count("cl1") == 1
+    assert "cl1" in analyzer.subnet_cache[estate["a"]].associated_resources
+    assert "cl1" in analyzer.subnet_cache[estate["b"]].associated_resources
+    assert "cl1" not in analyzer.subnet_cache[estate["c"]].associated_resources
+
+
+def test_an_rds_cluster_whose_group_row_is_missing_is_not_counted(estate):
+    rows = [r for r in estate["rows"] if r["type"] != "DBSubnetGroup"]
+    analyzer = _analyse(rows)
     assert "cl1" not in analyzer.subnet_cache[estate["a"]].associated_resources
+
+
+def test_the_row_columns_of_an_rds_cluster_are_unchanged(estate):
+    enriched = _analyse(estate["rows"]).map_resources_to_network(estate["rows"])
+    cluster = next(r for r in enriched if r["id"] == "cl1")
+    assert "subnet_id" not in cluster
 
 
 def test_an_elasticache_cluster_is_counted_in_its_vpc_and_each_subnet_of_its_group(
