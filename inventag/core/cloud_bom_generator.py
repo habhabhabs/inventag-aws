@@ -864,8 +864,10 @@ class CloudBOMGenerator:
             unknown = self._unknown_regions.get(str(acc_id)) or []
             if unknown:
                 notes.append(
-                    f"Regions not scanned in account {acc_id} because they are not "
-                    f"known AWS regions (check the spelling): {', '.join(unknown)}."
+                    f"Regions not scanned in account {acc_id} because their region "
+                    "check failed and the installed boto3 does not know them (a "
+                    f"misspelled name, or a region newer than boto3): "
+                    f"{', '.join(unknown)}."
                 )
             skipped = getattr(ctx, "skipped_regions", None) or []
             if skipped:
@@ -1507,20 +1509,6 @@ class CloudBOMGenerator:
         self._last_unknown = []
 
         for region in target_regions:
-            if known and region not in known:
-                # A typo (or a region newer than botocore): no region check;
-                # it is scanned only if no other region is accessible.
-                self._last_unknown.append(region)
-                if region not in self._warned_regions:
-                    self._warned_regions.add(region)
-                    self.logger.warning(
-                        f"Region '{region}' is not a known AWS region; check its "
-                        "spelling in --account-regions or in the accounts file. "
-                        "To list the regions of your account, run: aws ec2 "
-                        "describe-regions --query 'Regions[].RegionName' "
-                        "--output text"
-                    )
-                continue
             try:
                 # Test region accessibility with a simple EC2 describe call
                 ec2 = session.client("ec2", region_name=region)
@@ -1532,10 +1520,11 @@ class CloudBOMGenerator:
                 if error_code in ["UnauthorizedOperation", "AccessDenied"]:
                     self.logger.warning(f"No access to region {region}")
                     denied.append(region)
-                else:
+                elif not self._unknown_region_failed(region, known):
                     self.logger.warning(f"Region {region} test failed: {e}")
             except Exception as e:
-                self.logger.warning(f"Region {region} test failed: {e}")
+                if not self._unknown_region_failed(region, known):
+                    self.logger.warning(f"Region {region} test failed: {e}")
 
         if denied and not accessible_regions and len(denied) == len(target_regions):
             self.logger.warning(
@@ -1544,6 +1533,25 @@ class CloudBOMGenerator:
             )
             return list(denied)
         return accessible_regions
+
+    def _unknown_region_failed(self, region: str, known: set) -> bool:
+        """For a region whose check failed: when the installed botocore does
+        not know it either (a misspelled name, or a region newer than boto3),
+        name it once with both causes and return True. A region botocore does
+        not know but whose check passes is scanned as in v1.2.1."""
+        if not known or region in known:
+            return False
+        self._last_unknown.append(region)
+        if region not in self._warned_regions:
+            self._warned_regions.add(region)
+            self.logger.warning(
+                f"Region '{region}' could not be checked and the installed boto3 "
+                "does not know it: check its spelling in --account-regions or in "
+                "the accounts file, or, if it is a new AWS region, upgrade boto3. "
+                "To list the regions of your account, run: aws ec2 "
+                "describe-regions --query 'Regions[].RegionName' --output text"
+            )
+        return True
 
     def _new_deadline(self, account_id: str) -> _AccountDeadline:
         return _AccountDeadline(
