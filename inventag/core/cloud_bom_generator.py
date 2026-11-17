@@ -22,6 +22,7 @@ import boto3
 from botocore.config import Config as BotoConfig
 import json
 import os
+import sys
 import yaml
 import getpass
 from typing import Dict, List, Any, Optional
@@ -156,6 +157,33 @@ def _known_regions(session) -> set:
         return regions
     except Exception:
         return set()
+
+
+def _mfa_serial_without_terminal(session) -> Optional[str]:
+    """The profile's ``mfa_serial`` when an MFA code would be asked for and
+    stdin is not a terminal (nobody can type it), else None."""
+    try:
+        serial = session._session.get_scoped_config().get("mfa_serial")
+    except Exception:
+        return None
+    if not serial:
+        return None
+    try:
+        if sys.stdin is not None and sys.stdin.isatty():
+            return None
+    except (ValueError, OSError):
+        pass
+    return str(serial)
+
+
+def mfa_without_terminal_message(profile: str, account_id: str, serial: str) -> str:
+    """One cause, one next step (A-11, A-65)."""
+    return (
+        f"Profile {profile!r} for account {account_id} needs an MFA code, and "
+        "there is no terminal to type it in. Get temporary credentials first, "
+        f"for example with aws sts get-session-token --serial-number {serial} "
+        "--token-code <code>, and use a profile without mfa_serial."
+    )
 
 
 def _expired_listings(context) -> int:
@@ -1353,8 +1381,21 @@ class CloudBOMGenerator:
         if credentials.profile_name:
             try:
                 session = boto3.Session(profile_name=credentials.profile_name)
+                serial = _mfa_serial_without_terminal(session)
+                if serial:
+                    raise AccountSessionError(
+                        mfa_without_terminal_message(
+                            credentials.profile_name, credentials.account_id, serial
+                        )
+                    )
                 self._sts(session).get_caller_identity()
                 return session
+            except EOFError as e:
+                # The SDK asked for an MFA code and stdin ended.
+                raise AccountSessionError(
+                    f"Profile {credentials.profile_name!r} for account "
+                    f"{credentials.account_id} failed: {str(e) or type(e).__name__}"
+                ) from e
             except (
                 ProfileNotFound,
                 NoCredentialsError,
