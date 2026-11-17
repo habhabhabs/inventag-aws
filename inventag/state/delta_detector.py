@@ -845,15 +845,31 @@ class DeltaDetector:
             if account in old_scope and account in new_scope:
                 continue
             if account in failed_new:
-                reason = "the current run could not scan it"
+                reason = cls._failed_reason("current", current_state, account)
             elif account in failed_old:
-                reason = "the previous run could not scan it"
+                reason = cls._failed_reason("previous", previous_state, account)
             elif account in old_scope:
                 reason = "it is not in the current run (not scanned, or scan failed)"
             else:
                 reason = "it is new, so there is nothing to compare with"
             skip[account] = reason
         return skip
+
+    @staticmethod
+    def _failed_reason(which: str, snapshot, account: str) -> str:
+        """Why a failed account of ``snapshot`` is not compared.
+
+        Rows of the account in the same snapshot mean the run read it in part
+        (for example its session expired during the scan).
+        """
+        read_in_part = any(
+            DeltaDetector._account_of(r) == account
+            for r in snapshot.resources
+            if isinstance(r, dict)
+        )
+        if read_in_part:
+            return f"the {which} run read it only in part"
+        return f"the {which} run could not scan it"
 
     def _create_resource_map(self, resources: List[Dict]) -> Dict[str, Dict]:
         """Create a map of resources keyed by ARN for efficient lookup"""
