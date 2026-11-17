@@ -11,22 +11,31 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - A slow Cost Explorer answer no longer costs a whole account when
-  `--account-processing-timeout` is short. Below 1200 seconds, Cost Explorer
-  gets at most a tenth of the account's limit; the account's resources are
-  listed and in the report, and a run note says that its billing data is
-  missing. With the default limit nothing changes.
-- After an account reaches its time limit, a call that is still running is no
-  longer retried, so the run ends sooner after the summary.
+  `--account-processing-timeout` is below 1200 seconds. Each Cost Explorer
+  call then waits at most a fortieth of the limit, and at least 5 seconds, to
+  connect and to read, with two attempts (instead of botocore's 60 seconds
+  and up to ten attempts). If it does not answer in time, the account's
+  resources are still listed and in the report, and a run note says that its
+  billing data is missing. Such a run now exits with 0 (or 5 with
+  `--fail-on-account-error` only if another account failed), where it exited
+  with 1 or 5 because the account was lost. With the default limit nothing
+  changes.
+- After an account is given up at its time limit, its call under way is no
+  longer retried, so the run ends sooner after the summary. A listing that
+  hangs is still retried as before, so the process can stay alive until it
+  ends.
 - A snapshot that could not be saved, a snapshot list (`metadata.json`) that
   could not be updated, or a change report that failed is now named in the
   run notes, with the folder to check, and the console's completion line no
   longer calls such a run successful. The exit code is unchanged.
 - An empty result with `--s3-bucket` says that there is nothing to upload and
   why, instead of "S3 upload failed". The exit code is still 1.
-- A region name in `--account-regions` (or the accounts file) that is not a
-  known AWS region is named once, with how to list the valid ones, instead of
-  a raw error text. A run note says it was not scanned. The exit code is
-  unchanged.
+- A region in `--account-regions` (or the accounts file) whose region check
+  fails and that the installed boto3 does not know is named once, with both
+  possible causes (a misspelled name, or a region newer than boto3) and how to
+  list the valid ones, instead of a raw error text. A run note says it was not
+  scanned. A region that boto3 does not know but whose check passes is scanned
+  as before. The exit code is unchanged.
 - A failed Cost Explorer read prints one warning that says billing data is
   missing, why, and the next step (before: up to three lines, and "not
   enabled" asked for a permission). A Cost Explorer call that did not answer
@@ -43,19 +52,30 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   not make a resource "not compared" in the change report.
 - An answer in the wrong form no longer makes a false row (for example a row
   named `oops`); the unreadable items are skipped with one warning and the
-  good items are kept.
+  good items are kept. That listing counts as failed: a run note says the
+  report is partial for that service and region, and the change report does
+  not compare it. An item without an ID that InvenTag knows, which was
+  dropped without a word, now gives the same warning.
 - With `--template`, a report format that cannot be written no longer stops
   the other formats; the failed format is named in one error line and in the
-  run notes of the files that were written. The exit code is unchanged (1).
+  run notes of the files that were written. A tag compliance JSON that cannot
+  be written is one error line too, and the report formats are still written.
+  The exit code is unchanged (1).
 - Ctrl-C and SIGTERM print one visible line that says what was written. The
   exit status is unchanged.
 - With `--resume`, a reused account is named once on the console.
 - With `--per-account-reports`, each account's Network and Security sheets are
-  read with that account's own credentials, not the first account's.
+  read with that account's own credentials, not the first account's. With
+  network or security analysis, the service sheets of each account (EC2, VPC
+  and others) now also get the network and security columns that a
+  single-account run already has.
 - Network analysis counts an ElastiCache cluster in its VPC and in each subnet
   of its subnet group (it reads `elasticache:DescribeCacheSubnetGroups`,
-  already in the read-only policy; one warning if it cannot be read), and no
-  longer counts an RDS DB subnet group as a resource of its VPC and subnets.
+  already in the read-only policy), and no longer counts an RDS DB subnet
+  group as a resource of its VPC and subnets. A cluster is matched only to a
+  subnet group of its own account. If the subnet groups of a region cannot be
+  read, the Network Analysis sheet is written as before without those
+  clusters, with one warning and a run note.
 - The legacy tag compliance checker and the legacy inventory script allow the
   read-only guard's upload exception only for the bucket you name, not for any
   bucket on that client.
@@ -64,14 +84,17 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   the change log, `--audit-output`, the tag compliance JSON of a template run,
   the credential file of the credential manager, the CI/CD artifacts and
   metrics file, the generation report, the CSV report, saved configuration
-  and template files, and the checker's plain-text report. File modes are as
-  before.
+  and template files, and the checker's plain-text report. A new file gets
+  the mode it got before, and a file that is written again keeps its mode.
+  An `--audit-output` path that is a symlink or a named pipe is handled as
+  before (a symlink is refused with exit code 1; a pipe receives the JSON).
 
 ### Changed
 
-- A run without an output flag no longer prints "No output format specified.
-  Use --create-word or --create-excel"; it prints one line saying that Excel
-  is the default.
+- A run without an output flag, and the warning list of `--validate-config`
+  and `--validate-config-only`, no longer show "No output format specified.
+  Use --create-word or --create-excel". The line that says Excel is the
+  default stays.
 - The help text of `--fail-on-account-error` says that exit code 5 covers an
   account that could not be scanned or ran out of time.
 - The template field reference corrects five descriptions that the code
