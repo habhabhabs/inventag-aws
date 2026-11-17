@@ -16,6 +16,7 @@ Features:
 """
 
 import dataclasses
+import inspect
 import logging
 import re
 import boto3
@@ -2152,8 +2153,24 @@ class CloudBOMGenerator:
                 raise Exception("No valid session available for BOM generation")
 
             # Initialize BOM processor
+            # Every account's own session for the consolidated Network and
+            # Security sheets (A-71), when the processor takes them.
+            extra = {}
+            try:
+                takes = (
+                    "account_sessions"
+                    in inspect.signature(BOMDataProcessor.__init__).parameters
+                )
+            except (TypeError, ValueError):
+                takes = False
+            if takes:
+                extra["account_sessions"] = {
+                    str(acc_id): ctx.session
+                    for acc_id, ctx in self.account_contexts.items()
+                    if ctx.session is not None
+                }
             bom_processor = BOMDataProcessor(
-                config=self.config.bom_processing_config, session=session
+                config=self.config.bom_processing_config, session=session, **extra
             )
 
             # Process inventory data into BOM format
