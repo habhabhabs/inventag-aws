@@ -19,7 +19,7 @@ from ..security.read_only_guard import (
 )
 from ..security.redaction import install_log_record_redaction
 from ..reporting.safe_save import save_atomically
-from ..security.safe_output import ensure_private_dir
+from ..security.safe_output import ensure_private_dir, open_private
 from pathlib import Path
 
 # Exit code for flags that are recognised but not implemented (argparse also
@@ -156,6 +156,13 @@ def write_audit_output(guard: Optional[ReadOnlyGuard], path: str) -> str:
     )
     output_path = Path(path)
     ensure_private_dir(output_path.parent)
+
+    if output_path.is_symlink() or (output_path.exists() and not output_path.is_file()):
+        # Not a regular file (a symlink, a named pipe, a device): written as
+        # in v1.2.1, which refuses a symlink and writes into a pipe.
+        with open_private(output_path, "w", encoding="utf-8") as f:
+            json.dump(report, f, indent=2)
+        return str(output_path)
 
     def write(temporary: str) -> None:
         with open(temporary, "w", encoding="utf-8") as f:
