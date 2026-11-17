@@ -819,11 +819,16 @@ class ComprehensiveAWSDiscovery:
             error_code=code,
         )
 
-    def _discover_billing_services(self):
-        """Discover services with billing usage for validation."""
+    def fetch_billing_answer(self):
+        """The one Cost Explorer request of this account.
+
+        Billing validation (``AWSResourceInventory``) and the spend column
+        (``_discover_billing_services``) both read it; AWS charges for each
+        request, so the answer, or the failure, is kept for the next reader
+        (decision 17). Each reader parses it as before.
+        """
         try:
             ce_client = self._client("ce", cost_explorer_region(self.regions))
-
             response = ce_client.get_cost_and_usage(
                 TimePeriod={
                     "Start": (
@@ -835,6 +840,25 @@ class ComprehensiveAWSDiscovery:
                 Metrics=["BlendedCost", "UsageQuantity"],
                 GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
             )
+        except Exception as e:
+            self._billing_answer = ("error", e)
+            raise
+        self._billing_answer = ("answer", response)
+        return response
+
+    def _discover_billing_services(self):
+        """Discover services with billing usage for validation."""
+        try:
+            kept = self.__dict__.pop("_billing_answer", None)
+            if kept is None:
+                try:
+                    self.fetch_billing_answer()
+                finally:
+                    kept = self.__dict__.pop("_billing_answer", None)
+            kind, value = kept
+            if kind == "error":
+                raise value
+            response = value
 
             for result in response.get("ResultsByTime", []):
                 for group in result.get("Groups", []):

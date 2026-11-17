@@ -14,7 +14,7 @@ import logging
 import time
 import sys
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional, Set
 from botocore.exceptions import ClientError
 
@@ -825,23 +825,9 @@ class AWSResourceInventory:
         self.logger.info("Discovering services with actual usage via billing data...")
 
         try:
-            # Cost Explorer is only available in us-east-1
-            ce = create_client(self.session, "ce", "us-east-1")
-
-            # Get cost data for the last 30 days to identify active services
-            end_date = datetime.now().date()
-            start_date = end_date - timedelta(days=30)
-
-            # Query cost and usage data grouped by service
-            response = ce.get_cost_and_usage(
-                TimePeriod={
-                    "Start": start_date.strftime("%Y-%m-%d"),
-                    "End": end_date.strftime("%Y-%m-%d"),
-                },
-                Granularity="MONTHLY",
-                Metrics=["BlendedCost", "UsageQuantity"],
-                GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
-            )
+            # One request per account: comprehensive discovery keeps the
+            # answer for its spend column (decision 17).
+            response = self.comprehensive_discovery.fetch_billing_answer()
 
             # Process billing data to identify active services
             services_with_usage = {}

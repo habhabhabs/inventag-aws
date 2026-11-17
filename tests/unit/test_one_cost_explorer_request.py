@@ -145,4 +145,4 @@ def test_a_timeout_is_one_request_and_one_line(monkeypatch, caplog):
         "Cost Explorer did not answer in time (ReadTimeoutError), so billing "
         "data is missing and billing checks are skipped. Run the scan again."
     ]
-    assert inv.comprehensive_discovery.coverage.summary() == {"error": 2}
+    assert inv.comprehensive_discovery.coverage.summary() == {"error": 1}
