@@ -358,6 +358,11 @@ class _RunScope:
         return None
 
 
+def _set_text(items) -> str:
+    """A set written as Python writes it, in a fixed order."""
+    return "{" + ", ".join(sorted(repr(i) for i in items)) + "}"
+
+
 def _found_by_tagging_only(resource: Dict) -> bool:
     """True for a row only the Tagging API returned (v1.1.4 and v1.2.0 shapes)."""
     if resource.get("source"):
@@ -1118,7 +1123,7 @@ class DeltaDetector:
         changes = []
         all_keys = set(old_obj.keys()) | set(new_obj.keys())
 
-        for key in all_keys:
+        for key in sorted(all_keys, key=str):
             if key in self.ignore_metadata_fields:
                 continue
 
@@ -1180,7 +1185,7 @@ class DeltaDetector:
                     change = AttributeChange(
                         attribute_path=f"{parent_path}[added]",
                         old_value=None,
-                        new_value=list(added_items),
+                        new_value=sorted(added_items, key=repr),
                         change_type=ChangeType.ADDED,
                         category=self._categorize_attribute_change(
                             parent_path, None, added_items
@@ -1188,14 +1193,14 @@ class DeltaDetector:
                         severity=self._determine_attribute_severity(
                             parent_path, None, added_items
                         ),
-                        description=f"Added items to {parent_path}: {added_items}",
+                        description=f"Added items to {parent_path}: {_set_text(added_items)}",
                     )
                     changes.append(change)
 
                 if removed_items:
                     change = AttributeChange(
                         attribute_path=f"{parent_path}[removed]",
-                        old_value=list(removed_items),
+                        old_value=sorted(removed_items, key=repr),
                         new_value=None,
                         change_type=ChangeType.REMOVED,
                         category=self._categorize_attribute_change(
@@ -1204,7 +1209,7 @@ class DeltaDetector:
                         severity=self._determine_attribute_severity(
                             parent_path, removed_items, None
                         ),
-                        description=f"Removed items from {parent_path}: {removed_items}",
+                        description=f"Removed items from {parent_path}: {_set_text(removed_items)}",
                     )
                     changes.append(change)
             else:
