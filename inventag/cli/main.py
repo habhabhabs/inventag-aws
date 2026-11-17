@@ -67,15 +67,12 @@ from ..templating.runner import (
     prepare_template_run,
 )
 
-# Exit code for a template file that is not valid (same code as other
-# configuration files that are not valid).
-EXIT_INVALID_TEMPLATE = 1
-
 # Exit codes: the one list is inventag/exit_codes.py (0 success, 1 error,
 # 2 invalid options, 3 tag policy violations, 4 risk threshold, and the
 # opt-in 5 --fail-on-account-error and 6 --fail-if-empty).
 from ..exit_codes import (  # noqa: E402
     EXIT_ACCOUNT_FAILED,
+    EXIT_ERROR,
     EXIT_NO_RESOURCES,
     EXIT_RISK_THRESHOLD,
 )
@@ -1454,7 +1451,7 @@ def main():
     if template_errors:
         for message in template_errors:
             print(f"inventag: error: {message}", file=sys.stderr)
-        sys.exit(EXIT_INVALID_TEMPLATE)
+        sys.exit(EXIT_ERROR)  # a template that is not valid, like any bad file
     if args.validate_templates:
         for format_type, template in args.loaded_templates.items():
             print(
