@@ -202,6 +202,140 @@ def _relation_keys(resource: Dict) -> Optional[Set[Tuple[str, Any]]]:
     return keys
 
 
+# Rows that are a network container or its plumbing: they carry only their own
+# ID as a relationship, so members relate to the container and not to each
+# other through it (as the network analyzer counts "resources in" a VPC).
+_CONTAINER_ID = {"vpc": ("vpc_id", "VpcId"), "subnet": ("subnet_id", "SubnetId")}
+_PLUMBING_TYPES = frozenset(
+    {
+        "networkacl",
+        "routetable",
+        "internetgateway",
+        "egressonlyinternetgateway",
+        "dhcpoptions",
+        "prefixlist",
+        "managedprefixlist",
+        "dbsubnetgroup",
+    }
+)
+_SG_FIELDS = (
+    "SecurityGroups",
+    "SecurityGroupIds",
+    "securityGroupIds",
+    "VpcSecurityGroups",
+)
+
+
+def _raw_sources(raw: Dict) -> List[Dict]:
+    """The raw API data and the nested configs where AWS puts network IDs."""
+    sources = [raw]
+    for nested in ("VpcConfig", "vpcConfig", "DBSubnetGroup", "boto3_config"):
+        if isinstance(raw.get(nested), dict):
+            sources.append(raw[nested])
+    boto3_config = raw.get("boto3_config")
+    if isinstance(boto3_config, dict) and isinstance(
+        boto3_config.get("VpcConfig"), dict
+    ):
+        sources.append(boto3_config["VpcConfig"])
+    return sources
+
+
+def _ids(value, keys, prefix: str) -> List[str]:
+    """IDs starting with ``prefix`` from a string, a dict or a list of them."""
+    found: List[str] = []
+    for item in value if isinstance(value, list) else [value]:
+        if isinstance(item, dict):
+            item = next((item.get(k) for k in keys if item.get(k)), None)
+        if isinstance(item, str) and item.startswith(prefix) and item not in found:
+            found.append(item)
+    return found
+
+
+def _relation_view(resource: Dict) -> Dict:
+    """``resource`` with its relationship fields, read from ``raw_data``.
+
+    A row that already has one of the fields at the top level is used as it
+    is. Otherwise the fields are read from the AWS shapes in ``raw_data``
+    (EC2 ``SecurityGroups[].GroupId``, ``VpcId``, ``SubnetId``; Lambda
+    ``VpcConfig`` and ``Role``; RDS ``VpcSecurityGroups`` and
+    ``DBSubnetGroup``; ``KmsKeyId``). A VPC, subnet or security group carries
+    only its own ID; network plumbing carries none.
+    """
+    if not isinstance(resource, dict):
+        return resource
+    if any(resource.get(name) for name in _RELATIONSHIP_FIELDS):
+        return resource
+    raw = resource.get("raw_data")
+    if not isinstance(raw, dict):
+        return resource
+    kind = str(resource.get("type") or resource.get("resource_type") or "")
+    kind = kind.replace("_", "").replace(" ", "").replace("-", "").lower()
+    view = {"service": resource.get("service", "")}
+    if kind in _CONTAINER_ID:
+        name, key = _CONTAINER_ID[kind]
+        if isinstance(raw.get(key), str) and raw[key]:
+            view[name] = raw[key]
+        return view
+    if kind == "securitygroup":
+        if isinstance(raw.get("GroupId"), str) and raw["GroupId"]:
+            view["security_groups"] = [raw["GroupId"]]
+        return view
+    if kind in _PLUMBING_TYPES:
+        return view
+    sources = _raw_sources(raw)
+    for source in sources:
+        for key in ("VpcId", "vpcId"):
+            if isinstance(source.get(key), str) and source[key]:
+                view.setdefault("vpc_id", source[key])
+    subnets: List[str] = []
+    groups: List[str] = []
+    for source in sources:
+        for key in ("SubnetId", "SubnetIds", "subnetIds", "Subnets"):
+            for sid in _ids(
+                source.get(key), ("SubnetIdentifier", "SubnetId"), "subnet-"
+            ):
+                if sid not in subnets:
+                    subnets.append(sid)
+        for key in _SG_FIELDS:
+            ids = _ids(
+                source.get(key),
+                ("GroupId", "VpcSecurityGroupId", "SecurityGroupId"),
+                "sg-",
+            )
+            for gid in ids:
+                if gid not in groups:
+                    groups.append(gid)
+    if subnets:
+        view["subnet_id"] = subnets[0] if len(subnets) == 1 else subnets
+    if groups:
+        view["security_groups"] = groups
+    if isinstance(raw.get("Role"), str) and raw["Role"].startswith("arn:"):
+        view["iam_role"] = raw["Role"]
+    if isinstance(raw.get("KmsKeyId"), str) and raw["KmsKeyId"]:
+        view["kms_key_id"] = raw["KmsKeyId"]
+    return view
+
+
+def _upper_patterns(patterns: Dict[str, Dict[str, List[str]]]) -> Dict:
+    """``dependency_patterns`` with every service name upper-cased.
+
+    The detector compares upper-cased service names; mixed-case names in the
+    patterns ("Lambda", "SecurityGroup", "AutoScalingGroup") never matched.
+    An upper-case key given by the caller wins over a mixed-case one.
+    """
+    out: Dict[str, Dict[str, List[str]]] = {}
+    for key, value in patterns.items():
+        upper = str(key).upper()
+        if upper in out and key != upper:
+            continue
+        value = value if isinstance(value, dict) else {}
+        out[upper] = {
+            name: [str(s).upper() for s in value.get(name, [])]
+            for name in ("depends_on", "affects")
+        }
+    return out
+
+
 class _RelatedIndex:
     """Rows of the new snapshot by relationship value, built once per comparison.
 
@@ -1954,22 +2088,28 @@ class DeltaDetector:
         }
         # Built once, so each change looks at the rows that can be related to
         # it instead of the whole snapshot.
-        related_index = _RelatedIndex(new_resources_map)
+        # Relationship fields as the CLI saves them (in raw_data), and the
+        # patterns without regard to case (A-48).
+        old_view = {k: _relation_view(r) for k, r in old_resources_map.items()}
+        new_view = {k: _relation_view(r) for k, r in new_resources_map.items()}
+        all_patterns = _upper_patterns(self.dependency_patterns)
+        related_index = _RelatedIndex(new_view)
 
         for change in all_changes:
             service = change.service.upper()
 
             # Check if this service has dependency patterns
-            if service in self.dependency_patterns:
-                patterns = self.dependency_patterns[service]
+            if service in all_patterns:
+                patterns = all_patterns[service]
 
                 # Find related resources that might be affected
                 related_resources = self._find_related_resources(
                     change,
                     patterns,
-                    old_resources_map,
-                    new_resources_map,
+                    old_view,
+                    new_view,
                     related_index,
+                    all_patterns,
                 )
 
                 if related_resources:
@@ -2016,8 +2156,11 @@ class DeltaDetector:
         old_resources_map: Dict[str, Dict],
         new_resources_map: Dict[str, Dict],
         related_index: Optional[_RelatedIndex] = None,
+        all_patterns: Optional[Dict] = None,
     ) -> List[str]:
         """Find resources that might be affected by this change"""
+        if all_patterns is None:
+            all_patterns = _upper_patterns(self.dependency_patterns)
         related_resources = []
 
         # Get the resource data
@@ -2041,17 +2184,15 @@ class DeltaDetector:
             resource_service = resource.get("service", "").upper()
 
             # Check if this resource type depends on the changed resource type
-            if resource_service in self.dependency_patterns:
-                depends_on = self.dependency_patterns[resource_service].get(
-                    "depends_on", []
-                )
+            if resource_service in all_patterns:
+                depends_on = all_patterns[resource_service].get("depends_on", [])
                 if change.service.upper() in depends_on:
                     # Check for actual relationships (VPC, subnet, security groups, etc.)
                     if self._resources_are_related(resource_data, resource):
                         related_resources.append(arn)
 
         # Check resources that this one affects
-        affects = dependency_patterns.get("affects", [])
+        affects = [str(s).upper() for s in dependency_patterns.get("affects", [])]
         for arn, resource in rows:
             if arn == change.resource_arn:
                 continue
