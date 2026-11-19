@@ -13,6 +13,8 @@ import time
 
 import pytest
 
+from inventag.security.read_only_guard import uninstall_global_guard
+
 cli_main = importlib.import_module("inventag.cli.main")
 
 # --credential-timeout 1: one attempt of one second, plus start-up. A hang that
@@ -42,6 +44,8 @@ def hung_sts(monkeypatch, tmp_path, never_answering_endpoint):
     monkeypatch.delenv("AWS_PROFILE", raising=False)
     monkeypatch.chdir(tmp_path)
     yield never_answering_endpoint
+    # The CLI installs the read-only guard on boto3's default session.
+    uninstall_global_guard()
     for name in ("inventag", "botocore", "boto3", "urllib3"):
         logger = logging.getLogger(name)
         logger.handlers.clear()
