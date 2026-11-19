@@ -712,5 +712,13 @@ def test_validate_config_only_prints_no_unknown_key_warning_for_the_example(
                 main()
             except SystemExit as exc:
                 assert exc.code in (0, None)
+            finally:
+                # The CLI installs the read-only guard on boto3's default
+                # session.
+                from inventag.security.read_only_guard import (
+                    uninstall_global_guard,
+                )
+
+                uninstall_global_guard()
     assert "unknown key" not in caplog.text
     assert "would be ignored" not in caplog.text
