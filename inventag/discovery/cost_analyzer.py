@@ -16,7 +16,6 @@ import json
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
-import time
 
 from .aws_clients import create_client
 
@@ -325,22 +324,6 @@ class CostAnalyzer:
 
     _NOT_CACHED = object()
 
-    # Error codes worth one more try before a lookup is cached as failed.
-    # botocore has already retried these with backoff by the time they reach
-    # us; one late retry stops a short burst from removing a price for the
-    # whole run.
-    _TRANSIENT = {
-        "Throttling",
-        "ThrottlingException",
-        "TooManyRequestsException",
-        "RequestLimitExceeded",
-        "ServiceUnavailable",
-        "ServiceUnavailableException",
-        "InternalError",
-        "InternalErrorException",
-    }
-    _PRICING_RETRY_DELAY = 2.0  # seconds
-
     @staticmethod
     def _error_code(error: Exception) -> str:
         response = getattr(error, "response", None)
@@ -403,24 +386,17 @@ class CostAnalyzer:
         service: str,
         resource_type: str,
     ) -> Optional[Dict[str, Any]]:
-        """Call GetProducts for one key; retry a transient error once."""
-        for attempt in (1, 2):
-            try:
-                response = self._get_pricing_client().get_products(
-                    ServiceCode=service_code, Filters=filters, MaxResults=10
-                )
-                return self._parse_pricing_response(response, service, resource_type)
-            except Exception as e:
-                if attempt == 1 and self._error_code(e) in self._TRANSIENT:
-                    self.logger.debug(
-                        f"Pricing API lookup for {service}:{resource_type} "
-                        f"failed ({self._error_code(e)}); retrying once"
-                    )
-                    time.sleep(self._PRICING_RETRY_DELAY)
-                    continue
-                self._log_pricing_failure(service, resource_type, e)
-                return None
-        return None
+        """Call GetProducts for one key. The client retries throttling and
+        server errors itself (shared retry settings); a failure that remains
+        is logged once per reason and the key is cached as failed."""
+        try:
+            response = self._get_pricing_client().get_products(
+                ServiceCode=service_code, Filters=filters, MaxResults=10
+            )
+            return self._parse_pricing_response(response, service, resource_type)
+        except Exception as e:
+            self._log_pricing_failure(service, resource_type, e)
+            return None
 
     @staticmethod
     def _pricing_for(
