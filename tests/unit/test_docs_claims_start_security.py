@@ -261,11 +261,11 @@ class Counter_:
         return sum(n for (s, _), n in self.calls.items() if s == service)
 
 
-def test_default_run_makes_two_cost_explorer_requests_per_account(
+def test_default_run_makes_one_cost_explorer_request_per_account(
     aws, tmp_path, monkeypatch
 ):
-    """Status, Quick start, README: two Cost Explorer requests per account by default;
-    --no-billing-validation makes none."""
+    """Status, Quick start, README: one Cost Explorer request per account by
+    default (decision 17); --no-billing-validation makes none."""
     c = Counter_(monkeypatch)
     assert (
         run_cli(
@@ -277,7 +277,7 @@ def test_default_run_makes_two_cost_explorer_requests_per_account(
         )
         == 0
     )
-    assert c.of("ce") == 2
+    assert c.of("ce") == 1
     c.calls.clear()
     assert (
         run_cli(
@@ -1065,11 +1065,13 @@ def test_a_service_that_failed_in_the_previous_run_shows_its_resources_as_added(
     assert report.removed_resources == []
 
 
-def test_after_a_tagging_only_run_the_next_full_run_lists_untagged_resources_as_added(
+def test_after_a_tagging_only_run_the_next_full_run_adds_nothing(
     aws, tmp_path, monkeypatch
 ):
-    """Status: after a run in which only the Tagging API answered for an account,
-    the next complete run lists that account's resources without tags as added."""
+    """Track changes: after a run in which only the Tagging API answered for an
+    account, the next complete run does not list that account's untagged
+    resources as added: the snapshot names the listings it did not read
+    (`metadata.tags.units_not_read`, decision 6)."""
     import boto3
 
     from tests.unit.test_tagging_only_change_tracking import (
@@ -1090,7 +1092,8 @@ def test_after_a_tagging_only_run_the_next_full_run_lists_untagged_resources_as_
     assert code == 0
     report = delta(second)
     assert report is not None, second["state_management"]
-    assert untagged_arn in arns(report.added_resources)
+    assert untagged_arn not in arns(report.added_resources)
+    assert report.summary["added_count"] == 0
 
 
 # ------------------------------------------------------------ the second patch

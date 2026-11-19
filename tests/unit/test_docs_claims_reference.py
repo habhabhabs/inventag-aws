@@ -420,7 +420,7 @@ def test_default_run_files_names_modes_columns_and_audit(estate, tmp_path):
 
 
 def test_ce_calls_and_region_check_counts_in_the_audit(estate, tmp_path):
-    """IAM page: two ce:GetCostAndUsage per account in a default run;
+    """IAM page: one ce:GetCostAndUsage per account in a default run;
     ec2:DescribeRegions once per scanned region; sts:GetCallerIdentity is called."""
     audit = tmp_path / "audit.json"
     assert (
@@ -438,7 +438,7 @@ def test_ce_calls_and_region_check_counts_in_the_audit(estate, tmp_path):
         (o["service"], o["operation"]): o["count"]
         for o in json.loads(audit.read_text())["operations"]
     }
-    assert count[("ce", "GetCostAndUsage")] == 2
+    assert count[("ce", "GetCostAndUsage")] == 1
     assert count[("ec2", "DescribeRegions")] == 2
     assert ("sts", "GetCallerIdentity") in count
     assert ("account", "ListRegions") not in count  # only when ec2 fails
@@ -1291,13 +1291,21 @@ def test_disable_parallel_processing_scans_one_account_at_a_time(empty_aws, tmp_
 def test_validate_credentials_exits_1_when_an_account_fails_and_0_when_all_work(
     empty_aws, tmp_path
 ):
-    """cli.md: `--validate-credentials` exits 0 if all work, 1 if not."""
+    """cli.md: `--validate-credentials` exits 0 if all work, 1 if not.
+
+    An entry for another account is checked as the scan uses it, through the
+    cross-account role (A-39); here that role cannot be assumed."""
+    from tests.regression.faults import Fault, FaultInjector
+
     good = {"account_id": "123456789012"}  # moto's account; default credentials
-    wrong = {"account_id": "999999999999"}  # not the account of the credentials
+    wrong = {"account_id": "999999999999"}  # needs the cross-account role
     (tmp_path / "good.json").write_text(json.dumps({"accounts": [good]}))
     (tmp_path / "mixed.json").write_text(json.dumps({"accounts": [good, wrong]}))
     assert run_cli("--accounts-file", "good.json", "--validate-credentials") == 0
-    assert run_cli("--accounts-file", "mixed.json", "--validate-credentials") == 1
+    deny = Fault(service="sts", op="AssumeRole", error="AccessDenied")
+    with FaultInjector([deny]) as injector:
+        injector.arm()
+        assert run_cli("--accounts-file", "mixed.json", "--validate-credentials") == 1
 
 
 def test_tag_mapping_matches_keys_case_insensitively_unless_case_sensitive(tmp_path):
