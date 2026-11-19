@@ -1,0 +1,95 @@
+#compdef inventag
+# zsh completion for inventag. Made by 'inventag completion zsh'.
+
+_inventag_tool() {
+    local curcontext="$curcontext" state state_descr line
+    typeset -A opt_args
+    local -a specs
+    specs=(
+        '(-h --help)'{-h,--help}'[show this help message and exit]'
+        '--dry[Change nothing]'
+    )
+    local -a commands
+    commands=('run:Run it' 'show:Show it')
+    _arguments -C -s $specs \
+        '1:command:->command' \
+        '*::argument:->args'
+    case $state in
+        command) _describe -t commands 'command' commands ;;
+        args)
+            case $line[1] in
+                run) _inventag_tool_run ;;
+                show) _inventag_tool_show ;;
+            esac
+            ;;
+    esac
+}
+
+_inventag_tool_run() {
+    local curcontext="$curcontext" state state_descr line
+    typeset -A opt_args
+    local -a specs
+    specs=(
+        '(-h --help)'{-h,--help}'[show this help message and exit]'
+        '(--force -f)'{--force,-f}'[Overwrite]'
+        '(--out -o)'{--out=,-o+}'[Output file]:out: '
+    )
+    _arguments -s $specs '*:name path:_files'
+}
+
+_inventag_tool_show() {
+    local curcontext="$curcontext" state state_descr line
+    typeset -A opt_args
+    local -a specs
+    specs=(
+        '(-h --help)'{-h,--help}'[show this help message and exit]'
+    )
+    _arguments -s $specs '1:what:(one two)'
+}
+
+_inventag_shell() {
+    local curcontext="$curcontext" state state_descr line
+    typeset -A opt_args
+    local -a specs
+    specs=(
+        '(-h --help)'{-h,--help}'[show this help message and exit]'
+    )
+    _arguments -s $specs '1:shell:(bash zsh)'
+}
+
+_inventag() {
+    local curcontext="$curcontext" state state_descr line
+    typeset -A opt_args
+    if (( CURRENT > 2 )); then
+        case $words[2] in
+            tool) shift words; (( CURRENT-- )); _inventag_tool; return ;;
+            shell) shift words; (( CURRENT-- )); _inventag_shell; return ;;
+        esac
+    fi
+    local -a specs
+    specs=(
+        '(-h --help)'{-h,--help}'[show this help message and exit]'
+        '(-v --verbose)'{-v,--verbose}'[Talk more]'
+        '--output-directory=[Folder for the files]:output directory:_files -/'
+        '--accounts-file=[Accounts, as JSON (or YAML)]:file:_files'
+        '--mode=[How it'\''s done - (default fast)]:mode:(fast slow aws\:kms)'
+        '--name=[A name]:name: '
+        '(--color --no-color)'{--color,--no-color}'[Use colour]'
+        '--version[show program'\''s version number and exit]'
+    )
+    local -a commands
+    commands=('tool:Do tool things' 'shell:Print a script')
+    if (( CURRENT == 2 )); then
+        specs+=('1:command:->command')
+    fi
+    _arguments -C -s $specs
+    case $state in
+        command) _describe -t commands 'command' commands ;;
+    esac
+}
+
+if [ "$funcstack[1]" = "_inventag" ]; then
+    _inventag "$@"
+else
+    compdef _inventag inventag
+fi
