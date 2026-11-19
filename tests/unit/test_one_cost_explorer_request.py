@@ -146,3 +146,25 @@ def test_a_timeout_is_one_request_and_one_line(monkeypatch, caplog):
         "data is missing and billing checks are skipped. Run the scan again."
     ]
     assert inv.comprehensive_discovery.coverage.summary() == {"error": 1}
+
+
+def test_the_billing_log_line_names_the_start_of_the_period_it_read(
+    monkeypatch, caplog
+):
+    """Review M1: billing validation reads the shared request, which starts 30
+    days before the first day of the month, not 30 days ago; the --verbose
+    line names that start date instead of "last 30 days"."""
+    ce = CostExplorer(ANSWER)
+    inv = _inventory(ce, monkeypatch)
+    caplog.set_level(logging.INFO)
+    monkeypatch.setattr(inv.logger, "propagate", True)
+    _run(inv)
+    (call,) = ce.calls
+    start = call["TimePeriod"]["Start"]
+    lines = [
+        r.getMessage() for r in caplog.records if "Billing analysis" in r.getMessage()
+    ]
+    assert lines == [
+        f"Billing analysis: Found 2 services with usage ($12.51 total spend "
+        f"since {start})"
+    ], lines
