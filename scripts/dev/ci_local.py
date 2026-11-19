@@ -166,8 +166,8 @@ STEPS: List[Step] = [
     ),
     Step(
         "actions",
-        "actionlint (without shellcheck and pyflakes, as the workflow)",
-        "actionlint -color -shellcheck= -pyflakes=",
+        "actionlint (with shellcheck, without pyflakes, as the workflow)",
+        "actionlint -color -pyflakes=",
         "actions-checks.yml",
         "actionlint",
     ),
@@ -190,6 +190,13 @@ STEPS: List[Step] = [
         "tests of the workflow code",
         "python -m pytest -q tests/unit/test_release_needed.py "
         "tests/unit/test_sync_doc_versions.py "
+        "tests/unit/test_workflow_runner_labels.py "
+        "tests/unit/test_docs_examples_workflow.py "
+        "tests/unit/test_performance_workflow.py "
+        "tests/unit/test_workflows_run_no_migration_js.py "
+        "tests/unit/test_release_tag.py "
+        "tests/unit/test_release_runbook.py "
+        "tests/unit/test_roll_changelog.py "
         '"tests/backward_compatibility/test_github_actions_compatibility.py'
         '::TestGitHubActionsCompatibility"',
         "actions-checks.yml",
@@ -225,20 +232,19 @@ NOT_RUN: Dict[Tuple[str, str], str] = {
     ("docs-deploy.yml", "Run vulnerability analysis"): "needs the network",
     ("docs-deploy.yml", "Generate download tables and documentation"): "SBOM",
     ("docs-deploy.yml", "Install dependencies"): "npm ci: run it in website/ yourself",
-    ("docs-deploy.yml", "Validate documentation structure"): "rewrites docs/ in CI",
-    ("docs-deploy.yml", "Run GitHub → Docusaurus transformation pipeline"): (
-        "rewrites docs/ and makes backups in the checkout"
-    ),
-    ("docs-deploy.yml", "Install testing dependencies"): "installs packages",
-    ("docs-deploy.yml", "Run markdown linting"): "runs after the transformation",
-    ("docs-deploy.yml", "Validate frontmatter"): "runs after the transformation",
-    ("docs-deploy.yml", "Run link validation"): "runs after the transformation",
-    ("docs-deploy.yml", "Test dual-platform compatibility"): "after the transformation",
     (
         "docs-deploy.yml",
-        "Validate transformed documentation",
-    ): "after the transformation",
-    ("docs-deploy.yml", "Build documentation site with fallback"): (
+        "Validate documentation structure",
+    ): "counts files in docs/; fails only when there are none",
+    ("docs-deploy.yml", "Install testing dependencies"): "installs packages",
+    (
+        "docs-deploy.yml",
+        "Run markdown linting",
+    ): "writes .markdownlint.json into the checkout; never fails",
+    ("docs-deploy.yml", "Validate frontmatter"): "prints warnings only; never fails",
+    ("docs-deploy.yml", "Run link validation"): "needs the network; never fails",
+    ("docs-deploy.yml", "Test dual-platform compatibility"): "prints warnings only",
+    ("docs-deploy.yml", "Build documentation site"): (
         "area `site`: one build per locale, assembled (never `npm run build` here)"
     ),
     (
@@ -256,7 +262,6 @@ NOT_RUN: Dict[Tuple[str, str], str] = {
         "Test mobile responsiveness and performance",
     ): "needs a browser",
     ("docs-deploy.yml", "Generate accessibility and performance report"): "report only",
-    ("docs-deploy.yml", "Run documentation health monitoring"): "monitoring",
     ("docs-deploy.yml", "Performance monitoring post-deployment"): "after a deploy",
     ("actions-checks.yml", "Install test tools"): "pip install: use `env --create`",
     (

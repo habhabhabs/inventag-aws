@@ -3,5 +3,5 @@
   "python": {"version": "3.13", "source": ".github/workflows/ci.yml lint job (python-version)", "verified": true},
   "node": {"version": "26", "source": ".github/workflows/docs-deploy.yml (node-version)", "verified": true},
   "actionlint": {"version": "1.7.12", "source": ".github/workflows/actions-checks.yml (ACTIONLINT_VERSION)", "verified": true},
-  "shellcheck": {"version": "0.9.0", "source": "debt-register C-01: the runner's shellcheck when pull request 43 failed", "verified": false}
+  "shellcheck": {"version": "0.9.0", "source": "debt-register C-01: the runner's shellcheck when pull request 43 failed; the jobs run on ubuntu-24.04, and actionlint in actions-checks.yml runs shellcheck on every run block", "verified": false}
 }
