@@ -38,6 +38,9 @@ jobs:
     # ("does not support chromium on ubuntu26.04-x64"); 1.61.0 is the first release
     # that lists ubuntu26.04 as a supported platform. Keep Playwright at 1.61.0 or newer
     # while this job runs on ubuntu-latest.
+    # floating runner label, decided 2026-11-15 (commit 82a7a67): the docs build follows
+    # ubuntu-latest on purpose; tests/unit/test_workflow_runner_labels.py accepts this
+    # label only with this dated note.
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1213,7 +1216,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     steps:
       - name: Deploy to GitHub Pages
@@ -1293,7 +1296,7 @@ jobs:
   # Preview job for pull requests
   preview:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       issues: write

@@ -18,7 +18,7 @@ jobs:
   # Secret scan: once per push and pull request (it used to run in every matrix leg).
   gitleaks:
     name: Secret scan (gitleaks)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -37,7 +37,7 @@ jobs:
   python-compatibility:
     name: Test Python ${{ matrix.python-version }} compatibility
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     continue-on-error: ${{ matrix.experimental }}
     
     strategy:
@@ -256,7 +256,7 @@ jobs:
 
   compatibility-summary:
     name: Compatibility Test Summary  
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: python-compatibility
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     

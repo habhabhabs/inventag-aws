@@ -22,7 +22,7 @@ permissions:
 jobs:
   validate-workflows:
     name: Validate Security Workflows
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -65,7 +65,7 @@ jobs:
 
   validate-gitleaks:
     name: Validate GitLeaks Configuration
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -102,7 +102,7 @@ jobs:
 
   validate-docusaurus:
     name: Validate Docusaurus Configuration
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -150,7 +150,7 @@ jobs:
 
   validate-security-docs:
     name: Validate Security Documentation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -194,7 +194,7 @@ jobs:
 
   create-validation-report:
     name: Create Validation Report
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [validate-workflows, validate-gitleaks, validate-docusaurus, validate-security-docs]
     if: always()
     steps:

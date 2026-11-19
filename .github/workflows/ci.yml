@@ -24,7 +24,7 @@ permissions:
 jobs:
   lint:
     name: Lint and format
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -53,7 +53,7 @@ jobs:
 
   test:
     name: Python Tests (${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         python-version: ['3.11', '3.12', '3.13', '3.14', '3.15']  # supported CPython versions
@@ -117,7 +117,7 @@ jobs:
   # allows. The floor is read from requirements.txt, so it follows that file.
   boto-floor-tests:
     name: Guard and S3 upload tests (oldest boto3 and botocore)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Checkout code
@@ -165,7 +165,7 @@ jobs:
 
   basic-security:
     name: Basic Security Checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     
     steps:
     - name: Checkout code
@@ -235,7 +235,7 @@ jobs:
 
   integration-tests:
     name: Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     
     steps:
     - name: Checkout code

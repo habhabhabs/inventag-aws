@@ -20,7 +20,7 @@ permissions:
 jobs:
   check:
     name: Check workflow code
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -100,4 +100,5 @@ jobs:
         python -m pytest -q \
           tests/unit/test_release_needed.py \
           tests/unit/test_sync_doc_versions.py \
+          tests/unit/test_workflow_runner_labels.py \
           "tests/backward_compatibility/test_github_actions_compatibility.py::TestGitHubActionsCompatibility"

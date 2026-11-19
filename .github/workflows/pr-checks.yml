@@ -12,7 +12,7 @@ permissions:
 jobs:
   pr-validation:
     name: PR Validation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event.pull_request.draft == false
 
     steps:
@@ -150,7 +150,7 @@ jobs:
 
   size-check:
     name: PR Size Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     
     steps:
     - name: Checkout code
@@ -181,7 +181,7 @@ jobs:
 
   conflict-check:
     name: Merge Conflict Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     
     steps:
     - name: Checkout code
