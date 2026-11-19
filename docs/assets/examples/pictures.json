@@ -1,0 +1,22 @@
+{
+  "board-report-word-page1.png": {
+    "inputs": "cdcf605d05ec000ac11853799a9db79316d3edf3648262b8a7d94a3e110fe925",
+    "png": "9d1540c07a533b31ce6b9bfc105e04a95b7867bec8137ed77e8ef171ffc78bb7"
+  },
+  "finops-tag-compliance-sheet.png": {
+    "inputs": "ad6e32836e3b166b8922bbf7727a37677d502dc3f35109f522a20fe07ad22e80",
+    "png": "3fa795f6d7bd2b9fbc5ac6471134041d95280674cb042ad2a5d7b0f1cbd4ddc5"
+  },
+  "standard-bom-s3-sheet.png": {
+    "inputs": "ca8c6031e4e4e1dc979522314c2b45e12f7033c01e52f7d3268d342f53c433a8",
+    "png": "ee6e99ed8f610f59e60aab5941d6216a37dec82d07537ed1d8a9732c49d79e76"
+  },
+  "standard-bom-word-page1.png": {
+    "inputs": "0aae7610e6a0806a66e7216ee1ddd39fd00caa7057ea280e26c74a5f018c4be9",
+    "png": "b6401c3dc677db7f1f7f4932133dea851556e9e16ff55fcad451230ec687ceae"
+  },
+  "team-sheet-inventory.png": {
+    "inputs": "fbed8473384116336d939b039e2ed0cee0665614c67b3a06e9c08d8388c59617",
+    "png": "0c6c4069fa41469311a7f65ea586a8189c8fc04a378317088e99de8bc606b8ee"
+  }
+}

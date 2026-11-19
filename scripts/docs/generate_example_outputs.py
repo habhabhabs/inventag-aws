@@ -20,6 +20,16 @@ call. Usage (from the repository root):
     python scripts/docs/generate_example_outputs.py            # text + images
     python scripts/docs/generate_example_outputs.py --no-images
     python scripts/docs/generate_example_outputs.py --check    # exit 1 if docs are stale
+    python scripts/docs/generate_example_outputs.py --record-picture-hashes
+
+Pictures: `docs/assets/examples/pictures.json` records, for each picture, a hash
+of what it is drawn from (the sheet cells, or the Word parts, and the render
+settings) and the hash of the picture file. `--check` runs the scenarios,
+recomputes the first and reads the second, and fails when a picture is missing,
+changed on disk, not recorded, or drawn from a source that changed. A full run
+(with LibreOffice) redraws the pictures and rewrites the file;
+`--record-picture-hashes` rewrites it from the current sources and files
+without drawing (use it only after checking the pictures by eye).
 
 Timestamps and random IDs are fixed so a re-run only changes the docs when
 InvenTag's behaviour changes.
@@ -29,6 +39,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import importlib
 import io
 import json
@@ -653,6 +664,103 @@ def details(summary: str, body: str) -> str:
 # ---------------------------------------------------------------- images
 
 
+PICTURES_FILE = ASSETS / "pictures.json"
+# Filled by `picture()`: picture file name -> hash of what it is drawn from.
+PICTURE_INPUTS: Dict[str, str] = {}
+
+
+def picture_inputs_hash(
+    source: Path,
+    sheet: Optional[str] = None,
+    page: int = 1,
+    crop_height: int = 0,
+) -> str:
+    """Hash of everything a picture is drawn from, without drawing it.
+
+    Excel: the chosen sheet's cell values, the fill colour of its first row and
+    its column widths. Word: the text of the XML parts of the document, after
+    the same normalisation as the docs text. Both: the render settings.
+    """
+    digest = hashlib.sha256()
+    digest.update(f"{sheet}|{page}|{crop_height}|{source.suffix}\n".encode())
+    if source.suffix == ".xlsx":
+        from openpyxl import load_workbook
+
+        ws = load_workbook(source)[sheet]
+        for row in ws.iter_rows():
+            for cell in row:
+                if cell.value is not None:
+                    digest.update(f"{cell.coordinate}={cell.value!r}\n".encode())
+        for cell in next(ws.iter_rows(min_row=1, max_row=1), ()):
+            digest.update(f"fill:{cell.coordinate}={cell.fill.fgColor.rgb}\n".encode())
+        for letter, dim in sorted(ws.column_dimensions.items()):
+            digest.update(f"width:{letter}={dim.width}\n".encode())
+    else:
+        import zipfile
+
+        with zipfile.ZipFile(source) as zf:
+            for name in sorted(zf.namelist()):
+                if name.startswith("word/") and name.endswith(".xml"):
+                    text = normalise(zf.read(name).decode("utf-8"))
+                    digest.update(f"{name}\n{text}\n".encode())
+    return digest.hexdigest()
+
+
+def file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def picture(source: Path, out: Path, draw: bool, **settings) -> Optional[Path]:
+    """Record what the picture is drawn from; draw it only when `draw`."""
+    PICTURE_INPUTS[out.name] = picture_inputs_hash(source, **settings)
+    return render_png(source, out, **settings) if draw else None
+
+
+def compare_pictures(
+    recorded: Dict[str, Dict[str, str]],
+    inputs: Dict[str, str],
+    img_dir: Path,
+) -> List[str]:
+    """Problems between the recorded hashes, the sources now and the files."""
+    problems: List[str] = []
+    for name in sorted(inputs):
+        entry = recorded.get(name)
+        file = img_dir / name
+        if entry is None:
+            problems.append(f"picture {name}: not in pictures.json")
+            continue
+        if entry.get("inputs") != inputs[name]:
+            problems.append(
+                f"picture {name}: its source changed since it was drawn; "
+                "run the generator without --check, then review the picture"
+            )
+        if not file.is_file():
+            problems.append(f"picture {name}: file is missing")
+        elif entry.get("png") != file_sha256(file):
+            problems.append(f"picture {name}: file differs from pictures.json")
+    for name in sorted(set(recorded) - set(inputs)):
+        problems.append(f"picture {name}: in pictures.json but no scenario draws it")
+    return problems
+
+
+def load_pictures() -> Dict[str, Dict[str, str]]:
+    if not PICTURES_FILE.is_file():
+        return {}
+    return json.loads(PICTURES_FILE.read_text("utf-8"))
+
+
+def write_pictures(img_dir: Path) -> None:
+    """Rewrite pictures.json from the current inputs and the files on disk."""
+    recorded = {}
+    for name in sorted(PICTURE_INPUTS):
+        file = img_dir / name
+        recorded[name] = {
+            "inputs": PICTURE_INPUTS[name],
+            "png": file_sha256(file) if file.is_file() else "",
+        }
+    PICTURES_FILE.write_text(json.dumps(recorded, indent=2) + "\n", "utf-8")
+
+
 def render_png(
     source: Path,
     out: Path,
@@ -857,14 +965,11 @@ def collect(images: bool) -> Dict[str, str]:
                 "standard-word",
                 word_preview(r.files["docx:multi"], table_index=0, rows=10),
             )
-            pic = (
-                render_png(
-                    r.files["xlsx:multi"],
-                    img_dir / "standard-bom-s3-sheet.png",
-                    sheet="S3",
-                )
-                if images
-                else None
+            pic = picture(
+                r.files["xlsx:multi"],
+                img_dir / "standard-bom-s3-sheet.png",
+                sheet="S3",
+                draw=images,
             )
             add(
                 "standard-excel-image",
@@ -874,15 +979,12 @@ def collect(images: bool) -> Dict[str, str]:
                     pages["catalogue"],
                 ),
             )
-            pic = (
-                render_png(
-                    r.files["docx:multi"],
-                    img_dir / "standard-bom-word-page1.png",
-                    page=1,
-                    crop_height=900,
-                )
-                if images
-                else None
+            pic = picture(
+                r.files["docx:multi"],
+                img_dir / "standard-bom-word-page1.png",
+                page=1,
+                crop_height=900,
+                draw=images,
             )
             add(
                 "standard-word-image",
@@ -961,15 +1063,12 @@ def collect(images: bool) -> Dict[str, str]:
                 "finops-word",
                 word_preview(r.files["docx:multi"], table_index=0, rows=4),
             )
-            pic = (
-                render_png(
-                    r.files["xlsx:multi"],
-                    img_dir / "finops-tag-compliance-sheet.png",
-                    sheet="Tag Compliance",
-                    crop_height=700,
-                )
-                if images
-                else None
+            pic = picture(
+                r.files["xlsx:multi"],
+                img_dir / "finops-tag-compliance-sheet.png",
+                sheet="Tag Compliance",
+                crop_height=700,
+                draw=images,
             )
             add(
                 "finops-compliance-image",
@@ -1109,14 +1208,11 @@ def collect(images: bool) -> Dict[str, str]:
             add(
                 "board-word", word_preview(r.files["docx:multi"], table_index=1, rows=4)
             )
-            pic = (
-                render_png(
-                    r.files["docx:multi"],
-                    img_dir / "board-report-word-page1.png",
-                    page=1,
-                )
-                if images
-                else None
+            pic = picture(
+                r.files["docx:multi"],
+                img_dir / "board-report-word-page1.png",
+                page=1,
+                draw=images,
             )
             add(
                 "board-image",
@@ -1166,15 +1262,12 @@ def collect(images: bool) -> Dict[str, str]:
                     row_filter=lambda row: row.get("Type") in ("Volume", "Bucket"),
                 ),
             )
-            pic = (
-                render_png(
-                    r.files["xlsx:multi"],
-                    img_dir / "team-sheet-inventory.png",
-                    sheet="Inventory",
-                    crop_height=600,
-                )
-                if images
-                else None
+            pic = picture(
+                r.files["xlsx:multi"],
+                img_dir / "team-sheet-inventory.png",
+                sheet="Inventory",
+                crop_height=600,
+                draw=images,
             )
             add(
                 "columns-image",
@@ -1667,6 +1760,10 @@ def apply(blocks: Dict[str, str], check: bool) -> int:
     return 1 if unknown else 0
 
 
+def check_pictures(img_dir: Path) -> List[str]:
+    return compare_pictures(load_pictures(), PICTURE_INPUTS, img_dir)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -1677,10 +1774,37 @@ def main() -> int:
     parser.add_argument(
         "--check", action="store_true", help="Only report pages whose samples are stale"
     )
+    parser.add_argument(
+        "--record-picture-hashes",
+        action="store_true",
+        help="Rewrite pictures.json from the current sources and picture files "
+        "without drawing (review the pictures by eye first)",
+    )
     args = parser.parse_args()
     fake_aws_environment()
-    blocks = collect(images=not (args.no_images or args.check))
-    return apply(blocks, args.check)
+    draw = not (args.no_images or args.check or args.record_picture_hashes)
+    blocks = collect(images=draw)
+    img_dir = ASSETS / "img"
+    if args.record_picture_hashes:
+        write_pictures(img_dir)
+        print(f"Recorded {len(PICTURE_INPUTS)} picture hash(es)")
+        return 0
+    status = apply(blocks, args.check)
+    if draw:
+        if shutil.which("soffice") and shutil.which("pdftoppm"):
+            write_pictures(img_dir)
+        else:
+            print(
+                "soffice or pdftoppm is missing: no picture was drawn, "
+                "pictures.json is not rewritten",
+                file=sys.stderr,
+            )
+    elif args.check:
+        problems = check_pictures(img_dir)
+        for line in problems:
+            print(line, file=sys.stderr)
+        status = status or (1 if problems else 0)
+    return status
 
 
 if __name__ == "__main__":
