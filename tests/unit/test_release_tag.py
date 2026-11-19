@@ -74,7 +74,10 @@ class Release:
         env = base_env(self.tmp)
         subprocess.run([REAL_GIT, "add", "f.txt"], cwd=self.work, check=True, env=env)
         subprocess.run(
-            [REAL_GIT, "commit", "-q", "-m", message], cwd=self.work, check=True, env=env
+            [REAL_GIT, "commit", "-q", "-m", message],
+            cwd=self.work,
+            check=True,
+            env=env,
         )
         return git(self.work, "rev-parse", "HEAD")
 
@@ -295,7 +298,9 @@ def test_bump_step_writes_the_pushed_commit_as_its_sha_output():
     assert step["id"] == "bump"
     lines = step["run"].splitlines()
     push = max(i for i, line in enumerate(lines) if "git push origin main" in line)
-    out = [i for i, line in enumerate(lines) if 'echo "sha=$(git rev-parse HEAD)"' in line]
+    out = [
+        i for i, line in enumerate(lines) if 'echo "sha=$(git rev-parse HEAD)"' in line
+    ]
     assert len(out) == 1 and out[0] > push
     # After the closing "fi" of the commit branch: also written when there
     # was nothing to commit (then HEAD is the checked-out tip of main).
@@ -307,9 +312,10 @@ def test_bump_step_writes_the_pushed_commit_as_its_sha_output():
 def test_tag_step_calls_the_script_with_the_bump_sha():
     steps = release_steps()
     names = list(steps)
-    assert names.index("Create Git Tag") == names.index(
-        "Commit and push version.json changes"
-    ) + 1
+    assert (
+        names.index("Create Git Tag")
+        == names.index("Commit and push version.json changes") + 1
+    )
     step = steps["Create Git Tag"]
     assert step["env"]["RELEASE_SHA"] == "${{ steps.bump.outputs.sha }}"
     assert step["env"]["TAG_NAME"] == "${{ steps.version.outputs.tag_name }}"

@@ -168,7 +168,10 @@ def test_check_passes_on_the_v1_2_2_bump_commit_text(tmp_path):
 
 
 def test_check_without_heading_or_file_is_exit_2(tmp_path):
-    assert run_check(tmp_path, FILLED.replace("## [Unreleased]", "## [Next]")).returncode == 2
+    assert (
+        run_check(tmp_path, FILLED.replace("## [Unreleased]", "## [Next]")).returncode
+        == 2
+    )
     result = subprocess.run(
         ["bash", str(CHECK), str(tmp_path / "none.md")], capture_output=True, text=True
     )
