@@ -200,3 +200,25 @@ def test_pricing_client_uses_the_account_session():
     assert client is session.client.return_value
     assert analyzer._get_pricing_client() is client
     session.client.assert_called_once()
+
+
+def test_a_failed_cost_step_is_warned_once_not_per_resource(caplog):
+    """D-09 for the cost analyzer: a failure that only the debug log knew
+    about now gives one WARNING per step and error type."""
+    analyzer = CostAnalyzer(session=Mock())
+
+    def broken(resource):
+        raise RuntimeError("synthetic")
+
+    analyzer._estimate_single_resource_cost = broken
+    with caplog.at_level(logging.WARNING):
+        for number in range(3):
+            assert analyzer.enrich_resource_with_cost_info({"id": number}) == {
+                "id": number
+            }
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert warnings == [
+        "Cost analysis: adding cost fields failed for some resources "
+        "(RuntimeError); those resources have no cost fields. Run with --debug "
+        "for the detail."
+    ]

@@ -142,6 +142,7 @@ class CostAnalyzer:
         self._warn_lock = threading.Lock()
         self._warned_apis: Set[str] = set()
         self._warned_pricing_reasons: Set[str] = set()
+        self._warned_steps: Set[Tuple[str, str]] = set()
 
         # Historical cost data storage
         self._historical_costs: Dict[str, List[Tuple[datetime, Decimal]]] = defaultdict(
@@ -291,6 +292,7 @@ class CostAnalyzer:
             self.logger.debug(
                 f"Cost estimation failed for resource {resource.get('id', 'unknown')}: {e}"
             )
+            self._warn_once("cost estimation", e, "those resources have no estimate.")
             return None
 
     _DENIED = {
@@ -324,6 +326,19 @@ class CostAnalyzer:
 
     _NOT_CACHED = object()
 
+    def _warn_once(self, step: str, error: Exception, consequence: str) -> None:
+        """One WARNING per step and error type, not one per resource: a cost
+        figure that could not be worked out must not look like a zero."""
+        name = type(error).__name__
+        with self._warn_lock:
+            first = (step, name) not in self._warned_steps
+            self._warned_steps.add((step, name))
+        if first:
+            self.logger.warning(
+                f"Cost analysis: {step} failed for some resources ({name}); "
+                f"{consequence} Run with --debug for the detail."
+            )
+
     @staticmethod
     def _error_code(error: Exception) -> str:
         response = getattr(error, "response", None)
@@ -339,8 +354,8 @@ class CostAnalyzer:
         The result, including "no price" and a failed call, is cached for the
         run under the full lookup key (service code plus every filter), so N
         resources that share a key cost one Pricing API call, not N. A
-        transient error (throttling, service unavailable) is retried once
-        before the failure is cached.
+        transient error (throttling, service unavailable) is retried by the
+        client (shared retry settings) before the failure is cached.
         """
         service_code = self._map_service_to_pricing_code(service)
         if not service_code:
@@ -353,6 +368,7 @@ class CostAnalyzer:
             cache_key = json.dumps([service_code, filters], sort_keys=True, default=str)
         except Exception as e:
             self.logger.debug(f"Could not build pricing filters for {service}: {e}")
+            self._warn_once("the price lookup", e, "those resources have no estimate.")
             return None
 
         with self._cache_lock:
@@ -638,6 +654,7 @@ class CostAnalyzer:
 
         except Exception as e:
             self.logger.debug(f"Failed to parse pricing response: {e}")
+            self._warn_once("reading a price", e, "those resources have no estimate.")
             return None
 
     def _calculate_monthly_cost(
@@ -667,6 +684,9 @@ class CostAnalyzer:
 
         except Exception as e:
             self.logger.debug(f"Cost calculation failed: {e}")
+            self._warn_once(
+                "the monthly cost calculation", e, "their estimate is shown as 0."
+            )
             return Decimal("0")
 
     def _estimate_monthly_requests(self, resource: Dict[str, Any]) -> Decimal:
@@ -778,6 +798,9 @@ class CostAnalyzer:
                 self.logger.debug(
                     f"Activity analysis failed for resource {resource.get('id', 'unknown')}: {e}"
                 )
+                self._warn_once(
+                    "the activity check", e, "they are not checked for being unused."
+                )
 
         self.logger.info(
             f"Detected {len(forgotten_resources)} potentially forgotten resources"
@@ -832,6 +855,9 @@ class CostAnalyzer:
 
         except Exception as e:
             self.logger.debug(f"Resource activity analysis failed: {e}")
+            self._warn_once(
+                "the activity check", e, "they are not checked for being unused."
+            )
             return None
 
     def _get_activity_metrics(
@@ -914,7 +940,7 @@ class CostAnalyzer:
                     activity_indicators["s3_requests"] = request_metrics.get(
                         "Datapoints", []
                     )
-                except Exception:
+                except Exception:  # silent-ok: S3 request metrics are opt-in
                     # S3 request metrics might not be enabled
                     activity_indicators["s3_requests"] = []
 
@@ -1081,6 +1107,9 @@ class CostAnalyzer:
                 except Exception as e:
                     self.logger.debug(
                         f"Cost trend analysis failed for service {service}: {e}"
+                    )
+                    self._warn_once(
+                        "the cost trend", e, "those services have no trend."
                     )
 
         except Exception as e:
@@ -1273,6 +1302,7 @@ class CostAnalyzer:
             )
 
         except Exception as e:
+            self._warn_once("a recommendation", e, "those resources have none.")
             self.logger.debug(
                 f"Failed to generate recommendation for expensive resource {resource.resource_id}: {e}"
             )
@@ -1297,6 +1327,7 @@ class CostAnalyzer:
             )
 
         except Exception as e:
+            self._warn_once("a recommendation", e, "those resources have none.")
             self.logger.debug(
                 f"Failed to generate recommendation for forgotten resource {forgotten.resource_id}: {e}"
             )
@@ -1336,6 +1367,7 @@ class CostAnalyzer:
                 self.logger.debug(
                     f"Failed to generate underutilization recommendation for {estimate.resource_id}: {e}"
                 )
+                self._warn_once("a recommendation", e, "those resources have none.")
 
         return recommendations
 
@@ -1454,5 +1486,8 @@ class CostAnalyzer:
         except Exception as e:
             self.logger.debug(
                 f"Cost enrichment failed for resource {resource.get('id', 'unknown')}: {e}"
+            )
+            self._warn_once(
+                "adding cost fields", e, "those resources have no cost fields."
             )
             return resource
