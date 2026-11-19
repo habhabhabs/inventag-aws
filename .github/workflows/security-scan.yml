@@ -121,7 +121,7 @@ jobs:
         echo "⚙️ GitHub Actions Security Check"
         echo "==============================="
         
-        find .github/workflows -name "*.yml" -o -name "*.yaml" | while read workflow; do
+        find .github/workflows -name "*.yml" -o -name "*.yaml" | while read -r workflow; do
           echo "🔍 Checking workflow: $workflow"
           
           # Check for unpinned actions (security risk)
@@ -159,17 +159,19 @@ jobs:
         TOTAL_ISSUES=$((BANDIT_ISSUES + NPM_ISSUES + SECRETS_ISSUES))
         
         echo "# Security Summary" > security-results/summary.md
-        echo "" >> security-results/summary.md
-        echo "**Date**: $(date)" >> security-results/summary.md
-        echo "**Repository**: ${{ github.repository }}" >> security-results/summary.md
-        echo "**Branch**: ${{ github.ref_name }}" >> security-results/summary.md
-        echo "" >> security-results/summary.md
-        echo "## Results" >> security-results/summary.md
-        echo "- Bandit (Python) issues: $BANDIT_ISSUES" >> security-results/summary.md
-        echo "- npm audit issues: $NPM_ISSUES" >> security-results/summary.md
-        echo "- Potential secrets: $SECRETS_ISSUES" >> security-results/summary.md
-        echo "- **Total findings**: $TOTAL_ISSUES" >> security-results/summary.md
-        echo "" >> security-results/summary.md
+        {
+          echo ""
+          echo "**Date**: $(date)"
+          echo "**Repository**: ${{ github.repository }}"
+          echo "**Branch**: ${{ github.ref_name }}"
+          echo ""
+          echo "## Results"
+          echo "- Bandit (Python) issues: $BANDIT_ISSUES"
+          echo "- npm audit issues: $NPM_ISSUES"
+          echo "- Potential secrets: $SECRETS_ISSUES"
+          echo "- **Total findings**: $TOTAL_ISSUES"
+          echo ""
+        } >> security-results/summary.md
         
         # Add recommendations
         if [ "$TOTAL_ISSUES" -gt 10 ]; then
@@ -180,29 +182,33 @@ jobs:
           echo "✅ **Good**: No major security issues detected" >> security-results/summary.md
         fi
         
-        echo "" >> security-results/summary.md
-        echo "## Tools Used" >> security-results/summary.md
-        echo "- **Bandit**: Python code security scanner" >> security-results/summary.md
-        echo "- **Safety**: Python dependency vulnerability checker" >> security-results/summary.md
-        echo "- **pip-audit**: Advanced Python dependency auditing" >> security-results/summary.md
-        echo "- **npm audit**: Node.js dependency vulnerability scanner" >> security-results/summary.md
-        echo "- **detect-secrets**: Secrets detection across files" >> security-results/summary.md
+        {
+          echo ""
+          echo "## Tools Used"
+          echo "- **Bandit**: Python code security scanner"
+          echo "- **Safety**: Python dependency vulnerability checker"
+          echo "- **pip-audit**: Advanced Python dependency auditing"
+          echo "- **npm audit**: Node.js dependency vulnerability scanner"
+          echo "- **detect-secrets**: Secrets detection across files"
+        } >> security-results/summary.md
         
         # GitHub Actions summary
-        echo "## 🔒 Security Scan Results" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "- **Python Issues**: $BANDIT_ISSUES" >> $GITHUB_STEP_SUMMARY
-        echo "- **Node.js Issues**: $NPM_ISSUES" >> $GITHUB_STEP_SUMMARY
-        echo "- **Secrets Issues**: $SECRETS_ISSUES" >> $GITHUB_STEP_SUMMARY
-        echo "- **Total Issues**: $TOTAL_ISSUES" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
+        {
+          echo "## 🔒 Security Scan Results"
+          echo ""
+          echo "- **Python Issues**: $BANDIT_ISSUES"
+          echo "- **Node.js Issues**: $NPM_ISSUES"
+          echo "- **Secrets Issues**: $SECRETS_ISSUES"
+          echo "- **Total Issues**: $TOTAL_ISSUES"
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"
         
         if [ "$TOTAL_ISSUES" -gt 10 ]; then
-          echo "🚨 **High Priority**: Review security findings immediately" >> $GITHUB_STEP_SUMMARY
+          echo "🚨 **High Priority**: Review security findings immediately" >> "$GITHUB_STEP_SUMMARY"
         elif [ "$TOTAL_ISSUES" -gt 0 ]; then
-          echo "⚠️ **Action Recommended**: Some security issues found" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Action Recommended**: Some security issues found" >> "$GITHUB_STEP_SUMMARY"
         else
-          echo "✅ **All Clear**: No major security issues detected" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **All Clear**: No major security issues detected" >> "$GITHUB_STEP_SUMMARY"
         fi
 
     - name: Upload security results
