@@ -100,4 +100,5 @@ jobs:
           tests/unit/test_release_needed.py \
           tests/unit/test_sync_doc_versions.py \
           tests/unit/test_workflow_runner_labels.py \
+          tests/unit/test_docs_examples_workflow.py \
           "tests/backward_compatibility/test_github_actions_compatibility.py::TestGitHubActionsCompatibility"

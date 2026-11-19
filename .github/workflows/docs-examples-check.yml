@@ -1,0 +1,49 @@
+name: Docs examples check
+
+# The CI examples in docs/ call `inventag` with real flags. The checker imports
+# InvenTag's own argument parsers, so a change to a parser can break an example
+# without touching docs/. docs-deploy.yml does not run on application-only
+# changes (and must not deploy the site for them), so this workflow runs only
+# the examples check when a parser changes. It builds and deploys nothing.
+"on":
+  push:
+    branches: [ main ]
+    paths:
+      - 'inventag/cli/**'
+      - 'inventag/templating/cli.py'
+      - 'scripts/docs/check_ci_examples.py'
+      - 'scripts/docs/check_cli_examples.py'
+      - '.github/workflows/docs-examples-check.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'inventag/cli/**'
+      - 'inventag/templating/cli.py'
+      - 'scripts/docs/check_ci_examples.py'
+      - 'scripts/docs/check_cli_examples.py'
+      - '.github/workflows/docs-examples-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-ci-examples:
+    name: Check CI examples in the docs
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: '3.12'
+
+    - name: Install the package requirements
+      shell: bash
+      run: python -m pip install -r requirements.txt
+
+    - name: Check CI examples in the docs
+      shell: bash
+      run: python scripts/docs/check_ci_examples.py
