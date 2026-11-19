@@ -114,7 +114,7 @@ jobs:
         python -c "import sys; print(f'Platform: {sys.platform}')"
         python -c "import sys; print(f'Architecture: {sys.maxsize > 2**32 and \"64bit\" or \"32bit\"}')"
         
-        echo "\n📦 Key Package Versions:"
+        printf '\n%s\n' "📦 Key Package Versions:"
         python -c "import boto3; print(f'boto3: {boto3.__version__}')" || echo "boto3 not available"
         python -c "import openpyxl; print(f'openpyxl: {openpyxl.__version__}')" || echo "openpyxl not available"
         python -c "import docx; print(f'python-docx: {docx.__version__}')" || echo "python-docx not available"
@@ -219,9 +219,11 @@ jobs:
         fi
         
         echo "📋 Python ${{ matrix.python-version }} Compatibility Report" > compat-report.txt
-        echo "=========================================" >> compat-report.txt
-        echo "Platform: ubuntu-latest" >> compat-report.txt
-        echo "Matrix Experimental: ${{ matrix.experimental }}" >> compat-report.txt
+        {
+          echo "========================================="
+          echo "Platform: ubuntu-latest"
+          echo "Matrix Experimental: ${{ matrix.experimental }}"
+        } >> compat-report.txt
         
         # Add Python version info (with error handling)
         if python --version >> compat-report.txt 2>&1; then
@@ -230,9 +232,11 @@ jobs:
           echo "Python installation failed or unavailable" >> compat-report.txt
         fi
         
-        echo "Test Status: $STATUS" >> compat-report.txt
-        echo "Job Status: ${{ job.status }}" >> compat-report.txt
-        echo "=========================================" >> compat-report.txt
+        {
+          echo "Test Status: $STATUS"
+          echo "Job Status: ${{ job.status }}"
+          echo "========================================="
+        } >> compat-report.txt
         
         cat compat-report.txt
         
@@ -266,23 +270,29 @@ jobs:
       shell: bash
       run: |
         echo "# InvenTag Python Compatibility Summary" > COMPATIBILITY_SUMMARY.md
-        echo "" >> COMPATIBILITY_SUMMARY.md
-        echo "Generated on: $(date)" >> COMPATIBILITY_SUMMARY.md
-        echo "" >> COMPATIBILITY_SUMMARY.md
-        echo "## Test Results" >> COMPATIBILITY_SUMMARY.md
-        echo "" >> COMPATIBILITY_SUMMARY.md
+        {
+          echo ""
+          echo "Generated on: $(date)"
+          echo ""
+          echo "## Test Results"
+          echo ""
+        } >> COMPATIBILITY_SUMMARY.md
         
-        find compatibility-reports -name "*.txt" | sort | while read file; do
-          echo "### $(basename "$file" .txt)" >> COMPATIBILITY_SUMMARY.md
-          echo "\`\`\`" >> COMPATIBILITY_SUMMARY.md
-          cat "$file" >> COMPATIBILITY_SUMMARY.md
-          echo "\`\`\`" >> COMPATIBILITY_SUMMARY.md
-          echo "" >> COMPATIBILITY_SUMMARY.md
+        find compatibility-reports -name "*.txt" | sort | while read -r file; do
+          {
+            echo "### $(basename "$file" .txt)"
+            echo "\`\`\`"
+            cat "$file"
+            echo "\`\`\`"
+            echo ""
+          } >> COMPATIBILITY_SUMMARY.md
         done
         
-        echo "## Summary" >> COMPATIBILITY_SUMMARY.md
-        echo "InvenTag has been tested across multiple Python versions and platforms." >> COMPATIBILITY_SUMMARY.md
-        echo "All core functionality works consistently across supported versions." >> COMPATIBILITY_SUMMARY.md
+        {
+          echo "## Summary"
+          echo "InvenTag has been tested across multiple Python versions and platforms."
+          echo "All core functionality works consistently across supported versions."
+        } >> COMPATIBILITY_SUMMARY.md
         
         cat COMPATIBILITY_SUMMARY.md
         
