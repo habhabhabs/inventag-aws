@@ -157,6 +157,9 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **Une session qui expire pendant l’analyse** laisse un rapport qui ne contient
   que ce qui a été lu avant l’expiration, et l’exécution se termine avec le
   code 0, y compris avec `--fail-on-account-error`.
+
+  Non vérifié sur un vrai AWS : le code d’erreur que renvoie AWS quand une session expire.
+
 - **Une session déjà expirée au début de l’analyse** ne donne aucun fichier de
   rapport et le code 0.
 - **Accès refusé ou limité à Cost Explorer :** l’exécution continue sans données de

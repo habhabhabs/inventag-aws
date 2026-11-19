@@ -95,6 +95,12 @@ temporary keys. If you use access keys, check them with `aws configure list`.
 
 Not verified against the AWS CLI: the commands in this fix.
 
+With an IAM Identity Center (SSO) profile whose login has expired, the run
+stops with exit code 1 and a message that names `aws sso login --profile <name>`.
+It prints no traceback.
+
+Not verified against AWS IAM Identity Center: the message for an expired token.
+
 ### A role cannot be assumed
 
 **What you see:** this in the log, and a report that lacks the account:

@@ -87,6 +87,10 @@ clés temporaires. Si vous utilisez des clés d’accès, vérifiez-les avec `aw
 
 Non vérifié sur l’AWS CLI : les commandes de cette correction.
 
+Avec un profil IAM Identity Center (SSO) dont la connexion a expiré, l’exécution s’arrête avec le code de sortie 1 et un message qui nomme `aws sso login --profile <name>`. Elle n’affiche aucune trace d’appels (traceback).
+
+Non vérifié sur AWS IAM Identity Center : le message d’un jeton expiré.
+
 ### Un rôle ne peut pas être assumé {#a-role-cannot-be-assumed}
 
 **Ce que vous voyez :** ceci dans le journal, et un rapport où le compte est absent :

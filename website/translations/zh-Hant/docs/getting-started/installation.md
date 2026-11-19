@@ -69,6 +69,8 @@ inventag --help
 `inventag` 命令，因此程式碼改動無需重新安裝即可生效。你也可以在
 `pip install -r requirements.txt` 之後直接執行 `python inventag_cli.py --help`。
 
+儲存庫根目錄還有兩個啟動指令碼：`inventag.sh` 和 `inventag.bat`。請改用 `inventag` 命令。這兩個指令碼不屬於已安裝的包，也沒有測試執行過它們。
+
 若要從原始碼使用固定的發佈版本，而不是最新程式碼，請檢出它的標籤，例如
 `git checkout v%INVENTAG_VERSION%`。
 [發佈頁面](https://github.com/habhabhabs/inventag-aws/releases)列出了所有版本。

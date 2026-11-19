@@ -83,6 +83,10 @@ echo $?
 
 未針對 AWS CLI 驗證：此解決辦法中的命令。
 
+使用 IAM Identity Center（SSO）設定檔且其登入已過期時，執行會以結束代碼 1 停止，並給出一條指明 `aws sso login --profile <name>` 的訊息，不會輸出回溯資訊。
+
+未針對 AWS IAM Identity Center 驗證：權杖過期時的提示資訊。
+
 ### 無法擔任角色 {#a-role-cannot-be-assumed}
 
 **你會看到：** 日誌中出現如下內容，並且報告中缺少該帳戶：

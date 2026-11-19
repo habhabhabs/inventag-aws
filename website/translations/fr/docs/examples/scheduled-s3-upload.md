@@ -47,6 +47,10 @@ inventag --template standard-bom --create-excel --account-regions us-east-1 \
   en existe un.
 - Si un envoi échoue, l’exécution se termine avec le code 1, ce qui alerte un planificateur. Les
   rapports restent sur votre disque.
+- Si S3 répond à un envoi par l’erreur `PermanentRedirect` (le bucket est dans une autre région que celle qu’InvenTag a utilisée), le texte de l’erreur dans le journal ajoute une indication : définissez `AWS_DEFAULT_REGION` sur la région du bucket et relancez.
+
+  Non vérifié sur un vrai AWS : la réponse que donne S3 pour un bucket d’une autre région.
+
 - `--audit-output` écrit une liste JSON de chaque opération AWS appelée par l’exécution.
   Cela fonctionne avec ou sans S3.
 

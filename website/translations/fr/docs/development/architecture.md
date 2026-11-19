@@ -98,5 +98,14 @@ Voici les lacunes côté code. Chacune est une bonne première contribution :
   `document_generator.py` et `configuration_manager.py`, ainsi que
   `discovery/enhanced_readonly_discovery.py`. `reporting/template_framework.py`
   et `reporting/document_generator.py` sont importés au démarrage de la CLI.
+- Dont la suppression est prévue dans une version ultérieure : les modules
+  `reporting/configuration_manager.py`, `reporting/branding_system.py`,
+  `reporting/excel_branding_applicator.py`,
+  `reporting/word_branding_applicator.py`, `reporting/template_framework.py`
+  et `discovery/enhanced_readonly_discovery.py` ; la dépendance `jsonschema`,
+  que seul `configuration_manager.py` utilise ; et ces fonctions, que rien dans
+  le paquet n’appelle : `StateManager.get_state_comparison_data`, `export_state`,
+  `validate_state_integrity` et `get_storage_stats`, `get_all_aws_regions` dans
+  `cli/main.py`, et `CloudBOMGenerator.from_interactive_prompt`.
 
 Les anciennes notes de conception ont été retirées du dépôt. Utilisez les pages de ce site.

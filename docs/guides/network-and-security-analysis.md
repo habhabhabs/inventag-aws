@@ -109,6 +109,9 @@ Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
   warning and a run note say so, the clusters of that region are not counted,
   and the rest of the sheet is written as usual. A cluster is counted only
   through a subnet group of its own account.
+- The subnet columns of a resource row name its first subnet only. The
+  `Associated Resources` column of the `Network Analysis` sheet counts the
+  resource in each of its subnets.
 - It reads only the VPCs and subnets in the regions you scan. It does not
   check network ACLs, security groups, `MapPublicIpOnLaunch`, Direct Connect,
   VPN connections, Network Firewall or peering routes.

@@ -47,6 +47,10 @@ inventag --template standard-bom --create-excel --account-regions us-east-1 \
   etiquetas también se sube, cuando existe.
 - Si falla una subida, la ejecución termina con el código 1, para que lo
   detecte un programador. Los informes siguen en tu disco.
+- Si S3 responde a una subida con el error `PermanentRedirect` (el bucket está en una región distinta de la que usó InvenTag), el texto del error en el registro añade una pista: define `AWS_DEFAULT_REGION` con la región del bucket y ejecuta de nuevo.
+
+  No verificado contra AWS real: la respuesta que da S3 para un bucket de otra región.
+
 - `--audit-output` escribe una lista JSON de todas las operaciones de AWS a las
   que llamó la ejecución. Funciona con S3 o sin él.
 

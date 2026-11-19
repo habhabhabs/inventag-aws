@@ -87,6 +87,10 @@ claves temporales. Si usas claves de acceso, compruébalas con `aws configure li
 
 No verificado contra la AWS CLI: los comandos de esta solución.
 
+Con un perfil de IAM Identity Center (SSO) cuyo inicio de sesión ha caducado, la ejecución se detiene con el código de salida 1 y un mensaje que nombra `aws sso login --profile <name>`. No muestra ningún traceback.
+
+No verificado contra AWS IAM Identity Center: el mensaje de un token caducado.
+
 ### No se puede asumir un rol {#a-role-cannot-be-assumed}
 
 **Lo que ves:** esto en el registro, y un informe en el que falta la cuenta:

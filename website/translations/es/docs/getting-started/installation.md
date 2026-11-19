@@ -73,6 +73,10 @@ inventag --help
 se aplican sin reinstalar. También puedes ejecutar `python inventag_cli.py --help`
 directamente después de `pip install -r requirements.txt`.
 
+La raíz del repositorio también contiene dos scripts de lanzamiento, `inventag.sh` e
+`inventag.bat`. Usa en su lugar el comando `inventag`. Los scripts de lanzamiento no forman parte del
+paquete instalado y ninguna prueba los ejecuta.
+
 Para usar desde el código fuente una versión fija en lugar del código más reciente, descarga su etiqueta, por
 ejemplo `git checkout v%INVENTAG_VERSION%`. La
 [página de versiones](https://github.com/habhabhabs/inventag-aws/releases) lista

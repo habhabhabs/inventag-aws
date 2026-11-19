@@ -150,6 +150,9 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **A session that expires during the scan** leaves a report with only what
   was read before it expired, and the run exits with code 0, also with
   `--fail-on-account-error`.
+
+  Not verified against real AWS: the error code AWS returns when a session expires.
+
 - **A session that is already expired when the scan starts** gives no report
   file and exit code 0.
 - **Cost Explorer access denied or throttled:** the run carries on without

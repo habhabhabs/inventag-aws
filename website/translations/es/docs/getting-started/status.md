@@ -157,6 +157,9 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **Una sesión que caduca durante el análisis** deja un informe solo con lo que
   se leyó antes de que caducara, y la ejecución termina con el código 0, también
   con `--fail-on-account-error`.
+
+  No verificado contra AWS real: el código de error que devuelve AWS cuando caduca una sesión.
+
 - **Una sesión que ya ha caducado cuando empieza el análisis** no da ningún
   archivo de informe y termina con el código 0.
 - **Acceso denegado o limitado en Cost Explorer:** la ejecución continúa sin datos de

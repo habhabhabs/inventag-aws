@@ -88,5 +88,13 @@ inventag_cli.py
   `word_builder.py`、`excel_builder.py`、`document_generator.py` 和 `configuration_manager.py`，
   以及 `discovery/enhanced_readonly_discovery.py`。`reporting/template_framework.py`
   和 `reporting/document_generator.py` 会在 CLI 启动时被导入。
+- 计划在以后的版本中移除：模块 `reporting/configuration_manager.py`、
+  `reporting/branding_system.py`、`reporting/excel_branding_applicator.py`、
+  `reporting/word_branding_applicator.py`、`reporting/template_framework.py`
+  和 `discovery/enhanced_readonly_discovery.py`；只有 `configuration_manager.py`
+  使用的依赖 `jsonschema`；以及包内没有任何代码调用的这些函数：
+  `StateManager.get_state_comparison_data`、`export_state`、
+  `validate_state_integrity` 和 `get_storage_stats`、`cli/main.py` 中的
+  `get_all_aws_regions`，以及 `CloudBOMGenerator.from_interactive_prompt`。
 
 较早的设计笔记已从仓库中删除。请使用本站的页面。

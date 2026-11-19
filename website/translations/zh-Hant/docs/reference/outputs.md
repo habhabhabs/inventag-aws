@@ -35,6 +35,8 @@ InvenTag 寫入的其他位置只有你指定的檔案（`--log-file`、`--audit
 
 `<timestamp>` 的格式是 `YYYYMMDD_HHMMSS`。報告、Word、變更日誌和標籤合規檔案的名稱使用你電腦的本地時間。快照和 S3 資料夾使用 UTC。
 
+預設工作簿為每個 API 欄位提供一個 `raw_data.*` 欄，因此工作表可能很寬。快照是帶縮排的 JSON，包含每個資源的完整 `raw_data`，因此可能很大。目前沒有選項可以省略 `raw_data.*` 欄或壓縮快照；兩者都計劃在以後的版本中提供。
+
 ## Excel 報告 {#excel-report}
 
 **不使用範本時**，工作簿包含：

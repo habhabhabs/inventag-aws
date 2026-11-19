@@ -43,6 +43,8 @@ d’exemple).
 
 `<timestamp>` s’écrit `YYYYMMDD_HHMMSS`. Les noms du rapport, du fichier Word, du journal des modifications et du fichier de conformité des étiquettes utilisent l’heure locale de votre ordinateur. L’instantané et le dossier S3 utilisent UTC.
 
+Le classeur par défaut a une colonne `raw_data.*` pour chaque champ de l’API, donc ses feuilles peuvent être larges. Un instantané est du JSON indenté et contient tout le `raw_data` de chaque ressource, donc il peut être volumineux. Aucune option n’omet les colonnes `raw_data.*` ni ne compresse un instantané ; les deux sont prévues pour une version ultérieure.
+
 ## Rapport Excel {#excel-report}
 
 **Sans modèle**, le classeur contient :

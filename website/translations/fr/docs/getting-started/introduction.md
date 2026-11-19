@@ -47,7 +47,7 @@ your AWS credentials
    des variables d’environnement, une session IAM Identity Center (SSO) ou un rôle IAM.
    Il peut aussi assumer un rôle dans d’autres comptes.
 
-   Non vérifié sur AWS IAM Identity Center : la connexion avec une vraie session SSO.
+   Non vérifié sur AWS IAM Identity Center : la connexion avec une vraie session SSO et le message d’un jeton expiré.
 2. **Découverte.** Pour chaque compte et chaque région, il appelle des interfaces de programmation
    d’applications (API) AWS en lecture seule. Par défaut, il appelle aussi `GetCostAndUsage` de
    Cost Explorer pour repérer les services qui génèrent des dépenses. AWS facture les requêtes à l’API

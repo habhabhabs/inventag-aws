@@ -348,3 +348,328 @@ def test_the_readme_lists_the_examples_that_run_the_development_script():
 def test_the_wheel_holds_only_the_package():
     text = (ROOT / "pyproject.toml").read_text("utf-8")
     assert 'include = ["inventag*"]' in text
+
+
+# --------------------------------------------------------------------------- DOC2
+# Each row: the English sentence, then the sentence of each other language.
+# Pages are read from docs/ and website/translations/<locale>/docs/.
+
+CAVEATS = {
+    "getting-started/status.md": {
+        "en": "Not verified against real AWS: the error code AWS returns when a session expires.",
+        "zh-Hans": "未针对真实的 AWS 验证：会话过期时 AWS 返回的错误代码。",
+        "zh-Hant": "未針對真實的 AWS 驗證：會話過期時 AWS 返回的錯誤程式碼。",
+        "es": "No verificado contra AWS real: el código de error que devuelve AWS cuando caduca una sesión.",
+        "fr": "Non vérifié sur un vrai AWS : le code d’erreur que renvoie AWS quand une session expire.",
+    },
+    "getting-started/introduction.md": {
+        "en": "Not verified against AWS IAM Identity Center: sign-in with a real SSO session and the message for an expired token.",
+        "zh-Hans": "未针对 AWS IAM Identity Center 验证：使用真实 SSO 会话登录，以及令牌过期时的提示信息。",
+        "zh-Hant": "未針對 AWS IAM Identity Center 驗證：使用真實 SSO 會話登入，以及權杖過期時的提示資訊。",
+        "es": "No verificado contra AWS IAM Identity Center: el inicio de sesión con una sesión SSO real y el mensaje de un token caducado.",
+        "fr": "Non vérifié sur AWS IAM Identity Center : la connexion avec une vraie session SSO et le message d’un jeton expiré.",
+    },
+    "guides/troubleshooting.md": {
+        "en": "Not verified against AWS IAM Identity Center: the message for an expired token.",
+        "zh-Hans": "未针对 AWS IAM Identity Center 验证：令牌过期时的提示信息。",
+        "zh-Hant": "未針對 AWS IAM Identity Center 驗證：權杖過期時的提示資訊。",
+        "es": "No verificado contra AWS IAM Identity Center: el mensaje de un token caducado.",
+        "fr": "Non vérifié sur AWS IAM Identity Center : le message d’un jeton expiré.",
+    },
+    "examples/scheduled-s3-upload.md": {
+        "en": "Not verified against real AWS: the answer S3 gives for a bucket in another region.",
+        "zh-Hans": "未针对真实的 AWS 验证：S3 对另一个区域中的存储桶给出的回应。",
+        "zh-Hant": "未針對真實的 AWS 驗證：S3 對另一個區域中的儲存貯體給出的回應。",
+        "es": "No verificado contra AWS real: la respuesta que da S3 para un bucket de otra región.",
+        "fr": "Non vérifié sur un vrai AWS : la réponse que donne S3 pour un bucket d’une autre région.",
+    },
+}
+
+# A distinctive part of each added sentence, per page and language.
+ADDED = {
+    "guides/network-and-security-analysis.md": {
+        "en": "The subnet columns of a resource row name its first subnet only.",
+        "zh-Hans": "资源行中的子网列只写出该资源的第一个子网。",
+        "zh-Hant": "資源行中的子網欄只寫出該資源的第一個子網。",
+        "es": "Las columnas de subred de la fila de un recurso nombran solo su primera subred.",
+        "fr": "Les colonnes de sous-réseau de la ligne d’une ressource ne nomment que son premier sous-réseau.",
+    },
+    "reference/outputs.md": {
+        "en": "No option leaves the `raw_data.*` columns out or compresses a snapshot; both are planned for a later release.",
+        "zh-Hans": "目前没有选项可以省略 `raw_data.*` 列或压缩快照；两者都计划在以后的版本中提供。",
+        "zh-Hant": "目前沒有選項可以省略 `raw_data.*` 欄或壓縮快照；兩者都計劃在以後的版本中提供。",
+        "es": "Ninguna opción omite las columnas `raw_data.*` ni comprime una instantánea; ambas están previstas para una versión posterior.",
+        "fr": "Aucune option n’omet les colonnes `raw_data.*` ni ne compresse un instantané ; les deux sont prévues pour une version ultérieure.",
+    },
+    "development/architecture.md": {
+        "en": "Planned for removal in a later release:",
+        "zh-Hans": "计划在以后的版本中移除：",
+        "zh-Hant": "計劃在以後的版本中移除：",
+        "es": "Previstos para su eliminación en una versión posterior:",
+        "fr": "Dont la suppression est prévue dans une version ultérieure :",
+    },
+    "getting-started/installation.md": {
+        "en": "The launchers are not part\nof the installed package, and no test runs them.",
+        "zh-Hans": "这两个脚本不属于已安装的包，也没有测试运行过它们。",
+        "zh-Hant": "這兩個指令碼不屬於已安裝的包，也沒有測試執行過它們。",
+        "es": "ninguna prueba los ejecuta.",
+        "fr": "aucun test ne les exécute.",
+    },
+    "examples/scheduled-s3-upload.md": {
+        "en": "the error text in the log\n  adds a hint: set `AWS_DEFAULT_REGION` to the bucket's region and run again.",
+        "zh-Hans": "日志中的错误文本会附上一条提示：把 `AWS_DEFAULT_REGION` 设为存储桶所在的区域，然后重新运行。",
+        "zh-Hant": "日誌中的錯誤文字會附上一條提示：把 `AWS_DEFAULT_REGION` 設為儲存貯體所在的區域，然後重新執行。",
+        "es": "el texto del error en el registro añade una pista: define `AWS_DEFAULT_REGION` con la región del bucket y ejecuta de nuevo.",
+        "fr": "le texte de l’erreur dans le journal ajoute une indication : définissez `AWS_DEFAULT_REGION` sur la région du bucket et relancez.",
+    },
+    "guides/troubleshooting.md": {
+        "en": "It prints no traceback.",
+        "zh-Hans": "不会输出回溯信息。",
+        "zh-Hant": "不會輸出回溯資訊。",
+        "es": "No muestra ningún traceback.",
+        "fr": "Elle n’affiche aucune trace d’appels (traceback).",
+    },
+}
+
+
+def _page(locale, relative):
+    if locale == "en":
+        path = ROOT / "docs" / relative
+    else:
+        path = ROOT / "website" / "translations" / locale / "docs" / relative
+    return path.read_text("utf-8")
+
+
+def _flat(text):
+    return " ".join(text.split())
+
+
+@pytest.mark.parametrize("locale", ("en",) + LOCALES)
+@pytest.mark.parametrize("relative", sorted(CAVEATS))
+def test_the_added_caveats_are_on_the_pages_in_five_languages(locale, relative):
+    assert CAVEATS[relative][locale] in _flat(_page(locale, relative))
+
+
+@pytest.mark.parametrize("locale", ("en",) + LOCALES)
+@pytest.mark.parametrize("relative", sorted(ADDED))
+def test_the_added_sentences_are_on_the_pages_in_five_languages(locale, relative):
+    assert _flat(ADDED[relative][locale]) in _flat(_page(locale, relative))
+
+
+def test_the_caveats_use_the_frame_of_each_language():
+    frames = {
+        "en": "Not verified against ",
+        "zh-Hans": "未针对",
+        "zh-Hant": "未針對",
+        "es": "No verificado contra ",
+        "fr": "Non vérifié sur ",
+    }
+    for relative, by_locale in CAVEATS.items():
+        for locale, sentence in by_locale.items():
+            assert sentence.startswith(frames[locale]), (relative, locale)
+
+
+def test_no_space_between_han_characters_in_the_added_chinese_sentences():
+    han_space_han = re.compile(r"[一-鿿] [一-鿿]")
+    for table in (CAVEATS, ADDED):
+        for relative, by_locale in table.items():
+            for locale in ("zh-Hans", "zh-Hant"):
+                assert not han_space_han.search(by_locale[locale]), (relative, locale)
+
+
+@pytest.mark.parametrize("locale", LOCALES)
+def test_the_translated_pages_keep_the_english_code_and_links_of_the_new_text(locale):
+    # a translated page names the same commands and file names as the English one
+    for relative, by_locale in ADDED.items():
+        english = _page("en", relative)
+        translated = _page(locale, relative)
+        for token in re.findall(r"`([^`]+)`", ADDED[relative]["en"]):
+            if token in english:
+                assert token in translated, (relative, token)
+
+
+# ----- proofs of the sentences
+
+SESSION_PAGE = "getting-started/status.md"
+
+
+def test_the_expired_session_sentence_is_in_the_item_it_belongs_to():
+    text = _page("en", SESSION_PAGE)
+    item = text.split("- **A session that expires during the scan**", 1)[1]
+    item = item.split("- **A session that is already expired", 1)[0]
+    assert CAVEATS[SESSION_PAGE]["en"] in item
+
+
+def test_permanent_redirect_adds_the_region_hint_to_the_logged_error(tmp_path, caplog):
+    from unittest.mock import MagicMock
+
+    from botocore.exceptions import ClientError
+
+    from inventag.core.s3_upload import upload_files
+
+    report = tmp_path / "r.xlsx"
+    report.write_bytes(b"1")
+    client = MagicMock()
+    client.meta.region_name = "us-east-1"
+    client.put_object.side_effect = ClientError(
+        {"Error": {"Code": "PermanentRedirect", "Message": "use endpoint"}},
+        "PutObject",
+    )
+    with caplog.at_level(logging.ERROR, logger="inventag.core.s3_upload"):
+        upload_files(client, [str(report)], "reports", "p", timestamp="t")
+    logged = " ".join(r.getMessage() for r in caplog.records)
+    assert "PermanentRedirect" in logged
+    assert "AWS_DEFAULT_REGION" in logged
+    assert "different region" in logged
+
+
+def test_a_resource_row_names_the_first_subnet_and_the_network_sheet_counts_each():
+    import boto3
+    from moto import mock_aws
+
+    from inventag.discovery.network_analyzer import NetworkAnalyzer
+
+    with mock_aws():
+        ec2 = boto3.client("ec2", region_name="us-east-1")
+        vpc = ec2.create_vpc(CidrBlock="10.0.0.0/16")["Vpc"]["VpcId"]
+        first, second = (
+            ec2.create_subnet(VpcId=vpc, CidrBlock=f"10.0.{n}.0/24")["Subnet"][
+                "SubnetId"
+            ]
+            for n in (1, 2)
+        )
+        function = {
+            "id": "fn",
+            "service": "LAMBDA",
+            "type": "Function",
+            "region": "us-east-1",
+            "raw_data": {"VpcConfig": {"VpcId": vpc, "SubnetIds": [second, first]}},
+        }
+        analyzer = NetworkAnalyzer(boto3.Session(region_name="us-east-1"))
+        analyzer.analyze_vpc_resources([function])
+        rows = analyzer.map_resources_to_network([function])
+        assert rows[0]["subnet_id"] == second
+        for subnet in (first, second):
+            assert analyzer.subnet_cache[subnet].associated_resources == ["fn"]
+
+
+def test_a_snapshot_is_indented_json_with_the_whole_raw_data(tmp_path):
+    from inventag.state.state_manager import StateManager
+
+    resource = {
+        "arn": "arn:aws:ec2:us-east-1:123456789012:instance/i-1",
+        "id": "i-1",
+        "service": "EC2",
+        "type": "Instance",
+        "region": "us-east-1",
+        "raw_data": {"InstanceId": "i-1", "Placement": {"AvailabilityZone": "a"}},
+    }
+    manager = StateManager(state_dir=str(tmp_path / "state"))
+    state_id = manager.save_state([resource], "123456789012", ["us-east-1"])
+    text = next((tmp_path / "state").glob(f"*{state_id}*.json")).read_text("utf-8")
+    assert '\n  "' in text  # indent=2
+    data = json.loads(text)
+    assert data["resources"][0]["raw_data"]["Placement"] == {"AvailabilityZone": "a"}
+
+
+def test_no_option_leaves_out_raw_data_or_compresses_a_snapshot():
+    from inventag.cli.main import create_parser
+
+    flags = [f for a in create_parser()._actions for f in a.option_strings]
+    assert [f for f in flags if re.search(r"raw|compress|gzip|zip", f)] == []
+
+
+def _package_sources():
+    return {
+        p: p.read_text("utf-8")
+        for p in (ROOT / "inventag").rglob("*.py")
+        if "__pycache__" not in p.parts
+    }
+
+
+def test_the_modules_planned_for_removal_are_imported_by_no_other_module():
+    sources = _package_sources()
+    for name in (
+        "excel_branding_applicator",
+        "word_branding_applicator",
+        "enhanced_readonly_discovery",
+        "configuration_manager",
+    ):
+        users = [
+            p.relative_to(ROOT).as_posix()
+            for p, text in sources.items()
+            if p.stem != name and re.search(rf"\b{name}\b", text)
+        ]
+        assert users == [], (name, users)
+    importers = sorted(
+        p.relative_to(ROOT).as_posix()
+        for p, text in sources.items()
+        if re.search(r"^\s*(?:import|from)\s+jsonschema\b", text, re.M)
+    )
+    assert importers == ["inventag/reporting/configuration_manager.py"]
+
+
+def test_template_framework_and_branding_system_have_only_the_named_importers():
+    sources = _package_sources()
+
+    def importers(name):
+        return sorted(
+            p.relative_to(ROOT).as_posix()
+            for p, text in sources.items()
+            if p.stem != name and re.search(rf"\b{name}\b", text)
+        )
+
+    assert importers("branding_system") == [
+        "inventag/reporting/configuration_manager.py",
+        "inventag/reporting/excel_branding_applicator.py",
+        "inventag/reporting/word_branding_applicator.py",
+    ]
+    assert importers("template_framework") == [
+        "inventag/reporting/__init__.py",
+        "inventag/reporting/configuration_manager.py",
+    ]
+
+
+@pytest.mark.parametrize(
+    "function",
+    [
+        "get_state_comparison_data",
+        "export_state",
+        "validate_state_integrity",
+        "get_storage_stats",
+        "get_all_aws_regions",
+        "from_interactive_prompt",
+    ],
+)
+def test_nothing_in_the_package_calls_the_functions_planned_for_removal(function):
+    uses = []
+    for path, text in _package_sources().items():
+        for number, line in enumerate(text.split("\n"), 1):
+            if re.search(rf"\b{function}\b", line) and not re.match(
+                rf"\s*def {function}\b", line
+            ):
+                uses.append(f"{path.relative_to(ROOT)}:{number}")
+    assert uses == []
+    definitions = [
+        p
+        for p, text in _package_sources().items()
+        if re.search(rf"^\s*def {function}\b", text, re.M)
+    ]
+    assert len(definitions) == 1
+
+
+def test_the_launchers_are_outside_the_wheel_and_no_test_runs_them():
+    assert (ROOT / "inventag.sh").is_file() and (ROOT / "inventag.bat").is_file()
+    assert 'include = ["inventag*"]' in (ROOT / "pyproject.toml").read_text("utf-8")
+    naming = {}
+    for path in (ROOT / "tests").rglob("*.py"):
+        text = path.read_text("utf-8")
+        for number, line in enumerate(text.split("\n"), 1):
+            if re.search(r"inventag\.(sh|bat)", line):
+                naming.setdefault(path.name, []).append(line.strip())
+    naming.pop("test_docs_claims_n1.py", None)
+    assert list(naming) == ["test_python_compatibility.py"]
+    # that test only reads the files and checks the Python version text
+    assert naming["test_python_compatibility.py"] == [
+        'for name in ("inventag.sh", "inventag.bat"):'
+    ]

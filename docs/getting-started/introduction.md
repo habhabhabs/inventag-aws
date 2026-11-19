@@ -47,7 +47,7 @@ your AWS credentials
    environment variables, an IAM Identity Center (SSO) session or an IAM role.
    It can also assume a role in other accounts.
 
-   Not verified against AWS IAM Identity Center: sign-in with a real SSO session.
+   Not verified against AWS IAM Identity Center: sign-in with a real SSO session and the message for an expired token.
 2. **Discovery.** For each account and region it calls read-only AWS
    application programming interfaces (APIs). By default it also calls Cost
    Explorer `GetCostAndUsage` to spot services that have spend. AWS charges for

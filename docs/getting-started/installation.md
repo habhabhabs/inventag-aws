@@ -74,6 +74,10 @@ inventag --help
 effect without a reinstall. You can also run `python inventag_cli.py --help`
 directly after `pip install -r requirements.txt`.
 
+The repository root also holds two launcher scripts, `inventag.sh` and
+`inventag.bat`. Use the `inventag` command instead. The launchers are not part
+of the installed package, and no test runs them.
+
 To use a fixed release from source instead of the newest code, check out its tag, for
 example `git checkout v%INVENTAG_VERSION%`. The
 [releases page](https://github.com/habhabhabs/inventag-aws/releases) lists

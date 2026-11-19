@@ -43,6 +43,8 @@ de ejemplo).
 
 `<timestamp>` es `YYYYMMDD_HHMMSS`. Los nombres del informe, de Word, del registro de cambios y del cumplimiento de etiquetas usan la hora local de tu equipo. La instantánea y la carpeta de S3 usan UTC.
 
+El libro predeterminado tiene una columna `raw_data.*` por cada campo de la API, así que sus hojas pueden ser anchas. Una instantánea es JSON con sangría y contiene todo el `raw_data` de cada recurso, así que puede ser grande. Ninguna opción omite las columnas `raw_data.*` ni comprime una instantánea; ambas están previstas para una versión posterior.
+
 ## Informe de Excel {#excel-report}
 
 **Sin plantilla**, el libro tiene:

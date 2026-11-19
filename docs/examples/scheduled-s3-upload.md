@@ -46,6 +46,12 @@ inventag --template standard-bom --create-excel --account-regions us-east-1 \
   there is one.
 - If an upload fails, the run exits with code 1, so a scheduler notices. The
   reports are still on your disk.
+- If S3 answers an upload with the error `PermanentRedirect` (the bucket is in
+  a different region than the one InvenTag used), the error text in the log
+  adds a hint: set `AWS_DEFAULT_REGION` to the bucket's region and run again.
+
+  Not verified against real AWS: the answer S3 gives for a bucket in another region.
+
 - `--audit-output` writes a JSON list of every AWS operation the run called.
   It works with or without S3.
 

@@ -43,6 +43,8 @@ data).
 
 `<timestamp>` is `YYYYMMDD_HHMMSS`. Report, Word, changelog and tag compliance names use your computer's local time. The snapshot and the S3 folder use UTC.
 
+The default workbook has a `raw_data.*` column for every API field, so its sheets can be wide. A snapshot is indented JSON and holds the whole `raw_data` of every resource, so it can be large. No option leaves the `raw_data.*` columns out or compresses a snapshot; both are planned for a later release.
+
 ## Excel report
 
 **Without a template**, the workbook has:

@@ -41,6 +41,10 @@ inventag --template standard-bom --create-excel --account-regions us-east-1 \
 - 每個檔案會放到 `<prefix><UTC timestamp>/<file name>`，因此各次執行不會互相覆蓋。
   如果有標籤合規 JSON 檔案，也會一併上傳。
 - 如果上傳失敗，執行會以結束代碼 1 結束，排程器因此可以察覺。報告仍然保留在你的磁碟上。
+- 如果 S3 以錯誤 `PermanentRedirect` 回應上傳（儲存貯體所在的區域與 InvenTag 使用的區域不同），日誌中的錯誤文字會附上一條提示：把 `AWS_DEFAULT_REGION` 設為儲存貯體所在的區域，然後重新執行。
+
+  未針對真實的 AWS 驗證：S3 對另一個區域中的儲存貯體給出的回應。
+
 - `--audit-output` 會寫出一份 JSON 列表，記錄本次執行呼叫過的每個 AWS 操作。
   無論是否使用 S3，它都可以使用。
 
