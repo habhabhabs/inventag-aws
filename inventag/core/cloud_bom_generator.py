@@ -724,13 +724,13 @@ class CloudBOMGenerator:
         a scanned account's assumed role: the reports bucket normally lives in
         the account that runs the scan.
         """
-        from .s3_upload import upload_files
+        from .s3_upload import create_upload_client, upload_files
 
         if not files:
             return {"uploaded": [], "errors": [{"file": "", "error": "no files"}]}
         session = boto3.Session()
-        s3_client = session.client(
-            "s3", region_name=getattr(s3_upload_config, "region", None) or None
+        s3_client = create_upload_client(
+            session, getattr(s3_upload_config, "region", None) or None
         )
         try:
             return upload_files(

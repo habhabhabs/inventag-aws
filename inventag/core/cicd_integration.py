@@ -172,7 +172,11 @@ class CICDIntegration:
         """Lazily create and return S3 client."""
         if self.s3_client is None and self.s3_config:
             try:
-                self.s3_client = boto3.client("s3", region_name=self.s3_config.region)
+                from . import s3_upload
+
+                self.s3_client = s3_upload.create_upload_client(
+                    boto3.Session(), self.s3_config.region
+                )
                 self.logger.debug("Created S3 client")
             except Exception as e:
                 self.logger.warning(f"Failed to create S3 client: {e}")
