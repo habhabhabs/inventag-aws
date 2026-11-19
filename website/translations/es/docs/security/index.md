@@ -32,17 +32,19 @@ persona mantenedora un canal privado.
   `s3:GetObject`, `cloudformation:GetTemplate` o `ec2:GetLaunchTemplateData`.
   También bloquea operaciones permitidas cuando un parámetro pide un secreto
   (claves de API con `includeValue`, `ec2:DescribeInstanceAttribute` para
-  `userData`), y comprueba las URL prefirmadas y los tokens de autenticación de
+  `userData`, `datazone:GetConnection` con `withSecret`), también en una URL
+  prefirmada, y comprueba las URL prefirmadas y los tokens de autenticación de
   bases de datos, que se firman sin llamar a AWS. También bloquea las lecturas
   que entregan una URL firmada, el cuerpo de un archivo o documento, la salida
   de un comando o una definición guardada con secretos (por ejemplo
   `ssm:GetDocument`, `ssm:GetCommandInvocation`, las exportaciones de API
   Gateway, las definiciones de Data Pipeline y los adjuntos de Support y
   Connect), y `cognito-identity:GetId`, que crea una identidad. Bloquea
-  `sts:GetWebIdentityToken`, `stepfunctions:GetActivityTask` y las cuatro
-  llamadas `GetTemporary...Credentials` de Lake Formation: sus nombres empiezan
-  como lecturas, pero emiten un token o credenciales, o toman una tarea de una
-  cola. Cada entrada de la lista de denegación se comprueba con la lista de operaciones del SDK de
+  `sts:GetWebIdentityToken`, `stepfunctions:GetActivityTask`, las cuatro
+  llamadas `GetTemporary...Credentials` de Lake Formation y
+  `payment-cryptography:GetParametersForImport` y `GetParametersForExport`:
+  sus nombres empiezan como lecturas, pero emiten un token, credenciales o
+  material de claves, o toman una tarea de una cola. Cada entrada de la lista de denegación se comprueba con la lista de operaciones del SDK de
   AWS. Siempre está activa.
 - **El inicio de sesión sigue funcionando.** La protección deja que el SDK de
   AWS cambie un token de IAM Identity Center (SSO), de identidad web o de

@@ -32,16 +32,19 @@ maintainer for a private channel.
   or data, such as `secretsmanager:GetSecretValue`, `s3:GetObject`,
   `cloudformation:GetTemplate` or `ec2:GetLaunchTemplateData`. It also blocks
   allowed operations when a parameter asks for a secret (API keys with
-  `includeValue`, `ec2:DescribeInstanceAttribute` for `userData`), and it
+  `includeValue`, `ec2:DescribeInstanceAttribute` for `userData`,
+  `datazone:GetConnection` with `withSecret`), also in a presigned URL, and it
   checks presigned URLs and database auth tokens, which are signed without a
   call to AWS. It also blocks reads that hand out a signed URL, a file or
   document body, command output or a stored definition with secrets (for
   example `ssm:GetDocument`, `ssm:GetCommandInvocation`, API Gateway exports,
   Data Pipeline definitions, and support and Connect attachments), and
   `cognito-identity:GetId`, which creates an identity. It blocks
-  `sts:GetWebIdentityToken`, `stepfunctions:GetActivityTask` and the four Lake
-  Formation `GetTemporary...Credentials` calls: their names start like reads,
-  but they issue a token or credentials, or take a task from a queue. Every
+  `sts:GetWebIdentityToken`, `stepfunctions:GetActivityTask`, the four Lake
+  Formation `GetTemporary...Credentials` calls and
+  `payment-cryptography:GetParametersForImport` and `GetParametersForExport`:
+  their names start like reads, but they issue a token, credentials or key
+  material, or take a task from a queue. Every
   entry of the deny-list is checked against the AWS SDK's list of operations. It is always
   on.
 - **Sign-in still works.** The guard lets the AWS SDK exchange an IAM Identity

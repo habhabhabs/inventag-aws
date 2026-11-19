@@ -31,7 +31,8 @@ mainteneur un canal privé.
   ou des données, comme `secretsmanager:GetSecretValue`, `s3:GetObject`,
   `cloudformation:GetTemplate` ou `ec2:GetLaunchTemplateData`. Elle bloque aussi des
   opérations autorisées quand un paramètre demande un secret (clés d’API avec
-  `includeValue`, `ec2:DescribeInstanceAttribute` pour `userData`), et elle vérifie
+  `includeValue`, `ec2:DescribeInstanceAttribute` pour `userData`,
+  `datazone:GetConnection` avec `withSecret`), y compris dans une URL présignée, et elle vérifie
   les URL présignées et les jetons d’authentification de base de données, qui sont
   signés sans appel à AWS. Elle bloque aussi les lectures qui fournissent une URL
   signée, le corps d’un fichier ou d’un document, la sortie d’une commande ou une
@@ -39,10 +40,12 @@ mainteneur un canal privé.
   `ssm:GetCommandInvocation`, les exports API Gateway, les définitions Data
   Pipeline et les pièces jointes Support et Connect), ainsi que
   `cognito-identity:GetId`, qui crée une identité. Elle bloque
-  `sts:GetWebIdentityToken`, `stepfunctions:GetActivityTask` et les quatre appels
-  `GetTemporary...Credentials` de Lake Formation : leur nom commence comme une
-  lecture, mais ils émettent un jeton ou des identifiants, ou prennent une tâche
-  dans une file d’attente. Chaque entrée de la liste de
+  `sts:GetWebIdentityToken`, `stepfunctions:GetActivityTask`, les quatre appels
+  `GetTemporary...Credentials` de Lake Formation, ainsi que
+  `payment-cryptography:GetParametersForImport` et `GetParametersForExport` :
+  leur nom commence comme une lecture, mais ils émettent un jeton, des
+  identifiants ou du matériel de clé, ou prennent une tâche dans une file
+  d’attente. Chaque entrée de la liste de
   refus est vérifiée par rapport à la liste des opérations du SDK AWS. Elle est
   toujours active.
 - **La connexion fonctionne toujours.** La protection laisse le SDK AWS échanger un

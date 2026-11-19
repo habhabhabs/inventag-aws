@@ -24,13 +24,14 @@ sidebar_position: 1
 - **它只读取，除了一次由你要求的上传。** 唯一的例外是把它自己的报告文件上传到你的 S3 存储桶，而且仅在你传入 `--s3-bucket` 时才会这样做。只读防护会在每个 AWS 调用发出之前检查它。它会拦截所有非读取的调用，
   以及会返回机密或数据的读取，例如 `secretsmanager:GetSecretValue`、`s3:GetObject`、
   `cloudformation:GetTemplate` 或 `ec2:GetLaunchTemplateData`。当参数要求返回机密时
-  （带 `includeValue` 的 API 密钥、针对 `userData` 的 `ec2:DescribeInstanceAttribute`），
-  它也会拦截原本允许的操作；它还会检查预签名 URL 和数据库认证令牌，这些在签名时不会调用 AWS。
+  （带 `includeValue` 的 API 密钥、针对 `userData` 的 `ec2:DescribeInstanceAttribute`、
+  带 `withSecret` 的 `datazone:GetConnection`），它也会拦截原本允许的操作，预签名 URL 中也是如此；它还会检查预签名 URL 和数据库认证令牌，这些在签名时不会调用 AWS。
   它还会拦截返回签名 URL、文件或文档正文、命令输出或含有机密的已存储定义的读取（例如 `ssm:GetDocument`、
   `ssm:GetCommandInvocation`、API Gateway 导出、Data Pipeline 定义，以及 Support 和 Connect 附件），
   以及会创建身份的 `cognito-identity:GetId`。它还会拦截 `sts:GetWebIdentityToken`、
-  `stepfunctions:GetActivityTask` 和 Lake Formation 的四个 `GetTemporary...Credentials` 调用：
-  它们的名称看起来像读取，但它们会签发令牌或凭证，或者领取一个正在等待处理的活动任务。拒绝列表中的每个条目都会与 AWS SDK 的操作列表进行核对。
+  `stepfunctions:GetActivityTask`、Lake Formation 的四个 `GetTemporary...Credentials` 调用，
+  以及 `payment-cryptography:GetParametersForImport` 和 `GetParametersForExport`：
+  它们的名称看起来像读取，但它们会签发令牌、凭证或密钥材料，或者领取一个正在等待处理的活动任务。拒绝列表中的每个条目都会与 AWS SDK 的操作列表进行核对。
   它始终开启。
 - **登录仍然可用。** 防护允许 AWS SDK 把 IAM Identity Center（SSO）、Web 身份或 `aws login`
   令牌换成凭证。它只允许以下四个未签名的调用：`sso:GetRoleCredentials`、

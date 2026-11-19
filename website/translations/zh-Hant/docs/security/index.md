@@ -24,13 +24,14 @@ sidebar_position: 1
 - **它唯讀取，除了一次由你要求的上傳。** 唯一的例外是把它自己的報告檔案上傳到你的 S3 儲存貯體，而且僅在你傳入 `--s3-bucket` 時才會這樣做。唯讀防護會在每個 AWS 呼叫發出之前檢查它。它會攔截所有非讀取的呼叫，
   以及會返回機密或資料的讀取，例如 `secretsmanager:GetSecretValue`、`s3:GetObject`、
   `cloudformation:GetTemplate` 或 `ec2:GetLaunchTemplateData`。當引數要求返回機密時
-  （帶 `includeValue` 的 API 金鑰、針對 `userData` 的 `ec2:DescribeInstanceAttribute`），
-  它也會攔截原本允許的操作；它還會檢查預簽名 URL 和資料庫認證權杖，這些在簽名時不會呼叫 AWS。
+  （帶 `includeValue` 的 API 金鑰、針對 `userData` 的 `ec2:DescribeInstanceAttribute`、
+  帶 `withSecret` 的 `datazone:GetConnection`），它也會攔截原本允許的操作，預簽名 URL 中也是如此；它還會檢查預簽名 URL 和資料庫認證權杖，這些在簽名時不會呼叫 AWS。
   它還會攔截返回簽名 URL、檔案或文件正文、命令輸出或含有機密的已儲存定義的讀取（例如 `ssm:GetDocument`、
   `ssm:GetCommandInvocation`、API Gateway 匯出、Data Pipeline 定義，以及 Support 和 Connect 附件），
   以及會建立身份的 `cognito-identity:GetId`。它還會攔截 `sts:GetWebIdentityToken`、
-  `stepfunctions:GetActivityTask` 和 Lake Formation 的四個 `GetTemporary...Credentials` 呼叫：
-  它們的名稱看起來像讀取，但它們會簽發權杖或憑證，或者領取一個正在等待處理的活動任務。拒絕列表中的每個條目都會與 AWS SDK 的操作列表進行核對。
+  `stepfunctions:GetActivityTask`、Lake Formation 的四個 `GetTemporary...Credentials` 呼叫，
+  以及 `payment-cryptography:GetParametersForImport` 和 `GetParametersForExport`：
+  它們的名稱看起來像讀取，但它們會簽發權杖、憑證或金鑰材料，或者領取一個正在等待處理的活動任務。拒絕列表中的每個條目都會與 AWS SDK 的操作列表進行核對。
   它始終開啟。
 - **登入仍然可用。** 防護允許 AWS SDK 把 IAM Identity Center（SSO）、Web 身份或 `aws login`
   權杖換成憑證。它只允許以下四個未簽名的呼叫：`sso:GetRoleCredentials`、

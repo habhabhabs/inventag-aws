@@ -19,8 +19,9 @@ Allowlist rules (see :meth:`ReadOnlyGuard.evaluate`):
    ``dynamodb:GetItem`` ...). InvenTag builds an inventory; it never needs
    these. Operations that issue a token or credentials for the caller
    (``sts:GetWebIdentityToken``, the Lake Formation temporary-credential
-   reads) or take a task from a queue (``stepfunctions:GetActivityTask``)
-   are blocked too: they are not reads.
+   reads, the payment-cryptography key import and export parameters) or
+   take a task from a queue (``stepfunctions:GetActivityTask``) are blocked
+   too: they are not reads.
 3. Clients that botocore's own credential providers create to sign in
    (IAM Identity Center/SSO, web identity, ``aws login``) are created
    *unsigned*: they carry no account credentials and can only exchange a
@@ -29,8 +30,9 @@ Allowlist rules (see :meth:`ReadOnlyGuard.evaluate`):
    the same operation is still blocked.
 4. A few read operations return secrets only when asked to with a parameter
    (``apigateway:GetApiKey(s)`` with ``includeValue(s)``,
-   ``ec2:DescribeInstanceAttribute`` for ``userData``); those parameter
-   values are blocked (:data:`DENIED_PARAMETERS`).
+   ``ec2:DescribeInstanceAttribute`` for ``userData``,
+   ``datazone:GetConnection`` with ``withSecret``); those parameter values
+   are blocked (:data:`DENIED_PARAMETERS`), also in a presigned URL.
 5. Methods that sign a request locally without calling AWS
    (``generate_presigned_url``, ``generate_presigned_post``, RDS/DSQL auth
    tokens) are checked against the same rules: a presigned URL or a database
@@ -226,6 +228,10 @@ DENIED_OPERATIONS: FrozenSet[Tuple[str, str]] = frozenset(
         ("lakeformation", "GetTemporaryGlueFunctionCredentials"),
         ("lakeformation", "GetTemporaryGluePartitionCredentials"),
         ("lakeformation", "GetTemporaryGlueTableCredentials"),
+        # Import or export token with wrapping or signing key material, as
+        # kms:GetParametersForImport above.
+        ("payment-cryptography", "GetParametersForExport"),
+        ("payment-cryptography", "GetParametersForImport"),
     }
 )
 
@@ -237,6 +243,8 @@ DENIED_PARAMETERS: Dict[Tuple[str, str], Dict[str, FrozenSet[str]]] = {
     ("apigateway", "GetApiKeys"): {"includeValues": frozenset({"true"})},
     # User data often carries passwords and bootstrap tokens.
     ("ec2", "DescribeInstanceAttribute"): {"Attribute": frozenset({"userdata"})},
+    # The connection's credentials (connectionCredentials).
+    ("datazone", "GetConnection"): {"withSecret": frozenset({"true"})},
 }
 
 # Client methods that sign locally (no AWS call) -> how to name the operation
@@ -390,15 +398,18 @@ class ReadOnlyGuard:
         def guarded(*args, **kwargs):
             client = client_ref()
             service = client.meta.service_model.service_name if client else "?"
+            params = None
             if operation_name is None:
                 method = kwargs.get("ClientMethod", args[0] if args else "")
                 mapping = getattr(
                     getattr(client, "meta", None), "method_to_api_mapping", {}
                 )
                 operation = mapping.get(method, method)
+                # The parameter rules apply to a presigned URL too
+                params = kwargs.get("Params", args[1] if len(args) > 1 else None)
             else:
                 operation = operation_name
-            guard._check(client, service, str(operation), params=None)
+            guard._check(client, service, str(operation), params=params)
             return original(*args, **kwargs)
 
         guarded._inventag_guarded = True

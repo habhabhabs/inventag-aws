@@ -10,13 +10,18 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ### Security
 
-- The read-only guard blocks `sts:GetWebIdentityToken`,
-  `stepfunctions:GetActivityTask` and the four Lake Formation
+- The read-only guard blocks 8 more operations: `sts:GetWebIdentityToken`,
+  `stepfunctions:GetActivityTask`, the four Lake Formation
   `GetTemporaryDataLocationCredentials`, `GetTemporaryGlueFunctionCredentials`,
   `GetTemporaryGluePartitionCredentials` and
-  `GetTemporaryGlueTableCredentials` calls. Their names start with `Get`, so
-  the guard allowed them, but they issue a token or AWS credentials, or take a
-  task from an activity's queue. InvenTag never called them.
+  `GetTemporaryGlueTableCredentials` calls, and
+  `payment-cryptography:GetParametersForImport` and `GetParametersForExport`.
+  Their names start with `Get`, so the guard allowed them, but they issue a
+  token, AWS credentials or key material, or take a task from an activity's
+  queue. InvenTag never called them.
+- The guard blocks `datazone:GetConnection` with `withSecret=true`, which
+  returns the connection's credentials; without it the call is still allowed.
+  The parameter rules of the guard now also apply to presigned URLs.
 - 18 more field names that AWS documents as secrets or tokens are masked
   (`***REDACTED***`) in reports, JSON output, snapshots, checkpoints and logs:
   `PreSharedKey`, `passphrase`, `SecretToken`, `WebIdentityToken`,
