@@ -132,9 +132,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   avec `--fail-on-account-error`, et n’écrit aucun rapport, sauf si les comptes ont
   dépassé leur délai : le rapport montre alors ce qui a été trouvé.
 - **Un compte dépasse son temps :** il compte comme en échec, et les ressources
-  trouvées avant la limite restent dans le rapport. Un appel encore en cours n’est
-  pas relancé, mais le processus peut rester actif un moment, jusqu’à la fin de
-  cet appel.
+  trouvées avant la limite restent dans le rapport. Un appel encore en cours quand le compte
+  est abandonné n’est pas relancé ; un listage qui se bloque est encore relancé par
+  botocore (jusqu’à dix tentatives), donc le processus peut rester actif de nombreuses
+  minutes après l’écriture du rapport.
 - **Aucune ressource trouvée, ou les filtres les ont toutes retirées :**
   InvenTag n’écrit aucun rapport sans `--template` et un rapport vide avec
   `--template`, et se termine avec le code 0 sauf si vous passez
@@ -163,8 +164,9 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **Accès refusé ou limité à Cost Explorer :** l’exécution continue sans données de
   facturation et affiche un avertissement qui nomme la cause. Le texte de l’erreur AWS
   ne s’affiche qu’avec `--debug`.
-- **Avec `--account-processing-timeout` inférieur à 1200 secondes,** Cost Explorer
-  reçoit au plus un dixième de la limite. S’il ne répond pas à temps, le compte est
+- **Avec `--account-processing-timeout` inférieur à 1200 secondes,** chaque appel à
+  Cost Explorer attend au plus un quarantième de la limite, et au moins 5 secondes,
+  pour se connecter et pour lire, avec deux tentatives. S’il ne répond pas à temps, le compte est
   quand même analysé et une note d’exécution indique que ses données de facturation
   manquent. Non vérifié sur un vrai AWS : un Cost Explorer lent se termine par un
   délai dépassé dans cette limite.

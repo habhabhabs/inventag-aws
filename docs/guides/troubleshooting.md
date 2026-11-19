@@ -257,17 +257,17 @@ Not verified against real AWS: the console path to enable a region.
 
 ### A region name is misspelled
 
-A region name that AWS does not know, such as `us-east-9` in
-`--account-regions`, is named once with the command that lists the valid
-ones:
+A region name that fails the region check and that the installed boto3 does
+not know, such as `us-east-9` in `--account-regions`, is named once with the
+command that lists the valid ones:
 
 ```text
-Region 'us-east-9' is not a known AWS region; check its spelling in --account-regions or in the accounts file. To list the regions of your account, run: aws ec2 describe-regions --query 'Regions[].RegionName' --output text
+Region 'us-east-9' could not be checked and the installed boto3 does not know it: check its spelling in --account-regions or in the accounts file, or, if it is a new AWS region, upgrade boto3. To list the regions of your account, run: aws ec2 describe-regions --query 'Regions[].RegionName' --output text
 ```
 
 The run exits with code 0. When other regions work, they are scanned, and the
-"Run notes" say `Regions not scanned in account 123456789012 because they are
-not known AWS regions (check the spelling): us-east-9.`
+"Run notes" say `Regions not scanned in account 123456789012 because their region check failed and the installed boto3 does not know them (a misspelled name, or a region newer than boto3): us-east-9.`
+A region that boto3 does not know but that AWS answers for is scanned.
 
 **Fix:** correct the region name.
 
@@ -331,8 +331,9 @@ command with `--resume` to scan only the accounts that did not finish.
 
 ### A slow Cost Explorer
 
-With `--account-processing-timeout` under 1200 seconds, Cost Explorer gets at
-most a tenth of the limit. If it does not answer in time, the account is
+With `--account-processing-timeout` under 1200 seconds, each Cost Explorer call
+waits at most a fortieth of the limit, and at least 5 seconds, to connect and
+to read, with two attempts. If it does not answer in time, the account is
 still scanned and its resources are in the report. The "Run notes" say:
 
 ```text

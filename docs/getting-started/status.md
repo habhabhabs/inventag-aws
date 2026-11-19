@@ -129,8 +129,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   `--fail-on-account-error`, and writes no report unless the accounts ran out
   of time, in which case the report lists what was found.
 - **An account runs out of time:** it counts as failed, and the resources
-  found before the limit stay in the report. A call that is still running is
-  not retried, but the process can stay alive for a time until that call ends.
+  found before the limit stay in the report. A call that is still running when
+  the account is given up is not retried; a listing that hangs is still retried
+  by botocore (up to ten attempts), so the process can stay alive for many
+  minutes after the report is written.
 - **No resources found, or the filters removed all of them:** InvenTag writes
   no report without `--template` and an empty report with `--template`, and
   exits with code 0 unless you pass `--fail-if-empty` (code 6).
@@ -157,8 +159,9 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **Cost Explorer access denied or throttled:** the run carries on without
   billing data and prints one warning that names the cause. The AWS error
   text shows only with `--debug`.
-- **With `--account-processing-timeout` under 1200 seconds,** Cost Explorer
-  gets at most a tenth of the limit. If it does not answer in time, the
+- **With `--account-processing-timeout` under 1200 seconds,** each Cost Explorer
+  call waits at most a fortieth of the limit, and at least 5 seconds, to
+  connect and to read, with two attempts. If it does not answer in time, the
   account is still scanned, and a run note says that its billing data is
   missing. Not verified against real AWS: a slow Cost Explorer ends with a
   timeout within that bound.

@@ -100,8 +100,10 @@ Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
   and gateways are the VPC's own plumbing and are not counted. A DB subnet
   group is configuration and is not counted, and an RDS cluster (for example
   Aurora) is not counted. To count ElastiCache clusters, InvenTag reads
-  `elasticache:DescribeCacheSubnetGroups`; if that call fails, one warning
-  says so and the clusters are not counted.
+  `elasticache:DescribeCacheSubnetGroups`; if that call fails for any reason, one
+  warning and a run note say so, the clusters of that region are not counted,
+  and the rest of the sheet is written as usual. A cluster is counted only
+  through a subnet group of its own account.
 - It reads only the VPCs and subnets in the regions you scan. It does not
   check network ACLs, security groups, `MapPublicIpOnLaunch`, Direct Connect,
   VPN connections, Network Firewall or peering routes.

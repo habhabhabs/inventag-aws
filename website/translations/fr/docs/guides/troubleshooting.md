@@ -219,13 +219,13 @@ Non vérifié sur un vrai AWS : le chemin dans la console pour activer une régi
 
 ### Un nom de région mal orthographié {#a-region-name-is-misspelled}
 
-Un nom de région que AWS ne connaît pas, comme `us-east-9` dans `--account-regions`, est nommé une seule fois avec la commande qui liste les régions valides :
+Un nom de région qui échoue à la vérification de région et que le boto3 installé ne connaît pas, comme `us-east-9` dans `--account-regions`, est nommé une seule fois avec la commande qui liste les régions valides :
 
 ```text
-Region 'us-east-9' is not a known AWS region; check its spelling in --account-regions or in the accounts file. To list the regions of your account, run: aws ec2 describe-regions --query 'Regions[].RegionName' --output text
+Region 'us-east-9' could not be checked and the installed boto3 does not know it: check its spelling in --account-regions or in the accounts file, or, if it is a new AWS region, upgrade boto3. To list the regions of your account, run: aws ec2 describe-regions --query 'Regions[].RegionName' --output text
 ```
 
-L’exécution se termine avec le code 0. Quand d’autres régions fonctionnent, elles sont analysées, et les « Run notes » disent `Regions not scanned in account 123456789012 because they are not known AWS regions (check the spelling): us-east-9.`
+L’exécution se termine avec le code 0. Quand d’autres régions fonctionnent, elles sont analysées, et les « Run notes » disent `Regions not scanned in account 123456789012 because their region check failed and the installed boto3 does not know them (a misspelled name, or a region newer than boto3): us-east-9.` Une région que boto3 ne connaît pas mais à laquelle AWS répond est analysée.
 
 **Correction :** corrigez le nom de la région.
 
@@ -279,7 +279,7 @@ Le compte compte comme échoué, mais les ressources trouvées avant la limite s
 
 ### Un Cost Explorer lent {#a-slow-cost-explorer}
 
-Avec `--account-processing-timeout` inférieur à 1200 secondes, Cost Explorer reçoit au plus un dixième de la limite. S’il ne répond pas à temps, le compte est quand même analysé et ses ressources sont dans le rapport. Les « Run notes » disent :
+Avec `--account-processing-timeout` inférieur à 1200 secondes, chaque appel à Cost Explorer attend au plus un quarantième de la limite, et au moins 5 secondes, pour se connecter et pour lire, avec deux tentatives. S’il ne répond pas à temps, le compte est quand même analysé et ses ressources sont dans le rapport. Les « Run notes » disent :
 
 ```text
 Cost Explorer did not answer in time for account 123456789012, so its billing checks were skipped and services that only billing shows are not listed for it.

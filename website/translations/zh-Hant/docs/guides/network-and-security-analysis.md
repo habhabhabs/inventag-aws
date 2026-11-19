@@ -73,7 +73,7 @@ Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
 - `Total IPs` 來自 VPC 的 CIDR 塊。`Available IPs` 和 `Utilization %` 來自它的子網，所以這三欄加起來對不上，
   沒有子網的 VPC 顯示可用數為 0。IPv6 地址不計入。
 - `Associated Resources` 統計 API 資料中指明瞭該 VPC 或子網的資源：EC2 例項、位於 VPC 中的 Lambda 函式、RDS 資料庫例項和 ElastiCache 叢集（後兩者透過各自的子網組）。位於多個子網中的資源（例如負載均衡器或 Lambda 函式）會在每個子網中各統計一次。
-  安全組、網路 ACL、路由表和閘道器屬於 VPC 自身的網路元件，不計入。資料庫子網組是設定，不計入；RDS 叢集（例如 Aurora）也不計入。為了統計 ElastiCache 叢集，InvenTag 會讀取 `elasticache:DescribeCacheSubnetGroups`；如果該呼叫失敗，會給出一條警告，這些叢集不計入。
+  安全組、網路 ACL、路由表和閘道器屬於 VPC 自身的網路元件，不計入。資料庫子網組是設定，不計入；RDS 叢集（例如 Aurora）也不計入。為了統計 ElastiCache 叢集，InvenTag 會讀取 `elasticache:DescribeCacheSubnetGroups`；如果該呼叫因任何原因失敗，會給出一條警告和一條執行備註，該區域的叢集不計入，工作表的其餘部分照常寫出。叢集只透過其自身帳戶的子網組計入。
 - 它唯讀取你所掃描區域中的 VPC 和子網。它不檢查網路 ACL、安全組、`MapPublicIpOnLaunch`、Direct Connect、VPN 連線、Network Firewall 或對等連線路由。
 
 ### 安全分析做什麼 {#what-the-security-analysis-does}

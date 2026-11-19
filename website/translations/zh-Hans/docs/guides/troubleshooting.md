@@ -208,13 +208,13 @@ echo $?
 
 ### 区域名称拼写错误 {#a-region-name-is-misspelled}
 
-AWS 不认识的区域名称，例如 `--account-regions` 中的 `us-east-9`，只会被指出一次，并附上列出有效区域的命令：
+区域检查失败且已安装的 boto3 不认识的区域名称，例如 `--account-regions` 中的 `us-east-9`，只会被指出一次，并附上列出有效区域的命令：
 
 ```text
-Region 'us-east-9' is not a known AWS region; check its spelling in --account-regions or in the accounts file. To list the regions of your account, run: aws ec2 describe-regions --query 'Regions[].RegionName' --output text
+Region 'us-east-9' could not be checked and the installed boto3 does not know it: check its spelling in --account-regions or in the accounts file, or, if it is a new AWS region, upgrade boto3. To list the regions of your account, run: aws ec2 describe-regions --query 'Regions[].RegionName' --output text
 ```
 
-运行以退出码 0 结束。其他区域正常时，它们会被扫描，并且“运行备注”会写明 `Regions not scanned in account 123456789012 because they are not known AWS regions (check the spelling): us-east-9.`
+运行以退出码 0 结束。其他区域正常时，它们会被扫描，并且“运行备注”会写明 `Regions not scanned in account 123456789012 because their region check failed and the installed boto3 does not know them (a misspelled name, or a region newer than boto3): us-east-9.`boto3 不认识、但 AWS 会响应的区域会被扫描。
 
 **解决办法：** 更正区域名称。
 
@@ -265,7 +265,7 @@ Resource discovery failed for account 123456789012: timed out after 60 seconds (
 
 ### Cost Explorer 响应缓慢 {#a-slow-cost-explorer}
 
-`--account-processing-timeout` 小于 1200 秒时，Cost Explorer 最多获得该限制的十分之一。如果它没有及时响应，账户仍会被扫描，其资源会进入报告。“运行备注”会写明：
+`--account-processing-timeout` 小于 1200 秒时，每次 Cost Explorer 调用在连接和读取时最多等待该限制的四十分之一，且至少 5 秒，共尝试两次。如果它没有及时响应，账户仍会被扫描，其资源会进入报告。“运行备注”会写明：
 
 ```text
 Cost Explorer did not answer in time for account 123456789012, so its billing checks were skipped and services that only billing shows are not listed for it.

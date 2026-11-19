@@ -134,8 +134,9 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   hayan quedado sin tiempo; en ese caso el informe muestra lo que se encontró.
 - **Una cuenta se queda sin tiempo:** cuenta como fallida, y los recursos
   encontrados antes del límite se quedan en el informe. Una llamada que sigue en
-  curso no se reintenta, pero el proceso puede seguir vivo un tiempo hasta que
-  esa llamada termine.
+  curso cuando se abandona la cuenta no se reintenta; un listado que se cuelga sí lo
+  reintenta botocore (hasta diez intentos), así que el proceso puede seguir vivo
+  muchos minutos después de escribir el informe.
 - **No se encontraron recursos, o los filtros los quitaron todos:** InvenTag no
   escribe ningún informe sin `--template` y escribe un informe vacío con
   `--template`, y termina con el código 0 salvo que pases `--fail-if-empty`
@@ -163,8 +164,9 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **Acceso denegado o limitado en Cost Explorer:** la ejecución continúa sin datos de
   facturación y muestra una advertencia que nombra la causa. El texto del error de AWS
   solo se muestra con `--debug`.
-- **Con `--account-processing-timeout` por debajo de 1200 segundos,** Cost Explorer
-  recibe como máximo una décima parte del límite. Si no responde a tiempo, la cuenta
+- **Con `--account-processing-timeout` por debajo de 1200 segundos,** cada llamada a
+  Cost Explorer espera como máximo una cuadragésima parte del límite, y al menos 5 segundos,
+  para conectar y para leer, con dos intentos. Si no responde a tiempo, la cuenta
   se analiza igualmente y una nota de la ejecución indica que faltan sus datos de
   facturación. No verificado contra AWS real: un Cost Explorer lento termina con un
   tiempo de espera dentro de ese límite.
