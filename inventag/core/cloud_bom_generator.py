@@ -16,7 +16,6 @@ Features:
 """
 
 import dataclasses
-import inspect
 import logging
 import re
 import boto3
@@ -2048,14 +2047,10 @@ class CloudBOMGenerator:
 
         # The account was resolved when its context was made; discovery's
         # own lookup ran once per region thread, racing (A-70). Hand it over
-        # when the engine has that cache (feature-detected).
+        # (an inventory test double may have no engine).
         engine = getattr(inventory, "comprehensive_discovery", None)
         known_account = str((context.caller_identity or {}).get("Account") or "")
-        if (
-            engine is not None
-            and callable(getattr(engine, "_get_account_id", None))
-            and is_valid_account_id(known_account)
-        ):
+        if engine is not None and is_valid_account_id(known_account):
             engine._cached_account_id = known_account
 
         # Discover resources. Secret values that some read calls return
@@ -2199,23 +2194,16 @@ class CloudBOMGenerator:
 
             # Initialize BOM processor
             # Every account's own session for the consolidated Network and
-            # Security sheets (A-71), when the processor takes them.
-            extra = {}
-            try:
-                takes = (
-                    "account_sessions"
-                    in inspect.signature(BOMDataProcessor.__init__).parameters
-                )
-            except (TypeError, ValueError):
-                takes = False
-            if takes:
-                extra["account_sessions"] = {
-                    str(acc_id): ctx.session
-                    for acc_id, ctx in self.account_contexts.items()
-                    if ctx.session is not None
-                }
+            # Security sheets (A-71).
+            account_sessions = {
+                str(acc_id): ctx.session
+                for acc_id, ctx in self.account_contexts.items()
+                if ctx.session is not None
+            }
             bom_processor = BOMDataProcessor(
-                config=self.config.bom_processing_config, session=session, **extra
+                config=self.config.bom_processing_config,
+                session=session,
+                account_sessions=account_sessions,
             )
 
             # Process inventory data into BOM format

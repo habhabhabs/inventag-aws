@@ -17,7 +17,7 @@ import logging
 import re
 import time
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import as_completed
 from concurrent.futures import TimeoutError as FuturesTimeout
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta, timezone
@@ -963,14 +963,12 @@ class ComprehensiveAWSDiscovery:
 
     @staticmethod
     def _make_pool(workers: int):
-        """Thread pool for listings. Daemon threads when ``inventag.core`` has
-        them (A-25): a listing still waiting on the network after the account's
-        limit then does not keep the process alive. Imported here because
-        ``inventag.core`` imports this module."""
-        try:
-            from ..core.daemon_pool import DaemonThreadPool
-        except ImportError:
-            return ThreadPoolExecutor(max_workers=workers)
+        """Thread pool for listings, with daemon threads (A-25): a listing
+        still waiting on the network after the account's limit does not keep
+        the process alive. Imported here because ``inventag.core`` imports
+        this module."""
+        from ..core.daemon_pool import DaemonThreadPool
+
         return DaemonThreadPool(workers)
 
     def _service_regions(self, client_service: str, partition: str) -> set:
