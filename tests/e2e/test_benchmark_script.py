@@ -482,3 +482,31 @@ def test_the_check_command_exits_1_when_a_case_fails(tmp_path):
         "--check-case", "B1", "--baseline", str(base), "--candidate", str(cand)
     )
     assert proc.returncode == 0, proc.stdout
+
+
+def test_stages_are_told_apart_by_operation_and_the_analyses_by_time(bench):
+    from tests.latency import RequestRecord
+
+    def rec(service, operation, start, end):
+        return RequestRecord(service, operation, 1, "t", start, end, None)
+
+    records = [
+        rec("sts", "GetCallerIdentity", 0.0, 0.1),
+        rec("ec2", "DescribeRegions", 0.1, 0.2),
+        rec("ec2", "DescribeVpcs", 0.2, 0.3),  # a listing: before the details
+        rec("resource-groups-tagging-api", "GetResources", 0.3, 0.4),
+        rec("s3", "GetBucketLocation", 0.4, 0.5),
+        rec("ec2", "DescribeVpcs", 0.6, 0.7),  # an analysis: after the details
+        rec("ec2", "DescribeVpcEndpoints", 0.7, 0.8),
+    ]
+    stages = bench.stage_report(records, 0.0, 1.0)
+    assert {k: v["calls"] for k, v in stages.items()} == {
+        "credentials": 2,
+        "listings": 1,
+        "tagging": 1,
+        "details": 1,
+        "analyses": 2,
+        "reports": 0,
+    }
+    assert stages["reports"]["seconds"] == 0.2
+    assert stages["analyses"]["seconds"] == 0.2
