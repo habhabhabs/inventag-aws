@@ -60,7 +60,7 @@ jobs:
           
           # Validate only one release label
           RELEASE_COUNT=$(echo "$RELEASE_LABELS" | wc -l)
-          if [ $RELEASE_COUNT -gt 1 ]; then
+          if [ "$RELEASE_COUNT" -gt 1 ]; then
             echo "❌ Multiple release labels found. Please use only one:"
             echo "$RELEASE_LABELS"
             echo "Valid labels: release:patch, release:minor, release:major"
