@@ -1032,12 +1032,13 @@ def test_t29_reports_stay_on_disk_after_a_failed_upload(aws, monkeypatch, tmp_pa
     assert glob.glob(str(tmp_path / "bom_output" / "*.xlsx"))
 
 
-def test_t31_services_in_a_config_template_still_scan_other_services_a49(
+def test_t31_services_in_a_config_template_limit_the_scan_a49(
     aws, monkeypatch, tmp_path
 ):
-    """reference.md spec.services (register A-49), scan side: with
-    ``services: [S3]`` the report holds S3 only (T26), but the scan still calls
-    the APIs of other services. Counts every AWS API call per service."""
+    """reference.md spec.services (register A-49, decision 15), scan side: with
+    ``services: [S3]`` the report holds S3 only (T26), and the scan does not
+    call the listing APIs of other services. Counts every AWS API call per
+    service."""
     import collections
 
     import boto3
@@ -1071,4 +1072,4 @@ def test_t31_services_in_a_config_template_still_scan_other_services_a49(
     assert code == 0
     other = {s: n for s, n in calls.items() if s not in ("s3", "sts")}
     print("calls per service:", dict(calls))
-    assert other.get("sqs", 0) > 0, dict(calls)  # other services are still called
+    assert other.get("sqs", 0) == 0, dict(calls)  # other services are not listed
