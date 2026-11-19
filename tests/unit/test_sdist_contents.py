@@ -107,9 +107,8 @@ def test_the_console_script_points_at_a_real_function():
 
 
 @pytest.mark.skipif(
-    importlib.util.find_spec("build") is None
-    or importlib.util.find_spec("setuptools") is None,
-    reason="python -m build and setuptools are not installed here",
+    importlib.util.find_spec("build") is None,
+    reason="`build` is not installed (it is in requirements-dev.txt; CI runs this)",
 )
 def test_a_built_sdist_holds_the_package_data(tmp_path):
     result = subprocess.run(
@@ -118,21 +117,21 @@ def test_a_built_sdist_holds_the_package_data(tmp_path):
             "-m",
             "build",
             "--sdist",
-            "--no-isolation",
             "--outdir",
             str(tmp_path),
             str(ROOT),
         ],
         capture_output=True,
         text=True,
-        timeout=300,
+        timeout=600,
     )
     assert result.returncode == 0, result.stderr[-2000:]
     (archive,) = tmp_path.glob("*.tar.gz")
     with tarfile.open(archive) as tar:
         names = tar.getnames()
-    assert any(
-        n.endswith("inventag/templating/builtin/org-multi-account.yaml") for n in names
-    )
+    builtin = "inventag/templating/builtin/"
+    for template in (PACKAGE / "templating" / "builtin").glob("*.yaml"):
+        assert any(n.endswith(builtin + template.name) for n in names), template.name
     assert any(n.endswith("/requirements.txt") for n in names)
+    assert any(n.endswith("/inventag/_version.py") for n in names)
     assert not [n for n in names if n.rsplit("/", 1)[-1].startswith(".env")]

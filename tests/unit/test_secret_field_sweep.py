@@ -109,9 +109,9 @@ ALLOWED = {
     },
 }
 
-# Documented by AWS as a secret, a credential or a token that authorises a call;
-# not masked by the deny-list today. Each name: one operation that returns it,
-# and what the botocore documentation says. Rows for the final patch.
+# Documented secrets that InvenTag never reads, proven by
+# tests/unit/test_unmasked_secret_fields_never_read.py. Each name: one operation
+# that returns it, and what the botocore documentation says.
 KNOWN_UNMASKED = {
     "presharedkey": "ec2:DescribeVpnConnections: the pre-shared key (PSK) of a VPN tunnel",
     "authkey": "directconnect:DescribeVirtualInterfaces: the authentication key for BGP",
@@ -224,7 +224,7 @@ def test_a_known_unmasked_field_is_still_returned_by_an_allowed_operation(name):
     """The entries are findings of the installed botocore, not guesses."""
     found = sweep()
     if name not in found:
-        pytest.skip(f"{name} is not in this botocore's models")
+        pytest.skip("the name is not in this botocore's models")
     assert found[name]["ops"]
 
 

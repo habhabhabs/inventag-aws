@@ -79,3 +79,31 @@ def test_the_early_credential_check_returns_false_and_names_the_timeout_flag(
     assert time.monotonic() - started < LIMIT_SECONDS
     assert "Read timeout on endpoint URL" in caplog.text
     assert "Raise --credential-timeout" in caplog.text
+
+
+def test_accounts_file_role_assume_against_a_hung_sts_endpoint_fails_the_account(
+    hung_sts, tmp_path, capsys, caplog
+):
+    accounts = tmp_path / "accounts.json"
+    accounts.write_text(
+        '{"accounts": [{"account_id": "123456789012", "regions": ["us-east-1"],'
+        ' "role_arn": "arn:aws:iam::123456789012:role/InvenTagReadOnly"}]}'
+    )
+    caplog.set_level(logging.INFO)
+    started = time.monotonic()
+    code = run_cli(
+        "--accounts-file",
+        str(accounts),
+        "--create-excel",
+        "--no-billing-validation",
+        "--credential-timeout",
+        "1",
+    )
+    assert time.monotonic() - started < LIMIT_SECONDS
+    text = (lambda c: c.err + c.out)(capsys.readouterr()) + caplog.text
+    assert code == 1
+    assert "Role assumption failed for account 123456789012" in caplog.text
+    assert "Read timeout on endpoint URL" in caplog.text
+    assert "no report was generated" in caplog.text
+    assert "Traceback" not in text
+    assert not list((tmp_path / "bom_output").glob("*.xlsx"))
