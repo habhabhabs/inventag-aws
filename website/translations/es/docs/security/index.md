@@ -38,8 +38,11 @@ persona mantenedora un canal privado.
   de un comando o una definición guardada con secretos (por ejemplo
   `ssm:GetDocument`, `ssm:GetCommandInvocation`, las exportaciones de API
   Gateway, las definiciones de Data Pipeline y los adjuntos de Support y
-  Connect), y `cognito-identity:GetId`, que crea una identidad. Cada entrada de
-  la lista de denegación se comprueba con la lista de operaciones del SDK de
+  Connect), y `cognito-identity:GetId`, que crea una identidad. Bloquea
+  `sts:GetWebIdentityToken`, `stepfunctions:GetActivityTask` y las cuatro
+  llamadas `GetTemporary...Credentials` de Lake Formation: sus nombres empiezan
+  como lecturas, pero emiten un token o credenciales, o toman una tarea de una
+  cola. Cada entrada de la lista de denegación se comprueba con la lista de operaciones del SDK de
   AWS. Siempre está activa.
 - **El inicio de sesión sigue funcionando.** La protección deja que el SDK de
   AWS cambie un token de IAM Identity Center (SSO), de identidad web o de
@@ -53,7 +56,11 @@ persona mantenedora un canal privado.
   los campos que suelen contener secretos, como las variables de entorno de
   Lambda, los datos de usuario de EC2 o los valores de parámetros de
   CloudFormation, pasan a ser `***REDACTED***` en informes, instantáneas y
-  registros. Los nombres se mantienen. Consulta
+  registros. Esto incluye las claves precompartidas de los túneles VPN
+  (`PreSharedKey`), los valores `passphrase` de IVS, los tokens secretos de
+  los webhooks de CodePipeline (`SecretToken`) y otros tokens documentados,
+  como los tokens de tarea, de devolución de llamada, de dispositivo y de
+  identidad web. Los nombres se mantienen. Consulta
   [Estado de las funciones](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 - **No envía datos de uso.** InvenTag no tiene telemetría. La herramienta de
   línea de comandos se comunica solo con AWS, y con Google cuando usas una opción de Google. El asistente de CI opcional de la

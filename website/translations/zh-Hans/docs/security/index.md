@@ -28,7 +28,9 @@ sidebar_position: 1
   它也会拦截原本允许的操作；它还会检查预签名 URL 和数据库认证令牌，这些在签名时不会调用 AWS。
   它还会拦截返回签名 URL、文件或文档正文、命令输出或含有机密的已存储定义的读取（例如 `ssm:GetDocument`、
   `ssm:GetCommandInvocation`、API Gateway 导出、Data Pipeline 定义，以及 Support 和 Connect 附件），
-  以及会创建身份的 `cognito-identity:GetId`。拒绝列表中的每个条目都会与 AWS SDK 的操作列表进行核对。
+  以及会创建身份的 `cognito-identity:GetId`。它还会拦截 `sts:GetWebIdentityToken`、
+  `stepfunctions:GetActivityTask` 和 Lake Formation 的四个 `GetTemporary...Credentials` 调用：
+  它们的名称看起来像读取，但它们会签发令牌或凭证，或者领取一个正在等待处理的活动任务。拒绝列表中的每个条目都会与 AWS SDK 的操作列表进行核对。
   它始终开启。
 - **登录仍然可用。** 防护允许 AWS SDK 把 IAM Identity Center（SSO）、Web 身份或 `aws login`
   令牌换成凭证。它只允许以下四个未签名的调用：`sso:GetRoleCredentials`、
@@ -37,7 +39,9 @@ sidebar_position: 1
 
   未针对 AWS IAM Identity Center 验证：真实 SDK 发出的登录调用。
 - **它会遮盖允许的响应中的机密值。** 常用于存放机密的字段（例如 Lambda 环境变量、EC2 用户数据或
-  CloudFormation 参数值）的值，在报告、快照和日志中会变成 `***REDACTED***`。名称会保留。
+  CloudFormation 参数值）的值，在报告、快照和日志中会变成 `***REDACTED***`。这也包括 VPN 隧道的预共享密钥
+  （`PreSharedKey`）、IVS 的 `passphrase` 值、CodePipeline Webhook 的机密令牌（`SecretToken`）
+  以及其他有文档说明的令牌，例如任务、回调、设备和 Web 身份令牌。名称会保留。
   参见[功能状态](../getting-started/status.md#what-inventag-finds-and-what-it-does-not)。
 - **它不发送使用数据。** InvenTag 没有遥测。命令行工具只与 AWS 通信，使用 Google 选项时也会与 Google 通信。
   Python 库中可选的 CI 辅助功能可以向 Slack、Microsoft Teams 或 Prometheus Pushgateway 发送消息，

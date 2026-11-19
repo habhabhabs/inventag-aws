@@ -38,8 +38,11 @@ maintainer for a private channel.
   document body, command output or a stored definition with secrets (for
   example `ssm:GetDocument`, `ssm:GetCommandInvocation`, API Gateway exports,
   Data Pipeline definitions, and support and Connect attachments), and
-  `cognito-identity:GetId`, which creates an identity. Every entry of the
-  deny-list is checked against the AWS SDK's list of operations. It is always
+  `cognito-identity:GetId`, which creates an identity. It blocks
+  `sts:GetWebIdentityToken`, `stepfunctions:GetActivityTask` and the four Lake
+  Formation `GetTemporary...Credentials` calls: their names start like reads,
+  but they issue a token or credentials, or take a task from a queue. Every
+  entry of the deny-list is checked against the AWS SDK's list of operations. It is always
   on.
 - **Sign-in still works.** The guard lets the AWS SDK exchange an IAM Identity
   Center (SSO), web-identity or `aws login` token for credentials. It allows
@@ -52,7 +55,10 @@ maintainer for a private channel.
 - **It masks secret values in allowed answers.** Values of fields that often
   hold secrets, such as Lambda environment variables, EC2 user data or
   CloudFormation parameter values, become `***REDACTED***` in reports,
-  snapshots and logs. The names stay. See
+  snapshots and logs. This includes VPN tunnel pre-shared keys
+  (`PreSharedKey`), IVS `passphrase` values, CodePipeline webhook secret
+  tokens (`SecretToken`) and other documented tokens, such as task, callback,
+  device and web-identity tokens. The names stay. See
   [Feature status](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 - **It sends no usage data.** InvenTag has no telemetry. The command-line tool
   talks only to AWS, and to Google when you use a Google option. The optional CI helper in the Python library can post to

@@ -60,6 +60,12 @@ Field                                     Where it comes from
 ``DefaultArguments.*``,                   Glue jobs
 ``NonOverridableArguments.*``
 ``ConnectionProperties.*``                Glue connections
+``PreSharedKey``, ``passphrase``,          VPN tunnels, IVS SRT channels,
+``SecretToken``, ``WebIdentityToken``,    CodePipeline webhooks, STS, DataZone,
+``jwtToken`` and the task, callback,      GameLift, Chime, EC2 IPAM, Managed
+device, gateway, billing, work-unit,      Blockchain, Step Functions, SageMaker,
+registration, export, import, purchase    Lake Formation, Marketplace, Payment
+and offer tokens (v1.3.1)                 Cryptography, EC2, Bedrock
 ``definition`` (text)                     Step Functions state machines
 ``Code.Location``                         Lambda GetFunction (presigned code URL)
 ``value`` of an API key (``id`` +         API Gateway GetApiKeys
@@ -119,6 +125,28 @@ SECRET_VALUE_KEYS = frozenset(
         "activationcode",
         "certificatewallet",
         "entrypointarguments",
+        # v1.3.1: documented secrets and tokens found by the sweep of every
+        # botocore model (T-11). InvenTag does not call the operations that
+        # return them; masked as defence in depth. Left out, because the same
+        # name is a harmless field elsewhere: secret, authkey, accesskey.
+        "presharedkey",
+        "passphrase",
+        "secrettoken",
+        "webidentitytoken",
+        "jwttoken",
+        "playergatewaytoken",
+        "devicetoken",
+        "voipdevicetoken",
+        "tokenvalue",
+        "billingtoken",
+        "tasktoken",
+        "callbacktoken",
+        "workunittoken",
+        "registrationtoken",
+        "exporttoken",
+        "importtoken",
+        "purchasetoken",
+        "offertoken",
     }
 )
 # Normalised names that END like this are secret too (DbPassword, api_key...).

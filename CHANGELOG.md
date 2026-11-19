@@ -8,6 +8,26 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+
+- The read-only guard blocks `sts:GetWebIdentityToken`,
+  `stepfunctions:GetActivityTask` and the four Lake Formation
+  `GetTemporaryDataLocationCredentials`, `GetTemporaryGlueFunctionCredentials`,
+  `GetTemporaryGluePartitionCredentials` and
+  `GetTemporaryGlueTableCredentials` calls. Their names start with `Get`, so
+  the guard allowed them, but they issue a token or AWS credentials, or take a
+  task from an activity's queue. InvenTag never called them.
+- 18 more field names that AWS documents as secrets or tokens are masked
+  (`***REDACTED***`) in reports, JSON output, snapshots, checkpoints and logs:
+  `PreSharedKey`, `passphrase`, `SecretToken`, `WebIdentityToken`,
+  `jwtToken`, `PlayerGatewayToken`, `DeviceToken`, `VoipDeviceToken`,
+  `TokenValue`, `BillingToken`, `taskToken`, `CallbackToken`,
+  `WorkUnitToken`, `registrationToken`, `ExportToken`, `ImportToken`,
+  `PurchaseToken` and `offerToken`. InvenTag does not call the operations that
+  return them, so no report changes; the names are masked in case a later
+  version does. The names `secret`, `authKey` and `AccessKey` are not added,
+  because AWS also uses them for harmless fields.
+
 ## [v1.3.0] - 2026-11-19
 
 ### Changed

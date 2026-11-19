@@ -38,7 +38,11 @@ mainteneur un canal privé.
   définition enregistrée contenant des secrets (par exemple `ssm:GetDocument`,
   `ssm:GetCommandInvocation`, les exports API Gateway, les définitions Data
   Pipeline et les pièces jointes Support et Connect), ainsi que
-  `cognito-identity:GetId`, qui crée une identité. Chaque entrée de la liste de
+  `cognito-identity:GetId`, qui crée une identité. Elle bloque
+  `sts:GetWebIdentityToken`, `stepfunctions:GetActivityTask` et les quatre appels
+  `GetTemporary...Credentials` de Lake Formation : leur nom commence comme une
+  lecture, mais ils émettent un jeton ou des identifiants, ou prennent une tâche
+  dans une file d’attente. Chaque entrée de la liste de
   refus est vérifiée par rapport à la liste des opérations du SDK AWS. Elle est
   toujours active.
 - **La connexion fonctionne toujours.** La protection laisse le SDK AWS échanger un
@@ -53,7 +57,10 @@ mainteneur un canal privé.
   champs qui contiennent souvent des secrets, comme les variables d’environnement
   Lambda, les données utilisateur EC2 ou les valeurs de paramètres CloudFormation,
   deviennent `***REDACTED***` dans les rapports, les instantanés et les journaux.
-  Les noms restent. Voir
+  Cela comprend les clés prépartagées des tunnels VPN (`PreSharedKey`), les
+  valeurs `passphrase` d’IVS, les jetons secrets des webhooks CodePipeline
+  (`SecretToken`) et d’autres jetons documentés, comme les jetons de tâche, de
+  rappel, d’appareil et d’identité web. Les noms restent. Voir
   [État des fonctionnalités](../getting-started/status.md#what-inventag-finds-and-what-it-does-not).
 - **Il n’envoie aucune donnée d’utilisation.** InvenTag n’a pas de télémétrie. L’outil en ligne de commande
   ne communique qu’avec AWS, et avec Google lorsque vous utilisez une option Google. L’assistant CI facultatif de la bibliothèque Python peut publier vers
