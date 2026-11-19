@@ -1411,7 +1411,9 @@ def validate_credentials_only(config: MultiAccountConfig) -> bool:
 
             try:
                 result = credential_manager.validate_account_credentials(
-                    account, timeout=config.credential_validation_timeout
+                    account,
+                    timeout=config.credential_validation_timeout,
+                    cross_account_role_name=config.cross_account_role_name,
                 )
 
                 if result.is_valid:
