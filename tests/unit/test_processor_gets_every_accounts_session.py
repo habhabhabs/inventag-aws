@@ -2,10 +2,9 @@
 senior F's WO-F3).
 
 The processor analysed the consolidated report's Network and Security sheets
-with the first account's session only. With senior F's processor
-(``account_sessions=``) it analyses each account with its own session. The
-generator passes the argument only when the processor accepts it, so this
-branch works with and without fix3/track-f.
+with the first account's session only. The generator now passes every
+account's session (``account_sessions=``), and the processor analyses each
+account with its own session (tests/unit/test_processor_analyses_each_account.py).
 """
 
 from unittest.mock import patch
@@ -64,16 +63,3 @@ def test_a_processor_that_takes_account_sessions_gets_every_account(
     assert _run(tmp_path, Processor)["success"] is True
     assert seen["session"] == "111111111111"  # the fallback, as before
     assert seen["accounts"] == {a: a for a in ACCOUNTS}
-
-
-def test_a_processor_without_the_argument_works_as_before(aws, tmp_path):  # noqa: F811
-    calls = []
-    real = cbg.BOMDataProcessor
-
-    class Processor(real):
-        def __init__(self, config, session=None):
-            calls.append(getattr(session, "_account", None))
-            super().__init__(config, session=session)
-
-    assert _run(tmp_path, Processor)["success"] is True
-    assert calls == ["111111111111"]
