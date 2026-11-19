@@ -8,12 +8,11 @@ A failed call keeps the row, writes a ``service-api-detail`` record and does
 not fail the listing; "not found" (a cluster deleted since the listing) is not
 a failure. An estate without EKS makes no EKS call.
 
-The pair test at the end needs lead B's rule for fields new after an upgrade; it
-is skipped, with the reason, where that rule is absent. The Network sheet check
-(senior F reads the field) is run by the assembly.
+The pair test at the end runs with lead B's rule for fields new after an
+upgrade. The Network sheet check (senior F reads the field) is in
+tests/unit/test_final_tracks_together.py.
 """
 
-import inspect
 import logging
 from unittest import mock
 
@@ -140,20 +139,6 @@ def test_the_post_processing_step_runs_it():
 
 
 # ------------------------------------------------------------------ pair tests
-def _rule_present():
-    from inventag.state.delta_detector import DeltaDetector
-
-    return (
-        "previous_inventag_version"
-        in inspect.signature(DeltaDetector.detect_changes).parameters
-    )
-
-
-@pytest.mark.skipif(
-    not _rule_present(),
-    reason="lead B's rule for fields new after an upgrade (previous_inventag_version) "
-    "is not on this branch; the assembly runs this test with it",
-)
 def test_the_new_field_is_not_a_modification_after_the_upgrade():
     from inventag.state.delta_detector import DeltaDetector
 
@@ -201,13 +186,6 @@ def _flatteners():
     }
 
 
-@pytest.mark.xfail(
-    reason="the report writers (excel_builder, csv_builder, converter, "
-    "templating/columns, not track D files) must skip raw_data.resourcesVpcConfig; "
-    "see the patch under 'Needs from another track' in p3-track-d.md. The "
-    "assembly applies it with D5 and removes this marker.",
-    strict=False,
-)
 @pytest.mark.parametrize("writer", list(_flatteners()))
 def test_the_field_adds_no_column_to_any_report(writer):
     """Sheet and column names are a published interface: the EKS header row is
