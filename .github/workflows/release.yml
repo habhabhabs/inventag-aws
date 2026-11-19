@@ -45,7 +45,7 @@ concurrency:
 jobs:
   check-for-release:
     name: Check if Release Needed
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       pull-requests: read
@@ -179,7 +179,7 @@ jobs:
 
   release:
     name: Create Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Every write (push, tag, release, assets) uses the VERSION_BUMP_WORKFLOW token.
     # GITHUB_TOKEN only lists releases here.
     permissions:
@@ -589,7 +589,7 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [check-for-release, release]
     # Publishes in three cases:
     #   1. a release was just created (the release job commits the bumped version),
