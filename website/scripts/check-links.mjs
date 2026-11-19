@@ -2,7 +2,7 @@
 /**
  * Link check for the built site (no dependencies).
  *
- *   cd website && npm run build && npm run check:links
+ *   cd website && npm run build && npm run check:links [-- DIR]
  *
  * Fails (exit 1) on:
  *   - internal links/images/icons in the homepage or the *current* docs that
@@ -190,9 +190,10 @@ export function printReport({checked, pages, errors, archived, warnings}, buildD
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === url.fileURLToPath(import.meta.url)) {
-  const build = path.resolve(here, '..', 'build');
+  // optional argument: another folder than build/ (an assembled build)
+  const build = process.argv[2] ? path.resolve(process.argv[2]) : path.resolve(here, '..', 'build');
   if (!fs.existsSync(build)) {
-    console.error('No build/ directory. Run `npm run build` first.');
+    console.error(`No build folder at ${build}. Run \`npm run build\` first.`);
     process.exit(2);
   }
   const result = checkLinks(build);

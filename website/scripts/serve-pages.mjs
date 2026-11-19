@@ -2,7 +2,10 @@
 /**
  * Serve build/ the way GitHub Pages does (no dependencies), for local checks.
  *
- *   npm run serve:pages -- [--port 4173]
+ *   npm run serve:pages -- [--port 4173] [--dir DIR]
+ *
+ * --dir serves another folder than build/ (for example an assembled build
+ * from scripts/assemble-locales.mjs).
  *
  * `docusaurus serve` resolves /docs to static/docs/index.html (a redirect
  * stub for /docs/), which then loops. GitHub Pages serves docs.html for /docs
@@ -17,7 +20,8 @@ import path from 'node:path';
 import url from 'node:url';
 
 const here = path.dirname(url.fileURLToPath(import.meta.url));
-const BUILD = path.resolve(here, '..', 'build');
+const dirIndex = process.argv.indexOf('--dir');
+const BUILD = dirIndex > -1 ? path.resolve(process.argv[dirIndex + 1]) : path.resolve(here, '..', 'build');
 const BASE = '/inventag-aws/';
 const i = process.argv.indexOf('--port');
 const PORT = Number(i > -1 ? process.argv[i + 1] : 4173);

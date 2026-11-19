@@ -4,7 +4,7 @@
  *
  *   cd website && npm run build
  *   npm run serve:pages -- --port 4173 &   (serves build/ like GitHub Pages, under /inventag-aws/)
- *   npm run check:a11y -- [--base http://localhost:4173/inventag-aws] [--shots ../screenshots] [--quick]
+ *   npm run check:a11y -- [--base http://localhost:4173/inventag-aws] [--shots ../screenshots] [--quick] [--strict-locales]
  *
  * Needs Playwright with Chromium. Playwright is NOT a dependency of the site
  * (it would add ~200 MB of browsers); point NODE_PATH at an existing install,
@@ -69,6 +69,8 @@ const arg = (name, def) => {
 const BASE = arg('--base', 'http://localhost:4173/inventag-aws');
 const SHOTS = arg('--shots', null);
 const QUICK = process.argv.includes('--quick');
+// --strict-locales: a locale that is not served is a failure, not "skipped" (an assembled build must have it).
+const STRICT_LOCALES = process.argv.includes('--strict-locales');
 
 // Archived versions, newest first (never hard-coded: the check survives every release).
 const VERSIONS = JSON.parse(fs.readFileSync(new URL('../versions.json', import.meta.url), 'utf8'));
@@ -701,7 +703,8 @@ for (const theme of ['light', 'dark']) {
       const page = await ctx.newPage();
       const res = await page.goto(BASE + start, {waitUntil: 'networkidle'});
       if (locale && (!res || res.status() !== 200)) {
-        console.log(`${tag}: skipped: no ${locale.slice(1)} build`);
+        if (STRICT_LOCALES) fail(`${tag}: no ${locale.slice(1)} build is served (--strict-locales)`);
+        else console.log(`${tag}: skipped: no ${locale.slice(1)} build`);
         await ctx.close();
         continue;
       }
