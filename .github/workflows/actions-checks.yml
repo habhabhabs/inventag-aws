@@ -103,4 +103,7 @@ jobs:
           tests/unit/test_docs_examples_workflow.py \
           tests/unit/test_performance_workflow.py \
           tests/unit/test_workflows_run_no_migration_js.py \
+          tests/unit/test_release_tag.py \
+          tests/unit/test_release_runbook.py \
+          tests/unit/test_roll_changelog.py \
           "tests/backward_compatibility/test_github_actions_compatibility.py::TestGitHubActionsCompatibility"
