@@ -79,8 +79,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # current.json: the build's prebuild step (website/scripts/sync-i18n.mjs)
+          # wrote the released version into its "version.label"; commit it so the
+          # committed files do not go stale at each release (register row C-06).
           git add website/versioned_docs website/versioned_sidebars website/versions.json \
-            website/i18n/*/docusaurus-plugin-content-docs/version-*.json
+            website/i18n/*/docusaurus-plugin-content-docs/version-*.json \
+            website/i18n/*/docusaurus-plugin-content-docs/current.json
           if git diff --staged --quiet; then
             echo "Nothing to commit: documentation versions already match the tags."
           else
