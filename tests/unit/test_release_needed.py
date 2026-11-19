@@ -447,3 +447,9 @@ def test_the_root_launcher_and_the_templates_folder_are_not_application(repo):
         },
     )
     assert decision(repo)["application_changed"] == "false"
+
+
+def test_step_release_as_value_in_capitals_is_read_in_lower_case(repo, tmp_path):
+    repo.commit("feat: x\n\nRelease-As: MINOR", {"inventag/core.py": "x = 1\n"})
+    outputs, _ = run_check_step(repo, tmp_path)
+    assert (outputs["should_release"], outputs["version_bump"]) == ("true", "minor")

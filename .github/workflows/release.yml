@@ -66,9 +66,11 @@ jobs:
       id: check
       run: |
         # Default to no release
-        echo "should_release=false" >> $GITHUB_OUTPUT
-        echo "version_bump=patch" >> $GITHUB_OUTPUT
-        echo "pr_number=" >> $GITHUB_OUTPUT
+        {
+          echo "should_release=false"
+          echo "version_bump=patch"
+          echo "pr_number="
+        } >> "$GITHUB_OUTPUT"
         
         # Publish-only run: no new release, the publish-pypi job handles it
         if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$INPUT_PUBLISH_TAG" ]; then
@@ -79,8 +81,8 @@ jobs:
         # Check if manual dispatch with version bump
         if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
           case "$INPUT_VERSION_BUMP" in patch|minor|major) ;; *) echo "invalid bump"; exit 1;; esac
-          echo "should_release=true" >> $GITHUB_OUTPUT
-          echo "version_bump=$INPUT_VERSION_BUMP" >> $GITHUB_OUTPUT
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+          echo "version_bump=$INPUT_VERSION_BUMP" >> "$GITHUB_OUTPUT"
           echo "Manual release triggered with $INPUT_VERSION_BUMP bump"
           exit 0
         fi
@@ -136,39 +138,39 @@ jobs:
           if echo "$COMMIT_MSG" | head -n 1 | grep -q "^Merge pull request #"; then
             # PR number from the first line only: the body may mention other #numbers
             PR_NUM=$(echo "$COMMIT_MSG" | head -n 1 | grep -o "#[0-9]\+" | head -n 1 | tr -d '#')
-            echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
+            echo "pr_number=$PR_NUM" >> "$GITHUB_OUTPUT"
 
             # Get PR labels to determine version bump
-            PR_LABELS=$(gh pr view $PR_NUM --json labels --jq '.labels[].name' || echo "")
+            PR_LABELS=$(gh pr view "$PR_NUM" --json labels --jq '.labels[].name' || echo "")
             echo "PR Labels: $PR_LABELS"
 
             # Determine version bump from labels
             if echo "$PR_LABELS" | grep -q "release:major"; then
-              echo "should_release=true" >> $GITHUB_OUTPUT
-              echo "version_bump=major" >> $GITHUB_OUTPUT
+              echo "should_release=true" >> "$GITHUB_OUTPUT"
+              echo "version_bump=major" >> "$GITHUB_OUTPUT"
               echo "Major release triggered by PR #$PR_NUM"
             elif echo "$PR_LABELS" | grep -q "release:minor"; then
-              echo "should_release=true" >> $GITHUB_OUTPUT
-              echo "version_bump=minor" >> $GITHUB_OUTPUT
+              echo "should_release=true" >> "$GITHUB_OUTPUT"
+              echo "version_bump=minor" >> "$GITHUB_OUTPUT"
               echo "Minor release triggered by PR #$PR_NUM"
             elif echo "$PR_LABELS" | grep -q "release:patch"; then
-              echo "should_release=true" >> $GITHUB_OUTPUT
-              echo "version_bump=patch" >> $GITHUB_OUTPUT
+              echo "should_release=true" >> "$GITHUB_OUTPUT"
+              echo "version_bump=patch" >> "$GITHUB_OUTPUT"
               echo "Patch release triggered by PR #$PR_NUM"
             else
               # Default to patch release for any PR merge to main
-              echo "should_release=true" >> $GITHUB_OUTPUT
-              echo "version_bump=patch" >> $GITHUB_OUTPUT
+              echo "should_release=true" >> "$GITHUB_OUTPUT"
+              echo "version_bump=patch" >> "$GITHUB_OUTPUT"
               echo "Default patch release for PR #$PR_NUM (no version label found)"
             fi
           else
             # Every other push to main with an application change is a patch
             # release, unless the commit message has a "Release-As: minor|major"
             # (or patch) line.
-            BUMP=$(echo "$COMMIT_MSG" | grep -oiE "^Release-As: *(patch|minor|major) *$" | head -n 1 | sed -E 's/^[^:]*: *//' | tr 'A-Z' 'a-z' | tr -d ' ' || true)
+            BUMP=$(echo "$COMMIT_MSG" | grep -oiE "^Release-As: *(patch|minor|major) *$" | head -n 1 | sed -E 's/^[^:]*: *//' | tr '[:upper:]' '[:lower:]' | tr -d ' ' || true)
             BUMP=${BUMP:-patch}
-            echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "version_bump=$BUMP" >> $GITHUB_OUTPUT
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "version_bump=$BUMP" >> "$GITHUB_OUTPUT"
             echo "$BUMP release for the pushed commit"
           fi
         fi
@@ -256,9 +258,11 @@ jobs:
         echo "  🏷️ Tag: v$NEW_VERSION"
         echo "  📈 Bump: $BUMP_TYPE"
         
-        echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-        echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-        echo "tag_name=v$NEW_VERSION" >> $GITHUB_OUTPUT
+        {
+          echo "current_version=$CURRENT_VERSION"
+          echo "new_version=$NEW_VERSION"
+          echo "tag_name=v$NEW_VERSION"
+        } >> "$GITHUB_OUTPUT"
 
     - name: Generate comprehensive release notes for version.json
       id: version_notes
