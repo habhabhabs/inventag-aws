@@ -92,22 +92,21 @@ def test_success_holds_one_slot_during_the_request_and_frees_it():
 
 
 def test_the_key_uses_the_clients_region_and_the_service_id():
-    session, limiter, responder, _ = _setup([OK])
+    session = _session()
+    limiter = InFlightLimiter(8)
+    limiter.attach(session, ACCOUNT)
+    seen = []
+
+    def answer(request, **kwargs):
+        seen.append(limiter.in_flight(key=(ACCOUNT, "dynamodb", "us-west-2")))
+        return _response(request, *OK)
+
+    session.events.register("before-send", answer)
     other = session.client(
         "dynamodb",
         region_name="us-west-2",
         config=Config(retries={"total_max_attempts": 1}),
     )
-    seen = []
-    responder.answers = [OK]
-    original = responder.__call__
-
-    def spy(request, **kwargs):
-        seen.append(limiter.in_flight(key=(ACCOUNT, "dynamodb", "us-west-2")))
-        return original(request, **kwargs)
-
-    session.events.unregister("before-send", responder)
-    session.events.register("before-send", spy)
     other.list_tables()
     assert seen == [1]
     assert limiter.in_flight() == 0
