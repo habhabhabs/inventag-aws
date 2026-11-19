@@ -21,6 +21,10 @@ _DATA_KEY = re.compile(
 )
 
 
+# Fields kept on the row for analysis and the snapshot, never written as a report column.
+ANALYSIS_ONLY_FIELDS = frozenset({"raw_data.resourcesVpcConfig"})
+
+
 def is_data_keyed(value: Mapping[Any, Any]) -> bool:
     """True when any key of ``value`` is a UUID, a long hex ID, an ARN or
     starts with a digit (a CIDR, an account ID). Tag keys such as

@@ -11,7 +11,7 @@ import os
 import logging
 from typing import Dict, List, Any, Optional
 
-from .data_keys import as_cell, is_data_keyed
+from .data_keys import ANALYSIS_ONLY_FIELDS, as_cell, is_data_keyed
 from datetime import datetime, timezone
 
 from .document_generator import DocumentBuilder, DocumentGenerationResult, BOMData
@@ -88,6 +88,8 @@ class CSVBuilder(DocumentBuilder):
         items = []
         for k, v in d.items():
             new_key = f"{parent_key}{sep}{k}" if parent_key else k
+            if new_key in ANALYSIS_ONLY_FIELDS:
+                continue
             if isinstance(v, dict) and new_key != "tags" and is_data_keyed(v):
                 items.append((new_key, as_cell(v)))
             elif isinstance(v, dict):
