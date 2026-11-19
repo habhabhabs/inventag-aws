@@ -1,0 +1,32 @@
+EC2:
+  default_description: "Amazon Elastic Compute Cloud - Virtual servers in the cloud"
+  resource_types:
+    Instance: "Virtual machine instances providing scalable compute capacity"
+    Volume: "Block storage volumes attached to EC2 instances"
+    SecurityGroup: "Virtual firewall controlling traffic to instances"
+    KeyPair: "Key pairs for secure SSH access to instances"
+
+S3:
+  default_description: "Amazon Simple Storage Service - Object storage service"
+  resource_types:
+    Bucket: "Container for objects stored in Amazon S3"
+
+RDS:
+  default_description: "Amazon Relational Database Service - Managed relational database"
+  resource_types:
+    DBInstance: "Managed database instance"
+    DBCluster: "Database cluster for Aurora"
+    DBSubnetGroup: "Subnet group for database placement"
+
+Lambda:
+  default_description: "AWS Lambda - Serverless compute service"
+  resource_types:
+    Function: "Serverless function that runs code in response to events"
+
+VPC:
+  default_description: "Amazon Virtual Private Cloud - Isolated cloud resources"
+  resource_types:
+    VPC: "Virtual private cloud providing network isolation"
+    Subnet: "Network subnet within a VPC"
+    InternetGateway: "Gateway for internet access"
+    RouteTable: "Route table for network traffic routing"
