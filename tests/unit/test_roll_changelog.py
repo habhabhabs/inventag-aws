@@ -126,3 +126,89 @@ def test_the_real_changelog_rolls_and_keeps_every_older_section(tmp_path):
     older = [ln for ln in real.splitlines() if ln.startswith("## [v1.")]
     assert all(ln in text.splitlines() for ln in older)
     assert text.count("## [Unreleased]") == 1
+
+
+# ------------------------- the check after a bump commit (C-09, P-16, WO-CI3)
+CHECK = ROOT / ".github" / "scripts" / "check-unreleased-empty.sh"
+
+
+def run_check(tmp_path, text):
+    path = tmp_path / "CHANGELOG.md"
+    path.write_text(text, encoding="utf-8")
+    return subprocess.run(
+        ["bash", str(CHECK), str(path)], capture_output=True, text=True
+    )
+
+
+def test_check_passes_on_an_empty_unreleased(tmp_path):
+    result = run_check(tmp_path, EMPTY)
+    assert result.returncode == 0
+    assert "is empty" in result.stdout
+
+
+def test_check_fails_on_notes_left_under_unreleased(tmp_path):
+    result = run_check(tmp_path, FILLED)
+    assert result.returncode == 1
+    lines = result.stdout.splitlines()
+    assert lines[0].startswith("::error::The Unreleased section of ")
+    assert "(2 lines)" in lines[0]
+    assert "7: ### Fixed" in lines and "9: - New fix." in lines
+
+
+def test_check_passes_on_what_the_roll_leaves(tmp_path):
+    _, rolled = run(tmp_path, FILLED)
+    assert run_check(tmp_path, rolled).returncode == 0
+
+
+def test_check_passes_on_the_v1_2_2_bump_commit_text(tmp_path):
+    # The shape the real v1.2.2 bump commit (1f582a2) left: an empty
+    # Unreleased directly above the new version heading.
+    text = HEAD + "## [Unreleased]\n\n## [v1.2.2] - 2026-11-19\n\n- Fix.\n\n" + OLD
+    assert run_check(tmp_path, text).returncode == 0
+
+
+def test_check_without_heading_or_file_is_exit_2(tmp_path):
+    assert run_check(tmp_path, FILLED.replace("## [Unreleased]", "## [Next]")).returncode == 2
+    result = subprocess.run(
+        ["bash", str(CHECK), str(tmp_path / "none.md")], capture_output=True, text=True
+    )
+    assert result.returncode == 2
+
+
+def test_release_workflow_runs_the_check_on_the_bump_commit_push_only():
+    import yaml
+
+    workflow = yaml.safe_load(
+        (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    )
+    job = workflow["jobs"]["changelog-after-bump"]
+    condition = " ".join(job["if"].split())
+    assert condition == (
+        "github.event_name == 'push' && "
+        "startsWith(github.event.head_commit.message, 'chore: bump version to ')"
+    )
+    assert "needs" not in job  # independent: it never holds back the publish job
+    assert job["permissions"] == {"contents": "read"}
+    runs = [step.get("run", "") for step in job["steps"]]
+    assert "bash .github/scripts/check-unreleased-empty.sh CHANGELOG.md" in runs
+    # No other job waits for it.
+    for name, other in workflow["jobs"].items():
+        assert "changelog-after-bump" not in str(other.get("needs", "")), name
+
+
+def test_release_workflow_rolls_the_changelog_into_the_bump_commit():
+    import yaml
+
+    workflow = yaml.safe_load(
+        (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    )
+    step = next(
+        s
+        for s in workflow["jobs"]["release"]["steps"]
+        if s["name"] == "Commit and push version.json changes"
+    )
+    run_text = step["run"]
+    roll = run_text.index(".github/scripts/roll-changelog.sh")
+    add = run_text.index("git add version.json inventag/_version.py CHANGELOG.md")
+    commit = run_text.index('git commit -m "chore: bump version to v')
+    assert roll < add < commit

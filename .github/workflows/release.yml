@@ -692,3 +692,25 @@ jobs:
       uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
       with:
         skip-existing: true
+
+  # Post-release check (register rows C-09, P-16): on the push of the release
+  # job's own bump commit, the Unreleased section of CHANGELOG.md must be empty;
+  # its notes belong under the new version's heading. It only reports: a red
+  # job here does not touch the tag, the GitHub release or PyPI.
+  changelog-after-bump:
+    name: Changelog rolled
+    runs-on: ubuntu-24.04
+    if: >-
+      github.event_name == 'push' &&
+      startsWith(github.event.head_commit.message, 'chore: bump version to ')
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout the bump commit
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Unreleased is empty
+      run: bash .github/scripts/check-unreleased-empty.sh CHANGELOG.md
