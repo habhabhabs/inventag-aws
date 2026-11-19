@@ -14,9 +14,9 @@ masks is fine. Every other one must be decided by a person:
     next to it.
 ``KNOWN_UNMASKED``
     the field IS documented as a secret or credential and the deny-list does not
-    mask it today. Each is a row for the final patch (an application change, not
-    made here). The test keeps the list honest: when the deny-list learns the
-    name, the entry must be removed.
+    mask it: documented secrets that InvenTag never reads, proven by
+    tests/unit/test_unmasked_secret_fields_never_read.py. The test keeps the
+    list honest: when the deny-list learns the name, the entry must be removed.
 
 A new finding fails the test with its name, one operation and the field's AWS
 documentation, so the decision can be made at once. The sweep is tied to the
