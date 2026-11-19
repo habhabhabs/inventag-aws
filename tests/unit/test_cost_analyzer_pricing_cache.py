@@ -2,6 +2,7 @@
 
 import json
 import logging
+from unittest import mock
 from unittest.mock import Mock
 
 import pytest
@@ -201,7 +202,11 @@ def test_pricing_client_uses_the_account_session():
     session = Mock()
     analyzer = CostAnalyzer(session=session)
     client = analyzer._get_pricing_client()
-    session.client.assert_called_once_with("pricing", region_name="us-east-1")
+    session.client.assert_called_once_with(
+        "pricing", region_name="us-east-1", config=mock.ANY
+    )
+    # The shared retry settings (A-73), not the SDK default.
+    assert session.client.call_args.kwargs["config"].retries["total_max_attempts"] == 10
     assert client is session.client.return_value
     assert analyzer._get_pricing_client() is client
     session.client.assert_called_once()
