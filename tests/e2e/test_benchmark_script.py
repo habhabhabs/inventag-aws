@@ -3,9 +3,17 @@
 import json
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
+import boto3
 import pytest
+from botocore.config import Config
+from botocore.exceptions import ClientError
+from moto import mock_aws
+
+from tests import moto_serial
+from tests.latency import inject_latency
 
 pytestmark = pytest.mark.e2e
 
@@ -69,16 +77,6 @@ def test_time_limit_stops_the_run_with_exit_code_3():
 # The latency harness (tests/latency.py): what the benchmark and the concurrency
 # tests of v1.4.0 rely on. In process, against moto, no real sleep.
 # ---------------------------------------------------------------------------
-import threading
-
-import boto3
-from botocore.config import Config
-from botocore.exceptions import ClientError
-from moto import mock_aws
-
-from tests import moto_serial
-from tests.latency import inject_latency
-
 NO_RETRY = Config(retries={"max_attempts": 1, "mode": "standard"})
 
 
@@ -198,7 +196,9 @@ def test_a_permanent_throttle_ends_in_the_throttling_error():
             0, throttle={"sqs:ListQueues": None}, sleep=RecordingSleep()
         ) as harness:
             with pytest.raises(ClientError) as caught:
-                sqs(config=Config(retries={"max_attempts": 3})).list_queues()
+                sqs(
+                    config=Config(retries={"total_max_attempts": 3, "mode": "standard"})
+                ).list_queues()
     assert caught.value.response["Error"]["Code"] == "Throttling"
     assert harness.total_requests == 3
 
@@ -207,28 +207,33 @@ def test_a_permanent_throttle_ends_in_the_throttling_error():
     "make_call",
     [
         pytest.param(
-            lambda: boto3.client("sts", region_name="us-east-1", config=NO_RETRY)
-            .get_caller_identity(),
+            lambda: boto3.client(
+                "sts", region_name="us-east-1", config=NO_RETRY
+            ).get_caller_identity(),
             id="sts-query",
         ),
         pytest.param(
-            lambda: boto3.client("s3", region_name="us-east-1", config=NO_RETRY)
-            .list_buckets(),
+            lambda: boto3.client(
+                "s3", region_name="us-east-1", config=NO_RETRY
+            ).list_buckets(),
             id="s3-rest-xml",
         ),
         pytest.param(
-            lambda: boto3.client("dynamodb", region_name="us-east-1", config=NO_RETRY)
-            .list_tables(),
+            lambda: boto3.client(
+                "dynamodb", region_name="us-east-1", config=NO_RETRY
+            ).list_tables(),
             id="dynamodb-json",
         ),
         pytest.param(
-            lambda: boto3.client("lambda", region_name="us-east-1", config=NO_RETRY)
-            .list_functions(),
+            lambda: boto3.client(
+                "lambda", region_name="us-east-1", config=NO_RETRY
+            ).list_functions(),
             id="lambda-rest-json",
         ),
         pytest.param(
-            lambda: boto3.client("ec2", region_name="us-east-1", config=NO_RETRY)
-            .describe_vpcs(),
+            lambda: boto3.client(
+                "ec2", region_name="us-east-1", config=NO_RETRY
+            ).describe_vpcs(),
             id="ec2",
         ),
     ],
