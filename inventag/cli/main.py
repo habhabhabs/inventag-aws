@@ -38,6 +38,7 @@ from ..core import (
     AccountCredentials,
     CredentialManager,
 )
+from ..core.cloud_bom_generator import _mfa_serial_without_terminal
 from ..reporting import BOMProcessingConfig
 from ..reporting.report_template import (
     FORMATS as TEMPLATE_FORMATS,
@@ -1224,14 +1225,6 @@ def _profile_name(session) -> str:
     )
 
 
-def _needs_mfa_code(session) -> bool:
-    """True when the profile of this session has an ``mfa_serial``."""
-    try:
-        return bool(session._session.get_scoped_config().get("mfa_serial"))
-    except Exception:  # an unknown profile is reported by the call itself
-        return False
-
-
 def _log_mfa_without_terminal(logger, session) -> None:
     profile = _profile_name(session)
     logger.error(
@@ -1266,7 +1259,7 @@ def validate_aws_credentials_early(timeout: Optional[int] = None) -> bool:
         # A profile that needs an MFA code cannot get it with no terminal:
         # stop now with our message instead of letting the SDK prompt (it
         # would wait on an idle stdin, or print its own warning first).
-        if _needs_mfa_code(session) and not sys.stdin.isatty():
+        if _mfa_serial_without_terminal(session):
             _log_mfa_without_terminal(logger, session)
             return False
         if timeout:
