@@ -21,7 +21,6 @@ def _run_and_get_pool_types(monkeypatch):
     seen = []
     disc = _disc()
     monkeypatch.setattr(disc, "_discover_service_in_region", lambda task: 0)
-    original = cd.ThreadPoolExecutor
     orig_make = disc._make_pool
 
     def spy(workers):
@@ -31,7 +30,7 @@ def _run_and_get_pool_types(monkeypatch):
 
     monkeypatch.setattr(disc, "_make_pool", spy)
     disc._discover_all_service_resources(2)
-    return seen, original
+    return seen, None
 
 
 def test_the_listing_pool_is_a_daemon_pool(monkeypatch):
