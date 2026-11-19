@@ -432,9 +432,8 @@ CONFIG_SPEC: Dict[str, Field] = {
     ),
     "services": Field(
         "list",
-        "Services to include (`--account-services`). Limits the services in "
-        "the report. The scan still reads every service, so warnings about "
-        "other services can appear.",
+        "Services to include (`--account-services`). Only these services "
+        "are scanned and reported.",
         item=Field("string", "Service name."),
         default=None,
         min_items=1,
