@@ -291,6 +291,9 @@ ADDED_AFTER_BOTOCORE_FLOOR = frozenset(
         ("lakeformation", "GetTemporaryGlueFunctionCredentials"),
         # v1.3.1: issues a web identity token (JWT) for the caller
         ("sts", "GetWebIdentityToken"),
+        # v1.3.1: issues temporary credentials scoped down from the caller's
+        # (botocore 1.44.7; also missing in 1.44.2)
+        ("sts", "GetScopedCredentials"),
     }
 )
 
