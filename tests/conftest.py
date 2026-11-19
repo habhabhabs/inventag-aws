@@ -230,3 +230,30 @@ def _no_outbound_network(monkeypatch):
 
     monkeypatch.setattr(socket.socket, "connect", guarded_connect)
     monkeypatch.setattr(socket.socket, "connect_ex", guarded_connect_ex)
+
+
+def pytest_collection_modifyitems(config, items):
+    """Run the test files in a shuffled order when a seed is given.
+
+    Set ``INVENTAG_TEST_SHUFFLE_SEED`` to an integer to shuffle the order of the
+    test files (tests keep their order inside a file). Without it the order is
+    the default one. The variable is read here and nowhere else.
+    """
+    seed = os.environ.get("INVENTAG_TEST_SHUFFLE_SEED")
+    if not seed:
+        return
+    import random
+
+    by_file = {}
+    for item in items:
+        by_file.setdefault(str(item.fspath), []).append(item)
+    files = sorted(by_file)
+    random.Random(int(seed)).shuffle(files)
+    items[:] = [item for name in files for item in by_file[name]]
+
+
+def pytest_report_header(config):
+    seed = os.environ.get("INVENTAG_TEST_SHUFFLE_SEED")
+    if seed:
+        return f"test file order shuffled, seed {seed}"
+    return None
