@@ -27,6 +27,23 @@ regions, services and tags), `--enable-state-management`, `--enable-delta-detect
 Copy an example that holds keys and run `chmod 600` on the copy. The accounts without credentials name the default
 role, `InvenTagCrossAccountRole`, in `role_arn`.
 
+Five of these files (`accounts_aws_secrets_manager.json`, `accounts_cicd_environment.json`,
+`accounts_flexible_credentials.json`, `accounts_github_secrets.json`, `cicd_accounts_example.yaml`) name an
+explicit `role_arn` for the accounts without credentials. An entry with an explicit `role_arn` always assumes
+that role and ignores `--cross-account-role`. Six files (`accounts_aws_secrets_manager.json`,
+`accounts_basic.json`, `accounts_cicd_environment.json`, `accounts_github_secrets.json`,
+`accounts_with_profiles.json`, `cicd_accounts_example.yaml`) set `max_concurrent_accounts` under `settings` to 3
+or 2, so a run with one of them processes at most that many accounts at once (the command-line default is 4).
+
+### CI examples
+
+`github_actions_cicd_example.yml`, `aws_codebuild_buildspec.yml` and `quick_start.sh` run the `inventag` options of
+`inventag --help`. `aws_codebuild_with_secrets_manager.yml`, `github_actions_with_secrets.yml`, `docker_compose_cicd.yml`,
+`jenkins_pipeline.groovy` and `cicd_config_complete.json` run `scripts/development/cicd_bom_generation.py`, a development
+script of the repository with its own options (`--formats`, `--compliance-threshold`, `--slack-webhook` and others). These
+options do not exist in the `inventag` command, and the script is not in the installed package: run it from a clone of the
+repository.
+
 ### `service-descriptions-example.yaml`
 Example service descriptions configuration that customizes how AWS services and resources are described in BOM reports.
 

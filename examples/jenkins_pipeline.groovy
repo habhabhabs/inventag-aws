@@ -98,7 +98,7 @@ pipeline {
                 // Validate configuration with dry run
                 sh '''
                     . venv/bin/activate
-                    python scripts/cicd_bom_generation.py \
+                    python scripts/development/cicd_bom_generation.py \
                         --accounts-file ${ACCOUNTS_FILE} \
                         --formats ${OUTPUT_FORMATS} \
                         --compliance-threshold ${COMPLIANCE_THRESHOLD} \
@@ -149,7 +149,7 @@ pipeline {
                         // Execute BOM generation
                         sh """
                             . venv/bin/activate
-                            python scripts/cicd_bom_generation.py ${args.join(' ')}
+                            python scripts/development/cicd_bom_generation.py ${args.join(' ')}
                         """
                     }
                 }

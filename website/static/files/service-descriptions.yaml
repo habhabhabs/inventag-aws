@@ -3,7 +3,49 @@
 # Reference: https://docs.aws.amazon.com/prescriptive-guidance/latest/cost-allocation-tagging/
 # Updated: 2025-08-08
 
+# InvenTag reads only the `service_descriptions` block below. For each service, the
+# `default` entry is the description used for a resource type that has no entry of its own.
+# The `prescriptive_guidance` block holds the tagging guidance of this template (tags,
+# cost factors, governance notes, report plans). InvenTag does not read it.
 service_descriptions:
+  EC2:
+    default:
+      description: "Scalable virtual servers with comprehensive cost allocation and optimization tracking"
+  S3:
+    default:
+      description: "Object storage with comprehensive cost tracking and automated lifecycle management"
+  RDS:
+    default:
+      description: "Managed databases with comprehensive cost allocation, compliance tracking, and optimization"
+  LAMBDA:
+    default:
+      description: "Serverless compute with granular function-level cost allocation"
+  ECS:
+    default:
+      description: "Container orchestration with granular resource cost tracking"
+  VPC:
+    default:
+      description: "Network isolation with associated data transfer and NAT gateway costs"
+  CLOUDFRONT:
+    default:
+      description: "Content delivery network with geographic cost distribution"
+  REDSHIFT:
+    default:
+      description: "Data warehouse with predictable compute and storage costs"
+  GLUE:
+    default:
+      description: "Serverless ETL with job-based cost allocation"
+  IAM:
+    default:
+      description: "Identity management - minimal direct costs but critical for governance"
+  KMS:
+    default:
+      description: "Encryption key management with per-key and API call costs"
+  CLOUDWATCH:
+    default:
+      description: "Monitoring and observability with metrics, logs, and alarm costs"
+
+prescriptive_guidance:
   version: "1.1"
   compliance_framework: "AWS Prescriptive Guidance for Cost Allocation Tagging"
   last_updated: "2025-08-08"

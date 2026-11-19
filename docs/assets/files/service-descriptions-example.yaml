@@ -1,32 +1,50 @@
-EC2:
-  default_description: "Amazon Elastic Compute Cloud - Virtual servers in the cloud"
-  resource_types:
-    Instance: "Virtual machine instances providing scalable compute capacity"
-    Volume: "Block storage volumes attached to EC2 instances"
-    SecurityGroup: "Virtual firewall controlling traffic to instances"
-    KeyPair: "Key pairs for secure SSH access to instances"
+# Example service descriptions for the BOM reports (--service-descriptions).
+# Under `service_descriptions`, each service has a `default` entry (used for a resource type
+# with no entry of its own) and one entry per resource type. Every entry needs a `description`.
 
-S3:
-  default_description: "Amazon Simple Storage Service - Object storage service"
-  resource_types:
-    Bucket: "Container for objects stored in Amazon S3"
+service_descriptions:
+  EC2:
+    default:
+      description: "Amazon Elastic Compute Cloud - Virtual servers in the cloud"
+    Instance:
+      description: "Virtual machine instances providing scalable compute capacity"
+    Volume:
+      description: "Block storage volumes attached to EC2 instances"
+    SecurityGroup:
+      description: "Virtual firewall controlling traffic to instances"
+    KeyPair:
+      description: "Key pairs for secure SSH access to instances"
 
-RDS:
-  default_description: "Amazon Relational Database Service - Managed relational database"
-  resource_types:
-    DBInstance: "Managed database instance"
-    DBCluster: "Database cluster for Aurora"
-    DBSubnetGroup: "Subnet group for database placement"
+  S3:
+    default:
+      description: "Amazon Simple Storage Service - Object storage service"
+    Bucket:
+      description: "Container for objects stored in Amazon S3"
 
-Lambda:
-  default_description: "AWS Lambda - Serverless compute service"
-  resource_types:
-    Function: "Serverless function that runs code in response to events"
+  RDS:
+    default:
+      description: "Amazon Relational Database Service - Managed relational database"
+    DBInstance:
+      description: "Managed database instance"
+    DBCluster:
+      description: "Database cluster for Aurora"
+    DBSubnetGroup:
+      description: "Subnet group for database placement"
 
-VPC:
-  default_description: "Amazon Virtual Private Cloud - Isolated cloud resources"
-  resource_types:
-    VPC: "Virtual private cloud providing network isolation"
-    Subnet: "Network subnet within a VPC"
-    InternetGateway: "Gateway for internet access"
-    RouteTable: "Route table for network traffic routing"
+  Lambda:
+    default:
+      description: "AWS Lambda - Serverless compute service"
+    Function:
+      description: "Serverless function that runs code in response to events"
+
+  VPC:
+    default:
+      description: "Amazon Virtual Private Cloud - Isolated cloud resources"
+    VPC:
+      description: "Virtual private cloud providing network isolation"
+    Subnet:
+      description: "Network subnet within a VPC"
+    InternetGateway:
+      description: "Gateway for internet access"
+    RouteTable:
+      description: "Route table for network traffic routing"

@@ -31,7 +31,7 @@ services:
       - ./output:/app/output
       - ~/.aws:/root/.aws:ro  # Optional: for AWS CLI profiles
     command: >
-      python scripts/cicd_bom_generation.py
+      python scripts/development/cicd_bom_generation.py
       --accounts-file examples/accounts_cicd_environment.json
       --formats excel word json
       --output-dir /app/output

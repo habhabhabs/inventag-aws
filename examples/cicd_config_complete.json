@@ -84,12 +84,12 @@
     }
   },
   "cli_examples": {
-    "basic_usage": "python scripts/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel word",
-    "with_s3_upload": "python scripts/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel word json --s3-bucket my-bucket --s3-key-prefix reports",
-    "with_compliance_gate": "python scripts/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel --compliance-threshold 85 --fail-on-security-issues",
-    "with_notifications": "python scripts/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel --slack-webhook https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
-    "with_prometheus": "python scripts/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel --prometheus-gateway http://prometheus:9091",
-    "full_featured": "python scripts/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel word json --s3-bucket my-bucket --compliance-threshold 80 --fail-on-security-issues --slack-webhook https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK --prometheus-gateway http://prometheus:9091 --verbose",
-    "dry_run": "python scripts/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel --dry-run --verbose"
+    "basic_usage": "python scripts/development/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel word",
+    "with_s3_upload": "python scripts/development/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel word json --s3-bucket my-bucket --s3-key-prefix reports",
+    "with_compliance_gate": "python scripts/development/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel --compliance-threshold 85 --fail-on-security-issues",
+    "with_notifications": "python scripts/development/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel --slack-webhook https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+    "with_prometheus": "python scripts/development/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel --prometheus-gateway http://prometheus:9091",
+    "full_featured": "python scripts/development/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel word json --s3-bucket my-bucket --compliance-threshold 80 --fail-on-security-issues --slack-webhook https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK --prometheus-gateway http://prometheus:9091 --verbose",
+    "dry_run": "python scripts/development/cicd_bom_generation.py --accounts-file examples/accounts_basic.json --formats excel --dry-run --verbose"
   }
 }
