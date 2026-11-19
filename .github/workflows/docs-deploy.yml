@@ -961,7 +961,7 @@ jobs:
         working-directory: ./website
         run: |
           npm run serve:pages -- --port 4173 > serve.log 2>&1 &
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             curl -fsS -o /dev/null http://localhost:4173/inventag-aws/ && break
             sleep 1
           done
