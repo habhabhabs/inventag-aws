@@ -1,0 +1,45 @@
+name: Weekly performance tests
+
+# The performance tests (`-m performance`) are excluded from every other run
+# (pytest.ini: -m "not performance and not slow"), so nothing else would notice
+# the next quadratic code path. This job runs them once a week, and the
+# delta-detector scaling test next to them. It never makes a release.
+"on":
+  schedule:
+    # Mondays at 03:17 UTC (a scheduled run uses the default branch)
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  performance:
+    name: Performance tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: '3.13'
+
+    - name: Install requirements
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt -r requirements-dev.txt
+
+    # `-m performance` on the command line replaces the -m of pytest.ini.
+    - name: Performance tests (-m performance)
+      shell: bash
+      run: python -m pytest -m performance -v --timeout=1800 tests/integration/test_performance_benchmarks.py
+
+    # Counts the work done per changed row for growing inputs: it fails when
+    # change detection grows faster than linearly (row A-40).
+    - name: Delta detector scaling test
+      shell: bash
+      run: python -m pytest -v --timeout=600 tests/unit/test_delta_detector_scaling.py
