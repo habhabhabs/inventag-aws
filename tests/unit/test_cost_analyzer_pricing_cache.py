@@ -33,7 +33,6 @@ def _analyzer(client):
     session = Mock()
     session.client.return_value = client
     analyzer = CostAnalyzer(session=session)
-    analyzer._PRICING_RETRY_DELAY = 0
     return analyzer
 
 
