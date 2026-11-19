@@ -913,6 +913,12 @@ SLOW_B = Fault(service="ec2", op="DescribeVpcs", key=ACCOUNTS["B"][1], sleep=40.
 SHORT = {"account_timeout": 20, "grace": 1, "poll": 0.2}
 ONE_SERVICE = ("--account-services", "SQS")
 NO_RESOURCES = "No resources to report (none found, or the filters removed all of them). No report file was written."
+# A-20 (final patch): an empty result under a service filter names the filter.
+FILTER_EMPTY_SQS = (
+    "No resources to report: none found with --account-services SQS (from the "
+    "command line or the accounts file). No report file was written; run without "
+    "that filter to see every resource."
+)
 NOTHING_READ = "No resources to report: nothing could be read (see the messages above). No report file was written."
 
 # What a row overrides on its plan entry. ``source`` is "run" when S1 executed the
@@ -1217,7 +1223,8 @@ MATRIX: Dict[str, Dict[str, Any]] = {
         current=(
             ("code", 0),
             ("report", False),
-            ("out", NO_RESOURCES),
+            # A-20: the message names the filter
+            ("out", FILTER_EMPTY_SQS),
             ("snapshot_zero", True),
             ("not", ("summary", "empty", True)),
         ),
@@ -1230,11 +1237,11 @@ MATRIX: Dict[str, Dict[str, Any]] = {
         current=(
             ("code", 0),
             ("report", False),
-            ("out", NO_RESOURCES),
-            ("not", ("out_regex", r"No resources.*(EC2|--account-services)")),
+            # A-20: the message names the filter (the target, now true)
+            ("out_regex", r"No resources.*(EC2|--account-services)"),
+            ("no_out", NO_RESOURCES),
         ),
         target=(("out_regex", r"No resources.*(EC2|--account-services)"),),
-        wp="WP-F1a",
     ),
     "F3": dict(
         source="run",
@@ -1268,7 +1275,7 @@ MATRIX: Dict[str, Dict[str, Any]] = {
         current=(
             ("code", 1),
             ("report", False),
-            ("out", NO_RESOURCES),
+            ("out", FILTER_EMPTY_SQS),  # A-20
             # fix2/track-a (A-29, message part): nothing to upload, not a failure
             ("out", "Nothing to upload to s3://regression-upload/"),
             ("not", ("out", "S3 upload failed")),
