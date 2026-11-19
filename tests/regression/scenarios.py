@@ -1054,15 +1054,15 @@ MATRIX: Dict[str, Dict[str, Any]] = {
             Fault(service="ec2", op="DescribeVpcs", key=ACCOUNTS["B"][1], sleep=40.0),
         ),
         limits=SHORT,
-        # the process is kept alive by the hung call: it ends long after the report is written
+        # A-25 (final patch): account and listing workers are daemon threads, so
+        # the hung call no longer keeps the process alive after the report
         current=(
             ("code", 0),
             ("report", True),
             ("out_regex", r"account 222222222222: timed out after 20 seconds"),
-            ("exit_after_report_at_least", 8.0),
+            ("exit_within_after_summary", 12.0),
         ),
         target=(("code", 0), ("exit_within_after_summary", 12.0)),
-        wp="WP-F2",
     ),
     "D1": dict(
         source="run",
