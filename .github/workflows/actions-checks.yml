@@ -76,13 +76,12 @@ jobs:
         tar -xzf actionlint.tar.gz actionlint
         ./actionlint -version
 
-    # The shell inside `run:` blocks is not passed to shellcheck yet
-    # (-shellcheck=): the existing workflows have findings to fix first.
-    # Scripts in .github/scripts are shellchecked in full below.
+    # actionlint runs shellcheck on the shell inside `run:` blocks; the
+    # scripts in .github/scripts are shellchecked in full below.
     - name: actionlint
       shell: bash
       run: |
-        "$RUNNER_TEMP/actionlint" -color -shellcheck= -pyflakes=
+        "$RUNNER_TEMP/actionlint" -color -pyflakes=
 
     - name: shellcheck and bash -n on .github/scripts
       shell: bash
