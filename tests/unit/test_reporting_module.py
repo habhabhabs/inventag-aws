@@ -20,7 +20,7 @@ import os
 import stat
 import sys
 from typing import Any, Dict, List
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 
 import pytest
 from botocore.exceptions import ClientError
@@ -706,7 +706,9 @@ class TestVPCEnrichment:
         assert "subnet_name" not in bucket
 
         # Only the real region is queried; "global" is skipped
-        mock_session.client.assert_called_once_with("ec2", region_name="us-east-1")
+        mock_session.client.assert_called_once_with(
+            "ec2", region_name="us-east-1", config=ANY
+        )
         assert converter.vpc_cache["subnet-0123456789abcdef0"]["availability_zone"] == (
             "us-east-1a"
         )
