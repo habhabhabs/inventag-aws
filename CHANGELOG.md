@@ -18,9 +18,12 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   `payment-cryptography:GetParametersForImport` and `GetParametersForExport`.
   Their names start with `Get`, so the guard allowed them, but they issue a
   token, AWS credentials or key material, or take a task from an activity's
-  queue. InvenTag never called them.
+  queue. InvenTag never called them. For these 8 operations
+  `--validate-operations` now prints BLOCKED and exits 1 (v1.3.0: ALLOWED,
+  exit 0).
 - The guard blocks `datazone:GetConnection` with `withSecret=true`, which
   returns the connection's credentials; without it the call is still allowed.
+  `--validate-operations` prints "blocked when withSecret=true" for it.
   The parameter rules of the guard now also apply to presigned URLs.
 - 18 more field names that AWS documents as secrets or tokens are masked
   (`***REDACTED***`) in reports, JSON output, snapshots, checkpoints and logs:
@@ -29,8 +32,11 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   `TokenValue`, `BillingToken`, `taskToken`, `CallbackToken`,
   `WorkUnitToken`, `registrationToken`, `ExportToken`, `ImportToken`,
   `PurchaseToken` and `offerToken`. InvenTag does not call the operations that
-  return them, so no report changes; the names are masked in case a later
-  version does. The names `secret`, `authKey` and `AccessKey` are not added,
+  return these fields. The names are also masked inside JSON text that
+  InvenTag reads, such as an EventBridge event pattern. If one of your
+  resources uses such a name there, its value now shows as `***REDACTED***`,
+  and the first change report after the upgrade lists that resource as
+  modified. The names `secret`, `authKey` and `AccessKey` are not added,
   because AWS also uses them for harmless fields.
 
 ## [v1.3.0] - 2026-11-19
