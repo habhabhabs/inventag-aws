@@ -8,6 +8,111 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- `--account-services` and `services` in a config template now limit which
+  services are scanned, not only which are reported. The report holds the
+  same rows for the chosen services; the run makes fewer API calls and prints
+  no warnings about other services. A service left out this way is not
+  reported as removed in the change report, and the snapshot's coverage
+  summary counts the listings left out as `out_of_scope` (decision 15).
+- Discovery makes one Cost Explorer request per account (was two); billing
+  validation and the spend column share the answer (decision 17). Billing
+  validation now reads the same period as the spend column (from 30 days
+  before the first day of the month to today, instead of the last 30 days), so
+  a service billed only in that longer period now counts as billed: it gets a
+  spend value and `billing_validated` true. The fields `cost_last_30_days` and
+  `billing_cost_30d` of rows found through billing cover the same longer
+  period; their names are unchanged. The `--verbose` billing line names the
+  start of that period instead of "last 30 days".
+- Snapshots record which listings were not read
+  (`metadata.tags.units_not_read`: account, service, region, source and
+  outcome; present only when a listing failed). The next change report leaves
+  the resources of those listings out instead of showing them as added. The
+  snapshot schema stays 1.1, and earlier versions read such a snapshot and
+  ignore the key (decision 6). A change report made by an earlier version
+  after a v1.3.0 run shows each EKS cluster as modified once (the cluster's
+  VPC settings, recorded since this release).
+- Snapshots record the InvenTag version that wrote them
+  (`metadata.tags.inventag_version`). The first change report after an upgrade
+  does not count a field that the new version reads for the first time as a
+  change, and says in one line how many fields it left out; a real change to
+  such a field in that window is not reported, once.
+- The change report lists attribute changes in a fixed order, so two reports
+  of the same change are identical (decision 11).
+- A scan no longer starts the optimized discovery engine, whose result no
+  report used. The progress line "🚀 Optimized intelligent resource discovery"
+  and its `--verbose` lines ("Starting optimized AWS discovery ...",
+  "Intelligent discovery found N resources ...") are gone.
+- Library callers: `AWSResourceInventory.upload_to_s3` needs
+  `allow_write=True`, and the uploaded object is encrypted (SSE-S3).
+- Per-account reports (`--per-account-reports`) of every account, not only
+  the first, get the network and security enrichment columns.
+- EKS clusters make one `eks:DescribeCluster` call each, to record their VPC
+  settings for the network analysis. The field adds no report column. The
+  shipped read-only policy already allows the call.
+
+### Fixed
+
+- An account whose time limit ran out no longer keeps the process alive: a
+  call or listing still waiting is cut off, and the run ends right after the
+  report is written.
+- An empty result under `--account-services` or `--account-tags` names the
+  filter and says to run without it to see every resource. Without a filter
+  the message is as before. Exit codes are unchanged.
+- Run notes are masked like the log, so a secret in an error text does not
+  reach the report or the run result.
+- `--validate-credentials` gives the scan's verdict for an accounts-file entry
+  without credentials in another account: it assumes the cross-account role
+  there, also a role named with `--cross-account-role`.
+- A profile that needs an MFA code, run with no terminal, stops at once with a
+  message that names the profile and `aws sts get-session-token`, both for the
+  default credentials and for an accounts-file entry, and in
+  `--validate-credentials`. Before, the run waited for input that could not
+  come, or printed a stray "Password input may be echoed" line. With a
+  terminal, the code is asked for as before.
+- The account check uses the STS endpoint of the scanned partition (GovCloud,
+  China), and a region of another partition than the credentials' is named in
+  a warning.
+- The account's identity is looked up once per account, so repeated runs make
+  the same number of `sts:GetCallerIdentity` calls.
+- Two accounts that share one session object each keep their own time limit
+  (library use).
+- An account in which only some resources of the chosen services were read is
+  named as partly read, not as "every listing denied", when
+  `--account-services` is set.
+- The change report says that an account was read only in part (for example,
+  its session expired) instead of saying that it could not be scanned.
+- When the Tagging API did not answer for a region, the change report no
+  longer shows that region's resources as having changed tags.
+- The change report lists related resources for snapshots written by the CLI
+  (read from the AWS data, as the network and security analysis do), each
+  related resource once; the Lambda, security group and Auto Scaling
+  dependency patterns now apply.
+- The consolidated report of a multi-account run analyses every account's
+  network and security groups with that account's own credentials.
+- Network analysis counts RDS and Aurora clusters through a DB subnet group of
+  their own account, MSK clusters through their broker subnets and EKS
+  clusters through their subnets. EFS file systems are still not counted.
+- A subnet whose route table sends the two halves of the address space
+  (`0.0.0.0/1` and `128.0.0.0/1`, or `::/1` and `8000::/1`) to an internet
+  gateway counts as public.
+- Discovery, the analyzers, the cost analysis, the report upload of the CLI and
+  of the CI/CD integration, the compliance checker and the legacy scripts all
+  create their AWS clients with the same retry settings (standard mode, 10
+  tries; `AWS_RETRY_MODE` and `AWS_MAX_ATTEMPTS` win). The cost analysis no
+  longer adds a second retry loop of its own.
+- Failures that only the debug log knew about now give one warning per cause,
+  in discovery and in the cost analysis (`--enable-cost-analysis`), where a
+  cost that could not be worked out looked like no cost.
+- `inventag --version` and every scan start faster: the unused compliance
+  modules and `psutil` load only when first used. `ComplianceManager.close()`
+  stops its monitoring thread.
+- The help texts of `--billing-validation` and `--enable-cost-analysis` say
+  that the two are independent.
+- The template field reference says where an account's `account_name` appears,
+  and that `spec.services` limits the scan.
+
 ## [v1.2.2] - 2026-11-19
 
 ### Fixed
