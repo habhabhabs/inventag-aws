@@ -135,3 +135,67 @@ def test_the_guard_and_the_bucket_grant_work_on_the_new_client(upload_env):
             client.put_object(Bucket="other", Key="k", Body=b"x")
     finally:
         uninstall_global_guard()
+
+
+# --------------------- the generator's and the CI/CD integration's upload clients
+def test_the_generators_report_upload_uses_the_shared_retry_settings(upload_env):
+    """``CloudBOMGenerator.upload_reports_to_s3`` (the CLI's --s3-bucket path):
+    a throttled PutObject is tried 10 times, as discovery's calls are (the SDK
+    default was 3)."""
+    from types import SimpleNamespace
+
+    from inventag.core.cloud_bom_generator import CloudBOMGenerator, MultiAccountConfig
+
+    seen = []
+    real_session = boto3.Session
+
+    class CountingSession(real_session):
+        def client(self, *args, **kwargs):
+            client = super().client(*args, **kwargs)
+            if (args and args[0] == "s3") or kwargs.get("service_name") == "s3":
+                sends = Sends(503, "SlowDown")
+                client.meta.events.register("before-send.s3.PutObject", sends)
+                seen.append(sends)
+            return client
+
+    import inventag.core.cloud_bom_generator as cbg
+
+    original = cbg.boto3.Session
+    cbg.boto3.Session = CountingSession
+    try:
+        generator = CloudBOMGenerator(
+            MultiAccountConfig(accounts=[], output_directory=str(upload_env.parent))
+        )
+        config = SimpleNamespace(
+            bucket_name="reports", key_prefix="p", region=None, encryption="AES256"
+        )
+        result = generator.upload_reports_to_s3([str(upload_env)], config)
+    finally:
+        cbg.boto3.Session = original
+    assert len(result["errors"]) == 1
+    assert [s.count for s in seen] == [10]
+
+
+def test_the_cicd_integration_upload_client_uses_the_shared_retry_settings(
+    upload_env, monkeypatch
+):
+    from inventag.core import cicd_integration
+    from inventag.core import s3_upload
+
+    made = []
+    real = s3_upload.create_upload_client
+
+    def spy(session, region_name=None):
+        made.append(region_name)
+        return real(session, region_name)
+
+    monkeypatch.setattr(s3_upload, "create_upload_client", spy)
+    integration = cicd_integration.CICDIntegration(
+        s3_config=cicd_integration.S3UploadConfig(
+            bucket_name="reports", region="eu-west-1"
+        ),
+        artifacts_dir=str(upload_env.parent),
+    )
+    client = integration._get_s3_client()
+    assert made == ["eu-west-1"]
+    assert client.meta.config.retries["total_max_attempts"] == 10
