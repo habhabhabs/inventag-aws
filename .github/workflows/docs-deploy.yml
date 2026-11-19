@@ -86,7 +86,7 @@ jobs:
           fi
           
           echo "✅ Found valid version.json with version: v$VERSION"
-          echo "version=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> "$GITHUB_ENV"
 
       - name: Install Python for SBOM generation
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -158,20 +158,22 @@ jobs:
           echo "📄 Creating enhanced SBOM summary with tables..."
           # Create enhanced SBOM summary with tables
           echo "---" > docs/security/current/sbom-summary.md
-          echo "title: Software Bill of Materials (SBOM)" >> docs/security/current/sbom-summary.md
-          echo "description: Current software dependencies, vulnerabilities, and security analysis" >> docs/security/current/sbom-summary.md
-          echo "sidebar_position: 1" >> docs/security/current/sbom-summary.md
-          echo "---" >> docs/security/current/sbom-summary.md
-          echo "" >> docs/security/current/sbom-summary.md
-          echo "# Software Bill of Materials (SBOM)" >> docs/security/current/sbom-summary.md
-          echo "" >> docs/security/current/sbom-summary.md
-          echo ":::info Build Information" >> docs/security/current/sbom-summary.md
-          echo "- **Generated**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> docs/security/current/sbom-summary.md
-          echo "- **Repository**: ${{ github.repository }}" >> docs/security/current/sbom-summary.md
-          echo "- **Branch**: ${{ github.ref_name }}" >> docs/security/current/sbom-summary.md
-          echo "- **Commit**: [\`${{ github.sha }}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})" >> docs/security/current/sbom-summary.md
-          echo ":::" >> docs/security/current/sbom-summary.md
-          echo "" >> docs/security/current/sbom-summary.md
+          {
+            echo "title: Software Bill of Materials (SBOM)"
+            echo "description: Current software dependencies, vulnerabilities, and security analysis"
+            echo "sidebar_position: 1"
+            echo "---"
+            echo ""
+            echo "# Software Bill of Materials (SBOM)"
+            echo ""
+            echo ":::info Build Information"
+            echo "- **Generated**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            echo "- **Repository**: ${{ github.repository }}"
+            echo "- **Branch**: ${{ github.ref_name }}"
+            echo "- **Commit**: [\`${{ github.sha }}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})"
+            echo ":::"
+            echo ""
+          } >> docs/security/current/sbom-summary.md
 
       - name: Copy SBOM files to static directory
         shell: bash
@@ -242,31 +244,39 @@ jobs:
         shell: bash
         run: |
           echo "📊 Generating component overview tables..."
-          echo "## 📋 Components Overview" >> docs/security/current/sbom-summary.md
-          echo "" >> docs/security/current/sbom-summary.md
+          {
+            echo "## 📋 Components Overview"
+            echo ""
           
           # Create repository-wide components table
-          echo "### Repository Components" >> docs/security/current/sbom-summary.md
-          echo "" >> docs/security/current/sbom-summary.md
+            echo "### Repository Components"
+            echo ""
+          } >> docs/security/current/sbom-summary.md
           if [ -f "docs/security/sbom/current-sbom.json" ]; then
             COMPONENTS=$(jq '.artifacts | length' docs/security/sbom/current-sbom.json 2>/dev/null || echo "0")
-            echo "**Total Components**: $COMPONENTS" >> docs/security/current/sbom-summary.md
-            echo "" >> docs/security/current/sbom-summary.md
-            echo "| Component | Version | Type | License |" >> docs/security/current/sbom-summary.md
-            echo "|-----------|---------|------|---------|" >> docs/security/current/sbom-summary.md
+            {
+              echo "**Total Components**: $COMPONENTS"
+              echo ""
+              echo "| Component | Version | Type | License |"
+              echo "|-----------|---------|------|---------|"
+            } >> docs/security/current/sbom-summary.md
             jq -r '.artifacts[] | "| \(.name // "Unknown") | \(.version // "N/A") | \(.type // "Unknown") | \(.licenses[0].value // "Unknown") |"' docs/security/sbom/current-sbom.json 2>/dev/null | head -20 >> docs/security/current/sbom-summary.md || echo "| No components found | - | - | - |" >> docs/security/current/sbom-summary.md
             echo "" >> docs/security/current/sbom-summary.md
             if [ "$COMPONENTS" -gt 20 ]; then
-              echo ":::note" >> docs/security/current/sbom-summary.md
-              echo "Showing first 20 components. Download the full SBOM JSON file below for complete details." >> docs/security/current/sbom-summary.md
-              echo ":::" >> docs/security/current/sbom-summary.md
-              echo "" >> docs/security/current/sbom-summary.md
+              {
+                echo ":::note"
+                echo "Showing first 20 components. Download the full SBOM JSON file below for complete details."
+                echo ":::"
+                echo ""
+              } >> docs/security/current/sbom-summary.md
             fi
           else
-            echo "| Component | Version | Type | License |" >> docs/security/current/sbom-summary.md
-            echo "|-----------|---------|------|---------|" >> docs/security/current/sbom-summary.md
-            echo "| No components found | - | - | - |" >> docs/security/current/sbom-summary.md
-            echo "" >> docs/security/current/sbom-summary.md
+            {
+              echo "| Component | Version | Type | License |"
+              echo "|-----------|---------|------|---------|"
+              echo "| No components found | - | - | - |"
+              echo ""
+            } >> docs/security/current/sbom-summary.md
           fi
           
           # Create Python dependencies table
@@ -274,10 +284,12 @@ jobs:
           echo "" >> docs/security/current/sbom-summary.md
           if [ -f "docs/security/sbom/python-sbom.json" ]; then
             PYTHON_COMPONENTS=$(jq '.components | length' docs/security/sbom/python-sbom.json 2>/dev/null || echo "0")
-            echo "**Python Packages**: $PYTHON_COMPONENTS" >> docs/security/current/sbom-summary.md
-            echo "" >> docs/security/current/sbom-summary.md
-            echo "| Package | Version | License | Scope |" >> docs/security/current/sbom-summary.md
-            echo "|---------|---------|---------|-------|" >> docs/security/current/sbom-summary.md
+            {
+              echo "**Python Packages**: $PYTHON_COMPONENTS"
+              echo ""
+              echo "| Package | Version | License | Scope |"
+              echo "|---------|---------|---------|-------|"
+            } >> docs/security/current/sbom-summary.md
             # Extract Python package information with better version handling
             jq -r '.components[]? | 
               "| " + (.name // "Unknown") + 
@@ -298,10 +310,12 @@ jobs:
               " | " + (.scope // "required") + " |"' docs/security/sbom/python-sbom.json 2>/dev/null | head -15 >> docs/security/current/sbom-summary.md || echo "| No Python packages found | - | - | - |" >> docs/security/current/sbom-summary.md
             echo "" >> docs/security/current/sbom-summary.md
           else
-            echo "| Package | Version | License | Scope |" >> docs/security/current/sbom-summary.md
-            echo "|---------|---------|---------|-------|" >> docs/security/current/sbom-summary.md
-            echo "| No requirements.txt found | - | - | - |" >> docs/security/current/sbom-summary.md
-            echo "" >> docs/security/current/sbom-summary.md
+            {
+              echo "| Package | Version | License | Scope |"
+              echo "|---------|---------|---------|-------|"
+              echo "| No requirements.txt found | - | - | - |"
+              echo ""
+            } >> docs/security/current/sbom-summary.md
           fi
           
           # Create Node.js dependencies table  
@@ -309,10 +323,12 @@ jobs:
           echo "" >> docs/security/current/sbom-summary.md
           if [ -f "docs/security/sbom/nodejs-website-sbom.json" ]; then
             NODEJS_COMPONENTS=$(jq '.components | length' docs/security/sbom/nodejs-website-sbom.json 2>/dev/null || echo "0")
-            echo "**Node.js Packages**: $NODEJS_COMPONENTS" >> docs/security/current/sbom-summary.md
-            echo "" >> docs/security/current/sbom-summary.md
-            echo "| Package | Version | License | Type |" >> docs/security/current/sbom-summary.md
-            echo "|---------|---------|---------|------|" >> docs/security/current/sbom-summary.md
+            {
+              echo "**Node.js Packages**: $NODEJS_COMPONENTS"
+              echo ""
+              echo "| Package | Version | License | Type |"
+              echo "|---------|---------|---------|------|"
+            } >> docs/security/current/sbom-summary.md
             # Extract Node.js package information with better version handling
             jq -r '.components[]? | 
               "| " + (.name // "Unknown") + 
@@ -333,21 +349,25 @@ jobs:
               " | " + (.scope // "required") + " |"' docs/security/sbom/nodejs-website-sbom.json 2>/dev/null | head -15 >> docs/security/current/sbom-summary.md || echo "| No Node.js packages found | - | - | - |" >> docs/security/current/sbom-summary.md
             echo "" >> docs/security/current/sbom-summary.md
           else
-            echo "| Package | Version | License | Type |" >> docs/security/current/sbom-summary.md
-            echo "|---------|---------|---------|------|" >> docs/security/current/sbom-summary.md
-            echo "| No Node.js dependencies detected | - | - | - |" >> docs/security/current/sbom-summary.md
-            echo "" >> docs/security/current/sbom-summary.md
+            {
+              echo "| Package | Version | License | Type |"
+              echo "|---------|---------|---------|------|"
+              echo "| No Node.js dependencies detected | - | - | - |"
+              echo ""
+            } >> docs/security/current/sbom-summary.md
           fi
 
       - name: Run vulnerability analysis
         shell: bash
         run: |
           echo "🔍 Running security vulnerability analysis..."
-          echo "## 🔍 Security Analysis" >> docs/security/current/sbom-summary.md
-          echo "" >> docs/security/current/sbom-summary.md
+          {
+            echo "## 🔍 Security Analysis"
+            echo ""
           
-          echo "### Known Vulnerabilities" >> docs/security/current/sbom-summary.md
-          echo "" >> docs/security/current/sbom-summary.md
+            echo "### Known Vulnerabilities"
+            echo ""
+          } >> docs/security/current/sbom-summary.md
           
           # Scan for vulnerabilities using Grype
           if [ -f "docs/security/sbom/current-sbom.json" ]; then
@@ -365,21 +385,25 @@ jobs:
               MEDIUM=$(jq '[.matches[] | select(.vulnerability.severity=="Medium")] | length' docs/security/sbom/vulnerabilities.json 2>/dev/null || echo "0")
               LOW=$(jq '[.matches[] | select(.vulnerability.severity=="Low")] | length' docs/security/sbom/vulnerabilities.json 2>/dev/null || echo "0")
               
-              echo "| Severity | Count |" >> docs/security/current/sbom-summary.md
-              echo "|----------|-------|" >> docs/security/current/sbom-summary.md
-              echo "| 🔴 Critical | $CRITICAL |" >> docs/security/current/sbom-summary.md
-              echo "| 🟠 High | $HIGH |" >> docs/security/current/sbom-summary.md
-              echo "| 🟡 Medium | $MEDIUM |" >> docs/security/current/sbom-summary.md
-              echo "| 🟢 Low | $LOW |" >> docs/security/current/sbom-summary.md
-              echo "" >> docs/security/current/sbom-summary.md
+              {
+                echo "| Severity | Count |"
+                echo "|----------|-------|"
+                echo "| 🔴 Critical | $CRITICAL |"
+                echo "| 🟠 High | $HIGH |"
+                echo "| 🟡 Medium | $MEDIUM |"
+                echo "| 🟢 Low | $LOW |"
+                echo ""
+              } >> docs/security/current/sbom-summary.md
               
               # Show top vulnerabilities if any exist
               TOTAL_VULNS=$(jq '.matches | length' docs/security/sbom/vulnerabilities.json 2>/dev/null || echo "0")
               if [ "$TOTAL_VULNS" -gt 0 ]; then
-                echo "#### Top Vulnerabilities" >> docs/security/current/sbom-summary.md
-                echo "" >> docs/security/current/sbom-summary.md
-                echo "| CVE ID | Severity | Package | Version | Description |" >> docs/security/current/sbom-summary.md
-                echo "|--------|----------|---------|---------|-------------|" >> docs/security/current/sbom-summary.md
+                {
+                  echo "#### Top Vulnerabilities"
+                  echo ""
+                  echo "| CVE ID | Severity | Package | Version | Description |"
+                  echo "|--------|----------|---------|---------|-------------|"
+                } >> docs/security/current/sbom-summary.md
                 # Create enhanced vulnerability table with proper CVE extraction and full descriptions
                 jq -r '.matches[] | 
                   select(.vulnerability.severity=="Critical" or .vulnerability.severity=="High" or .vulnerability.severity=="Medium") | 
@@ -402,43 +426,53 @@ jobs:
                 echo "" >> docs/security/current/sbom-summary.md
                 
                 if [ "$TOTAL_VULNS" -gt 10 ]; then
-                  echo ":::note" >> docs/security/current/sbom-summary.md
-                  echo "Showing top 10 critical/high/medium vulnerabilities. Download the full vulnerability report below for complete details." >> docs/security/current/sbom-summary.md
-                  echo ":::" >> docs/security/current/sbom-summary.md
-                  echo "" >> docs/security/current/sbom-summary.md
+                  {
+                    echo ":::note"
+                    echo "Showing top 10 critical/high/medium vulnerabilities. Download the full vulnerability report below for complete details."
+                    echo ":::"
+                    echo ""
+                  } >> docs/security/current/sbom-summary.md
                 fi
               else
-                echo "| CVE ID | Severity | Package | Version | Description |" >> docs/security/current/sbom-summary.md
-                echo "|--------|----------|---------|---------|-------------|" >> docs/security/current/sbom-summary.md
-                echo "| ✅ No vulnerabilities detected | - | - | - | All dependencies are secure |" >> docs/security/current/sbom-summary.md
-                echo "" >> docs/security/current/sbom-summary.md
+                {
+                  echo "| CVE ID | Severity | Package | Version | Description |"
+                  echo "|--------|----------|---------|---------|-------------|"
+                  echo "| ✅ No vulnerabilities detected | - | - | - | All dependencies are secure |"
+                  echo ""
+                } >> docs/security/current/sbom-summary.md
               fi
             else
-              echo "| Severity | Count | Status |" >> docs/security/current/sbom-summary.md
-              echo "|----------|-------|---------|" >> docs/security/current/sbom-summary.md
-              echo "| - | - | Vulnerability scanning unavailable |" >> docs/security/current/sbom-summary.md
-              echo "" >> docs/security/current/sbom-summary.md
+              {
+                echo "| Severity | Count | Status |"
+                echo "|----------|-------|---------|"
+                echo "| - | - | Vulnerability scanning unavailable |"
+                echo ""
+              } >> docs/security/current/sbom-summary.md
             fi
           else
-            echo "| Severity | Count | Status |" >> docs/security/current/sbom-summary.md
-            echo "|----------|-------|---------|" >> docs/security/current/sbom-summary.md
-            echo "| - | - | No SBOM available for scanning |" >> docs/security/current/sbom-summary.md
-            echo "" >> docs/security/current/sbom-summary.md
+            {
+              echo "| Severity | Count | Status |"
+              echo "|----------|-------|---------|"
+              echo "| - | - | No SBOM available for scanning |"
+              echo ""
+            } >> docs/security/current/sbom-summary.md
           fi
 
       - name: Generate download tables and documentation
         shell: bash
         run: |
           echo "📥 Generating download tables and usage documentation..."
-          echo "## 📥 Download SBOM Files" >> docs/security/current/sbom-summary.md
-          echo "" >> docs/security/current/sbom-summary.md
-          echo "### Raw SBOM Files" >> docs/security/current/sbom-summary.md
-          echo "" >> docs/security/current/sbom-summary.md
-          echo "| Format | File | Description |" >> docs/security/current/sbom-summary.md
-          echo "|--------|------|-------------|" >> docs/security/current/sbom-summary.md
-          echo "| JSON (Syft) | [current-sbom.json](pathname:///inventag-aws/sbom/current-sbom.json) | Complete repository component analysis |" >> docs/security/current/sbom-summary.md
-          echo "| CycloneDX | [current-sbom-cyclonedx.json](pathname:///inventag-aws/sbom/current-sbom-cyclonedx.json) | Industry-standard SBOM format |" >> docs/security/current/sbom-summary.md
-          echo "| SPDX | [current-sbom-spdx.json](pathname:///inventag-aws/sbom/current-sbom-spdx.json) | Software Package Data Exchange format |" >> docs/security/current/sbom-summary.md
+          {
+            echo "## 📥 Download SBOM Files"
+            echo ""
+            echo "### Raw SBOM Files"
+            echo ""
+            echo "| Format | File | Description |"
+            echo "|--------|------|-------------|"
+            echo "| JSON (Syft) | [current-sbom.json](pathname:///inventag-aws/sbom/current-sbom.json) | Complete repository component analysis |"
+            echo "| CycloneDX | [current-sbom-cyclonedx.json](pathname:///inventag-aws/sbom/current-sbom-cyclonedx.json) | Industry-standard SBOM format |"
+            echo "| SPDX | [current-sbom-spdx.json](pathname:///inventag-aws/sbom/current-sbom-spdx.json) | Software Package Data Exchange format |"
+          } >> docs/security/current/sbom-summary.md
           if [ -f "docs/security/sbom/python-sbom.json" ]; then
             echo "| Python (Environment) | [python-sbom.json](pathname:///inventag-aws/sbom/python-sbom.json) | Python dependencies from environment |" >> docs/security/current/sbom-summary.md
           fi
@@ -450,11 +484,13 @@ jobs:
           fi
           echo "" >> docs/security/current/sbom-summary.md
           
-          echo "### Formatted Files (Human-Readable)" >> docs/security/current/sbom-summary.md
-          echo "" >> docs/security/current/sbom-summary.md
-          echo "| Format | File | Description |" >> docs/security/current/sbom-summary.md
-          echo "|--------|------|-------------|" >> docs/security/current/sbom-summary.md
-          echo "| JSON (Formatted) | [current-sbom-formatted.json](pathname:///inventag-aws/sbom/current-sbom-formatted.json) | Pretty-printed JSON for manual review |" >> docs/security/current/sbom-summary.md
+          {
+            echo "### Formatted Files (Human-Readable)"
+            echo ""
+            echo "| Format | File | Description |"
+            echo "|--------|------|-------------|"
+            echo "| JSON (Formatted) | [current-sbom-formatted.json](pathname:///inventag-aws/sbom/current-sbom-formatted.json) | Pretty-printed JSON for manual review |"
+          } >> docs/security/current/sbom-summary.md
           if [ -f "docs/security/sbom/python-sbom.json" ]; then
             echo "| Python (Formatted) | [python-sbom-formatted.json](pathname:///inventag-aws/sbom/python-sbom-formatted.json) | Formatted Python dependencies |" >> docs/security/current/sbom-summary.md
           fi
@@ -467,33 +503,33 @@ jobs:
           if [ -f "docs/security/sbom/vulnerabilities.json" ]; then
             echo "| Vulnerabilities | [vulnerabilities-formatted.json](pathname:///inventag-aws/sbom/vulnerabilities-formatted.json) | Security vulnerability report |" >> docs/security/current/sbom-summary.md
           fi
-          echo "" >> docs/security/current/sbom-summary.md
-          
-          echo "## 🔧 Usage & Integration" >> docs/security/current/sbom-summary.md
-          echo "" >> docs/security/current/sbom-summary.md
-          echo ":::tip Integration Benefits" >> docs/security/current/sbom-summary.md
-          echo "This SBOM is automatically generated and integrated into the documentation build process, providing:" >> docs/security/current/sbom-summary.md
-          echo "- **Real-time dependency tracking** - Updated with every build" >> docs/security/current/sbom-summary.md
-          echo "- **Vulnerability monitoring** - Automatic security scanning with Grype" >> docs/security/current/sbom-summary.md
-          echo "- **Compliance documentation** - Standard SBOM formats (CycloneDX, SPDX)" >> docs/security/current/sbom-summary.md
-          echo "- **Version-specific tracking** - Historical dependency changes" >> docs/security/current/sbom-summary.md
-          echo "- **Supply chain transparency** - Complete visibility into dependencies" >> docs/security/current/sbom-summary.md
-          echo ":::" >> docs/security/current/sbom-summary.md
-          echo "" >> docs/security/current/sbom-summary.md
-          
-          echo "### Use Cases" >> docs/security/current/sbom-summary.md
-          echo "" >> docs/security/current/sbom-summary.md
-          echo "Download and analyze the SBOM files to:" >> docs/security/current/sbom-summary.md
-          echo "" >> docs/security/current/sbom-summary.md
-          echo "- **Security Teams**: Identify vulnerabilities and plan remediation" >> docs/security/current/sbom-summary.md
-          echo "- **Compliance Teams**: Generate compliance reports and audits" >> docs/security/current/sbom-summary.md
-          echo "- **Development Teams**: Track dependency changes and licenses" >> docs/security/current/sbom-summary.md
-          echo "- **DevOps Teams**: Integrate into CI/CD pipelines for automated scanning" >> docs/security/current/sbom-summary.md
-          echo "- **Legal Teams**: Analyze licensing compliance and obligations" >> docs/security/current/sbom-summary.md
-          echo "" >> docs/security/current/sbom-summary.md
-          echo "---" >> docs/security/current/sbom-summary.md
-          echo "" >> docs/security/current/sbom-summary.md
-          echo "*This SBOM summary is automatically updated with every documentation build.*" >> docs/security/current/sbom-summary.md
+          {
+            echo ""
+            echo "## 🔧 Usage & Integration"
+            echo ""
+            echo ":::tip Integration Benefits"
+            echo "This SBOM is automatically generated and integrated into the documentation build process, providing:"
+            echo "- **Real-time dependency tracking** - Updated with every build"
+            echo "- **Vulnerability monitoring** - Automatic security scanning with Grype"
+            echo "- **Compliance documentation** - Standard SBOM formats (CycloneDX, SPDX)"
+            echo "- **Version-specific tracking** - Historical dependency changes"
+            echo "- **Supply chain transparency** - Complete visibility into dependencies"
+            echo ":::"
+            echo ""
+            echo "### Use Cases"
+            echo ""
+            echo "Download and analyze the SBOM files to:"
+            echo ""
+            echo "- **Security Teams**: Identify vulnerabilities and plan remediation"
+            echo "- **Compliance Teams**: Generate compliance reports and audits"
+            echo "- **Development Teams**: Track dependency changes and licenses"
+            echo "- **DevOps Teams**: Integrate into CI/CD pipelines for automated scanning"
+            echo "- **Legal Teams**: Analyze licensing compliance and obligations"
+            echo ""
+            echo "---"
+            echo ""
+            echo "*This SBOM summary is automatically updated with every documentation build.*"
+          } >> docs/security/current/sbom-summary.md
           
           # Create security index page (if it doesn't exist)
           if [ ! -f "docs/security/index.md" ]; then
@@ -501,23 +537,25 @@ jobs:
             mkdir -p docs/security
             
             echo "---" > docs/security/index.md
-            echo "title: Security Documentation" >> docs/security/index.md
-            echo "description: Security information, SBOM, and vulnerability tracking for InvenTag" >> docs/security/index.md
-            echo "sidebar_position: 1" >> docs/security/index.md
-            echo "---" >> docs/security/index.md
-            echo "" >> docs/security/index.md
-            echo "# Security Documentation" >> docs/security/index.md
-            echo "" >> docs/security/index.md
-            echo "This section contains comprehensive security information for InvenTag, including Software Bill of Materials (SBOM), vulnerability tracking, and security monitoring." >> docs/security/index.md
-            echo "" >> docs/security/index.md
-            echo "## 📋 Current Security Status" >> docs/security/index.md
-            echo "" >> docs/security/index.md
-            echo "- **Last Updated**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> docs/security/index.md
-            echo "- **Build**: ${{ github.sha }}" >> docs/security/index.md
-            echo "- **Security Scanning**: Automated via GitHub Actions" >> docs/security/index.md
-            echo "- **SBOM Generation**: Integrated with documentation build" >> docs/security/index.md
-            echo "" >> docs/security/index.md
-            echo "*Security documentation is automatically maintained and updated with each build.*" >> docs/security/index.md
+            {
+              echo "title: Security Documentation"
+              echo "description: Security information, SBOM, and vulnerability tracking for InvenTag"
+              echo "sidebar_position: 1"
+              echo "---"
+              echo ""
+              echo "# Security Documentation"
+              echo ""
+              echo "This section contains comprehensive security information for InvenTag, including Software Bill of Materials (SBOM), vulnerability tracking, and security monitoring."
+              echo ""
+              echo "## 📋 Current Security Status"
+              echo ""
+              echo "- **Last Updated**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+              echo "- **Build**: ${{ github.sha }}"
+              echo "- **Security Scanning**: Automated via GitHub Actions"
+              echo "- **SBOM Generation**: Integrated with documentation build"
+              echo ""
+              echo "*Security documentation is automatically maintained and updated with each build.*"
+            } >> docs/security/index.md
           else
             echo "ℹ️ Security index page already exists, skipping creation"
           fi
@@ -598,15 +636,15 @@ jobs:
             echo "Transformation log created"
             if grep -q "files transformed:" transform.log; then
               transformed_count=$(grep "files transformed:" transform.log | grep -o '[0-9]\+' | head -1)
-              echo "transformation_count=$transformed_count" >> $GITHUB_OUTPUT
-              echo "transformation_completed=true" >> $GITHUB_OUTPUT
+              echo "transformation_count=$transformed_count" >> "$GITHUB_OUTPUT"
+              echo "transformation_completed=true" >> "$GITHUB_OUTPUT"
             else
-              echo "transformation_count=0" >> $GITHUB_OUTPUT
-              echo "transformation_completed=true" >> $GITHUB_OUTPUT
+              echo "transformation_count=0" >> "$GITHUB_OUTPUT"
+              echo "transformation_completed=true" >> "$GITHUB_OUTPUT"
             fi
           else
-            echo "transformation_count=0" >> $GITHUB_OUTPUT
-            echo "transformation_completed=false" >> $GITHUB_OUTPUT
+            echo "transformation_count=0" >> "$GITHUB_OUTPUT"
+            echo "transformation_completed=false" >> "$GITHUB_OUTPUT"
           fi
           
           # Display transformation summary
@@ -650,7 +688,7 @@ jobs:
           echo "Validating frontmatter in documentation files..."
           
           # Check frontmatter structure
-          find docs -name "*.md" -type f | while read file; do
+          find docs -name "*.md" -type f | while read -r file; do
             echo "Checking frontmatter in: $file"
             
             # Check if file has frontmatter
@@ -719,7 +757,7 @@ jobs:
           
           # Run link checking on current documentation files
           echo "Checking internal and external links in current docs..."
-          find docs -name "*.md" -type f | head -10 | while read file; do
+          find docs -name "*.md" -type f | head -10 | while read -r file; do
             echo "Checking links in: $file"
             markdown-link-check "$file" --config .markdown-link-check.json --quiet || echo "⚠️ Some links failed in $file"
           done
@@ -727,7 +765,7 @@ jobs:
           # Check versioned documentation links (sample)
           if [ -d "website/versioned_docs" ]; then
             echo "Checking links in versioned documentation (sampling)..."
-            find website/versioned_docs -name "*.md" -type f | head -5 | while read file; do
+            find website/versioned_docs -name "*.md" -type f | head -5 | while read -r file; do
               echo "Checking versioned links in: $file"
               markdown-link-check "$file" --config .markdown-link-check.json --quiet || echo "⚠️ Some versioned links failed in $file"
             done
@@ -743,7 +781,7 @@ jobs:
           echo "Checking GitHub markdown compatibility..."
           
           # Check for GitHub-specific syntax that might not work in Docusaurus
-          find docs -name "*.md" -type f | while read file; do
+          find docs -name "*.md" -type f | while read -r file; do
             echo "Checking GitHub compatibility in: $file"
             
             # Check for unsupported HTML
@@ -777,10 +815,10 @@ jobs:
           
           if [ $validation_exit_code -eq 0 ]; then
             echo "✅ Documentation validation passed"
-            echo "validation_passed=true" >> $GITHUB_OUTPUT
+            echo "validation_passed=true" >> "$GITHUB_OUTPUT"
           else
             echo "❌ Documentation validation failed with critical errors"
-            echo "validation_passed=false" >> $GITHUB_OUTPUT
+            echo "validation_passed=false" >> "$GITHUB_OUTPUT"
             
             # In non-strict mode, continue with warnings for PR preview
             if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -830,7 +868,7 @@ jobs:
             # List versions for debugging
             if [ -f "versions.json" ]; then
               echo "Available versions:"
-              jq -r '.[]' versions.json | while read version; do
+              jq -r '.[]' versions.json | while read -r version; do
                 echo "  - v$version"
               done
             fi
@@ -853,7 +891,7 @@ jobs:
               echo "Restoring documentation from backup..."
               
               # Restore files from backup
-              find ../.docs-backup -name "*.md" -type f | while read backup_file; do
+              find ../.docs-backup -name "*.md" -type f | while read -r backup_file; do
                 relative_path=${backup_file#../.docs-backup/}
                 original_path="../docs/$relative_path"
                 
@@ -1003,7 +1041,7 @@ jobs:
             start_time=$(date +%s%N)
             if curl -f http://localhost:3001/inventag-aws/ > /dev/null 2>&1; then
               end_time=$(date +%s%N)
-              response_time=$(( ($end_time - $start_time) / 1000000 ))
+              response_time=$(( (end_time - start_time) / 1000000 ))
               echo "Homepage response time: ${response_time}ms"
               
               if [ $response_time -lt 2000 ]; then
@@ -1019,7 +1057,7 @@ jobs:
               search_size=$(curl -s http://localhost:3001/inventag-aws/search-index.json | wc -c)
               echo "Search index size: $search_size bytes"
               
-              if [ $search_size -gt 1000 ]; then
+              if [ "$search_size" -gt 1000 ]; then
                 echo "✅ Search index populated"
               else
                 echo "⚠️ Search index may be empty or incomplete"
