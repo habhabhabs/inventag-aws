@@ -402,3 +402,27 @@ def test_a_report_that_runs_its_own_analysis_keeps_the_sheet_and_gets_the_note(
     assert any(
         c.startswith("ElastiCache subnet groups could not be read") for c in cells
     )
+
+
+def test_an_rds_cluster_of_another_account_is_not_counted_through_a_group_of_the_same_name(
+    estate,
+):
+    """The H1 rule of the second patch, for A-72: DB subnet groups are matched
+    within one account. A cluster of account 222222222222 whose group is also
+    called "dbgrp" is not counted in moto's account's VPC (rows of several
+    accounts reach one analyzer in library use and in the converter's own
+    analysis)."""
+    rows = [dict(r) for r in estate["rows"]]
+    own = next(r for r in rows if r["id"] == "cl1")
+    other = dict(own, id="clB", account_id="222222222222")
+    other["raw_data"] = dict(
+        own["raw_data"],
+        DBClusterIdentifier="clB",
+        DBClusterArn="arn:aws:rds:us-east-1:222222222222:cluster:clB",
+    )
+    rows.append(other)
+    analyzer = _analyse(rows)
+    vpc = analyzer.vpc_cache[estate["vpc"]].associated_resources
+    assert "cl1" in vpc and "clB" not in vpc
+    for subnet in (estate["a"], estate["b"]):
+        assert "clB" not in analyzer.subnet_cache[subnet].associated_resources
