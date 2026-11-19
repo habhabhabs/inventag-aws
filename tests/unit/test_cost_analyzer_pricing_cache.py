@@ -151,29 +151,20 @@ def _throttled():
     )
 
 
-def test_throttled_lookup_is_retried_once_then_cached(caplog):
+def test_a_throttled_lookup_is_not_retried_by_the_analyzer_and_is_cached(caplog):
+    """The pricing client retries throttling itself (shared retry settings,
+    A-73); the analyzer adds no second retry loop. A failure that remains is
+    cached for the run and warned once."""
     client = Mock()
     client.get_products.side_effect = _throttled()
     analyzer = _analyzer(client)
     with caplog.at_level(logging.WARNING):
         estimates = analyzer.estimate_resource_costs(_resources())
     assert estimates == []
-    # one retry per distinct key, then the failure is cached for the run
-    assert client.get_products.call_count == 6
+    # one call per distinct key, then the failure is cached for the run
+    assert client.get_products.call_count == 3
     warnings = [r for r in caplog.records if "Pricing API lookup failed" in r.message]
     assert len(warnings) == 1
-
-
-def test_throttled_lookup_recovers_on_retry():
-    client = Mock()
-    client.get_products.side_effect = [_throttled(), {"PriceList": _price_list()}]
-    analyzer = _analyzer(client)
-    resource = {"instance_type": "t3.micro"}
-    first = analyzer._get_pricing_info("EC2", "Instance", "us-east-1", resource)
-    again = analyzer._get_pricing_info("EC2", "Instance", "us-east-1", resource)
-    assert str(first["price_per_unit"]) == "0.1"
-    assert str(again["price_per_unit"]) == "0.1"
-    assert client.get_products.call_count == 2
 
 
 def test_resource_types_sharing_a_key_keep_their_own_cost_factors():
