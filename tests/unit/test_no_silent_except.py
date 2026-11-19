@@ -7,7 +7,8 @@ must do one of these: log at WARNING or above, write a coverage-ledger entry
 failure (a probe, a parse with a default). A DEBUG line alone is not enough:
 a failure that only the debug log knows about looks like "nothing there".
 
-The network, security and cost analyzers belong to other owners and are not scanned.
+The network and security analyzers belong to other owners and are not scanned;
+the cost analyzer is scanned (its owner was settled at the final assembly).
 """
 
 import ast
@@ -17,7 +18,7 @@ from pathlib import Path
 import pytest
 
 DISCOVERY = Path(__file__).resolve().parents[2] / "inventag" / "discovery"
-NOT_SCANNED = {"network_analyzer.py", "security_analyzer.py", "cost_analyzer.py"}
+NOT_SCANNED = {"network_analyzer.py", "security_analyzer.py"}
 LOUD = {
     "warning",
     "error",
@@ -30,6 +31,8 @@ LOUD = {
     "_detail_failure",
     "_unreadable_answer",
     "_record_certificate_failure",
+    "_log_aws_failure",
+    "_log_pricing_failure",
 }
 MARK = re.compile(r"#\s*silent-ok:\s*\S.{8,}")
 

@@ -23,7 +23,6 @@ NOT_SCANNED = {
     "aws_clients.py",  # the factory itself
     "network_analyzer.py",
     "security_analyzer.py",
-    "cost_analyzer.py",
 }
 MARK = re.compile(r"#\s*retry-ok:\s*\S.{8,}")
 
