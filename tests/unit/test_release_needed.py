@@ -425,3 +425,25 @@ def test_step_publish_only_run_is_no_release(repo, tmp_path):
     )
     assert outputs["should_release"] == "false"
     assert "Publish-only run" in log
+
+
+# ----------------------------------- rules of the release runbook (WO-CI3, C-05)
+def test_step_reads_only_the_head_commit_for_release_as_and_skip(repo, tmp_path):
+    # Two commits in one push: the earlier one's Release-As and [skip release]
+    # lines are not read (review B-REL). The push is a patch release.
+    repo.commit("feat: x\n\nRelease-As: major", {"inventag/core.py": "x = 1\n"})
+    repo.commit("fix: y [skip release]", {"docs/index.md": "x\n"})
+    repo.commit("fix: z", {"inventag/core.py": "x = 2\n"})
+    outputs, _ = run_check_step(repo, tmp_path)
+    assert (outputs["should_release"], outputs["version_bump"]) == ("true", "patch")
+
+
+def test_the_root_launcher_and_the_templates_folder_are_not_application(repo):
+    repo.commit(
+        "launcher and templates",
+        {
+            "inventag_cli.py": "print()\n",
+            "templates/default_word_template.yaml": "a: 3\n",
+        },
+    )
+    assert decision(repo)["application_changed"] == "false"
