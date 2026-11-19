@@ -653,9 +653,27 @@ class NetworkAnalyzer:
                 vpc_id = value if isinstance(value, str) else None
         return vpc_id, found
 
-    @staticmethod
-    def _db_cluster_group_key(resource: Dict[str, Any]) -> Optional[Tuple[str, str]]:
-        """(region, DB subnet group name) of an RDS cluster row, else None."""
+    @classmethod
+    def _row_account(cls, resource: Dict[str, Any], *arn_fields: str) -> str:
+        """The account of a row: ``account_id``, else the account field of its
+        ARN or of an ARN in its API data."""
+        account = str(resource.get("account_id") or "") or cls._arn_account(
+            resource.get("arn")
+        )
+        raw = resource.get("raw_data")
+        for field in arn_fields:
+            if account or not isinstance(raw, dict):
+                break
+            account = cls._arn_account(raw.get(field))
+        return account
+
+    @classmethod
+    def _db_cluster_group_key(
+        cls, resource: Dict[str, Any]
+    ) -> Optional[Tuple[str, str, str]]:
+        """(account, region, DB subnet group name) of an RDS cluster row, else
+        None. Group names repeat across accounts, so the account is part of
+        the key (as for ElastiCache)."""
         if str(resource.get("service") or "").upper() != "RDS":
             return None
         if resource.get("type") != "DBCluster":
@@ -664,15 +682,17 @@ class NetworkAnalyzer:
         name = raw.get("DBSubnetGroup") if isinstance(raw, dict) else None
         region = resource.get("region")
         if isinstance(name, str) and name and region and region != "global":
-            return (region, name)
+            return (cls._row_account(resource, "DBClusterArn"), region, name)
         return None
 
-    @staticmethod
+    @classmethod
     def _db_subnet_groups_of(
+        cls,
         resources: List[Dict[str, Any]],
-    ) -> Dict[Tuple[str, str], Tuple[Optional[str], List[str]]]:
-        """(VPC ID, subnet IDs) of each DB subnet group row in the inventory."""
-        groups: Dict[Tuple[str, str], Tuple[Optional[str], List[str]]] = {}
+    ) -> Dict[Tuple[str, str, str], Tuple[Optional[str], List[str]]]:
+        """(VPC ID, subnet IDs) of each DB subnet group row in the inventory,
+        keyed by (account, region, name)."""
+        groups: Dict[Tuple[str, str, str], Tuple[Optional[str], List[str]]] = {}
         for resource in resources:
             if resource.get("type") != "DBSubnetGroup":
                 continue
@@ -685,7 +705,8 @@ class NetworkAnalyzer:
                 for item in raw.get("Subnets") or []
                 if isinstance(item, dict) and item.get("SubnetIdentifier")
             ]
-            groups[(resource["region"], name)] = (raw.get("VpcId"), subnets)
+            account = cls._row_account(resource, "DBSubnetGroupArn")
+            groups[(account, resource["region"], name)] = (raw.get("VpcId"), subnets)
         return groups
 
     def _map_resources_to_network(self, resources: List[Dict[str, Any]]):
