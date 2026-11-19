@@ -1158,10 +1158,19 @@ QUOTED_MESSAGES = [
     ),
     (
         "docs/guides/troubleshooting.md",
-        "Region 'us-east-9' is not a known AWS region; check its spelling in "
-        "--account-regions or in the accounts file.",
-        "is not a known AWS region; check its spelling in --account-regions or in "
-        "the accounts file.",
+        "Region 'us-east-9' could not be checked and the installed boto3 does not "
+        "know it: check its spelling in --account-regions or in the accounts file, "
+        "or, if it is a new AWS region, upgrade boto3.",
+        "could not be checked and the installed boto3 does not know it: check its "
+        "spelling in --account-regions or in the accounts file, or, if it is a new "
+        "AWS region, upgrade boto3. ",
+    ),
+    (
+        "docs/guides/troubleshooting.md",
+        "because their region check failed and the installed boto3 does not know "
+        "them (a misspelled name, or a region newer than boto3): us-east-9.",
+        "because their region check failed and the installed boto3 does not know "
+        "them (a misspelled name, or a region newer than boto3): ",
     ),
     (
         "docs/guides/troubleshooting.md",
