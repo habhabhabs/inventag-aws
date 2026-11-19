@@ -205,7 +205,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 ## Coûts {#costs}
 
 Par défaut, la découverte appelle l’API `GetCostAndUsage` de Cost Explorer une fois
-par compte. AWS facture chaque requête
+par compte. La requête couvre la période allant de 30 jours avant le premier
+jour du mois en cours jusqu’à aujourd’hui ; la validation de facturation et la
+colonne de dépenses la lisent toutes deux, donc un service facturé seulement
+dans cette période compte comme facturé. AWS facture chaque requête
 Cost Explorer : consultez les
 [tarifs actuels de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 

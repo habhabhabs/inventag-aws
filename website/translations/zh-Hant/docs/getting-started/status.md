@@ -128,7 +128,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 ## 費用 {#costs}
 
-預設情況下，發現過程會為每個帳戶呼叫一次 Cost Explorer 的 `GetCostAndUsage` API。AWS 對每次 Cost Explorer 請求收費：
+預設情況下，發現過程會為每個帳戶呼叫一次 Cost Explorer 的 `GetCostAndUsage` API。該請求覆蓋從當月第一天之前 30 天到今天的時間段，計費驗證和支出欄都讀取它，因此只在這段時間內產生費用的服務也算作已計費。AWS 對每次 Cost Explorer 請求收費：
 請參閱最新的
 [Cost Explorer 定價](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。
 

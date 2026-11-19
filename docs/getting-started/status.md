@@ -193,7 +193,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 ## Costs
 
 By default, discovery calls the Cost Explorer `GetCostAndUsage` API once for
-each account. AWS charges for each Cost
+each account. The request covers the period from 30 days before the first day
+of the current month to today, and both billing validation and the spend
+column read it, so a service billed only in that period counts as billed.
+AWS charges for each Cost
 Explorer request: see the current
 [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 
