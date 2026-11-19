@@ -10,10 +10,12 @@ What you can do after reading: create the token, variable and environment that r
 
 1. It decides whether to release. A commit whose message contains `[skip release]` (or `[skip ci]`) does not release. The bot's own `chore: bump version to vX.Y.Z` commit never releases. Every other push is a patch release, unless the commit message has a line `Release-As: minor` or `Release-As: major`. A merge commit ("Merge pull request #N") uses the PR label `release:patch`, `release:minor` or `release:major` if it has one.
 2. It computes the next version from the latest GitHub release and `inventag/_version.py`. It writes `version.json` and `inventag/_version.py`, commits them as `chore: bump version to vX.Y.Z` and pushes `main`.
-3. It tags that commit `vX.Y.Z`, creates the GitHub release and attaches a `.tar.gz` and a `.zip` of the source.
+3. It tags that commit `vX.Y.Z` (up to 5 push attempts, checked with `git ls-remote`), creates the GitHub release and attaches a `.tar.gz` and a `.zip` of the source.
 4. It builds the sdist and wheel and uploads them to PyPI through trusted publishing (no API token).
 
 Release runs wait for each other (concurrency group `release-main`), and a release covers every commit on `main` since the previous tag. If two pushes arrive while a release is running, GitHub keeps only the newer queued run; it releases both commits with the bump of the newer one. So push a `Release-As: minor` or `release:minor` change only after the running release has finished. Pushes with `[skip release]` run in a group of their own and never replace a queued release.
+
+The rules, each with its test, and the recovery steps are in the release runbook, `docs/development/release-runbook.md`.
 
 The GitHub release starts `release-docs-versioning.yml`. The docs site is built and deployed by `docs-deploy.yml` whenever `docs/`, `website/` or `version.json` changes on `main`.
 
@@ -56,6 +58,7 @@ If `main` is protected, the account that owns `VERSION_BUMP_WORKFLOW` must be al
 | Symptom | Likely cause |
 | --- | --- |
 | `remote rejected ... protected branch` in the release job | The token owner cannot bypass branch protection on `main`. |
+| `Tag vX.Y.Z was not pushed to commit <sha>` in the step "Create Git Tag" | The tag push was refused 5 times (v1.2.2: `missing necessary objects`). Do not re-run the job; follow "The tag push failed" in the release runbook (`docs/development/release-runbook.md`). |
 | Release job fails at checkout | `VERSION_BUMP_WORKFLOW` is missing or expired. |
 | Publish job skipped | `PYPI_PUBLISH` is not `true`. |
 | PyPI upload fails with `invalid-publisher` | The trusted publisher on pypi.org does not match the workflow file name or the `pypi` environment. |
