@@ -140,8 +140,9 @@ def test_an_all_denied_run_does_not_poison_the_next_change_report(
     Review M2: the account is still compared, because the Tagging API read
     something; the second run reports nothing removed because the resources
     of the denied listings are "not compared" (A-05). The third run reports
-    the untagged resources as added, as v1.2.0 did: telling those apart
-    needs the per-unit snapshot key (owner part of A-05)."""
+    nothing added either: the second snapshot names the listings it did not
+    read (`metadata.tags.units_not_read`, decision 6), so their resources are
+    not compared (v1.2.2 reported the untagged ones as added)."""
     caplog.set_level(logging.INFO)
     results = result_spy(monkeypatch)
     deny = DenyEverything(monkeypatch, allow_tagging=True)
@@ -189,7 +190,7 @@ def test_an_all_denied_run_does_not_poison_the_next_change_report(
     assert run_cli(*ARGS) == 0
     added, removed = changes(results[-1])
     assert removed == 0
-    assert added > 0  # untagged resources, as in v1.2.0 (owner part of A-05)
+    assert added == 0  # decision 6: the listings not read are not compared
 
 
 def test_a_run_that_read_nothing_saves_no_snapshot(
