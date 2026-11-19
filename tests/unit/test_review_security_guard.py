@@ -285,6 +285,12 @@ ADDED_AFTER_BOTOCORE_FLOOR = frozenset(
         ("logs", "GetLogObject"),
         ("support", "GetAttachmentDownloadLink"),
         ("support", "GetAttachmentUploadLinks"),
+        # v1.3.1: temporary S3 credentials for a data location
+        ("lakeformation", "GetTemporaryDataLocationCredentials"),
+        # v1.3.1: temporary credentials for a Glue user-defined function
+        ("lakeformation", "GetTemporaryGlueFunctionCredentials"),
+        # v1.3.1: issues a web identity token (JWT) for the caller
+        ("sts", "GetWebIdentityToken"),
     }
 )
 
