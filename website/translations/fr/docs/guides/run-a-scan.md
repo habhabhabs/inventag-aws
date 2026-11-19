@@ -128,7 +128,7 @@ et qu’ils sont analysés de nouveau. InvenTag supprime les résultats enregist
 
 Si vous ne donnez aucune option de sortie, InvenTag n’écrit que le fichier Excel et journalise une ligne, `No output formats specified. Defaulting to Excel format.` Si l’analyse ne trouve
 aucune ressource, ou si vos filtres les écartent toutes, InvenTag n’écrit aucun fichier, journalise
-`No resources to report (none found, or the filters removed all of them).` et se termine tout de même avec le code 0. Avec `--template`, il écrit un rapport qui ne liste aucune ressource. Ajoutez `--s3-bucket` pour téléverser aussi les fichiers : voir
+`No resources to report (none found, or the filters removed all of them).` et se termine tout de même avec le code 0. Avec `--account-services` ou `--account-tags`, le message nomme le filtre, par exemple `No resources to report: none found with --account-services EC2 (from the command line or the accounts file). No report file was written; run without that filter to see every resource.` Avec `--template`, il écrit un rapport qui ne liste aucune ressource. Ajoutez `--s3-bucket` pour téléverser aussi les fichiers : voir
 [Téléverser les rapports vers S3 selon un calendrier](../examples/scheduled-s3-upload.md). Avec `--s3-bucket` et sans ressource, l’exécution dit `Nothing to upload to s3://<bucket>/<prefix>/: the run wrote no report file because there are no resources to report.` et se termine avec le code 1.
 
 Exemple de sortie d’une exécution avec `--template standard-bom --create-excel

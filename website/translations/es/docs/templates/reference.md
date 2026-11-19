@@ -127,7 +127,7 @@ con lo que acepta el validador.
 |---|---|---|---|
 | `spec.accounts` | lista de mapeos | sin definir | Cuentas que se analizan. Omítelo para analizar la cuenta de tus credenciales de AWS actuales. Cada cuenta necesita `profile_name` o `role_arn`. |
 | `spec.regions` | lista de textos | sin definir | Regiones que se analizan (`--account-regions`). Omítelo para analizar todas las regiones habilitadas. |
-| `spec.services` | lista de textos | sin definir | Servicios que se incluyen (`--account-services`). Limita los servicios del informe. El escaneo sigue leyendo todos los servicios, así que pueden aparecer avisos sobre otros servicios. |
+| `spec.services` | lista de textos | sin definir | Servicios que se incluyen (`--account-services`). Solo se analizan y se incluyen en el informe esos servicios. |
 | `spec.outputs` | lista de valores de `excel`, `word` | `["excel"]` | Archivos que se producen (`--create-excel`, `--create-word`). |
 | `spec.output_directory` | texto | `bom_output` | Carpeta de los informes (`--output-directory`). |
 | `spec.report_template` | nombre de plantilla o ruta relativa | `standard-bom` | Plantilla de informe que se usa, por nombre o ruta relativa. |
@@ -137,7 +137,7 @@ con lo que acepta el validador.
 | `spec.account_processing_timeout` | número entero (mín. 60) | `1800` | Segundos permitidos por cuenta (`--account-processing-timeout`). |
 | `spec.parallel_processing` | verdadero o falso | `true` | Analiza las cuentas en paralelo. `false` equivale a `--disable-parallel-processing`. |
 | `spec.accounts[].account_id` | texto | obligatorio | ID de cuenta de AWS de 12 dígitos, entre comillas para que YAML conserve los ceros iniciales. |
-| `spec.accounts[].account_name` | texto | vacío | Nombre descriptivo que se usa en los informes. |
+| `spec.accounts[].account_name` | texto | vacío | Nombre descriptivo de la cuenta. Aparece en las notas de la ejecución cuando la cuenta falla, y es el campo `source_account_name` que una columna puede listar. Las columnas predeterminadas no lo muestran. |
 | `spec.accounts[].profile_name` | texto | sin definir | Perfil de la CLI de AWS que se usa para esta cuenta. |
 | `spec.accounts[].role_arn` | texto | sin definir | Rol de IAM que se asume en esta cuenta, como ARN completo. |
 | `spec.accounts[].external_id` | texto | sin definir | ID externo que exige la política de confianza del rol. |

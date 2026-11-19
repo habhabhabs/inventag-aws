@@ -44,8 +44,8 @@ inventag --validate-credentials
 
 Not verified against Debian, Ubuntu or Homebrew: the externally-managed-environment error and the two ways around it.
 
-Python 3.11 or later is required. Use a read-only IAM identity. By default, discovery made two
-Cost Explorer requests for each account in our offline test, and AWS bills each
+Python 3.11 or later is required. Use a read-only IAM identity. By default, discovery makes one
+Cost Explorer request for each account, and AWS bills each
 request. Add `--no-billing-validation` to make no Cost Explorer request.
 Details:
 [Installation](https://habhabhabs.github.io/inventag-aws/docs/getting-started/installation).

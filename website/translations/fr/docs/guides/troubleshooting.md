@@ -109,6 +109,28 @@ Si tous les comptes échouent, InvenTag se termine avec le code 1 et n’écrit 
 **Correction :** vérifiez l’ARN du rôle, et vérifiez que la politique d’approbation du rôle autorise
 votre identité. InvenTag n’analyse pas le compte avec des identifiants appartenant à un autre compte ; ce compte est donc ignoré tant que le rôle ne fonctionne pas. Exécutez ensuite la même commande avec `--resume` pour n’analyser que les comptes manquants.
 
+### Un profil qui exige un code MFA, sans terminal {#a-profile-that-needs-an-mfa-code-without-a-terminal}
+
+Quand le profil (celui par défaut, ou un profil nommé dans un fichier de comptes) a
+`mfa_serial` et qu’InvenTag s’exécute sans terminal (un job de CI, un tube, une
+tâche planifiée), l’exécution s’arrête aussitôt avec un message au lieu d’attendre
+le code. Pour les identifiants par défaut :
+
+```text
+❌ Profile 'mfa1' needs an MFA code, and there is no terminal to type it.
+   Run InvenTag in a terminal, or get temporary credentials first and set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_SESSION_TOKEN:
+   aws sts get-session-token --serial-number <MFA device ARN> --token-code <code>
+```
+
+Pour une entrée d’un fichier de comptes, le compte échoue avec `Profile 'mfa1' for account
+123456789012 needs an MFA code, and there is no terminal to type it in. ...`
+et les autres comptes sont analysés. Code de sortie 1 quand aucun compte n’a pu être
+utilisé. `--validate-credentials` vérifie de la même façon. Avec un terminal, le code
+est demandé comme avant. Non vérifié sur un vrai AWS : un vrai dispositif MFA.
+
+**Correction :** lancez InvenTag dans un terminal, ou utilisez des identifiants
+temporaires obtenus avec `aws sts get-session-token`.
+
 ### Un nom de rôle sans fichier de comptes {#a-role-name-without-an-accounts-file}
 
 ```text title="Sortie"
@@ -228,6 +250,22 @@ Region 'us-east-9' could not be checked and the installed boto3 does not know it
 L’exécution se termine avec le code 0. Quand d’autres régions fonctionnent, elles sont analysées, et les « Run notes » disent `Regions not scanned in account 123456789012 because their region check failed and the installed boto3 does not know them (a misspelled name, or a region newer than boto3): us-east-9.` Une région que boto3 ne connaît pas mais à laquelle AWS répond est analysée.
 
 **Correction :** corrigez le nom de la région.
+
+### Une région d’une autre partition {#a-region-of-another-partition}
+
+Une région de Chine (`cn-`) ou de GovCloud (`us-gov-`) dans `--account-regions` avec
+des identifiants de la partition commerciale (ou l’inverse) est nommée une fois :
+
+```text
+Region 'cn-north-1' is in the aws-cn partition, but the credentials of account 123456789012 are for the aws partition, so it cannot be scanned with them; scan it with credentials of that partition.
+```
+
+La région est tout de même essayée, et l’exécution se termine avec le code 0. La
+vérification du compte (`sts:GetCallerIdentity`) utilise le point de terminaison STS
+de la partition analysée. Non vérifié sur un vrai AWS : des identifiants GovCloud et Chine.
+
+**Correction :** analysez cette région dans une exécution séparée avec des
+identifiants de sa partition.
 
 ### La liste des régions ne peut pas être lue {#the-list-of-regions-cannot-be-read}
 

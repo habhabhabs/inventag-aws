@@ -68,12 +68,12 @@ Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
 
 ### 網路分析做什麼 {#what-the-network-analysis-does}
 
-- 當子網所用的路由表（它自己的，或 VPC 的主路由表）中有一條指向網際網路閘道器（`igw-`）的、處於活動狀態的 `0.0.0.0/0` 或 `::/0` 路由時，該子網算作公有子網。
+- 當子網所用的路由表（它自己的，或 VPC 的主路由表）中有指向網際網路閘道器（`igw-`）、處於活動狀態且覆蓋所有地址的路由時，該子網算作公有子網：`0.0.0.0/0` 或 `::/0`，或者兩個半段 `0.0.0.0/1` 和 `128.0.0.0/1`（`::/1` 和 `8000::/1`）。
   VPC 有網際網路閘道器但沒有這樣的路由，並不會讓它的子網變成公有。工作表不顯示這一屬性。
 - `Total IPs` 來自 VPC 的 CIDR 塊。`Available IPs` 和 `Utilization %` 來自它的子網，所以這三欄加起來對不上，
   沒有子網的 VPC 顯示可用數為 0。IPv6 地址不計入。
-- `Associated Resources` 統計 API 資料中指明瞭該 VPC 或子網的資源：EC2 例項、位於 VPC 中的 Lambda 函式、RDS 資料庫例項和 ElastiCache 叢集（後兩者透過各自的子網組）。位於多個子網中的資源（例如負載均衡器或 Lambda 函式）會在每個子網中各統計一次。
-  安全組、網路 ACL、路由表和閘道器屬於 VPC 自身的網路元件，不計入。資料庫子網組是設定，不計入；RDS 叢集（例如 Aurora）也不計入。為了統計 ElastiCache 叢集，InvenTag 會讀取 `elasticache:DescribeCacheSubnetGroups`；如果該呼叫因任何原因失敗，會給出一條警告和一條執行備註，該區域的叢集不計入，工作表的其餘部分照常寫出。叢集只透過其自身帳戶的子網組計入。
+- `Associated Resources` 統計 API 資料中指明瞭該 VPC 或子網的資源：EC2 例項、位於 VPC 中的 Lambda 函式、RDS 資料庫例項和叢集（例如 Aurora）以及 ElastiCache 叢集（透過各自的子網組）、MSK 叢集（它們的代理子網）和 EKS 叢集（`eks:DescribeCluster` 返回的子網，每個叢集一次呼叫）。位於多個子網中的資源（例如負載均衡器或 Lambda 函式）在每個子網中各計一次。
+  安全組、網路 ACL、路由表和閘道器屬於 VPC 自身的網路元件，不計入。資料庫子網組是設定，不計入。EFS 檔案系統不計入（它們的掛載目標需要 `elasticfilesystem:DescribeMountTargets`，而唯讀策略沒有授予該權限）。在多個帳戶的報告中，每個帳戶都用它自己的憑證分析。為了統計 ElastiCache 叢集，InvenTag 會讀取 `elasticache:DescribeCacheSubnetGroups`；如果該呼叫因任何原因失敗，會給出一條警告和一條執行備註，該區域的叢集不計入，工作表的其餘部分照常寫出。叢集只透過其自身帳戶的子網組計入。
 - 它唯讀取你所掃描區域中的 VPC 和子網。它不檢查網路 ACL、安全組、`MapPublicIpOnLaunch`、Direct Connect、VPN 連線、Network Firewall 或對等連線路由。
 
 ### 安全分析做什麼 {#what-the-security-analysis-does}

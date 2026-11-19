@@ -133,10 +133,11 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   `--fail-on-account-error`, y no escribe ningún informe salvo que las cuentas se
   hayan quedado sin tiempo; en ese caso el informe muestra lo que se encontró.
 - **Una cuenta se queda sin tiempo:** cuenta como fallida, y los recursos
-  encontrados antes del límite se quedan en el informe. Una llamada que sigue en
-  curso cuando se abandona la cuenta no se reintenta; un listado que se cuelga sí lo
-  reintenta botocore (hasta diez intentos), así que el proceso puede seguir vivo
-  muchos minutos después de escribir el informe.
+  encontrados antes del límite se quedan en el informe. Una llamada que sigue
+  esperando cuando se abandona la cuenta no se reintenta y no mantiene vivo el
+  proceso: la ejecución termina justo después de escribir el informe. No
+  verificado contra AWS real: un endpoint real que se cuelga (la prueba cuelga una
+  llamada en moto).
 - **No se encontraron recursos, o los filtros los quitaron todos:** InvenTag no
   escribe ningún informe sin `--template` y escribe un informe vacío con
   `--template`, y termina con el código 0 salvo que pases `--fail-if-empty`
@@ -150,9 +151,6 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   (`metadata.tags.coverage_summary`).
 - **Todas las llamadas de una cuenta denegadas:** la cuenta no cuenta como
   fallida, y la ejecución termina con el código 0.
-- **Después de una ejecución en la que solo respondió la API Tagging para una cuenta,** la siguiente ejecución completa lista como añadidos los recursos de esa cuenta que no tienen etiquetas.
-- **Un servicio cuyo listado falló en la ejecución anterior** puede mostrar sus
-  recursos como añadidos en el siguiente informe de cambios.
 - **El primer informe de cambios después de actualizar desde v1.1.4** lista los
   recursos de los servicios que ahora se cubren como añadidos, aunque ya
   existían.
@@ -196,8 +194,6 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   con el comando que lista las regiones válidas, y la ejecución termina con el
   código 0. Cuando otras regiones funcionan, el informe se escribe sin ella y una
   nota de la ejecución lo indica.
-- **Un perfil que necesita MFA, ejecutado sin terminal,** espera para siempre
-  cuando la entrada sigue abierta.
 - **Una segunda entrada con el mismo ID de cuenta** en un archivo de cuentas se
   descarta con una advertencia, así que sus regiones no se analizan.
 - **Dos ejecuciones que usan la misma carpeta de salida a la vez** no se
@@ -205,12 +201,11 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **`--validate-config-only` con un archivo `--bom-config` que tiene un valor erróneo** muestra una advertencia y termina con el código 0, aunque la ejecución real se detiene con el código de salida 1.
 - **Un archivo de descripciones de servicio sin la clave de nivel superior `service_descriptions`** pasa `--validate-config-only` con una advertencia y el código 0, y la ejecución lo ignora con un error en el registro y usa las descripciones integradas.
 - **`inventag --validate-operations` muestra `apigateway:GetApiKeys` y `ec2:DescribeInstanceAttribute` como ALLOWED**, cada uno con la regla que aplica la protección (`blocked when includeValues=true`, `blocked when Attribute=userdata`), y termina con el código 0, porque la protección los bloquea solo cuando se llaman con ese parámetro.
-- **Con `services` en una plantilla de configuración**, el informe solo contiene esos servicios, pero el análisis sigue leyendo todos los servicios, así que pueden aparecer avisos sobre otros servicios.
 
 ## Costes {#costs}
 
-Por defecto, el descubrimiento llama a la API `GetCostAndUsage` de Cost Explorer. En nuestra
-prueba sin conexión hizo dos solicitudes por cuenta. AWS cobra cada solicitud a Cost
+Por defecto, el descubrimiento llama a la API `GetCostAndUsage` de Cost Explorer una vez
+por cuenta. AWS cobra cada solicitud a Cost
 Explorer: consulta los
 [precios actuales de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 
@@ -253,8 +248,7 @@ standard); `AWS_RETRY_MODE` y `AWS_MAX_ATTEMPTS` cambian este ajuste.
   instantánea recién escrita y la que se usa para comparar nunca se borran.
   Cambia los límites con `--state-retention-days` y `--state-max-snapshots`, o
   consérvalo todo con `none`.
-- El análisis de red no cuenta un clúster de RDS (por ejemplo Aurora) como recurso asociado de una VPC ni de una subred.
-- El informe consolidado de varias cuentas lee su análisis de red y de seguridad con la sesión de la primera cuenta; un informe por cuenta usa la sesión de su propia cuenta.
+- El análisis de red no cuenta un sistema de archivos EFS como recurso asociado de una VPC ni de una subred: sus destinos de montaje necesitan `elasticfilesystem:DescribeMountTargets`, que la política de solo lectura no concede.
 - El enriquecimiento de atributos de servicio (`enable_service_enrichment` en
   los ajustes de la BOM) no se ejecuta; los informes contienen los campos que
   devuelve el descubrimiento.

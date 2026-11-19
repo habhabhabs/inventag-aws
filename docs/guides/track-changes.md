@@ -145,17 +145,33 @@ What to know:
   removed. A region or service that only the current run scanned shows its
   resources as added, so use the same regions, services and filters for both
   runs.
+- A snapshot names the listings its run could not read
+  (`metadata.tags.units_not_read`: account, service, region, source and
+  outcome; present only when a listing failed). The next change report leaves
+  the resources of those listings out instead of showing them as added. A
+  snapshot written by v1.2.2 or earlier has no such list, so the first
+  comparison with it behaves as before.
+- A snapshot records the InvenTag version that wrote it
+  (`metadata.tags.inventag_version`). The first change report after an
+  upgrade does not count a field that the new version reads for the first
+  time as a change, and says in one line how many fields it left out. A real
+  change to such a field in that window is not reported, once.
+- The change report lists attribute changes in a fixed order, so two reports
+  of the same change are identical.
 - `--no-generate-changelog` stops the report but keeps the snapshots.
   `--disable-delta-detection` also stops it. `--disable-state-management`
   stops snapshots and reports.
 - If an account could not be scanned or ran out of time in either of the two
   runs, its resources are left out of the comparison. Otherwise all of them
   would show as added or removed. The change report names the account in its
-  State Comparison section (`accounts_not_compared`).
+  State Comparison section (`accounts_not_compared`), with the reason: "could
+  not scan it", or "read it only in part" when some of its resources were
+  read.
   The same holds for an account whose session expired part-way and for an
   account in which nothing at all could be read. A resource that the Tagging
   API returned before is still compared when the Tagging API read its region in
-  this run.
+  this run; when the Tagging API did not answer for a region, tags are not
+  compared there.
 - InvenTag compares lists as unordered, so moving items around in a list is
   not a change, except Lambda layers, Auto Scaling termination policies and
   CloudFront cache behaviors, whose order is configuration. It also ignores

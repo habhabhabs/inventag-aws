@@ -138,7 +138,7 @@ Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-
 
 ## 一次執行的費用 {#what-a-run-costs}
 
-Cost Explorer 的 `GetCostAndUsage` 呼叫按請求收費，在我們的離線測試中，預設執行會為每個帳戶發出兩次。
+Cost Explorer 的 `GetCostAndUsage` 呼叫按請求收費，預設執行會為每個帳戶發出一次。
 請參閱最新的
 [Cost Explorer 定價](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。
 加上 `--no-billing-validation` 就不會發出任何 Cost Explorer 呼叫。

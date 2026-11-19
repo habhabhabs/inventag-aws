@@ -117,7 +117,7 @@ spec:                      # the settings for this kind
 |---|---|---|---|
 | `spec.accounts` | 映射列表 | 未设置 | 要扫描的账户。省略则扫描你当前 AWS 凭证所属的账户。每个账户需要 `profile_name` 或 `role_arn`。 |
 | `spec.regions` | 文本列表 | 未设置 | 要扫描的区域（`--account-regions`）。省略则扫描每个已启用的区域。 |
-| `spec.services` | 文本列表 | 未设置 | 要包含的服务（`--account-services`）。限制报告中的服务。扫描仍会读取所有服务，因此可能出现关于其他服务的警告。 |
+| `spec.services` | 文本列表 | 未设置 | 要包含的服务（`--account-services`）。只扫描这些服务，报告中也只包含这些服务。 |
 | `spec.outputs` | 取自 `excel`、`word` 的值列表 | `["excel"]` | 要生成的文件（`--create-excel`、`--create-word`）。 |
 | `spec.output_directory` | 文本 | `bom_output` | 报告所在的文件夹（`--output-directory`）。 |
 | `spec.report_template` | 模板名称或相对路径 | `standard-bom` | 要使用的报告模板，按名称或相对路径指定。 |
@@ -127,7 +127,7 @@ spec:                      # the settings for this kind
 | `spec.account_processing_timeout` | 整数（最小 60） | `1800` | 每个账户允许的秒数（`--account-processing-timeout`）。 |
 | `spec.parallel_processing` | true 或 false | `true` | 并行扫描账户。`false` 等同于 `--disable-parallel-processing`。 |
 | `spec.accounts[].account_id` | 文本 | 必填 | 12 位 AWS 账户 ID，放在引号中，以便 YAML 保留前导零。 |
-| `spec.accounts[].account_name` | 文本 | 空 | 报告中使用的易读名称。 |
+| `spec.accounts[].account_name` | 文本 | 空 | 账户的易读名称。账户失败时它会出现在运行备注中，它也是列可以显示的 `source_account_name` 字段。默认列不显示它。 |
 | `spec.accounts[].profile_name` | 文本 | 未设置 | 此账户使用的 AWS CLI 配置文件。 |
 | `spec.accounts[].role_arn` | 文本 | 未设置 | 在此账户中要代入的 IAM 角色，使用完整 ARN。 |
 | `spec.accounts[].external_id` | 文本 | 未设置 | 角色的信任策略所要求的外部 ID。 |

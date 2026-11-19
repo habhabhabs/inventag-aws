@@ -123,6 +123,28 @@ generated`. (Message text from an offline run with a simulated AWS error.)
 your identity. InvenTag does not scan the account with credentials that belong to another account, so that account is skipped until the role works. Then run the same command with `--resume`
 to scan only the accounts that are missing.
 
+### A profile that needs an MFA code, without a terminal
+
+When the profile (the default one, or one named in an accounts file) has
+`mfa_serial` and InvenTag runs without a terminal (a CI job, a pipe, a
+scheduled task), the run stops at once with a message instead of waiting for
+the code. For the default credentials:
+
+```text
+❌ Profile 'mfa1' needs an MFA code, and there is no terminal to type it.
+   Run InvenTag in a terminal, or get temporary credentials first and set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_SESSION_TOKEN:
+   aws sts get-session-token --serial-number <MFA device ARN> --token-code <code>
+```
+
+For an accounts-file entry, the account fails with `Profile 'mfa1' for account
+123456789012 needs an MFA code, and there is no terminal to type it in. ...`
+and the other accounts are scanned. Exit code 1 when no account could be
+used. `--validate-credentials` checks the same way. With a terminal, the code
+is asked for as before. Not verified against real AWS: a real MFA device.
+
+**Fix:** run InvenTag in a terminal, or use temporary credentials from
+`aws sts get-session-token`.
+
 ### A role name without an accounts file
 
 <!-- BEGIN EXAMPLE OUTPUT: bare-role -->
@@ -270,6 +292,23 @@ The run exits with code 0. When other regions work, they are scanned, and the
 A region that boto3 does not know but that AWS answers for is scanned.
 
 **Fix:** correct the region name.
+
+### A region of another partition
+
+A China (`cn-`) or GovCloud (`us-gov-`) region in `--account-regions` with
+credentials of the commercial partition (or the other way round) is named
+once:
+
+```text
+Region 'cn-north-1' is in the aws-cn partition, but the credentials of account 123456789012 are for the aws partition, so it cannot be scanned with them; scan it with credentials of that partition.
+```
+
+The region is still tried, and the run exits with code 0. The account check
+(`sts:GetCallerIdentity`) uses the STS endpoint of the scanned partition.
+Not verified against real AWS: GovCloud and China credentials.
+
+**Fix:** scan that region in a separate run with credentials of its
+partition.
 
 ### The list of regions cannot be read
 

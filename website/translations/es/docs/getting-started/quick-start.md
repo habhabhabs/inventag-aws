@@ -148,7 +148,7 @@ cada recurso. Más en [Comprobar etiquetas con una política](../guides/check-ta
 ## Cuánto cuesta una ejecución {#what-a-run-costs}
 
 Las llamadas `GetCostAndUsage` de Cost Explorer se cobran por solicitud, y una
-ejecución predeterminada hace dos por cada cuenta en nuestra prueba sin conexión. Consulta los
+ejecución predeterminada hace una por cada cuenta. Consulta los
 [precios actuales de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 Añade `--no-billing-validation` para no hacer ninguna llamada a Cost Explorer.
 

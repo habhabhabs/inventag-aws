@@ -129,10 +129,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   `--fail-on-account-error`, and writes no report unless the accounts ran out
   of time, in which case the report lists what was found.
 - **An account runs out of time:** it counts as failed, and the resources
-  found before the limit stay in the report. A call that is still running when
-  the account is given up is not retried; a listing that hangs is still retried
-  by botocore (up to ten attempts), so the process can stay alive for many
-  minutes after the report is written.
+  found before the limit stay in the report. A call that is still waiting when
+  the account is given up is not retried and does not keep the process alive:
+  the run ends right after the report is written. Not verified against real
+  AWS: a real endpoint that hangs (the test hangs a call in moto).
 - **No resources found, or the filters removed all of them:** InvenTag writes
   no report without `--template` and an empty report with `--template`, and
   exits with code 0 unless you pass `--fail-if-empty` (code 6).
@@ -145,10 +145,6 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   (`metadata.tags.coverage_summary`).
 - **Every call in an account denied:** the account does not count as failed,
   and the run exits with code 0.
-- **After a run in which only the Tagging API answered for an account,**
-  the next complete run lists that account's resources without tags as added.
-- **A service whose listing failed in the previous run** can show its
-  resources as added in the next change report.
 - **The first change report after upgrading from v1.1.4** lists the resources
   of newly covered services as added, although they existed before.
 - **A session that expires during the scan** leaves a report with only what
@@ -186,8 +182,6 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **A region name typed wrong in `--account-regions`** is named once, with the
   command that lists the valid regions, and the run exits with code 0. When
   other regions work, the report is written without it and a run note says so.
-- **A profile that needs MFA, run without a terminal,** waits for ever when
-  the input stays open.
 - **A second entry with the same account ID** in an accounts file is dropped
   with a warning, so its regions are not scanned.
 - **Two runs that use the same output folder at the same time** are not
@@ -195,12 +189,11 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **`--validate-config-only` with a `--bom-config` file that has a wrong value** prints one warning and exits with code 0, although the real run stops with exit code 1.
 - **A service descriptions file without the top-level key `service_descriptions`** passes `--validate-config-only` with a warning and exit code 0, and the run ignores it with an error in the log and uses the built-in descriptions.
 - **`inventag --validate-operations` shows `apigateway:GetApiKeys` and `ec2:DescribeInstanceAttribute` as ALLOWED**, each with the rule that the guard applies (`blocked when includeValues=true`, `blocked when Attribute=userdata`), and exits with code 0, because the guard blocks them only when they are called with that parameter.
-- **With `services` in a config template**, the report holds only those services, but the scan still reads every service, so warnings about other services can appear.
 
 ## Costs
 
-By default, discovery calls the Cost Explorer `GetCostAndUsage` API. In our
-offline test it made two requests for each account. AWS charges for each Cost
+By default, discovery calls the Cost Explorer `GetCostAndUsage` API once for
+each account. AWS charges for each Cost
 Explorer request: see the current
 [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 
@@ -242,11 +235,10 @@ InvenTag retries a throttled call up to 10 times (standard retry mode);
   written and the one it is compared with are never removed. Change the limits
   with `--state-retention-days` and `--state-max-snapshots`, or keep everything
   with `none`.
-- Network analysis does not count an RDS cluster (for example Aurora) as an
-  associated resource of a VPC or a subnet.
-- The consolidated multi-account report reads its Network and Security
-  analysis with the first account's session; a per-account report uses its
-  own account's session.
+- Network analysis does not count an EFS file system as an associated
+  resource of a VPC or a subnet: its mount targets need
+  `elasticfilesystem:DescribeMountTargets`, which the read-only policy does not
+  grant.
 - Service attribute enrichment (`enable_service_enrichment` in the BOM
   settings) does not run; reports contain the fields that discovery returns.
 - In a template report, the Name column is empty when AWS returns no `Name`

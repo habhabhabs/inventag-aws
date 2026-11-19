@@ -99,14 +99,12 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 
 - **一個帳戶失敗，其他帳戶正常：** 執行以結束代碼 0 結束；傳入 `--fail-on-account-error` 時以結束代碼 5 結束。
 - **所有帳戶都失敗：** 執行以結束代碼 1 結束，使用 `--fail-on-account-error` 時也是如此；除非這些帳戶是因超時而失敗，否則不寫報告，超時時報告會列出已找到的資源。
-- **帳戶超時：** 它算作失敗，超時前找到的資源保留在報告中。帳戶被放棄時仍在執行的呼叫不會被重試；掛起的列出呼叫仍會被 botocore 重試（最多十次），所以報告寫出後程序可能還會存活很多分鐘。
+- **帳戶超時：** 它算作失敗，超時前找到的資源保留在報告中。帳戶被放棄時仍在等待的呼叫不會被重試，也不會讓程序繼續存活：報告寫出後執行隨即結束。未針對真實 AWS 驗證：真實的掛起端點（測試在 moto 中掛起一個呼叫）。
 - **沒有找到資源，或篩選條件把它們全部去掉了：** 不使用 `--template` 時 InvenTag 不寫報告，使用 `--template` 時寫出一份空報告；除非你傳入 `--fail-if-empty`（結束代碼 6），否則執行以結束代碼 0 結束。
 - **範圍內沒有任何資源的標籤策略**會報告 `0 of 0 resources compliant (100.0%)`，儘管什麼都沒有檢查。
 - **你沒有權限的服務**會被跳過並記錄一條警告；只有 Resource Groups Tagging API 返回時，它的資源才會出現。
 - **因其他原因失敗的列出呼叫**（重試後仍被限流，或出現錯誤）會記為一條警告，並計入快照（`metadata.tags.coverage_summary`）。
 - **帳戶中的所有呼叫都被拒絕：** 該帳戶不算失敗，執行以結束代碼 0 結束。
-- **只有標籤 API 回應過的帳戶：** 在某次執行中，某個帳戶只有 Resource Groups Tagging API 作出了回應，之後的下一次完整執行會把該帳戶中沒有標籤的資源列為新增。
-- **某個服務的列出呼叫在上一次執行中失敗**時，該服務的資源可能在下一份變更報告中顯示為新增。
 - **從 v1.1.4 升級後的第一份變更報告**會把新覆蓋服務的資源列為新增，儘管它們之前就存在。
 - **掃描過程中會話過期**時，報告只包含會話過期前讀取到的內容，執行以結束代碼 0 結束，使用 `--fail-on-account-error` 時也是如此。
 - **掃描開始時會話已經過期**時，不會生成報告檔案，結束代碼為 0。
@@ -122,18 +120,15 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **帳戶檔案 `settings` 塊中的值會覆蓋對應的命令列引數，** 例如 `max_concurrent_accounts`。
 - **使用 `--s3-bucket` 時結果為空**會讓執行以結束代碼 1 結束，並輸出 `Nothing to upload to s3://<bucket>/<prefix>/: the run wrote no report file because there are no resources to report.`，使用 `--fail-if-empty` 時也是如此。
 - **`--account-regions` 中輸入錯誤的區域名稱**只會被指出一次，並附上列出有效區域的命令，執行以結束代碼 0 結束。其他區域正常時，報告會不含該區域寫出，並且執行備註會說明這一點。
-- **需要 MFA 的設定檔在沒有終端的情況下執行**時，會在輸入保持開啟時一直等待。
 - **帳戶檔案中帳戶 ID 相同的第二個條目**會被丟棄並給出一條警告，因此它的區域不會被掃描。
 - **兩個同時使用同一輸出資料夾的執行**不會被阻止。
 - **帶有值有誤的 `--bom-config` 檔案的 `--validate-config-only`** 會輸出一條警告並以結束代碼 0 結束，而真正執行時會以結束代碼 1 停止。
 - **缺少頂層鍵 `service_descriptions` 的服務描述檔案**能透過 `--validate-config-only`，只給出一條警告並以結束代碼 0 結束；執行時它會被忽略，日誌中記錄一條錯誤，並使用內建描述。
 - **`inventag --validate-operations` 把 `apigateway:GetApiKeys` 和 `ec2:DescribeInstanceAttribute` 顯示為 ALLOWED**，並附上防護適用的規則（`blocked when includeValues=true`、`blocked when Attribute=userdata`），結束代碼為 0，因為只有帶該引數呼叫它們時，防護才會攔截。
-- **設定範本中設定了 `services` 時**，報告只包含這些服務，但掃描仍會讀取所有服務，因此可能出現關於其他服務的警告。
 
 ## 費用 {#costs}
 
-預設情況下，發現過程會呼叫 Cost Explorer 的 `GetCostAndUsage` API。
-在我們的離線測試中，它為每個帳戶發出兩次請求。AWS 對每次 Cost Explorer 請求收費：
+預設情況下，發現過程會為每個帳戶呼叫一次 Cost Explorer 的 `GetCostAndUsage` API。AWS 對每次 Cost Explorer 請求收費：
 請參閱最新的
 [Cost Explorer 定價](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。
 
@@ -157,8 +152,7 @@ InvenTag 會把被限流的呼叫最多重試 10 次（standard 重試模式）�
 - 當執行儲存快照時，InvenTag 會刪除 `bom_output/state/` 中超過 30 天或超出最新 100 個的快照。
   剛寫入的快照和與之比較的快照永遠不會被刪除。用 `--state-retention-days` 和 `--state-max-snapshots`
   修改這些限制，或用 `none` 保留全部。
-- 網路分析不會把 RDS 叢集（例如 Aurora）計為 VPC 或子網的關聯資源。
-- 合併的多帳戶報告用第一個帳戶的會話讀取它的網路和安全分析；按帳戶生成的報告使用各自帳戶的會話。
+- 網路分析不會把 EFS 檔案系統計為 VPC 或子網的關聯資源：它的掛載目標需要 `elasticfilesystem:DescribeMountTargets`，而唯讀策略沒有授予該權限。
 - 服務屬性補充（BOM 設定中的 `enable_service_enrichment`）不會執行；報告包含發現過程返回的欄位。
 - 在範本報告中，如果 AWS 沒有為資源返回 `Name` 欄位或 `Name` 標籤，Name 列為空；ID 欄用於識別該資源。
   對於 Lambda 函式、IAM 角色和 KMS 別名，範本報告會把 ID 顯示為名稱。

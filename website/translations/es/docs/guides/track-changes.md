@@ -128,11 +128,24 @@ Qué debes saber:
   eliminados. Una región o un servicio que solo analizó la ejecución actual
   muestra sus recursos como añadidos, así que usa las mismas regiones, servicios
   y filtros en ambas.
+- Una instantánea nombra los listados que su ejecución no pudo leer
+  (`metadata.tags.units_not_read`: cuenta, servicio, región, origen y
+  resultado; solo aparece cuando falló un listado). El siguiente informe de
+  cambios deja fuera los recursos de esos listados en lugar de mostrarlos como
+  añadidos. Una instantánea escrita por v1.2.2 o anterior no tiene esa lista, así
+  que la primera comparación con ella se comporta como antes.
+- Una instantánea registra la versión de InvenTag que la escribió
+  (`metadata.tags.inventag_version`). El primer informe de cambios después de una
+  actualización no cuenta como cambio un campo que la nueva versión lee por
+  primera vez, y dice en una línea cuántos campos dejó fuera. Un cambio real de
+  ese campo en ese intervalo no se notifica, una vez.
+- El informe de cambios lista los cambios de atributos en un orden fijo, así que
+  dos informes del mismo cambio son idénticos.
 - `--no-generate-changelog` detiene el informe pero conserva las instantáneas.
   `--disable-delta-detection` también lo detiene. `--disable-state-management`
   detiene las instantáneas y los informes.
 - Si una cuenta no se pudo analizar o se quedó sin tiempo en cualquiera de las dos ejecuciones, sus recursos se dejan fuera de la comparación.
-  Si no, todos aparecerían como añadidos o eliminados. El informe de cambios nombra la cuenta en su sección State Comparison (`accounts_not_compared`). Lo mismo vale para una cuenta cuya sesión caducó a mitad del análisis y para una cuenta de la que no se pudo leer nada. Un recurso que la API Tagging devolvió antes se sigue comparando cuando la API Tagging leyó su región en esta ejecución.
+  Si no, todos aparecerían como añadidos o eliminados. El informe de cambios nombra la cuenta en su sección State Comparison (`accounts_not_compared`), con el motivo: "could not scan it", o "read it only in part" cuando se leyeron algunos de sus recursos. Lo mismo vale para una cuenta cuya sesión caducó a mitad del análisis y para una cuenta de la que no se pudo leer nada. Un recurso que la API Tagging devolvió antes se sigue comparando cuando la API Tagging leyó su región en esta ejecución; cuando la API Tagging no respondió para una región, las etiquetas no se comparan allí.
 - InvenTag compara las listas sin tener en cuenta el orden, así que mover elementos dentro de una lista no es un cambio, salvo en las capas de Lambda, las políticas de terminación de Auto Scaling y los comportamientos de caché de CloudFront, cuyo orden es configuración.
   También ignora los campos que cambian en cada ejecución: la vía de descubrimiento, las cifras de coste y los contadores de uso
   como `ItemCount`, `ApproximateNumberOfMessages` o el tamaño de EFS.

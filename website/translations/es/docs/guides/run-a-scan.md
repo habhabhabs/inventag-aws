@@ -132,7 +132,7 @@ y que se analizan de nuevo. InvenTag borra los resultados guardados tras una eje
 
 Si no indicas ninguna opción de salida, InvenTag escribe solo Excel y registra una línea, `No output formats specified. Defaulting to Excel format.` Si el
 análisis no encuentra recursos, o tus filtros los eliminan todos, InvenTag no
-escribe ningún archivo, registra `No resources to report (none found, or the filters removed all of them).` y aun así termina con el código 0. Con `--template`, escribe un informe que no lista ningún recurso. Añade `--s3-bucket`
+escribe ningún archivo, registra `No resources to report (none found, or the filters removed all of them).` y aun así termina con el código 0. Con `--account-services` o `--account-tags`, el mensaje nombra el filtro, por ejemplo `No resources to report: none found with --account-services EC2 (from the command line or the accounts file). No report file was written; run without that filter to see every resource.` Con `--template`, escribe un informe que no lista ningún recurso. Añade `--s3-bucket`
 para subir también los archivos: consulta
 [Subir informes a S3 de forma programada](../examples/scheduled-s3-upload.md). Con `--s3-bucket` y sin recursos, la ejecución dice `Nothing to upload to s3://<bucket>/<prefix>/: the run wrote no report file because there are no resources to report.` y termina con el código 1.
 

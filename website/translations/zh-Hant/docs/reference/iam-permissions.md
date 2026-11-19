@@ -20,7 +20,7 @@ sidebar_position: 3
 | `ec2:DescribeRegions` | 列出已啟用的區域，並檢查你掃描的每個區域 | 即使使用 `--account-regions`，每個區域都會進行檢查。檢查失敗的區域會被跳過並給出警告。如果該呼叫在每個區域都被拒絕，則掃描所有區域。 |
 | `account:ListRegions` | 在 `ec2:DescribeRegions` 失敗時列出已啟用的區域 | `ec2:DescribeRegions` 正常時不會呼叫。 |
 | `tag:GetResources` | 找出帶標籤的資源（Resource Groups Tagging API） | IAM 字首是 `tag`，而不是 `resourcegroupstaggingapi`。 |
-| `ce:GetCostAndUsage` | 找出有支出的服務 | **AWS 按請求收費。** 詳見[Cost Explorer 定價](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。 在我們的離線測試中，每個帳戶一次執行會發出兩次。如果被拒絕，發現過程會在沒有帳單資料的情況下繼續。`--no-billing-validation` 會停止這些呼叫，此後你可以不授予這項權限。 |
+| `ce:GetCostAndUsage` | 找出有支出的服務 | **AWS 按請求收費。** 詳見[Cost Explorer 定價](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。 每次執行為每個帳戶發出一次。如果被拒絕，發現過程會在沒有帳單資料的情況下繼續。`--no-billing-validation` 會停止這些呼叫，此後你可以不授予這項權限。 |
 | 你想放入報告的每個服務的 `List*`、`Describe*`、`Get*` | 按服務發現 | 例如 `s3:ListAllMyBuckets`、`s3:GetBucketTagging`、`lambda:ListFunctions`、`dynamodb:ListTables`。AWS 託管的 `ReadOnlyAccess` 策略涵蓋了這些。 |
 
 未針對真實的 AWS 驗證：`GetCallerIdentity` 不需要權限，Tagging API 的 IAM 字首是 `tag`，並且 `ReadOnlyAccess` 涵蓋 List、Describe 和 Get 操作。

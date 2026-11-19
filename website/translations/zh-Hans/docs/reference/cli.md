@@ -78,7 +78,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | 参数 | 默认值 | 状态 | 功能 |
 |---|---|---|---|
 | `--account-regions LIST` | 每个已启用的区域 | 可用 | 以逗号分隔的区域代码，例如 `us-east-1,eu-west-1`。IAM、S3 存储桶列表、CloudFront 和 Route 53 始终只从 `us-east-1` 读取一次，因此无需列出它。 |
-| `--account-services LIST` | 全部 | 可用 | 以逗号分隔的服务名称，只有这些服务会保留在报告中，与 Service 列匹配，例如 `EC2,S3`。 |
+| `--account-services LIST` | 全部 | 可用 | 以逗号分隔的服务名称，与 Service 列匹配，例如 `EC2,S3`。只扫描这些服务，报告中也只保留这些服务。 |
 | `--account-tags JSON` | 无 | 可用 | 标签筛选，例如 `'{"Environment":"prod"}'`。只保留带有这些标签的资源。 |
 | `--fallback-display auto\|always\|never` | `auto` | 可用 | 是否显示只通过 Resource Groups Tagging API 找到的资源。`auto` 只对自身发现代码没有返回结果的服务显示它们。 |
 | `--hide-fallback-resources` | 关 | 可用 | 等同于 `--fallback-display never`。已弃用。 |
@@ -89,8 +89,8 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 |---|---|---|---|
 | `--enable-network-analysis` | 关 | 可用 | 找到 VPC 时，在 Excel 报告中添加 `Network Analysis` 工作表。与 `--template` 一起使用时不添加任何内容。见[网络与安全分析](../guides/network-and-security-analysis.md)。 |
 | `--enable-security-analysis` | 关 | 可用 | 找到安全组时，在 Excel 报告中添加 `Security Analysis` 工作表。与 `--template` 一起使用时不添加任何内容。 |
-| `--enable-cost-analysis` | 关 | 可用 | 在默认工作簿中添加 Cost Analysis 工作表（以及四个 `forgotten_analysis.*` 列）。会额外调用 Cost Explorer、Pricing 和 CloudWatch，即使加了 `--no-billing-validation` 也一样。需要 `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`。费用是根据 AWS Pricing API 得出的估算值，不是你的账单。 |
-| `--billing-validation`, `--no-billing-validation` | 开 | 可用 | 在发现阶段使用 Cost Explorer 找出有支出的服务。AWS 对每次 Cost Explorer 请求收费。详见[Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。`--no-billing-validation` 会停止这些调用。 |
+| `--enable-cost-analysis` | 关 | 可用 | 在默认工作簿中添加 Cost Analysis 工作表（以及四个 `forgotten_analysis.*` 列）。会额外调用 Cost Explorer、Pricing 和 CloudWatch；`--no-billing-validation` 与它相互独立，不会停止这些调用。需要 `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`。费用是根据 AWS Pricing API 得出的估算值，不是你的账单。 |
+| `--billing-validation`, `--no-billing-validation` | 开 | 可用 | 在发现阶段使用 Cost Explorer 找出有支出的服务。AWS 对每次 Cost Explorer 请求收费。详见[Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。`--no-billing-validation` 会停止这些调用；`--enable-cost-analysis` 与它相互独立，仍会调用 Cost Explorer。 |
 
 未针对真实的 AWS 验证：`--enable-cost-analysis` 只需要这两项额外权限，并且估算值与 AWS 价格一致。
 
@@ -159,7 +159,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 
 | 参数 | 默认值 | 状态 | 功能 |
 |---|---|---|---|
-| `--validate-credentials` | 关 | 可用 | 检查每个账户的凭证，然后退出（全部可用为 0，否则为 1）。 |
+| `--validate-credentials` | 关 | 可用 | 按扫描使用凭证的方式检查每个账户的凭证（对于其他账户中没有凭证的条目，使用跨账户角色），然后退出（全部可用为 0，否则为 1）。 |
 | `--credential-timeout SECONDS` | `30` | 可用 | 登录和凭证检查（包括 AssumeRole）的超时时间。 |
 | `--skip-credential-validation` | 关 | 可用 | 在运行开始时跳过凭证检查。 |
 

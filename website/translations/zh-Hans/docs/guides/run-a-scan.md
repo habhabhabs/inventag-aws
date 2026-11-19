@@ -116,7 +116,7 @@ inventag --accounts-file accounts.yaml --create-excel --resume
 | `--output-directory reports` | 把所有内容写入 `reports/`，而不是 `bom_output/` |
 
 如果不指定输出参数，InvenTag 只写出 Excel，并记录一行 `No output formats specified. Defaulting to Excel format.`。如果扫描没有发现任何资源，或者你的过滤条件把它们全部排除了，
-InvenTag 不会写出任何文件，记录 `No resources to report (none found, or the filters removed all of them).`，并且仍以退出码 0 退出。使用 `--template` 时，它会写出一份不列出任何资源的报告。添加 `--s3-bucket` 还可以上传这些文件：
+InvenTag 不会写出任何文件，记录 `No resources to report (none found, or the filters removed all of them).`，并且仍以退出码 0 退出。使用 `--account-services` 或 `--account-tags` 时，消息会指出该筛选条件，例如 `No resources to report: none found with --account-services EC2 (from the command line or the accounts file). No report file was written; run without that filter to see every resource.`使用 `--template` 时，它会写出一份不列出任何资源的报告。添加 `--s3-bucket` 还可以上传这些文件：
 参见[定时把报告上传到 S3](../examples/scheduled-s3-upload.md)。使用 `--s3-bucket` 且没有资源时，运行会输出 `Nothing to upload to s3://<bucket>/<prefix>/: the run wrote no report file because there are no resources to report.`，并以退出码 1 结束。
 
 使用 `--template standard-bom --create-excel

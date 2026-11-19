@@ -148,7 +148,7 @@ chaque ressource. Plus de détails dans [Vérifier les étiquettes selon une pol
 ## Ce que coûte une exécution {#what-a-run-costs}
 
 Les appels `GetCostAndUsage` de Cost Explorer sont facturés à chaque requête, et une exécution
-par défaut en fait deux par compte dans notre test hors ligne. Consultez les
+par défaut en fait une par compte. Consultez les
 [tarifs actuels de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 Ajoutez `--no-billing-validation` pour ne faire aucun appel à Cost Explorer.
 

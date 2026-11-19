@@ -84,7 +84,7 @@ Non vérifié sur un vrai Google : ce que les options Google de ce tableau crée
 | Option | Par défaut | État | Ce qu’elle fait |
 |---|---|---|---|
 | `--account-regions LIST` | toutes les régions activées | Fonctionne | Codes de région séparés par des virgules, par exemple `us-east-1,eu-west-1`. IAM, la liste des buckets S3, CloudFront et Route 53 sont toujours lus une seule fois depuis `us-east-1` ; vous n’avez donc pas besoin de l’indiquer. |
-| `--account-services LIST` | tous | Fonctionne | Noms de services séparés par des virgules qui sont conservés dans le rapport, comparés à la colonne Service, par exemple `EC2,S3`. |
+| `--account-services LIST` | tous | Fonctionne | Noms de services séparés par des virgules, comparés à la colonne Service, par exemple `EC2,S3`. Seuls ces services sont analysés et conservés dans le rapport. |
 | `--account-tags JSON` | aucun | Fonctionne | Filtre d’étiquettes, par exemple `'{"Environment":"prod"}'`. Seules les ressources portant ces étiquettes sont conservées. |
 | `--fallback-display auto\|always\|never` | `auto` | Fonctionne | Indique s’il faut afficher les ressources trouvées uniquement par l’API Resource Groups Tagging. `auto` ne les affiche que pour les services dont leur propre code de découverte n’a donné aucun résultat. |
 | `--hide-fallback-resources` | désactivé | Fonctionne | Identique à `--fallback-display never`. Obsolète. |
@@ -95,8 +95,8 @@ Non vérifié sur un vrai Google : ce que les options Google de ce tableau crée
 |---|---|---|---|
 | `--enable-network-analysis` | désactivé | Fonctionne | Ajoute une feuille `Network Analysis` au rapport Excel lorsque des VPC sont trouvés. N’ajoute rien avec `--template`. Voir [Analyse du réseau et de la sécurité](../guides/network-and-security-analysis.md). |
 | `--enable-security-analysis` | désactivé | Fonctionne | Ajoute une feuille `Security Analysis` au rapport Excel lorsque des groupes de sécurité sont trouvés. N’ajoute rien avec `--template`. |
-| `--enable-cost-analysis` | désactivé | Fonctionne | Ajoute une feuille Cost Analysis (et les quatre colonnes `forgotten_analysis.*`) au classeur par défaut. Effectue des appels supplémentaires à Cost Explorer, Pricing et CloudWatch, y compris avec `--no-billing-validation`. Nécessite `pricing:GetProducts` et `cloudwatch:GetMetricStatistics`. Les coûts sont des estimations de l’API AWS Pricing, pas votre facture. |
-| `--billing-validation`, `--no-billing-validation` | activé | Fonctionne | Utilise Cost Explorer pendant la découverte pour repérer les services qui génèrent des dépenses. AWS facture chaque requête Cost Explorer. Voir les [tarifs de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). `--no-billing-validation` arrête ces appels. |
+| `--enable-cost-analysis` | désactivé | Fonctionne | Ajoute une feuille Cost Analysis (et les quatre colonnes `forgotten_analysis.*`) au classeur par défaut. Effectue des appels supplémentaires à Cost Explorer, Pricing et CloudWatch ; `--no-billing-validation` en est indépendant et ne les arrête pas. Nécessite `pricing:GetProducts` et `cloudwatch:GetMetricStatistics`. Les coûts sont des estimations de l’API AWS Pricing, pas votre facture. |
+| `--billing-validation`, `--no-billing-validation` | activé | Fonctionne | Utilise Cost Explorer pendant la découverte pour repérer les services qui génèrent des dépenses. AWS facture chaque requête Cost Explorer. Voir les [tarifs de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). `--no-billing-validation` arrête ces appels ; `--enable-cost-analysis` en est indépendant et appelle toujours Cost Explorer. |
 
 Non vérifié sur un vrai AWS : `--enable-cost-analysis` nécessite uniquement ces deux autorisations supplémentaires, et les estimations correspondent aux prix AWS.
 
@@ -168,7 +168,7 @@ et une exécution sans elle n’écrit aucun fichier.
 
 | Option | Par défaut | État | Ce qu’elle fait |
 |---|---|---|---|
-| `--validate-credentials` | désactivé | Fonctionne | Vérifie les identifiants de chaque compte, puis s’arrête (0 si tous fonctionnent, 1 sinon). |
+| `--validate-credentials` | désactivé | Fonctionne | Vérifie les identifiants de chaque compte comme l’analyse les utilise (le rôle inter-comptes pour une entrée sans identifiants dans un autre compte), puis s’arrête (0 si tous fonctionnent, 1 sinon). |
 | `--credential-timeout SECONDS` | `30` | Fonctionne | Délai d’attente de la connexion et des vérifications d’identifiants, AssumeRole compris. |
 | `--skip-credential-validation` | désactivé | Fonctionne | Ignore la vérification des identifiants au début d’une exécution. |
 

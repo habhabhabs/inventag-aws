@@ -113,11 +113,16 @@ Changes detected in S3 service resources
   和它無法讀取的資源（被拒絕、被限流或失敗的列出呼叫）不會參與比較：State Comparison
   部分會把它們計入 `resources_not_compared`，它們不會顯示為已刪除。只有目前執行掃描過的
   區域或服務，其資源會顯示為新增，所以兩次執行請使用相同的區域、服務和過濾條件。
+- 快照會記下其執行未能讀取的列出呼叫（`metadata.tags.units_not_read`：帳戶、服務、區域、來源和結果；只有某個列出呼叫失敗時才出現）。
+  下一份變更報告會把這些列出呼叫的資源排除在外，而不是顯示為新增。v1.2.2 或更早版本寫出的快照沒有這份列表，所以與它的第一次比較和以前一樣。
+- 快照會記下寫出它的 InvenTag 版本（`metadata.tags.inventag_version`）。升級後的第一份變更報告不會把新版本首次讀取的欄位算作變更，
+  並用一行說明排除了多少個欄位。在這段時間內對這類欄位的真實變更不會被報告，僅此一次。
+- 變更報告按固定順序列出屬性變更，所以同一變更的兩份報告完全相同。
 - `--no-generate-changelog` 會停止生成報告，但保留快照。`--disable-delta-detection`
   同樣會停止生成報告。`--disable-state-management` 會同時停止快照和報告。
 - 如果某個帳戶在兩次執行中的任何一次裡無法掃描或超出了時間限制，它的資源會被排除在比較之外。
-  否則它的所有資源都會顯示為新增或刪除。變更報告會在「State Comparison」部分（`accounts_not_compared`）列出該帳戶。
-  會話在中途過期的帳戶，以及完全沒有讀到任何內容的帳戶，也按同樣方式處理。目前執行中 Tagging API 讀取了其區域時，Tagging API 之前返回過的資源仍會參與比較。
+  否則它的所有資源都會顯示為新增或刪除。變更報告會在「State Comparison」部分（`accounts_not_compared`）列出該帳戶，並給出原因："could not scan it"，或在讀取到它的部分資源時為 "read it only in part"。
+  會話在中途過期的帳戶，以及完全沒有讀到任何內容的帳戶，也按同樣方式處理。目前執行中 Tagging API 讀取了其區域時，Tagging API 之前返回過的資源仍會參與比較；某個區域的 Tagging API 沒有回應時，該區域不比較標籤。
 - InvenTag 把列表當作無序處理，所以列表中專案的順序變化不算變更，但 Lambda 層、Auto Scaling 終止策略和 CloudFront 快取行為除外，它們的順序屬於設定。它還會忽略每次執行都會變化的欄位：
   發現途徑、成本數字，以及 `ItemCount`、`ApproximateNumberOfMessages` 或 EFS 大小之類的使用計數器。
 - 執行儲存快照時，InvenTag 會刪除超過 30 天或超出最新 100 個的快照。用 `--state-retention-days N` 和

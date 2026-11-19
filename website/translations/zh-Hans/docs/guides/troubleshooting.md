@@ -105,6 +105,24 @@ inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Skipping account
 **解决办法：** 检查角色 ARN，并检查该角色的信任策略是否允许你的身份。
 InvenTag 不会用属于其他账户的凭证扫描该账户，因此在角色可用之前，该账户会被跳过。然后用 `--resume` 运行同一条命令，只扫描缺少的账户。
 
+### 需要 MFA 代码的配置文件，没有终端 {#a-profile-that-needs-an-mfa-code-without-a-terminal}
+
+当配置文件（默认配置文件，或账户文件中指定的配置文件）设置了 `mfa_serial`，而 InvenTag
+在没有终端的情况下运行时（CI 作业、管道、计划任务），运行会立即停止并给出一条消息，而不是等待输入代码。对于默认凭证：
+
+```text
+❌ Profile 'mfa1' needs an MFA code, and there is no terminal to type it.
+   Run InvenTag in a terminal, or get temporary credentials first and set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_SESSION_TOKEN:
+   aws sts get-session-token --serial-number <MFA device ARN> --token-code <code>
+```
+
+对于账户文件中的条目，该账户会失败并显示 `Profile 'mfa1' for account
+123456789012 needs an MFA code, and there is no terminal to type it in. ...`，
+其他账户照常扫描。没有任何账户可用时退出码为 1。`--validate-credentials` 也按同样方式检查。
+有终端时，仍会像以前一样提示输入代码。未针对真实的 AWS 验证：真实的 MFA 设备。
+
+**解决办法：** 在终端中运行 InvenTag，或使用 `aws sts get-session-token` 得到的临时凭证。
+
 ### 给了角色名称但没有账户文件 {#a-role-name-without-an-accounts-file}
 
 ```text title="输出"
@@ -217,6 +235,19 @@ Region 'us-east-9' could not be checked and the installed boto3 does not know it
 运行以退出码 0 结束。其他区域正常时，它们会被扫描，并且“运行备注”会写明 `Regions not scanned in account 123456789012 because their region check failed and the installed boto3 does not know them (a misspelled name, or a region newer than boto3): us-east-9.`boto3 不认识、但 AWS 会响应的区域会被扫描。
 
 **解决办法：** 更正区域名称。
+
+### 另一个分区的区域 {#a-region-of-another-partition}
+
+在 `--account-regions` 中给出中国（`cn-`）或 GovCloud（`us-gov-`）区域，而凭证属于商业分区（或反过来）时，会给出一次提示：
+
+```text
+Region 'cn-north-1' is in the aws-cn partition, but the credentials of account 123456789012 are for the aws partition, so it cannot be scanned with them; scan it with credentials of that partition.
+```
+
+该区域仍会被尝试，运行以退出码 0 结束。账户检查（`sts:GetCallerIdentity`）使用所扫描分区的 STS 端点。
+未针对真实的 AWS 验证：GovCloud 和中国区的凭证。
+
+**解决办法：** 用该分区的凭证另外运行一次，扫描这个区域。
 
 ### 无法读取区域列表 {#the-list-of-regions-cannot-be-read}
 

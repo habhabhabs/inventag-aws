@@ -148,6 +148,10 @@ If you give no output flag, InvenTag writes Excel only and logs one line,
 `No output formats specified. Defaulting to Excel format.` If the scan finds
 no resources, or your filters remove them all, InvenTag writes no file, logs
 `No resources to report (none found, or the filters removed all of them).`
+With `--account-services` or `--account-tags`, the message names the filter,
+for example `No resources to report: none found with --account-services EC2
+(from the command line or the accounts file). No report file was written; run
+without that filter to see every resource.`
 and still exits with code 0. With `--template`, it writes a report that lists
 no resources. Add `--s3-bucket` to also upload the files: see
 [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md). With

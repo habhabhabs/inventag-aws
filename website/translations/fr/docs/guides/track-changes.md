@@ -125,11 +125,26 @@ son ARN.
   échec) ne sont pas comparées : la section State Comparison les compte dans `resources_not_compared` et elles ne
   sont pas présentées comme supprimées. Une région ou un service que seule l’exécution actuelle a analysé montre ses
   ressources comme ajoutées ; utilisez donc les mêmes régions, services et filtres pour les deux exécutions.
+- Un instantané nomme les listages que son exécution n’a pas pu lire
+  (`metadata.tags.units_not_read` : compte, service, région, source et
+  résultat ; présent seulement quand un listage a échoué). Le rapport de
+  changements suivant laisse de côté les ressources de ces listages au lieu de
+  les montrer comme ajoutées. Un instantané écrit par v1.2.2 ou une version
+  antérieure n’a pas cette liste, donc la première comparaison avec lui se
+  comporte comme avant.
+- Un instantané enregistre la version d’InvenTag qui l’a écrit
+  (`metadata.tags.inventag_version`). Le premier rapport de changements après
+  une mise à jour ne compte pas comme un changement un champ que la nouvelle
+  version lit pour la première fois, et indique en une ligne combien de champs
+  il a laissés de côté. Un vrai changement de ce champ dans cet intervalle n’est
+  pas signalé, une fois.
+- Le rapport de changements liste les changements d’attributs dans un ordre
+  fixe, donc deux rapports du même changement sont identiques.
 - `--no-generate-changelog` supprime le rapport mais conserve les instantanés.
   `--disable-delta-detection` le supprime aussi. `--disable-state-management`
   supprime les instantanés et les rapports.
 - Si un compte n’a pas pu être analysé ou a dépassé son délai dans l’une des deux exécutions, ses ressources sont exclues de la comparaison.
-  Sinon, toutes apparaîtraient comme ajoutées ou supprimées. Le rapport de changements nomme le compte dans sa section State Comparison (`accounts_not_compared`). Il en va de même pour un compte dont la session a expiré en cours d’analyse et pour un compte dont rien n’a pu être lu. Une ressource que l’API Tagging a déjà renvoyée reste comparée lorsque l’API Tagging a lu sa région dans cette exécution.
+  Sinon, toutes apparaîtraient comme ajoutées ou supprimées. Le rapport de changements nomme le compte dans sa section State Comparison (`accounts_not_compared`), avec la raison : "could not scan it", ou "read it only in part" quand une partie de ses ressources a été lue. Il en va de même pour un compte dont la session a expiré en cours d’analyse et pour un compte dont rien n’a pu être lu. Une ressource que l’API Tagging a déjà renvoyée reste comparée lorsque l’API Tagging a lu sa région dans cette exécution ; quand l’API Tagging n’a pas répondu pour une région, les balises n’y sont pas comparées.
 - InvenTag compare les listes sans tenir compte de l’ordre : déplacer des éléments dans une liste n’est donc pas un changement, sauf pour les couches Lambda, les politiques de résiliation Auto Scaling et les comportements de cache CloudFront, dont l’ordre fait partie de la configuration.
   Il ignore aussi les champs qui changent à chaque exécution : la voie de découverte, les chiffres de coût et les compteurs d’utilisation
   comme `ItemCount`, `ApproximateNumberOfMessages` ou la taille EFS.

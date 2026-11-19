@@ -127,7 +127,7 @@ the validator accepts.
 |---|---|---|---|
 | `spec.accounts` | list of mappings | not set | Accounts to scan. Leave out to scan the account of your current AWS credentials. Each account needs `profile_name` or `role_arn`. |
 | `spec.regions` | list of text | not set | Regions to scan (`--account-regions`). Leave out to scan every enabled region. |
-| `spec.services` | list of text | not set | Services to include (`--account-services`). Limits the services in the report. The scan still reads every service, so warnings about other services can appear. |
+| `spec.services` | list of text | not set | Services to include (`--account-services`). Only these services are scanned and reported. |
 | `spec.outputs` | list of values from `excel`, `word` | `["excel"]` | Files to produce (`--create-excel`, `--create-word`). |
 | `spec.output_directory` | text | `bom_output` | Folder for the reports (`--output-directory`). |
 | `spec.report_template` | template name or relative path | `standard-bom` | Report template to use, by name or relative path. |
@@ -137,7 +137,7 @@ the validator accepts.
 | `spec.account_processing_timeout` | whole number (min 60) | `1800` | Seconds allowed per account (`--account-processing-timeout`). |
 | `spec.parallel_processing` | true or false | `true` | Scan accounts in parallel. `false` is the same as `--disable-parallel-processing`. |
 | `spec.accounts[].account_id` | text | required | 12-digit AWS account ID, in quotes so YAML keeps leading zeros. |
-| `spec.accounts[].account_name` | text | empty | Friendly name used in reports. |
+| `spec.accounts[].account_name` | text | empty | Friendly name for the account. It is shown in the Run notes when the account fails, and is the `source_account_name` field that a column can list. The default columns do not show it. |
 | `spec.accounts[].profile_name` | text | not set | AWS CLI profile to use for this account. |
 | `spec.accounts[].role_arn` | text | not set | IAM role to assume in this account, as a full ARN. |
 | `spec.accounts[].external_id` | text | not set | External ID required by the role's trust policy. |

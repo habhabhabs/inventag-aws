@@ -27,7 +27,7 @@ InvenTag 写入的其他位置只有你指定的文件（`--log-file`、`--audit
 | `multi_account_bom_<timestamp>.docx` | `--create-word` | Word 报告 |
 | `<account-id>_bom_<timestamp>.xlsx` 和 `.docx` | `--per-account-reports`，代替 `multi_account_bom_*` 文件 | 每个有资源的账户一份报告 |
 | `tag_compliance_<timestamp>.json` | 启用了标签策略 | 标签检查结果 |
-| `state/state_<timestamp>.json` | 每次运行，除非使用 `--disable-state-management` | 所发现的每个资源的快照，机密值已被遮盖。`metadata.tags.coverage_summary` 按账户统计列出调用的结束方式（`ok`、`empty`、`denied`、`throttled`、`error`、`timeout`）。超过 30 天的快照，或最新 100 份之外的快照会被删除（`--state-retention-days`、`--state-max-snapshots`）。 |
+| `state/state_<timestamp>.json` | 每次运行，除非使用 `--disable-state-management` | 所发现的每个资源的快照，机密值已被遮盖。`metadata.tags.coverage_summary` 按账户统计列出调用的结束方式（`ok`、`empty`、`denied`、`throttled`、`error`、`timeout`，以及 `--account-services` 排除的服务对应的 `out_of_scope`）。`metadata.tags.units_not_read` 列出未能读取的列出调用（仅在有调用失败时出现），`metadata.tags.inventag_version` 记录写出该快照的 InvenTag 版本。超过 30 天的快照，或最新 100 份之外的快照会被删除（`--state-retention-days`、`--state-max-snapshots`）。 |
 | `state/metadata.json` | 有快照时 | 快照索引：时间、账户、区域、资源数量、校验和 |
 | `changelog_<timestamp>.md` | 第二次及之后的运行，除非使用 `--no-generate-changelog` 或 `--disable-delta-detection` | 自上一份快照以来新增、删除或变更了什么。见[跟踪变更](../guides/track-changes.md)。 |
 | 你用 `--audit-output` 指定的文件 | 你要求时 | 本次运行调用的每个 AWS 操作 |

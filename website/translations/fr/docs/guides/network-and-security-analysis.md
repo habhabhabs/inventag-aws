@@ -74,14 +74,15 @@ Feuille `Security Analysis`, premières lignes :
 
 ### Ce que fait l’analyse réseau {#what-the-network-analysis-does}
 
-- Un sous-réseau compte comme public quand la table de routage qu’il utilise (la sienne, ou la table principale du VPC) a une route active
-  pour `0.0.0.0/0` ou `::/0` vers une passerelle Internet (`igw-`). Un VPC qui a une passerelle Internet mais aucune route de ce type
+- Un sous-réseau compte comme public quand la table de routage qu’il utilise (la sienne, ou la table principale du VPC) a des routes actives
+  vers une passerelle Internet (`igw-`) qui couvrent toutes les adresses : `0.0.0.0/0` ou `::/0`, ou les deux moitiés
+  `0.0.0.0/1` et `128.0.0.0/1` (`::/1` et `8000::/1`). Un VPC qui a une passerelle Internet mais aucune route de ce type
   ne rend pas ses sous-réseaux publics. Les feuilles n’affichent pas cette propriété.
 - `Total IPs` vient des blocs CIDR du VPC. `Available IPs` et `Utilization %` viennent de ses sous-réseaux : les trois colonnes ne concordent donc pas,
   et un VPC sans sous-réseau affiche 0 disponible. Les adresses IPv6 ne sont pas comptées.
 - `Associated Resources` compte les ressources dont les données d’API nomment le VPC ou le sous-réseau : instances EC2, fonctions Lambda dans un VPC,
-  instances de base de données RDS et clusters ElastiCache (les deux par leur groupe de sous-réseaux). Une ressource présente dans plusieurs sous-réseaux, comme un équilibreur de charge ou une fonction Lambda, est comptée une fois dans chacun d’eux. Les groupes de sécurité, les ACL réseau, les tables de routage et les passerelles
-  sont la plomberie propre du VPC et ne sont pas comptés. Un groupe de sous-réseaux de base de données est de la configuration et n’est pas compté, et un cluster RDS (par exemple Aurora) n’est pas compté non plus. Pour compter les clusters ElastiCache, InvenTag lit `elasticache:DescribeCacheSubnetGroups` ; si cet appel échoue, quelle qu’en soit la raison, un avertissement et une note d’exécution l’indiquent, les clusters de cette région ne sont pas comptés et le reste de la feuille est écrit comme d’habitude. Un cluster n’est compté que par un groupe de sous-réseaux de son propre compte.
+  instances et clusters de base de données RDS (par exemple Aurora) et clusters ElastiCache (par leur groupe de sous-réseaux), clusters MSK (les sous-réseaux de leurs brokers) et clusters EKS (les sous-réseaux que renvoie `eks:DescribeCluster`, un appel par cluster). Une ressource présente dans plusieurs sous-réseaux, comme un équilibreur de charge ou une fonction Lambda, est comptée une fois dans chacun d’eux. Les groupes de sécurité, les ACL réseau, les tables de routage et les passerelles
+  sont la plomberie propre du VPC et ne sont pas comptés. Un groupe de sous-réseaux de base de données est de la configuration et n’est pas compté. Les systèmes de fichiers EFS ne sont pas comptés (leurs cibles de montage exigent `elasticfilesystem:DescribeMountTargets`, que la politique en lecture seule n’accorde pas). Dans un rapport de plusieurs comptes, chaque compte est analysé avec ses propres identifiants. Pour compter les clusters ElastiCache, InvenTag lit `elasticache:DescribeCacheSubnetGroups` ; si cet appel échoue, quelle qu’en soit la raison, un avertissement et une note d’exécution l’indiquent, les clusters de cette région ne sont pas comptés et le reste de la feuille est écrit comme d’habitude. Un cluster n’est compté que par un groupe de sous-réseaux de son propre compte.
 - Elle ne lit que les VPC et sous-réseaux des régions que vous analysez. Elle ne vérifie pas les ACL réseau, les groupes de sécurité, `MapPublicIpOnLaunch`,
   Direct Connect, les connexions VPN, Network Firewall ni les routes d’appairage.
 

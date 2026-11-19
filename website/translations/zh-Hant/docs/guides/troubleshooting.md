@@ -105,6 +105,24 @@ inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Skipping account
 **解決辦法：** 檢查角色 ARN，並檢查該角色的信任策略是否允許你的身份。
 InvenTag 不會用屬於其他帳戶的憑證掃描該帳戶，因此在角色可用之前，該帳戶會被跳過。然後用 `--resume` 執行同一條命令，只掃描缺少的帳戶。
 
+### 需要 MFA 程式碼的設定檔，沒有終端 {#a-profile-that-needs-an-mfa-code-without-a-terminal}
+
+當設定檔（預設設定檔，或帳戶檔案中指定的設定檔）設定了 `mfa_serial`，而 InvenTag
+在沒有終端的情況下執行時（CI 作業、管道、計劃任務），執行會立即停止並給出一條訊息，而不是等待輸入程式碼。對於預設憑證：
+
+```text
+❌ Profile 'mfa1' needs an MFA code, and there is no terminal to type it.
+   Run InvenTag in a terminal, or get temporary credentials first and set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_SESSION_TOKEN:
+   aws sts get-session-token --serial-number <MFA device ARN> --token-code <code>
+```
+
+對於帳戶檔案中的條目，該帳戶會失敗並顯示 `Profile 'mfa1' for account
+123456789012 needs an MFA code, and there is no terminal to type it in. ...`，
+其他帳戶照常掃描。沒有任何帳戶可用時結束代碼為 1。`--validate-credentials` 也按同樣方式檢查。
+有終端時，仍會像以前一樣提示輸入程式碼。未針對真實的 AWS 驗證：真實的 MFA 裝置。
+
+**解決辦法：** 在終端中執行 InvenTag，或使用 `aws sts get-session-token` 得到的臨時憑證。
+
 ### 給了角色名稱但沒有帳戶檔案 {#a-role-name-without-an-accounts-file}
 
 ```text title="輸出"
@@ -217,6 +235,19 @@ Region 'us-east-9' could not be checked and the installed boto3 does not know it
 執行以結束代碼 0 結束。其他區域正常時，它們會被掃描，並且「執行備註」會寫明 `Regions not scanned in account 123456789012 because their region check failed and the installed boto3 does not know them (a misspelled name, or a region newer than boto3): us-east-9.`boto3 不認識、但 AWS 會回應的區域會被掃描。
 
 **解決辦法：** 更正區域名稱。
+
+### 另一個分割槽的區域 {#a-region-of-another-partition}
+
+在 `--account-regions` 中給出中國（`cn-`）或 GovCloud（`us-gov-`）區域，而憑證屬於商業分割槽（或反過來）時，會給出一次提示：
+
+```text
+Region 'cn-north-1' is in the aws-cn partition, but the credentials of account 123456789012 are for the aws partition, so it cannot be scanned with them; scan it with credentials of that partition.
+```
+
+該區域仍會被嘗試，執行以結束代碼 0 結束。帳戶檢查（`sts:GetCallerIdentity`）使用所掃描分割槽的 STS 端點。
+未針對真實的 AWS 驗證：GovCloud 和中國區的憑證。
+
+**解決辦法：** 用該分割槽的憑證另外執行一次，掃描這個區域。
 
 ### 無法讀取區域列表 {#the-list-of-regions-cannot-be-read}
 

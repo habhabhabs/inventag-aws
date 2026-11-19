@@ -83,7 +83,7 @@ Not verified against real Google: what the Google flags in this table create, sh
 | Flag | Default | Status | What it does |
 |---|---|---|---|
 | `--account-regions LIST` | every enabled region | Works | Comma-separated region codes, for example `us-east-1,eu-west-1`. IAM, the S3 bucket list, CloudFront and Route 53 are always read once from `us-east-1`, so you need not list it. |
-| `--account-services LIST` | all | Works | Comma-separated service names that are kept in the report, matched against the Service column, for example `EC2,S3`. |
+| `--account-services LIST` | all | Works | Comma-separated service names, matched against the Service column, for example `EC2,S3`. Only these services are scanned and kept in the report. |
 | `--account-tags JSON` | none | Works | Tag filter, for example `'{"Environment":"prod"}'`. Only resources with those tags are kept. |
 | `--fallback-display auto\|always\|never` | `auto` | Works | Whether to show resources found only through the Resource Groups Tagging API. `auto` shows them only for services with no results from their own discovery code. |
 | `--hide-fallback-resources` | off | Works | Same as `--fallback-display never`. Deprecated. |
@@ -94,8 +94,8 @@ Not verified against real Google: what the Google flags in this table create, sh
 |---|---|---|---|
 | `--enable-network-analysis` | off | Works | Adds a `Network Analysis` sheet to the Excel report when VPCs are found. Adds nothing with `--template`. See [Network and security analysis](../guides/network-and-security-analysis.md). |
 | `--enable-security-analysis` | off | Works | Adds a `Security Analysis` sheet to the Excel report when security groups are found. Adds nothing with `--template`. |
-| `--enable-cost-analysis` | off | Works | Adds a Cost Analysis sheet (and the four `forgotten_analysis.*` columns) to the default workbook. Makes extra Cost Explorer, Pricing and CloudWatch calls, also with `--no-billing-validation`. Needs `pricing:GetProducts` and `cloudwatch:GetMetricStatistics`. The costs are estimates from the AWS Pricing API, not your invoice. |
-| `--billing-validation`, `--no-billing-validation` | on | Works | Use Cost Explorer during discovery to find services with spend. AWS charges for each Cost Explorer request. See [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). `--no-billing-validation` stops those calls. |
+| `--enable-cost-analysis` | off | Works | Adds a Cost Analysis sheet (and the four `forgotten_analysis.*` columns) to the default workbook. Makes extra Cost Explorer, Pricing and CloudWatch calls; `--no-billing-validation` is independent of it and does not stop them. Needs `pricing:GetProducts` and `cloudwatch:GetMetricStatistics`. The costs are estimates from the AWS Pricing API, not your invoice. |
+| `--billing-validation`, `--no-billing-validation` | on | Works | Use Cost Explorer during discovery to find services with spend. AWS charges for each Cost Explorer request. See [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). `--no-billing-validation` stops those calls; `--enable-cost-analysis` is independent of it and still calls Cost Explorer. |
 
 Not verified against real AWS: `--enable-cost-analysis` needs only these two extra permissions, and the estimates match AWS prices.
 
@@ -166,7 +166,7 @@ report that lists no resources, and a run without it writes no file.
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--validate-credentials` | off | Works | Check every account's credentials, then exit (0 if all work, 1 if not). |
+| `--validate-credentials` | off | Works | Check every account's credentials the way the scan uses them (the cross-account role for an entry without credentials in another account), then exit (0 if all work, 1 if not). |
 | `--credential-timeout SECONDS` | `30` | Works | Timeout for sign-in and credential checks, including AssumeRole. |
 | `--skip-credential-validation` | off | Works | Skip the credential check at the start of a run. |
 

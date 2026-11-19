@@ -77,14 +77,15 @@ Hoja `Security Analysis`, primeras filas:
 
 ### Qué hace el análisis de red {#what-the-network-analysis-does}
 
-- Una subred cuenta como pública cuando la tabla de rutas que usa (la suya, o la tabla principal de la VPC) tiene una ruta activa
-  para `0.0.0.0/0` o `::/0` hacia una puerta de enlace de internet (`igw-`). Una VPC que tiene una puerta de enlace de internet
+- Una subred cuenta como pública cuando la tabla de rutas que usa (la suya, o la tabla principal de la VPC) tiene rutas activas
+  hacia una puerta de enlace de internet (`igw-`) que cubren todas las direcciones: `0.0.0.0/0` o `::/0`, o las dos mitades
+  `0.0.0.0/1` y `128.0.0.0/1` (`::/1` y `8000::/1`). Una VPC que tiene una puerta de enlace de internet
   pero ninguna ruta así no hace públicas sus subredes. Las hojas no muestran esta propiedad.
 - `Total IPs` procede de los bloques CIDR de la VPC. `Available IPs` y `Utilization %` proceden de sus subredes, así que las tres columnas
   no cuadran entre sí, y una VPC sin subredes muestra 0 disponibles. Las direcciones IPv6 no se cuentan.
 - `Associated Resources` cuenta los recursos cuyos datos de API nombran la VPC o la subred: instancias EC2, funciones Lambda en una VPC,
-  instancias de base de datos de RDS y clústeres de ElastiCache (ambos a través de su grupo de subredes). Un recurso que está en varias subredes, como un balanceador de carga o una función Lambda, se cuenta una vez en cada una de ellas. Los grupos de seguridad, las ACL de red, las tablas de rutas y las puertas de enlace
-  son la infraestructura propia de la VPC y no se cuentan. Un grupo de subredes de base de datos es configuración y no se cuenta, y un clúster de RDS (por ejemplo Aurora) tampoco se cuenta. Para contar los clústeres de ElastiCache, InvenTag lee `elasticache:DescribeCacheSubnetGroups`; si esa llamada falla por cualquier motivo, una advertencia y una nota de la ejecución lo indican, los clústeres de esa región no se cuentan y el resto de la hoja se escribe como siempre. Un clúster se cuenta solo a través de un grupo de subredes de su propia cuenta.
+  instancias y clústeres de base de datos de RDS (por ejemplo Aurora) y clústeres de ElastiCache (a través de su grupo de subredes), clústeres de MSK (sus subredes de brókers) y clústeres de EKS (las subredes que devuelve `eks:DescribeCluster`, una llamada por clúster). Un recurso que está en varias subredes, como un balanceador de carga o una función Lambda, se cuenta una vez en cada una de ellas. Los grupos de seguridad, las ACL de red, las tablas de rutas y las puertas de enlace
+  son la infraestructura propia de la VPC y no se cuentan. Un grupo de subredes de base de datos es configuración y no se cuenta. Los sistemas de archivos EFS no se cuentan (sus destinos de montaje necesitan `elasticfilesystem:DescribeMountTargets`, que la política de solo lectura no concede). En un informe de varias cuentas, cada cuenta se analiza con sus propias credenciales. Para contar los clústeres de ElastiCache, InvenTag lee `elasticache:DescribeCacheSubnetGroups`; si esa llamada falla por cualquier motivo, una advertencia y una nota de la ejecución lo indican, los clústeres de esa región no se cuentan y el resto de la hoja se escribe como siempre. Un clúster se cuenta solo a través de un grupo de subredes de su propia cuenta.
 - Solo lee las VPC y subredes de las regiones que analizas. No comprueba las ACL de red, los grupos de seguridad, `MapPublicIpOnLaunch`,
   Direct Connect, las conexiones VPN, Network Firewall ni las rutas de peering.
 

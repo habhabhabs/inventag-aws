@@ -87,8 +87,9 @@ Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
 ### What the network analysis does
 
 - A subnet counts as public when the route table it uses (its own, or the
-  VPC's main table) has an active route for `0.0.0.0/0` or `::/0` to an
-  internet gateway (`igw-`). A VPC that has an internet gateway but no such
+  VPC's main table) has active routes to an internet gateway (`igw-`) that
+  cover every address: `0.0.0.0/0` or `::/0`, or the two halves
+  `0.0.0.0/1` and `128.0.0.0/1` (`::/1` and `8000::/1`). A VPC that has an internet gateway but no such
   route does not make its subnets public. The sheets do not show this
   property.
 - `Total IPs` comes from the VPC's CIDR blocks. `Available IPs` and
@@ -96,10 +97,14 @@ Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
   and a VPC without subnets shows 0 available. IPv6 addresses are not counted.
 - `Associated Resources` counts the resources whose API data names the VPC or
   subnet: EC2 instances, Lambda functions in a VPC, RDS DB instances and
-  ElastiCache clusters (both through their subnet group). A resource in several subnets, such as a load balancer or a Lambda function, is counted once in each of them. Security groups, network ACLs, route tables
+  clusters (for example Aurora) and ElastiCache clusters (through their subnet
+  group), MSK clusters (their broker subnets) and EKS clusters (the subnets
+  that `eks:DescribeCluster` returns, one call per cluster). A resource in several subnets, such as a load balancer or a Lambda function, is counted once in each of them. Security groups, network ACLs, route tables
   and gateways are the VPC's own plumbing and are not counted. A DB subnet
-  group is configuration and is not counted, and an RDS cluster (for example
-  Aurora) is not counted. To count ElastiCache clusters, InvenTag reads
+  group is configuration and is not counted. EFS file systems are not counted
+  (their mount targets need `elasticfilesystem:DescribeMountTargets`, which
+  the read-only policy does not grant). In a report of several accounts, each
+  account is analysed with its own credentials. To count ElastiCache clusters, InvenTag reads
   `elasticache:DescribeCacheSubnetGroups`; if that call fails for any reason, one
   warning and a run note say so, the clusters of that region are not counted,
   and the rest of the sheet is written as usual. A cluster is counted only

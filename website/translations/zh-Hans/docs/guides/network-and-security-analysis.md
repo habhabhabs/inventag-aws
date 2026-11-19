@@ -68,12 +68,12 @@ Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
 
 ### 网络分析做什么 {#what-the-network-analysis-does}
 
-- 当子网所用的路由表（它自己的，或 VPC 的主路由表）中有一条指向互联网网关（`igw-`）的、处于活动状态的 `0.0.0.0/0` 或 `::/0` 路由时，该子网算作公有子网。
+- 当子网所用的路由表（它自己的，或 VPC 的主路由表）中有指向互联网网关（`igw-`）、处于活动状态且覆盖所有地址的路由时，该子网算作公有子网：`0.0.0.0/0` 或 `::/0`，或者两个半段 `0.0.0.0/1` 和 `128.0.0.0/1`（`::/1` 和 `8000::/1`）。
   VPC 有互联网网关但没有这样的路由，并不会让它的子网变成公有。工作表不显示这一属性。
 - `Total IPs` 来自 VPC 的 CIDR 块。`Available IPs` 和 `Utilization %` 来自它的子网，所以这三列加起来对不上，
   没有子网的 VPC 显示可用数为 0。IPv6 地址不计入。
-- `Associated Resources` 统计 API 数据中指明了该 VPC 或子网的资源：EC2 实例、位于 VPC 中的 Lambda 函数、RDS 数据库实例和 ElastiCache 集群（后两者通过各自的子网组）。位于多个子网中的资源（例如负载均衡器或 Lambda 函数）会在每个子网中各统计一次。
-  安全组、网络 ACL、路由表和网关属于 VPC 自身的网络组件，不计入。数据库子网组是配置，不计入；RDS 集群（例如 Aurora）也不计入。为了统计 ElastiCache 集群，InvenTag 会读取 `elasticache:DescribeCacheSubnetGroups`；如果该调用因任何原因失败，会给出一条警告和一条运行备注，该区域的集群不计入，工作表的其余部分照常写出。集群只通过其自身账户的子网组计入。
+- `Associated Resources` 统计 API 数据中指明了该 VPC 或子网的资源：EC2 实例、位于 VPC 中的 Lambda 函数、RDS 数据库实例和集群（例如 Aurora）以及 ElastiCache 集群（通过各自的子网组）、MSK 集群（它们的代理子网）和 EKS 集群（`eks:DescribeCluster` 返回的子网，每个集群一次调用）。位于多个子网中的资源（例如负载均衡器或 Lambda 函数）在每个子网中各计一次。
+  安全组、网络 ACL、路由表和网关属于 VPC 自身的网络组件，不计入。数据库子网组是配置，不计入。EFS 文件系统不计入（它们的挂载目标需要 `elasticfilesystem:DescribeMountTargets`，而只读策略没有授予该权限）。在多个账户的报告中，每个账户都用它自己的凭证分析。为了统计 ElastiCache 集群，InvenTag 会读取 `elasticache:DescribeCacheSubnetGroups`；如果该调用因任何原因失败，会给出一条警告和一条运行备注，该区域的集群不计入，工作表的其余部分照常写出。集群只通过其自身账户的子网组计入。
 - 它只读取你所扫描区域中的 VPC 和子网。它不检查网络 ACL、安全组、`MapPublicIpOnLaunch`、Direct Connect、VPN 连接、Network Firewall 或对等连接路由。
 
 ### 安全分析做什么 {#what-the-security-analysis-does}

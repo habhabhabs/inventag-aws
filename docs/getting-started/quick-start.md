@@ -168,7 +168,7 @@ each resource. More in [Check tags against a policy](../guides/check-tag-complia
 ## What a run costs
 
 Cost Explorer `GetCostAndUsage` calls are charged per request, and a default
-run makes two for each account in our offline test. See the current
+run makes one for each account. See the current
 [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 Add `--no-billing-validation` to make no Cost Explorer calls.
 
