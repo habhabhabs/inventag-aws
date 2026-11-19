@@ -355,3 +355,102 @@ def test_another_certificate_failure_is_one_warning_that_names_the_operation(
     (entry,) = disc.coverage.entries
     assert entry.operation == "ListCertificates"
     assert entry.outcome in (coverage_mod.THROTTLED, coverage_mod.ERROR)
+
+
+# --- an operation that fails outside its own error handling ------------------
+
+
+def _task(disc, service="sqs"):
+    return {
+        "service": service,
+        "region": R,
+        "config": disc.service_discovery_patterns[service],
+    }
+
+
+@pytest.mark.parametrize("code", ["AccessDenied", "UnauthorizedOperation"])
+@pytest.mark.parametrize("graceful", [True, False])
+def test_an_access_denied_operation_does_not_stop_the_next_one(
+    monkeypatch, caplog, code, graceful
+):
+    disc = _disc()
+    task = _task(disc, "ecs")
+    task["config"] = {**task["config"], "graceful_degradation": graceful}
+    calls = []
+
+    def execute(client, service, region, operation):
+        calls.append(operation)
+        raise _error(code)
+
+    monkeypatch.setattr(disc, "_client", mock.Mock())
+    monkeypatch.setattr(disc, "_execute_discovery_operation", execute)
+    with caplog.at_level(logging.WARNING):
+        assert disc._discover_service_in_region(task) == 0
+    assert len(calls) == len(task["config"]["operations"]) > 1
+    assert _warnings(caplog) == []
+    assert disc.coverage.entries == []
+
+
+def test_another_client_error_of_an_operation_does_not_stop_the_next_one(
+    monkeypatch,
+):
+    disc = _disc()
+    task = _task(disc, "ecs")
+    calls = []
+
+    def execute(client, service, region, operation):
+        calls.append(operation)
+        raise _error("InternalFailure")
+
+    monkeypatch.setattr(disc, "_client", mock.Mock())
+    monkeypatch.setattr(disc, "_execute_discovery_operation", execute)
+    assert disc._discover_service_in_region(task) == 0
+    assert len(calls) == len(task["config"]["operations"]) > 1
+
+
+def test_an_unexpected_error_of_an_operation_is_one_warning_per_operation(
+    monkeypatch, caplog
+):
+    disc = _disc()
+    task = _task(disc, "ecs")
+
+    def execute(client, service, region, operation):
+        raise KeyError("detail-not-in-the-warning")
+
+    monkeypatch.setattr(disc, "_client", mock.Mock())
+    monkeypatch.setattr(disc, "_execute_discovery_operation", execute)
+    with caplog.at_level(logging.WARNING):
+        disc._discover_service_in_region(task)
+    warnings = _warnings(caplog)
+    assert len(warnings) == len(task["config"]["operations"]) > 1
+    assert all(w.startswith("Operation error for ecs: KeyError") for w in warnings)
+    assert all("detail-not-in-the-warning" not in w for w in warnings)
+
+
+def test_an_answer_that_breaks_the_reader_is_unreadable_not_a_crash(caplog):
+    class Broken(dict):
+        def get(self, *args, **kwargs):
+            raise RuntimeError("payload-detail")
+
+    disc = _disc()
+    problems = []
+    with caplog.at_level(logging.WARNING):
+        found = disc._extract_resources_from_response(
+            Broken(), "Things", "sqs", R, "Queue", "list_queues", None, problems
+        )
+    assert found == 0
+    assert problems == [1]
+    assert "payload-detail" not in caplog.text
+
+
+def test_a_certificate_that_cannot_be_normalized_is_not_listed(monkeypatch):
+    disc = _disc()
+    acm = _Acm(
+        [{"CertificateArn": ARN}],
+        {ARN: ["arn:aws:cloudfront::111122223333:distribution/E1"]},
+    )
+    monkeypatch.setattr(disc, "_client", lambda service, region=None: acm)
+    monkeypatch.setattr(disc, "_normalize_resource", lambda *a, **k: None)
+    assert disc._discover_cloudfront_certificates() == 0
+    assert disc.resources == []
+    assert "acm" not in disc.services_with_primary_resources
