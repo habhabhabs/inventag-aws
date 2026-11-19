@@ -502,6 +502,7 @@ jobs:
         echo "  - Git tag: ${{ steps.version.outputs.tag_name }}"
 
     - name: Commit and push version.json changes
+      id: bump
       env:
         GITHUB_TOKEN: ${{ secrets.VERSION_BUMP_WORKFLOW }}
       run: |
@@ -530,15 +531,20 @@ jobs:
           git push origin main
           echo "✅ Successfully pushed version bump to main"
         fi
+        # The commit the tag must name: the one just pushed (or the checked-out
+        # tip of main when nothing changed). The tag step uses only this value.
+        echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
     - name: Create Git Tag
       env:
-        GITHUB_TOKEN: ${{ secrets.VERSION_BUMP_WORKFLOW }}
+        TAG_NAME: ${{ steps.version.outputs.tag_name }}
+        RELEASE_SHA: ${{ steps.bump.outputs.sha }}
       run: |
-        # Create tag from main branch (after version bump commit)
-        git tag ${{ steps.version.outputs.tag_name }}
-        git push origin ${{ steps.version.outputs.tag_name }}
-        echo "Created and pushed tag ${{ steps.version.outputs.tag_name }} from main branch"
+        # Tag the commit the previous step pushed, push with a bounded retry and
+        # read the tag back with git ls-remote. On failure the log names the
+        # manual recovery (publish_existing_tag). The push uses the checkout's
+        # VERSION_BUMP_WORKFLOW credentials, like the push of the bump commit.
+        bash .github/scripts/release-tag.sh "$TAG_NAME" "$RELEASE_SHA"
 
     - name: Create GitHub Release
       env:
