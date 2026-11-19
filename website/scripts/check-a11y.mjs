@@ -45,6 +45,10 @@
  *     choosing an archive opens it and closes the drawer, the first link on the
  *     archived page leads back, no horizontal scroll, and axe is clean with the
  *     list open
+ * Phone leftovers of the mobile memo (X-08, section 8 items 1, 2, 4, 5, 6, 8, 9, 10, 13):
+ *   one assertion per item. An item in OPEN_PHONE_ITEMS is known to be open: its
+ *   failure is a warning, and a pass prints "remove it from OPEN_PHONE_ITEMS".
+ *   Any other item fails the run. `--only-phone-leftovers` runs only these.
  * And: no infinite animations with prefers-reduced-motion.
  * Exit code 1 if anything fails.
  */
@@ -71,6 +75,7 @@ const SHOTS = arg('--shots', null);
 const QUICK = process.argv.includes('--quick');
 // --strict-locales: a locale that is not served is a failure, not "skipped" (an assembled build must have it).
 const STRICT_LOCALES = process.argv.includes('--strict-locales');
+const ONLY_PHONE = process.argv.includes('--only-phone-leftovers');
 
 // Archived versions, newest first (never hard-coded: the check survives every release).
 const VERSIONS = JSON.parse(fs.readFileSync(new URL('../versions.json', import.meta.url), 'utf8'));
@@ -290,6 +295,145 @@ async function newContext(browser, {viewport, dpr = 1, mobile = false, theme, co
 
 const browser = await chromium.launch();
 const viewports = QUICK ? VIEWPORTS.filter(([n]) => n === '390' || n === '1440') : VIEWPORTS;
+
+// Phone leftovers of the mobile memo (v121-mobile-version-selector.md section 8), register row X-08.
+// Items 3, 7, 11 and 12 of that list are covered elsewhere or are not phone behaviour. The nine items:
+//   1 Space opens the version row        2 a choice closes the drawer       4 one active row in the main menu
+//   5 no bare "Versions"/"Languages" row 6 the language is visible          8 breadcrumbs stay within two rows
+//   9 the title of an archived page starts on the first screen             10 Escape returns focus to the menu button
+//  13 the active version shows on the page without opening the menu (the language is item 6)
+// Items in this set are open (nobody fixed them): the assertion warns. The others fail the run.
+const OPEN_PHONE_ITEMS = new Set([4, 6, 8, 9]);
+
+const uniqLabels = (texts) => [...new Set(texts.map((t) => t.trim()).filter(Boolean))];
+
+async function phoneLeftovers() {
+  const item = (n, ok, what) => {
+    if (OPEN_PHONE_ITEMS.has(n)) {
+      if (ok) console.log(`phone item ${n}: passes now; remove it from OPEN_PHONE_ITEMS`);
+      else warnings.push(`phone item ${n} (open, X-08): ${what}`);
+    } else if (!ok) {
+      fail(`phone item ${n}: ${what}`);
+    }
+  };
+  const start = '/docs/getting-started/quick-start';
+  const arch = VERSIONS[0]; // the newest archive; the archived page of item 9
+  const drawerOpen = async (page) => (await page.locator('nav.navbar.navbar-sidebar--show').count()) > 0;
+  const openDrawer = async (page) => {
+    await page.locator('.navbar__toggle').click();
+    await page.waitForSelector('.navbar-sidebar--show');
+    await page.waitForTimeout(300);
+  };
+
+  // 390 px: items 1, 2, 4, 5, 6, 10
+  {
+    const ctx = await newContext(browser, {viewport: {width: 390, height: 844}, dpr: 2, mobile: true, theme: 'light'});
+    const page = await ctx.newPage();
+    await page.goto(BASE + start, {waitUntil: 'networkidle'});
+    await hydrated(page);
+    await openDrawer(page);
+    const ver = page.locator('.navbar-sidebar__ver');
+    // 4: one active entry in the main menu (the same page may show twice, as a link and as a row)
+    const currentLabels = uniqLabels(await page.locator('.navbar-sidebar [aria-current="page"], .navbar-sidebar .menu__link--active').allInnerTexts());
+    item(4, currentLabels.length <= 1, `the drawer marks ${currentLabels.length} entries as current (${currentLabels.join(', ')}); expected at most 1`);
+    // 5: "Versions" and "Languages" are not bare rows of the main menu; the version control has a caret
+    const rows = (await page.locator('.it-mnav__row').allInnerTexts()).map((t) => t.trim());
+    const bare = rows.filter((t) => /^(versions?|languages?)$/i.test(t));
+    const caret = await page.locator('.navbar-sidebar__ver .navbar-sidebar__ver-caret').count();
+    item(5, bare.length === 0 && caret === 1, `bare rows: ${bare.join(', ') || 'none'}; version caret: ${caret}`);
+    // 6: the current language is visible on the button (its accessible name already names it)
+    const langText = (await page.locator('.navbar-sidebar__lang').innerText().catch(() => '')).trim();
+    item(6, /english/i.test(langText), `the language button shows "${langText}", not the current language`);
+    if (await ver.count()) {
+      // 1: Space and Enter open the version list
+      await ver.focus();
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(200);
+      const bySpace = (await page.locator('.it-mver').count()) > 0;
+      item(1, bySpace, 'Space on the version row did not open the list');
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(150);
+      await ver.focus();
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(200);
+      item(1, (await page.locator('.it-mver').count()) > 0, 'Enter on the version row did not open the list');
+      // 2: a choice made with the keyboard closes the drawer
+      await page.locator('.it-mver a:not([aria-current])').first().focus();
+      await page.keyboard.press('Enter');
+      await page.waitForURL(/\/docs\/\d+\.\d+\.\d+\//, {timeout: 10000}).catch(() => {});
+      await page.waitForTimeout(300);
+      item(2, !(await drawerOpen(page)), 'the drawer is still open after choosing an archived version with the keyboard');
+      // 10: after a link was followed, reopening the drawer and pressing Escape returns focus to the menu button
+      await openDrawer(page);
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(200);
+      const where = await page.evaluate(() => {
+        const a = document.activeElement;
+        return !a || a === document.body ? 'body' : a.classList.contains('navbar__toggle') ? 'toggle' : a.tagName.toLowerCase();
+      });
+      item(10, where === 'toggle', `after Escape closed the drawer, focus is on ${where}, not on the menu button`);
+    } else {
+      fail('phone items 1, 2, 10: no version row (.navbar-sidebar__ver) in the drawer');
+    }
+    await ctx.close();
+  }
+
+  // 320 px: item 8, then item 13 on the same page
+  {
+    const ctx = await newContext(browser, {viewport: {width: 320, height: 640}, dpr: 2, mobile: true, theme: 'light'});
+    const page = await ctx.newPage();
+    await page.goto(BASE + start, {waitUntil: 'networkidle'});
+    await hydrated(page);
+    const crumbs = await page.locator('.theme-doc-breadcrumbs').first().boundingBox();
+    const height = crumbs ? Math.round(crumbs.height) : 0;
+    item(8, height > 0 && height <= 88, `the breadcrumbs are ${height} px high (more than two 44 px rows)`);
+    // 13: the active version shows on the page itself, outside the drawer (the version badge)
+    const visibleOutside = await page.evaluate(() => {
+      const shown = (el) => {
+        const r = el.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none';
+      };
+      return [...document.querySelectorAll('nav.navbar *, .theme-doc-version-badge, .theme-doc-version-banner')]
+        .filter((el) => !el.closest('.navbar-sidebar') && shown(el))
+        .map((el) => [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(' '))
+        .join(' ');
+    });
+    item(13, /v\d+\.\d+\.\d+/.test(visibleOutside), 'no version number is visible on the page without opening the menu');
+    await ctx.close();
+  }
+
+  // 320 x 568: item 9, an archived page
+  {
+    const ctx = await newContext(browser, {viewport: {width: 320, height: 568}, dpr: 2, mobile: true, theme: 'light'});
+    const page = await ctx.newPage();
+    const res = await page.goto(`${BASE}/docs/${arch}${start.replace('/docs', '')}`, {waitUntil: 'networkidle'});
+    if (!res || res.status() !== 200) fail(`phone item 9: the archived page v${arch} answered ${res ? res.status() : 'nothing'}`);
+    await hydrated(page);
+    const h1 = await page.locator('main h1').first().boundingBox();
+    if (res && res.status() === 200) item(9, !!h1 && h1.y < 568, `the title of the archived page v${arch} starts at y = ${h1 ? Math.round(h1.y) : 'none'}, below the first screen (568 px)`);
+    await ctx.close();
+  }
+}
+
+function report() {
+  const uniq = (a) => [...new Set(a)];
+  if (warnings.length) {
+    console.log(`Warnings (${uniq(warnings).length}):`);
+    uniq(warnings).slice(0, 60).forEach((w) => console.log('  ' + w));
+  }
+  console.log(`Pages: ${PAGES.length}, viewports: ${viewports.map((v) => v[0]).join('/')}, themes: light/dark`);
+  console.log(`\nFailures (${uniq(failures).length}):`);
+  uniq(failures).forEach((f) => console.log('  ' + f));
+  if (!failures.length) console.log('  none');
+  process.exit(failures.length ? 1 : 0);
+}
+
+if (ONLY_PHONE) {
+  await phoneLeftovers();
+  await browser.close();
+  report();
+}
 
 // 1. page sweep
 for (const [vName, viewport, dpr, touch] of viewports) {
@@ -795,6 +939,9 @@ for (const theme of ['light', 'dark']) {
   }
 }
 
+// 6g. phone leftovers
+await phoneLeftovers();
+
 // 5. reduced motion
 {
   const ctx = await newContext(browser, {viewport: {width: 1440, height: 900}, theme: 'light', reducedMotion: 'reduce'});
@@ -809,13 +956,4 @@ for (const theme of ['light', 'dark']) {
 }
 await browser.close();
 
-const uniq = (a) => [...new Set(a)];
-if (warnings.length) {
-  console.log(`Warnings (${uniq(warnings).length}):`);
-  uniq(warnings).slice(0, 60).forEach((w) => console.log('  ' + w));
-}
-console.log(`Pages: ${PAGES.length}, viewports: ${viewports.map((v) => v[0]).join('/')}, themes: light/dark`);
-console.log(`\nFailures (${uniq(failures).length}):`);
-uniq(failures).forEach((f) => console.log('  ' + f));
-if (!failures.length) console.log('  none');
-process.exit(failures.length ? 1 : 0);
+report();
