@@ -180,7 +180,7 @@ jobs:
           fi
           
           # Validate markdown frontmatter
-          find docs/security -name "*.md" | while read mdfile; do
+          find docs/security -name "*.md" | while read -r mdfile; do
             echo "Validating frontmatter in: $mdfile"
             
             if head -1 "$mdfile" | grep -q "^---$"; then
@@ -200,22 +200,24 @@ jobs:
     steps:
       - name: Generate validation summary
         run: |
-          echo "## 🔍 Security Configuration Validation Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Validation Results" >> $GITHUB_STEP_SUMMARY
-          echo "- **Workflows**: ${{ needs.validate-workflows.result == 'success' && '✅ PASS' || '❌ FAIL' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **GitLeaks**: ${{ needs.validate-gitleaks.result == 'success' && '✅ PASS' || '❌ FAIL' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Docusaurus**: ${{ needs.validate-docusaurus.result == 'success' && '✅ PASS' || '❌ FAIL' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Security Docs**: ${{ needs.validate-security-docs.result == 'success' && '✅ PASS' || '❌ FAIL' }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## 🔍 Security Configuration Validation Report"
+            echo ""
+            echo "### Validation Results"
+            echo "- **Workflows**: ${{ needs.validate-workflows.result == 'success' && '✅ PASS' || '❌ FAIL' }}"
+            echo "- **GitLeaks**: ${{ needs.validate-gitleaks.result == 'success' && '✅ PASS' || '❌ FAIL' }}"
+            echo "- **Docusaurus**: ${{ needs.validate-docusaurus.result == 'success' && '✅ PASS' || '❌ FAIL' }}"
+            echo "- **Security Docs**: ${{ needs.validate-security-docs.result == 'success' && '✅ PASS' || '❌ FAIL' }}"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
           
           if [ "${{ needs.validate-workflows.result }}" == "success" ] && \
              [ "${{ needs.validate-gitleaks.result }}" == "success" ] && \
              [ "${{ needs.validate-docusaurus.result }}" == "success" ] && \
              [ "${{ needs.validate-security-docs.result }}" == "success" ]; then
-            echo "### ✅ Overall Status: PASS" >> $GITHUB_STEP_SUMMARY
-            echo "All security configurations are valid and ready for production." >> $GITHUB_STEP_SUMMARY
+            echo "### ✅ Overall Status: PASS" >> "$GITHUB_STEP_SUMMARY"
+            echo "All security configurations are valid and ready for production." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "### ❌ Overall Status: FAIL" >> $GITHUB_STEP_SUMMARY
-            echo "Some security configurations failed validation. Please review and fix issues." >> $GITHUB_STEP_SUMMARY
+            echo "### ❌ Overall Status: FAIL" >> "$GITHUB_STEP_SUMMARY"
+            echo "Some security configurations failed validation. Please review and fix issues." >> "$GITHUB_STEP_SUMMARY"
           fi
