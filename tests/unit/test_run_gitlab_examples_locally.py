@@ -343,3 +343,70 @@ def test_a_run_that_takes_too_long_is_stopped_with_its_children_and_reported():
         ["sh", "-c", "sleep 30 & echo started; wait"], cwd=None, env=None, timeout=1
     )
     assert timed_out and "started" in out
+
+
+# --- rsync stand-in (L-01) --------------------------------------------------
+
+_spec2 = importlib.util.spec_from_file_location(
+    "rsync_stand_in", _DIR / "rsync_stand_in.py"
+)
+stand_in = importlib.util.module_from_spec(_spec2)
+_spec2.loader.exec_module(stand_in)
+
+
+def _tree(root):
+    (root / "src" / "sub").mkdir(parents=True)
+    (root / "src" / "a.txt").write_text("a")
+    (root / "src" / "sub" / "b.txt").write_text("b")
+    (root / "src" / ".git").mkdir()
+    (root / "src" / ".git" / "HEAD").write_text("ref")
+    (root / "dst").mkdir()
+    return root / "src", root / "dst"
+
+
+def test_rsync_is_no_longer_a_prerequisite(monkeypatch):
+    monkeypatch.setattr(runner.shutil, "which", lambda name: None)
+    missing = runner.missing_prerequisites("/x/gitlab-ci-local")
+    assert not any("rsync" in m for m in missing)
+
+
+def test_stand_in_is_used_only_when_rsync_is_absent(monkeypatch):
+    monkeypatch.setattr(runner.shutil, "which", lambda name: None)
+    assert runner.use_rsync_stand_in() is True
+    monkeypatch.setattr(runner.shutil, "which", lambda name: "/usr/bin/rsync")
+    assert runner.use_rsync_stand_in() is False
+
+
+def test_stand_in_copies_a_tree_and_honours_exclude(tmp_path):
+    src, dst = _tree(tmp_path)
+    copied = stand_in.run(["-a", "--exclude", ".git", f"{src}/", str(dst)])
+    assert sorted(copied) == ["a.txt", "sub/b.txt"]
+    assert (dst / "sub" / "b.txt").read_text() == "b"
+    assert not (dst / ".git").exists()
+
+
+def test_stand_in_copies_a_files_from_list(tmp_path):
+    src, dst = _tree(tmp_path)
+    names = tmp_path / "names"
+    names.write_text("sub/b.txt\n")
+    copied = stand_in.run(["-a", f"--files-from={names}", f"{src}/", str(dst)])
+    assert copied == ["sub/b.txt"] and not (dst / "a.txt").exists()
+
+
+def test_stand_in_needs_a_source_and_a_destination():
+    import pytest
+
+    with pytest.raises(SystemExit):
+        stand_in.run(["-a"])
+
+
+def test_installed_command_runs_the_stand_in(tmp_path):
+    import subprocess
+
+    src, dst = _tree(tmp_path)
+    command = runner.install_rsync_stand_in(tmp_path / "bin")
+    done = subprocess.run(
+        [str(command), "-a", f"{src}/", str(dst)], capture_output=True, text=True
+    )
+    assert done.returncode == 0, done.stderr
+    assert (dst / "a.txt").read_text() == "a"

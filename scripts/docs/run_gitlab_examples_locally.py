@@ -37,9 +37,13 @@ and INVENTAG_KMS_KEY_ID out of the YAML) are passed through gitlab-ci-local's
 project variables file; dummy defaults for those three names exist, and
 `--variable NAME=VALUE` (repeatable) adds or overrides.
 
-Needs: gitlab-ci-local (on PATH or --gitlab-ci-local), rsync, and moto with
-its server extra (`pip install "moto[server]"`) in the Python running this.
-Without them it prints SKIP and exits 0. Not wired into any workflow.
+Needs: gitlab-ci-local (on PATH or --gitlab-ci-local) and moto with its server
+extra (`pip install "moto[server]"`) in the Python running this. Without them it
+prints SKIP and exits 0. gitlab-ci-local also calls `rsync` for every job: when
+rsync is not on PATH, this script puts `rsync_stand_in.py` (a small copy
+program for the options gitlab-ci-local uses, in this folder) first on the jobs'
+PATH and says so; nothing is installed. A run with the stand-in is not a run
+with real rsync. Not wired into any workflow.
 
 Exit status: 0 when every job ended as its YAML says it should (PASS for exit
 0, WARN for an exit code listed in allow_failure, FAIL otherwise), the exit
@@ -347,14 +351,29 @@ def missing_prerequisites(gcl: Optional[str]) -> List[str]:
             "gitlab-ci-local not found (npm install gitlab-ci-local in a scratch "
             "directory, then pass --gitlab-ci-local or put it on PATH)"
         )
-    if not shutil.which("rsync"):
-        missing.append("rsync not found (gitlab-ci-local needs it for every job run)")
     try:
         import flask  # noqa: F401
         import moto.server  # noqa: F401
     except ImportError:
         missing.append('moto server mode not installed (pip install "moto[server]")')
     return missing
+
+
+def use_rsync_stand_in() -> bool:
+    """True when rsync is not on the host's PATH and the stand-in must be used."""
+    return shutil.which("rsync") is None
+
+
+def install_rsync_stand_in(bin_dir: Path) -> Path:
+    """Write an `rsync` command into bin_dir that runs rsync_stand_in.py."""
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    target = bin_dir / "rsync"
+    script = Path(__file__).resolve().parent / "rsync_stand_in.py"
+    target.write_text(
+        f'#!/bin/sh\nexec "{sys.executable}" "{script}" "$@"\n', encoding="utf-8"
+    )
+    target.chmod(0o755)
+    return target
 
 
 def _seed(endpoint: str) -> None:
@@ -484,6 +503,8 @@ def _run_gitlab_ci_local(
     gitlab-ci-local passes the host environment into shell jobs, so only the
     variables below reach a job: no local AWS credentials or config.
     """
+    if use_rsync_stand_in():
+        install_rsync_stand_in(site / "bin")
     env = {
         "PATH": os.pathsep.join(
             [
@@ -639,6 +660,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not blocks:
         print(f"SKIP: no GitLab example blocks under {ns.docs}")
         return 0
+    if use_rsync_stand_in():
+        print("note: rsync is not on PATH; jobs use scripts/docs/rsync_stand_in.py")
     from moto.server import ThreadedMotoServer
 
     # moto answers unknown requests with a 500 and a traceback: keep it quiet.
