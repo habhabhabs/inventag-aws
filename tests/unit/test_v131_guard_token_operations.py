@@ -143,8 +143,7 @@ def _members(shape, seen=frozenset(), depth=0):
 CREDENTIAL_ANSWER_ALLOWED = {
     ("sts", "AssumeRole"): "required to reach other accounts",
     ("datazone", "GetConnection"): (
-        "returns connection credentials only when withSecret=true; not called "
-        "by InvenTag (listed in the v1.3.1 report as a proposal)"
+        "allowed only without withSecret; the parameter rule blocks " "withSecret=true"
     ),
 }
 
