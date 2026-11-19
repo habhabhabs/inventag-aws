@@ -480,12 +480,12 @@ def test_word_only_and_per_account_names(estate, tmp_path):
     ]
 
 
-def test_second_run_changelog_and_switches(estate, tmp_path):
+def test_second_run_changelog_and_switches(estate, tmp_path, wall_clock):
     def changelogs(folder):
         return [n for n in files(tmp_path / folder) if n.startswith("changelog_")]
 
     run_cli(*BASE, "--output-directory", "c")
-    time.sleep(1.1)
+    wall_clock.advance(1.1)
     run_cli(*BASE, "--output-directory", "c")
     assert len(changelogs("c")) == 1
     assert _re.fullmatch(r"changelog_\d{8}_\d{6}\.md", changelogs("c")[0])
@@ -494,7 +494,7 @@ def test_second_run_changelog_and_switches(estate, tmp_path):
         ("d", "--disable-delta-detection"),
     ):
         run_cli(*BASE, "--output-directory", folder)
-        time.sleep(1.1)
+        wall_clock.advance(1.1)
         run_cli(*BASE, "--output-directory", folder, flag)
         assert changelogs(folder) == []
     run_cli(*BASE, "--output-directory", "s", "--disable-state-management")
@@ -1485,7 +1485,7 @@ def test_default_run_prints_data_exported_and_a_template_run_prints_wrote(
 
 
 def test_file_name_timestamps_local_time_for_reports_and_tag_json_utc_for_the_rest(
-    estate, tmp_path, monkeypatch
+    estate, tmp_path, monkeypatch, wall_clock
 ):
     """Observed: report, Word, changelog AND the tag compliance JSON of a template
     run are named with the computer's local time; the state snapshot and the S3
@@ -1498,7 +1498,7 @@ def test_file_name_timestamps_local_time_for_reports_and_tag_json_utc_for_the_re
     try:
         argv = [*BASE, "--create-excel", "--create-word", "--output-directory", "o"]
         assert run_cli(*argv, "--s3-bucket", "acme-reports") == 0
-        time.sleep(1.1)
+        wall_clock.advance(1.1)
         assert run_cli(*argv) == 0  # second run: changelog
         assert (
             run_cli(

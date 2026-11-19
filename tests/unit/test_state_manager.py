@@ -153,7 +153,7 @@ class TestStateManager:
         assert snapshot.metadata.resource_count == 2
         assert snapshot.resources == sample_resources
 
-    def test_load_state_most_recent(self, state_manager, sample_resources):
+    def test_load_state_most_recent(self, state_manager, sample_resources, wall_clock):
         """Test loading most recent state when no ID specified"""
         # Save multiple states
         state_id1 = state_manager.save_state(
@@ -162,10 +162,8 @@ class TestStateManager:
             regions=["us-east-1"],
         )
 
-        # Wait a moment to ensure different timestamps
-        import time
-
-        time.sleep(1)
+        # Move the clock on so the timestamps differ
+        wall_clock.advance(1)
 
         state_id2 = state_manager.save_state(
             resources=sample_resources, account_id="123456789012", regions=["us-east-1"]
@@ -183,14 +181,12 @@ class TestStateManager:
         snapshot = state_manager.load_state("20230101_120000")
         assert snapshot is None
 
-    def test_list_states(self, state_manager, sample_resources):
+    def test_list_states(self, state_manager, sample_resources, wall_clock):
         """Test listing available states"""
         # Save multiple states
         state_ids = []
         for i in range(3):
-            import time
-
-            time.sleep(1)  # Ensure different timestamps
+            wall_clock.advance(1)  # Ensure different timestamps
             state_id = state_manager.save_state(
                 resources=sample_resources,
                 account_id="123456789012",
@@ -228,7 +224,9 @@ class TestStateManager:
 
         assert checksum1 != checksum3
 
-    def test_get_state_comparison_data(self, state_manager, sample_resources):
+    def test_get_state_comparison_data(
+        self, state_manager, sample_resources, wall_clock
+    ):
         """Test getting comparison data between states"""
         # Save first state
         state_id1 = state_manager.save_state(
@@ -237,9 +235,7 @@ class TestStateManager:
             regions=["us-east-1"],
         )
 
-        import time
-
-        time.sleep(1)
+        wall_clock.advance(1)
 
         # Save second state with more resources
         state_id2 = state_manager.save_state(

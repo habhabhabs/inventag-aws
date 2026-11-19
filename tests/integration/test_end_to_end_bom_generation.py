@@ -285,7 +285,9 @@ class TestEndToEndBOMGeneration:
         assert snapshot["metadata"]["resource_count"] == 5
         assert len(snapshot["resources"]) == 5
 
-    def test_second_run_reports_only_real_changes(self, inventory, tmp_path):
+    def test_second_run_reports_only_real_changes(
+        self, inventory, tmp_path, wall_clock
+    ):
         """A second run is compared with the previous snapshot, not with itself."""
         output_dir = tmp_path / "bom_output"
         config = _config(output_dir)
@@ -309,7 +311,7 @@ class TestEndToEndBOMGeneration:
                 }
             )
             inventory[0]["instance_type"] = "t3.large"
-            time.sleep(1.1)  # state IDs have one-second resolution
+            wall_clock.advance(1.1)  # state IDs have one-second resolution
 
             second = CloudBOMGenerator(config).generate_multi_account_bom(
                 output_formats=["json"]

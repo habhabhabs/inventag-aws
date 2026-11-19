@@ -1,5 +1,6 @@
 """Shared pytest fixtures."""
 
+import datetime
 import os
 import sys
 from pathlib import Path
@@ -230,6 +231,37 @@ def _no_outbound_network(monkeypatch):
 
     monkeypatch.setattr(socket.socket, "connect", guarded_connect)
     monkeypatch.setattr(socket.socket, "connect_ex", guarded_connect_ex)
+
+
+class WallClock:
+    """A shifted wall clock for ``datetime.now()`` inside the ``inventag`` package.
+
+    File names and state IDs have a one-second resolution, so a test that wants
+    two different names used to ``time.sleep(1.1)``. ``advance(1.1)`` moves the
+    clock the package sees by that much and returns at once.
+    """
+
+    def __init__(self):
+        self.shift = datetime.timedelta(0)
+
+    def advance(self, seconds: float) -> None:
+        self.shift += datetime.timedelta(seconds=seconds)
+
+
+@pytest.fixture
+def wall_clock(monkeypatch):
+    clock = WallClock()
+    real = datetime.datetime
+
+    class ShiftedDatetime(real):
+        @classmethod
+        def now(cls, tz=None):
+            return real.now(tz) + clock.shift
+
+    for name, module in list(sys.modules.items()):
+        if name.startswith("inventag") and getattr(module, "datetime", None) is real:
+            monkeypatch.setattr(module, "datetime", ShiftedDatetime)
+    return clock
 
 
 def pytest_collection_modifyitems(config, items):

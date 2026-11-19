@@ -78,15 +78,13 @@ def _state(tmp_path):
     return sorted((tmp_path / "out" / "state").glob("state_*.json"))
 
 
-def test_first_run_no_changelog_second_run_writes_one(aws, tmp_path):
-    import time
-
+def test_first_run_no_changelog_second_run_writes_one(aws, tmp_path, wall_clock):
     assert _run(tmp_path) == 0
     out = tmp_path / "out"
     assert len(_state(tmp_path)) == 1
     assert not list(out.glob("changelog_*.md"))
     assert (out / "state" / "metadata.json").exists()
-    time.sleep(1.1)
+    wall_clock.advance(1.1)
     assert _run(tmp_path) == 0
     assert len(_state(tmp_path)) == 2
     assert len(list(out.glob("changelog_*.md"))) == 1
@@ -105,11 +103,11 @@ def test_first_run_no_changelog_second_run_writes_one(aws, tmp_path):
         (["--disable-state-management"], False, False),
     ],
 )
-def test_flags_that_stop_the_change_report(aws, tmp_path, flags, changelog, snapshots):
-    import time
-
+def test_flags_that_stop_the_change_report(
+    aws, tmp_path, wall_clock, flags, changelog, snapshots
+):
     assert _run(tmp_path) == 0
-    time.sleep(1.1)
+    wall_clock.advance(1.1)
     assert _run(tmp_path, *flags) == 0
     out = tmp_path / "out"
     assert bool(list(out.glob("changelog_*.md"))) is changelog
@@ -119,12 +117,10 @@ def test_flags_that_stop_the_change_report(aws, tmp_path, flags, changelog, snap
         assert len(_state(tmp_path)) == 1  # nothing new was saved
 
 
-def test_state_max_snapshots_one_leaves_two_files(aws, tmp_path):
-    import time
-
+def test_state_max_snapshots_one_leaves_two_files(aws, tmp_path, wall_clock):
     for _ in range(3):
         assert _run(tmp_path, "--state-max-snapshots", "1") == 0
-        time.sleep(1.1)
+        wall_clock.advance(1.1)
     assert len(_state(tmp_path)) == 2
 
 
