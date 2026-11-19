@@ -11,17 +11,31 @@ values. A placeholder in a value position is replaced by a value the option
 accepts (its first choice, "1" for numbers). A placeholder in a flag position
 is skipped, because it cannot be checked.
 
-Library use: `extract_commands(text)` and `check_command(tokens)`.
+Sample output is not a command. A line such as
+"inventag - ERROR - no template named x" is a log line and is skipped, and so
+is every fenced block that is not a shell block (`text`, `console` output
+without a prompt is not distinguished: use `bash`/`sh`/`shell`/`console`/`yaml`
+for commands). `--help` and `--version` are accepted: argparse exits with
+status 0 for them, which is success, and their text is not printed.
+
+Library use: `extract_commands(text)`, `check_command(tokens)`,
+`check_markdown(text)` (commands in shell blocks of a Markdown page) and
+`check_json_blocks(text)` (every `json` block must parse).
 Command line use: `check_cli_examples.py FILE...` checks every command found
-in the given text files (one command per line, continuations allowed).
+in the given files. A `.md` file is read block by block (shell blocks for
+commands, `json` blocks for syntax); any other file is read as plain lines
+(one command per line, continuations allowed).
 """
 
 import argparse
+import contextlib
+import io
+import json
 import re
 import shlex
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
@@ -29,6 +43,12 @@ if str(REPO_ROOT) not in sys.path:
 
 _GHA_EXPR = re.compile(r"\$\{\{.*?\}\}")
 _PLACEHOLDER = re.compile(r"\$|__GHA__|<[^<>\s]+>|%[A-Z_]+%")
+# "inventag - ERROR - ..." and "inventag.cli.main - WARNING - ...": log output.
+_LOG_LINE = re.compile(
+    r"^\s*inventag(?:\.[\w.]+)*\s+-\s+(?:DEBUG|INFO|WARNING|ERROR|CRITICAL)\b"
+)
+_SHELL_LANGS = frozenset({"bash", "sh", "shell", "console", "zsh", "yaml", "yml"})
+_FENCE = re.compile(r"^(\s*)(`{3,})\s*([\w-]*)")
 _PREFIX = re.compile(r"^\s*(?:-\s+|[\w.-]+:\s+|\$\s+|[|>][-+]?\s*$)")
 
 
@@ -36,11 +56,17 @@ class _ParserError(Exception):
     """Raised in place of argparse printing usage and exiting."""
 
 
+class _ParserExitOk(Exception):
+    """Raised when argparse exits with status 0 (--help, --version)."""
+
+
 def _quiet(parser: argparse.ArgumentParser) -> None:
     def error(message: str):
         raise _ParserError(message)
 
     def exit_(status: int = 0, message: Optional[str] = None):
+        if not status:
+            raise _ParserExitOk()
         raise _ParserError(f"exited with status {status}")
 
     parser.error = error  # type: ignore[method-assign]
@@ -122,7 +148,10 @@ def check_command(tokens: List[str]) -> List[str]:
         parser = build_main_parser()
     args = _substitute(parser, args)
     try:
-        parser.parse_args(args)
+        with contextlib.redirect_stdout(io.StringIO()):
+            parser.parse_args(args)
+    except _ParserExitOk:
+        return []
     except _ParserError as exc:
         return [str(exc)]
     except SystemExit as exc:  # defensive: an exit we did not intercept
@@ -158,6 +187,8 @@ def extract_commands(text: str) -> List[Tuple[int, str, Optional[List[str]]]]:
             i += 1
             line = line.rstrip()[:-1] + " " + lines[i].strip()
         i += 1
+        if _LOG_LINE.match(line):
+            continue
         stripped = line
         for _ in range(4):
             match = _PREFIX.match(stripped)
@@ -180,13 +211,81 @@ def extract_commands(text: str) -> List[Tuple[int, str, Optional[List[str]]]]:
     return found
 
 
+def _fenced_blocks(text: str) -> List[Tuple[str, int, str]]:
+    """(language, line number of the first body line, body) of each fenced block."""
+    blocks: List[Tuple[str, int, str]] = []
+    lines = text.split("\n")
+    i = 0
+    while i < len(lines):
+        match = _FENCE.match(lines[i])
+        if not match:
+            i += 1
+            continue
+        indent, ticks, lang = match.groups()
+        j = i + 1
+        body: List[str] = []
+        while j < len(lines) and not re.match(rf"^\s*{ticks}\s*$", lines[j]):
+            body.append(lines[j][len(indent) :] if indent else lines[j])
+            j += 1
+        blocks.append((lang.lower(), i + 2, "\n".join(body) + "\n"))
+        i = j + 1
+    return blocks
+
+
+def check_markdown(
+    text: str, langs: Optional[Iterable[str]] = None
+) -> List[Tuple[int, str, str]]:
+    """Check the commands in the shell blocks of a Markdown page.
+
+    Returns (line number, command text, problem). Blocks of other languages
+    (`text`, `json`, no language) hold sample output or data and are skipped.
+    `langs` narrows the languages read (default: all shell languages).
+    """
+    wanted = frozenset(langs) if langs is not None else _SHELL_LANGS
+    out: List[Tuple[int, str, str]] = []
+    for lang, first, body in _fenced_blocks(text):
+        if lang not in wanted:
+            continue
+        for lineno, cmd, tokens in extract_commands(body):
+            problems = (
+                ["cannot split the command line (unbalanced quote)"]
+                if tokens is None
+                else check_command(tokens)
+            )
+            out += [(first + lineno - 1, cmd, p) for p in problems]
+    return out
+
+
+def check_json_blocks(text: str) -> List[Tuple[int, str]]:
+    """Return (line number, problem) for each `json` block that does not parse."""
+    out: List[Tuple[int, str]] = []
+    for lang, first, body in _fenced_blocks(text):
+        if lang != "json":
+            continue
+        try:
+            json.loads(body)
+        except ValueError as exc:
+            line = first + (getattr(exc, "lineno", 1) or 1) - 1
+            out.append((line, f"json block does not parse: {exc}"))
+    return out
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("files", nargs="+", type=Path)
     ns = ap.parse_args(argv)
     bad = 0
     for path in ns.files:
-        for lineno, text, tokens in extract_commands(path.read_text("utf-8")):
+        content = path.read_text("utf-8")
+        if path.suffix == ".md":
+            for lineno, text, problem in check_markdown(content):
+                bad += 1
+                print(f"{path}:{lineno}: {problem}: {text}")
+            for lineno, problem in check_json_blocks(content):
+                bad += 1
+                print(f"{path}:{lineno}: {problem}")
+            continue
+        for lineno, text, tokens in extract_commands(content):
             problems = (
                 ["cannot split the command line (unbalanced quote)"]
                 if tokens is None

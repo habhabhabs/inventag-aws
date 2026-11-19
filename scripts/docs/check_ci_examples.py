@@ -16,6 +16,9 @@ its source: a docs.gitlab.com page, InvenTag's own docs, or project policy):
     (no literal AWS secrets, Python image pinned to a minor version, documented
     InvenTag exit codes in allow_failure);
   - every `inventag` command line is accepted by InvenTag's argument parser;
+  - on every page: the `inventag` lines of shell blocks (bash, sh, console)
+    are accepted by the parser, sample output is not read as commands, and
+    every `json` block parses (L-02);
   - optional: the block validates against GitLab's JSON schema when a schema
     file is given (--schema, env GITLAB_CI_SCHEMA, or DEFAULT_SCHEMA exists).
 
@@ -937,6 +940,22 @@ def check_file(
     return findings, seen
 
 
+def check_page_blocks(path: Path, docs_root: Path) -> List[str]:
+    """Shell-block commands (not yaml: check_file reads those) and json blocks."""
+    rel = (
+        path.relative_to(docs_root.parent) if docs_root.parent in path.parents else path
+    )
+    text = path.read_text("utf-8")
+    out: List[str] = []
+    for lineno, cmd, problem in check_cli_examples.check_markdown(
+        text, ("bash", "sh", "shell", "console", "zsh")
+    ):
+        out.append(f"{rel}:{lineno}: [shell] `{cmd}`: {problem}")
+    for lineno, problem in check_cli_examples.check_json_blocks(text):
+        out.append(f"{rel}:{lineno}: [json] {problem}")
+    return out
+
+
 def print_report(blocks: List[Dict[str, Any]]) -> None:
     """Per block: block id (file:line), kind, and every check with PASS or FAIL."""
     print(
@@ -987,6 +1006,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         f, b = check_file(md, ns.docs, schema)
         findings += f
         blocks += b
+        findings += check_page_blocks(md, ns.docs)
     if ns.report:
         print_report(blocks)
     elif ns.list or not findings:
