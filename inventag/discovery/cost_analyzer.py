@@ -18,6 +18,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 import time
 
+from .aws_clients import create_client
+
 
 @dataclass
 class CostThresholds:
@@ -167,8 +169,8 @@ class CostAnalyzer:
         with self._client_lock:
             if self.pricing_client is None:
                 try:
-                    self.pricing_client = self.session.client(
-                        "pricing", region_name="us-east-1"
+                    self.pricing_client = create_client(
+                        self.session, "pricing", "us-east-1"
                     )
                     self.logger.debug("Created pricing client")
                 except Exception as e:
@@ -180,7 +182,7 @@ class CostAnalyzer:
         """Lazily create and return CloudWatch client."""
         if self.cloudwatch_client is None:
             try:
-                self.cloudwatch_client = self.session.client("cloudwatch")
+                self.cloudwatch_client = create_client(self.session, "cloudwatch")
                 self.logger.debug("Created CloudWatch client")
             except Exception as e:
                 self.logger.warning(f"Failed to create CloudWatch client: {e}")
@@ -191,7 +193,7 @@ class CostAnalyzer:
         """Lazily create and return Cost Explorer client."""
         if self.cost_explorer_client is None:
             try:
-                self.cost_explorer_client = self.session.client("ce")
+                self.cost_explorer_client = create_client(self.session, "ce")
                 self.logger.debug("Created Cost Explorer client")
             except Exception as e:
                 self.logger.warning(f"Failed to create Cost Explorer client: {e}")
