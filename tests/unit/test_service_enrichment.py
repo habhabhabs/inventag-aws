@@ -735,12 +735,14 @@ class TestServiceHandlerFactory:
         self.factory.register_handler("S3", S3Handler)
 
         handler = self.factory.get_handler("S3", "Bucket")
-        assert isinstance(handler, S3Handler)
+        assert type(handler) is S3Handler
+        assert handler.can_handle("S3", "Bucket") is True
 
     def test_get_handler_fallback_to_dynamic(self):
         """Test fallback to dynamic handler for unknown services."""
         handler = self.factory.get_handler("UnknownService", "UnknownType")
-        assert isinstance(handler, DynamicServiceHandler)
+        assert type(handler) is DynamicServiceHandler
+        assert handler.can_handle("UnknownService", "UnknownType") is True
 
     def test_handler_instance_caching(self):
         """Test that handler instances are cached."""

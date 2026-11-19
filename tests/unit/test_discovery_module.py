@@ -73,7 +73,7 @@ class TestAWSResourceInventoryCore:
     def test_logger_initialization(self, inventory):
         """Test that logger is properly initialized"""
         assert hasattr(inventory, "logger")
-        assert inventory.logger is not None
+        assert inventory.logger.name.startswith("inventag")
 
     def test_resources_list_initialization(self, inventory):
         """Test that resources list is initialized"""
@@ -345,9 +345,10 @@ class TestErrorHandling:
         mock_session.return_value.client.return_value = mock_ec2
 
         inventory = AWSResourceInventory(regions=["us-east-1"])
-        # Should handle error gracefully and continue
+        # A denied call yields no resources and no exception
         resources = inventory.discover_resources()
-        assert isinstance(resources, list)
+        assert resources == []
+        assert inventory.resources == []
 
     def test_service_unavailable_error(self, mock_session):
         """Test handling when service is unavailable"""
@@ -365,8 +366,9 @@ class TestErrorHandling:
 
         inventory = AWSResourceInventory(regions=["us-east-1"])
         resources = inventory.discover_resources()
-        # Should continue despite service error
-        assert isinstance(resources, list)
+        # A failing service yields no resources and no exception
+        assert resources == []
+        assert inventory.resources == []
 
     def test_rate_limiting_error(self, mock_session):
         """Test handling of rate limiting"""
@@ -379,8 +381,9 @@ class TestErrorHandling:
 
         inventory = AWSResourceInventory(regions=["us-east-1"])
         resources = inventory.discover_resources()
-        # Should handle throttling gracefully
-        assert isinstance(resources, list)
+        # A throttled service yields no resources and no exception
+        assert resources == []
+        assert inventory.resources == []
 
     def test_malformed_response_handling(self, mock_session):
         """Test handling of malformed API responses"""
@@ -391,8 +394,9 @@ class TestErrorHandling:
 
         inventory = AWSResourceInventory(regions=["us-east-1"])
         resources = inventory.discover_resources()
-        # Should handle malformed response gracefully
-        assert isinstance(resources, list)
+        # A response without the expected keys yields no resources
+        assert resources == []
+        assert inventory.resources == []
 
 
 class TestUtilityMethods:
@@ -623,8 +627,10 @@ class TestSecurityValidation:
         inventory = AWSResourceInventory(regions=["us-east-1"])
         resources = inventory.discover_resources()
 
-        # Should complete without calling write methods
-        assert isinstance(resources, list)
+        # Completes with nothing found, and no write method was called
+        assert resources == []
+        for method in write_methods:
+            assert not getattr(mock_ec2, method).called, method
 
 
 if __name__ == "__main__":

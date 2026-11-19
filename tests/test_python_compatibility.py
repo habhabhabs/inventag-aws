@@ -113,7 +113,7 @@ class TestPythonCompatibility:
 
         # Test session creation without credentials
         session = boto3.Session()
-        assert session is not None
+        assert session.profile_name == "default"
 
     def test_data_processing_dependencies(self):
         """Test that data processing dependencies work."""
@@ -122,7 +122,7 @@ class TestPythonCompatibility:
 
         # Test Excel processing
         wb = openpyxl.Workbook()
-        assert wb is not None
+        assert wb.sheetnames == ["Sheet"]
 
         # Test YAML processing
         test_data = {"test": "value"}

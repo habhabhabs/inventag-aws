@@ -457,8 +457,16 @@ class TestSecurityValidation:
         )
 
         # Should complete without hanging
-        assert isinstance(is_compliant, bool)
-        assert isinstance(violations, list)
+        assert is_compliant is True
+        assert violations == []
+
+        # Dropping one required tag is reported by name
+        del malicious_resource["tags"]["Owner"]
+        is_compliant, violations = checker._check_resource_compliance(
+            malicious_resource
+        )
+        assert is_compliant is False
+        assert violations == ["Owner"]
 
 
 if __name__ == "__main__":

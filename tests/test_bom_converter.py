@@ -20,7 +20,8 @@ class TestBOMConverter:
         """Test that BOM converter can be imported"""
         from inventag.reporting import BOMConverter
 
-        assert BOMConverter is not None
+        assert BOMConverter.__name__ == "BOMConverter"
+        assert BOMConverter.__module__.startswith("inventag.reporting")
 
     def test_load_sample_data(self):
         """Test loading sample data"""
