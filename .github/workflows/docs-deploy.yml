@@ -617,45 +617,6 @@ jobs:
           
           echo "Documentation structure validation passed (Current: $md_count, Versioned: $versioned_count)"
 
-      - name: Run GitHub → Docusaurus transformation pipeline
-        id: transform
-        run: |
-          echo "Running GitHub → Docusaurus documentation transformation pipeline..."
-          echo "This will convert GitHub-compatible relative links to Docusaurus absolute paths"
-          
-          # Set environment variables for transformation
-          export VERBOSE=true
-          export DRY_RUN=false
-          
-          # Run the transformation pipeline with enhanced logging
-          echo "Converting GitHub-style relative links to Docusaurus absolute paths..."
-          node scripts/transform-docs.js
-          
-          echo "Transformation completed successfully!"
-          echo "GitHub links have been converted to Docusaurus-compatible format"
-          
-          # Check if any files were transformed
-          if [ -f "transform.log" ]; then
-            echo "Transformation log created"
-            if grep -q "files transformed:" transform.log; then
-              transformed_count=$(grep "files transformed:" transform.log | grep -o '[0-9]\+' | head -1)
-              echo "transformation_count=$transformed_count" >> "$GITHUB_OUTPUT"
-              echo "transformation_completed=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "transformation_count=0" >> "$GITHUB_OUTPUT"
-              echo "transformation_completed=true" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            echo "transformation_count=0" >> "$GITHUB_OUTPUT"
-            echo "transformation_completed=false" >> "$GITHUB_OUTPUT"
-          fi
-          
-          # Display transformation summary
-          if [ -f "transform.log" ]; then
-            echo "=== Transformation Summary ==="
-            tail -20 transform.log
-          fi
-
       - name: Install testing dependencies
         run: |
           echo "Installing additional testing dependencies..."
@@ -805,33 +766,6 @@ jobs:
           
           echo "✅ Dual-platform compatibility check completed"
 
-      - name: Validate transformed documentation
-        run: |
-          echo "Validating documentation structure and content..."
-          
-          # Run migration-friendly validation (tolerant of expected migration issues)
-          export VERBOSE=true
-          node scripts/validate-docs-migration.js
-          
-          # Check validation results
-          validation_exit_code=$?
-          
-          if [ $validation_exit_code -eq 0 ]; then
-            echo "✅ Documentation validation passed"
-            echo "validation_passed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "❌ Documentation validation failed with critical errors"
-            echo "validation_passed=false" >> "$GITHUB_OUTPUT"
-            
-            # In non-strict mode, continue with warnings for PR preview
-            if [ "${{ github.event_name }}" = "pull_request" ]; then
-              echo "⚠️ Continuing with validation warnings for PR preview"
-            else
-              echo "🛑 Stopping deployment due to critical validation errors"
-              exit 1
-            fi
-          fi
-
       # Fast checks before the long build. check:links needs no step of its own:
       # it runs at the end of every `npm run build` (postBuild hook in docusaurus.config.ts).
       - name: Type-check the site
@@ -853,7 +787,7 @@ jobs:
           python -m pip install -r ../requirements.txt
           npm run check:ci-examples
 
-      - name: Build documentation site with fallback
+      - name: Build documentation site
         working-directory: ./website
         run: |
           echo "Building Docusaurus documentation site with versioning support..."
@@ -887,39 +821,12 @@ jobs:
             echo "✅ Primary build successful"
             build_success=true
           else
-            echo "❌ Primary build failed, attempting fallback..."
-            
-            # Fallback strategy: restore from backups if they exist
-            if [ -d "../.docs-backup" ]; then
-              echo "Restoring documentation from backup..."
-              
-              # Restore files from backup
-              find ../.docs-backup -name "*.md" -type f | while read -r backup_file; do
-                relative_path=${backup_file#../.docs-backup/}
-                original_path="../docs/$relative_path"
-                
-                if [ -f "$backup_file" ]; then
-                  mkdir -p "$(dirname "$original_path")"
-                  cp "$backup_file" "$original_path"
-                  echo "Restored: $original_path"
-                fi
-              done
-              
-              echo "Attempting build with restored files..."
-              if npm run build; then
-                echo "✅ Fallback build successful"
-                build_success=true
-              else
-                echo "❌ Fallback build also failed"
-              fi
-            else
-              echo "No backup available for fallback"
-            fi
+            echo "❌ Primary build failed"
           fi
           
           # Check if build was successful
           if [ "$build_success" = false ]; then
-            echo "🛑 All build attempts failed"
+            echo "🛑 The build failed"
             exit 1
           fi
           
@@ -1138,36 +1045,10 @@ jobs:
             cat performance-report.md
           fi
 
-      - name: Run documentation health monitoring
-        run: |
-          echo "Running comprehensive documentation health monitoring..."
-          
-          # Set environment variables
-          export VERBOSE=true
-          
-          # Run health monitoring
-          node scripts/monitor-docs.js
-          
-          # Upload monitoring results as artifacts
-          if [ -d ".docs-logs" ]; then
-            echo "Monitoring logs created"
-            ls -la .docs-logs/
-          fi
-
       - name: Upload build artifacts
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: ./website/build
-
-      - name: Upload monitoring logs
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: documentation-logs
-          path: |
-            transform.log
-            .docs-logs/
-          retention-days: 30
 
       - name: Report build status
         if: always()
