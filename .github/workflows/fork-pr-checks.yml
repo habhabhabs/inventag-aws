@@ -44,7 +44,7 @@ jobs:
           echo "Checking author reputation for: $AUTHOR"
           
           # Get author info (this is safe as it doesn't execute fork code)
-          AUTHOR_INFO=$(gh api users/$AUTHOR --jq '{login: .login, type: .type, created_at: .created_at, public_repos: .public_repos, followers: .followers}')
+          AUTHOR_INFO=$(gh api users/"$AUTHOR" --jq '{login: .login, type: .type, created_at: .created_at, public_repos: .public_repos, followers: .followers}')
           echo "Author info: $AUTHOR_INFO"
           
           # Basic reputation checks
@@ -103,13 +103,13 @@ jobs:
           
           if [ $SECURITY_RISK_SCORE -gt 5 ]; then
             echo "🚨 HIGH SECURITY RISK: Many sensitive files modified"
-            echo "REQUIRES_MANUAL_REVIEW=high" >> $GITHUB_ENV
+            echo "REQUIRES_MANUAL_REVIEW=high" >> "$GITHUB_ENV"
           elif [ $SECURITY_RISK_SCORE -gt 2 ]; then
             echo "⚠️ MEDIUM SECURITY RISK: Some sensitive files modified"  
-            echo "REQUIRES_MANUAL_REVIEW=medium" >> $GITHUB_ENV
+            echo "REQUIRES_MANUAL_REVIEW=medium" >> "$GITHUB_ENV"
           else
             echo "✅ LOW SECURITY RISK: No sensitive files modified"
-            echo "REQUIRES_MANUAL_REVIEW=low" >> $GITHUB_ENV
+            echo "REQUIRES_MANUAL_REVIEW=low" >> "$GITHUB_ENV"
           fi
 
       - name: Comment on PR with security assessment
