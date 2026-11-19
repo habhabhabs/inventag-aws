@@ -1,0 +1,7 @@
+{
+  "_about": "Tool versions the CI runner uses, in one file (L-05). The Python packages are not listed here: they are pinned in requirements.txt and requirements-dev.txt. `source` says where each value comes from; `verified` is false when it was read from a report and not from the runner image. scripts/dev/ci_local.py `env` compares the host with this file; tests/unit/test_ci_local.py compares python, node and actionlint with the workflow files.",
+  "python": {"version": "3.13", "source": ".github/workflows/ci.yml lint job (python-version)", "verified": true},
+  "node": {"version": "26", "source": ".github/workflows/docs-deploy.yml (node-version)", "verified": true},
+  "actionlint": {"version": "1.7.12", "source": ".github/workflows/actions-checks.yml (ACTIONLINT_VERSION)", "verified": true},
+  "shellcheck": {"version": "0.9.0", "source": "debt-register C-01: the runner's shellcheck when pull request 43 failed", "verified": false}
+}
