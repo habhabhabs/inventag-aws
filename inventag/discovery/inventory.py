@@ -871,7 +871,8 @@ class AWSResourceInventory:
 
             self.logger.info(
                 f"Billing analysis: Found {len(services_with_usage)} services with usage "
-                f"(${total_spend:.2f} total spend in last 30 days)"
+                f"(${total_spend:.2f} total spend since "
+                f"{self.comprehensive_discovery.billing_period_start})"
             )
 
             # Log top spending services

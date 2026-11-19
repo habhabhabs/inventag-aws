@@ -834,13 +834,15 @@ class ComprehensiveAWSDiscovery:
         request, so the answer, or the failure, is kept for the next reader
         (decision 17). Each reader parses it as before.
         """
+        # From 30 days before the first day of the month to today.
+        self.billing_period_start = (
+            datetime.now().replace(day=1) - timedelta(days=30)
+        ).strftime("%Y-%m-%d")
         try:
             ce_client = self._client("ce", cost_explorer_region(self.regions))
             response = ce_client.get_cost_and_usage(
                 TimePeriod={
-                    "Start": (
-                        datetime.now().replace(day=1) - timedelta(days=30)
-                    ).strftime("%Y-%m-%d"),
+                    "Start": self.billing_period_start,
                     "End": datetime.now().strftime("%Y-%m-%d"),
                 },
                 Granularity="MONTHLY",
