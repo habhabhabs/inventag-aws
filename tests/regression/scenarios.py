@@ -100,10 +100,10 @@ PLAN = [
     _row(
         "A2",
         "SSO token expired at start",
-        "tier2",
+        "existing",
         "S2 / WP-F1a",
-        "tier 2 ::A2",
-        "exit 1 after two botocore tracebacks; generic text (V S2)",
+        "tests/unit/test_startup_failures_have_messages.py::test_expired_sso_token_gives_one_message_with_the_login_command",
+        "A-10: one message with the login command, exit 1",
     ),
     _row(
         "A3",
@@ -124,10 +124,10 @@ PLAN = [
     _row(
         "A5",
         "MFA required and not supplied",
-        "tier2",
+        "existing",
         "S2 / WP-F2",
-        "tier 2 ::A5",
-        "MFA without TTY: EOFError, empty message, hang risk (V S2)",
+        "tests/unit/test_mfa_without_terminal.py::test_mfa_profile_without_a_terminal_stops_at_once_with_the_message; tests/unit/test_startup_failures_have_messages.py::test_mfa_profile_with_no_terminal_gives_a_message",
+        "A-11, A-65: stops at once with a message, exit 1",
     ),
     _row(
         "A6",
@@ -300,10 +300,10 @@ PLAN = [
     _row(
         "C3",
         "A region name that does not exist in `--account-regions`",
-        "tier2",
+        "existing",
         "S2 / WP-E",
-        "tier 2 ::C3",
-        "region typo: exit 0, KeyError text (V S2)",
+        "tests/unit/test_unknown_region_is_named.py::test_a_mistyped_region_is_named_with_a_next_step",
+        "A-16 (message part): the typo is named with a next step; exit unchanged",
     ),
     _row(
         "C4",
@@ -645,10 +645,10 @@ PLAN = [
     _row(
         "H2",
         "Output folder not writable, read-only file system, disk full",
-        "tier2",
+        "existing",
         "S2 / WP-E",
-        "tier 2 ::H2",
-        "not writable: catch-all after the scan (V S2)",
+        "tests/unit/test_startup_failures_have_messages.py::test_unusable_path_is_refused_before_any_aws_call",
+        "A-15: an unusable --output-directory is refused before any AWS call, exit 1, no traceback (a read-only file system or a full disk cannot be shown here)",
     ),
     _row(
         "H3",
@@ -693,10 +693,10 @@ PLAN = [
     _row(
         "H8",
         "Output folder or file problems found before the scan starts",
-        "tier2",
+        "existing",
         "S2 / WP-E",
-        "tier 2 ::H8",
-        "--audit-output/--log-file unwritable: traceback (V S2)",
+        "tests/unit/test_startup_failures_have_messages.py::test_unusable_path_is_refused_before_any_aws_call; tests/unit/test_audit_output_special_paths.py::test_a_symlink_is_refused_and_left_as_it_is",
+        "A-15: --audit-output and --log-file refused before any AWS call, exit 1, no traceback",
     ),
     _row(
         "H9",
@@ -733,10 +733,10 @@ PLAN = [
     _row(
         "I2",
         "S3 upload of several files, one fails",
-        "tier2",
+        "existing",
         "S3 / WP-F2",
-        "tier 2 ::I2",
-        "several files, one fails: per-file errors collected (R s3_upload.upload_files)",
+        "tests/unit/test_s3_upload_reports_outcome.py::test_i2_partial_upload_run_lists_both_files_and_still_exits_1; tests/unit/test_s3_upload_reports_outcome.py::test_partial_upload_names_the_uploaded_and_the_failed_file",
+        "A-12: the uploaded and the failed file are named, exit 1",
     ),
     _row(
         "I3",
@@ -1335,6 +1335,46 @@ MATRIX: Dict[str, Dict[str, Any]] = {
 
 # Gaps found while probing that the plan has no ID for. Same fields as above.
 EXTRA = [
+    Scenario(
+        "S1-I7-skipped-upload-is-told",
+        "A report format failed: the run says nothing was uploaded and why",
+        "existing",
+        "S3 / A-12",
+        "tests/unit/test_skipped_upload_is_told.py::test_a_failed_format_says_nothing_was_uploaded; tests/unit/test_s3_upload_reports_outcome.py::test_skipped_upload_message_names_the_bucket_and_the_reason",
+        "A-12: 'Nothing was uploaded to s3://<bucket>/<prefix>' with the reason",
+    ),
+    Scenario(
+        "S1-I4d-sheet-url-when-the-doc-fails",
+        "Google Sheet made, Google Doc fails: the Sheet's URL is named",
+        "existing",
+        "S3 / A-12",
+        "tests/unit/test_google_doc_failure_names_sheet.py::test_doc_failure_after_the_sheet_names_the_sheet; tests/unit/test_google_doc_failure_names_sheet.py::test_i4d_run_prints_the_sheet_url_and_still_exits_1",
+        "A-12: the finished Sheet URL is in the message, exit 1 (mocked Google clients; the real Google APIs cannot be shown)",
+    ),
+    Scenario(
+        "S1-I1d-wrong-bucket-region-hint",
+        "S3 upload to a bucket in another region (PermanentRedirect): the message hints at the region",
+        "existing",
+        "S3 / A-12",
+        "tests/unit/test_s3_upload_reports_outcome.py::test_permanent_redirect_hints_at_the_bucket_region; tests/unit/test_s3_upload_reports_outcome.py::test_i1d_permanent_redirect_run_hints_and_still_exits_1",
+        "A-12: 'different region' and AWS_DEFAULT_REGION named, exit 1 (an injected error: moto does not answer a redirect)",
+    ),
+    Scenario(
+        "S1-G4a-upload-bound-to-the-bucket",
+        "The guard's upload permission covers the named bucket only",
+        "existing",
+        "S3 / A-26",
+        "tests/unit/test_read_only_guard_upload_bucket.py::test_upload_to_another_bucket_is_blocked_on_the_uploader_client; tests/unit/test_read_only_guard_upload_bucket.py::test_upload_to_the_named_bucket_still_works",
+        "A-26: a PutObject to another bucket is blocked, to the named bucket works",
+    ),
+    Scenario(
+        "S1-T17-one-format-fails-the-others-are-written",
+        "With --template, one failing report format does not stop the others",
+        "existing",
+        "S3 / A-13",
+        "tests/integration/templating/test_format_isolation.py::test_word_fails_excel_is_still_written; tests/integration/templating/test_format_isolation.py::test_excel_fails_word_is_still_written",
+        "A-13: the other format is written and the missing report is noted",
+    ),
     Scenario(
         "S1-F1-template-writes-an-empty-report",
         "Empty result with --template writes a report; without it no file is written (O7: no report on both paths)",

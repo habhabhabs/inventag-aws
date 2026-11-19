@@ -117,3 +117,44 @@ def test_matrix_rows_are_complete(row):
         assert all(re.match(r"^[a-z_]+(:[a-z0-9_-]+)?$", k) for k in row.issue_keys)
     if row.process == "child":
         assert row.signal or row.slow
+
+
+def _named_tests(row):
+    """``(path, test name)`` pairs of a row's ``where`` ("tests/x.py::name; ...")."""
+    pairs = []
+    for part in row.where.split(";"):
+        part = part.strip()
+        if part.startswith("tests/") and "::" in part:
+            path, name = part.split("::", 1)
+            pairs.append((path, name.split()[0]))
+    return pairs
+
+
+EXISTING_WITH_TESTS = [
+    row for row in scenarios.ROWS if row.runner == "existing" and _named_tests(row)
+]
+
+
+def test_the_rows_added_from_unit_tests_name_tests_that_exist():
+    ids = {row.id for row in EXISTING_WITH_TESTS}
+    assert {
+        "A2",
+        "A5",
+        "C3",
+        "H2",
+        "H8",
+        "I2",
+        "S1-I7-skipped-upload-is-told",
+        "S1-I4d-sheet-url-when-the-doc-fails",
+        "S1-I1d-wrong-bucket-region-hint",
+        "S1-G4a-upload-bound-to-the-bucket",
+        "S1-T17-one-format-fails-the-others-are-written",
+    } <= ids
+
+
+@pytest.mark.parametrize("row", EXISTING_WITH_TESTS, ids=lambda r: r.id)
+def test_every_test_an_existing_row_names_is_defined(row):
+    root = HERE.parent.parent
+    for path, name in _named_tests(row):
+        source = (root / path).read_text()
+        assert re.search(rf"^\s*def {re.escape(name)}\(", source, re.M), (path, name)
