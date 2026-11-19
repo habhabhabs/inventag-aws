@@ -10,7 +10,8 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ### Security
 
-- The read-only guard blocks 8 more operations: `sts:GetWebIdentityToken`,
+- The read-only guard blocks 9 more operations: `sts:GetWebIdentityToken`,
+  `sts:GetScopedCredentials` (new in botocore 1.44.7),
   `stepfunctions:GetActivityTask`, the four Lake Formation
   `GetTemporaryDataLocationCredentials`, `GetTemporaryGlueFunctionCredentials`,
   `GetTemporaryGluePartitionCredentials` and
@@ -18,7 +19,7 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   `payment-cryptography:GetParametersForImport` and `GetParametersForExport`.
   Their names start with `Get`, so the guard allowed them, but they issue a
   token, AWS credentials or key material, or take a task from an activity's
-  queue. InvenTag never called them. For these 8 operations
+  queue. InvenTag never called them. For these 9 operations
   `--validate-operations` now prints BLOCKED and exits 1 (v1.3.0: ALLOWED,
   exit 0).
 - The guard blocks `datazone:GetConnection` with `withSecret=true`, which

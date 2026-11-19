@@ -28,7 +28,7 @@ sidebar_position: 1
   帶 `withSecret` 的 `datazone:GetConnection`），它也會攔截原本允許的操作，預簽名 URL 中也是如此；它還會檢查預簽名 URL 和資料庫認證權杖，這些在簽名時不會呼叫 AWS。
   它還會攔截返回簽名 URL、檔案或文件正文、命令輸出或含有機密的已儲存定義的讀取（例如 `ssm:GetDocument`、
   `ssm:GetCommandInvocation`、API Gateway 匯出、Data Pipeline 定義，以及 Support 和 Connect 附件），
-  以及會建立身份的 `cognito-identity:GetId`。它還會攔截 `sts:GetWebIdentityToken`、
+  以及會建立身份的 `cognito-identity:GetId`。它還會攔截 `sts:GetWebIdentityToken`、`sts:GetScopedCredentials`、
   `stepfunctions:GetActivityTask`、Lake Formation 的四個 `GetTemporary...Credentials` 呼叫，
   以及 `payment-cryptography:GetParametersForImport` 和 `GetParametersForExport`：
   它們的名稱看起來像讀取，但它們會簽發權杖、憑證或金鑰材料，或者領取一個正在等待處理的活動任務。拒絕列表中的每個條目都會與 AWS SDK 的操作列表進行核對。

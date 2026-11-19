@@ -40,7 +40,8 @@ mainteneur un canal privé.
   `ssm:GetCommandInvocation`, les exports API Gateway, les définitions Data
   Pipeline et les pièces jointes Support et Connect), ainsi que
   `cognito-identity:GetId`, qui crée une identité. Elle bloque
-  `sts:GetWebIdentityToken`, `stepfunctions:GetActivityTask`, les quatre appels
+  `sts:GetWebIdentityToken`, `sts:GetScopedCredentials`,
+  `stepfunctions:GetActivityTask`, les quatre appels
   `GetTemporary...Credentials` de Lake Formation, ainsi que
   `payment-cryptography:GetParametersForImport` et `GetParametersForExport` :
   leur nom commence comme une lecture, mais ils émettent un jeton, des

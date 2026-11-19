@@ -18,10 +18,10 @@ Allowlist rules (see :meth:`ReadOnlyGuard.evaluate`):
    URLs (``lambda:GetFunction``), or customer data (``s3:GetObject``,
    ``dynamodb:GetItem`` ...). InvenTag builds an inventory; it never needs
    these. Operations that issue a token or credentials for the caller
-   (``sts:GetWebIdentityToken``, the Lake Formation temporary-credential
-   reads, the payment-cryptography key import and export parameters) or
-   take a task from a queue (``stepfunctions:GetActivityTask``) are blocked
-   too: they are not reads.
+   (``sts:GetWebIdentityToken``, ``sts:GetScopedCredentials``, the Lake
+   Formation temporary-credential reads, the payment-cryptography key import
+   and export parameters) or take a task from a queue
+   (``stepfunctions:GetActivityTask``) are blocked too: they are not reads.
 3. Clients that botocore's own credential providers create to sign in
    (IAM Identity Center/SSO, web identity, ``aws login``) are created
    *unsigned*: they carry no account credentials and can only exchange a
@@ -223,6 +223,8 @@ DENIED_OPERATIONS: FrozenSet[Tuple[str, str]] = frozenset(
         # or credentials for the caller, or take a task from a queue (the
         # caller then holds it and another worker cannot get it).
         ("sts", "GetWebIdentityToken"),
+        # Temporary credentials scoped down from the caller's (botocore 1.44.7).
+        ("sts", "GetScopedCredentials"),
         ("stepfunctions", "GetActivityTask"),
         ("lakeformation", "GetTemporaryDataLocationCredentials"),
         ("lakeformation", "GetTemporaryGlueFunctionCredentials"),

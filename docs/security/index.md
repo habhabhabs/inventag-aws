@@ -40,7 +40,8 @@ maintainer for a private channel.
   example `ssm:GetDocument`, `ssm:GetCommandInvocation`, API Gateway exports,
   Data Pipeline definitions, and support and Connect attachments), and
   `cognito-identity:GetId`, which creates an identity. It blocks
-  `sts:GetWebIdentityToken`, `stepfunctions:GetActivityTask`, the four Lake
+  `sts:GetWebIdentityToken`, `sts:GetScopedCredentials`,
+  `stepfunctions:GetActivityTask`, the four Lake
   Formation `GetTemporary...Credentials` calls and
   `payment-cryptography:GetParametersForImport` and `GetParametersForExport`:
   their names start like reads, but they issue a token, credentials or key
