@@ -73,3 +73,32 @@ def test_a_role_that_cannot_be_assumed_fails_both(
         injector.arm()
         assert scan(path) == 1
         assert validate(path) == 1
+
+
+def test_validation_assumes_the_role_named_with_cross_account_role(
+    aws, tmp_path, monkeypatch  # noqa: F811
+):
+    """``--cross-account-role X`` changes the role the scan assumes in another
+    account; ``--validate-credentials`` must check the same role (pair of
+    lead A's A-39 with the CLI). Exit 0 as for the default role."""
+    import botocore.client
+
+    roles = []
+    original = botocore.client.BaseClient._make_api_call
+
+    def spy(client, operation_name, api_params):
+        if operation_name == "AssumeRole":
+            roles.append(api_params.get("RoleArn"))
+        return original(client, operation_name, api_params)
+
+    monkeypatch.setattr(botocore.client.BaseClient, "_make_api_call", spy)
+    path = accounts_file(tmp_path, [{"account_id": OTHER_ID, "regions": ["us-east-1"]}])
+    code = run_cli(
+        "--accounts-file",
+        path,
+        "--cross-account-role",
+        "AuditReader",
+        "--validate-credentials",
+    )
+    assert code == 0
+    assert roles and all(r.endswith(":role/AuditReader") for r in roles), roles
