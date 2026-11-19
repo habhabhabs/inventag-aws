@@ -1,0 +1,48 @@
+# Tag mappings for custom BOM columns
+# Maps AWS resource tags to custom column names in BOM reports
+
+"inventag:remarks":
+  column_name: "Remarks"
+  default_value: ""
+  description: "Additional remarks about the resource"
+
+"inventag:costcenter":
+  column_name: "Cost Center"
+  default_value: "Unknown"
+  description: "Cost center responsible for the resource"
+
+"inventag:owner":
+  column_name: "Resource Owner"
+  default_value: "Unassigned"
+  description: "Person or team responsible for the resource"
+
+"inventag:project":
+  column_name: "Project"
+  default_value: "Unassigned"
+  description: "Project or application using the resource"
+
+"inventag:backup":
+  column_name: "Backup Required"
+  default_value: "Unknown"
+  description: "Whether the resource requires backup"
+
+"inventag:compliance":
+  column_name: "Compliance Level"
+  default_value: "Standard"
+  description: "Compliance requirements for the resource"
+
+# Standard AWS tags
+"Environment":
+  column_name: "Environment"
+  default_value: "Unknown"
+  description: "Environment (prod, dev, test, etc.)"
+
+"Name":
+  column_name: "Resource Name"
+  default_value: "Unnamed"
+  description: "Human-readable name for the resource"
+
+"Application":
+  column_name: "Application"
+  default_value: "Unknown"
+  description: "Application or service using the resource"
