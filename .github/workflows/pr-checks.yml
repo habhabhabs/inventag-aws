@@ -192,7 +192,7 @@ jobs:
     - name: Check for merge conflicts
       run: |
         git fetch origin main
-        if ! git merge-tree $(git merge-base HEAD origin/main) HEAD origin/main | grep -q "<<<<<<< "; then
+        if ! git merge-tree "$(git merge-base HEAD origin/main)" HEAD origin/main | grep -q "<<<<<<< "; then
           echo "✅ No merge conflicts detected"
         else
           echo "❌ Merge conflicts detected"
