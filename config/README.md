@@ -8,7 +8,7 @@ Configuration files and examples for customizing InvenTag behavior.
 config/
 ├── README.md                           # This file
 ├── defaults/                           # Default configuration examples
-│   ├── complete_configuration_example.yaml  # Comprehensive BOM settings
+│   ├── complete_configuration_example.yaml  # BOM processing settings (--bom-config)
 │   ├── iam-policy-read-only.json          # Required IAM permissions
 │   ├── compliance/                     # Tag compliance configurations
 │   │   ├── tag_compliance_policy_example.yaml  # Tag rules (YAML)
@@ -69,7 +69,7 @@ python -m inventag.cli.main \
 **🏢 BOM Generation:**
 - **`mappings/tag_to_column_mappings_example.yaml`** - Maps AWS tags to BOM column names
 - **`services/service_descriptions_example.yaml`** - Custom AWS service descriptions
-- **`complete_configuration_example.yaml`** - Comprehensive BOM generation settings
+- **`complete_configuration_example.yaml`** - BOM processing settings for `--bom-config`
 
 **🛡️ Compliance Checking:**
 - **`compliance/tag_compliance_policy_example.yaml`** - Tag compliance rules (YAML)

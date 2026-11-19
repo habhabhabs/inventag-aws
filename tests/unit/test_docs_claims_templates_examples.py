@@ -975,18 +975,67 @@ def test_t28_layout_file_with_the_old_keys_is_refused(
         assert f"{key}: unknown key" in err
 
 
+OLD_EXAMPLE_KEYS = """
+default_template: "professional_word"
+document_templates:
+  professional_word:
+    template_name: "professional_word"
+    template_path: "templates/professional_word_template.yaml"
+    format_type: "word"
+    enabled: true
+    description: "Professional Word document template with comprehensive branding"
+    variables:
+      company_name: "Acme Corporation"
+      document_title: "Cloud Infrastructure Bill of Materials"
+      confidentiality_level: "CONFIDENTIAL"
+    custom_sections:
+      - "executive_summary"
+      - "compliance_overview"
+      - "service_inventory"
+      - "network_analysis"
+      - "security_analysis"
+
+  executive_excel:
+    template_name: "executive_excel"
+    template_path: "templates/executive_excel_template.json"
+    format_type: "excel"
+    enabled: true
+    description: "Executive-focused Excel workbook with dashboards and charts"
+    variables:
+      workbook_title: "Cloud Infrastructure Dashboard"
+      include_charts: true
+    custom_sections:
+      - "summary_dashboard"
+      - "compliance_metrics"
+      - "cost_analysis"
+
+  detailed_csv:
+    template_name: "detailed_csv"
+    template_path: "templates/detailed_csv_template.yaml"
+    format_type: "csv"
+    enabled: true
+    description: "Detailed CSV export for data analysis"
+    variables:
+      include_all_fields: true
+      delimiter: ","
+"""
+
+
 def test_t30_old_keys_in_a_bom_config_file_have_no_effect(aws, monkeypatch, tmp_path):
-    """layout-flags.md: the keys of older configuration examples (here the shipped
-    config/defaults/complete_configuration_example.yaml, used with --bom-config)
-    change no report: same sheets, same Word paragraphs, exit 0."""
+    """layout-flags.md: the keys of older configuration examples (templates,
+    document_templates, default_template; their values are those the shipped
+    config/defaults/complete_configuration_example.yaml had before it was
+    reduced to the keys InvenTag reads, frozen here) change no report when added
+    to the shipped example used with --bom-config: same sheets, same Word
+    paragraphs, exit 0."""
     example = yaml.safe_load(
         (
             ROOT / "config" / "defaults" / "complete_configuration_example.yaml"
         ).read_text()
     )
     old_keys = ("templates", "document_templates", "default_template")
-    assert "document_templates" in example and "default_template" in example
-    with_keys = dict(example, templates={"x": "y"})
+    frozen = yaml.safe_load(OLD_EXAMPLE_KEYS)
+    with_keys = dict(example, templates={"x": "y"}, **frozen)
     without = {k: v for k, v in example.items() if k not in old_keys}
     results = []
     for sub, data in (("with", with_keys), ("without", without)):

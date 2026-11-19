@@ -673,3 +673,44 @@ def test_the_launchers_are_outside_the_wheel_and_no_test_runs_them():
     assert naming["test_python_compatibility.py"] == [
         'for name in ("inventag.sh", "inventag.bat"):'
     ]
+
+
+# ------------------------------------------------- the complete configuration example
+
+COMPLETE_EXAMPLE = ROOT / "config" / "defaults" / "complete_configuration_example.yaml"
+
+
+def test_the_complete_example_holds_only_keys_the_bom_config_reader_accepts():
+    from inventag.reporting.bom_processor import BOMProcessingConfig
+    from inventag.reporting.settings_loader import (
+        read_bom_settings,
+        valid_bom_setting_names,
+    )
+
+    keys = yaml.safe_load(COMPLETE_EXAMPLE.read_text("utf-8"))
+    assert set(keys) <= set(valid_bom_setting_names())
+    assert read_bom_settings(COMPLETE_EXAMPLE, BOMProcessingConfig()) == []
+
+
+def test_validate_config_only_prints_no_unknown_key_warning_for_the_example(
+    caplog,
+):
+    from inventag.cli.main import main
+
+    argv = [
+        "inventag",
+        "--validate-config-only",
+        "--bom-config",
+        str(COMPLETE_EXAMPLE),
+    ]
+    with caplog.at_level(logging.WARNING):
+        import sys as _sys
+        from unittest import mock
+
+        with mock.patch.object(_sys, "argv", argv):
+            try:
+                main()
+            except SystemExit as exc:
+                assert exc.code in (0, None)
+    assert "unknown key" not in caplog.text
+    assert "would be ignored" not in caplog.text
