@@ -1319,6 +1319,8 @@ class TestCli:
         generator = module.CloudBOMGenerator(config)
         context = Mock()
         context.credentials.account_name = "test"
+        context.credentials.services = []  # a real AccountCredentials has lists
+        context.credentials.tags = {}
         context.resource_count = 0
         context.processing_time_seconds = 0.0
         context.processing_errors = []
