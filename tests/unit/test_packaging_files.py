@@ -126,6 +126,79 @@ def test_spec_builds_one_directory_without_strip_or_upx():
         assert f'"{module}"' in spec
 
 
+class _SpecRun:
+    """Run inventag.spec with stand-ins for PyInstaller's build classes: what
+    the spec hands to COLLECT, without PyInstaller."""
+
+    def __init__(self, binaries, datas):
+        self.binaries, self.datas = binaries, datas
+        self.collected = None
+
+    def run(self, monkeypatch, plat):
+        import types
+
+        hooks = types.ModuleType("PyInstaller.utils.hooks")
+        hooks.copy_metadata = lambda name: [("keyring.dist-info", "/m", "DATA")]
+        for name in ("PyInstaller", "PyInstaller.utils"):
+            monkeypatch.setitem(sys.modules, name, types.ModuleType(name))
+        monkeypatch.setitem(sys.modules, "PyInstaller.utils.hooks", hooks)
+        monkeypatch.setattr(sys, "platform", plat)
+        run = self
+
+        class Analysis:
+            def __init__(self, *args, **kwargs):
+                self.binaries = list(run.binaries)
+                self.datas = list(run.datas)
+                self.pure, self.scripts = [], []
+
+        def collect(*args, **kwargs):
+            run.collected = args
+
+        spec = PACKAGING / "pyinstaller" / "inventag.spec"
+        exec(
+            compile(spec.read_text("utf-8"), str(spec), "exec"),
+            {
+                "SPECPATH": str(spec.parent),
+                "Analysis": Analysis,
+                "PYZ": lambda *a, **k: None,
+                "EXE": lambda *a, **k: None,
+                "COLLECT": collect,
+            },
+        )
+        _exe, binaries, datas = self.collected
+        return binaries, datas
+
+
+LXML_TOC = [
+    ("lxml/etree.cpython-312-darwin.so", "/v/lxml/etree.cpython-312-darwin.so"),
+    ("lxml/html/diff.cpython-312-darwin.so", "/v/lxml/html/diff.cpython-312-darwin.so"),
+]
+OTHER_TOC = [
+    ("yaml/_yaml.cpython-312-darwin.so", "/v/yaml/_yaml.cpython-312-darwin.so"),
+    ("python3.12/lib-dynload/_json.cpython-312-darwin.so", "/f/_json.so"),
+]
+
+
+def test_on_macos_the_spec_collects_lxml_modules_as_unprocessed_data(monkeypatch):
+    # architect-package-dryrun-5.md ruling 1: on macOS PyInstaller thins,
+    # re-paths and re-signs every collected binary, so lxml's modules go in
+    # as data files at the same paths: copied unchanged, byte check as on Linux.
+    binaries = [(d, s, "EXTENSION") for d, s in LXML_TOC + OTHER_TOC]
+    got_bin, got_data = _SpecRun(binaries, []).run(monkeypatch, "darwin")
+    assert [b for b in got_bin if b[0].startswith("lxml/")] == []
+    assert [b[0] for b in got_bin] == [d for d, _ in OTHER_TOC]
+    assert [d for d in got_data if d[0].startswith("lxml/")] == [
+        (d, s, "DATA") for d, s in LXML_TOC
+    ]
+
+
+def test_on_linux_the_spec_hands_lxml_to_pyinstaller_as_before(monkeypatch):
+    binaries = [(d, s, "EXTENSION") for d, s in LXML_TOC + OTHER_TOC]
+    got_bin, got_data = _SpecRun(binaries, []).run(monkeypatch, "linux")
+    assert got_bin == binaries
+    assert [d for d in got_data if d[0].startswith("lxml/")] == []
+
+
 def test_the_spec_is_tracked_and_not_ignored():
     # .gitignore ignores *.spec (PyInstaller writes one per build); the
     # project's own spec is the exception, so a change to it is never lost.
