@@ -12,10 +12,13 @@ Inputs, all optional:
 * ``account_failures``: ``{"account_id", "error_code"}`` for each account whose role could
   not be assumed. Only a denial code makes it ``sts:AssumeRole``.
 * ``upload_outcomes``: ``{"error_code"}`` for each report file that failed to upload.
+  The upload uses the default credentials, not a scanned account's session, so its
+  entry names no account (``account`` is empty) and its line names "the identity that
+  uploads the reports (the default credentials)".
 * ``cost_denials``: ``(service, operation, error class)`` as the cost analyzer hands them
   over; ``analysis_denials``: ``(service, operation, error class, region)``.
 * ``run_account``: the account whose session the steps of the whole run use (cost and
-  network analysis, the upload).
+  network analysis).
 
 Nothing of AWS's own error text is read or kept: only the error code decides, and the
 code is not written into the result. An operation with no known IAM action is listed by
@@ -83,6 +86,7 @@ _EFFECT = {
 }
 
 _UNKNOWN = "IAM action not known to InvenTag"
+_UPLOADER = "the identity that uploads the reports (the default credentials)"
 
 Entry = Dict[str, Any]
 
@@ -178,7 +182,7 @@ def build(
         if str(failure.get("error_code") or "") in DENIED_CODES:
             add(failure.get("account_id") or "", "sts", "AssumeRole", "role")
     if any(str(o.get("error_code") or "") in DENIED_CODES for o in upload_outcomes):
-        add(run_account, "s3", "PutObject", "upload")
+        add("", "s3", "PutObject", "upload")
     for service, operation, error_class in cost_denials:
         if error_class in DENIED_CODES:
             kind = {"pricing": "pricing", "ce": "billing"}.get(service, "analysis")
@@ -220,17 +224,26 @@ def _access_sentence(entries: Sequence[Entry]) -> str:
 
 
 def notes(entries: Sequence[Entry]) -> List[str]:
-    """The "Permissions:" lines of the run notes, one per account; empty when nothing was denied."""
+    """The "Permissions:" lines of the run notes, one per account, then one for the
+    upload's identity; empty when nothing was denied."""
     lines = []
-    for account in sorted({e["account"] for e in entries}):
-        mine = [e for e in entries if e["account"] == account]
+    groups = sorted({(e["kind"] == "upload", e["account"]) for e in entries})
+    for upload, account in groups:
+        mine = [
+            e
+            for e in entries
+            if e["account"] == account and (e["kind"] == "upload") == upload
+        ]
         names = []
         for entry in mine:
             name = _name_of(entry)
             if name not in names:
                 names.append(name)
         effects = [_EFFECT[k] for k in KINDS if any(e["kind"] == k for e in mine)]
-        where = f"account {account}" if account else "this run"
+        if upload:
+            where = _UPLOADER
+        else:
+            where = f"account {account}" if account else "this run"
         line = (
             f"Permissions: {len(names)} action(s) were not allowed for {where}: "
             f"{', '.join(names)}. Effect: {'; '.join(effects)}."
