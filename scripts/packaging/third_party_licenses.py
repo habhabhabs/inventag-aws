@@ -166,6 +166,9 @@ class Carried:
     loads_instead: bytes = b""
     notes: Tuple[str, ...] = ()
     urls: Tuple[str, ...] = ()
+    # Defined symbols (fnmatch) the library adds to a module whose exports are
+    # checked (Row.exports): allowed only when the library is present.
+    exports: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -185,6 +188,16 @@ class Row:
     # files the package installs (rpm), and must be one of these
     # (architect-package-dryrun-3.md ruling 2).
     spdx_from_files: Tuple[str, ...] = ()
+    # macOS (architect-package-dryrun-3.md ruling 3): every library the file
+    # links (otool -L) must match one of these, or be "@rpath/<name>" of a
+    # bundled file with a row.
+    links: Tuple[str, ...] = ()
+    # Every defined external symbol of the file must match one of these
+    # ("{module}" = the module's name) or the exports of a library found in
+    # it: a module that defines more carries something that needs a row.
+    exports: Tuple[str, ...] = ()
+    # The file must come from the build Python's own installation.
+    in_build_python: bool = False
 
 
 # Text sources: "dist:<package>:<file glob>", "pkgdoc" (the copyright file of
@@ -335,14 +348,107 @@ LINUX_ROWS: Tuple[Row, ...] = (
     )
 )
 
-# macOS arm64: rows only for the files whose owner dry run 3 printed (the
-# executable from PyInstaller's build, and the wheels' files). The build's
-# Python.framework (Python, lib-dynload/*.so, libssl.3.dylib, libcrypto.3.dylib)
-# has no row: what each file links or carries, and where its licence text
-# comes from, is not yet verified, so those files fail the check as unmapped
-# (gaps in reports/v14-b2d-licence-rows.md). The Linux text sources that read
-# a system package ("pkgdoc") do not work on macOS (no dpkg, no rpm).
-DARWIN_ROWS: Tuple[Row, ...] = (Row("inventag", "pyinstaller"),) + WHEEL_ROWS
+# macOS arm64 (dry run 4, python.org framework of Python 3.12.10 from
+# actions/setup-python). The framework's own LICENSE.txt is CPython's text
+# (the CPython component); it covers a framework file only when the build shows
+# that the file links nothing but macOS system libraries and bundled files with
+# rows (otool -L) and defines no symbol beyond the module's init function
+# (Mach-O symbol table). Every third-party library gets its own row
+# (architect-package-dryrun-3.md ruling 3). The Linux text source "pkgdoc"
+# does not work on macOS (no dpkg, no rpm).
+DARWIN_SYSTEM_LINKS = (
+    "/usr/lib/libSystem.B.dylib",
+    "/System/Library/Frameworks/*",
+)
+_FRAMEWORK = {"links": DARWIN_SYSTEM_LINKS, "in_build_python": True}
+CPYTHON_EXPORTS = ("_PyInit_{module}",)
+_DYNLOAD = "_internal/python3.*/lib-dynload/"
+OPENSSL_FRAMEWORK = Carried(
+    "OpenSSL (in the Python.framework)",
+    "Apache-2.0",
+    (LICENSES_REPO + "openssl-LICENSE.txt",),
+    # The framework's _ssl and _hashlib load these two files.
+    "python:ssl.OPENSSL_VERSION.split()[1]",
+)
+DARWIN_ROWS: Tuple[Row, ...] = (
+    (Row("inventag", "pyinstaller"),)
+    + WHEEL_ROWS
+    + (
+        Row("_internal/Python", "cpython", **_FRAMEWORK),
+        Row("_internal/Python.framework/Python", "cpython", **_FRAMEWORK),
+        Row("_internal/Python.framework/Versions/3.*/Python", "cpython", **_FRAMEWORK),
+        Row(
+            "_internal/libssl.3.dylib",
+            "framework",
+            carries=(OPENSSL_FRAMEWORK,),
+            **_FRAMEWORK,
+        ),
+        Row(
+            "_internal/libcrypto.3.dylib",
+            "framework",
+            carries=(OPENSSL_FRAMEWORK,),
+            **_FRAMEWORK,
+        ),
+        Row(
+            _DYNLOAD + "_decimal*.so",
+            "cpython",
+            carries=(
+                Carried(
+                    "libmpdec (in CPython's _decimal)",
+                    # No licence file or upstream text verified for the
+                    # framework's copy yet.
+                    "NOASSERTION",
+                    (),
+                    "python:decimal.__libmpdec_version__",
+                    requires_strings=b"mpd_q",
+                    loads_instead=b"libmpdec.",
+                    exports=("_mpd_*",),
+                ),
+            ),
+            exports=CPYTHON_EXPORTS,
+            **_FRAMEWORK,
+        ),
+        Row(
+            _DYNLOAD + "pyexpat*.so",
+            "cpython",
+            carries=(
+                Carried(
+                    "expat (in CPython's pyexpat)",
+                    "MIT",
+                    (LICENSES_REPO + "expat-COPYING",),
+                    "python:pyexpat.EXPAT_VERSION.removeprefix('expat_')",
+                    requires_strings=b"XML_ParserCreate",
+                    loads_instead=b"libexpat.",
+                    exports=("_XML_*", "_PyExpat_XML_*"),
+                ),
+            ),
+            exports=CPYTHON_EXPORTS,
+            **_FRAMEWORK,
+        ),
+        Row(
+            _DYNLOAD + "_lzma*.so",
+            "cpython",
+            carries=(
+                Carried(
+                    "liblzma (in CPython's _lzma)",
+                    # xz's licence depends on its version (public domain or
+                    # 0BSD), and the framework's version is not read yet.
+                    "NOASSERTION",
+                    (),
+                    requires_strings=b"lzma_code",
+                    loads_instead=b"liblzma.",
+                    exports=("_lzma_*",),
+                ),
+            ),
+            exports=CPYTHON_EXPORTS,
+            **_FRAMEWORK,
+        ),
+        Row(_DYNLOAD + "*.so", "cpython", exports=CPYTHON_EXPORTS, **_FRAMEWORK),
+    )
+)
+# The darwin rows were written from the files of this Python; another patch
+# version may carry other libraries (architect-package-dryrun-3.md ruling 3.4).
+PINNED_PYTHON: Dict[str, Tuple[int, int, int]] = {"darwin": (3, 12, 10)}
 
 # Rows are written from what a dry run prints (`--list-unmapped`) and from the
 # libraries' own licence files, never from memory (architect ruling 4 (a),
@@ -397,10 +503,11 @@ def licence_problems(comp: Component) -> List[str]:
             return []
         return [f"{comp.name}: {spdx} is accepted only for {LXML_ICONV_FILES}"]
     allowed = PACKAGE_LICENCES if comp.section == "package" else C_LIBRARY_LICENCES
+    version = comp.version or "(version not recorded)"
     if COPYLEFT.search(spdx) and not is_allowed(spdx, allowed):
-        return [f"{comp.name} {comp.version}: {spdx} (GPL, LGPL and AGPL are refused)"]
+        return [f"{comp.name} {version}: {spdx} (GPL, LGPL and AGPL are refused)"]
     if not is_allowed(spdx, allowed):
-        return [f"{comp.name} {comp.version}: licence {spdx} is not in the allow-list"]
+        return [f"{comp.name} {version}: licence {spdx} is not in the allow-list"]
     return []
 
 
@@ -711,6 +818,14 @@ class Build:
         out = _run(["otool", "-L", str(self.file_path(rel))])
         return otool_libraries(out) if out else []
 
+    def defined_symbols(self, rel: str) -> Optional[List[str]]:
+        """The defined external symbols of a bundled Mach-O file, or None."""
+        return macho_defined_symbols(self.file_path(rel).read_bytes())
+
+    def python_prefix(self) -> str:
+        """Where the build Python is installed (its base prefix)."""
+        return str(Path(sys.base_prefix).resolve())
+
     def package_doc(self, pkg: str) -> Optional[Tuple[str, str]]:
         for path in (
             Path("/usr/share/doc") / pkg / "copyright",
@@ -787,7 +902,6 @@ class Build:
                     return m.group(1).decode()
             return ""
         if kind == "python":
-            import decimal  # noqa: F401  (the expressions name stdlib modules)
 
             module = arg.split(".")[0]
             return str(eval(arg, {module: __import__(module)}))  # table constant
@@ -885,13 +999,9 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
             )
             if row.spdx == GCC_EXCEPTION:
                 comp.notes = [GCC_PARAGRAPH.format(file=Path(rel).name)]
-        for carried in row.carries:
-            if carried.requires_strings and not build.contains(
-                rel, carried.requires_strings
-            ):
-                continue
-            if carried.loads_instead and build.contains(rel, carried.loads_instead):
-                continue
+        present = [c for c in row.carries if _present(build, rel, c)]
+        problems += framework_problems(build, rel, row, rows, binaries, present)
+        for carried in present:
             got = [build.read_text(s, source) for s in carried.text]
             if not carried.text:
                 problems.append(
@@ -925,6 +1035,143 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
         problems += licence_problems(comp)
         problems += openssl_problems(comp)
     return out, sorted(set(problems))
+
+
+def _present(build, rel: str, carried: Carried) -> bool:
+    """The library is in the file: its strings are there, and the file does
+    not name the library's own file (which it would then load)."""
+    if carried.requires_strings and not build.contains(rel, carried.requires_strings):
+        return False
+    return not (carried.loads_instead and build.contains(rel, carried.loads_instead))
+
+
+THIRD_PARTY = "a third-party library inside needs its own row (architect ruling 3.2)"
+
+
+def framework_problems(
+    build,
+    rel: str,
+    row: Row,
+    rows: Sequence[Row],
+    binaries: Sequence[str],
+    present: Sequence[Carried],
+) -> List[str]:
+    """The proof a macOS framework row needs, read from the file at build time
+    (architect-package-dryrun-3.md ruling 3): where it comes from, what it
+    links, and which symbols it defines."""
+    problems = []
+    if row.in_build_python:
+        source = build.source_of(rel)
+        prefix = build.python_prefix()
+        real = str(Path(source).resolve()) if source else ""
+        if not real.startswith(prefix.rstrip("/") + "/"):
+            problems.append(
+                f"{rel}: comes from {source or 'no source in PyInstaller tables'}, "
+                f"not from the build Python at {prefix}"
+            )
+    if row.links:
+        linked = build.linked_libraries(rel)
+        if not linked:
+            problems.append(
+                f"{rel}: linked libraries not readable (otool -L); the row needs "
+                "them (architect ruling 3.1)"
+            )
+        for lib in linked:
+            if any(fnmatch.fnmatchcase(lib, p) for p in row.links):
+                continue
+            target = "_internal/" + lib[len("@rpath/") :]
+            if (
+                lib.startswith("@rpath/")
+                and target in binaries
+                and match_row(target, rows) is not None
+            ):
+                continue
+            problems.append(
+                f"{rel}: links {lib}, which is neither a macOS system library this "
+                f"table accepts ({', '.join(row.links)}) nor a bundled file with a "
+                "row (architect ruling 3.1)"
+            )
+    if row.exports:
+        symbols = build.defined_symbols(rel)
+        if symbols is None:
+            problems.append(
+                f"{rel}: defined symbols not readable (Mach-O symbol table); the "
+                "row needs them (architect ruling 3.1)"
+            )
+            return problems
+        module = Path(rel).name.split(".")[0]
+        allowed = [p.format(module=module) for p in row.exports]
+        allowed += [p for c in present for p in c.exports]
+        extra = [
+            s for s in symbols if not any(fnmatch.fnmatchcase(s, a) for a in allowed)
+        ]
+        if extra:
+            shown = ", ".join(extra[:8]) + (
+                f", and {len(extra) - 8} more" if len(extra) > 8 else ""
+            )
+            problems.append(
+                f"{rel}: defines symbols outside CPython's module init ({shown}): "
+                f"{THIRD_PARTY}"
+            )
+    return problems
+
+
+def macho_defined_symbols(data: bytes) -> Optional[List[str]]:
+    """The defined external symbols of a 64-bit little-endian Mach-O file, of
+    every slice of a universal one; None when it is not one or has no symbol
+    table."""
+    import struct
+
+    if data[:4] == b"\xca\xfe\xba\xbe":
+        (count,) = struct.unpack_from(">I", data, 4)
+        found: set = set()
+        for i in range(count):
+            _cpu, _sub, offset, size, _align = struct.unpack_from(
+                ">iiIII", data, 8 + 20 * i
+            )
+            names = macho_defined_symbols(data[offset : offset + size])
+            if names is None:
+                return None
+            found.update(names)
+        return sorted(found)
+    if data[:4] != b"\xcf\xfa\xed\xfe" or len(data) < 32:
+        return None
+    ncmds, _sizeofcmds = struct.unpack_from("<II", data, 16)
+    pos = 32
+    for _ in range(ncmds):
+        cmd, cmdsize = struct.unpack_from("<II", data, pos)
+        if cmd == 0x2:  # LC_SYMTAB
+            symoff, nsyms, stroff, _strsize = struct.unpack_from("<IIII", data, pos + 8)
+            out = []
+            for k in range(nsyms):
+                strx, n_type, _sect, _desc, _value = struct.unpack_from(
+                    "<IBBHQ", data, symoff + 16 * k
+                )
+                # Not a debugging entry, defined in a section, external and
+                # not private.
+                if n_type & 0xE0 or n_type & 0x0E != 0x0E or n_type & 0x11 != 0x01:
+                    continue
+                start = stroff + strx
+                out.append(
+                    data[start : data.index(b"\0", start)].decode("utf-8", "replace")
+                )
+            return sorted(out)
+        pos += cmdsize
+    return None
+
+
+def pinned_python_problems(plat: str, version_info: Sequence) -> List[str]:
+    """The exact Python a platform's rows were written from (ruling 3.4)."""
+    want = PINNED_PYTHON.get(plat)
+    if want is None or tuple(version_info[:3]) == want:
+        return []
+    found = ".".join(str(n) for n in version_info[:3])
+    pinned = ".".join(str(n) for n in want)
+    return [
+        f"CPython {found}: the {plat} rows were written from the files of Python "
+        f"{pinned} (dry run 4); build with python-version {pinned} (architect "
+        "ruling 3.4)"
+    ]
 
 
 BSD_SOURCE = "redistributions of source code must retain"
@@ -1326,6 +1573,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if ns.list_unmapped:
         return 1 if entries else 0
     comps, problems = collect(build, rows)
+    problems += pinned_python_problems(ns.platform, sys.version_info)
     if ns.platform not in TABLES:
         problems.insert(0, f"no licence table for {ns.platform}")
     ns.out.write_text(render(comps), encoding="utf-8")
