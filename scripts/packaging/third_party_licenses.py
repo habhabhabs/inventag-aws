@@ -104,6 +104,9 @@ LIBICONV_DOWNLOAD = "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-{version}.tar
 LXML_SOURCE = (
     "lxml {version} source (the Source address in its package metadata): {url}"
 )
+# Every executable is built with this Python (architect ruling 4 (b), B3 review):
+# the table has rows only for what a 3.12 bundle carries.
+BUILD_PYTHON = (3, 12)
 COPYLEFT = re.compile(r"\b(A?GPL|LGPL)", re.IGNORECASE)
 
 GCC_PARAGRAPH = (
@@ -942,7 +945,25 @@ def _installed(name: str) -> Optional[md.Distribution]:
         return None
 
 
-def _cpython(problems: List[str]) -> Component:
+def python_version_problems(version_info: Sequence[int]) -> List[str]:
+    """The executable is built with Python 3.12 only (architect ruling 4 (b))."""
+    if tuple(version_info[:2]) == BUILD_PYTHON:
+        return []
+    found = ".".join(str(n) for n in version_info[:3])
+    want = ".".join(str(n) for n in BUILD_PYTHON)
+    return [
+        f"CPython {found}: the executable is built with Python {want} only; "
+        f"create the build environment with python{want} "
+        f"(build_binary.sh venv <dir> python{want}) and build again"
+    ]
+
+
+def _cpython(
+    problems: List[str], version_info: Optional[Sequence[int]] = None
+) -> Component:
+    if version_info is None:
+        version_info = sys.version_info
+    problems += python_version_problems(version_info)
     texts = []
     for base in (sysconfig.get_paths()["stdlib"], sys.base_prefix):
         path = Path(base) / "LICENSE.txt"
@@ -953,7 +974,7 @@ def _cpython(problems: List[str]) -> Component:
         problems.append("CPython: LICENSE.txt of the build Python not found")
     return Component(
         "CPython",
-        sys.version.split()[0],
+        ".".join(str(n) for n in version_info[:3]),
         "PSF-2.0",
         "runtime",
         texts=texts,
