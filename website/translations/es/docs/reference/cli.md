@@ -28,13 +28,15 @@ inventag templates list [--kind K] [--all]
 inventag templates show NAME|PATH [--resolved]
 inventag templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] [--force]
 inventag templates validate NAME|PATH [NAME|PATH ...]
+inventag selftest                      check this copy of InvenTag, offline
+inventag completion bash|zsh|fish      print a shell completion script
 ```
 
 El comando `inventag` funciona igual en Linux, macOS y Windows.
 
 No verificado contra Windows ni macOS: el comando `inventag` funciona igual que en Linux.
 
-`templates` debe ser la primera palabra después del nombre del programa.
+`templates`, `selftest` y `completion` deben ser la primera palabra después del nombre del programa.
 
 ## Plantillas {#templates}
 
@@ -50,6 +52,21 @@ No verificado contra Windows ni macOS: el comando `inventag` funciona igual que 
 | `templates show NAME` | Imprime el archivo. `--resolved` imprime el resultado después de aplicar `extends` y los valores predeterminados. |
 | `templates init NAME --output PATH` | Copia una plantilla a tu proyecto. `--extend` escribe un archivo corto que hereda; `--name` define el nombre; `--force` sobrescribe. |
 | `templates validate NAME\|PATH ...` | Comprueba los archivos y las plantillas a las que hacen referencia. Código de salida 0 si todo es válido, 1 en caso contrario. |
+
+### `selftest` y `completion` {#selftest-and-completion}
+
+| Comando | Qué hace |
+|---|---|
+| `selftest` | Comprueba que esta copia de InvenTag funciona: paquetes, plantillas integradas, datos de servicios de AWS, la protección de solo lectura, y un archivo de Excel y uno de Word escritos en una carpeta temporal y borrados. No hace ninguna llamada a AWS, no abre ninguna conexión de red y no necesita credenciales. Código de salida 0: todas las comprobaciones pasaron. Código de salida 1: una comprobación falló; las demás comprobaciones se ejecutan igualmente. Código de salida 2: un argumento desconocido. |
+| `completion bash\|zsh\|fish` | Imprime un script de autocompletado de shell en la salida estándar. Solo lee las opciones del comando y no hace ninguna llamada a AWS ni ninguna conexión de red. Código de salida 0. Si falta el shell o es desconocido: línea de uso y código de salida 2. |
+
+Para instalar un script de autocompletado:
+
+```text
+source <(inventag completion bash)
+inventag completion zsh > "${fpath[1]}/_inventag"
+inventag completion fish > ~/.config/fish/completions/inventag.fish
+```
 
 ## Cuentas {#accounts}
 
@@ -127,9 +144,9 @@ con un archivo YAML o JSON. Consulta [Archivos de diseño para un informe](../te
 | Opción | Predeterminado | Estado | Qué hace |
 |---|---|---|---|
 | `--max-concurrent-accounts N` | `4` | Funciona | Cuentas que se analizan al mismo tiempo (mínimo 1). |
-| `--concurrency N` | `64` | Funciona | Máximo de solicitudes a AWS en curso a la vez, para toda la ejecución (de 1 a 256). 1 envía una solicitud cada vez. Fuera de rango: código de salida 2. |
+| `--concurrency N` | `64` | Funciona | Máximo de solicitudes a AWS en curso a la vez, para toda la ejecución (de 1 a 256). 1 envía una solicitud cada vez. Un valor fuera de 1 a 256, o que no sea un número entero: código de salida 2. En una plantilla de configuración: `spec.concurrency`. Consulta [Concurrencia](../guides/run-a-scan.md#concurrency). |
 | `--account-processing-timeout SECONDS` | `1800` | Funciona | Tiempo permitido por cuenta, contado desde que empieza su análisis (mínimo 60). Una cuenta que se queda sin tiempo cuenta como fallida; los recursos que encontró se quedan en el informe. |
-| `--disable-parallel-processing` | desactivado | Funciona | Analiza una cuenta cada vez. |
+| `--disable-parallel-processing` | desactivado | Funciona | Analiza una cuenta cada vez. No cambia los hilos dentro de una cuenta. |
 | `--resume` | desactivado | Funciona | Reutiliza los resultados guardados de las cuentas que terminaron en una ejecución anterior del mismo comando que no se completó (mismas cuentas, regiones, servicios y filtros) y analiza solo las demás. Con `--disable-state-management`: código de salida 2. |
 | `--resume-max-age-hours HOURS` | `24` | Funciona | Con `--resume`, reutiliza los resultados guardados solo hasta esta antigüedad (como máximo 168). |
 
@@ -180,7 +197,7 @@ sea de lectura, y las lecturas que devuelven secretos o datos.
 
 | Opción | Predeterminado | Estado | Qué hace |
 |---|---|---|---|
-| `--audit-output FILE` | ninguno | Funciona | Escribe una lista JSON de cada operación de AWS que llamó la ejecución, permitida y bloqueada. |
+| `--audit-output FILE` | ninguno | Funciona | Escribe una lista JSON de cada operación de AWS que llamó la ejecución, permitida y bloqueada. Cuando la ejecución no tuvo permiso para usar una acción de IAM, el archivo también tiene la lista `permissions_denied`: consulta [Ejecutar solo con ReadOnlyAccess](../guides/read-only-access.md#run-with-only-readonlyaccess). |
 | `--validate-operations SERVICE:OPERATION ...` | ninguno | Funciona | Comprueba operaciones contra la protección y después termina (0 si todas están permitidas, 1 si no). |
 | `--enforce-read-only`, `--security-validation`, `--enable-production-safety` | activado | Sin efecto | Se mantienen para que los comandos antiguos sigan funcionando. La protección está siempre activa. |
 | `--disable-production-safety` | desactivado | Se detiene con el código de salida 2 | La protección no se puede desactivar. |
@@ -262,7 +279,7 @@ Consulta [Subir informes a S3 de forma programada](../examples/scheduled-s3-uplo
 |---|---|
 | 0 | Correcto. También es 0 cuando algunas cuentas fallaron pero otras funcionaron, y cuando no se encontraron recursos, salvo que pases `--fail-on-account-error` o `--fail-if-empty`. Consulta [Estado de las funciones](../getting-started/status.md#when-a-run-goes-wrong). |
 | 1 | Un error: argumentos, configuración o plantilla no válidos, un número fuera de rango (por ejemplo `--max-concurrent-accounts 0`), credenciales fallidas, todas las cuentas fallaron (no se pudieron analizar o se quedaron sin tiempo), una carga a S3 fallida o un formato de informe que no se pudo escribir |
-| 2 | Línea de comandos no válida: opciones desconocidas, mal formadas o incompatibles entre sí, opciones no implementadas, opciones de Google incorrectas, una opción de archivo de diseño sin el informe que necesita o un nombre de rol sin `--accounts-file` |
+| 2 | Línea de comandos no válida: opciones desconocidas, mal formadas o incompatibles entre sí, un valor de `--concurrency` fuera de 1 a 256, opciones no implementadas, opciones de Google incorrectas, una opción de archivo de diseño sin el informe que necesita o un nombre de rol sin `--accounts-file` |
 | 3 | Informes escritos, pero una plantilla de configuración con `fail_on_tag_violations: true` encontró infracciones de la política de etiquetas |
 | 4 | Informes escritos, pero `--risk-threshold` encontró una regla de un grupo de seguridad en ese nivel o por encima |
 | 5 | Informes escritos, pero una cuenta no se pudo analizar o se quedó sin tiempo, y pasaste `--fail-on-account-error` |

@@ -22,13 +22,15 @@ inventag templates list [--kind K] [--all]
 inventag templates show NAME|PATH [--resolved]
 inventag templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] [--force]
 inventag templates validate NAME|PATH [NAME|PATH ...]
+inventag selftest                      check this copy of InvenTag, offline
+inventag completion bash|zsh|fish      print a shell completion script
 ```
 
 `inventag` 命令在 Linux、macOS 和 Windows 上的用法相同。
 
 未針對 Windows 或 macOS 驗證：`inventag` 命令的行為與在 Linux 上相同。
 
-`templates` 必須是程式名之後的第一個詞。
+`templates`、`selftest` 和 `completion` 必須是程式名之後的第一個詞。
 
 ## 範本 {#templates}
 
@@ -44,6 +46,21 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | `templates show NAME` | 列印該檔案。`--resolved` 列印應用 `extends` 和預設值之後的結果。 |
 | `templates init NAME --output PATH` | 把範本複製到你的專案中。`--extend` 寫出一個繼承原範本的簡短檔案；`--name` 設定名稱；`--force` 覆蓋已有檔案。 |
 | `templates validate NAME\|PATH ...` | 檢查檔案以及它們引用的範本。全部有效時結束代碼為 0，否則為 1。 |
+
+### `selftest` 和 `completion` {#selftest-and-completion}
+
+| 命令 | 作用 |
+|---|---|
+| `selftest` | 檢查這份 InvenTag 是否能正常工作：軟體包、內建範本、AWS 服務資料、唯讀保護，以及寫入臨時資料夾後刪除的一個 Excel 檔案和一個 Word 檔案。它不呼叫 AWS，不開啟網路連線，也不需要憑證。結束代碼 0：所有檢查透過。結束代碼 1：有檢查失敗；其他檢查仍會執行。結束代碼 2：未知引數。 |
+| `completion bash\|zsh\|fish` | 把 shell 補全指令碼輸出到標準輸出。它唯讀取命令自身的選項，不呼叫 AWS，也不開啟網路連線。結束代碼 0。缺少 shell 名或 shell 名未知：顯示用法行，結束代碼 2。 |
+
+安裝補全指令碼：
+
+```text
+source <(inventag completion bash)
+inventag completion zsh > "${fpath[1]}/_inventag"
+inventag completion fish > ~/.config/fish/completions/inventag.fish
+```
 
 ## 帳戶 {#accounts}
 
@@ -120,9 +137,9 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | 引數 | 預設值 | 狀態 | 功能 |
 |---|---|---|---|
 | `--max-concurrent-accounts N` | `4` | 可用 | 同時掃描的帳戶數（至少 1）。 |
-| `--concurrency N` | `64` | 可用 | 整個執行中同時進行的 AWS 請求的最大數量（1 到 256）。1 表示一次只傳送一個請求。超出範圍：結束代碼 2。 |
+| `--concurrency N` | `64` | 可用 | 整個執行中同時進行的 AWS 請求的最大數量（1 到 256）。1 表示一次只傳送一個請求。超出 1 到 256 的值，或不是整數的值：結束代碼 2。在設定範本中：`spec.concurrency`。見[併發](../guides/run-a-scan.md#concurrency)。 |
 | `--account-processing-timeout SECONDS` | `1800` | 可用 | 每個帳戶允許的時間，從該帳戶開始掃描時算起（至少 60）。超時的帳戶算作失敗；它找到的資源保留在報告中。 |
-| `--disable-parallel-processing` | 關 | 可用 | 一次只掃描一個帳戶。 |
+| `--disable-parallel-processing` | 關 | 可用 | 一次只掃描一個帳戶。它不改變帳戶內部的執行緒。 |
 | `--resume` | 關 | 可用 | 複用同一條命令之前未完成的執行中已完成帳戶的儲存結果（相同的帳戶、區域、服務和篩選條件），只掃描其他帳戶。與 `--disable-state-management` 一起使用：結束代碼 2。 |
 | `--resume-max-age-hours HOURS` | `24` | 可用 | 與 `--resume` 一起使用時，只複用不超過這個時長的儲存結果（最多 168）。 |
 
@@ -170,7 +187,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 
 | 引數 | 預設值 | 狀態 | 功能 |
 |---|---|---|---|
-| `--audit-output FILE` | 無 | 可用 | 寫出一份 JSON 列表，記錄本次執行呼叫的每個 AWS 操作，包括被允許的和被阻止的。 |
+| `--audit-output FILE` | 無 | 可用 | 寫出一份 JSON 列表，記錄本次執行呼叫的每個 AWS 操作，包括被允許的和被阻止的。當執行無權使用某個 IAM 操作時，該檔案還會有列表 `permissions_denied`：見[僅使用 ReadOnlyAccess 執行](../guides/read-only-access.md#run-with-only-readonlyaccess)。 |
 | `--validate-operations SERVICE:OPERATION ...` | 無 | 可用 | 對照防護檢查這些操作，然後退出（全部允許為 0，否則為 1）。 |
 | `--enforce-read-only`, `--security-validation`, `--enable-production-safety` | 開 | 無效果 | 保留這些引數是為了讓舊命令仍能執行。防護始終開啟。 |
 | `--disable-production-safety` | 關 | 以結束代碼 2 停止 | 防護無法關閉。 |
@@ -252,7 +269,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 |---|---|
 | 0 | 成功。部分帳戶失敗但其他帳戶正常，以及沒有找到任何資源時，也是 0，除非你傳入 `--fail-on-account-error` 或 `--fail-if-empty`。見[功能狀態](../getting-started/status.md#when-a-run-goes-wrong)。 |
 | 1 | 出錯：引數、設定或範本無效，數值超出範圍（例如 `--max-concurrent-accounts 0`），憑證失敗，所有帳戶都失敗（無法掃描或超出時限），S3 上傳失敗，或某種報告格式無法寫出 |
-| 2 | 命令列無效：未知、格式錯誤或相互衝突的選項，尚未實現的引數，Google 選項有誤，版面配置檔案引數缺少它所需的報告，或給了角色名稱但沒有 `--accounts-file` |
+| 2 | 命令列無效：未知、格式錯誤或相互衝突的選項，超出 1 到 256 的 `--concurrency` 值，尚未實現的引數，Google 選項有誤，版面配置檔案引數缺少它所需的報告，或給了角色名稱但沒有 `--accounts-file` |
 | 3 | 報告已寫出，但帶有 `fail_on_tag_violations: true` 的設定範本發現了標籤策略違規 |
 | 4 | 報告已寫出，但 `--risk-threshold` 發現有安全組規則達到或超過該級別 |
 | 5 | 報告已寫出，但有帳戶無法掃描或超出時限，並且你傳入了 `--fail-on-account-error` |

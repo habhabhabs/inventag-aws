@@ -47,7 +47,9 @@ maintainer for a private channel.
   their names start like reads, but they issue a token, credentials or key
   material, or take a task from a queue. Every
   entry of the deny-list is checked against the AWS SDK's list of operations. It is always
-  on.
+  on. The guard knows operations by name. An operation that a newer AWS SDK
+  adds is allowed when its name starts like a read, until an InvenTag release
+  names it.
 - **Sign-in still works.** The guard lets the AWS SDK exchange an IAM Identity
   Center (SSO), web-identity or `aws login` token for credentials. It allows
   only these four unsigned calls: `sso:GetRoleCredentials`,
@@ -73,7 +75,10 @@ maintainer for a private channel.
 
   Not verified against Windows: files readable by your user only.
 - **Its logs hide secrets.** Session tokens, keys, request signatures and the
-  masked values above are hidden, even with `--debug`.
+  masked values above are hidden, even with `--debug`. One exception is known:
+  with `--debug`, a secret that AWS returns as a list under a masked field name
+  can appear in the log file. See
+  [Feature status](../getting-started/status.md#security-notes).
 
 You can check what a run did with `--audit-output audit.json`, and what the
 guard allows with `--validate-operations`:

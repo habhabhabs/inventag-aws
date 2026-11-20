@@ -27,13 +27,15 @@ inventag templates list [--kind K] [--all]
 inventag templates show NAME|PATH [--resolved]
 inventag templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] [--force]
 inventag templates validate NAME|PATH [NAME|PATH ...]
+inventag selftest                      check this copy of InvenTag, offline
+inventag completion bash|zsh|fish      print a shell completion script
 ```
 
 The `inventag` command works the same on Linux, macOS and Windows.
 
 Not verified against Windows or macOS: the `inventag` command works the same as on Linux.
 
-`templates` must be the first word after the program name.
+`templates`, `selftest` and `completion` must be the first word after the program name.
 
 ## Templates
 
@@ -49,6 +51,21 @@ Not verified against Windows or macOS: the `inventag` command works the same as 
 | `templates show NAME` | Prints the file. `--resolved` prints the result after `extends` and defaults. |
 | `templates init NAME --output PATH` | Copies a template into your project. `--extend` writes a short file that inherits; `--name` sets the name; `--force` overwrites. |
 | `templates validate NAME\|PATH ...` | Checks files and the templates they refer to. Exit code 0 if all are valid, 1 otherwise. |
+
+### `selftest` and `completion`
+
+| Command | What it does |
+|---|---|
+| `selftest` | Checks that this copy of InvenTag works: packages, built-in templates, AWS service data, the read-only guard, and an Excel and a Word file written to a temporary folder and removed. It makes no AWS call, opens no network connection and needs no credentials. Exit code 0: every check passed. Exit code 1: a check failed; the other checks still run. Exit code 2: an unknown argument. |
+| `completion bash\|zsh\|fish` | Prints a shell completion script to standard output. It only reads the options of the command and makes no AWS call and no network connection. Exit code 0. A missing or unknown shell: usage line and exit code 2. |
+
+To install a completion script:
+
+```text
+source <(inventag completion bash)
+inventag completion zsh > "${fpath[1]}/_inventag"
+inventag completion fish > ~/.config/fish/completions/inventag.fish
+```
 
 ## Accounts
 
@@ -126,9 +143,9 @@ YAML or JSON file. See [Layout files for one report](../templates/layout-flags.m
 | Flag | Default | Status | What it does |
 |---|---|---|---|
 | `--max-concurrent-accounts N` | `4` | Works | Accounts scanned at the same time (at least 1). |
-| `--concurrency N` | `64` | Works | Most AWS requests in flight at once, for the whole run (1 to 256). 1 sends one request at a time. Out of range: exit code 2. |
+| `--concurrency N` | `64` | Works | Most AWS requests in flight at once, for the whole run (1 to 256). 1 sends one request at a time. A value outside 1 to 256, or one that is not a whole number: exit code 2. In a config template: `spec.concurrency`. See [Concurrency](../guides/run-a-scan.md#concurrency). |
 | `--account-processing-timeout SECONDS` | `1800` | Works | Time allowed per account, counted from when its scan starts (at least 60). An account that runs out of time counts as failed; the resources it found stay in the report. |
-| `--disable-parallel-processing` | off | Works | Scan one account at a time. |
+| `--disable-parallel-processing` | off | Works | Scan one account at a time. It does not change the threads inside an account. |
 | `--resume` | off | Works | Reuse the saved results of accounts that finished in an earlier run of the same command that did not complete (same accounts, regions, services and filters), and scan only the others. With `--disable-state-management`: exit code 2. |
 | `--resume-max-age-hours HOURS` | `24` | Works | With `--resume`, reuse saved results only up to this age (at most 168). |
 
@@ -178,7 +195,7 @@ read, and reads that return secrets or data.
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--audit-output FILE` | none | Works | Write a JSON list of every AWS operation the run called, allowed and blocked. |
+| `--audit-output FILE` | none | Works | Write a JSON list of every AWS operation the run called, allowed and blocked. When the run was not allowed to use an IAM action, the file also has the list `permissions_denied`: see [Run with only ReadOnlyAccess](../guides/read-only-access.md#run-with-only-readonlyaccess). |
 | `--validate-operations SERVICE:OPERATION ...` | none | Works | Check operations against the guard, then exit (0 if all allowed, 1 if not). |
 | `--enforce-read-only`, `--security-validation`, `--enable-production-safety` | on | No effect | Kept so old commands still run. The guard is always on. |
 | `--disable-production-safety` | off | Stops with exit code 2 | The guard cannot be turned off. |
@@ -268,7 +285,7 @@ See [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
 |---|---|
 | 0 | Success. Also 0 when some accounts failed but others worked, and when no resources were found, unless you pass `--fail-on-account-error` or `--fail-if-empty`. See [Feature status](../getting-started/status.md#when-a-run-goes-wrong). |
 | 1 | An error: invalid arguments, configuration or template, a number out of range (for example `--max-concurrent-accounts 0`), failed credentials, every account failed (could not be scanned or ran out of time), a failed S3 upload, or a report format that could not be written |
-| 2 | Invalid command line: unknown, badly formed or conflicting options, flags that are not implemented, bad Google options, a layout file flag without the report it needs, or a role name without `--accounts-file` |
+| 2 | Invalid command line: unknown, badly formed or conflicting options, a `--concurrency` value outside 1 to 256, flags that are not implemented, bad Google options, a layout file flag without the report it needs, or a role name without `--accounts-file` |
 | 3 | Reports written, but a config template with `fail_on_tag_violations: true` found tag policy violations |
 | 4 | Reports written, but `--risk-threshold` found a security group rule at or above that level |
 | 5 | Reports written, but an account could not be scanned or ran out of time, and you passed `--fail-on-account-error` |

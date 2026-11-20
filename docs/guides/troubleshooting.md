@@ -185,6 +185,8 @@ is easy to miss. A default run prints one warning that names the cause, and
 ```text title="Output (simulated AWS error response)"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
+inventag - WARNING - Notes about this run:
+inventag - WARNING -   - Permissions: 1 action(s) were not allowed for account 123456789012: ce:GetCostAndUsage. Effect: billing checks are skipped. All of them are in the AWS managed policy ReadOnlyAccess.
 ```
 
 ```bash title="Terminal"
@@ -206,6 +208,9 @@ echo $?
 ```
 
 <!-- END EXAMPLE OUTPUT: error-access-denied-ce -->
+
+The `Permissions:` line in the run notes names the refused action. See
+[The run notes have a Permissions line](#the-run-notes-have-a-permissions-line).
 
 **Fix:** add `ce:GetCostAndUsage` to the policy, or accept that billing data
 is missing.
@@ -233,6 +238,36 @@ the same identity to check.
 
 **Fix:** use the policy in `config/defaults/iam-policy-read-only.json`, which
 covers every call InvenTag makes. See [IAM permissions](../reference/iam-permissions.md).
+
+### The run notes have a Permissions line
+
+**What you see:** a line that starts with `Permissions:` in the run notes. It
+is on the console after the run, and in the "Run notes" of the Excel report.
+There is one line for each account that was not allowed to use an IAM action.
+A run that was not denied anything prints no such line. This is a line from an
+offline run with a policy that lacks five actions (sample data):
+
+```text
+Permissions: 5 action(s) were not allowed for account 123456789012: ce:GetCostAndUsage, lambda:GetFunctionConfiguration, pricing:GetProducts, s3:GetBucketLocation, tag:GetResources. Effect: some rows lack details; tags from the Tagging API are missing; billing checks are skipped; cost estimates are missing. All of them are in the AWS managed policy ReadOnlyAccess.
+```
+
+The line names each action, sorted. After `Effect:` it says what the report
+lacks. The last sentence says whether the AWS managed policy `ReadOnlyAccess`
+includes the actions. A call with no IAM action that InvenTag knows is named
+by its API name, with `(IAM action not known to InvenTag)`.
+
+**Cause:** the identity may not use those actions. InvenTag sees only that AWS
+refused the call. It cannot tell whether the identity policy, a service
+control policy or a permissions boundary refused it.
+
+Not verified against real AWS: the actions named are those of InvenTag's own
+tables, and a refusal by a service control policy or a permissions boundary is
+shown as the action too.
+
+**Fix:** add the named actions to the policy, or accept that the report lacks
+what the `Effect` text names. The same list is in the key `permissions_denied`
+of the `--audit-output` file. See
+[Run with only ReadOnlyAccess](./read-only-access.md#run-with-only-readonlyaccess).
 
 ### Blocked by the read-only guard
 
@@ -350,11 +385,15 @@ and region, and its resources there may be missing from the report:
 sqs list_queues in us-east-1 failed (ThrottlingException); its resources there may be incomplete.
 ```
 
-**Fix:** scan fewer accounts at once (`--max-concurrent-accounts 2`), scan
-fewer regions, or give big accounts more time
-(`--account-processing-timeout 3600`).
+**Fix:** send fewer requests at once (`--concurrency 16`), scan fewer accounts
+at once (`--max-concurrent-accounts 2`), scan fewer regions, or give big
+accounts more time (`--account-processing-timeout 3600`).
 
-Not verified against real AWS: fewer accounts or regions at once reduce throttling.
+InvenTag also lowers its own limit for a service and region after a throttling
+answer. See [Concurrency](./run-a-scan.md#when-aws-throttles).
+
+Not verified against real AWS: fewer requests, accounts or regions at once
+reduce throttling.
 
 ## Time limits and partial results
 
@@ -369,6 +408,9 @@ the report, and the "Run notes" name the account. The other accounts are kept.
 If no account finishes, InvenTag still writes the report, logs `No account
 finished within its time limit (--account-processing-timeout)` and exits with
 code 1. (Message text from an offline run with a 60-second limit.)
+
+A request that waits for a free place under `--concurrency` counts against
+the time limit.
 
 **Fix:** raise `--account-processing-timeout` (default 1800), scan fewer
 regions or services, or scan fewer accounts at the same time. Run the same
@@ -397,7 +439,8 @@ Stopped by the user (Ctrl-C). No report was written.
 Terminated (SIGTERM). No report was written.
 ```
 
-When a report file was already written, the line says
+No new AWS request starts after the signal, and a request that waits for a free
+place ends at once. When a report file was already written, the line says
 `1 report file(s) already written stay in <output folder>.` instead. Ctrl-C
 exits with code 1. A SIGTERM ends the process by the signal after the line.
 
@@ -531,6 +574,10 @@ A value that is out of range stops with exit code 1 and names the option:
 `--resume-max-age-hours must be above 0 and at most 168`. A value that is not
 a number for `--state-retention-days` or `--state-max-snapshots` stops with
 exit code 2: `expected a whole number or 'none'`.
+
+A `--concurrency` value that is not a whole number from 1 to 256 stops with
+exit code 2: `inventag: error: argument --concurrency: must be a whole number
+from 1 to 256, not '0'`.
 
 A path for `--audit-output`, `--log-file` or `--output-directory` that cannot
 be written stops the run at the start, before any AWS call, with a message that

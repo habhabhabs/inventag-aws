@@ -89,7 +89,7 @@ No verificado contra AWS real: cómo limita AWS las llamadas y cómo lo afrontan
 ## Límite de tiempo y cuentas en paralelo {#time-limit-and-parallel-accounts}
 
 InvenTag analiza hasta cuatro cuentas a la vez. Cámbialo con `--max-concurrent-accounts`
-(al menos 1), o usa `--disable-parallel-processing` para analizar una cuenta cada vez.
+(al menos 1), o usa `--disable-parallel-processing` para analizar una cuenta cada vez. Para las solicitudes dentro de las cuentas, consulta [Concurrencia](#concurrency).
 
 Cada cuenta tiene `--account-processing-timeout` segundos (por defecto 1800, al menos 60),
 contados desde que empieza el análisis de esa cuenta. El descubrimiento se detiene un poco antes,
@@ -104,6 +104,51 @@ Resource discovery failed for account 123456789012: timed out after 60 seconds (
 ```
 
 Si ninguna cuenta termina, InvenTag escribe igualmente el informe con lo que encontró, registra `No account finished within its time limit` y sale con código 1.
+
+## Concurrencia {#concurrency}
+
+InvenTag envía solicitudes a AWS desde varios hilos al mismo tiempo. Tres ajustes controlan cuántas:
+
+| Ajuste | Valor por defecto | Qué limita |
+|---|---|---|
+| `--concurrency N` | 64 | El máximo de solicitudes a AWS en curso a la vez, en toda la ejecución. |
+| `--max-concurrent-accounts N` | 4 | Las cuentas que se analizan al mismo tiempo. |
+| `--disable-parallel-processing` | desactivado | Analiza una cuenta tras otra. No cambia los hilos dentro de una cuenta. |
+
+`--concurrency` acepta un número entero de 1 a 256. Un valor fuera de este intervalo, o que no sea un número entero, detiene la ejecución con el código de salida 2 antes de analizar nada. En una plantilla de configuración, el campo es `spec.concurrency`. Una opción que escribes en la línea de comandos prevalece sobre la plantilla.
+
+```bash title="Terminal"
+inventag --concurrency 16 --create-excel
+```
+
+Con `--concurrency 1`, InvenTag envía una sola solicitud a la vez en toda la ejecución.
+
+Otros dos límites son fijos. No puedes cambiarlos:
+
+- Como máximo 16 solicitudes de una cuenta están en curso al mismo tiempo.
+- Como máximo 4 solicitudes están en curso para un servicio en una región de una cuenta.
+
+Cada cuenta tiene además 8 hilos para las llamadas de detalle. Una llamada de detalle lee un detalle de un recurso, por ejemplo la ubicación de un bucket de S3 o la configuración de una función de Lambda. InvenTag hace las mismas llamadas que con `--concurrency 1`. Solo cambia el orden en el tiempo.
+
+Una solicitud que espera un lugar libre cuenta para `--account-processing-timeout`.
+
+### Cuando AWS limita las solicitudes {#when-aws-throttles}
+
+Cuando AWS responde a una solicitud con un error de limitación, InvenTag baja el límite de ese servicio y esa región de esa cuenta. Reduce el límite a la mitad, pero nunca por debajo de 1. Durante 0,5 a 1 segundo no inicia ninguna solicitud nueva para ese servicio y esa región. Tras 10 respuestas sin error de limitación, sube el límite en 1, hasta 4. El SDK de AWS sigue reintentando la solicitud en modo estándar, como se describe en [Limitación y llamadas fallidas](#throttling-and-failed-calls). InvenTag no tiene un bucle de reintentos propio.
+
+No verificado contra AWS real: cómo se comportan el límite de solicitudes y la pausa con los límites de tasa reales de AWS.
+
+### Lo que no depende del tiempo {#what-does-not-depend-on-timing}
+
+Para las mismas respuestas de AWS, una ejecución con `--concurrency 1` y una ejecución con `--concurrency 64` escriben los mismos archivos y hacen las mismas llamadas. Las filas y las hojas de análisis siguen el orden de tus cuentas, sea cual sea el orden en que terminen las cuentas. El orden de las líneas del registro y las marcas de tiempo pueden cambiar de una ejecución a otra.
+
+### Detener una ejecución {#stop-a-run}
+
+Ctrl-C y SIGTERM terminan de inmediato todas las solicitudes que esperan, y no empieza ninguna solicitud nueva. El mensaje y el estado de salida son los mismos que en v1.3.1. Consulta [Solución de problemas](./troubleshooting.md#the-run-is-stopped-with-ctrl-c-or-sigterm).
+
+### Velocidad {#speed}
+
+Más solicitudes a la vez pueden acortar una ejecución. No verificado contra AWS real: cualquier aceleración. El script de referencia `scripts/benchmark_scan.py` ejecuta un AWS simulado con un retraso fijo por solicitud. Su resultado no es una promesa para una cuenta real.
 
 ## Continúa tras una ejecución fallida {#continue-after-a-failed-run}
 

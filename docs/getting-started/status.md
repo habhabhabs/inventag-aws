@@ -144,7 +144,19 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   an error) is a warning and a count in the snapshot
   (`metadata.tags.coverage_summary`).
 - **Every call in an account denied:** the account does not count as failed,
-  and the run exits with code 0.
+  and the run exits with code 0. With `--fail-on-account-error`, an account
+  whose every listing was refused still counts as scanned, and the run exits
+  with code 0. To make a CI job fail when nothing could be read, add
+  `--fail-if-empty`.
+- **A run that was not allowed to use an IAM action** prints one `Permissions:`
+  line for each account in the run notes, and writes the list `permissions_denied`
+  to the `--audit-output` file (see
+  [Run with only ReadOnlyAccess](../guides/read-only-access.md#run-with-only-readonlyaccess)).
+  The line does not name `ec2:DescribeRegions` or `account:ListRegions`, and
+  an upload with a KMS key that fails is named `s3:PutObject` only.
+
+  Not verified against real AWS: which action S3 names when an upload with a
+  KMS key is refused.
 - **The first change report after upgrading from v1.1.4** lists the resources
   of newly covered services as added, although they existed before.
 - **A session that expires during the scan** leaves a report with only what
@@ -176,7 +188,8 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **Google output with `--template`** is skipped, and the run exits with
   code 0.
 - **Some invalid values stop with exit code 1, not 2,** for example
-  `--max-concurrent-accounts 0` or `--account-processing-timeout 0`.
+  `--max-concurrent-accounts 0` or `--account-processing-timeout 0`. A
+  `--concurrency` value outside 1 to 256 stops with exit code 2.
 - **Values in the `settings` block of an accounts file override the matching
   command-line flags**, for example `max_concurrent_accounts`.
 - **An empty result with `--s3-bucket`** makes the run exit with code 1 and
@@ -229,6 +242,16 @@ InvenTag retries a throttled call up to 10 times (standard retry mode);
 - Accounts are scanned four at a time by default (`--max-concurrent-accounts`).
   Each account has 1800 seconds from when its scan starts
   (`--account-processing-timeout`).
+- A run has at most 64 AWS requests in flight (`--concurrency`), at most 16 for
+  one account, and at most 4 for one service in one region of one account.
+  After a throttling answer, InvenTag lowers the limit for that service and
+  region. See [Concurrency](../guides/run-a-scan.md#concurrency).
+
+  Not verified against real AWS: any speed-up from the parallel requests, and
+  how the request limit and the pause after a throttling answer behave under
+  real AWS rate limits.
+- The order of log lines and the time stamps in them can differ from run to
+  run. The files do not depend on thread timing.
 - When some accounts fail, the results of the finished ones are saved. Run the
   same command with `--resume` within 24 hours (`--resume-max-age-hours`) to
   scan only the others.
@@ -259,7 +282,11 @@ InvenTag retries a throttled call up to 10 times (standard retry mode);
   safety net. See [Set up read-only access](../guides/read-only-access.md).
 - **Debug logs are redacted** by default: session tokens, keys, signatures and
   the secret values listed above are masked. Still treat debug logs as
-  sensitive.
+  sensitive. With `--debug`, a secret that AWS returns as a list under a masked
+  field name can appear in the log file.
+- **The read-only guard knows operations by name.** An operation that a newer
+  AWS SDK adds is allowed when its name starts like a read, until an InvenTag
+  release names it. See [Security](../security/index.md).
 - **Two library functions can write to AWS** when called from your own Python
   code (the CLI does not call them): `CredentialManager.setup_cross_account_roles()`
   runs only with `allow_iam_writes=True`, and the S3 lifecycle helper only

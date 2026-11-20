@@ -78,7 +78,7 @@ InvenTag 为 46 个 AWS 服务提供了自己的只读列举调用。其他服�
 ## 时间限制与并行账户 {#time-limit-and-parallel-accounts}
 
 InvenTag 默认同时扫描最多四个账户。用 `--max-concurrent-accounts`（至少为 1）修改，
-或用 `--disable-parallel-processing` 一次只扫描一个账户。
+或用 `--disable-parallel-processing` 一次只扫描一个账户。账户内部的请求见[并发](#concurrency)。
 
 每个账户有 `--account-processing-timeout` 秒（默认 1800，至少 60），从该账户开始扫描时计时。
 发现过程会提前一点结束，提前 300 秒或限制的 20%（取较小者），以便还能读取标签、详情和账单数据。
@@ -91,6 +91,51 @@ Resource discovery failed for account 123456789012: timed out after 60 seconds (
 ```
 
 如果没有任何账户完成，InvenTag 仍会用已找到的内容写出报告，记录 `No account finished within its time limit`，并以退出码 1 结束。
+
+## 并发 {#concurrency}
+
+InvenTag 会用多个线程同时发送 AWS 请求。三个设置控制同时发送多少个：
+
+| 设置 | 默认值 | 限制什么 |
+|---|---|---|
+| `--concurrency N` | 64 | 整个运行中同时在途的 AWS 请求数上限。 |
+| `--max-concurrent-accounts N` | 4 | 同时扫描的账户数。 |
+| `--disable-parallel-processing` | 关 | 一个账户接一个账户地扫描。它不改变账户内部的线程。 |
+
+`--concurrency` 接受 1 到 256 的整数。超出此范围的值，或不是整数的值，会在扫描开始前以退出码 2 停止运行。在配置模板中，对应的字段是 `spec.concurrency`。你在命令行输入的标志优先于模板。
+
+```bash title="Terminal"
+inventag --concurrency 16 --create-excel
+```
+
+使用 `--concurrency 1` 时，InvenTag 在整个运行中一次只发送一个请求。
+
+另有两个限制是固定的，不能更改：
+
+- 同一个账户同时在途的请求最多 16 个。
+- 同一个账户、同一个区域、同一个服务同时在途的请求最多 4 个。
+
+每个账户还有 8 个线程用于详情调用。详情调用读取单个资源的一项详情，例如 S3 存储桶的位置或 Lambda 函数的配置。InvenTag 发出的调用与 `--concurrency 1` 时相同，只是时间顺序不同。
+
+等待空闲名额的请求计入 `--account-processing-timeout`。
+
+### AWS 限流时 {#when-aws-throttles}
+
+当 AWS 以限流错误回应某个请求时，InvenTag 会降低该账户、该服务和该区域的上限。它把上限减半，但不低于 1。在 0.5 到 1 秒内，它不为该服务和区域发起新请求。连续 10 次回应都没有限流错误后，它把上限加 1，最多加到 4。AWS SDK 仍会以 standard 模式重试请求，见[限流与失败的调用](#throttling-and-failed-calls)。InvenTag 自己没有重试循环。
+
+未针对真实的 AWS 验证：在真实 AWS 的速率限制下，请求上限和暂停如何表现。
+
+### 不依赖时间的内容 {#what-does-not-depend-on-timing}
+
+对于相同的 AWS 回应，用 `--concurrency 1` 和用 `--concurrency 64` 的运行写出相同的文件，并发出相同的调用。行和分析工作表按你的账户顺序排列，与账户完成的先后无关。日志行的顺序和时间戳在每次运行中可能不同。
+
+### 停止运行 {#stop-a-run}
+
+Ctrl-C 和 SIGTERM 会立即结束所有等待中的请求，并且不再发起新请求。消息和退出状态与 v1.3.1 相同。见[故障排查](./troubleshooting.md#the-run-is-stopped-with-ctrl-c-or-sigterm)。
+
+### 速度 {#speed}
+
+同时发送更多请求可以缩短运行时间。未针对真实的 AWS 验证：任何提速。基准脚本 `scripts/benchmark_scan.py` 运行一个模拟的 AWS，每个请求有固定延迟。它的结果不是对真实账户的承诺。
 
 ## 失败的运行之后继续 {#continue-after-a-failed-run}
 

@@ -66,7 +66,7 @@ Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 Lo que llegó al bucket:
 
 ```text title="Objects in s3://acme-inventory-reports"
-bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
+bom-reports/20261112_090000/multi_account_bom_20261112_090000.xlsx
 ```
 
 El archivo de auditoría (extracto):
@@ -85,8 +85,8 @@ El archivo de auditoría (extracto):
     "Search",
     "BatchGet"
   ],
-  "total_calls": 96,
-  "allowed_calls": 96,
+  "total_calls": 93,
+  "allowed_calls": 93,
   "blocked_calls": 0,
   "operations": [
     {

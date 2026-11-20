@@ -142,8 +142,19 @@ inventag --accounts-file accounts.yaml --create-excel
 | Setting | Config template field | Flag |
 |---|---|---|
 | Accounts scanned at once (default 4) | `max_concurrent_accounts` | `--max-concurrent-accounts` |
+| Most AWS requests in flight for the whole run (default 64, 1 to 256) | `concurrency` | `--concurrency` |
 | Seconds allowed per account (default 1800, at least 60) | `account_processing_timeout` | `--account-processing-timeout` |
 | One account at a time | `parallel_processing: false` | `--disable-parallel-processing` |
+
+InvenTag checks the credentials of the accounts in parallel, up to
+`--max-concurrent-accounts` at a time. The results keep the order of your
+account list. A profile with `mfa_serial` asks for a code, so while a terminal
+is attached, InvenTag handles such a profile first and one at a time.
+
+The limit of `--concurrency` is shared by all accounts. One account never has
+more than 16 requests in flight. Rows and analysis sheets follow the order of
+your account list, not the order in which the accounts finish. See
+[Concurrency](./run-a-scan.md#concurrency).
 
 If one account fails, for example because its role cannot be assumed,
 InvenTag logs the error and reports the accounts that worked. It does not

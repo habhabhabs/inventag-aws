@@ -28,13 +28,15 @@ inventag templates list [--kind K] [--all]
 inventag templates show NAME|PATH [--resolved]
 inventag templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] [--force]
 inventag templates validate NAME|PATH [NAME|PATH ...]
+inventag selftest                      check this copy of InvenTag, offline
+inventag completion bash|zsh|fish      print a shell completion script
 ```
 
 La commande `inventag` fonctionne de la même façon sous Linux, macOS et Windows.
 
 Non vérifié sur Windows ni sur macOS : la commande `inventag` fonctionne de la même façon que sous Linux.
 
-`templates` doit être le premier mot après le nom du programme.
+`templates`, `selftest` et `completion` doivent être le premier mot après le nom du programme.
 
 ## Modèles {#templates}
 
@@ -50,6 +52,21 @@ Non vérifié sur Windows ni sur macOS : la commande `inventag` fonctionne de la
 | `templates show NAME` | Affiche le fichier. `--resolved` affiche le résultat après `extends` et les valeurs par défaut. |
 | `templates init NAME --output PATH` | Copie un modèle dans votre projet. `--extend` écrit un court fichier qui hérite du modèle ; `--name` définit le nom ; `--force` écrase. |
 | `templates validate NAME\|PATH ...` | Vérifie les fichiers et les modèles auxquels ils font référence. Code de sortie 0 si tout est valide, 1 sinon. |
+
+### `selftest` et `completion` {#selftest-and-completion}
+
+| Commande | Ce qu’elle fait |
+|---|---|
+| `selftest` | Vérifie que cette copie d’InvenTag fonctionne : paquets, modèles intégrés, données des services AWS, la protection en lecture seule, et un fichier Excel et un fichier Word écrits dans un dossier temporaire puis supprimés. Aucun appel à AWS, aucune connexion réseau, aucun identifiant nécessaire. Code de sortie 0 : toutes les vérifications ont réussi. Code de sortie 1 : une vérification a échoué ; les autres vérifications s’exécutent quand même. Code de sortie 2 : un argument inconnu. |
+| `completion bash\|zsh\|fish` | Écrit un script de complétion pour le shell sur la sortie standard. Il lit seulement les options de la commande et ne fait aucun appel à AWS ni aucune connexion réseau. Code de sortie 0. Shell absent ou inconnu : ligne d’utilisation et code de sortie 2. |
+
+Pour installer un script de complétion :
+
+```text
+source <(inventag completion bash)
+inventag completion zsh > "${fpath[1]}/_inventag"
+inventag completion fish > ~/.config/fish/completions/inventag.fish
+```
 
 ## Comptes {#accounts}
 
@@ -127,9 +144,9 @@ un fichier YAML ou JSON. Voir [Fichiers de mise en page pour un rapport](../temp
 | Option | Par défaut | État | Ce qu’elle fait |
 |---|---|---|---|
 | `--max-concurrent-accounts N` | `4` | Fonctionne | Nombre de comptes analysés en même temps (au moins 1). |
-| `--concurrency N` | `64` | Fonctionne | Nombre maximal de requêtes AWS en cours en même temps, pour toute l'exécution (de 1 à 256). 1 envoie une requête à la fois. Hors limites : code de sortie 2. |
+| `--concurrency N` | `64` | Fonctionne | Nombre maximal de requêtes AWS en cours en même temps, pour toute l’exécution (de 1 à 256). 1 envoie une requête à la fois. Une valeur hors de 1 à 256, ou qui n’est pas un nombre entier : code de sortie 2. Dans un modèle de configuration : `spec.concurrency`. Voir [Concurrence](../guides/run-a-scan.md#concurrency). |
 | `--account-processing-timeout SECONDS` | `1800` | Fonctionne | Durée accordée par compte, comptée à partir du début de son analyse (au moins 60). Un compte qui dépasse son temps compte comme en échec ; les ressources trouvées restent dans le rapport. |
-| `--disable-parallel-processing` | désactivé | Fonctionne | Analyse un compte à la fois. |
+| `--disable-parallel-processing` | désactivé | Fonctionne | Analyse un compte à la fois. Il ne change pas les threads à l’intérieur d’un compte. |
 | `--resume` | désactivé | Fonctionne | Réutilise les résultats enregistrés des comptes terminés lors d’une exécution précédente de la même commande qui ne s’est pas achevée (mêmes comptes, régions, services et filtres), et n’analyse que les autres. Avec `--disable-state-management` : code de sortie 2. |
 | `--resume-max-age-hours HOURS` | `24` | Fonctionne | Avec `--resume`, ne réutilise les résultats enregistrés que jusqu’à cet âge (168 au plus). |
 
@@ -180,7 +197,7 @@ une lecture, ainsi que les lectures qui renvoient des secrets ou des données.
 
 | Option | Par défaut | État | Ce qu’elle fait |
 |---|---|---|---|
-| `--audit-output FILE` | aucun | Fonctionne | Écrit une liste JSON de chaque opération AWS appelée pendant l’exécution, autorisée ou bloquée. |
+| `--audit-output FILE` | aucun | Fonctionne | Écrit une liste JSON de chaque opération AWS appelée pendant l’exécution, autorisée ou bloquée. Quand l’exécution n’a pas eu le droit d’utiliser une action IAM, le fichier a aussi la liste `permissions_denied` : voir [Exécuter avec ReadOnlyAccess seul](../guides/read-only-access.md#run-with-only-readonlyaccess). |
 | `--validate-operations SERVICE:OPERATION ...` | aucun | Fonctionne | Vérifie des opérations par rapport à la protection, puis s’arrête (0 si toutes sont autorisées, 1 sinon). |
 | `--enforce-read-only`, `--security-validation`, `--enable-production-safety` | activé | Sans effet | Conservées pour que les anciennes commandes fonctionnent encore. La protection est toujours active. |
 | `--disable-production-safety` | désactivé | S’arrête avec le code de sortie 2 | La protection ne peut pas être désactivée. |
@@ -262,7 +279,7 @@ Voir [Téléverser des rapports vers S3 selon un calendrier](../examples/schedul
 |---|---|
 | 0 | Succès. Vaut aussi 0 lorsque certains comptes ont échoué mais que d’autres ont fonctionné, et lorsqu’aucune ressource n’a été trouvée, sauf si vous passez `--fail-on-account-error` ou `--fail-if-empty`. Voir [État des fonctionnalités](../getting-started/status.md#when-a-run-goes-wrong). |
 | 1 | Une erreur : arguments, configuration ou modèle non valides, un nombre hors limites (par exemple `--max-concurrent-accounts 0`), échec des identifiants, échec de tous les comptes (impossible à analyser ou temps imparti dépassé), échec d’un téléversement S3, ou format de rapport impossible à écrire |
-| 2 | Ligne de commande non valide : options inconnues, mal formées ou incompatibles, options non implémentées, options Google incorrectes, option de fichier de mise en page sans le rapport dont elle a besoin, ou nom de rôle sans `--accounts-file` |
+| 2 | Ligne de commande non valide : options inconnues, mal formées ou incompatibles, valeur de `--concurrency` hors de 1 à 256, options non implémentées, options Google incorrectes, option de fichier de mise en page sans le rapport dont elle a besoin, ou nom de rôle sans `--accounts-file` |
 | 3 | Rapports écrits, mais un modèle de configuration avec `fail_on_tag_violations: true` a trouvé des violations de la politique d’étiquetage |
 | 4 | Rapports écrits, mais `--risk-threshold` a trouvé une règle de groupe de sécurité égale ou supérieure à ce niveau |
 | 5 | Rapports écrits, mais un compte n’a pas pu être analysé ou a dépassé le temps imparti, et vous avez passé `--fail-on-account-error` |

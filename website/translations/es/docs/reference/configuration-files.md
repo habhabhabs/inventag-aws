@@ -62,6 +62,8 @@ Una cuenta puede indicar una forma de obtener credenciales. Una cuenta sin ningu
 
 Los valores de `settings` sustituyen a las opciones equivalentes de la línea de comandos.
 
+El bloque `settings` solo acepta `max_concurrent_accounts`, `account_processing_timeout` y `output_directory`. InvenTag ignora cualquier otra clave, por ejemplo `concurrency`, con una advertencia que la nombra. Para fijar `--concurrency` en un archivo, usa el campo `spec.concurrency` de una [plantilla de configuración](../templates/reference.md), o escribe la opción.
+
 Una segunda entrada con el mismo ID de cuenta, y una clave que InvenTag no conoce (por ejemplo `profil_name`), dan cada una una advertencia que la nombra, y `--validate-config-only` también las muestra. El archivo se acepta igualmente.
 
 Para usar el mismo nombre de rol en todas las cuentas, omite `role_arn` y añade

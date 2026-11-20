@@ -73,7 +73,7 @@ What arrived in the bucket:
 <!-- BEGIN EXAMPLE OUTPUT: s3-keys -->
 
 ```text title="Objects in s3://acme-inventory-reports"
-bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
+bom-reports/20261112_090000/multi_account_bom_20261112_090000.xlsx
 ```
 
 <!-- END EXAMPLE OUTPUT: s3-keys -->
@@ -96,8 +96,8 @@ The audit file (excerpt):
     "Search",
     "BatchGet"
   ],
-  "total_calls": 96,
-  "allowed_calls": 96,
+  "total_calls": 93,
+  "allowed_calls": 93,
   "blocked_calls": 0,
   "operations": [
     {

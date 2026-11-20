@@ -46,7 +46,9 @@ persona mantenedora un canal privado.
   `payment-cryptography:GetParametersForImport` y `GetParametersForExport`:
   sus nombres empiezan como lecturas, pero emiten un token, credenciales o
   material de claves, o toman una tarea de una cola. Cada entrada de la lista de denegación se comprueba con la lista de operaciones del SDK de
-  AWS. Siempre está activa.
+  AWS. Siempre está activa. La protección conoce las operaciones por su nombre.
+  Una operación que añade un SDK de AWS más nuevo se permite cuando su nombre
+  empieza como una lectura, hasta que una versión de InvenTag la nombra.
 - **El inicio de sesión sigue funcionando.** La protección deja que el SDK de
   AWS cambie un token de IAM Identity Center (SSO), de identidad web o de
   `aws login` por credenciales. Solo permite estas cuatro llamadas sin firmar:
@@ -75,7 +77,10 @@ persona mantenedora un canal privado.
   No verificado contra Windows: archivos legibles solo por tu usuario.
 - **Sus registros ocultan los secretos.** Los tokens de sesión, las claves, las
   firmas de solicitud y los valores ocultos indicados arriba se enmascaran,
-  incluso con `--debug`.
+  incluso con `--debug`. Se conoce una excepción: con `--debug`, un secreto que AWS
+  devuelve como lista bajo el nombre de un campo enmascarado puede aparecer en el
+  archivo de registro. Consulta
+  [Estado de las funciones](../getting-started/status.md#security-notes).
 
 Puedes comprobar lo que hizo una ejecución con `--audit-output audit.json`, y
 lo que permite la protección con `--validate-operations`:

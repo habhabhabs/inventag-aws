@@ -130,8 +130,13 @@ inventag --accounts-file accounts.yaml --create-excel
 | Réglage | Champ du modèle de configuration | Option |
 |---|---|---|
 | Comptes analysés simultanément (4 par défaut) | `max_concurrent_accounts` | `--max-concurrent-accounts` |
+| Nombre maximal de requêtes AWS en cours dans toute l’exécution (64 par défaut, de 1 à 256) | `concurrency` | `--concurrency` |
 | Secondes autorisées par compte (1800 par défaut, au moins 60) | `account_processing_timeout` | `--account-processing-timeout` |
 | Un compte à la fois | `parallel_processing: false` | `--disable-parallel-processing` |
+
+InvenTag vérifie les identifiants des comptes en parallèle, jusqu’à `--max-concurrent-accounts` à la fois. Les résultats gardent l’ordre de votre liste de comptes. Un profil avec `mfa_serial` demande un code. Tant qu’un terminal est connecté, InvenTag traite donc ce profil en premier et un par un.
+
+La limite de `--concurrency` est partagée par tous les comptes. Un compte n’a jamais plus de 16 requêtes en cours. Les lignes et les feuilles d’analyse suivent l’ordre de votre liste de comptes, pas l’ordre dans lequel les comptes se terminent. Voir [Concurrence](./run-a-scan.md#concurrency).
 
 Si un compte échoue, par exemple parce que son rôle ne peut pas être assumé,
 InvenTag journalise l’erreur et rapporte les comptes qui ont fonctionné. Il n’analyse pas ce compte avec vos identifiants par défaut, sauf s’ils appartiennent à ce compte. La feuille `Summary`

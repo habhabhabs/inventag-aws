@@ -62,6 +62,12 @@ An account can name one way to get credentials. An account with none uses your c
 
 Values in `settings` override the matching command-line flags.
 
+The `settings` block accepts only `max_concurrent_accounts`,
+`account_processing_timeout` and `output_directory`. InvenTag ignores any other
+key, for example `concurrency`, with a warning that names it. To set
+`--concurrency` in a file, use the field `spec.concurrency` of a
+[config template](../templates/reference.md), or type the flag.
+
 A second entry with the same account ID, and a key that InvenTag does not know
 (for example `profil_name`), each give a warning that names it, and `--validate-config-only`
 prints them too. The file is still accepted.
