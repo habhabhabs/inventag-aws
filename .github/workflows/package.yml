@@ -839,6 +839,18 @@ jobs:
         name: build-macos-arm64
         path: ${{ runner.temp }}/artifacts
 
+    # Before setup-python: afterwards the runner holds the Python that built
+    # the bundle, and a stray absolute link would resolve there and not on a
+    # user's Mac (B6 fix 8). The scan needs Python for the moto server, so it
+    # comes after.
+    - name: Unpack, run --version and selftest (no Python set up yet)
+      run: |
+        mkdir -p "$RUNNER_TEMP/install"
+        tar -xzf "$RUNNER_TEMP/artifacts/inventag-${VERSION}-darwin-${CPU}.tar.gz" -C "$RUNNER_TEMP/install"
+        BIN="$RUNNER_TEMP/install/inventag"
+        test "$(env -i PATH=/usr/bin:/bin "$BIN/inventag" --version)" = "inventag $VERSION"
+        env -i PATH=/usr/bin:/bin HOME="$RUNNER_TEMP" "$BIN/inventag" selftest
+
     - name: Set up Python 3.12 for the moto server
       uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
       with:
@@ -847,13 +859,9 @@ jobs:
     - name: Install moto (the version of requirements-dev.txt)
       run: python -m pip install "moto[server]==5.2.5"
 
-    - name: Unpack, run, check the man page and the completions
+    - name: Check the man page and the completions
       run: |
-        mkdir -p "$RUNNER_TEMP/install"
-        tar -xzf "$RUNNER_TEMP/artifacts/inventag-${VERSION}-darwin-${CPU}.tar.gz" -C "$RUNNER_TEMP/install"
         BIN="$RUNNER_TEMP/install/inventag"
-        test "$(env -i PATH=/usr/bin:/bin "$BIN/inventag" --version)" = "inventag $VERSION"
-        env -i PATH=/usr/bin:/bin HOME="$RUNNER_TEMP" "$BIN/inventag" selftest
         # The man page is read from the file (roff source). macOS man has no -l
         # (dry run 7); a name with a slash is a file. Rendering is extra.
         page="$BIN/share/man/man1/inventag.1"
