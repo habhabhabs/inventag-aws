@@ -1518,6 +1518,7 @@ def test_the_arm64_smoke_is_in_the_arm64_job_only_with_no_new_runner_label():
         "smoke-pipx",
         "provenance",
         "attest",
+        "smoke-homebrew",
         "publish",
     }
 
@@ -2379,3 +2380,143 @@ def test_the_macos_evidence_step_records_the_libiconv_evidence(tmp_path):
     assert "codesign -v --architecture x86_64: exit 1" in kept
     assert "(6, 1, 3, 0) (0, 0)" in kept
     assert "1.17: LGPL-2.1" in kept
+
+
+# ---- B3j: the formula is installed in the dry run (B6 fix 16, B4b interface) ----
+
+SHA = "a" * 64
+
+
+def test_the_homebrew_smoke_job_runs_after_provenance_on_macos_and_gates_nothing():
+    # SHA256SUMS and the three archives exist only after provenance, so the
+    # formula step cannot sit in smoke-macos-arm64 (which provenance waits for).
+    job = JOBS["smoke-homebrew"]
+    assert job["runs-on"] == "macos-15"
+    assert set(job["needs"]) == {"plan", "provenance"}
+    condition = " ".join(str(job["if"]).split())
+    assert "needs.plan.outputs.include_macos == 'true'" in condition
+    assert (
+        "!cancelled()" in condition
+        and "needs.provenance.result == 'success'" in condition
+    )
+    assert job["permissions"] == {"contents": "read"}
+    down = [
+        s
+        for s in _steps("smoke-homebrew")
+        if s.get("uses", "").startswith("actions/download-")
+    ]
+    assert len(down) == 1 and down[0]["with"]["name"] == "release-files"
+    # The release does not wait for it: the tap is the owner's later step.
+    assert "smoke-homebrew" not in JOBS["publish"]["needs"]
+    assert "smoke-homebrew" not in JOBS["provenance"]["needs"]
+
+
+def test_the_homebrew_step_runs_the_commands_of_the_b4b_interface_in_order():
+    run = _step("smoke-homebrew", "formula")["run"]
+    order = [
+        "render_formula.py",
+        "--archive-dir",
+        "brew tap-new",
+        "brew style",
+        "brew audit --strict",
+        "brew install",
+        "inventag selftest",
+        "packaging/homebrew-tap/check_lxml.sh",
+        "brew uninstall",
+    ]
+    positions = [run.index(word) for word in order]
+    assert positions == sorted(positions)
+    assert "HOMEBREW_NO_ANALYTICS=1" in run
+
+
+def _homebrew_run(tmp_path, fail="", lxml="same"):
+    import subprocess
+    import tarfile
+
+    release = tmp_path / "release"
+    release.mkdir()
+    version = "1.4.0"
+    names = [
+        f"inventag-{version}-darwin-arm64.tar.gz",
+        f"inventag-{version}-linux-x86_64.tar.gz",
+        f"inventag-{version}-linux-arm64.tar.gz",
+    ]
+    (release / "SHA256SUMS").write_text(
+        "".join(f"{SHA}  {n}\n" for n in names), encoding="utf-8"
+    )
+    payload = tmp_path / "payload"
+    (payload / "_internal" / "lxml").mkdir(parents=True)
+    (payload / "_internal" / "lxml" / "etree.so").write_bytes(b"original")
+    with tarfile.open(release / names[0], "w:gz") as tar:
+        tar.add(payload, arcname="inventag")
+    stubs = tmp_path / "stubs"
+    stubs.mkdir()
+    calls = tmp_path / "calls.log"
+    prefix = tmp_path / "prefix"
+    tap = tmp_path / "tap"
+    installed = b"changed" if lxml == "changed" else b"original"
+    (stubs / "brew").write_text(
+        "#!/bin/bash\n"
+        f'echo "brew $*" >> "{calls}"\n'
+        'case "$1" in\n'
+        f'  --repository) echo "{tap}" ;;\n'
+        f'  --prefix) echo "{prefix}" ;;\n'
+        f'  tap-new) mkdir -p "{tap}/Formula" ;;\n'
+        f'  install) mkdir -p "{prefix}/libexec/_internal/lxml"; printf %s {installed.decode()} > "{prefix}/libexec/_internal/lxml/etree.so" ;;\n'
+        "esac\n"
+        f'[ "$1" = "{fail}" ] && exit 1\n'
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    (stubs / "inventag").write_text(
+        f'#!/bin/bash\necho "inventag $*" >> "{calls}"\n', encoding="utf-8"
+    )
+    for tool in stubs.iterdir():
+        tool.chmod(0o755)
+    result = subprocess.run(
+        ["bash", "-c", _step("smoke-homebrew", "formula")["run"]],
+        cwd=ROOT,
+        env={
+            "PATH": f"{stubs}:/usr/bin:/bin",
+            "RUNNER_TEMP": str(tmp_path),
+            "VERSION": version,
+        },
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    log = calls.read_text("utf-8").splitlines() if calls.exists() else []
+    return result, log, tap
+
+
+def test_the_homebrew_step_renders_installs_checks_lxml_and_uninstalls(tmp_path):
+    result, log, tap = _homebrew_run(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    formula = (tap / "Formula" / "inventag.rb").read_text("utf-8")
+    assert f"file://{tmp_path}/release/inventag-1.4.0-darwin-arm64.tar.gz" in formula
+    assert "ok _internal/lxml/etree.so" in result.stdout
+    words = [line.split()[1] if line.startswith("brew") else line for line in log]
+    assert words.index("style") < words.index("audit") < words.index("install")
+    assert "inventag selftest" in log
+    assert (
+        words.index("install")
+        < words.index("inventag selftest")
+        < words.index("uninstall")
+    )
+
+
+def test_brew_audit_strict_only_warns_and_every_other_command_fails_the_job(tmp_path):
+    # Not verified against Homebrew: that audit --strict accepts a file:// URL.
+    result, log, _ = _homebrew_run(tmp_path / "audit", fail="audit")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "::warning::" in result.stdout and "audit" in result.stdout
+    assert "brew uninstall local/inventag/inventag" in log
+    for command in ("style", "install", "uninstall", "tap-new"):
+        result, _log, _ = _homebrew_run(tmp_path / command, fail=command)
+        assert result.returncode != 0, command
+
+
+def test_a_homebrew_install_that_changed_the_lxml_files_fails_the_job(tmp_path):
+    result, _log, _ = _homebrew_run(tmp_path, lxml="changed")
+    assert result.returncode != 0
+    assert "DIFFERENT _internal/lxml/etree.so" in result.stdout
