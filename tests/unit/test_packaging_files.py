@@ -709,6 +709,30 @@ def test_a_module_without_the_libiconv_symbol_gives_no_version(
 READ_FROM = "version read from the module's own symbol _libiconv_version"
 
 
+RESIGN_GOLDEN = (
+    "After replacing a module on macOS, sign it again "
+    "(`codesign -s - --force <file>`)."
+)
+
+
+@pytest.mark.parametrize(
+    "module, resign",
+    [
+        ("etree.cpython-312-darwin.so", True),
+        ("etree.cpython-312-x86_64-linux-gnu.so", False),
+    ],
+    ids=["macos", "linux"],
+)
+def test_the_replace_sentence_adds_signing_only_for_macos_modules(
+    tpl, monkeypatch, module, resign
+):
+    # architect-package-dryrun-5.md ruling 1: the macOS notices add one line.
+    monkeypatch.setattr(tpl, "_installed", lambda name: None)
+    comp = tpl.libiconv_component({f"_internal/lxml/{module}": "1.17"})
+    assert comp.notes[0] == tpl.LXML_PARAGRAPH.format(files=module)
+    assert comp.notes[1:] == ([RESIGN_GOLDEN] if resign else [])
+
+
 def test_the_libiconv_lines_say_how_the_version_was_read(tpl, monkeypatch):
     comps = _collect_iconv(tpl, monkeypatch, {ETREE: "1.18", OBJECTIFY: "1.18"})
     text = tpl.render(comps)
