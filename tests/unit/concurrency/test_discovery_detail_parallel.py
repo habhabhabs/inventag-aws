@@ -244,3 +244,37 @@ def test_stopping_the_detail_calls_ends_the_queued_ones_and_keeps_the_rows():
         e for e in disc.coverage.to_dict() if e["source"] == "service-api-detail"
     ]
     assert sum(e["count"] for e in entries) == 8
+
+
+def test_stopping_while_the_calls_are_still_being_queued_does_not_fail_the_scan():
+    """``stop_detail_calls`` can arrive between two submits (the pool is shut)."""
+    rows = _functions(12)
+    client = LambdaClient()
+    disc = _disc(rows, lambda *a, **k: client)
+    real = disc._make_pool
+
+    class StopsOnThirdSubmit:
+        def __init__(self, pool):
+            self.pool = pool
+            self.submits = 0
+
+        def submit(self, *args, **kwargs):
+            self.submits += 1
+            if self.submits == 3:
+                disc.stop_detail_calls()  # shuts self.pool down
+            return self.pool.submit(*args, **kwargs)
+
+        def shutdown(self, *args, **kwargs):
+            return self.pool.shutdown(*args, **kwargs)
+
+    with mock.patch.object(
+        disc, "_make_pool", side_effect=lambda n: StopsOnThirdSubmit(real(n))
+    ):
+        disc._enhance_lambda_functions()  # must not raise
+    assert len(disc.resources) == 12
+    entries = [
+        e for e in disc.coverage.to_dict() if e["source"] == "service-api-detail"
+    ]
+    # every resource either was read or is counted as not read
+    assert len(client.names) + sum(e["count"] for e in entries) == 12
+    assert entries and entries[0]["error_code"] == "DetailCallsStopped"
