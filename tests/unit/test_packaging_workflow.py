@@ -1461,6 +1461,127 @@ def test_the_fish_completion_check_keeps_its_meaning(tmp_path):
         assert "completion loads in fish" not in result.stdout, mode
 
 
+# ---- B3f: dry run 7 (macOS man, files written by root in the container) ----
+
+
+def _macos_man_run(tmp_path, man_output="INVENTAG(1)\n"):
+    """Run the macOS unpack step with a stub man that behaves as macOS man does.
+
+    Dry run 7, log line 438: `/usr/bin/man: illegal option -- l`. The stub
+    accepts a page name or a path with a slash and prints `man_output`.
+    """
+    import subprocess
+    import tarfile
+
+    root = tmp_path / "root"
+    inside = root / "inventag"
+    for sub in ("share/man/man1", "share/completions"):
+        (inside / sub).mkdir(parents=True)
+    program = inside / "inventag"
+    program.write_text(
+        '#!/bin/bash\nif [ "$1" = --version ]; then echo "inventag 1.3.1"; fi\n',
+        encoding="utf-8",
+    )
+    program.chmod(0o755)
+    (inside / "share/man/man1/inventag.1").write_text(".TH INVENTAG 1\n", "utf-8")
+    (inside / "share/completions/inventag.bash").write_text("true\n", "utf-8")
+    (inside / "share/completions/_inventag").write_text("true\n", "utf-8")
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    with tarfile.open(artifacts / "inventag-1.3.1-darwin-arm64.tar.gz", "w:gz") as tar:
+        tar.add(inside, arcname="inventag")
+    stubs = tmp_path / "stubs"
+    stubs.mkdir()
+    (stubs / "man").write_text(
+        "#!/bin/bash\n"
+        'case "$1" in\n'
+        '  -l) echo "/usr/bin/man: illegal option -- l" >&2; exit 1 ;;\n'
+        '  */*) [ -f "$1" ] || exit 1; printf "%s" "$MAN_OUT" ;;\n'
+        "  *) exit 1 ;;\n"
+        "esac\n",
+        encoding="utf-8",
+    )
+    (stubs / "zsh").write_text("#!/bin/bash\nexit 0\n", encoding="utf-8")
+    for tool in ("man", "zsh"):
+        (stubs / tool).chmod(0o755)
+    run = _step("smoke-macos-arm64", "check the man page")["run"]
+    return subprocess.run(
+        ["bash", "-e", "-c", run],
+        env={
+            "PATH": f"{stubs}:/usr/bin:/bin",
+            "RUNNER_TEMP": str(tmp_path),
+            "VERSION": "1.3.1",
+            "CPU": "arm64",
+            "MAN_OUT": man_output,
+        },
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+
+# The tarball is read from $RUNNER_TEMP/artifacts; the step unpacks to install/.
+
+
+def test_the_macos_man_page_check_does_not_use_the_gnu_only_option_l(tmp_path):
+    for job, step in _all_steps():
+        if job == "smoke-macos-arm64":
+            assert "man -l" not in step.get("run", "")
+    result = _macos_man_run(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_the_macos_man_page_check_keeps_its_meaning(tmp_path):
+    result = _macos_man_run(tmp_path, man_output="a page about something else\n")
+    assert result.returncode != 0
+
+
+def _scan_args(tmp_path, uid_gid=True):
+    """Run the scan step with a stub python that runs the command after `--`."""
+    import subprocess
+
+    stubs = tmp_path / "stubs"
+    stubs.mkdir(exist_ok=True)
+    calls = tmp_path / "docker.log"
+    (stubs / "python").write_text(
+        '#!/bin/bash\nwhile [ "$1" != -- ]; do shift; done; shift; exec "$@"\n',
+        encoding="utf-8",
+    )
+    (stubs / "docker").write_text(
+        f'#!/bin/bash\necho "$@" >> "{calls}"\n', encoding="utf-8"
+    )
+    for tool in ("python", "docker"):
+        (stubs / tool).chmod(0o755)
+    run = _step("smoke-linux", "Scan a simulated AWS")["run"]
+    result = subprocess.run(
+        ["bash", "-e", "-c", run],
+        env={"PATH": f"{stubs}:/usr/bin:/bin", "RUNNER_TEMP": str(tmp_path)},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    return calls.read_text("utf-8").split()
+
+
+def test_the_linux_smoke_scan_runs_as_the_runner_user_so_that_the_runner_can_read_and_remove_its_files(
+    tmp_path,
+):
+    # Dry run 7: the scan ran as root in the container; the runner could not
+    # read audit.json or remove the output directory (PermissionError).
+    import os
+
+    args = _scan_args(tmp_path)
+    assert args[0] == "exec"
+    assert "-u" in args
+    assert args[args.index("-u") + 1] == f"{os.getuid()}:{os.getgid()}"
+    # -u comes before the container name; the program runs after it.
+    assert args.index("-u") < args.index("smoke") < args.index("inventag")
+    # The home of that user is the scan's own writable directory (smoke_scan.py
+    # sets HOME to it); the environment is passed on.
+    assert "HOME" in args[args.index("-e") :]
+
+
 # ---- B3b: the INCLUDE_MACOS switch (architect ruling 4) --------------------
 
 MACOS_JOBS = (
