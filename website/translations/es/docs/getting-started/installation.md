@@ -63,10 +63,27 @@ No verificado contra un Mac con macOS 11.0: el ejecutable. El número sale del r
 ### Qué se probó {#what-was-tested}
 
 El flujo de trabajo de la versión compila cada formato y luego lo instala en un
-sistema limpio. En los sistemas Linux x86_64 y en macOS ejecuta
-`inventag --version` e `inventag selftest`, comprueba la página de manual y los
-archivos de autocompletado, analiza un AWS simulado, quita el paquete y comprueba
-que no queda ningún archivo del paquete. Estos sistemas lo superaron:
+sistema limpio. Cada tipo de trabajo hace esto:
+
+- **Linux x86_64:** instala el paquete o descomprime el archivo, ejecuta
+  `inventag --version` e `inventag selftest`, lee el archivo de la página de
+  manual, carga los archivos de autocompletado, analiza un AWS simulado, quita el
+  paquete y comprueba que no queda ningún archivo del paquete.
+- **Linux arm64:** instala el `.deb` en Debian 12 y el `.rpm` en Rocky Linux 9,
+  ejecuta `inventag --version` e `inventag selftest`, quita el paquete y comprueba
+  que `inventag` ya no está en el PATH. No comprueba la página de manual, los
+  archivos de autocompletado ni un análisis, y no comprueba que no queda ningún
+  archivo del paquete.
+- **macOS arm64:** descomprime el archivo en una carpeta temporal, ejecuta
+  `inventag --version` e `inventag selftest`, lee el archivo de la página de
+  manual, comprueba la sintaxis de los archivos de autocompletado de bash y zsh
+  con `bash -n` y `zsh -n` (no se carga nada y no se comprueba el archivo de
+  fish), analiza un AWS simulado y borra la carpeta temporal.
+- **pipx en Ubuntu 24.04:** instala el wheel compilado desde la etiqueta, ejecuta
+  `inventag --version` e `inventag selftest`, lo quita y comprueba que
+  `inventag` ya no está en el PATH.
+
+Estos sistemas lo superaron:
 
 | Sistema | Formato | CPU |
 |---|---|---|
@@ -107,8 +124,8 @@ No hace ninguna llamada a AWS, no abre ninguna conexión de red y no necesita
 credenciales. El código de salida 0 significa que todas las comprobaciones
 pasaron. El código de salida 1 significa que una comprobación falló.
 
-`uv tool install inventag-aws` da el mismo resultado si usas
-[uv](https://docs.astral.sh/uv/).
+Si usas [uv](https://docs.astral.sh/uv/), el comando es
+`uv tool install inventag-aws`.
 
 - **Actualizar:** `pipx upgrade inventag-aws`. Para instalar una versión
   concreta, fíjala: `pipx install inventag-aws==%INVENTAG_VERSION%`.
@@ -120,6 +137,8 @@ pasaron. El código de salida 1 significa que una comprobación falló.
 - **Página de manual:** este método no instala ninguna. Usa `inventag --help`.
 
 No verificado contra pipx: los comandos de actualización y de fijación de versión.
+
+No verificado contra uv: que `uv tool install inventag-aws` dé un `inventag` y un `inventag selftest` que funcionen, y los comandos de actualizar y desinstalar.
 
 ## Instalar el archivo independiente {#install-the-standalone-archive}
 
@@ -199,8 +218,9 @@ autocompletado y los archivos de licencia en `/usr/share/doc/inventag/`. El
 paquete no tiene script de instalación.
 
 - **Actualizar:** instala el `.deb` más nuevo con `sudo dpkg -i`.
-- **Desinstalar:** `sudo dpkg -r inventag`. La prueba comprobó que no queda
-  ningún archivo del paquete.
+- **Desinstalar:** `sudo dpkg -r inventag`. En x86_64, la prueba comprobó que no
+  queda ningún archivo del paquete. En arm64, solo comprobó que `inventag` ya no
+  está en el PATH.
 - **Autocompletado:** el paquete instala los archivos para bash, zsh y fish.
   Consulta [Autocompletado del intérprete](#shell-completion).
 - **Página de manual:** `man inventag`. El archivo es
@@ -228,8 +248,9 @@ El paquete pone el programa en `/opt/inventag/` y un enlace en
 autocompletado y los archivos de licencia en `/usr/share/doc/inventag/`.
 
 - **Actualizar:** instala el `.rpm` más nuevo con `sudo dnf install`.
-- **Desinstalar:** `sudo dnf remove inventag`. La prueba comprobó que no queda
-  ningún archivo del paquete.
+- **Desinstalar:** `sudo dnf remove inventag`. En x86_64, la prueba comprobó que
+  no queda ningún archivo del paquete. En arm64, solo comprobó que `inventag` ya
+  no está en el PATH.
 - **Autocompletado:** el paquete instala los archivos para bash, zsh y fish.
   Consulta [Autocompletado del intérprete](#shell-completion).
 - **Página de manual:** `man inventag`. El archivo es
@@ -248,14 +269,22 @@ publicado, así que el comando siguiente no funciona hoy:
 brew install habhabhabs/inventag/inventag
 ```
 
-El plan es una fórmula que instale el ejecutable desde el archivo de la versión.
-Es para macOS arm64 y las dos CPU de Linux. No es para los Mac con Intel.
-La fórmula aún no está escrita. Esta página no indica qué archivos de
-autocompletado ni qué página de manual instala. Hasta entonces, usa
-[Autocompletado del intérprete](#shell-completion) e `inventag --help`.
+La fórmula está escrita. Está en el repositorio, en
+`packaging/homebrew-tap/Formula/inventag.rb`, y
+`scripts/packaging/render_formula.py` la completa con el `SHA256SUMS` de una
+versión. Instala el ejecutable desde el archivo de la versión, la página de manual
+y los archivos de autocompletado para bash, zsh y fish. Es para macOS arm64 y las
+dos CPU de Linux. No es para los Mac con Intel: en uno, la instalación se detiene
+con un mensaje.
 
 - **Actualizar:** `brew upgrade inventag`.
 - **Desinstalar:** `brew uninstall inventag`.
+
+No verificado contra Homebrew: la fórmula. `brew install`, `brew audit`,
+`brew style` y `brew test` no se han ejecutado con ella. Los comandos de
+actualizar y desinstalar no se han ejecutado.
+
+No verificado contra un Mac con Intel: el mensaje que muestra la instalación allí.
 
 No verificado contra macOS fuera de un runner de GitHub: la instalación con Homebrew y el comportamiento de Gatekeeper.
 
@@ -365,10 +394,16 @@ compilación en nombre del flujo de trabajo. Para comprobar un archivo, usa la C
 de GitHub:
 
 ```bash title="Terminal"
-gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb --repo habhabhabs/inventag-aws
+gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb \
+  --repo habhabhabs/inventag-aws \
+  --signer-workflow habhabhabs/inventag-aws/.github/workflows/package.yml
 ```
 
-No verificado contra GitHub: `gh attestation verify` sobre un archivo de una versión. Las ejecuciones de prueba no crean ninguna atestación. La primera atestación real la crea la primera ejecución de versión, y esa ejecución aún no se ha hecho.
+`--repo` nombra el repositorio. `--signer-workflow` hace que la comprobación falle
+si otro archivo de flujo de trabajo creó la atestación.
+
+No verificado contra GitHub: `gh attestation verify` con estas opciones sobre un
+archivo de una versión. Las opciones se leen de `gh attestation verify --help`. Las ejecuciones de prueba no crean ninguna atestación. La primera atestación real la crea la primera ejecución de versión, y esa ejecución aún no se ha hecho.
 
 Cada `.tar.gz`, `.deb` y `.rpm` tiene además un SBOM, con el nombre del archivo
 más `.cdx.json`. Consulta [Lista de materiales de software](../security/sbom.md).
@@ -377,11 +412,12 @@ más `.cdx.json`. Consulta [Lista de materiales de software](../security/sbom.md
 
 InvenTag usa la licencia MIT. Los archivos del ejecutable, el
 `.deb` y el `.rpm` incluyen GNU libiconv, una biblioteca bajo la Licencia Pública
-General Reducida de GNU (LGPL) versión 2.1. La fórmula de Homebrew prevista
-instala el mismo archivo, así que también la incluye. El código de libiconv está
-dentro de los módulos de extensión de lxml. InvenTag necesita lxml para escribir
-archivos de Word. El proyecto lxml crea esos módulos y enlaza libiconv en ellos.
-InvenTag incluye los archivos de lxml sin cambios.
+General Reducida de GNU (LGPL) versión 2.1. La fórmula de Homebrew (aún no
+publicada) instala el mismo archivo, así que también la incluye. El código de
+libiconv está dentro de los módulos de extensión de lxml. InvenTag necesita lxml
+para escribir archivos de Word. El proyecto lxml crea esos módulos y enlaza
+libiconv en ellos. En el archivo, el `.deb` y el `.rpm`, InvenTag incluye los
+archivos de lxml sin cambios.
 
 - Una instalación con pip, pipx o uv no incluye libiconv en ningún archivo de
   InvenTag. Tu instalador descarga el wheel propio de lxml desde el Python
@@ -409,6 +445,8 @@ InvenTag incluye los archivos de lxml sin cambios.
   firmar un módulo después de reemplazarlo: `codesign -s - --force <file>`.
 
 No verificado contra tu propia compilación de lxml: que un módulo que compiles funcione en lugar del incluido.
+
+No verificado contra una instalación con Homebrew: que Homebrew deje sin cambios los archivos de lxml.
 
 No verificado contra macOS fuera de un runner de GitHub: la instalación con Homebrew y el comportamiento de Gatekeeper.
 

@@ -56,21 +56,25 @@ SBOM 文件使用 CycloneDX 格式，1.5 版，JSON 编码。工作流根据构�
 该步骤以这个工作流的名义写入构建证明。用 GitHub CLI 检查一个文件：
 
 ```bash title="Terminal"
-gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb --repo habhabhabs/inventag-aws
+gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb \
+  --repo habhabhabs/inventag-aws \
+  --signer-workflow habhabhabs/inventag-aws/.github/workflows/package.yml
 ```
 
 检查校验和，见[检查下载的文件](../getting-started/installation.md#check-the-download)。
 
-未针对 GitHub 验证：对发布文件运行 `gh attestation verify`。测试运行不会生成任何构建证明。第一份真实的构建证明由第一次正式发布运行生成，这次运行还没有进行。
+`--repo` 指明仓库。如果证明是由另一个工作流文件生成的，`--signer-workflow` 会让检查失败。
+
+未针对 GitHub 验证：对发布文件使用这些选项运行 `gh attestation verify`。这些选项读自 `gh attestation verify --help`。测试运行不会生成任何构建证明。第一份真实的构建证明由第一次正式发布运行生成，这次运行还没有进行。
 
 ### 打包构建中的许可证 {#licenses-in-the-packaged-builds}
 
 InvenTag 使用 MIT 许可证。打包构建还携带其他项目的文件。声明文件列出了它们和它们的许可证文本。
 
 可执行文件压缩包、`.deb` 和 `.rpm` 包含 GNU libiconv，这是一个使用 GNU 宽通用公共许可证（LGPL）2.1 版的库。
-计划中的 Homebrew formula 安装同一个压缩包，所以它也包含 libiconv。libiconv 的代码位于 lxml 的扩展模块内部。
+Homebrew formula（尚未发布）安装同一个压缩包，所以它也包含 libiconv。libiconv 的代码位于 lxml 的扩展模块内部。
 InvenTag 需要 lxml 来写 Word 文件。lxml 项目构建这些模块，并把 libiconv 链接进去。
-InvenTag 原样携带 lxml 的文件：构建时会把每个文件与锁定文件所指定的 wheel 中的文件逐字节比较。
+在压缩包、`.deb` 和 `.rpm` 中，InvenTag 原样携带 lxml 的文件：构建时会把每个文件与锁定文件所指定的 wheel 中的文件逐字节比较。
 
 - 用 pip、pipx 或 uv 安装时，InvenTag 的文件中不包含 libiconv。你的安装工具会从 Python 包索引下载 lxml 自己的 wheel。
 - 声明文件是 `THIRD-PARTY-LICENSES.txt`：在压缩包中是 `inventag/THIRD-PARTY-LICENSES.txt`，
@@ -87,6 +91,8 @@ InvenTag 原样携带 lxml 的文件：构建时会把每个文件与锁定文�
   在 macOS 上，替换模块之后要重新签名：`codesign -s - --force <file>`。
 
 未针对你自己构建的 lxml 验证：你构建的模块能代替内置的模块正常工作。
+
+未针对 Homebrew 安装验证：Homebrew 不会改动 lxml 的文件。
 
 未针对 GNU 的服务器验证：这两个 libiconv 地址会一直有响应。工作流在它的测试运行当天取到了这两个地址。
 

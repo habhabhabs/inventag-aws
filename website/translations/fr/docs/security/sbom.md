@@ -68,13 +68,19 @@ attestation de construction au nom du workflow. Pour vérifier un fichier avec l
 CLI GitHub :
 
 ```bash title="Terminal"
-gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb --repo habhabhabs/inventag-aws
+gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb \
+  --repo habhabhabs/inventag-aws \
+  --signer-workflow habhabhabs/inventag-aws/.github/workflows/package.yml
 ```
 
 Pour vérifier une somme de contrôle, voir
 [Vérifier le téléchargement](../getting-started/installation.md#check-the-download).
 
-Non vérifié sur GitHub : `gh attestation verify` sur un fichier de publication. Les exécutions de test ne créent aucune attestation. La première attestation réelle est créée par la première exécution de publication, et cette exécution n’a pas encore eu lieu.
+`--repo` nomme le dépôt. `--signer-workflow` fait échouer la vérification si un
+autre fichier de workflow a créé l’attestation.
+
+Non vérifié sur GitHub : `gh attestation verify` avec ces options sur un fichier
+de publication. Les options sont lues dans `gh attestation verify --help`. Les exécutions de test ne créent aucune attestation. La première attestation réelle est créée par la première exécution de publication, et cette exécution n’a pas encore eu lieu.
 
 ### Licences dans les versions empaquetées {#licenses-in-the-packaged-builds}
 
@@ -84,11 +90,11 @@ licences.
 
 Les archives de l’exécutable, le `.deb` et le `.rpm` embarquent GNU libiconv, une
 bibliothèque sous la licence publique générale limitée de GNU (LGPL) version 2.1.
-La formule Homebrew prévue installe la même archive, donc elle l’embarque aussi.
-Le code de libiconv se trouve dans les modules d’extension de lxml. InvenTag a
-besoin de lxml pour écrire des fichiers Word. Le projet lxml construit ces modules
-et y lie libiconv. InvenTag embarque les fichiers de lxml sans modification : la
-construction compare chaque fichier octet par octet avec le fichier du wheel du lock.
+La formule Homebrew (pas encore publiée) installe la même archive, donc elle
+l’embarque aussi. Le code de libiconv se trouve dans les modules d’extension de
+lxml. InvenTag a besoin de lxml pour écrire des fichiers Word. Le projet lxml
+construit ces modules et y lie libiconv. Dans l’archive, le `.deb` et le `.rpm`,
+InvenTag embarque les fichiers de lxml sans modification : la construction compare chaque fichier octet par octet avec le fichier du wheel du lock.
 
 - Une installation avec pip, pipx ou uv ne contient pas libiconv dans un fichier
   d’InvenTag. Votre installateur télécharge le wheel propre de lxml depuis le Python
@@ -113,6 +119,8 @@ construction compare chaque fichier octet par octet avec le fichier du wheel du 
   nouveau un module après l’avoir remplacé : `codesign -s - --force <file>`.
 
 Non vérifié sur votre propre build de lxml : qu’un module que vous construisez fonctionne à la place du module inclus.
+
+Non vérifié sur une installation Homebrew : que Homebrew laisse les fichiers de lxml sans modification.
 
 Non vérifié sur les serveurs de GNU : que les deux adresses de libiconv continuent de répondre. Le workflow a obtenu les deux le jour de son exécution de test.
 
