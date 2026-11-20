@@ -502,7 +502,7 @@ jobs:
             if [ ! -e "$p" ]; then echo "missing: $p"; continue; fi
             lipo -archs "$p"; otool -L "$p"; shasum -a 256 "$p"
             codesign -v "$p" && echo "codesign -v: ok" || echo "codesign -v: failed"
-            codesign -dv "$p" 2>&1 | head -5
+            codesign -dv "$p" 2>&1 | sed -n 1,5p
           done
         done
         find "$fw" -maxdepth 6 \( -iname '*licen*' -o -iname 'copying*' \) -print
@@ -679,7 +679,10 @@ jobs:
               zsh -c 'fpath=("$(dirname "$1")" $fpath); autoload -Uz compinit && compinit -u -d /tmp/zcompdump && autoload -Uz _inventag && whence -w _inventag' _ "$Z" ;;
             fish)
               fish -n "$F"
-              fish -c 'source $argv[1]; complete -c inventag' "$F" | grep -q inventag ;;
+              # grep -q leaves at the first match and fish would get SIGPIPE,
+              # which pipefail turns into a silent exit 1 (dry run 6): capture first.
+              out=$(fish -c 'source $argv[1]; complete -c inventag' "$F")
+              grep -q inventag <<<"$out" ;;
           esac
           echo "completion loads in $shell"
         done
@@ -710,7 +713,7 @@ jobs:
           fi
         done < /tmp/inventag-files.txt
         if [ -e /opt/inventag ]; then
-          echo "left: /opt/inventag"; find /opt/inventag | head -20; status=1
+          echo "left: /opt/inventag"; find /opt/inventag | sed -n 1,20p; status=1
         fi
         # bash remembers the path of a command that ran before; forget it, or
         # command -v names a file that the uninstall removed (dry run 6)
