@@ -62,7 +62,8 @@ case "$stage" in
     "$py" "$ROOT/scripts/packaging/third_party_licenses.py" \
       --bundle "$bundle" --workpath "$build/inventag" \
       --out "$bundle/THIRD-PARTY-LICENSES.txt" \
-      --components-json "$work/components.json"
+      --components-json "$work/components.json" \
+      --build-record "$work/build-record-macos.txt"
 
     "$bundle/inventag" --version
     share="$bundle/share"
