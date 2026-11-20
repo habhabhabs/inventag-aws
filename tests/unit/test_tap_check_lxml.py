@@ -147,7 +147,7 @@ def test_the_tap_workflow_runs_the_check_on_both_systems():
         runs = "\n".join(s.get("run", "") for s in job["steps"])
         assert "brew --cache" in runs
         assert "libexec" in runs
-        assert "sha256" in runs and "lxml" in runs
+        assert ("sha256sum" in runs or "shasum -a 256" in runs) and "lxml" in runs
         assert runs.index("brew install") < runs.index("lxml")
         assert runs.index("lxml") < runs.index("brew uninstall")
 
