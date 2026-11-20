@@ -301,9 +301,10 @@ def test_throttled_and_denied_calls_are_in_the_ledger():
             sqs, "sqs", "eu-west-1", ("list_queues", "QueueUrls", "Queue")
         )
     outcomes = [(e.region, e.outcome, e.operation) for e in disc.coverage.entries]
+    # The ledger is read in sorted order (A4), not in the order of recording.
     assert outcomes == [
-        ("us-east-1", "throttled", "ListQueues"),
         ("eu-west-1", "denied", "ListQueues"),
+        ("us-east-1", "throttled", "ListQueues"),
     ]
     assert len(disc.coverage.failed_units()) == 2
     assert disc.coverage.summary() == {"throttled": 1, "denied": 1}
