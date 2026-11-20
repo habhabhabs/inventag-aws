@@ -830,3 +830,21 @@ def test_the_licence_check_prints_the_unmapped_list_first(tpl, tmp_path, capsys)
         captured.err
     )
     assert out_file.is_file()
+
+
+def test_the_unmapped_list_comes_first_in_a_build_log(tpl, tmp_path):
+    # A CI log merges stdout and stderr through a pipe: the list must be
+    # written out before the first LICENCE CHECK line.
+    bundle, work = _fake_bundle(tmp_path)
+    args = ["--bundle", str(bundle), "--workpath", str(work)]
+    args += ["--out", str(tmp_path / "T.txt"), "--platform", "darwin"]
+    run = subprocess.run(
+        [sys.executable, str(SCRIPTS / "third_party_licenses.py"), *args],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        check=False,
+    )
+    lines = run.stdout.splitlines()
+    assert run.returncode == 1
+    assert lines[:4] == _expected_fake_listing(tpl)
