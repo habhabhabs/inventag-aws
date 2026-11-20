@@ -6,6 +6,7 @@ Comprehensive VPC and subnet analysis for network visibility and capacity planni
 Extracted and enhanced from bom_converter.py VPC enrichment functionality.
 """
 
+import copy
 import ipaddress
 import boto3
 from typing import Dict, List, Any, Optional, Set, Tuple
@@ -13,6 +14,7 @@ from dataclasses import dataclass, field
 from collections import defaultdict
 from botocore.exceptions import ClientError
 from .aws_clients import create_client
+from .ordered_tasks import run_ordered
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,6 +23,9 @@ logger = logging.getLogger(__name__)
 _DENIED_CODES = frozenset(
     {"AccessDenied", "AccessDeniedException", "UnauthorizedOperation"}
 )
+
+# Regions read at the same time (the analysis reads each region in its own task).
+_REGION_WORKERS = 8
 
 # NAT gateway and peering states that mean the resource is gone or never worked.
 _DEAD_NAT_STATES = {"deleted", "deleting", "failed"}
@@ -114,9 +119,18 @@ class NetworkAnalyzer:
     - VPC peering and transit gateway relationship mapping
     """
 
-    def __init__(self, session: Optional[boto3.Session] = None):
-        """Initialize the NetworkAnalyzer."""
+    def __init__(
+        self,
+        session: Optional[boto3.Session] = None,
+        max_workers: int = _REGION_WORKERS,
+    ):
+        """Initialize the NetworkAnalyzer.
+
+        ``max_workers`` regions are read at the same time; the answer does not
+        depend on it.
+        """
         self.session = session or boto3.Session()
+        self.max_workers = max_workers
         self.vpc_cache: Dict[str, VPCAnalysis] = {}
         self.subnet_cache: Dict[str, SubnetAnalysis] = {}
         self.region_clients: Dict[str, Any] = {}
@@ -142,12 +156,11 @@ class NetworkAnalyzer:
         """
         logger.info("Starting VPC resource analysis...")
 
-        # Get unique regions from resources
-        regions = self._extract_regions(resources)
+        # Get unique regions from resources, in sorted order
+        regions = sorted(self._extract_regions(resources))
 
         # Cache VPC and subnet information for each region
-        for region in regions:
-            self._cache_network_info(region)
+        self._cache_regions(regions)
 
         # Map resources to their network context
         self._map_resources_to_network(resources)
@@ -304,6 +317,33 @@ class NetworkAnalyzer:
             if region and region != "global":
                 regions.add(region)
         return regions
+
+    def _cache_regions(self, regions: List[str]) -> None:
+        """Read the regions at the same time; merge them in the order given.
+
+        Each task fills its own copy of the caches (a task writes nothing
+        shared). This thread then merges the copies in region order, so the
+        caches do not depend on which region finished first. A region whose
+        task raised stops the analysis with the error of the first such region.
+        """
+        answers = run_ordered(
+            self._read_region, regions, self.max_workers, "inventag-network"
+        )
+        for region, (scratch, error) in zip(regions, answers):
+            if error is not None:
+                raise error
+            self.vpc_cache.update(scratch.vpc_cache)
+            self.subnet_cache.update(scratch.subnet_cache)
+            self.region_clients.update(scratch.region_clients)
+
+    def _read_region(self, region: str) -> "NetworkAnalyzer":
+        """The caches of one region, in a copy of this analyzer."""
+        scratch = copy.copy(self)
+        scratch.vpc_cache = {}
+        scratch.subnet_cache = {}
+        scratch.region_clients = {}
+        scratch._cache_network_info(region)
+        return scratch
 
     def _cache_network_info(self, region: str):
         """Cache VPC and subnet information for a region."""
@@ -555,51 +595,68 @@ class NetworkAnalyzer:
             {key[1] for key in map(self._cache_group_key, resources) if key}
         )
         groups: Dict[Tuple[str, str, str], Tuple[Optional[str], List[str]]] = {}
-        for region in regions:
-            try:
-                client = create_client(self.session, "elasticache", region)
-                marker = None
-                while True:
-                    params = {"Marker": marker} if marker else {}
-                    response = client.describe_cache_subnet_groups(**params)
-                    for group in response.get("CacheSubnetGroups", []):
-                        key = (
-                            self._arn_account(group.get("ARN")),
-                            region,
-                            group["CacheSubnetGroupName"],
-                        )
-                        groups[key] = (
-                            group.get("VpcId"),
-                            [
-                                s["SubnetIdentifier"]
-                                for s in group.get("Subnets", [])
-                                if s.get("SubnetIdentifier")
-                            ],
-                        )
-                    marker = response.get("Marker")
-                    if not isinstance(marker, str) or not marker:
-                        break
-            except Exception as error:  # noqa: BLE001 - optional counts only
-                # Any failure (denied, throttled, no connection ...) leaves the
-                # analysis as it was without the ElastiCache counts.
-                if isinstance(error, ClientError):
-                    code = error.response.get("Error", {}).get("Code", "unknown")
-                else:
-                    code = type(error).__name__
-                self.unread_cache_regions[region] = code
-                if code in _DENIED_CODES:
-                    step = "Allow elasticache:DescribeCacheSubnetGroups to count them."
-                else:
-                    step = (
-                        "Run the scan again; if it repeats, report it with the "
-                        "--debug log."
-                    )
-                logger.warning(
-                    f"Could not read the ElastiCache subnet groups in {region} "
-                    f"({code}), so ElastiCache clusters there are not counted in "
-                    f"a VPC or subnet. {step}"
+        answers = run_ordered(
+            self._read_cache_region, regions, self.max_workers, "inventag-network"
+        )
+        for region, (answer, _) in zip(regions, answers):
+            found, error = answer
+            # What was read before a failure is kept, as in v1.3.0.
+            groups.update(found)
+            if error is None:
+                continue
+            # Any failure (denied, throttled, no connection ...) leaves the
+            # analysis as it was without the ElastiCache counts.
+            if isinstance(error, ClientError):
+                code = error.response.get("Error", {}).get("Code", "unknown")
+            else:
+                code = type(error).__name__
+            self.unread_cache_regions[region] = code
+            if code in _DENIED_CODES:
+                step = "Allow elasticache:DescribeCacheSubnetGroups to count them."
+            else:
+                step = (
+                    "Run the scan again; if it repeats, report it with the "
+                    "--debug log."
                 )
+            logger.warning(
+                f"Could not read the ElastiCache subnet groups in {region} "
+                f"({code}), so ElastiCache clusters there are not counted in "
+                f"a VPC or subnet. {step}"
+            )
         return groups
+
+    def _read_cache_region(self, region: str) -> Tuple[
+        Dict[Tuple[str, str, str], Tuple[Optional[str], List[str]]],
+        Optional[Exception],
+    ]:
+        """The cache subnet groups of one region, and the error that stopped the
+        read (None when it finished). A failure leaves the groups read so far."""
+        groups: Dict[Tuple[str, str, str], Tuple[Optional[str], List[str]]] = {}
+        try:
+            client = create_client(self.session, "elasticache", region)
+            marker = None
+            while True:
+                params = {"Marker": marker} if marker else {}
+                response = client.describe_cache_subnet_groups(**params)
+                for group in response.get("CacheSubnetGroups", []):
+                    key = (
+                        self._arn_account(group.get("ARN")),
+                        region,
+                        group["CacheSubnetGroupName"],
+                    )
+                    groups[key] = (
+                        group.get("VpcId"),
+                        [
+                            s["SubnetIdentifier"]
+                            for s in group.get("Subnets", [])
+                            if s.get("SubnetIdentifier")
+                        ],
+                    )
+                marker = response.get("Marker")
+                if not isinstance(marker, str) or not marker:
+                    return groups, None
+        except Exception as error:  # silent-ok: returned to the caller, who warns
+            return groups, error
 
     def cache_group_notes(self) -> List[str]:
         """Run notes for the regions whose cache subnet groups were not read."""
