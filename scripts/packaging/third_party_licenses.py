@@ -93,6 +93,7 @@ LXML_PARAGRAPH = (
     "installation directory. "
     "You can replace them with your own build of lxml of the same version."
 )
+LIBICONV_HOME = "https://www.gnu.org/software/libiconv/"
 LIBICONV_DOWNLOAD = "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-{version}.tar.gz"
 LXML_SOURCE = (
     "lxml {version} source (the Source address in its package metadata): {url}"
@@ -208,7 +209,7 @@ _LXML = (
         # libiconv's own exported variable does: (major << 8) | minor.
         "elfsym:_libiconv_version",
         requires_strings=b"libiconv_open",
-        urls=("https://www.gnu.org/software/libiconv/",),
+        urls=(LIBICONV_HOME,),
     ),
 )
 
@@ -779,6 +780,30 @@ def add_libiconv_note(comp: Component) -> None:
         ]
 
 
+def libiconv_component(
+    versions: Dict[str, str], texts: Sequence[Tuple[str, str]] = ()
+) -> Component:
+    """The one libiconv component for the lxml modules that carry it.
+
+    ``versions`` maps each module (its path) to the version its own symbol
+    gives, "" when it has none. The executable's notices and the container
+    notice both build the component here. The version is recorded only when
+    every module gives the same one.
+    """
+    found = set(versions.values())
+    comp = Component(
+        LXML_ICONV,
+        found.pop() if len(found) == 1 else "",
+        LXML_ICONV_SPDX,
+        "c-library",
+        sorted(versions),
+        list(texts),
+        urls=[LIBICONV_HOME],
+    )
+    add_libiconv_note(comp)
+    return comp
+
+
 def _iconv_version(path: Path) -> str:
     """libiconv's version from its own symbol in the module, or ""."""
     raw = elf_symbol_bytes(Path(path).read_bytes(), "_libiconv_version")
@@ -797,8 +822,7 @@ def libiconv_notice() -> str:
     do not name one version, the version is not recorded.
     """
     lxml = _installed("lxml")
-    files: List[str] = []
-    versions = set()
+    versions: Dict[str, str] = {}
     for f in sorted((lxml.files or []) if lxml else [], key=str):
         rel = str(f).replace(os.sep, "/")
         path = Path(lxml.locate_file(f))
@@ -806,8 +830,7 @@ def libiconv_notice() -> str:
             continue
         if b"libiconv_open" not in path.read_bytes():
             continue
-        files.append(rel)
-        versions.add(_iconv_version(path))
+        versions[rel] = _iconv_version(path)
     out = [
         "GNU libiconv in lxml's extension modules (container image)",
         "",
@@ -815,19 +838,10 @@ def libiconv_notice() -> str:
         "the texts and sources are; it makes no statement about any licence.",
         "",
     ]
-    if not files:
+    if not versions:
         out.append("No lxml extension module in this image contains GNU libiconv.")
         return "\n".join(out) + "\n"
-    version = versions.pop() if len(versions) == 1 else ""
-    comp = Component(
-        LXML_ICONV,
-        version,
-        LXML_ICONV_SPDX,
-        "c-library",
-        files,
-        urls=["https://www.gnu.org/software/libiconv/"],
-    )
-    add_libiconv_note(comp)
+    comp = libiconv_component(versions)
     out.append(f"- {comp.name} {comp.version or '(version not recorded)'}: {comp.spdx}")
     out += [f"    source: {u}" for u in comp.urls]
     out += [f"    file: {f}" for f in comp.files]
