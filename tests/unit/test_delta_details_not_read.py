@@ -534,15 +534,6 @@ def test_cli_details_denied_then_full_run_lists_no_false_modified(aws, run_as):
         assert f"{unit} (previous run: denied)" in report["text"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "A-78, needs from another order: the generator does not yet write the snapshot key "
-        "details_not_read (exact patch for inventag/core/cloud_bom_generator.py in "
-        "reports/v14-s1-delta.md). Remove this mark when the patch is merged."
-    ),
-)
 def test_cli_details_denied_then_full_run_without_the_emulated_key(aws, run_as):
     report = _two_cli_runs(aws, run_as, R5_DENY, ())
     assert report["changes"] == MOTO_CLOCK_CHANGE, report["text"]
