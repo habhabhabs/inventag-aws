@@ -754,20 +754,29 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
     out = sorted(comps.values(), key=lambda c: (c.name.casefold(), c.version))
     for comp in out:
         if comp.name == LXML_ICONV:
-            names = ", ".join(sorted(Path(f).name for f in comp.files))
-            comp.notes = [LXML_PARAGRAPH.format(files=names)]
-            if comp.version:
-                comp.urls.append(LIBICONV_DOWNLOAD.format(version=comp.version))
-            lxml = _installed("lxml")
-            if lxml is not None:
-                comp.urls += [
-                    LXML_SOURCE.format(version=lxml.version, url=u)
-                    for u in _source_urls(lxml.metadata)
-                ]
+            add_libiconv_note(comp)
     for comp in out:
         problems += licence_problems(comp)
         problems += openssl_problems(comp)
     return out, sorted(set(problems))
+
+
+def add_libiconv_note(comp: Component) -> None:
+    """The libiconv paragraph and source addresses (architect decision 2).
+
+    One function for every artefact that carries lxml's modules, so the
+    words are the same everywhere.
+    """
+    names = ", ".join(sorted(Path(f).name for f in comp.files))
+    comp.notes = [LXML_PARAGRAPH.format(files=names)]
+    if comp.version:
+        comp.urls.append(LIBICONV_DOWNLOAD.format(version=comp.version))
+    lxml = _installed("lxml")
+    if lxml is not None:
+        comp.urls += [
+            LXML_SOURCE.format(version=lxml.version, url=u)
+            for u in _source_urls(lxml.metadata)
+        ]
 
 
 def elf_symbol_bytes(data: bytes, name: str) -> Optional[bytes]:
