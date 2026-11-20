@@ -312,6 +312,17 @@ class _SampleBuild:
         return "9.9" if source else ""
 
 
+LXML_GOLDEN = (
+    "lxml's binary wheel, as published on PyPI under the project name lxml, "
+    "is carried unmodified. Its extension modules (etree.cpython-312.so, "
+    "objectify.cpython-312.so) contain GNU libiconv under the GNU Lesser "
+    "General Public License version 2.1, linked statically into those "
+    "modules. The lxml modules are separate files in the installation "
+    "directory. You can replace them with your own build of lxml of the same "
+    "version."
+)
+
+
 def _sample_rows(tpl):
     return (
         tpl.Row("inventag", "pyinstaller"),
@@ -351,12 +362,22 @@ def test_notices_file_from_a_sample_table(tpl, monkeypatch):
     assert iconv.version == "9.9"
     assert "libxslt (in lxml)" not in [c.name for c in comps]  # no symbols, no row
     assert "etree.cpython-312.so, objectify.cpython-312.so" in text
+    assert LXML_GOLDEN in text
     assert (
         "You can replace them with your own build of lxml of the same version." in text
     )
     assert "Not legal advice" in text
     for word in ("complies", "satisfies", "meets", "compliant"):
         assert word not in text.lower()
+
+
+def test_the_lxml_paragraph_says_only_what_is_proven(tpl):
+    # Architect review F1: who built the wheel is not proven, so the paragraph
+    # names where it was published, not who built it.
+    files = "etree.cpython-312.so, objectify.cpython-312.so"
+    assert tpl.LXML_PARAGRAPH.format(files=files) == LXML_GOLDEN
+    for words in ("built by", "by that build", "lxml project"):
+        assert words not in tpl.LXML_PARAGRAPH
 
 
 def test_lxml_file_that_differs_from_the_wheel_fails(tpl, monkeypatch):
