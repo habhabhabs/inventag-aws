@@ -39,14 +39,20 @@ def tpl():
 VERSION_RX = re.compile(r"(?<![\w.])v?\d+\.\d+\.\d+(?![\w.])")
 
 
-def test_no_version_number_under_packaging():
-    """The version exists only in inventag/_version.py (plan 3.4)."""
+def _version_lines(base: Path):
+    """Lines under ``base`` that hold a version number, as path:line: text."""
     found = []
-    for path in sorted(PACKAGING.rglob("*")):
+    for path in sorted(base.rglob("*")):
         if path.is_file():
             for n, line in enumerate(path.read_text("utf-8").splitlines(), 1):
                 if VERSION_RX.search(line):
-                    found.append(f"{path.relative_to(ROOT)}:{n}: {line.strip()}")
+                    found.append(f"{path.relative_to(base.parent)}:{n}: {line.strip()}")
+    return found
+
+
+def test_no_version_number_under_packaging():
+    """The version exists only in inventag/_version.py (plan 3.4)."""
+    found = _version_lines(PACKAGING)
     assert not found, "version numbers under packaging/:\n" + "\n".join(found)
 
 
