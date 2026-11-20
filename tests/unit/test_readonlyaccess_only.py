@@ -587,15 +587,15 @@ def test_R6_provisional_only_the_identity_call_with_fail_on_account_error_exits_
     strict=True,
     raises=AssertionError,
     reason=(
-        "FINDING R6-1: the plan expects exit 5 with --fail-on-account-error when every "
-        "listing of the account was denied; v1.3.1 exits 0. The code looks only at accounts "
-        "whose session failed (inventag/cli/main.py:1205 reads results['failed_accounts'], "
-        "built by CloudBOMGenerator._failed_accounts, inventag/core/cloud_bom_generator.py:784), "
-        "and not at _accounts_that_read_nothing (cloud_bom_generator.py:840). The exit code is a "
-        "published interface: this is a decision for the architect, not a fix for W1."
+        "Register row A-02, planned for v2.0.0 with the other exit-code changes: an account "
+        "whose every listing was refused still counts as scanned, so --fail-on-account-error "
+        "exits 0 in v1.x (use --fail-if-empty to fail a CI job; it exits 6). The code looks only "
+        "at accounts whose session failed (inventag/cli/main.py:1205, "
+        "inventag/core/cloud_bom_generator.py:784), not at _accounts_that_read_nothing "
+        "(cloud_bom_generator.py:840). This test is the target for v2.0.0."
     ),
 )
-def test_R6_FINDING_provisional_account_that_read_nothing_exits_5_with_fail_on_account_error(
+def test_R6_FINDING_account_that_read_nothing_exits_5_with_fail_on_account_error(
     aws, run_as
 ):
     run = run_as(ONLY_IDENTITY, "--create-excel", "--fail-on-account-error")
@@ -682,15 +682,13 @@ def test_R7_provisional_R5_then_a_full_run_adds_and_removes_nothing(aws, run_as)
     strict=True,
     raises=AssertionError,
     reason=(
-        "FINDING R7-1: when a detail call is denied in one of two runs (here "
-        "s3:GetBucketLocation and lambda:GetFunctionConfiguration), the change report lists the "
-        "S3 bucket and the Lambda function as 'modified' (raw_data.boto3_region, memory_size, "
-        "runtime, timeout, boto3_config), although nothing changed in the account. The run notes "
-        "say the details were not read, but the change report does not use them: "
-        "_RunScope (inventag/state/delta_detector.py:389) skips every ledger entry whose source is "
-        "not 'service-api' (line 417), so the 'service-api-detail' entries that discovery writes "
-        "(inventag/discovery/coverage.py:30) never make a field 'not compared'. A false change "
-        "report is a behaviour fix for the lead of the change report, not for W1."
+        "Register row A-78, blocks v1.4.0 (order S1): when a detail call is denied in one of two "
+        "runs (here s3:GetBucketLocation and lambda:GetFunctionConfiguration), the change report "
+        "lists the S3 bucket and the Lambda function as 'modified' although nothing changed. "
+        "_RunScope (inventag/state/delta_detector.py:389) skips every ledger entry whose source "
+        "is not 'service-api' (line 417), so the 'service-api-detail' entries that discovery "
+        "writes (inventag/discovery/coverage.py:30) never make a field 'not compared'. The fix "
+        "commit of S1 lifts this mark."
     ),
 )
 def test_R7_FINDING_provisional_a_denied_detail_call_does_not_make_a_resource_modified(
