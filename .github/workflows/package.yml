@@ -352,18 +352,20 @@ jobs:
 
     # The arm64 packages are installed once here, on the arm64 runner, in a
     # fresh container each (.deb on debian:12). The x86_64 packages are smoked by
-    # smoke-linux. The image is pulled by tag; its digest goes into the summary.
+    # smoke-linux. The image is pulled by tag with docker pull; the digest of that pull goes into the summary.
     - name: "Start smoke container: .deb on debian:12"
       env:
         IMAGE: debian:12
       run: |
-        docker run -d --name smoke-deb -v "$RUNNER_TEMP/work/out/pkg:/pkg:ro" "$IMAGE" sleep infinity
-        digest=$(docker image inspect --format '{{join .RepoDigests ", "}}' "$IMAGE")
+        pulled=$(docker pull "$IMAGE")
+        printf '%s\n' "$pulled"
+        digest=$(printf '%s\n' "$pulled" | sed -n 's/^Digest: \(sha256:[0-9a-f]\{64\}\)$/\1/p' | head -n 1)
         if [ -z "$digest" ]; then
           echo "::error::No digest is recorded for the image $IMAGE."
           exit 1
         fi
         echo "- smoke image $IMAGE: $digest (arm64)" >> "$GITHUB_STEP_SUMMARY"
+        docker run -d --name smoke-deb -v "$RUNNER_TEMP/work/out/pkg:/pkg:ro" "$IMAGE" sleep infinity
 
     - name: "Install smoke: .deb on debian:12"
       run: |
@@ -386,18 +388,20 @@ jobs:
 
     # The arm64 packages are installed once here, on the arm64 runner, in a
     # fresh container each (.rpm on rockylinux:9). The x86_64 packages are smoked by
-    # smoke-linux. The image is pulled by tag; its digest goes into the summary.
+    # smoke-linux. The image is pulled by tag with docker pull; the digest of that pull goes into the summary.
     - name: "Start smoke container: .rpm on rockylinux:9"
       env:
         IMAGE: rockylinux:9
       run: |
-        docker run -d --name smoke-rpm -v "$RUNNER_TEMP/work/out/pkg:/pkg:ro" "$IMAGE" sleep infinity
-        digest=$(docker image inspect --format '{{join .RepoDigests ", "}}' "$IMAGE")
+        pulled=$(docker pull "$IMAGE")
+        printf '%s\n' "$pulled"
+        digest=$(printf '%s\n' "$pulled" | sed -n 's/^Digest: \(sha256:[0-9a-f]\{64\}\)$/\1/p' | head -n 1)
         if [ -z "$digest" ]; then
           echo "::error::No digest is recorded for the image $IMAGE."
           exit 1
         fi
         echo "- smoke image $IMAGE: $digest (arm64)" >> "$GITHUB_STEP_SUMMARY"
+        docker run -d --name smoke-rpm -v "$RUNNER_TEMP/work/out/pkg:/pkg:ro" "$IMAGE" sleep infinity
 
     - name: "Install smoke: .rpm on rockylinux:9"
       run: |
@@ -546,6 +550,21 @@ jobs:
     - name: Install moto (the version of requirements-dev.txt)
       run: python -m pip install "moto[server]==5.2.5"
 
+    # The images are pulled by tag on purpose, by an explicit docker pull. The
+    # digest comes from the "Digest:" line of that pull (RepoDigests is empty on
+    # the runner, dry run 6) and goes into the job summary, so that a failure
+    # can be tied to an image.
+    - name: Record the digest of the image
+      run: |
+        pulled=$(docker pull "$IMAGE")
+        printf '%s\n' "$pulled"
+        digest=$(printf '%s\n' "$pulled" | sed -n 's/^Digest: \(sha256:[0-9a-f]\{64\}\)$/\1/p' | head -n 1)
+        if [ -z "$digest" ]; then
+          echo "::error::No digest is recorded for the image $IMAGE."
+          exit 1
+        fi
+        echo "- smoke image $IMAGE: $digest" >> "$GITHUB_STEP_SUMMARY"
+
     - name: Start a fresh system
       run: |
         mkdir -p "$RUNNER_TEMP/smoke-shared"
@@ -553,17 +572,6 @@ jobs:
           -v "$RUNNER_TEMP/artifacts:/artifacts:ro" \
           -v "$RUNNER_TEMP/smoke-shared:$RUNNER_TEMP/smoke-shared" \
           "$IMAGE" sleep infinity
-
-    # The images are pulled by tag on purpose. The digest of what a run got
-    # goes into the job summary so that a failure can be tied to an image.
-    - name: Record the digest of the image
-      run: |
-        digest=$(docker image inspect --format '{{join .RepoDigests ", "}}' "$IMAGE")
-        if [ -z "$digest" ]; then
-          echo "::error::No digest is recorded for the image $IMAGE."
-          exit 1
-        fi
-        echo "- smoke image $IMAGE: $digest" >> "$GITHUB_STEP_SUMMARY"
 
     - name: Install the package
       run: |
