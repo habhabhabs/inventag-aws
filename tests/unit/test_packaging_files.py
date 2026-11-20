@@ -2863,3 +2863,197 @@ def test_the_licence_check_writes_the_libiconv_evidence_into_the_build_record(
     tpl.main(args + ["--platform", "darwin"])
     assert "BUILD RECORD: libiconv evidence: x\n" in capsys.readouterr().out
     assert record.read_text("utf-8") == "line one\nlibiconv evidence: x\n"
+
+
+# ---------- dry run 11 (macOS arm64): the build record step crashed
+# third_party_licenses.py sorted ALL components by _version_key in
+# iconv_evidence; "2.9.0.post0" (python-dateutil, PEP 440) is not numeric:
+# ValueError. The macOS run had 45 components. Names and package versions
+# below are those of run 10/11's macOS build environment (run 10 log line 298,
+# requirements-lock.txt); C library versions marked "(sample)" are not read
+# from a log (the notices file was not printed) and stand for the forms seen.
+RUN11_PACKAGES = [
+    ("attrs", "26.1.0"),
+    ("boto3", "1.44.6"),
+    ("botocore", "1.44.6"),
+    ("certifi", "2026.10.23"),
+    ("cffi", "2.1.1"),
+    ("charset-normalizer", "3.5.2"),
+    ("colorama", "0.4.6"),
+    ("cryptography", "50.0.2"),
+    ("et_xmlfile", "2.0.0"),
+    ("idna", "3.20"),
+    ("jaraco.classes", "3.4.0"),
+    ("jaraco.context", "6.1.2"),
+    ("jaraco.functools", "4.6.0"),
+    ("jmespath", "1.1.0"),
+    ("jsonschema", "4.26.0"),
+    ("jsonschema-specifications", "2025.9.1"),
+    ("keyring", "25.7.0"),
+    ("lxml", "6.1.3"),
+    ("more-itertools", "11.2.1"),
+    ("openpyxl", "3.1.5"),
+    ("psutil", "7.2.2"),
+    ("pycparser", "3.12"),
+    ("python-dateutil", "2.9.0.post0"),
+    ("python-docx", "1.2.0"),
+    ("PyYAML", "6.0.3"),
+    ("referencing", "0.37.0"),
+    ("requests", "2.34.2"),
+    ("rpds-py", "2026.9.1"),
+    ("s3transfer", "0.19.3"),
+    ("six", "1.17.0"),
+    ("typing_extensions", "4.16.0"),
+    ("urllib3", "2.8.0"),
+]
+RUN11_C_LIBRARIES = [
+    ("libxml2 (in lxml)", "2.14.6"),  # (sample)
+    ("libxslt (in lxml)", "1.1.43"),  # (sample)
+    ("libexslt (in lxml)", "0.8.24"),  # (sample)
+    ("zlib (in lxml)", "1.3.1.zlib-ng"),  # (sample) a non-numeric form
+    ("OpenSSL (in cryptography)", "3.5.4"),  # (sample)
+    ("libyaml (in PyYAML)", "0.2.5"),
+    ("libffi (in cffi)", ""),  # not recorded: the wheel does not say
+    ("OpenSSL (in the Python.framework)", "3.0.16"),  # (sample)
+    ("libmpdec (in CPython's _decimal)", "2.5.1"),  # run 10 line 854
+    ("expat (in CPython's pyexpat)", "2.7.1"),  # (sample)
+    ("liblzma (in CPython's _lzma)", "5.2.3"),  # run 10 line 855
+]
+ODD_VERSIONS = ["1.2.post0", "2024.1rc1", "", "1.0+local", None, "1.18", "1.9"]
+
+
+def _run11_components(tpl, iconv=()):
+    comps = [tpl.Component(n, v, "MIT", "package") for n, v in RUN11_PACKAGES]
+    comps += [tpl.Component(n, v, "MIT", "c-library") for n, v in RUN11_C_LIBRARIES]
+    comps += [
+        tpl.Component("CPython", "3.12.10", "PSF-2.0", "runtime"),
+        tpl.Component("PyInstaller bootloader", "6.22.3", tpl.BOOTLOADER, "runtime"),
+    ]
+    return comps + list(iconv)
+
+
+def test_the_version_key_is_total_and_stable(tpl):
+    keys = [tpl._version_key(v) for v in ODD_VERSIONS]  # never raises
+    assert all(isinstance(k, tuple) for k in keys)
+    ordered = sorted(ODD_VERSIONS, key=tpl._version_key)
+    assert sorted(reversed(ODD_VERSIONS), key=tpl._version_key) == ordered
+    # Numbers by value; a text part after a number of the same place.
+    assert ordered.index("1.9") < ordered.index("1.18")
+    assert tpl._version_key("1.2") < tpl._version_key("1.2.post0")
+    assert tpl._version_key("2024.1") < tpl._version_key("2024.1rc1")
+    assert tpl._version_key(None) == tpl._version_key("") == ()
+    assert tpl._version_key("1.0+local") > tpl._version_key("1.0")
+    # A non-ASCII digit is text, not a number (int() would refuse it).
+    assert tpl._version_key("1.²") == ((0, 1, ""), (1, 0, "²"))
+
+
+def test_the_libiconv_evidence_ignores_the_other_components_of_run_11(
+    tpl, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(tpl, "_installed", lambda name: None)
+    first = _macho_iconv("1.17", X86_64)
+    data = _universal(first, _macho_iconv("1.17", ARM64))
+    build = _EvidenceIconvBuild(tmp_path, data)
+    rows = (
+        tpl.Row("_internal/lxml/*.so", "package", carries=tpl._LXML, unmodified=True),
+    )
+    iconv, _ = tpl.libiconv_components(
+        {D_ETREE: tpl.symbol_reads(data, "_libiconv_version")},
+        report=(0, 0),
+        arch="arm64",
+    )
+    comps = _run11_components(tpl, iconv)
+    odd = [tpl.Component(f"odd {v}", v, "MIT", "package") for v in ODD_VERSIONS]
+    for given in (comps + odd, list(reversed(comps + odd))):
+        lines = tpl.iconv_evidence(build, rows, given, (0, 0))
+        notices = [x for x in lines if x.startswith("libiconv evidence: notices: - ")]
+        assert notices == [
+            f"libiconv evidence: notices: - {tpl.LXML_ICONV} 1.17: LGPL-2.1"
+        ]
+    assert "python-dateutil" not in "\n".join(lines)
+
+
+def test_two_libiconv_versions_keep_their_order_in_the_evidence(
+    tpl, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(tpl, "_installed", lambda name: None)
+    first = _macho_iconv("1.9", X86_64)
+    data = _universal(first, _macho_iconv("1.18", ARM64))
+    build = _EvidenceIconvBuild(tmp_path, data)
+    rows = (
+        tpl.Row("_internal/lxml/*.so", "package", carries=tpl._LXML, unmodified=True),
+    )
+    iconv, _ = tpl.libiconv_components(
+        {D_ETREE: tpl.symbol_reads(data, "_libiconv_version")}, (), (0, 0), "arm64"
+    )
+    lines = tpl.iconv_evidence(build, rows, _run11_components(tpl, iconv), (0, 0))
+    heads = [x for x in lines if x.startswith("libiconv evidence: notices: - ")]
+    assert [h.rsplit(" ", 2)[-2] for h in heads] == ["1.9:", "1.18:"]
+
+
+def test_the_licence_check_runs_to_the_end_with_the_components_of_run_11(
+    tpl, tmp_path, capsys, monkeypatch
+):
+    # main on darwin, end to end after collect: the build record, the libiconv
+    # evidence read by the real Build from a universal module, the record file,
+    # the result line. Only collect is replaced (it needs PyInstaller's build).
+    bundle, work = _fake_bundle(tmp_path)
+    lxml = bundle / "_internal" / "lxml"
+    lxml.mkdir()
+    data = _universal(_macho_iconv("1.17", X86_64), _macho_iconv("1.17", ARM64))
+    (lxml / Path(D_ETREE).name).write_bytes(data + b"\0libiconv_open\0")
+    monkeypatch.setattr(tpl, "_installed", lambda name: None)
+    monkeypatch.setattr(tpl.Build, "lxml_iconv_report", lambda self: (0, 0))
+    iconv, _ = tpl.libiconv_components(
+        {D_ETREE: tpl.symbol_reads(data, "_libiconv_version")}, (), (0, 0), "arm64"
+    )
+    comps = _run11_components(tpl, iconv)
+    assert len(comps) == 46  # run 11: 45, plus libiconv's (sample set)
+    monkeypatch.setattr(tpl, "collect", lambda build, rows: (comps, []))
+    monkeypatch.setattr(tpl, "pinned_python_problems", lambda plat, v: [])
+    record = tmp_path / "build-record.txt"
+    args = ["--bundle", str(bundle), "--workpath", str(work)]
+    args += ["--out", str(tmp_path / "T.txt"), "--build-record", str(record)]
+    assert tpl.main(args + ["--platform", "darwin"]) == 0
+    out = capsys.readouterr().out
+    assert out.rstrip().endswith("licence check: pass")
+    text = record.read_text("utf-8")
+    assert "lowest macOS version the files state:" in text
+    assert (
+        f"libiconv evidence: {D_ETREE} (arm64): symbol __libiconv_version at "
+        f"0x{SECT_ADDR + VALUE_AT:x}, section __DATA,__data"
+    ) in text
+    assert f"libiconv evidence: {D_ETREE}: read from the bundled file" in text
+    assert f"libiconv evidence: notices: - {tpl.LXML_ICONV} 1.17: LGPL-2.1" in text
+    assert "BUILD RECORD: libiconv evidence: lxml.etree" in out
+    notices = (tmp_path / "T.txt").read_text("utf-8")
+    assert "- python-dateutil 2.9.0.post0: MIT" in notices
+    assert "- libffi (in cffi) (version not recorded): MIT" in notices
+
+
+@pytest.mark.parametrize(
+    "value",
+    [None, (), ("1", "17"), (1, "x"), "garbage"],
+    ids=["none", "empty", "text-numbers", "text", "string"],
+)
+def test_lxmls_report_never_raises(tpl, monkeypatch, value):
+    import types
+
+    fake = types.ModuleType("lxml")
+    fake.etree = types.SimpleNamespace(ICONV_COMPILED_VERSION=value)
+    monkeypatch.setitem(sys.modules, "lxml", fake)
+    monkeypatch.setitem(sys.modules, "lxml.etree", fake.etree)
+    got = tpl.lxml_iconv_report()
+    assert got is None or (isinstance(got, tuple) and len(got) == 2)
+    if value == ("1", "17"):
+        assert got == (1, 17)
+
+
+def test_a_build_configuration_line_that_is_not_a_number_is_a_problem(tpl, tmp_path):
+    lic = _stored_config(tmp_path, WHEELS_YML, line="three")
+    config, problems = tpl.lxml_build_config(lic)
+    assert config is None
+    assert problems == [
+        "lxml build configuration lxml-wheels.yml: line three names no libiconv "
+        "version (architect-run10-macos-iconv.md section 1)"
+    ]
