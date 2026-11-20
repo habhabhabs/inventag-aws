@@ -7,6 +7,7 @@ by ``scripts/packaging/build_binary.sh`` and recorded in the B2 report.
 from __future__ import annotations
 
 import importlib.util
+import json
 import re
 import subprocess
 import sys
@@ -484,6 +485,58 @@ def test_a_bundled_file_without_a_row_fails(tpl, monkeypatch):
     build = _SampleBuild(["_internal/libmystery.so.1"], b"", same=True)
     _, problems = tpl.collect(build, _sample_rows(tpl))
     assert problems == ["_internal/libmystery.so.1: no row in the licence table"]
+
+
+# ------------------------------------- libiconv's version (B2b, ruling 2)
+ETREE = "_internal/lxml/etree.cpython-312.so"
+OBJECTIFY = "_internal/lxml/objectify.cpython-312.so"
+
+
+class _IconvBuild(_SampleBuild):
+    """lxml modules whose ``_libiconv_version`` symbol gives ``versions[rel]``
+    ("" = the module has no such symbol)."""
+
+    def __init__(self, versions):
+        super().__init__(list(versions), b"libiconv_open", same=True)
+        self.versions = versions
+
+    def read_version(self, source, rel, owner):
+        if source == "elfsym:_libiconv_version":
+            return self.versions[rel]
+        return ""
+
+
+def _collect_iconv(tpl, monkeypatch, versions):
+    monkeypatch.setattr(
+        tpl, "_cpython", lambda p: tpl.Component("CPython", "3", "PSF-2.0", "runtime")
+    )
+    monkeypatch.setattr(
+        tpl, "_bootloader", lambda p: tpl.Component("b", "6", tpl.BOOTLOADER, "runtime")
+    )
+    monkeypatch.setattr(tpl, "_installed", lambda name: None)
+    comps, problems = tpl.collect(_IconvBuild(versions), _sample_rows(tpl))
+    assert problems == []
+    return comps
+
+
+def test_two_lxml_modules_with_different_libiconv_versions_give_one_component(
+    tpl, monkeypatch
+):
+    comps = _collect_iconv(tpl, monkeypatch, {ETREE: "1.18", OBJECTIFY: "1.17"})
+    iconv = [c for c in comps if c.name == tpl.LXML_ICONV]
+    assert len(iconv) == 1
+    assert iconv[0].version == ""
+    assert iconv[0].files == [ETREE, OBJECTIFY]
+    text = tpl.render(comps)
+    assert f"- {tpl.LXML_ICONV} (version not recorded): LGPL-2.1" in text
+    assert "libiconv-1.1" not in text  # no versioned tarball address
+    assert "https://www.gnu.org/software/libiconv/" in text
+    assert "etree.cpython-312.so, objectify.cpython-312.so" in text
+    rows = [
+        r for r in json.loads(tpl.components_json(comps)) if "libiconv" in r["name"]
+    ]
+    assert len(rows) == 1 and rows[0]["version"] == "version not recorded"
+    assert rows[0]["files"] == [ETREE, OBJECTIFY]
 
 
 # ------------------------------------------------------------- smoke scan
