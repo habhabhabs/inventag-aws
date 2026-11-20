@@ -1,0 +1,92 @@
+name: Package
+
+# Builds the packaged forms of one release tag: the executable for four
+# systems (a directory, as .tar.gz), a .deb and an .rpm for both Linux CPUs,
+# smoke tests on fresh systems, checksums, SBOMs and build attestations
+# (plan v14 section 3.5). Called by release.yml as its last job, after the PyPI
+# publish: this workflow can fail, and the PyPI release is already done. A
+# failed run is started again by hand (Actions, Package, Run workflow).
+#
+# A release published with the workflow's own token starts no other workflow,
+# so there is no `release: published` trigger here.
+#
+# dry_run (the default for a manual run) builds and tests everything and
+# attaches nothing to the release: no upload, no attestation.
+#
+# No secret of the repository is used. Nothing is published outside this
+# repository.
+"on":
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Release tag to package (for example v1.4.0). The tag must exist.'
+        required: true
+        type: string
+      dry_run:
+        description: 'Build and test only: attach nothing to the release.'
+        required: false
+        default: true
+        type: boolean
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to package (for example v1.4.0). The tag must exist.'
+        required: true
+        type: string
+      dry_run:
+        description: 'Build and test only: attach nothing to the release.'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+# One run per tag. A running package job is never cancelled: a half-uploaded
+# release is worse than a late one.
+concurrency:
+  group: package-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      version: ${{ steps.plan.outputs.version }}
+      dry_run: ${{ steps.plan.outputs.dry_run }}
+    steps:
+    - name: Checkout the tag
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: refs/tags/${{ inputs.tag }}
+        persist-credentials: false
+
+    - name: The tag names the version in the commit
+      id: plan
+      env:
+        TAG: ${{ inputs.tag }}
+        DRY_RUN: ${{ inputs.dry_run }}
+      run: |
+        if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+          echo "::error::The tag must look like v1.4.0."
+          exit 1
+        fi
+        VERSION=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' inventag/_version.py)
+        if [ "$VERSION" != "${TAG#v}" ]; then
+          echo "::error::Tag $TAG holds version '$VERSION' in inventag/_version.py. Package the tag of a release, not another commit."
+          exit 1
+        fi
+        for lock in requirements-lock.txt requirements-lock-build.txt; do
+          test -f "$lock" || { echo "::error::$lock is missing at $TAG."; exit 1; }
+        done
+        case "$DRY_RUN" in true|false) ;; *) echo "::error::dry_run must be true or false."; exit 1;; esac
+        {
+          echo "tag=$TAG"
+          echo "version=$VERSION"
+          echo "dry_run=$DRY_RUN"
+        } >> "$GITHUB_OUTPUT"
+        echo "Packaging $TAG (version $VERSION), dry run: $DRY_RUN"
