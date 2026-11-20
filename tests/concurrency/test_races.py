@@ -29,15 +29,6 @@ ARGS_BY_MODE = {
     "concurrency-64": pytest.param(["--concurrency", "64"], marks=needs_a2),
 }
 
-needs_a3 = pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "A3: detail calls still run one after the other in v1.3.0 (a held detail request "
-        "stops the others, so the hold ends by its timeout, not by the event); remove "
-        "this mark when A3 is merged"
-    ),
-)
-
 
 def _same(a, b):
     assert a.code == b.code == 0, (a.text[-600:], b.text[-600:])
@@ -118,7 +109,6 @@ def test_a_late_detail_answer_changes_nothing(scans, mode):
     _same(plain, late)
 
 
-@needs_a3
 def test_detail_calls_of_one_account_overlap(scans):
     """Plan 2.1: detail calls run in a detail pool, so while one request is held the
     others start: the hold ends by its event."""
@@ -136,7 +126,6 @@ def test_detail_calls_of_one_account_overlap(scans):
 
 
 @needs_a2
-@needs_a3
 def test_at_most_four_detail_calls_of_one_key_are_in_flight(scans):
     """Plan 2.1 and 2.3: at most 4 in flight for one account, service and region."""
     estate = dict(
