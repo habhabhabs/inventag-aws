@@ -120,6 +120,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | 参数 | 默认值 | 状态 | 功能 |
 |---|---|---|---|
 | `--max-concurrent-accounts N` | `4` | 可用 | 同时扫描的账户数（至少 1）。 |
+| `--concurrency N` | `64` | 可用 | 整个运行中同时进行的 AWS 请求的最大数量（1 到 256）。1 表示一次只发送一个请求。超出范围：退出码 2。 |
 | `--account-processing-timeout SECONDS` | `1800` | 可用 | 每个账户允许的时间，从该账户开始扫描时算起（至少 60）。超时的账户算作失败；它找到的资源保留在报告中。 |
 | `--disable-parallel-processing` | 关 | 可用 | 一次只扫描一个账户。 |
 | `--resume` | 关 | 可用 | 复用同一条命令之前未完成的运行中已完成账户的保存结果（相同的账户、区域、服务和筛选条件），只扫描其他账户。与 `--disable-state-management` 一起使用：退出码 2。 |

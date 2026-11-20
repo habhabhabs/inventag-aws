@@ -472,6 +472,14 @@ CONFIG_SPEC: Dict[str, Field] = {
         minimum=1,
         maximum=64,
     ),
+    "concurrency": Field(
+        "integer",
+        "Most AWS requests in flight at once, for the whole run "
+        "(`--concurrency`). 1 sends one request at a time.",
+        default=64,
+        minimum=1,
+        maximum=256,
+    ),
     "account_processing_timeout": Field(
         "integer",
         "Seconds allowed per account (`--account-processing-timeout`).",

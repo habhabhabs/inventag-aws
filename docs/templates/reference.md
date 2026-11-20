@@ -134,6 +134,7 @@ the validator accepts.
 | `spec.tag_policy` | template name or relative path | not set | Tag policy to check, by name or relative path. |
 | `spec.fail_on_tag_violations` | true or false | `false` | Exit with code 3 after writing the reports if any in-scope resource breaks the tag policy. Needs `tag_policy`. |
 | `spec.max_concurrent_accounts` | whole number (min 1, max 64) | `4` | Accounts scanned at the same time (`--max-concurrent-accounts`). |
+| `spec.concurrency` | whole number (min 1, max 256) | `64` | Most AWS requests in flight at once, for the whole run (`--concurrency`). 1 sends one request at a time. |
 | `spec.account_processing_timeout` | whole number (min 60) | `1800` | Seconds allowed per account (`--account-processing-timeout`). |
 | `spec.parallel_processing` | true or false | `true` | Scan accounts in parallel. `false` is the same as `--disable-parallel-processing`. |
 | `spec.accounts[].account_id` | text | required | 12-digit AWS account ID, in quotes so YAML keeps leading zeros. |

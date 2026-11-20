@@ -213,6 +213,8 @@ def apply_config(run: TemplateRun, args, explicit: set, logger) -> None:
         args.output_directory = spec["output_directory"]
     if unset("max_concurrent_accounts"):
         args.max_concurrent_accounts = spec["max_concurrent_accounts"]
+    if unset("concurrency"):
+        args.concurrency = spec["concurrency"]
     if unset("account_processing_timeout"):
         args.account_processing_timeout = spec["account_processing_timeout"]
     if unset("disable_parallel_processing") and spec["parallel_processing"] is False:

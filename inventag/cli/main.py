@@ -62,6 +62,7 @@ from ..reporting.settings_loader import (
     read_bom_settings,
     valid_bom_setting_names,
 )
+from ..core.limiter import DEFAULT_LIMIT
 from ..templating.runner import (
     add_template_arguments,
     bom_result_is_empty,
@@ -92,6 +93,22 @@ def _limit_or_none(text: str) -> Optional[int]:
     if value < 0:
         raise argparse.ArgumentTypeError(f"must be 0 or more, got {value}")
     return value or None
+
+
+CONCURRENCY_MAX = 256
+
+
+def _concurrency_value(text: str) -> int:
+    """argparse type for --concurrency: a whole number from 1 to 256."""
+    try:
+        value = int(text)
+    except ValueError:
+        value = 0
+    if not 1 <= value <= CONCURRENCY_MAX:
+        raise argparse.ArgumentTypeError(
+            f"must be a whole number from 1 to {CONCURRENCY_MAX}, not {text!r}"
+        )
+    return value
 
 
 def _validate_specific_configs(args, logger, check_credentials=True):
@@ -440,6 +457,16 @@ Examples:
         type=int,
         default=4,
         help="Maximum number of accounts to process concurrently (default: 4)",
+    )
+    parallel_group.add_argument(
+        "--concurrency",
+        type=_concurrency_value,
+        default=DEFAULT_LIMIT,
+        metavar="N",
+        help=(
+            "Most AWS requests in flight at once, for the whole run "
+            f"(default: {DEFAULT_LIMIT}). 1 sends one request at a time."
+        ),
     )
     parallel_group.add_argument(
         "--account-processing-timeout",
@@ -1001,6 +1028,7 @@ def create_multi_account_config(args) -> MultiAccountConfig:
         cross_account_role_name=_cross_account_role_name(args),
         parallel_account_processing=not args.disable_parallel_processing,
         max_concurrent_accounts=max_concurrent,
+        concurrency=getattr(args, "concurrency", DEFAULT_LIMIT),
         account_processing_timeout=timeout,
         consolidate_accounts=True,
         generate_per_account_reports=args.per_account_reports,
