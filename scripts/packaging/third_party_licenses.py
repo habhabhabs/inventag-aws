@@ -183,6 +183,10 @@ class Carried:
     # Defined symbols (fnmatch) the library adds to a module whose exports are
     # checked (Row.exports): allowed only when the library is present.
     exports: Tuple[str, ...] = ()
+    # (version, licence id) pairs proven by a stored licence file of that
+    # version: the id for a version read from the file; any other version, or
+    # none, keeps ``spdx`` (architect-package-dryrun-5.md ruling 3.3).
+    spdx_by_version: Tuple[Tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -448,12 +452,16 @@ DARWIN_ROWS: Tuple[Row, ...] = (
                 Carried(
                     "liblzma (in CPython's _lzma)",
                     # xz's licence depends on its version (public domain or
-                    # 0BSD), and the framework's version is not read yet.
-                    "NOASSERTION",
-                    (),
+                    # 0BSD); xz's COPYING and COPYING.0BSD at tag v5.8.4
+                    # (licenses/SOURCES.json) state 0BSD for that version only.
+                    "LicenseRef-public-domain OR 0BSD",
+                    (LICENSES_REPO + "xz-COPYING", LICENSES_REPO + "xz-COPYING.0BSD"),
+                    # liblzma's lzma_version_string() is a string constant.
+                    "strings:^(5\\.[0-9]+\\.[0-9]+)$",
                     requires_strings=b"lzma_code",
                     loads_instead=b"liblzma.",
                     exports=("_lzma_*",),
+                    spdx_by_version=(("5.8.4", "0BSD"),),
                 ),
             ),
             exports=CPYTHON_EXPORTS,
@@ -1036,15 +1044,18 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
                 iconv_versions[rel] = build.read_version(carried.version, rel, source)
                 iconv_texts = iconv_texts or [g for g in got if g is not None]
                 continue
+            version = build.read_version(carried.version, rel, source)
+            spdx, version_from = licence_by_version(carried, version)
             add(
                 Component(
                     carried.name,
-                    build.read_version(carried.version, rel, source),
-                    carried.spdx,
+                    version,
+                    spdx,
                     "c-library",
                     [rel],
                     [g for g in got if g is not None],
                     urls=list(carried.urls),
+                    version_from=version_from,
                 )
             )
 
@@ -1055,6 +1066,27 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
         problems += licence_problems(comp)
         problems += openssl_problems(comp)
     return out, sorted(set(problems))
+
+
+def licence_by_version(carried: Carried, version: str) -> Tuple[str, str]:
+    """The licence id of a carried library whose licence depends on its
+    version, and the line that says how it was chosen (ruling 3.3)."""
+    if not carried.spdx_by_version:
+        return carried.spdx, ""
+    known = dict(carried.spdx_by_version)
+    if not version:
+        return carried.spdx, (
+            "licence depends on the version, which the build could not read"
+        )
+    if version in known:
+        return known[version], (
+            "version read from the module; licence as the stored licence file of "
+            "that version states"
+        )
+    return carried.spdx, (
+        "version read from the module; no stored licence file states the licence "
+        f"of that version (they are of {', '.join(sorted(known))}), so both ids stay"
+    )
 
 
 def _present(build, rel: str, carried: Carried) -> bool:
