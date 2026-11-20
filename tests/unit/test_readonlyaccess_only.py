@@ -341,3 +341,35 @@ def test_R1_provisional_readonlyaccess_runs_a_default_scan_without_a_denied_call
         "lambda:ListFunctions",
         "ec2:DescribeVpcs",
     } <= run.sim.seen_set
+
+
+def test_R2_provisional_readonlyaccess_with_every_optional_read_is_denied_nothing(
+    aws, run_as
+):
+    """R2: R1 plus network, security and cost analysis and billing validation."""
+    run = run_as(
+        read_only_access_actions(),
+        "--create-excel",
+        "--create-word",
+        "--enable-network-analysis",
+        "--enable-security-analysis",
+        "--enable-cost-analysis",
+        billing=True,
+    )
+    run.sim.assert_all_mapped()
+    assert run.code == 0, run.text
+    # none of the 122 actions of the policy file (nor the others the run uses) is denied
+    assert run.sim.denied == []
+    assert run.denied_ledger == []
+    assert "No permission for" not in run.text
+    _assert_in_report(run, aws)
+    # the optional reads were really made (a run that skipped them proves nothing)
+    assert {
+        "ce:GetCostAndUsage",
+        "pricing:GetProducts",
+        "cloudwatch:GetMetricStatistics",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeSecurityGroups",
+        "tag:GetResources",
+        "apigateway:GET",
+    } <= run.sim.seen_set
