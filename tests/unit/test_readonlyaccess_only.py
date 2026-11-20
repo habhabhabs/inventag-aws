@@ -68,10 +68,23 @@ class Run:
     out_dir: Path
     sim: object
     ledger: List[object] = field(default_factory=list)
+    results: dict = field(
+        default_factory=dict
+    )  # what generate_comprehensive_bom returned
 
     @property
     def text(self) -> str:
         return self.stdout + "\n" + self.stderr
+
+    @property
+    def permission_lines(self) -> List[str]:
+        """The "Permissions:" lines of the run notes on the console."""
+        return [t.strip(" -") for t in self.text.splitlines() if "Permissions:" in t]
+
+    @property
+    def permission_actions(self) -> set:
+        """The IAM actions of the result's ``permissions_denied`` key."""
+        return {e["action"] for e in self.results.get("permissions_denied", [])}
 
     @property
     def denied_ledger(self):
@@ -117,9 +130,19 @@ def run_as(monkeypatch, tmp_path):
     CLI installs sits before the simulator, as it does in a real run.
     """
     from inventag.cli.main import main
+    from inventag.core.cloud_bom_generator import CloudBOMGenerator
     from inventag.discovery.coverage import CoverageLedger
 
     entries: List[object] = []
+    returned: List[dict] = []
+    original_generate = CloudBOMGenerator.generate_comprehensive_bom
+
+    def spy_generate(self, *args, **kwargs):
+        result = original_generate(self, *args, **kwargs)
+        returned.append(result)
+        return result
+
+    monkeypatch.setattr(CloudBOMGenerator, "generate_comprehensive_bom", spy_generate)
     original_record = CoverageLedger.record
 
     def spy(self, **fields):
@@ -144,6 +167,7 @@ def run_as(monkeypatch, tmp_path):
             argv += ["--accounts-file", str(path)]
         argv += list(args)
         del entries[:]
+        del returned[:]
         buf_out, buf_err = io.StringIO(), io.StringIO()
         code = 0
         root = logging.getLogger()
@@ -164,7 +188,13 @@ def run_as(monkeypatch, tmp_path):
                 finally:
                     root.handlers[:] = saved_handlers
         return Run(
-            code, buf_out.getvalue(), buf_err.getvalue(), out_dir, sim, list(entries)
+            code,
+            buf_out.getvalue(),
+            buf_err.getvalue(),
+            out_dir,
+            sim,
+            list(entries),
+            returned[-1] if returned else {},
         )
 
     return run
@@ -329,6 +359,9 @@ def test_R1_provisional_readonlyaccess_runs_a_default_scan_without_a_denied_call
     assert run.denied_ledger == []
     assert "No permission for" not in run.text
     assert "Not read in account" not in run.workbook_text() + run.text
+    # W2: a clean run says nothing new and has no new key
+    assert "Permissions:" not in run.text + run.workbook_text()
+    assert "permissions_denied" not in run.results
     assert list(run.out_dir.glob("*.docx")), "no Word report"
     _assert_in_report(run, aws)
     assert len(run.snapshots()) == 1, "state is on: one snapshot"
@@ -362,6 +395,8 @@ def test_R2_provisional_readonlyaccess_with_every_optional_read_is_denied_nothin
     assert run.sim.denied == []
     assert run.denied_ledger == []
     assert "No permission for" not in run.text
+    assert "Permissions:" not in run.text + run.workbook_text()
+    assert "permissions_denied" not in run.results
     _assert_in_report(run, aws)
     # the optional reads were really made (a run that skipped them proves nothing)
     assert {
@@ -396,6 +431,21 @@ def _two_accounts():
     ]
 
 
+ROLE_LINE = (
+    "Permissions: 1 action(s) were not allowed for account 222222222222: "
+    "sts:AssumeRole. Effect: the account was not scanned. "
+    "sts:AssumeRole is not in ReadOnlyAccess; it is needed only for "
+    "scanning other accounts through a role."
+)
+
+
+def _assert_no_aws_text(lines) -> None:
+    """The block is InvenTag's own words: nothing of AWS's error text reaches it."""
+    for text in lines:
+        for forbidden in ("User:", "not authorized", "An error occurred", "arn:aws"):
+            assert forbidden not in text, text
+
+
 def test_R3_provisional_readonlyaccess_cannot_assume_a_role_and_the_default_account_is_still_scanned(
     aws, run_as
 ):
@@ -420,6 +470,21 @@ def test_R3_provisional_readonlyaccess_cannot_assume_a_role_and_the_default_acco
     assert "--resume" in run.text
     # the report itself says the account is missing and why
     assert f"{ROLE_ACCOUNT} (Account through a role)" in run.workbook_text()
+    # W2: the Permissions block names the action, in InvenTag's words, and the key holds it
+    assert run.permission_lines == [ROLE_LINE]
+    assert ROLE_LINE in run.workbook_text()
+    assert run.results["permissions_denied"] == [
+        {
+            "account": ROLE_ACCOUNT,
+            "action": "sts:AssumeRole",
+            "service": "sts",
+            "operation": "AssumeRole",
+            "regions": [],
+            "kind": "role",
+        }
+    ]
+    assert run.permission_actions == run.sim.denied_set
+    _assert_no_aws_text(run.permission_lines)
 
     # with the opt-in flag the same run ends with the account-failed code
     again = run_as(
@@ -433,7 +498,16 @@ def test_R3_provisional_readonlyaccess_cannot_assume_a_role_and_the_default_acco
     again.sim.assert_all_mapped()
     assert again.code == 5, again.text
     assert again.sim.denied_set == {"sts:AssumeRole"}
+    assert again.permission_lines == [ROLE_LINE]
     _assert_in_report(again, aws)
+
+
+UPLOAD_LINE = (
+    "Permissions: 1 action(s) were not allowed for account 123456789012: "
+    "s3:PutObject. Effect: the reports were not uploaded. "
+    "s3:PutObject is not in ReadOnlyAccess; it is needed only for "
+    "uploading the reports (--s3-bucket)."
+)
 
 
 def test_R4_provisional_readonlyaccess_cannot_upload_reports_and_the_run_ends_with_exit_1(
@@ -471,6 +545,20 @@ def test_R4_provisional_readonlyaccess_cannot_upload_reports_and_the_run_ends_wi
         Bucket="w1-report-bucket"
     )
     assert objects.get("KeyCount", 0) == 0
+    # W2: the block names s3:PutObject once, for the account that uploads, and the key holds it
+    assert run.permission_lines == [UPLOAD_LINE]
+    assert run.results["permissions_denied"] == [
+        {
+            "account": DEFAULT_ACCOUNT,
+            "action": "s3:PutObject",
+            "service": "s3",
+            "operation": "PutObject",
+            "regions": [],
+            "kind": "upload",
+        }
+    ]
+    assert run.permission_actions == run.sim.denied_set
+    _assert_no_aws_text(run.permission_lines)
 
 
 # R5 and R7: ReadOnlyAccess minus five patterns. Written as an explicit Deny, which wins.
@@ -487,6 +575,16 @@ R5_ARGS = (
     "--enable-network-analysis",
     "--enable-security-analysis",
     "--enable-cost-analysis",
+)
+
+
+R5_LINE = (
+    "Permissions: 5 action(s) were not allowed for account 123456789012: "
+    "ce:GetCostAndUsage, lambda:GetFunctionConfiguration, pricing:GetProducts, "
+    "s3:GetBucketLocation, tag:GetResources. "
+    "Effect: some rows lack details; tags from the Tagging API are missing; "
+    "billing checks are skipped; cost estimates are missing. "
+    "All of them are in the AWS managed policy ReadOnlyAccess."
 )
 
 
@@ -532,6 +630,18 @@ def test_R5_provisional_readonlyaccess_minus_five_patterns_keeps_the_allowed_row
     assert "lambda GetFunctionConfiguration in us-east-1 (denied, 1)" in run.text
     assert "Not read in account" in run.workbook_text()
     assert len(run.snapshots()) == 1
+    # W2: the summary equals what the simulator denied, pricing included
+    assert run.permission_actions == run.sim.denied_set
+    assert run.permission_lines == [R5_LINE]
+    assert R5_LINE in run.workbook_text()
+    assert {(e["action"], e["kind"]) for e in run.results["permissions_denied"]} == {
+        ("ce:GetCostAndUsage", "billing"),
+        ("lambda:GetFunctionConfiguration", "detail"),
+        ("pricing:GetProducts", "pricing"),
+        ("s3:GetBucketLocation", "detail"),
+        ("tag:GetResources", "tagging"),
+    }
+    _assert_no_aws_text(run.permission_lines)
 
 
 ONLY_IDENTITY = ["sts:GetCallerIdentity"]
@@ -556,6 +666,26 @@ def _assert_read_nothing(run: Run) -> None:
     assert not list(run.out_dir.glob("*.xlsx")) and not list(run.out_dir.glob("*.docx"))
     assert run.snapshots() == []
     assert "No state snapshot was saved: nothing was read in this run." in run.text
+    # W2: every refused action is in the summary, once, in one line for the account.
+    # Except the two region-list calls: discover_regions (inventag/discovery/regions.py)
+    # keeps no record of why a list failed, so the summary cannot say "not allowed" for
+    # them (reported to the architect; see the W2 report).
+    expected = run.sim.denied_set - {"ec2:DescribeRegions", "account:ListRegions"}
+    assert run.permission_actions == expected
+    assert len(run.permission_lines) == 1
+    line = run.permission_lines[0]
+    count = len(expected)
+    assert line.startswith(
+        f"Permissions: {count} action(s) were not allowed for account 123456789012: "
+    )
+    assert line.endswith(
+        "Effect: resources of some services are missing; tags from the Tagging API "
+        "are missing. All of them are in the AWS managed policy ReadOnlyAccess."
+    )
+    assert all(
+        e["kind"] in ("listing", "tagging") for e in run.results["permissions_denied"]
+    )
+    _assert_no_aws_text(run.permission_lines)
 
 
 def test_R6_provisional_only_the_identity_call_reads_nothing_and_ends_with_exit_0(
