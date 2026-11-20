@@ -1464,7 +1464,7 @@ def test_the_fish_completion_check_keeps_its_meaning(tmp_path):
 # ---- B3f: dry run 7 (macOS man, files written by root in the container) ----
 
 
-def _macos_man_run(tmp_path, man_output="INVENTAG(1)\n"):
+def _macos_man_run(tmp_path, man_output="INVENTAG(1)\n", page=None, renderer="works"):
     """Run the macOS unpack step with a stub man that behaves as macOS man does.
 
     Dry run 7, log line 438: `/usr/bin/man: illegal option -- l`. The stub
@@ -1483,7 +1483,9 @@ def _macos_man_run(tmp_path, man_output="INVENTAG(1)\n"):
         encoding="utf-8",
     )
     program.chmod(0o755)
-    (inside / "share/man/man1/inventag.1").write_text(".TH INVENTAG 1\n", "utf-8")
+    (inside / "share/man/man1/inventag.1").write_text(
+        GOOD_PAGE if page is None else page, "utf-8"
+    )
     (inside / "share/completions/inventag.bash").write_text("true\n", "utf-8")
     (inside / "share/completions/_inventag").write_text("true\n", "utf-8")
     artifacts = tmp_path / "artifacts"
@@ -1492,18 +1494,24 @@ def _macos_man_run(tmp_path, man_output="INVENTAG(1)\n"):
         tar.add(inside, arcname="inventag")
     stubs = tmp_path / "stubs"
     stubs.mkdir()
-    (stubs / "man").write_text(
-        "#!/bin/bash\n"
-        'case "$1" in\n'
-        '  -l) echo "/usr/bin/man: illegal option -- l" >&2; exit 1 ;;\n'
-        '  */*) [ -f "$1" ] || exit 1; printf "%s" "$MAN_OUT" ;;\n'
-        "  *) exit 1 ;;\n"
-        "esac\n",
-        encoding="utf-8",
-    )
+    if renderer == "works":
+        (stubs / "man").write_text(
+            "#!/bin/bash\n"
+            'case "$1" in\n'
+            '  -l) echo "/usr/bin/man: illegal option -- l" >&2; exit 1 ;;\n'
+            '  */*) [ -f "$1" ] || exit 1; printf "%s" "$MAN_OUT" ;;\n'
+            "  *) exit 1 ;;\n"
+            "esac\n",
+            encoding="utf-8",
+        )
+        (stubs / "col").write_text("#!/bin/bash\ncat\n", encoding="utf-8")
+        (stubs / "col").chmod(0o755)
+    elif renderer == "fails":
+        (stubs / "man").write_text("#!/bin/bash\nexit 1\n", encoding="utf-8")
     (stubs / "zsh").write_text("#!/bin/bash\nexit 0\n", encoding="utf-8")
     for tool in ("man", "zsh"):
-        (stubs / tool).chmod(0o755)
+        if (stubs / tool).exists():
+            (stubs / tool).chmod(0o755)
     run = _step("smoke-macos-arm64", "check the man page")["run"]
     return subprocess.run(
         ["bash", "-e", "-c", run],
@@ -1580,6 +1588,134 @@ def test_the_linux_smoke_scan_runs_as_the_runner_user_so_that_the_runner_can_rea
     # The home of that user is the scan's own writable directory (smoke_scan.py
     # sets HOME to it); the environment is passed on.
     assert "HOME" in args[args.index("-e") :]
+
+
+# ---- B3g: the man page check does not depend on the tools of the image ------
+
+GOOD_PAGE = (
+    '.TH INVENTAG 1 "" "inventag 1.3.1" "User Commands"\n'
+    ".SH NAME\n"
+    "inventag \\- read\\-only AWS inventory\n"
+    ".SH SYNOPSIS\n"
+)
+MAN_PAGES = {
+    "good": GOOD_PAGE,
+    "empty": "",
+    "no TH line": ".SH NAME\ninventag \\- x\n",
+    "wrong page": '.TH OTHER 1 "" "x"\n.SH NAME\ninventag \\- x\n',
+    "wrong section": '.TH INVENTAG 8 "" "x"\n.SH NAME\ninventag \\- x\n',
+    "NAME names another program": '.TH INVENTAG 1 "" "x"\n.SH NAME\nother \\- x\n',
+}
+
+
+def _linux_man_run(tmp_path, fmt, page, renderer="missing", present=True):
+    """Run the Linux "Version, selftest and the man page" step in a temporary tree.
+
+    renderer: "missing" (man and col absent), "stub-fails" (man prints the
+    unminimize text and exits 1, col absent: the images of dry run 8), "good"
+    (man and col work), "no-inventag" (they work but print another page).
+    """
+    import gzip
+    import subprocess
+
+    stubs = tmp_path / "stubs"
+    stubs.mkdir(exist_ok=True)
+    for name in ("inventag",):
+        (stubs / name).write_text(
+            '#!/bin/bash\nif [ "$1" = --version ]; then echo "inventag $VERSION"; fi\n',
+            encoding="utf-8",
+        )
+        (stubs / name).chmod(0o755)
+    if renderer == "stub-fails":
+        (stubs / "man").write_text(
+            "#!/bin/bash\necho \"run 'unminimize'\"\nexit 1\n", encoding="utf-8"
+        )
+    elif renderer in ("good", "no-inventag"):
+        text = "INVENTAG(1)" if renderer == "good" else "something else"
+        (stubs / "man").write_text(f"#!/bin/bash\necho '{text}'\n", encoding="utf-8")
+        (stubs / "col").write_text("#!/bin/bash\ncat\n", encoding="utf-8")
+        (stubs / "col").chmod(0o755)
+    if (stubs / "man").exists():
+        (stubs / "man").chmod(0o755)
+    man1 = tmp_path / "man1"
+    man1.mkdir(exist_ok=True)
+    if present:
+        if fmt == "tar":
+            (man1 / "inventag.1").write_text(page, encoding="utf-8")
+        else:
+            with gzip.open(man1 / "inventag.1.gz", "wb") as handle:
+                handle.write(page.encode("utf-8"))
+    script = _heredoc(_step("smoke-linux", "man page")["run"], "RUN")
+    script = script.replace("/usr/share/man/man1", str(man1)).replace(
+        "/opt/inventag/share/man/man1", str(man1)
+    )
+    return subprocess.run(
+        ["bash", "-s"],
+        input=script,
+        env={
+            "PATH": f"{stubs}:/usr/bin:/bin",
+            "FORMAT": fmt,
+            "VERSION": "1.3.1",
+        },
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+
+def test_the_linux_man_check_needs_neither_man_nor_col_to_pass(tmp_path):
+    for fmt in ("deb", "rpm", "tar"):
+        for renderer in ("missing", "stub-fails", "good"):
+            work = tmp_path / f"{fmt}-{renderer}"
+            work.mkdir()
+            result = _linux_man_run(work, fmt, GOOD_PAGE, renderer)
+            assert result.returncode == 0, (fmt, renderer, result.stdout, result.stderr)
+
+
+def test_the_linux_man_check_fails_for_a_missing_file_an_empty_file_and_a_bad_page(
+    tmp_path,
+):
+    for fmt in ("deb", "tar"):
+        work = tmp_path / f"{fmt}-missing"
+        work.mkdir()
+        assert _linux_man_run(work, fmt, GOOD_PAGE, present=False).returncode != 0, fmt
+        for why, page in MAN_PAGES.items():
+            if why == "good":
+                continue
+            work = tmp_path / f"{fmt}-{why.replace(' ', '-')}"
+            work.mkdir()
+            result = _linux_man_run(work, fmt, page)
+            assert result.returncode != 0, (fmt, why)
+
+
+def test_a_renderer_that_works_but_prints_another_page_fails_the_check(tmp_path):
+    result = _linux_man_run(tmp_path, "deb", GOOD_PAGE, renderer="no-inventag")
+    assert result.returncode != 0
+
+
+def test_the_linux_man_check_looks_at_the_path_of_each_format():
+    run = _step("smoke-linux", "man page")["run"]
+    assert "/usr/share/man/man1/inventag.1.gz" in run
+    assert "/opt/inventag/share/man/man1/inventag.1" in run
+    assert "unminimize" not in run
+
+
+def _macos_man_text_run(tmp_path, page, renderer):
+    return _macos_man_run(tmp_path, man_output="x", page=page, renderer=renderer)
+
+
+def test_the_macos_man_check_reads_the_roff_source_and_needs_no_renderer(tmp_path):
+    for renderer in ("missing", "fails"):
+        work = tmp_path / renderer
+        work.mkdir()
+        result = _macos_man_text_run(work, GOOD_PAGE, renderer)
+        assert result.returncode == 0, (renderer, result.stdout, result.stderr)
+    for why, page in MAN_PAGES.items():
+        if why == "good":
+            continue
+        work = tmp_path / why.replace(" ", "-")
+        work.mkdir()
+        assert _macos_man_text_run(work, page, "missing").returncode != 0, why
 
 
 # ---- B3b: the INCLUDE_MACOS switch (architect ruling 4) --------------------
