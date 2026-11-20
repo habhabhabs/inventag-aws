@@ -602,6 +602,26 @@ def test_the_macos_smoke_jobs_unpack_run_scan_and_remove():
             assert check in text
 
 
+def test_the_macos_smoke_runs_version_and_selftest_before_any_python_is_set_up():
+    # B6 fix 8: after setup-python the runner holds the Python that built the
+    # bundle, so a stray absolute link would resolve there and not on a user's
+    # Mac. The proof of --version and selftest comes first; the scan (which
+    # needs Python for the moto server) comes after.
+    steps = _steps("smoke-macos-arm64")
+    python = [i for i, s in enumerate(steps) if "setup-python" in s.get("uses", "")]
+    assert len(python) == 1
+    before = "\n".join(s.get("run", "") for s in steps[: python[0]])
+    after = "\n".join(s.get("run", "") for s in steps[python[0] :])
+    assert "tar -xzf" in before
+    assert '"$BIN/inventag" --version' in before
+    assert '"$BIN/inventag" selftest' in before
+    assert "env -i PATH=/usr/bin:/bin" in before
+    assert "selftest" not in after.replace("smoke_scan", "")
+    assert "scripts/packaging/smoke_scan.py" in after and "scripts/packaging/smoke_scan.py" not in before
+    # Nothing before the Python step uses Python.
+    assert "python" not in before.lower().replace("setup-python", "")
+
+
 def test_the_pipx_install_of_the_wheel_is_smoked():
     job = JOBS["smoke-pipx"]
     assert job["runs-on"] == "ubuntu-24.04"
