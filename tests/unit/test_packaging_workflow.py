@@ -438,7 +438,9 @@ def test_the_scripts_a_build_calls_exist_in_the_repository():
 # ---- stage 3: smoke tests on fresh systems --------------------------------
 
 SMOKE_SYSTEMS = {
-    # system: (image, format) as in plan 3.5, plus the glibc floor (AlmaLinux 8)
+    # system: (image, format) as in plan 3.5 and architect ruling 2 of
+    # package-dryrun-1: almalinux:9 is the glibc floor system (2.34), and
+    # amazonlinux:2023 is added (rpm)
     "ubuntu-22.04": ("ubuntu:22.04", "deb"),
     "ubuntu-24.04": ("ubuntu:24.04", "deb"),
     "debian-12": ("debian:12", "deb"),
@@ -446,7 +448,8 @@ SMOKE_SYSTEMS = {
     "fedora": ("fedora:latest", "rpm"),
     "rockylinux-9": ("rockylinux:9", "rpm"),
     "rockylinux-9-tar": ("rockylinux:9", "tar"),
-    "almalinux-8": ("almalinux:8", "rpm"),
+    "almalinux-9": ("almalinux:9", "rpm"),
+    "amazonlinux-2023": ("amazonlinux:2023", "rpm"),
 }
 
 
@@ -468,6 +471,13 @@ def test_the_linux_smoke_matrix_covers_the_systems_of_the_plan():
     assert seen == SMOKE_SYSTEMS
     assert JOBS["smoke-linux"]["strategy"]["fail-fast"] is False
     assert JOBS["smoke-linux"]["needs"] == ["plan", "build-linux-x86_64"]
+
+
+def test_the_smoke_matrix_has_no_almalinux_8_and_floors_on_almalinux_9():
+    images = {m["image"] for m in _matrix("smoke-linux")}
+    assert "almalinux:8" not in images
+    assert {"almalinux:9", "amazonlinux:2023"} <= images
+    assert "2.28" not in TEXT
 
 
 def test_the_smoke_installs_each_format_the_way_a_user_does():
