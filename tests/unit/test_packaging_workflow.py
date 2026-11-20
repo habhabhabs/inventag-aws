@@ -959,16 +959,40 @@ def _digest_step_run(job, fragment="digest"):
     return _step(job, fragment)["run"]
 
 
-def _run_digest(tmp_path, run, inspect_output, image="debian:12"):
-    """Run a digest-recording step with a stub docker; return (code, summary text, calls)."""
+PULL_OUTPUT = (
+    "Using default tag: latest\n"
+    "12: Pulling from library/debian\n"
+    "69245854ad58: Pull complete\n"
+    "Digest: sha256:" + "ab" * 32 + "\n"
+    "Status: Downloaded newer image for debian:12\n"
+    "docker.io/library/debian:12\n"
+)
+SOME_DIGEST = "sha256:" + "ab" * 32
+
+
+def _run_digest(tmp_path, run, pull_output=PULL_OUTPUT, image="debian:12"):
+    """Run a digest-recording step with a stub docker; return (result, summary text, calls).
+
+    The stub is the docker of the runner as the dry run 6 log shows it: `pull`
+    prints the pull text with its "Digest:" line, `image inspect` prints an
+    empty string (RepoDigests is empty there), everything else prints an id.
+    """
     import subprocess
 
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir(exist_ok=True)
     calls = tmp_path / "docker.log"
+    text = tmp_path / "pull.txt"
+    text.write_text(pull_output, encoding="utf-8")
     stub = bin_dir / "docker"
     stub.write_text(
-        "#!/bin/bash\n" f'echo "$@" >> "{calls}"\n' f"printf '%s' '{inspect_output}'\n",
+        "#!/bin/bash\n"
+        f'echo "$@" >> "{calls}"\n'
+        'case "$1" in\n'
+        f'  pull) cat "{text}" ;;\n'
+        "  image) ;;\n"
+        "  *) echo 815aa372d99e ;;\n"
+        "esac\n",
         encoding="utf-8",
     )
     stub.chmod(0o755)
@@ -986,10 +1010,8 @@ def _run_digest(tmp_path, run, inspect_output, image="debian:12"):
         text=True,
         timeout=60,
     )
-    return result, summary.read_text("utf-8"), calls.read_text("utf-8")
-
-
-SOME_DIGEST = "debian@sha256:" + "ab" * 32
+    called = calls.read_text("utf-8") if calls.exists() else ""
+    return result, summary.read_text("utf-8"), called
 
 
 def test_every_linux_smoke_job_writes_the_digest_of_its_image_to_the_job_summary(
@@ -997,26 +1019,43 @@ def test_every_linux_smoke_job_writes_the_digest_of_its_image_to_the_job_summary
 ):
     steps = _steps("smoke-linux")
     names = [s.get("name", "") for s in steps]
-    # After the image was pulled (docker run pulls it) and before anything is installed.
-    assert names.index("Record the digest of the image") > names.index(
+    # The image is pulled by an explicit `docker pull`, before the container
+    # starts and before anything is installed.
+    assert names.index("Record the digest of the image") < names.index(
         "Start a fresh system"
     )
-    assert names.index("Record the digest of the image") < names.index(
-        "Install the package"
-    )
-    result, summary, calls = _run_digest(
-        tmp_path, _digest_step_run("smoke-linux"), SOME_DIGEST
-    )
+    assert names.index("Start a fresh system") < names.index("Install the package")
+    result, summary, calls = _run_digest(tmp_path, _digest_step_run("smoke-linux"))
     assert result.returncode == 0, result.stderr
-    assert "image inspect" in calls and "RepoDigests" in calls and "debian:12" in calls
+    assert calls.splitlines()[0] == "pull debian:12"
+    # dry run 6: RepoDigests is empty on the runner after the pull.
+    assert (
+        "RepoDigests" not in _digest_step_run("smoke-linux")
+        and "image inspect" not in calls
+    )
     assert f"debian:12: {SOME_DIGEST}" in summary
 
 
+BAD_PULLS = {
+    "no Digest line": "Status: Image is up to date for debian:12\n",
+    "63 hex digits": "Digest: sha256:" + "ab" * 31 + "a\n",
+    "65 hex digits": "Digest: sha256:" + "ab" * 32 + "c\n",
+    "upper case": "Digest: sha256:" + "AB" * 32 + "\n",
+    "not at the start of a line": "Pulled. Digest: sha256:" + "ab" * 32 + "\n",
+    "another algorithm": "Digest: sha512:" + "ab" * 32 + "\n",
+}
+
+
 def test_a_smoke_image_with_no_recorded_digest_fails_the_job(tmp_path):
-    result, summary, _ = _run_digest(tmp_path, _digest_step_run("smoke-linux"), "")
-    assert result.returncode != 0
-    assert "digest" in result.stdout + result.stderr
-    assert "sha256" not in summary
+    for index, (why, pulled) in enumerate(BAD_PULLS.items()):
+        work = tmp_path / str(index)
+        work.mkdir()
+        result, summary, _ = _run_digest(
+            work, _digest_step_run("smoke-linux"), pull_output=pulled
+        )
+        assert result.returncode != 0, why
+        assert "digest" in result.stdout + result.stderr, why
+        assert "sha256" not in summary, why
 
 
 def test_no_digest_is_typed_into_the_workflow_for_a_smoke_image():
@@ -1075,21 +1114,31 @@ def test_the_arm64_build_installs_its_deb_and_rpm_in_fresh_containers_on_the_sam
         assert "docker rm -f" in remove["run"]
 
 
-def test_the_arm64_smoke_images_are_named_by_tag_and_their_digest_is_recorded(tmp_path):
+def test_the_arm64_smoke_images_are_pulled_explicitly_and_their_digest_is_recorded(
+    tmp_path,
+):
     for index, (fragment, (image, _, _)) in enumerate(ARM64_SMOKES.items()):
         start = _step("build-linux-arm64", f"Start smoke container: {fragment}")
         work = tmp_path / str(index)
         work.mkdir()
-        result, summary, calls = _run_digest(
-            work, start["run"], SOME_DIGEST, image=image
-        )
+        result, summary, calls = _run_digest(work, start["run"], image=image)
         assert result.returncode == 0, result.stderr
+        lines = calls.splitlines()
+        # The pull comes first; the container starts only after the digest is known.
+        assert lines[0] == f"pull {image}"
+        assert lines[1].startswith("run -d --name smoke-")
+        assert "image inspect" not in calls
         assert f"{image}: {SOME_DIGEST}" in summary
-        assert "RepoDigests" in calls
-        empty = tmp_path / f"empty{index}"
-        empty.mkdir()
-        refused, _, _ = _run_digest(empty, start["run"], "", image=image)
-        assert refused.returncode != 0
+        for why, pulled in BAD_PULLS.items():
+            empty = work / why.replace(" ", "-")
+            empty.mkdir()
+            refused, bad_summary, bad_calls = _run_digest(
+                empty, start["run"], pull_output=pulled, image=image
+            )
+            assert refused.returncode != 0, why
+            assert "sha256" not in bad_summary, why
+            # No container is started without a recorded digest.
+            assert "run -d" not in bad_calls, why
 
 
 def test_the_arm64_smoke_is_in_the_arm64_job_only_with_no_new_runner_label():
