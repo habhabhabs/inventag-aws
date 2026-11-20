@@ -434,3 +434,40 @@ def test_R3_provisional_readonlyaccess_cannot_assume_a_role_and_the_default_acco
     assert again.code == 5, again.text
     assert again.sim.denied_set == {"sts:AssumeRole"}
     _assert_in_report(again, aws)
+
+
+def test_R4_provisional_readonlyaccess_cannot_upload_reports_and_the_run_ends_with_exit_1(
+    aws, run_as
+):
+    """R4: --s3-bucket needs s3:PutObject, which ReadOnlyAccess does not include."""
+    boto3.client("s3", region_name=REGION).create_bucket(Bucket="w1-report-bucket")
+    run = run_as(
+        read_only_access_actions(),
+        "--create-excel",
+        "--create-word",
+        "--s3-bucket",
+        "w1-report-bucket",
+    )
+    run.sim.assert_all_mapped()
+    # an upload that was asked for and did not happen is a failed run (published code 1)
+    assert run.code == 1, run.text
+    # the reads are all allowed; the one action refused is the upload
+    assert run.sim.denied_set == {"s3:PutObject"}
+    assert run.denied_ledger == []
+    # the local files are kept and the run says so
+    names = sorted(
+        p.name for p in [*run.out_dir.glob("*.xlsx"), *run.out_dir.glob("*.docx")]
+    )
+    assert len(names) == 2, names
+    assert "The local report files are kept." in run.text
+    assert "No file was uploaded to s3://w1-report-bucket" in run.text
+    # each file is named with the reason AWS gave
+    for name in names:
+        line = [l for l in run.text.splitlines() if "S3 upload of" in l and name in l]
+        assert line, f"no per-file failure for {name}"
+        assert "AccessDenied" in line[0] and "PutObject" in line[0]
+    # and nothing is in the bucket
+    objects = boto3.client("s3", region_name=REGION).list_objects_v2(
+        Bucket="w1-report-bucket"
+    )
+    assert objects.get("KeyCount", 0) == 0
