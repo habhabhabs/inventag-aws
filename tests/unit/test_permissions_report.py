@@ -9,6 +9,8 @@ PROVISIONAL until the raw copy replaces it (``SOURCE.json`` says how). Not verif
 real AWS.
 """
 
+from pathlib import Path
+
 import boto3
 import pytest
 from moto import mock_aws
@@ -630,3 +632,58 @@ def test_a_clean_run_has_no_entries_and_no_notes():
     )
     assert found == [] and pr.notes(found) == []
     assert pr.build() == [] and pr.notes([]) == []
+
+
+# ============================== the units the patches for other owners' files add
+# These need the patches v14-w2-s3-upload.patch and v14-w2-cost-analyzer.patch
+# (reports/); they fail until the integration lead applies them.
+from unittest.mock import MagicMock  # noqa: E402
+
+from botocore.exceptions import ClientError  # noqa: E402
+
+
+def _refused(code, operation):
+    return ClientError({"Error": {"Code": code, "Message": "x"}}, operation)
+
+
+def test_a_failed_upload_hands_over_the_aws_error_code_and_nothing_else_changes(
+    tmp_path,
+):
+    from inventag.core.s3_upload import upload_files
+
+    good = tmp_path / "report.xlsx"
+    good.write_bytes(b"1")
+    client = MagicMock()
+    client.meta.region_name = "us-east-1"
+    client.put_object.side_effect = _refused(DENIED, "PutObject")
+    result = upload_files(client, [str(good), str(tmp_path / "gone.docx")], "reports")
+    assert [(Path(e["file"]).name, e["error_code"]) for e in result["errors"]] == [
+        ("report.xlsx", DENIED),
+        ("gone.docx", ""),  # not an AWS answer: no code
+    ]
+    assert all(set(e) == {"file", "error", "error_code"} for e in result["errors"])
+    assert result["uploaded"] == []
+
+
+def test_the_cost_analyzer_hands_over_what_aws_refused_as_a_list_not_as_log_text(
+    caplog,
+):
+    from inventag.discovery.cost_analyzer import CostAnalyzer
+
+    analyzer = CostAnalyzer(session=boto3.Session(region_name="us-east-1"))
+    assert analyzer.permission_denials() == []
+    analyzer._log_aws_failure("pricing", "m", _refused(DENIED, "GetProducts"))
+    analyzer._log_aws_failure("pricing", "m", _refused(DENIED, "GetProducts"))
+    analyzer._log_aws_failure(
+        "cloudwatch", "m", _refused("AccessDeniedException", "GetMetricStatistics")
+    )
+    analyzer._log_aws_failure("cost-explorer", "m", _refused(DENIED, "GetCostAndUsage"))
+    analyzer._log_aws_failure("pricing", "m", _refused("Throttling", "GetProducts"))
+    analyzer._log_aws_failure("elsewhere", "m", _refused(DENIED, "Other"))
+    assert analyzer.permission_denials() == [
+        ("ce", "GetCostAndUsage", DENIED),
+        ("cloudwatch", "GetMetricStatistics", "AccessDeniedException"),
+        ("pricing", "GetProducts", DENIED),
+    ]
+    # the existing warning is unchanged (once per API)
+    assert caplog.text.count("access to the pricing API was denied") == 1
