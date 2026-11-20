@@ -430,11 +430,14 @@ def _comp(tpl, name, spdx, section="c-library", files=(), version="1"):
 
 def test_lgpl_is_accepted_only_for_libiconv_in_lxml(tpl):
     ok = _comp(
-        tpl, tpl.LXML_ICONV, "LGPL-2.1", files=["_internal/lxml/etree.cpython-312.so"]
+        tpl,
+        tpl.LXML_ICONV,
+        tpl.LXML_ICONV_SPDX,
+        files=["_internal/lxml/etree.cpython-312.so"],
     )
     assert tpl.licence_problems(ok) == []
     elsewhere = _comp(
-        tpl, tpl.LXML_ICONV, "LGPL-2.1", files=["_internal/libiconv.so.2"]
+        tpl, tpl.LXML_ICONV, tpl.LXML_ICONV_SPDX, files=["_internal/libiconv.so.2"]
     )
     assert tpl.licence_problems(elsewhere)
     other = _comp(tpl, "libfoo", "LGPL-2.1", files=["_internal/lxml/etree.so"])
@@ -574,7 +577,7 @@ def test_notices_file_from_a_sample_table(tpl, monkeypatch):
     text = tpl.render(comps)
     assert text == tpl.render(list(reversed(comps)))  # sorted, same bytes
     iconv = next(c for c in comps if c.name == tpl.LXML_ICONV)
-    assert iconv.spdx == "LGPL-2.1"
+    assert iconv.spdx == tpl.LXML_ICONV_SPDX
     assert iconv.version == "9.9"
     assert "libxslt (in lxml)" not in [c.name for c in comps]  # no symbols, no row
     assert "etree.cpython-312.so, objectify.cpython-312.so" in text
@@ -669,7 +672,7 @@ def test_two_lxml_modules_with_different_libiconv_versions_list_each_version(
     assert "version not recorded" not in text
     for version, rel in (("1.17", OBJECTIFY), ("1.18", ETREE)):
         head = (
-            f"- {tpl.LXML_ICONV} {version}: LGPL-2.1\n    {READ_FROM}\n"
+            f"- {tpl.LXML_ICONV} {version}: LGPL-2.1-or-later\n    {READ_FROM}\n"
             f"    carried in: {rel}\n    {LINUX_CROSS}\n"
             "    source: https://www.gnu.org/software/libiconv/\n"
             f"    source: {tpl.LIBICONV_DOWNLOAD.format(version=version)}\n"
@@ -758,7 +761,7 @@ def test_a_module_without_the_libiconv_symbol_gives_no_version(
     assert iconv[0].version == ""
     assert iconv[0].files == [ETREE, OBJECTIFY]
     text = tpl.render(comps)
-    assert f"- {tpl.LXML_ICONV} (version not recorded): LGPL-2.1" in text
+    assert f"- {tpl.LXML_ICONV} (version not recorded): LGPL-2.1-or-later" in text
     assert line + "\n" in text
     assert "libiconv-1.1" not in text
     assert "https://www.gnu.org/software/libiconv/" in text
@@ -801,7 +804,7 @@ def test_the_replace_sentence_adds_signing_only_for_macos_modules(
 def test_the_libiconv_lines_say_how_the_version_was_read(tpl, monkeypatch):
     comps = _collect_iconv(tpl, monkeypatch, {ETREE: "1.18", OBJECTIFY: "1.18"})
     text = tpl.render(comps)
-    head = f"- {tpl.LXML_ICONV} 1.18: LGPL-2.1\n    {READ_FROM}\n    {LINUX_CROSS}\n"
+    head = f"- {tpl.LXML_ICONV} 1.18: LGPL-2.1-or-later\n    {READ_FROM}\n    {LINUX_CROSS}\n"
     assert head in text
     assert text.count(READ_FROM) == 1  # only the libiconv component says it
     assert tpl.LIBICONV_DOWNLOAD.format(version="1.18") in text
@@ -810,7 +813,7 @@ def test_the_libiconv_lines_say_how_the_version_was_read(tpl, monkeypatch):
     assert iconv == [
         {
             "files": [ETREE, OBJECTIFY],
-            "licence": "LGPL-2.1",
+            "licence": "LGPL-2.1-or-later",
             "name": tpl.LXML_ICONV,
             "section": "c-library",
             "version": "1.18",
@@ -826,12 +829,12 @@ def test_the_container_notice_says_how_the_version_was_read(tpl, tmp_path, monke
     monkeypatch.setattr(tpl, "_source_urls", lambda metadata: [])
     _container_versions(tpl, monkeypatch, {"etree": "1.18", "objectify": "1.18"})
     text = tpl.libiconv_notice()
-    assert f"- {tpl.LXML_ICONV} 1.18: LGPL-2.1\n    {READ_FROM}\n" in text
+    assert f"- {tpl.LXML_ICONV} 1.18: LGPL-2.1-or-later\n    {READ_FROM}\n" in text
     assert f"    {READ_FROM}\n    {LINUX_CROSS}\n    source: " in text
     _container_versions(tpl, monkeypatch, {"etree": "", "objectify": ""})
     text = tpl.libiconv_notice()
     assert (
-        f"(version not recorded): LGPL-2.1\n    version not recorded: no source "
+        f"(version not recorded): LGPL-2.1-or-later\n    version not recorded: no source "
         "gave the version of etree.cpython-313-x86_64-linux-gnu.so, "
         "objectify.cpython-313-x86_64-linux-gnu.so\n"
     ) in text
@@ -2512,7 +2515,7 @@ def test_macos_slices_with_one_version_give_one_component(tpl, monkeypatch):
                 "",
                 "C libraries carried in the bundle",
                 "-" * 33,
-                f"- {tpl.LXML_ICONV} 1.17: LGPL-2.1",
+                f"- {tpl.LXML_ICONV} 1.17: LGPL-2.1-or-later",
                 f"    {MAC_READ_FROM}",
                 f"    {MAC_CROSS}",
                 f"    source: {tpl.LIBICONV_HOME}",
@@ -2828,7 +2831,7 @@ def test_the_build_record_holds_the_libiconv_evidence(tpl, tmp_path, monkeypatch
         "bytes 11 01 00 00, version 1.17",
         "libiconv evidence: lxml.etree.ICONV_COMPILED_VERSION (0, 0)",
         f"libiconv evidence: notices: - {tpl.LXML_ICONV} (version not recorded): "
-        "LGPL-2.1",
+        "LGPL-2.1-or-later",
         "libiconv evidence: notices:     version not recorded: no source gave the "
         "version of etree.cpython-312-darwin.so (x86_64)",
         f"libiconv evidence: notices:     {MAC_CROSS}",
@@ -2972,7 +2975,7 @@ def test_the_libiconv_evidence_ignores_the_other_components_of_run_11(
         lines = tpl.iconv_evidence(build, rows, given, (0, 0))
         notices = [x for x in lines if x.startswith("libiconv evidence: notices: - ")]
         assert notices == [
-            f"libiconv evidence: notices: - {tpl.LXML_ICONV} 1.17: LGPL-2.1"
+            f"libiconv evidence: notices: - {tpl.LXML_ICONV} 1.17: LGPL-2.1-or-later"
         ]
     assert "python-dateutil" not in "\n".join(lines)
 
@@ -3028,7 +3031,10 @@ def test_the_licence_check_runs_to_the_end_with_the_components_of_run_11(
         f"0x{SECT_ADDR + VALUE_AT:x}, section __DATA,__data"
     ) in text
     assert f"libiconv evidence: {D_ETREE}: read from the bundled file" in text
-    assert f"libiconv evidence: notices: - {tpl.LXML_ICONV} 1.17: LGPL-2.1" in text
+    assert (
+        f"libiconv evidence: notices: - {tpl.LXML_ICONV} 1.17: LGPL-2.1-or-later"
+        in text
+    )
     assert "BUILD RECORD: libiconv evidence: lxml.etree" in out
     notices = (tmp_path / "T.txt").read_text("utf-8")
     assert "- python-dateutil 2.9.0.post0: MIT" in notices
@@ -3061,3 +3067,8 @@ def test_a_build_configuration_line_that_is_not_a_number_is_a_problem(tpl, tmp_p
         "lxml build configuration lxml-wheels.yml: line three names no libiconv "
         "version (architect-run10-macos-iconv.md section 1)"
     ]
+
+
+def test_nfpm_description_points_to_the_third_party_licences():
+    text = (PACKAGING / "nfpm" / "nfpm.yaml").read_text()
+    assert "Third-party licences: see THIRD-PARTY-LICENSES.txt" in text

@@ -21,6 +21,7 @@ description: |-
   Read-only AWS inventory, tag checks and Excel and Word BOM reports.
   A self-contained build: it brings its own Python and libraries in
   /opt/inventag and needs no Python on the system.
+  Third-party licences: see THIRD-PARTY-LICENSES.txt in /opt/inventag.
 
 contents:
   - src: ./dist/inventag

@@ -100,7 +100,7 @@ FORBIDDEN_FILES = (
 )
 # Architect decision 2 (20 Nov 2026): the one LGPL item accepted, and where.
 LXML_ICONV = "GNU libiconv, linked into lxml's extension modules"
-LXML_ICONV_SPDX = "LGPL-2.1"
+LXML_ICONV_SPDX = "LGPL-2.1-or-later"
 LXML_ICONV_FILES = "*/lxml/*.so"
 LXML_PARAGRAPH = (
     "lxml's binary wheel, as published on PyPI under the project name lxml, "
