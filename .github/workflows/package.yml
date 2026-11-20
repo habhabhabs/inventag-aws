@@ -13,6 +13,18 @@ name: Package
 # dry_run (the default for a manual run) builds and tests everything and
 # attaches nothing to the release: no upload, no attestation.
 #
+# A pull request that changes packaging also runs this workflow, always as a
+# dry run of the pull request's own commit (the paths below limit it). A pull
+# request runs the workflow file of its own branch, so the first dry run needs
+# no file on main. On a pull request from a fork the token is read-only, no
+# secret exists, and nothing is attached. After v1.4.0 the same trigger is the
+# regression check for packaging changes.
+#
+# The `package` job of release.yml must not reach main before v1.4.0: a patch
+# release made from main (v1.3.2) would start packaging a tag that has no
+# packaging/ directory. tests/unit/test_packaging_workflow.py fails on any tree
+# that calls this workflow and lacks the files it packages.
+#
 # No secret of the repository is used. Nothing is published outside this
 # repository.
 "on":
@@ -33,6 +45,14 @@ name: Package
         required: false
         default: true
         type: boolean
+  pull_request:
+    paths:
+    - 'packaging/**'
+    - 'scripts/packaging/**'
+    - 'requirements-lock*.txt'
+    - '.github/workflows/package.yml'
+    - 'inventag/cli/selftest.py'
+    - 'inventag/cli/completion.py'
   workflow_dispatch:
     inputs:
       tag:
@@ -68,10 +88,11 @@ env:
   # job that uses it (from checksums.txt of the v2.49.0 release).
   NFPM_VERSION: '2.49.0'
 
-# One run per tag. A running package job is never cancelled: a half-uploaded
-# release is worse than a late one.
+# One run per tag (or per pull request: both inputs are empty there). A running
+# package job is never cancelled: a half-uploaded release is worse than a late
+# one.
 concurrency:
-  group: package-${{ inputs.tag || inputs.ref }}
+  group: package-${{ inputs.tag || inputs.ref || format('pr-{0}', github.event.pull_request.number) }}
   cancel-in-progress: false
 
 jobs:
@@ -86,20 +107,26 @@ jobs:
       version: ${{ steps.plan.outputs.version }}
       dry_run: ${{ steps.plan.outputs.dry_run }}
     steps:
-    - name: Checkout the tag (or, in a dry run, the ref)
+    # A pull request builds its own commit, not the merge commit.
+    - name: Checkout the tag (or, in a dry run, the ref or the pull request's commit)
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
-        ref: ${{ inputs.ref || format('refs/tags/{0}', inputs.tag) }}
+        ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || inputs.ref || format('refs/tags/{0}', inputs.tag) }}
         persist-credentials: false
 
     - name: Work out the version and check the tag against it
       id: plan
       env:
+        EVENT_NAME: ${{ github.event_name }}
         TAG: ${{ inputs.tag }}
-        REF: ${{ inputs.ref }}
-        DRY_RUN: ${{ inputs.dry_run }}
+        REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || inputs.ref }}
+        DRY_RUN: ${{ github.event_name == 'pull_request' || inputs.dry_run }}
       run: |
         case "$DRY_RUN" in true|false) ;; *) echo "::error::dry_run must be true or false."; exit 1;; esac
+        if [ "$EVENT_NAME" = pull_request ] && { [ -n "$TAG" ] || [ -z "$REF" ] || [ "$DRY_RUN" != true ]; }; then
+          echo "::error::A pull request is a dry run of its own commit: no tag, a commit, dry_run true."
+          exit 1
+        fi
         VERSION=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' inventag/_version.py)
         if [ -n "$REF" ]; then
           # A branch or commit is built for a dry run only: a release carries
