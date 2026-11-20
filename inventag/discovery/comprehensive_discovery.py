@@ -528,6 +528,7 @@ class ComprehensiveAWSDiscovery:
         # Detail calls (one read per resource): their own stop flag and the
         # pool of the call that is running now (see ``stop_detail_calls``).
         self._detail_stop = threading.Event()
+        self._account_id_lock = threading.Lock()
         self._detail_pool = None
         # One entry per listing call: what was tried and how it ended
         self.coverage = coverage if coverage is not None else CoverageLedger()
@@ -1936,20 +1937,26 @@ class ComprehensiveAWSDiscovery:
         This was one GetCallerIdentity call for each resource without an ARN.
         """
         account_id = getattr(self, "_cached_account_id", None)
-        if account_id is None:
-            try:
-                sts = self._client("sts")
-                account_id = sts.get_caller_identity()["Account"]
-            except Exception as e:
-                account_id = "000000000000"  # Placeholder
-                self._warn_once(
-                    "account-id",
-                    "The account ID could not be read "
-                    f"(GetCallerIdentity: {type(e).__name__}); rows without an "
-                    "ARN carry the placeholder 000000000000. Run with --debug "
-                    "for the detail.",
-                )
-            self._cached_account_id = account_id
+        if account_id is not None:
+            return account_id
+        # Listing workers ask at the same time: one of them reads, the others
+        # wait and use its answer (rule T1, no correctness from the GIL).
+        with self._account_id_lock:
+            account_id = getattr(self, "_cached_account_id", None)
+            if account_id is None:
+                try:
+                    sts = self._client("sts")
+                    account_id = sts.get_caller_identity()["Account"]
+                except Exception as e:
+                    account_id = "000000000000"  # Placeholder
+                    self._warn_once(
+                        "account-id",
+                        "The account ID could not be read "
+                        f"(GetCallerIdentity: {type(e).__name__}); rows without "
+                        "an ARN carry the placeholder 000000000000. Run with "
+                        "--debug for the detail.",
+                    )
+                self._cached_account_id = account_id
         return account_id
 
     def _construct_arn(
