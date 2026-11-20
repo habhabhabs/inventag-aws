@@ -316,21 +316,30 @@ def _api_name(service: str, operation: str) -> Optional[str]:
     return None
 
 
+def botocore_call(service: str, operation: str) -> Optional[Tuple[str, str]]:
+    """(botocore service name, API name) of a ledger key and operation, or None.
+
+    ``botocore_call("msk", "list_clusters_v2")`` is ``("kafka", "ListClustersV2")``.
+    """
+    if not service or not operation:
+        return None
+    service = LEDGER_CLIENT_SERVICES.get(service, service)
+    api = _api_name(service, operation)
+    return None if api is None else (service, api)
+
+
 def action_for(service: str, operation: str) -> Optional[str]:
     """The IAM action a call needs, or None when InvenTag does not know it.
 
     ``service`` is a botocore service name or a key of the discovery table;
     ``operation`` is the API name or its snake_case form.
     """
-    if not service or not operation:
+    call = botocore_call(service, operation)
+    if call is None:
         return None
-    service = LEDGER_CLIENT_SERVICES.get(service, service)
-    api = _api_name(service, operation)
-    if api is None:
-        return None
-    if service in _APIGATEWAY_SERVICES and api.startswith("Get"):
+    if call[0] in _APIGATEWAY_SERVICES and call[1].startswith("Get"):
         return "apigateway:GET"  # API Gateway authorises by HTTP verb
-    return _ACTION_OF_CALL.get((service, api))
+    return _ACTION_OF_CALL.get(call)
 
 
 def in_readonlyaccess(action: str) -> Optional[bool]:
