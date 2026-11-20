@@ -25,6 +25,13 @@ Rules: plan section 3.4 and the architect's decision 1 of 20 Nov 2026
   files (rpm) and the libraries the file links (``otool -L``, macOS); the
   check prints the same list first. A system with no table is checked against
   an empty one.
+- macOS: every file's links (``otool -L``) are checked
+  (architect-package-dryrun-5.md ruling 2): a library under ``/usr/lib/`` or
+  ``/System/Library/`` is part of macOS and not carried, so it needs no row; it
+  is written into the build record (``BUILD RECORD:`` lines, and the file
+  ``--build-record``) with the lowest macOS version the files state. Any other
+  absolute path fails; ``@rpath``, ``@loader_path`` and ``@executable_path``
+  must resolve to a bundled file with a row.
 - The build Python is 3.12 (``BUILD_PYTHON``); any other version fails.
 - No system C library (``libc``, ``libm``, ``libpthread``, ``ld-``), readline
   or gdbm may be in the bundle.
@@ -45,11 +52,12 @@ import hashlib
 import importlib.metadata as md
 import os
 import platform
+import posixpath
 import re
 import subprocess
 import sys
 import sysconfig
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -362,10 +370,9 @@ LINUX_ROWS: Tuple[Row, ...] = (
 # (Mach-O symbol table). Every third-party library gets its own row
 # (architect-package-dryrun-3.md ruling 3). The Linux text source "pkgdoc"
 # does not work on macOS (no dpkg, no rpm).
-DARWIN_SYSTEM_LINKS = (
-    "/usr/lib/libSystem.B.dylib",
-    "/System/Library/Frameworks/*",
-)
+# Links to these are part of macOS, not carried, and need no row; every other
+# absolute path fails (architect-package-dryrun-5.md ruling 2).
+DARWIN_SYSTEM_LINKS = ("/usr/lib/*", "/System/Library/*")
 _FRAMEWORK = {"links": DARWIN_SYSTEM_LINKS, "in_build_python": True}
 CPYTHON_EXPORTS = ("_PyInit_{module}",)
 _DYNLOAD = "_internal/python3.*/lib-dynload/"
@@ -377,8 +384,11 @@ OPENSSL_FRAMEWORK = Carried(
     "python:ssl.OPENSSL_VERSION.split()[1]",
 )
 DARWIN_ROWS: Tuple[Row, ...] = (
-    (Row("inventag", "pyinstaller"),)
-    + WHEEL_ROWS
+    # Ruling 2 covers every file of the bundle, the wheels' modules included.
+    tuple(
+        replace(r, links=DARWIN_SYSTEM_LINKS)
+        for r in (Row("inventag", "pyinstaller"),) + WHEEL_ROWS
+    )
     + (
         Row("_internal/Python", "cpython", **_FRAMEWORK),
         Row("_internal/Python.framework/Python", "cpython", **_FRAMEWORK),
@@ -824,6 +834,10 @@ class Build:
         out = _run(["otool", "-L", str(self.file_path(rel))])
         return otool_libraries(out) if out else []
 
+    def min_os(self, rel: str, arch: str) -> Optional[Tuple[int, int, int]]:
+        """The minimum macOS version a bundled Mach-O file states, or None."""
+        return macho_minos(self.file_path(rel).read_bytes(), arch)
+
     def defined_symbols(self, rel: str) -> Optional[List[str]]:
         """The defined external symbols of a bundled Mach-O file, or None."""
         return macho_defined_symbols(self.file_path(rel).read_bytes())
@@ -1052,6 +1066,102 @@ def _present(build, rel: str, carried: Carried) -> bool:
 
 
 THIRD_PARTY = "a third-party library inside needs its own row (architect ruling 3.2)"
+OUTSIDE_LINK = (
+    "an absolute path outside the bundle and outside /usr/lib/ and "
+    "/System/Library/: a user's Mac need not have it "
+    "(architect-package-dryrun-5.md ruling 2)"
+)
+UNRESOLVED_LINK = (
+    "which does not resolve to a bundled file with a row "
+    "(architect-package-dryrun-5.md ruling 2)"
+)
+
+
+def os_library(lib: str, patterns: Sequence[str]) -> bool:
+    """An absolute link to a library of macOS itself (``..`` resolved first)."""
+    return any(fnmatch.fnmatchcase(posixpath.normpath(lib), p) for p in patterns)
+
+
+def resolve_link(rel: str, lib: str) -> Optional[str]:
+    """The bundle path a relative link names, or None. ``@rpath`` is the
+    ``_internal`` folder (where PyInstaller puts libraries), ``@loader_path``
+    the linking file's folder, ``@executable_path`` the bundle's top."""
+    for prefix, base in (
+        ("@rpath/", "_internal"),
+        ("@loader_path/", posixpath.dirname(rel)),
+        ("@executable_path/", ""),
+    ):
+        if lib.startswith(prefix):
+            target = posixpath.normpath(posixpath.join(base, lib[len(prefix) :]))
+            return None if target.split("/")[0] == ".." else target
+    return None
+
+
+def build_record(build, rows: Sequence[Row], arch: str) -> List[str]:
+    """The macOS build record (architect-package-dryrun-5.md ruling 2): each
+    link to a library of macOS (not carried), and the lowest macOS version the
+    bundle's files state (the highest ``minos`` over them)."""
+    lines: List[str] = []
+    versions: List[Tuple[Tuple[int, int, int], str]] = []
+    for rel in build.binaries():
+        row = match_row(rel, rows)
+        if row is None or not row.links:
+            continue
+        lines += [
+            f"system library (not carried): {rel} -> {lib}"
+            for lib in build.linked_libraries(rel)
+            if lib.startswith("/") and os_library(lib, row.links)
+        ]
+        found = build.min_os(rel, arch)
+        if found:
+            versions.append((tuple(found), rel))
+    lines.sort()
+    head = "lowest macOS version the files state: "
+    if not versions:
+        return lines + [head + "not recorded (no file states one)"]
+    top = max(v for v, _ in versions)
+    source = min(r for v, r in versions if v == top)
+    shown = f"{top[0]}.{top[1]}" + (f".{top[2]}" if top[2] else "")
+    return lines + [
+        f"{head}{shown} (the highest minos over {len(versions)} files that state "
+        f"one, {arch}; from {source})"
+    ]
+
+
+MACHO_CPU = {"arm64": 0x0100000C, "x86_64": 0x01000007}
+
+
+def macho_minos(data: bytes, arch: str) -> Optional[Tuple[int, int, int]]:
+    """The minimum macOS version a 64-bit Mach-O file states (``minos`` of
+    LC_BUILD_VERSION, or LC_VERSION_MIN_MACOSX); of a universal file, the slice
+    of ``arch``. None when there is none."""
+    import struct
+
+    try:
+        if data[:4] == b"\xca\xfe\xba\xbe":
+            (count,) = struct.unpack_from(">I", data, 4)
+            for i in range(count):
+                cpu, _sub, offset, size, _align = struct.unpack_from(
+                    ">iiIII", data, 8 + 20 * i
+                )
+                if cpu == MACHO_CPU.get(arch):
+                    return macho_minos(data[offset : offset + size], arch)
+            return None
+        if data[:4] != b"\xcf\xfa\xed\xfe" or len(data) < 32:
+            return None
+        (ncmds,) = struct.unpack_from("<I", data, 16)
+        pos = 32
+        for _ in range(ncmds):
+            cmd, cmdsize = struct.unpack_from("<II", data, pos)
+            if cmd in (0x32, 0x24):  # LC_BUILD_VERSION, LC_VERSION_MIN_MACOSX
+                (v,) = struct.unpack_from("<I", data, pos + (12 if cmd == 0x32 else 8))
+                return (v >> 16, (v >> 8) & 0xFF, v & 0xFF)
+            if cmdsize < 8:
+                return None
+            pos += cmdsize
+    except struct.error:
+        return None
+    return None
 
 
 def framework_problems(
@@ -1083,20 +1193,14 @@ def framework_problems(
                 "them (architect ruling 3.1)"
             )
         for lib in linked:
-            if any(fnmatch.fnmatchcase(lib, p) for p in row.links):
+            if lib.startswith("/"):
+                if not os_library(lib, row.links):
+                    problems.append(f"{rel}: links {lib}, {OUTSIDE_LINK}")
                 continue
-            target = "_internal/" + lib[len("@rpath/") :]
-            if (
-                lib.startswith("@rpath/")
-                and target in binaries
-                and match_row(target, rows) is not None
-            ):
+            target = resolve_link(rel, lib)
+            if target in binaries and match_row(target, rows) is not None:
                 continue
-            problems.append(
-                f"{rel}: links {lib}, which is neither a macOS system library this "
-                f"table accepts ({', '.join(row.links)}) nor a bundled file with a "
-                "row (architect ruling 3.1)"
-            )
+            problems.append(f"{rel}: links {lib}, {UNRESOLVED_LINK}")
     if row.exports:
         symbols = build.defined_symbols(rel)
         if symbols is None:
@@ -1558,6 +1662,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="also write the components (name, version, licence, files) as JSON, "
         "for the per-artefact SBOM",
     )
+    parser.add_argument(
+        "--build-record",
+        type=Path,
+        help="macOS: also write the build record (links to libraries of macOS, "
+        "lowest macOS version) to this file",
+    )
     parser.add_argument("--platform", default=sys.platform.rstrip("0123456789"))
     parser.add_argument(
         "--repo-root", type=Path, default=Path(__file__).resolve().parents[2]
@@ -1588,6 +1698,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if ns.components_json:
         ns.components_json.write_text(components_json(comps), encoding="utf-8")
     print(f"{len(comps)} components written to {ns.out}")
+    if any(r.links for r in rows):
+        record = build_record(build, rows, platform.machine())
+        print("".join(f"BUILD RECORD: {line}\n" for line in record), end="")
+        if ns.build_record:
+            ns.build_record.write_text("".join(f"{x}\n" for x in record), "utf-8")
     for p in problems:
         print(f"LICENCE CHECK: {p}", file=sys.stderr)
     print("licence check: " + ("FAIL" if problems else "pass"))
