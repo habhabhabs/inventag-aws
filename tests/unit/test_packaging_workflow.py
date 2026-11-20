@@ -1384,6 +1384,83 @@ def test_the_macos_build_record_and_notices_are_uploaded_with_the_macos_build():
     assert not step["with"]["name"].startswith("build-")
 
 
+# ---- B3e: no early-exiting reader after a multi-line writer (dry run 6) -----
+
+EARLY_READER = re.compile(r"\|\s*(grep\s+-\w*q\w*|head\b)")
+SINGLE_WRITER = re.compile(r"(^|[\s$(])(printf|echo)\s")
+
+
+def test_no_step_pipes_a_command_that_can_write_many_lines_into_grep_q_or_head():
+    # grep -q and head leave at the first match; the writer then gets SIGPIPE
+    # and under `set -o pipefail` the pipeline fails, silently (dry run 6, the
+    # fish completion check: exit 1 right after "completion loads in zsh").
+    # A printf or echo of one value is no such writer. Capture the output in a
+    # variable first, then test the variable.
+    found = []
+    for job, step in _all_steps():
+        for line in step.get("run", "").splitlines():
+            match = EARLY_READER.search(line)
+            if match and not SINGLE_WRITER.search(line[: match.start()]):
+                found.append((job, step.get("name"), line.strip()))
+    assert found == []
+
+
+def _completions_run(tmp_path, fish_mode):
+    """Run the fish branch of the completions step with a stub fish.
+
+    fish_mode: "many" (prints 5000 lines, the inventag one first), "none"
+    (many lines, none names inventag), "fails" (prints inventag, exits 3).
+    """
+    import subprocess
+
+    stubs = tmp_path / "stubs"
+    stubs.mkdir(exist_ok=True)
+    (stubs / "fish").write_text(
+        "#!/bin/bash\n"
+        '[ "$1" = -n ] && exit 0\n'
+        'case "$MODE" in\n'
+        "  many) echo 'complete -c inventag -l help'; yes 'complete -c other' | head -5000 ;;\n"
+        "  none) yes 'complete -c other' | head -5000 ;;\n"
+        "  fails) echo 'complete -c inventag -l help'; exit 3 ;;\n"
+        "esac\n",
+        encoding="utf-8",
+    )
+    (stubs / "fish").chmod(0o755)
+    share = tmp_path / "share"
+    share.mkdir(exist_ok=True)
+    (share / "inventag.fish").write_text("", encoding="utf-8")
+    script = _heredoc(_step("smoke-linux", "Completions load")["run"], "COMPLETIONS")
+    script = script.replace("/opt/inventag/share/completions", str(share))
+    return subprocess.run(
+        ["bash", "-s"],
+        input=script,
+        env={
+            "PATH": f"{stubs}:/usr/bin:/bin",
+            "FORMAT": "tar",
+            "SHELLS": "fish",
+            "MODE": fish_mode,
+        },
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+
+def test_the_fish_completion_check_passes_when_fish_prints_many_lines_with_inventag(
+    tmp_path,
+):
+    result = _completions_run(tmp_path, "many")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "completion loads in fish" in result.stdout
+
+
+def test_the_fish_completion_check_keeps_its_meaning(tmp_path):
+    for mode in ("none", "fails"):
+        result = _completions_run(tmp_path, mode)
+        assert result.returncode != 0, mode
+        assert "completion loads in fish" not in result.stdout, mode
+
+
 # ---- B3b: the INCLUDE_MACOS switch (architect ruling 4) --------------------
 
 MACOS_JOBS = (
