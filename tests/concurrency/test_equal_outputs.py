@@ -70,10 +70,6 @@ def assert_same(a: harness.Scan, b: harness.Scan, same_calls=True, sorted_dicts=
 
 
 # ---------------------------------------------------------- true on v1.3.0 today
-@pytest.mark.xfail(
-    strict=False,
-    reason="A3: measured on v1.3.0 (9f9e972), 3 runs of the default scan under seeds 0 to 2: the same set of resources in state/state_*.json, in a different order (first difference at $.resources[0].arn). Plan 2.4 item 3 (A3): the sort key (arn, service, type, id, region) leaves ties in arrival order; the fix is a last key, a digest of the row. strict=False because it is intermittent. Remove this mark when A3 is merged",
-)
 @pytest.mark.parametrize("seed", ["0", "1"])
 def test_max_concurrent_accounts_1_and_4_write_the_same_files(scans, seed):
     """Today: accounts one at a time and four at a time give the same files (no analyses;
@@ -83,10 +79,6 @@ def test_max_concurrent_accounts_1_and_4_write_the_same_files(scans, seed):
     assert_same(one, four, sorted_dicts=compare.LEDGER_ORDER)
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="A3: measured on v1.3.0 (9f9e972), 3 runs of the default scan under seeds 0 to 2: the same set of resources in state/state_*.json, in a different order (first difference at $.resources[0].arn). Plan 2.4 item 3 (A3): the sort key (arn, service, type, id, region) leaves ties in arrival order; the fix is a last key, a digest of the row. strict=False because it is intermittent. Remove this mark when A3 is merged",
-)
 def test_max_concurrent_accounts_1_and_4_write_the_same_analysis_sheets(scans):
     one = scans(ANALYSES + ["--max-concurrent-accounts", "1"], accounts=3, **ESTATE)
     four = scans(
