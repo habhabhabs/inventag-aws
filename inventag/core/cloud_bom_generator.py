@@ -508,7 +508,12 @@ class CloudBOMGenerator:
         # that were not scanned; and the names already warned about.
         self._unknown_regions: Dict[str, List[str]] = {}
         self._warned_regions: set = set()
-        self._last_unknown: List[str] = []
+        self._warned_lock = threading.Lock()
+        # The unknown regions of the region check that ran last on this
+        # thread (the credential stage checks accounts in parallel).
+        self._region_local = threading.local()
+        # The default credentials' identity is looked up once per run.
+        self._identity_lock = threading.RLock()
         # Read-only guard blocks counted before this run (blocked calls,
         # recorded entries), so only this run's blocks are reported.
         self._guard_start = (0, 0)
@@ -1329,149 +1334,204 @@ class CloudBOMGenerator:
             f"to scan only the other {others}."
         )
 
-    def _establish_account_contexts(self) -> Dict[str, AccountContext]:
-        """Validate credentials and establish account contexts."""
-        account_contexts = {}
+    @property
+    def _last_unknown(self) -> List[str]:
+        return getattr(self._region_local, "unknown", [])
 
-        for credentials in self.config.accounts:
+    @_last_unknown.setter
+    def _last_unknown(self, value: List[str]) -> None:
+        self._region_local.unknown = value
+
+    def _establish_account_contexts(self) -> Dict[str, AccountContext]:
+        """Validate credentials and establish account contexts.
+
+        Accounts are validated through an account pool (at most
+        ``max_concurrent_accounts`` at once; one after the other with
+        ``--disable-parallel-processing``). An account that needs a terminal
+        (the SDK asks for an MFA code) is handled first, on this thread. The
+        contexts are recorded here, in the configured order, whatever order
+        the accounts finish in.
+        """
+        accounts = list(self.config.accounts)
+        results: List[Any] = [None] * len(accounts)
+        on_terminal = [i for i, c in enumerate(accounts) if self._needs_terminal(c)]
+        for i in on_terminal:
+            results[i] = self._establish_one(accounts[i])
+        rest = [i for i in range(len(accounts)) if i not in on_terminal]
+        if self.config.parallel_account_processing and len(rest) > 1:
+            pool = DaemonThreadPool(self.config.max_concurrent_accounts)
             try:
-                self.logger.info(
-                    f"Establishing context for account {credentials.account_id}"
+                futures = [
+                    (i, pool.submit(self._establish_one, accounts[i])) for i in rest
+                ]
+                for i, future in futures:
+                    results[i] = future.result()
+            finally:
+                pool.shutdown(wait=False)
+        else:
+            for i in rest:
+                results[i] = self._establish_one(accounts[i])
+
+        account_contexts = {}
+        for context, unknown in results:
+            account_id = context.credentials.account_id
+            if unknown:
+                self._unknown_regions[str(account_id)] = unknown
+            account_contexts[account_id] = context
+            self.account_contexts[account_id] = context
+        return account_contexts
+
+    @staticmethod
+    def _needs_terminal(credentials: AccountCredentials) -> bool:
+        """True when the SDK will ask on the terminal for this account's MFA
+        code: a profile with ``mfa_serial`` while stdin is a terminal."""
+        if not credentials.profile_name:
+            return False
+        try:
+            if sys.stdin is None or not sys.stdin.isatty():
+                return False
+            config = boto3.Session(
+                profile_name=credentials.profile_name
+            )._session.get_scoped_config()
+        except Exception:
+            return False
+        serial = config.get("mfa_serial")
+        return isinstance(serial, str) and bool(serial)
+
+    def _establish_one(self, credentials: AccountCredentials):
+        """One account's context and the region names botocore did not know
+        (returned, not recorded: the caller records both in order)."""
+        try:
+            self.logger.info(
+                f"Establishing context for account {credentials.account_id}"
+            )
+
+            # Create session
+            session = self._create_account_session(credentials)
+
+            # Get caller identity to validate credentials
+            caller_identity = self._get_caller_identity(session)
+
+            # Validate account ID matches. Scanning a different account
+            # than the one configured would mislabel every resource in the
+            # report, so a mismatch on a real account ID is fatal.
+            actual_account_id = caller_identity.get("Account", "")
+            if (
+                is_valid_account_id(credentials.account_id)
+                and credentials.account_id != actual_account_id
+            ):
+                raise AccountSessionError(
+                    f"Credentials for account {credentials.account_id} "
+                    f"resolved to account {actual_account_id}; refusing to "
+                    "scan the wrong account. Check the profile, role ARN or "
+                    "cross-account role for this account."
+                )
+            if credentials.account_id != actual_account_id:
+                self.logger.warning(
+                    f"Account ID mismatch for {credentials.account_id}. "
+                    f"Actual: {actual_account_id}"
                 )
 
-                # Create session
-                session = self._create_account_session(credentials)
-
-                # Get caller identity to validate credentials
-                caller_identity = self._get_caller_identity(session)
-
-                # Validate account ID matches. Scanning a different account
-                # than the one configured would mislabel every resource in the
-                # report, so a mismatch on a real account ID is fatal.
-                actual_account_id = caller_identity.get("Account", "")
-                if (
-                    is_valid_account_id(credentials.account_id)
-                    and credentials.account_id != actual_account_id
-                ):
-                    raise AccountSessionError(
-                        f"Credentials for account {credentials.account_id} "
-                        f"resolved to account {actual_account_id}; refusing to "
-                        "scan the wrong account. Check the profile, role ARN or "
-                        "cross-account role for this account."
+                # If the original account_id was "default", update it with the real account ID
+                if credentials.account_id == "default":
+                    self.logger.info(
+                        f"Updating account ID from 'default' to actual account ID: {actual_account_id}"
                     )
-                if credentials.account_id != actual_account_id:
-                    self.logger.warning(
-                        f"Account ID mismatch for {credentials.account_id}. "
-                        f"Actual: {actual_account_id}"
-                    )
-
-                    # If the original account_id was "default", update it with the real account ID
-                    if credentials.account_id == "default":
-                        self.logger.info(
-                            f"Updating account ID from 'default' to actual account ID: {actual_account_id}"
-                        )
-                        credentials.account_id = actual_account_id
-                        # Also update account name to be more descriptive if it was generic
-                        if credentials.account_name == "Default AWS Account":
-                            caller_arn = caller_identity.get("Arn", "")
-                            if "assumed-role" in caller_arn:
-                                try:
-                                    role_part = caller_arn.split("assumed-role/")[
-                                        1
-                                    ].split("/")[0]
-                                    credentials.account_name = (
-                                        f"AWS Account {actual_account_id} ({role_part})"
-                                    )
-                                except Exception:
-                                    credentials.account_name = (
-                                        f"AWS Account {actual_account_id}"
-                                    )
-                            elif "user" in caller_arn:
-                                try:
-                                    user_part = caller_arn.split("user/")[1]
-                                    credentials.account_name = (
-                                        f"AWS Account {actual_account_id} ({user_part})"
-                                    )
-                                except Exception:
-                                    credentials.account_name = (
-                                        f"AWS Account {actual_account_id}"
-                                    )
-                            else:
+                    credentials.account_id = actual_account_id
+                    # Also update account name to be more descriptive if it was generic
+                    if credentials.account_name == "Default AWS Account":
+                        caller_arn = caller_identity.get("Arn", "")
+                        if "assumed-role" in caller_arn:
+                            try:
+                                role_part = caller_arn.split("assumed-role/")[1].split(
+                                    "/"
+                                )[0]
+                                credentials.account_name = (
+                                    f"AWS Account {actual_account_id} ({role_part})"
+                                )
+                            except Exception:
                                 credentials.account_name = (
                                     f"AWS Account {actual_account_id}"
                                 )
+                        elif "user" in caller_arn:
+                            try:
+                                user_part = caller_arn.split("user/")[1]
+                                credentials.account_name = (
+                                    f"AWS Account {actual_account_id} ({user_part})"
+                                )
+                            except Exception:
+                                credentials.account_name = (
+                                    f"AWS Account {actual_account_id}"
+                                )
+                        else:
+                            credentials.account_name = (
+                                f"AWS Account {actual_account_id}"
+                            )
 
-                # Auto-discover regions if none specified: ec2:DescribeRegions,
-                # then account:ListRegions, then every region of the partition
-                # (inventag.discovery.regions; never a fixed short list).
-                target_regions = credentials.regions
-                if not target_regions:
-                    target_regions, source = discover_regions(session, self.logger)
-                    self.logger.info(
-                        f"Auto-discovered {len(target_regions)} regions for "
-                        f"account {credentials.account_id} (from {source})"
-                    )
-
-                self._warn_other_partition_regions(
-                    session,
-                    credentials.account_id,
-                    caller_identity.get("Arn", ""),
-                    target_regions,
-                )
-
-                # Test accessible regions
-                accessible_regions = self._test_accessible_regions(
-                    session, target_regions
-                )
-
-                # Create account context. With no accessible region at all,
-                # discovery falls back to the target regions, so none is
-                # skipped.
-                context = AccountContext(
-                    credentials=credentials,
-                    session=session,
-                    caller_identity=caller_identity,
-                    accessible_regions=accessible_regions,
-                    skipped_regions=(
-                        [
-                            r
-                            for r in target_regions
-                            if r not in accessible_regions
-                            and r not in self._last_unknown
-                        ]
-                        if accessible_regions
-                        else []
-                    ),
-                )
-                if accessible_regions and self._last_unknown:
-                    self._unknown_regions[str(credentials.account_id)] = list(
-                        self._last_unknown
-                    )
-
-                account_contexts[credentials.account_id] = context
-                self.account_contexts[credentials.account_id] = context
-
+            # Auto-discover regions if none specified: ec2:DescribeRegions,
+            # then account:ListRegions, then every region of the partition
+            # (inventag.discovery.regions; never a fixed short list).
+            target_regions = credentials.regions
+            if not target_regions:
+                target_regions, source = discover_regions(session, self.logger)
                 self.logger.info(
-                    f"Successfully established context for account {credentials.account_id} "
-                    f"({credentials.account_name}) with {len(accessible_regions)} accessible regions"
+                    f"Auto-discovered {len(target_regions)} regions for "
+                    f"account {credentials.account_id} (from {source})"
                 )
 
-            except Exception as e:
-                cause = str(e) or type(e).__name__
-                self.logger.error(
-                    f"Failed to establish context for account {credentials.account_id}: {cause}"
-                )
-                # Create a failed context for tracking
-                context = AccountContext(
-                    credentials=credentials,
-                    session=None,
-                    caller_identity={},
-                    processing_errors=[f"Context establishment failed: {cause}"],
-                )
-                account_contexts[credentials.account_id] = context
-                self.account_contexts[credentials.account_id] = context
+            self._warn_other_partition_regions(
+                session,
+                credentials.account_id,
+                caller_identity.get("Arn", ""),
+                target_regions,
+            )
 
-        return account_contexts
+            # Test accessible regions
+            accessible_regions = self._test_accessible_regions(session, target_regions)
+
+            # Create account context. With no accessible region at all,
+            # discovery falls back to the target regions, so none is
+            # skipped.
+            context = AccountContext(
+                credentials=credentials,
+                session=session,
+                caller_identity=caller_identity,
+                accessible_regions=accessible_regions,
+                skipped_regions=(
+                    [
+                        r
+                        for r in target_regions
+                        if r not in accessible_regions and r not in self._last_unknown
+                    ]
+                    if accessible_regions
+                    else []
+                ),
+            )
+            unknown = (
+                list(self._last_unknown)
+                if accessible_regions and self._last_unknown
+                else []
+            )
+
+            self.logger.info(
+                f"Successfully established context for account {credentials.account_id} "
+                f"({credentials.account_name}) with {len(accessible_regions)} accessible regions"
+            )
+            return context, unknown
+
+        except Exception as e:
+            cause = str(e) or type(e).__name__
+            self.logger.error(
+                f"Failed to establish context for account {credentials.account_id}: {cause}"
+            )
+            # Create a failed context for tracking
+            context = AccountContext(
+                credentials=credentials,
+                session=None,
+                caller_identity={},
+                processing_errors=[f"Context establishment failed: {cause}"],
+            )
+            return context, []
 
     def _create_account_session(self, credentials: AccountCredentials) -> boto3.Session:
         """Create a boto3 session for the given account credentials.
@@ -1485,7 +1545,9 @@ class CloudBOMGenerator:
 
         if credentials.profile_name:
             try:
-                session = boto3.Session(profile_name=credentials.profile_name)
+                session = self._limited_session(
+                    credentials.account_id, profile_name=credentials.profile_name
+                )
                 serial = _mfa_serial_without_terminal(session)
                 if serial:
                     raise AccountSessionError(
@@ -1524,7 +1586,8 @@ class CloudBOMGenerator:
                 ) from e
 
         if credentials.access_key_id and credentials.secret_access_key:
-            return boto3.Session(
+            return self._limited_session(
+                credentials.account_id,
                 aws_access_key_id=credentials.access_key_id,
                 aws_secret_access_key=credentials.secret_access_key,
                 aws_session_token=credentials.session_token,
@@ -1537,7 +1600,7 @@ class CloudBOMGenerator:
             and self.config.cross_account_role_name == "InvenTagCrossAccountRole"
             and self._default_caller_account() == str(credentials.account_id)
         ):
-            return boto3.Session()
+            return self._limited_session(credentials.account_id)
 
         if self.config.cross_account_role_name and is_valid_account_id(
             credentials.account_id
@@ -1571,7 +1634,7 @@ class CloudBOMGenerator:
         # Fallback to default session. _establish_account_contexts verifies
         # that it really belongs to the configured account.
         try:
-            session = boto3.Session()
+            session = self._limited_session(credentials.account_id)
             self._sts(session).get_caller_identity()
             return session
         except Exception as e:
@@ -1579,11 +1642,21 @@ class CloudBOMGenerator:
                 f"Failed to create valid session for account {credentials.account_id}: {e}"
             ) from e
 
+    def _limited_session(self, account_id, **kwargs) -> boto3.Session:
+        """A new boto3 session with the run's limiter, before any client is
+        made from it (clients copy the session's handlers when created). The
+        account's scan puts the limiter on again with the account's deadline
+        (:meth:`_attach_limiter`)."""
+        session = boto3.Session(**kwargs)
+        if getattr(session, "events", None) is not None:
+            self.limiter.attach(session, str(account_id))
+        return session
+
     def _assume_role_session(
         self, role_arn: str, account_id: str, external_id: Optional[str] = None
     ) -> boto3.Session:
         """Assume ``role_arn`` with the default credentials and return a session."""
-        sts = self._sts(boto3.Session())
+        sts = self._sts(self._limited_session(account_id))
         session_label = "".join(
             ch if ch.isalnum() or ch in "+=,.@-" else "-" for ch in str(account_id)
         )
@@ -1598,7 +1671,8 @@ class CloudBOMGenerator:
         response = sts.assume_role(**kwargs)
         temp = response["Credentials"]
         register_secrets([temp["SecretAccessKey"], temp["SessionToken"]])
-        return boto3.Session(
+        return self._limited_session(
+            account_id,
             aws_access_key_id=temp["AccessKeyId"],
             aws_secret_access_key=temp["SecretAccessKey"],
             aws_session_token=temp["SessionToken"],
@@ -1666,25 +1740,29 @@ class CloudBOMGenerator:
 
     def _default_caller_account(self) -> Optional[str]:
         """Account ID of the default credentials (looked up once per run)."""
-        if not hasattr(self, "_default_caller_account_id"):
-            try:
-                self._default_caller_account_id = str(
-                    self._sts(boto3.Session()).get_caller_identity()["Account"]
-                )
-            except Exception:
-                self._default_caller_account_id = None
-        return self._default_caller_account_id
+        with self._identity_lock:
+            if not hasattr(self, "_default_caller_account_id"):
+                try:
+                    self._default_caller_account_id = str(
+                        self._sts(
+                            self._limited_session("default")
+                        ).get_caller_identity()["Account"]
+                    )
+                except Exception:
+                    self._default_caller_account_id = None
+            return self._default_caller_account_id
 
     def _default_partition(self) -> str:
         """Partition (aws, aws-cn, aws-us-gov...) of the default credentials."""
-        if self._default_identity is None:
-            try:
-                self._default_identity = self._sts(
-                    boto3.Session()
-                ).get_caller_identity()
-            except Exception:
-                self._default_identity = {}
-        return partition_from_arn(self._default_identity.get("Arn"))
+        with self._identity_lock:
+            if self._default_identity is None:
+                try:
+                    self._default_identity = self._sts(
+                        self._limited_session("default")
+                    ).get_caller_identity()
+                except Exception:
+                    self._default_identity = {}
+            return partition_from_arn(self._default_identity.get("Arn"))
 
     def _get_caller_identity(self, session: boto3.Session) -> Dict[str, Any]:
         """Get caller identity for account context detection."""
@@ -1764,8 +1842,10 @@ class CloudBOMGenerator:
         if not known or region in known:
             return False
         self._last_unknown.append(region)
-        if region not in self._warned_regions:
+        with self._warned_lock:
+            first = region not in self._warned_regions
             self._warned_regions.add(region)
+        if first:
             self.logger.warning(
                 f"Region '{region}' could not be checked and the installed boto3 "
                 "does not know it: check its spelling in --account-regions or in "
