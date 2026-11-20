@@ -319,12 +319,19 @@ LINUX_ROWS: Tuple[Row, ...] = (
     )
 )
 
-# Only the Linux table exists, and its text sources were read on a Debian-family
-# build host. The macOS bundle and the AlmaLinux 8 (rpm) build have not been
-# read here: their first build prints every unmapped binary (unmapped_report)
-# and fails; rows are written from that list and the libraries' own licence
-# files, never from memory (architect ruling 4 (a), work order B2c).
-TABLES: Dict[str, Tuple[Row, ...]] = {"linux": LINUX_ROWS}
+# macOS arm64: rows only for the files whose owner dry run 3 printed (the
+# executable from PyInstaller's build, and the wheels' files). The build's
+# Python.framework (Python, lib-dynload/*.so, libssl.3.dylib, libcrypto.3.dylib)
+# has no row: what each file links or carries, and where its licence text
+# comes from, is not yet verified, so those files fail the check as unmapped
+# (gaps in reports/v14-b2d-licence-rows.md). The Linux text sources that read
+# a system package ("pkgdoc") do not work on macOS (no dpkg, no rpm).
+DARWIN_ROWS: Tuple[Row, ...] = (Row("inventag", "pyinstaller"),) + WHEEL_ROWS
+
+# Rows are written from what a dry run prints (`--list-unmapped`) and from the
+# libraries' own licence files, never from memory (architect ruling 4 (a),
+# work order B2c; text sources: architect-package-dryrun-1.md section 4).
+TABLES: Dict[str, Tuple[Row, ...]] = {"linux": LINUX_ROWS, "darwin": DARWIN_ROWS}
 
 
 # ------------------------------------------------------------------ model
