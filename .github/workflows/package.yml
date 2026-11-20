@@ -75,15 +75,17 @@ permissions:
   contents: read
 
 env:
-  # The build image: the official almalinux:8 image (AlmaLinux 8, glibc 2.28,
+  # The build image: the official almalinux:9 image (AlmaLinux 9, OpenSSL 3,
   # the distribution's own Python 3.12 with a shared libpython), pinned by the
-  # digest of its multi-architecture index. AlmaLinux 8 gets security fixes
-  # until RHEL 8's end of maintenance (2029; not verified here). A new digest
-  # is a reviewed change: the executable carries this image's OpenSSL, zlib,
-  # expat, bzip2 and xz. The value below is written by the first dry run:
-  # that job fails, names the digest of almalinux:8 at that moment, and this
-  # line is set to it by hand. Nothing here is a guess.
-  ALMALINUX_8_DIGEST: TO-BE-FILLED-BY-THE-DRY-RUN
+  # digest of its multi-architecture index. The Linux files need glibc 2.34 or
+  # later (the glibc of this image; architect ruling, package-dryrun-1): older
+  # systems use pipx. AlmaLinux 9 gets security fixes until RHEL 9's end of
+  # maintenance (2032; not verified here). A new digest is a reviewed change:
+  # the executable carries this image's OpenSSL, zlib, expat, bzip2 and xz. The
+  # value below is written by hand after a dry run: the jobs fail, name the
+  # digest of almalinux:9 at that moment, and the same value must be printed by
+  # both CPUs before it is written in. Nothing here is a guess.
+  ALMALINUX_9_DIGEST: TO-BE-FILLED-BY-THE-DRY-RUN
   # nfpm builds the .deb and .rpm. The sha256 of each Linux tarball is in the
   # job that uses it (from checksums.txt of the v2.49.0 release).
   NFPM_VERSION: '2.49.0'
@@ -173,9 +175,9 @@ jobs:
         } >> "$GITHUB_OUTPUT"
         echo "Packaging $OUT_REF (version $VERSION), dry run: $DRY_RUN, macOS: $INCLUDE_MACOS"
 
-  # The Linux executable is built inside AlmaLinux 8 so that it runs on glibc
-  # 2.28 or later. The container is driven with docker from the runner (not as
-  # a job container: the checkout action needs a newer libc than the image has).
+  # The Linux executable is built inside AlmaLinux 9. The container is driven
+  # with docker from the runner (not as a job container: the checkout action
+  # needs a newer libc than the image has).
   # build-linux-arm64 below runs the same commands on the arm64 runner.
   build-linux-x86_64:
     name: Build (Linux x86_64)
@@ -196,13 +198,13 @@ jobs:
 
     - name: Pull the build image by digest
       run: |
-        if ! printf '%s' "$ALMALINUX_8_DIGEST" | grep -Eq '^[0-9a-f]{64}$'; then
-          docker pull almalinux:8 > /dev/null
-          NOW=$(docker image inspect --format '{{index .RepoDigests 0}}' almalinux:8)
-          echo "::error::ALMALINUX_8_DIGEST in package.yml is not a sha256 digest. almalinux:8 is $NOW now. Write the 64 hex digits after sha256: into package.yml, review them, and run again."
+        if ! printf '%s' "$ALMALINUX_9_DIGEST" | grep -Eq '^[0-9a-f]{64}$'; then
+          docker pull almalinux:9 > /dev/null
+          NOW=$(docker image inspect --format '{{index .RepoDigests 0}}' almalinux:9)
+          echo "::error::ALMALINUX_9_DIGEST in package.yml is not a sha256 digest. almalinux:9 is $NOW now. Write the 64 hex digits after sha256: into package.yml, review them, and run again."
           exit 1
         fi
-        docker pull "almalinux@sha256:${ALMALINUX_8_DIGEST}"
+        docker pull "almalinux@sha256:${ALMALINUX_9_DIGEST}"
 
     - name: Start the build container
       run: |
@@ -211,21 +213,21 @@ jobs:
         docker run -d --name build \
           -v "$GITHUB_WORKSPACE:/src:ro" -v "$RUNNER_TEMP/work:/work" \
           -e SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" -e LANG=C.UTF-8 \
-          "almalinux@sha256:${ALMALINUX_8_DIGEST}" sleep infinity
+          "almalinux@sha256:${ALMALINUX_9_DIGEST}" sleep infinity
 
-    - name: Build-image check (AlmaLinux 8, system Python 3.12 with a shared libpython)
+    - name: Build-image check (AlmaLinux 9, system Python 3.12 with a shared libpython)
       run: |
-        docker exec -i -e ALMALINUX_8_DIGEST build bash -s <<'CHECK'
+        docker exec -i -e ALMALINUX_9_DIGEST build bash -s <<'CHECK'
         set -euo pipefail
         . /etc/os-release
         test "$ID" = almalinux
-        case "$VERSION_ID" in 8|8.*) ;; *) echo "not AlmaLinux 8: $VERSION_ID"; exit 1;; esac
+        case "$VERSION_ID" in 9|9.*) ;; *) echo "not AlmaLinux 9: $VERSION_ID"; exit 1;; esac
         dnf install -y python3.12 python3.12-pip binutils tar gzip
         python3.12 -c 'import sys, sysconfig; assert sys.version_info[:2] == (3, 12), sys.version; assert sysconfig.get_config_var("Py_ENABLE_SHARED") == 1, "no shared libpython"'
         ldd "$(python3.12 -c 'import sys; print(sys.executable)')" | grep libpython3.12
-        test "$(rpm -q --qf '%{VERSION}' glibc)" = 2.28
+        test "$(rpm -q --qf '%{VERSION}' glibc)" = 2.34
         {
-          echo "image: almalinux@sha256:${ALMALINUX_8_DIGEST:-unknown}"
+          echo "image: almalinux@sha256:${ALMALINUX_9_DIGEST:-unknown}"
           echo "PRETTY_NAME: $PRETTY_NAME"
           rpm -q almalinux-release glibc openssl-libs zlib expat bzip2-libs xz-libs python3.12 python3.12-libs python3.12-pip
         } | tee /work/build-image.txt
@@ -292,13 +294,13 @@ jobs:
 
     - name: Pull the build image by digest
       run: |
-        if ! printf '%s' "$ALMALINUX_8_DIGEST" | grep -Eq '^[0-9a-f]{64}$'; then
-          docker pull almalinux:8 > /dev/null
-          NOW=$(docker image inspect --format '{{index .RepoDigests 0}}' almalinux:8)
-          echo "::error::ALMALINUX_8_DIGEST in package.yml is not a sha256 digest. almalinux:8 is $NOW now. Write the 64 hex digits after sha256: into package.yml, review them, and run again."
+        if ! printf '%s' "$ALMALINUX_9_DIGEST" | grep -Eq '^[0-9a-f]{64}$'; then
+          docker pull almalinux:9 > /dev/null
+          NOW=$(docker image inspect --format '{{index .RepoDigests 0}}' almalinux:9)
+          echo "::error::ALMALINUX_9_DIGEST in package.yml is not a sha256 digest. almalinux:9 is $NOW now. Write the 64 hex digits after sha256: into package.yml, review them, and run again."
           exit 1
         fi
-        docker pull "almalinux@sha256:${ALMALINUX_8_DIGEST}"
+        docker pull "almalinux@sha256:${ALMALINUX_9_DIGEST}"
 
     - name: Start the build container
       run: |
@@ -307,21 +309,21 @@ jobs:
         docker run -d --name build \
           -v "$GITHUB_WORKSPACE:/src:ro" -v "$RUNNER_TEMP/work:/work" \
           -e SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" -e LANG=C.UTF-8 \
-          "almalinux@sha256:${ALMALINUX_8_DIGEST}" sleep infinity
+          "almalinux@sha256:${ALMALINUX_9_DIGEST}" sleep infinity
 
-    - name: Build-image check (AlmaLinux 8, system Python 3.12 with a shared libpython)
+    - name: Build-image check (AlmaLinux 9, system Python 3.12 with a shared libpython)
       run: |
-        docker exec -i -e ALMALINUX_8_DIGEST build bash -s <<'CHECK'
+        docker exec -i -e ALMALINUX_9_DIGEST build bash -s <<'CHECK'
         set -euo pipefail
         . /etc/os-release
         test "$ID" = almalinux
-        case "$VERSION_ID" in 8|8.*) ;; *) echo "not AlmaLinux 8: $VERSION_ID"; exit 1;; esac
+        case "$VERSION_ID" in 9|9.*) ;; *) echo "not AlmaLinux 9: $VERSION_ID"; exit 1;; esac
         dnf install -y python3.12 python3.12-pip binutils tar gzip
         python3.12 -c 'import sys, sysconfig; assert sys.version_info[:2] == (3, 12), sys.version; assert sysconfig.get_config_var("Py_ENABLE_SHARED") == 1, "no shared libpython"'
         ldd "$(python3.12 -c 'import sys; print(sys.executable)')" | grep libpython3.12
-        test "$(rpm -q --qf '%{VERSION}' glibc)" = 2.28
+        test "$(rpm -q --qf '%{VERSION}' glibc)" = 2.34
         {
-          echo "image: almalinux@sha256:${ALMALINUX_8_DIGEST:-unknown}"
+          echo "image: almalinux@sha256:${ALMALINUX_9_DIGEST:-unknown}"
           echo "PRETTY_NAME: $PRETTY_NAME"
           rpm -q almalinux-release glibc openssl-libs zlib expat bzip2-libs xz-libs python3.12 python3.12-libs python3.12-pip
         } | tee /work/build-image.txt
