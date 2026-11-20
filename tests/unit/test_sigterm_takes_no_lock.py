@@ -63,7 +63,10 @@ else:
     held = pool._lock  # what submit() holds while it queues a call
 
 with held:
-    print("ready", flush=True)
+    # Not print(): the signal could land while sys.stdout's buffer is being
+    # flushed, and the handler's line would then re-enter it (review S2,
+    # a lost line, not a hang; not what these rows test).
+    os.write(1, b"ready\n")
     time.sleep(30)
 print("not reached", flush=True)
 """
