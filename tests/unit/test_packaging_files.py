@@ -1679,18 +1679,13 @@ def test_libraries_inside_framework_modules_get_their_own_rows(tpl, monkeypatch)
             "text of repo:scripts/packaging/licenses/expat-COPYING\n",
         )
     ]
-    # No verified text and no licence id from evidence yet: they fail by name.
+    # libmpdec: no verified text and no licence id from evidence yet: it fails
+    # by name (B2f: upstream's address was refused by the network proxy).
     assert sorted(problems) == [
         f"{_dyn('_decimal')}: licence text of libmpdec (in CPython's _decimal): no "
         "verified source in the table; store the upstream text unchanged under "
         "scripts/packaging/licenses/ and its address, tag, sha256 and date in "
         "SOURCES.json",
-        f"{_dyn('_lzma')}: licence text of liblzma (in CPython's _lzma): no "
-        "verified source in the table; store the upstream text unchanged under "
-        "scripts/packaging/licenses/ and its address, tag, sha256 and date in "
-        "SOURCES.json",
-        "liblzma (in CPython's _lzma) (version not recorded): licence NOASSERTION "
-        "is not in the allow-list",
         "libmpdec (in CPython's _decimal) 9.9: licence NOASSERTION is not in the "
         "allow-list",
     ]
@@ -1897,6 +1892,90 @@ def test_the_licence_check_prints_and_writes_the_build_record(
     # Linux: no link rule, no record lines; its output stays as it was.
     tpl.main(args[:-2] + ["--platform", "linux"])
     assert "BUILD RECORD" not in capsys.readouterr().out
+
+
+# ------------- liblzma on macOS (architect-package-dryrun-5.md ruling 3)
+XZ_REPO = "https://github.com/tukaani-project/xz"
+XZ_TEXTS = (
+    "repo:scripts/packaging/licenses/xz-COPYING",
+    "repo:scripts/packaging/licenses/xz-COPYING.0BSD",
+)
+
+
+def test_the_xz_texts_are_upstreams_files_at_one_release_tag():
+    entries = _sources()["files"]
+    copying, bsd0 = entries["xz-COPYING"], entries["xz-COPYING.0BSD"]
+    for entry in (copying, bsd0):
+        assert entry["repository"] == XZ_REPO
+    assert (copying["tag"], copying["commit"]) == (bsd0["tag"], bsd0["commit"])
+    assert copying["tag"] == "v5.8.4"
+    # The licence id for that version is the file's own statement.
+    text = " ".join((LICENSES / "xz-COPYING").read_text("utf-8").split())
+    assert "liblzma is under the BSD Zero Clause License (0BSD)." in text
+
+
+def test_the_liblzma_row_carries_both_texts_and_reads_its_version(tpl):
+    row = tpl.match_row(_dyn("_lzma"), tpl.TABLES["darwin"])
+    (lzma,) = row.carries
+    assert lzma.name == "liblzma (in CPython's _lzma)"
+    assert lzma.text == XZ_TEXTS
+    assert lzma.spdx == "LicenseRef-public-domain OR 0BSD"
+    assert lzma.version == "strings:^(5\\.[0-9]+\\.[0-9]+)$"
+    assert lzma.spdx_by_version == (("5.8.4", "0BSD"),)
+
+
+class _LzmaBuild(_DarwinBuild):
+    def __init__(self, version):
+        super().__init__(
+            {
+                _dyn("_lzma"): {
+                    "strings": b"_lzma_code",
+                    "symbols": ["_PyInit__lzma", "_lzma_code"],
+                }
+            }
+        )
+        self.version = version
+
+    def read_version(self, source, rel, owner):
+        return self.version if source.startswith("strings:") else "9.9"
+
+
+@pytest.mark.parametrize(
+    "version, spdx, version_from",
+    [
+        (
+            "",
+            "LicenseRef-public-domain OR 0BSD",
+            "licence depends on the version, which the build could not read",
+        ),
+        (
+            "5.8.4",
+            "0BSD",
+            "version read from the module; licence as the stored licence file of "
+            "that version states",
+        ),
+        (
+            "5.4.6",
+            "LicenseRef-public-domain OR 0BSD",
+            "version read from the module; no stored licence file states the "
+            "licence of that version (they are of 5.8.4), so both ids stay",
+        ),
+    ],
+    ids=["no-version", "version-of-the-stored-file", "other-version"],
+)
+def test_liblzma_licence_is_chosen_by_its_version_only_with_evidence(
+    tpl, monkeypatch, version, spdx, version_from
+):
+    _no_runtime(tpl, monkeypatch)
+    comps, problems = tpl.collect(_LzmaBuild(version), tpl.TABLES["darwin"])
+    assert problems == []
+    (lzma,) = [c for c in comps if c.name == "liblzma (in CPython's _lzma)"]
+    assert (lzma.version, lzma.spdx, lzma.version_from) == (
+        version,
+        spdx,
+        version_from,
+    )
+    assert [label for label, _ in lzma.texts] == list(XZ_TEXTS)
 
 
 PIN_GOLDEN = (
