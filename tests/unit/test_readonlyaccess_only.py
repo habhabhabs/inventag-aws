@@ -304,3 +304,40 @@ def test_provisional_fixture_says_it_is_provisional_and_matches_its_record():
     allow = read_only_access_actions()
     for action in ("sts:AssumeRole", "s3:PutObject", "kms:GenerateDataKey"):
         assert not matches_any(action, allow)
+
+
+# ------------------------------------------------------------------------ scenarios
+def _assert_in_report(run: Run, estate: dict) -> None:
+    text = run.workbook_text()
+    assert text, "no workbook was written"
+    missing = [
+        name
+        for name in (*ESTATE_NAMES, estate["vpc_id"], estate["instance_id"])
+        if name not in text
+    ]
+    assert not missing, f"not in the report: {missing}"
+
+
+def test_R1_provisional_readonlyaccess_runs_a_default_scan_without_a_denied_call(
+    aws, run_as
+):
+    """R1: one account, default flags, Excel and Word, state on, as ReadOnlyAccess."""
+    run = run_as(read_only_access_actions(), "--create-excel", "--create-word")
+    run.sim.assert_all_mapped()
+    assert run.code == 0, run.text
+    assert run.sim.denied == []
+    assert run.denied_ledger == []
+    assert "No permission for" not in run.text
+    assert "Not read in account" not in run.workbook_text() + run.text
+    assert list(run.out_dir.glob("*.docx")), "no Word report"
+    _assert_in_report(run, aws)
+    assert len(run.snapshots()) == 1, "state is on: one snapshot"
+    # the proof is not hollow: the run really used the actions the plan names
+    assert {
+        "sts:GetCallerIdentity",
+        "ec2:DescribeRegions",
+        "tag:GetResources",
+        "s3:ListAllMyBuckets",
+        "lambda:ListFunctions",
+        "ec2:DescribeVpcs",
+    } <= run.sim.seen_set
