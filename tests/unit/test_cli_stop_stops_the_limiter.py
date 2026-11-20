@@ -1,6 +1,8 @@
 """A2 (plan 2.6): SIGTERM and Ctrl-C stop the run's limiter first, then take
-today's path (same message, same exit status): no new AWS request starts and
-every waiter ends at once."""
+today's path (same message, same exit status): no new AWS request starts.
+Ctrl-C makes every waiter end at once (``stop_running_scans``, after the stack
+has unwound). SEC1: SIGTERM only asks for the stop, without a lock
+(``request_stop_of_running_scans``); the process ends a moment later."""
 
 import importlib
 import logging
@@ -29,6 +31,11 @@ def test_sigterm_stops_the_limiter_then_ends_as_before(tmp_path, monkeypatch):
         return signal.SIG_DFL
 
     monkeypatch.setattr(cli_main.signal, "signal", fake_signal)
+
+    def takes_locks():
+        raise AssertionError("the SIGTERM handler called stop_running_scans")
+
+    monkeypatch.setattr(cli_main, "stop_running_scans", takes_locks)
     logger = logging.getLogger("test-sigterm")
     monkeypatch.setattr(
         logger,
