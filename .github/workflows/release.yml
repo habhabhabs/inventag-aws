@@ -697,6 +697,32 @@ jobs:
       with:
         skip-existing: true
 
+  # Packaged forms (executables, .deb, .rpm, checksums, SBOMs, attestations)
+  # of the release that was just made. It runs after the PyPI publish and
+  # nothing waits for it, so a failure here cannot undo or hold back the PyPI
+  # release; the run turns red and the job is started again by hand
+  # (Actions, Package, Run workflow, with the tag and dry_run off). The
+  # permissions are what package.yml's jobs use: write to the release for the
+  # upload, id-token and attestations for the keyless build attestation.
+  package:
+    name: Package the release
+    needs: [check-for-release, release, publish-pypi]
+    # publish-pypi is skipped when the repository variable PYPI_PUBLISH is not
+    # "true"; a failed or cancelled publish stops the packaging.
+    if: >-
+      always() &&
+      needs.check-for-release.outputs.should_release == 'true' &&
+      needs.release.result == 'success' &&
+      (needs.publish-pypi.result == 'success' || needs.publish-pypi.result == 'skipped')
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/package.yml
+    with:
+      tag: v${{ needs.release.outputs.new_version }}
+      dry_run: false
+
   # Post-release check (register rows C-09, P-16): on the push of the release
   # job's own bump commit, the Unreleased section of CHANGELOG.md must be empty;
   # its notes belong under the new version's heading. It only reports: a red
