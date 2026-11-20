@@ -1883,6 +1883,9 @@ class CloudBOMGenerator:
         deadlines = {
             account_id: self._new_deadline(account_id) for account_id in to_scan
         }
+        # Rows per account, merged below in configured order (plan 2.4): the
+        # order the accounts finish in must not show in the reports.
+        found_by_account: Dict[str, List[Dict[str, Any]]] = {}
         executor = DaemonThreadPool(self.config.max_concurrent_accounts)
         try:
             future_to_account = {
@@ -1907,16 +1910,12 @@ class CloudBOMGenerator:
                     try:
                         resources = future.result()
                     except Exception as e:
-                        all_resources.extend(
-                            self._record_account_failure(
-                                account_id, context, e, deadlines[account_id]
-                            )
+                        found_by_account[account_id] = self._record_account_failure(
+                            account_id, context, e, deadlines[account_id]
                         )
                         continue
-                    all_resources.extend(
-                        self._record_account_success(
-                            account_id, context, resources, deadlines[account_id]
-                        )
+                    found_by_account[account_id] = self._record_account_success(
+                        account_id, context, resources, deadlines[account_id]
                     )
                 for future in list(pending):
                     account_id = future_to_account[future]
@@ -1939,6 +1938,8 @@ class CloudBOMGenerator:
             # Do not wait for abandoned workers: they can make no more AWS
             # calls, and their results are ignored.
             executor.shutdown(wait=False)
+        for account_id in to_scan:
+            all_resources.extend(found_by_account.get(account_id, []))
 
         self.logger.info(
             f"Parallel discovery completed. Total resources: {len(all_resources)}"
