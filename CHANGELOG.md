@@ -8,6 +8,97 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `--concurrency N` (1 to 256, default 64): the most AWS requests in flight at
+  once for the whole run. `--concurrency 1` sends one request at a time. A
+  value outside the range stops with exit code 2. `--max-concurrent-accounts 0`
+  still exits with code 1, as in v1.3.x; changing it to 2 is on the list for
+  v2.0.0. `spec.concurrency` sets the same limit in a config template; a value
+  out of range there is a template error (exit code 1). Discovery, the network
+  and security analyses and the per-resource detail calls share that limit. The
+  run makes the same AWS calls as v1.3.1 and writes the same files in the same
+  order whatever the value. Not verified against real AWS: any speed-up. The
+  tests use a simulated AWS with a fixed delay per request.
+- `inventag selftest`: an install check that makes no AWS call and opens no
+  network connection. `inventag completion bash|zsh|fish` prints a shell
+  completion script.
+- When a run is not allowed to use an IAM action, the run notes have one
+  "Permissions:" line for each account that names each action, what the report
+  lacks because of it, and whether the AWS managed policy ReadOnlyAccess
+  includes it. The line is also in the Summary sheet and the Word report. The
+  result, the JSON report metadata and the `--audit-output` file get a
+  `permissions_denied` list. A refused report upload (`s3:PutObject`) is named
+  for "the identity that uploads the reports (the default credentials)", not
+  for an account; its `permissions_denied` entry has an empty `account`. A run
+  that was denied nothing prints and writes nothing new.
+- Packaging: build files for a one-directory executable, a `.deb`, an `.rpm`
+  and a container image; hash-pinned build locks; a licence check of every
+  file in the bundle; `THIRD-PARTY-LICENSES.txt`; and a Homebrew formula in
+  `packaging/homebrew-tap` that is not published. The package workflow builds
+  them, runs install checks on fresh systems and attaches the files, `SHA256SUMS`,
+  SBOMs and build attestations to a release. The version of a package comes
+  only from `inventag/_version.py`. Not verified against GitHub: the first
+  real release run and `gh attestation verify` on its files.
+
+### Changed
+
+- The credentials of the accounts are checked in parallel, up to
+  `--max-concurrent-accounts`. The results keep the configured order. The
+  regions of one account are still checked one after another.
+- Log lines written by discovery worker threads carry the account name, like
+  the other lines of that account.
+- When a Permissions line is the only note of a run, it is printed under the
+  header "Notes about this run:".
+- Per-resource detail calls (S3, Lambda, RDS, CloudFormation and EKS) run in
+  parallel, at most 4 at once for each service and region. The same calls are
+  made.
+- Rows with an equal ARN, service, type, id and region come out in a fixed
+  order (a digest of the row).
+- The network and security analyses read regions in sorted order and at the
+  same time. Capacity warnings and recommendations are listed in one fixed
+  order, not an order that varied with the Python hash seed. Cost estimates,
+  the coverage ledger and the document generation results are also listed in a
+  fixed order.
+
+### Fixed
+
+- The change report no longer lists a resource as modified when one of its
+  detail calls (for example S3 `GetBucketLocation` or Lambda
+  `GetFunctionConfiguration`) was denied, throttled or timed out in one of the
+  two runs. The fields that call adds are not compared for the resources of
+  that service and region, and the report names those units in one line. A
+  snapshot records the units whose detail calls failed in
+  `metadata.tags.details_not_read` (present only when one failed). (A-78)
+- With several accounts scanned in parallel, rows and analysis sheets follow
+  the configured account order, not the order in which the accounts finish. A
+  resource found in a shared estate is credited to the first configured
+  account. The snapshot lists its regions sorted.
+- The account id was sometimes read twice when listings started together, and
+  the "already warned" check could print one warning twice.
+- SIGTERM can no longer hang the process. The handler takes no lock: it stops
+  new AWS requests, prints its line and ends by the signal, as in v1.3.x. (This
+  was found in the v1.4.0 development; no release had it.)
+
+### Library notes
+
+- Threads on the same API now share one client, so they share one SDK retry
+  quota (botocore `standard`: 500 units for each client, 5 for each throttling
+  retry). The retry settings in your environment still apply. Cost Explorer
+  clients are never shared.
+- A second scan on the same boto3 session object starts with new clients, so
+  it waits on its own time limit.
+
+### Licences
+
+- InvenTag stays under the MIT license. The packaged builds (the executable
+  archives, the `.deb`, the `.rpm` and the Homebrew archive) carry GNU libiconv under the LGPL 2.1, linked into the extension
+  modules of lxml. The lxml files are carried unchanged from the lxml wheel on
+  PyPI and are separate files that you can replace. `THIRD-PARTY-LICENSES.txt`
+  lists the components, the licence texts and the source addresses. A pip,
+  pipx or uv install does not carry libiconv in a file of InvenTag. This is
+  not legal advice.
+
 ## [v1.3.1] - 2026-11-20
 
 ### Security
