@@ -228,6 +228,8 @@ _LXML_TEXT = ("dist:lxml:*LICENSES.txt",)
 # Licence texts stored unchanged in the repository; where each comes from is
 # in licenses/SOURCES.json (architect-package-dryrun-3.md ruling 1).
 LICENSES_REPO = "repo:scripts/packaging/licenses/"
+# One section of a stored reStructuredText file, found by its heading.
+LICENSES_SECTION = "section:scripts/packaging/licenses/"
 _LXML_H = "header:lxml:lxml/includes/"
 _LXML = (
     Carried(
@@ -415,10 +417,12 @@ DARWIN_ROWS: Tuple[Row, ...] = (
             carries=(
                 Carried(
                     "libmpdec (in CPython's _decimal)",
-                    # No licence file or upstream text verified for the
-                    # framework's copy yet.
-                    "NOASSERTION",
-                    (),
+                    # CPython v3.12.10 has no licence file for its included
+                    # libmpdec; its notice is the section "libmpdec" of
+                    # Doc/license.rst at that tag (licenses/SOURCES.json),
+                    # BSD-2-Clause by its clauses (tests check both).
+                    "BSD-2-Clause",
+                    (LICENSES_SECTION + "cpython-v3.12.10-Doc-license.rst:libmpdec",),
                     "python:decimal.__libmpdec_version__",
                     requires_strings=b"mpd_q",
                     loads_instead=b"libmpdec.",
@@ -725,6 +729,30 @@ def sourced_label(path: Path) -> str:
     return path.name
 
 
+def rst_section(text: str, heading: str) -> Optional[str]:
+    """The section of a reStructuredText file under ``heading`` (a title line
+    underlined with ``-`` or ``=``), up to the next such heading; None if the
+    file has no such heading."""
+    lines = text.splitlines()
+
+    def is_heading(i: int) -> bool:
+        under = lines[i + 1] if i + 1 < len(lines) else ""
+        return (
+            bool(lines[i].strip())
+            and len(under) >= len(lines[i].rstrip())
+            and len(set(under.rstrip())) == 1
+            and under[:1] in "-="
+        )
+
+    for i, line in enumerate(lines):
+        if line.rstrip() == heading and is_heading(i):
+            end = next(
+                (j for j in range(i + 2, len(lines) - 1) if is_heading(j)), len(lines)
+            )
+            return "\n".join(lines[i:end]).rstrip() + "\n"
+    return None
+
+
 class Build:
     """What the build environment and the bundle say. Kept apart for tests."""
 
@@ -886,6 +914,15 @@ class Build:
             if not p.is_file():
                 return None
             return sourced_label(p), p.read_text("utf-8", "replace")
+        if kind == "section":
+            rel_path, _, heading = arg.rpartition(":")
+            p = self.repo_root / rel_path
+            if not p.is_file():
+                return None
+            text = rst_section(p.read_text("utf-8", "replace"), heading)
+            if text is None:
+                return None
+            return f"{sourced_label(p)}, section {heading}", text
         if kind == "path":
             p = Path(arg)
             return (p.name, p.read_text("utf-8", "replace")) if p.is_file() else None
