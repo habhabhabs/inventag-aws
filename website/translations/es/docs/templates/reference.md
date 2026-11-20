@@ -134,6 +134,7 @@ con lo que acepta el validador.
 | `spec.tag_policy` | nombre de plantilla o ruta relativa | sin definir | Política de etiquetas que se comprueba, por nombre o ruta relativa. |
 | `spec.fail_on_tag_violations` | verdadero o falso | `false` | Termina con el código 3 tras escribir los informes si algún recurso dentro del alcance incumple la política de etiquetas. Requiere `tag_policy`. |
 | `spec.max_concurrent_accounts` | número entero (mín. 1, máx. 64) | `4` | Cuentas que se analizan al mismo tiempo (`--max-concurrent-accounts`). |
+| `spec.concurrency` | número entero (mín. 1, máx. 256) | `64` | Máximo de solicitudes a AWS en curso a la vez, para toda la ejecución (`--concurrency`). 1 envía una solicitud cada vez. |
 | `spec.account_processing_timeout` | número entero (mín. 60) | `1800` | Segundos permitidos por cuenta (`--account-processing-timeout`). |
 | `spec.parallel_processing` | verdadero o falso | `true` | Analiza las cuentas en paralelo. `false` equivale a `--disable-parallel-processing`. |
 | `spec.accounts[].account_id` | texto | obligatorio | ID de cuenta de AWS de 12 dígitos, entre comillas para que YAML conserve los ceros iniciales. |

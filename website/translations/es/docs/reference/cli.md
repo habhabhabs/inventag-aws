@@ -127,6 +127,7 @@ con un archivo YAML o JSON. Consulta [Archivos de diseño para un informe](../te
 | Opción | Predeterminado | Estado | Qué hace |
 |---|---|---|---|
 | `--max-concurrent-accounts N` | `4` | Funciona | Cuentas que se analizan al mismo tiempo (mínimo 1). |
+| `--concurrency N` | `64` | Funciona | Máximo de solicitudes a AWS en curso a la vez, para toda la ejecución (de 1 a 256). 1 envía una solicitud cada vez. Fuera de rango: código de salida 2. |
 | `--account-processing-timeout SECONDS` | `1800` | Funciona | Tiempo permitido por cuenta, contado desde que empieza su análisis (mínimo 60). Una cuenta que se queda sin tiempo cuenta como fallida; los recursos que encontró se quedan en el informe. |
 | `--disable-parallel-processing` | desactivado | Funciona | Analiza una cuenta cada vez. |
 | `--resume` | desactivado | Funciona | Reutiliza los resultados guardados de las cuentas que terminaron en una ejecución anterior del mismo comando que no se completó (mismas cuentas, regiones, servicios y filtros) y analiza solo las demás. Con `--disable-state-management`: código de salida 2. |

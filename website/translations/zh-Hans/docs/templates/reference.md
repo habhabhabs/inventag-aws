@@ -124,6 +124,7 @@ spec:                      # the settings for this kind
 | `spec.tag_policy` | 模板名称或相对路径 | 未设置 | 要检查的标签策略，按名称或相对路径指定。 |
 | `spec.fail_on_tag_violations` | true 或 false | `false` | 如果任何范围内的资源违反标签策略，则在写出报告后以退出码 3 结束。需要 `tag_policy`。 |
 | `spec.max_concurrent_accounts` | 整数（最小 1，最大 64） | `4` | 同时扫描的账户数（`--max-concurrent-accounts`）。 |
+| `spec.concurrency` | 整数（最小 1，最大 256） | `64` | 整个运行中同时进行的 AWS 请求的最大数量（`--concurrency`）。1 表示一次只发送一个请求。 |
 | `spec.account_processing_timeout` | 整数（最小 60） | `1800` | 每个账户允许的秒数（`--account-processing-timeout`）。 |
 | `spec.parallel_processing` | true 或 false | `true` | 并行扫描账户。`false` 等同于 `--disable-parallel-processing`。 |
 | `spec.accounts[].account_id` | 文本 | 必填 | 12 位 AWS 账户 ID，放在引号中，以便 YAML 保留前导零。 |
