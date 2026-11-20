@@ -373,3 +373,64 @@ def test_R2_provisional_readonlyaccess_with_every_optional_read_is_denied_nothin
         "tag:GetResources",
         "apigateway:GET",
     } <= run.sim.seen_set
+
+
+DEFAULT_ACCOUNT = "123456789012"  # the account moto's default credentials belong to
+ROLE_ACCOUNT = "222222222222"
+ROLE_ARN = f"arn:aws:iam::{ROLE_ACCOUNT}:role/InvenTagScan"
+
+
+def _two_accounts():
+    return [
+        {
+            "account_id": DEFAULT_ACCOUNT,
+            "account_name": "Default account",
+            "regions": [REGION],
+        },
+        {
+            "account_id": ROLE_ACCOUNT,
+            "account_name": "Account through a role",
+            "role_arn": ROLE_ARN,
+            "regions": [REGION],
+        },
+    ]
+
+
+def test_R3_provisional_readonlyaccess_cannot_assume_a_role_and_the_default_account_is_still_scanned(
+    aws, run_as
+):
+    """R3: sts:AssumeRole is not in ReadOnlyAccess; the account that needs it fails alone."""
+    run = run_as(
+        read_only_access_actions(),
+        "--create-excel",
+        accounts=_two_accounts(),
+        scope=False,
+    )
+    run.sim.assert_all_mapped()
+    assert run.code == 0, run.text
+    # the only action refused is the one ReadOnlyAccess does not include
+    assert run.sim.denied_set == {"sts:AssumeRole"}
+    # the default account is scanned and is in the report
+    _assert_in_report(run, aws)
+    assert run.denied_ledger == []
+    # the other account is named, with the reason AWS gave, and a way to continue
+    assert f"{ROLE_ACCOUNT} (Account through a role)" in run.text
+    assert "Role assumption failed" in run.text
+    assert "(AccessDenied)" in run.text
+    assert "--resume" in run.text
+    # the report itself says the account is missing and why
+    assert f"{ROLE_ACCOUNT} (Account through a role)" in run.workbook_text()
+
+    # with the opt-in flag the same run ends with the account-failed code
+    again = run_as(
+        read_only_access_actions(),
+        "--create-excel",
+        "--fail-on-account-error",
+        accounts=_two_accounts(),
+        scope=False,
+        out=run.out_dir.parent / "out-strict",
+    )
+    again.sim.assert_all_mapped()
+    assert again.code == 5, again.text
+    assert again.sim.denied_set == {"sts:AssumeRole"}
+    _assert_in_report(again, aws)
