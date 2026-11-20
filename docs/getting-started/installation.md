@@ -1,6 +1,6 @@
 ---
 title: Install InvenTag
-description: Install InvenTag into a Python virtual environment, connect your AWS credentials and check that everything works.
+description: Choose how to install InvenTag (pipx, a standalone archive, a .deb or .rpm package, Homebrew or pip), connect your AWS credentials and check that everything works.
 sidebar_position: 2
 ---
 
@@ -9,29 +9,276 @@ sidebar_position: 2
 **Who this is for:** anyone setting up InvenTag on a laptop, a server or a CI
 runner.
 
-**What you can do after reading:** run `inventag --help` and confirm that
-InvenTag can reach your AWS account.
+**What you can do after reading:** choose an install method, install InvenTag,
+upgrade it and remove it, and confirm that InvenTag can reach your AWS
+account.
 
 ## What you need
 
-- **Python 3.11 or later.** Python 3.10 stopped getting security fixes in
-  October 2026. See [Python release status](https://devguide.python.org/versions/).
-  Check your version with `python3 --version`.
-- **pip** for that Python. (Git is only needed to install from source.)
+- **Python 3.11 or later**, for the pipx, pip and source methods. Python 3.10
+  stopped getting security fixes in October 2026. See
+  [Python release status](https://devguide.python.org/versions/).
+  Check your version with `python3 --version`. The standalone archive, the
+  `.deb` and the `.rpm` bring their own Python. They need no Python on your
+  machine.
 - **AWS credentials** for a read-only identity. The
   [AWS Command Line Interface (AWS CLI)](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
   is optional, but it is the easiest way to set them up.
 
-## Install with pip (recommended)
+## Choose how to install
 
-InvenTag is published on the Python Package Index as
-[`inventag-aws`](https://pypi.org/project/inventag-aws/). A virtual
-environment is the tidy way to install it, but InvenTag does not need one. It
-is an ordinary Python package. A virtual environment keeps its dependencies
-(boto3, openpyxl and others) away from your other Python tools, and many
-current systems (Debian, Ubuntu, Homebrew Python) refuse `pip install` into the
-system Python with an "externally-managed-environment" error. The two options
-that work on those systems are a virtual environment, or `pipx`:
+| Method | Use it when | Needs on your machine | Systems |
+|---|---|---|---|
+| [pipx](#install-with-pipx-recommended) (first choice) | You have Python 3.11 or later. You want one command to install and one to upgrade. | Python 3.11 or later and pipx | Any system with Python |
+| [Standalone archive](#install-the-standalone-archive) (`.tar.gz`) | The machine has no Python, or you want a copy that needs no package manager. | Nothing | Linux x86_64 and arm64 (glibc 2.34 or later). macOS arm64 (Apple silicon). |
+| [`.deb` package](#install-the-deb-package) | Debian, Ubuntu and systems that use `dpkg`. | Nothing | Linux x86_64 and arm64 (glibc 2.34 or later) |
+| [`.rpm` package](#install-the-rpm-package) | Fedora, the RHEL family and Amazon Linux. | Nothing | Linux x86_64 and arm64 (glibc 2.34 or later) |
+| [Homebrew](#install-with-homebrew) | macOS or Linux with Homebrew. Not published yet. | Homebrew | See the section |
+| [pip in a virtual environment](#install-with-pip-in-a-virtual-environment) | You want InvenTag inside a project environment. | Python 3.11 or later | Any system with Python |
+| [From source](#install-from-source) | You want the newest unreleased code, or you change InvenTag. | Python 3.11 or later and Git | Any system with Python |
+
+### Systems that each packaged build supports
+
+- The executable, the `.deb` and the `.rpm` for Linux need glibc 2.34 or later.
+  The Linux systems in the table below meet this. On an older system, for example RHEL, AlmaLinux and Rocky Linux 8,
+  Debian 11, Ubuntu 20.04 or Amazon Linux 2, use pipx if the system has Python
+  3.11 or later.
+- There is no executable for Intel Macs: a library InvenTag needs
+  (cryptography, from version 50) publishes no ready-made build for them.
+- The macOS executable is for Apple silicon (arm64) only. The build record
+  states that its files need macOS 11.0 or later.
+- Alpine and other systems that use musl are not supported by the executable.
+  Use pipx.
+- Windows has no packaged build.
+
+Not verified against an Intel Mac: `pipx install inventag-aws`, which has to
+compile that library and needs a Rust toolchain.
+
+Not verified against systems with a glibc older than 2.34: the executable, the
+`.deb` and the `.rpm`.
+
+Not verified against Alpine or other musl systems: the executable; use pipx.
+
+Not verified against Windows: any install method.
+
+Not verified against a Mac with macOS 11.0: the executable. The number comes
+from the build record, not from a run on that version.
+
+### What was tested
+
+The release workflow builds each format and then installs it on a fresh
+system. On the x86_64 Linux systems and on macOS it runs `inventag --version`
+and `inventag selftest`, checks the man page and the completion files, scans a
+simulated AWS, removes the package and checks that no file of the package is
+left. These systems passed:
+
+| System | Format | CPU |
+|---|---|---|
+| Ubuntu 22.04 | `.deb` | x86_64 |
+| Ubuntu 24.04 | `.deb` | x86_64 |
+| Debian 12 | `.deb` and archive | x86_64 |
+| Debian 12 | `.deb` (install, version, selftest, remove) | arm64 |
+| Fedora (the current release on the test day) | `.rpm` | x86_64 |
+| Rocky Linux 9 | `.rpm` and archive | x86_64 |
+| Rocky Linux 9 | `.rpm` (install, version, selftest, remove) | arm64 |
+| AlmaLinux 9 (the build system, glibc 2.34) | `.rpm` | x86_64 |
+| Amazon Linux 2023 | `.rpm` | x86_64 |
+| macOS 15 on a GitHub runner | archive | arm64 |
+| Ubuntu 24.04 | pipx, from the wheel built from the tag (install, version, selftest, remove) | x86_64 |
+
+Not verified against real AWS: a scan from a packaged build; the smoke test
+scans a simulated AWS.
+
+Not verified against a fresh Linux arm64 system: the archive. The build ran
+`inventag selftest` on it, and no other test unpacked it.
+
+Not verified against GitHub: that the release carries the files of this page. The
+test runs so far attach nothing to a release, and the first release run with
+these files is not made yet.
+
+## Install with pipx (recommended)
+
+[pipx](https://pipx.pypa.io/) installs InvenTag in its own hidden environment
+and puts the `inventag` command on your PATH. You never activate anything. The
+package on the Python Package Index is
+[`inventag-aws`](https://pypi.org/project/inventag-aws/). Install pipx first.
+Use the way that your system suggests. See the pipx documentation.
+
+```bash title="Terminal"
+pipx install inventag-aws
+inventag --version
+inventag selftest
+```
+
+`inventag selftest` checks, offline, that this copy of InvenTag works. It
+makes no AWS call, opens no network connection and needs no credentials. Exit
+code 0 means that every check passed. Exit code 1 means that a check failed.
+
+`uv tool install inventag-aws` gives the same result if you use
+[uv](https://docs.astral.sh/uv/).
+
+- **Upgrade:** `pipx upgrade inventag-aws`. To install one release, pin it:
+  `pipx install inventag-aws==%INVENTAG_VERSION%`.
+- **Uninstall:** `pipx uninstall inventag-aws`. This removes the program. It
+  does not remove your reports and snapshots in `bom_output/`.
+- **Completion:** `inventag completion bash`, `inventag completion zsh` and
+  `inventag completion fish` print a completion script. See
+  [Shell completion](#shell-completion).
+- **Man page:** this method installs none. Use `inventag --help`.
+
+Not verified against pipx: the upgrade and the pin commands.
+
+## Install the standalone archive
+
+The archive holds one directory, `inventag`. It holds the program, its own
+Python and its libraries. The release has one archive for each system:
+
+- `inventag-%INVENTAG_VERSION%-linux-x86_64.tar.gz`
+- `inventag-%INVENTAG_VERSION%-linux-arm64.tar.gz`
+- `inventag-%INVENTAG_VERSION%-darwin-arm64.tar.gz` (macOS, Apple silicon)
+
+Run `uname -m` to see your CPU. Linux prints `x86_64` or `aarch64`. Use the
+arm64 archive for `aarch64`. Download the archive and `SHA256SUMS` from the
+[releases page](https://github.com/habhabhabs/inventag-aws/releases), or with
+the GitHub CLI:
+
+```bash title="Terminal"
+gh release download v%INVENTAG_VERSION% --repo habhabhabs/inventag-aws \
+  --pattern 'inventag-%INVENTAG_VERSION%-linux-x86_64.tar.gz' --pattern SHA256SUMS
+```
+
+[Check the download](#check-the-download) before you unpack it. Then, on
+Linux:
+
+```bash title="Terminal"
+sudo tar -xzf inventag-%INVENTAG_VERSION%-linux-x86_64.tar.gz -C /opt
+sudo ln -s /opt/inventag/inventag /usr/local/bin/inventag
+inventag --version
+inventag selftest
+```
+
+On macOS, unpack the archive into a folder that you choose and run the program
+by its path. The test did this. It did not make a link on the PATH.
+
+```bash title="Terminal"
+mkdir -p "$HOME/inventag-install"
+tar -xzf inventag-%INVENTAG_VERSION%-darwin-arm64.tar.gz -C "$HOME/inventag-install"
+"$HOME/inventag-install/inventag/inventag" --version
+```
+
+The macOS executable is not notarized by Apple. macOS can block a file that a
+browser downloaded.
+
+Not verified against macOS outside a GitHub runner: the Homebrew install and
+Gatekeeper's behavior.
+
+- **Upgrade:** remove the old directory, then unpack the new archive in the same
+  place.
+- **Uninstall (Linux):** `sudo rm -rf /opt/inventag` and
+  `sudo rm /usr/local/bin/inventag`. On macOS, delete the folder that you
+  unpacked.
+- **Completion:** the directory holds the scripts in `share/completions/`:
+  `inventag.bash`, `_inventag` (zsh) and `inventag.fish`. See
+  [Shell completion](#shell-completion).
+- **Man page:** the directory holds the page in `share/man/man1/inventag.1`.
+  Read it with `man /opt/inventag/share/man/man1/inventag.1`.
+
+Not verified against the man tools of every system: that `man` shows the page.
+The test read the page file and checked its header and name line.
+
+Not verified against a system that has an older InvenTag in the same place: the
+upgrade steps.
+
+## Install the .deb package
+
+Use the `.deb` on Debian, Ubuntu and systems that use `dpkg`. The file name is
+`inventag_%INVENTAG_VERSION%_amd64.deb` for x86_64 and
+`inventag_%INVENTAG_VERSION%_arm64.deb` for arm64. Download the file and
+[check it](#check-the-download). Then run:
+
+```bash title="Terminal"
+sudo dpkg -i inventag_%INVENTAG_VERSION%_amd64.deb
+inventag --version
+inventag selftest
+```
+
+The package puts the program in `/opt/inventag/` and a link in
+`/usr/bin/inventag`. It also installs the man page, the completion files and
+the license files in `/usr/share/doc/inventag/`. The package has no install
+script.
+
+- **Upgrade:** install the newer `.deb` with `sudo dpkg -i`.
+- **Uninstall:** `sudo dpkg -r inventag`. The test checked that no file of the
+  package is left.
+- **Completion:** the package installs the files for bash, zsh and fish. See
+  [Shell completion](#shell-completion).
+- **Man page:** `man inventag`. The file is
+  `/usr/share/man/man1/inventag.1.gz`.
+
+Not verified against a system that has an older InvenTag package: the upgrade.
+
+Not verified against the man tools of every system: that `man inventag` shows
+the page. The test read the page file and checked its header and name line.
+
+## Install the .rpm package
+
+Use the `.rpm` on Fedora, the RHEL family and Amazon Linux. The file name is
+`inventag-%INVENTAG_VERSION%-1.x86_64.rpm` for x86_64 and
+`inventag-%INVENTAG_VERSION%-1.aarch64.rpm` for arm64. Download the file and
+[check it](#check-the-download). Then run:
+
+```bash title="Terminal"
+sudo dnf install ./inventag-%INVENTAG_VERSION%-1.x86_64.rpm
+inventag --version
+inventag selftest
+```
+
+The package puts the program in `/opt/inventag/` and a link in
+`/usr/bin/inventag`. It also installs the man page, the completion files and
+the license files in `/usr/share/doc/inventag/`.
+
+- **Upgrade:** install the newer `.rpm` with `sudo dnf install`.
+- **Uninstall:** `sudo dnf remove inventag`. The test checked that no file of
+  the package is left.
+- **Completion:** the package installs the files for bash, zsh and fish. See
+  [Shell completion](#shell-completion).
+- **Man page:** `man inventag`. The file is
+  `/usr/share/man/man1/inventag.1.gz`.
+
+Not verified against a system that has an older InvenTag package: the upgrade.
+
+Not verified against the man tools of every system: that `man inventag` shows
+the page. The test read the page file and checked its header and name line.
+
+## Install with Homebrew
+
+The project owner creates the Homebrew tap. The tap is not published yet, so
+the command below does not work today:
+
+```bash title="Terminal"
+brew install habhabhabs/inventag/inventag
+```
+
+The plan is a formula that installs the executable from the release archive.
+It is for macOS arm64 and the two Linux CPUs. It is not for Intel Macs.
+The formula is not written yet. This page does not state which completion files
+or man page it installs. Use [Shell completion](#shell-completion) and
+`inventag --help` until then.
+
+- **Upgrade:** `brew upgrade inventag`.
+- **Uninstall:** `brew uninstall inventag`.
+
+Not verified against macOS outside a GitHub runner: the Homebrew install and
+Gatekeeper's behavior.
+
+## Install with pip in a virtual environment
+
+InvenTag does not need a virtual environment. A virtual environment keeps its
+dependencies (boto3, openpyxl and others) away from your other Python tools.
+Many current systems (Debian, Ubuntu, Homebrew Python) refuse `pip install`
+into the system Python with an "externally-managed-environment" error. The two
+options that work on those systems are a virtual environment or
+[pipx](#install-with-pipx-recommended).
 
 ```bash title="Terminal"
 python3 -m venv .venv
@@ -46,14 +293,12 @@ Not verified against Debian, Ubuntu or Homebrew: the externally-managed-environm
 This gives you the `inventag` command that these docs use. The report
 templates are included in the package.
 
-To upgrade, run `pip install --upgrade inventag-aws`. To install a specific
-release, pin it, for example `pip install inventag-aws==%INVENTAG_VERSION%`. Prefer to keep it out of your
-project environments? `pipx install inventag-aws` installs it into its own
-hidden environment and puts the `inventag` command on your PATH, so you never
-activate anything. If your system allows it, a plain `pip install inventag-aws`
-into your user or system Python works too.
+- **Upgrade:** `pip install --upgrade inventag-aws`. To install one release,
+  pin it: `pip install inventag-aws==%INVENTAG_VERSION%`.
+- **Uninstall:** `pip uninstall inventag-aws`.
+- **Completion and man page:** as for [pipx](#install-with-pipx-recommended).
 
-Not verified against pip and pipx: the upgrade, pin and pipx commands.
+Not verified against pip: the upgrade, pin and uninstall commands.
 
 ## Install from source
 
@@ -82,6 +327,107 @@ To use a fixed release from source instead of the newest code, check out its tag
 example `git checkout v%INVENTAG_VERSION%`. The
 [releases page](https://github.com/habhabhabs/inventag-aws/releases) lists
 every release.
+
+## Shell completion
+
+`inventag completion bash`, `inventag completion zsh` and
+`inventag completion fish` print a completion script. The command reads only
+its own options. It makes no AWS call and opens no network connection. An
+unknown shell name stops with exit code 2.
+
+```bash title="Terminal"
+source <(inventag completion bash)                                    # bash, this session
+inventag completion zsh > "${fpath[1]}/_inventag"                     # zsh
+inventag completion fish > ~/.config/fish/completions/inventag.fish  # fish
+```
+
+The `.deb` and the `.rpm` install the three scripts for you:
+
+| Shell | `.deb` | `.rpm` |
+|---|---|---|
+| bash | `/usr/share/bash-completion/completions/inventag` | `/usr/share/bash-completion/completions/inventag` |
+| zsh | `/usr/share/zsh/vendor-completions/_inventag` | `/usr/share/zsh/site-functions/_inventag` |
+| fish | `/usr/share/fish/vendor_completions.d/inventag.fish` | `/usr/share/fish/vendor_completions.d/inventag.fish` |
+
+Not verified against each shell setup: that a new shell loads these files by
+itself. The test loaded each file by hand in bash, zsh and fish. It did not
+load the fish file on Rocky Linux 9, AlmaLinux 9 and Amazon Linux 2023.
+
+## Check the download
+
+Each release lists every file in `SHA256SUMS`. A checksum shows that the file
+is whole. It does not show who made it. A build attestation does.
+
+On Linux, put the file and `SHA256SUMS` in one folder and run:
+
+```bash title="Terminal"
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+On macOS, print the checksum of your file and compare it by eye with the line
+in `SHA256SUMS`:
+
+```bash title="Terminal"
+shasum -a 256 inventag-%INVENTAG_VERSION%-darwin-arm64.tar.gz
+grep darwin-arm64.tar.gz SHA256SUMS
+```
+
+The release workflow signs the files without a key of ours. It gives
+`SHA256SUMS` to GitHub's `actions/attest` step. That step writes a build
+attestation in the name of the workflow. To check a file, use the GitHub CLI:
+
+```bash title="Terminal"
+gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb --repo habhabhabs/inventag-aws
+```
+
+Not verified against GitHub: `gh attestation verify` on a release file. The
+test runs make no attestation. The first real attestation is made by the first
+release run, and that run is not made yet.
+
+Each `.tar.gz`, `.deb` and `.rpm` also has an SBOM, named like the file with
+`.cdx.json` added. See [Software bill of materials](../security/sbom.md).
+
+## Licenses in packaged builds
+
+InvenTag is under the MIT license. The executable archives, the `.deb` and the
+`.rpm` carry GNU libiconv, a library under the GNU Lesser General Public
+License (LGPL) version 2.1. The planned Homebrew formula installs the same
+archive, so it carries it too. The libiconv code is inside the extension
+modules of lxml. InvenTag needs lxml to write Word files. The lxml project
+builds those modules and links libiconv into them. InvenTag carries the lxml
+files without a change.
+
+- A pip, pipx or uv install does not carry libiconv in a file of InvenTag. Your
+  installer downloads lxml's own wheel from the Python Package Index.
+- The notices file is `THIRD-PARTY-LICENSES.txt`. It names each carried
+  component, its license and its license text. It holds the full text of the
+  LGPL 2.1. The release has one notices file for each system, named
+  `inventag-%INVENTAG_VERSION%-<os>-<cpu>.THIRD-PARTY-LICENSES.txt`.
+  The same file is inside the package:
+  - archive: `inventag/THIRD-PARTY-LICENSES.txt`
+  - `.deb` and `.rpm`: `/usr/share/doc/inventag/THIRD-PARTY-LICENSES.txt` and
+    `/opt/inventag/THIRD-PARTY-LICENSES.txt`
+- The notices file names the libiconv version and the places of the source. In
+  this release it names libiconv 1.18 inside lxml 6.1.3:
+  - libiconv: <https://www.gnu.org/software/libiconv/> and
+    <https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.18.tar.gz>
+  - lxml: <https://github.com/lxml/lxml>
+- InvenTag makes no written offer to send the source. The addresses above are
+  the source. If an address does not work, open an issue at
+  <https://github.com/habhabhabs/inventag-aws/issues>.
+- The lxml modules are separate files in the installation directory. You can
+  replace them with your own build of lxml of the same version. The folder is
+  `inventag/_internal/lxml/` in the archive and `/opt/inventag/_internal/lxml/`
+  for the `.deb` and the `.rpm`. On macOS, sign a module again after you
+  replace it: `codesign -s - --force <file>`.
+
+Not verified against your own lxml build: that a module that you build works in
+place of the bundled one.
+
+Not verified against macOS outside a GitHub runner: the Homebrew install and
+Gatekeeper's behavior.
+
+This page is not legal advice.
 
 ## Connect your AWS credentials
 
@@ -198,8 +544,9 @@ suite.
 | What you see | What to do |
 |---|---|
 | `Error: No suitable Python interpreter found.` or `InvenTag requires Python 3.11 or later` | Install Python 3.11 or later and check that `python3 --version` works. |
-| `inventag: command not found` | Activate the virtual environment where you ran `pip install inventag-aws`, or run `python -m pip show inventag-aws` to check it is installed. |
+| `inventag: command not found` | Activate the virtual environment where you ran `pip install inventag-aws`, or run `python -m pip show inventag-aws` to check it is installed. If you use the archive, make the link from `/opt/inventag/inventag` into a folder on your PATH, or run the program by its full path. |
 | `ModuleNotFoundError` | Activate the virtual environment and run `pip install -r requirements.txt` again. |
+| `inventag selftest` fails | Install InvenTag again, or download the release again, and run `inventag selftest` again. If it fails again, open an issue at <https://github.com/habhabhabs/inventag-aws/issues> and add the output. |
 | `No AWS credentials found!` | Run `aws sso login` or `aws configure`, or set `AWS_PROFILE`. |
 
 Not verified against the AWS CLI: the commands in the What to do column.
