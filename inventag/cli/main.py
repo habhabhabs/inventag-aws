@@ -38,7 +38,10 @@ from ..core import (
     AccountCredentials,
     CredentialManager,
 )
-from ..core.cloud_bom_generator import _mfa_serial_without_terminal
+from ..core.cloud_bom_generator import (
+    _mfa_serial_without_terminal,
+    stop_running_scans,
+)
 from ..reporting import BOMProcessingConfig
 from ..reporting.report_template import (
     FORMATS as TEMPLATE_FORMATS,
@@ -1647,6 +1650,7 @@ def _install_sigterm_message(logger, output_dir, since):
     that was there before, to put back; None when none could be set."""
 
     def handler(signum, frame):
+        stop_running_scans()  # no new AWS request; waiting ones end at once
         logger.warning(
             "Terminated (SIGTERM). " + _written_reports_note(output_dir, since)
         )
@@ -1916,6 +1920,7 @@ def _run(args, logger):
             sys.exit(1)
 
     except KeyboardInterrupt:
+        stop_running_scans()  # no new AWS request; waiting ones end at once
         logger.warning(
             "Stopped by the user (Ctrl-C). "
             + _written_reports_note(args.output_directory, run_started)
