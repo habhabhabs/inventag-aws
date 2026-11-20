@@ -64,5 +64,10 @@ InvenTag repository from the `SHA256SUMS` file of a release. Do not edit it by
 hand: the next release writes it again. Report problems with the formula or with
 InvenTag at https://github.com/habhabhabs/inventag-aws/issues.
 
+The checks of this repository (`.github/workflows/ci.yml`) install the formula,
+then compare the sha256 of every `lxml/*.so` in the installed `libexec` with the
+file in the release archive, and fail on any difference. Not verified against a
+Homebrew install: that Homebrew leaves the lxml files unchanged.
+
 Not verified against macOS outside a GitHub runner: the Homebrew install, and
 Gatekeeper's behaviour for an executable that Homebrew installs.
