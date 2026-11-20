@@ -654,3 +654,59 @@ def test_nothing_but_publish_touches_the_release():
         if name != "publish":
             assert "gh release" not in step.get("run", ""), name
             assert "gh api" not in step.get("run", ""), name
+
+
+# ---- stage 5: the job of release.yml that calls this workflow --------------
+
+RELEASE_DATA = yaml.safe_load(RELEASE.read_text(encoding="utf-8"))
+RELEASE_JOBS = RELEASE_DATA["jobs"]
+
+
+def test_release_yml_calls_this_workflow_in_one_last_job():
+    called = {n: j for n, j in RELEASE_JOBS.items() if "uses" in j}
+    assert list(called) == ["package"]
+    job = called["package"]
+    assert job["uses"] == "./.github/workflows/package.yml"
+    assert job["with"]["tag"] == "v${{ needs.release.outputs.new_version }}"
+    assert job["with"]["dry_run"] is False
+    assert "steps" not in job and "runs-on" not in job
+
+
+def test_the_package_job_runs_after_pypi_and_only_for_a_release_that_was_made():
+    job = RELEASE_JOBS["package"]
+    assert set(job["needs"]) == {"check-for-release", "release", "publish-pypi"}
+    condition = " ".join(job["if"].split())
+    assert "always()" in condition
+    assert "needs.check-for-release.outputs.should_release == 'true'" in condition
+    assert "needs.release.result == 'success'" in condition
+    # PyPI published, or was switched off by the repository variable; a failed
+    # or cancelled publish stops the packaging.
+    assert "needs.publish-pypi.result == 'success'" in condition
+    assert "needs.publish-pypi.result == 'skipped'" in condition
+
+
+def test_no_other_job_of_the_release_waits_for_the_package_job():
+    for name, job in RELEASE_JOBS.items():
+        needs = job.get("needs", [])
+        needs = [needs] if isinstance(needs, str) else needs
+        assert "package" not in needs, name
+
+
+def test_the_package_job_grants_what_the_called_jobs_use_and_no_more():
+    permissions = RELEASE_JOBS["package"]["permissions"]
+    assert permissions == {
+        "contents": "write",
+        "id-token": "write",
+        "attestations": "write",
+    }
+    # Every permission the called workflow's jobs use is inside that grant.
+    for job in JOBS.values():
+        for key, value in job["permissions"].items():
+            assert value == "read" or permissions.get(key) == value
+
+
+def test_the_package_job_passes_no_secret_and_leaves_the_other_jobs_alone():
+    job = RELEASE_JOBS["package"]
+    assert "secrets" not in job
+    for name in ("check-for-release", "release", "publish-pypi"):
+        assert "package" not in str(RELEASE_JOBS[name].get("outputs", {}))
