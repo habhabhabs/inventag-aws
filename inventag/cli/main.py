@@ -1438,6 +1438,16 @@ def main():
 
         sys.exit(templates_main(sys.argv[2:]))
 
+    if len(sys.argv) > 1 and sys.argv[1] == "selftest":
+        from .selftest import main as selftest_main
+
+        sys.exit(selftest_main(sys.argv[2:]))
+
+    if len(sys.argv) > 1 and sys.argv[1] == "completion":
+        from .completion import main as completion_main
+
+        sys.exit(completion_main(sys.argv[2:]))
+
     parser = create_parser()
     args = parser.parse_args()
 
