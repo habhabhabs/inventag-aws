@@ -509,3 +509,37 @@ def test_stages_are_told_apart_by_operation_and_the_analyses_by_time(bench):
     }
     assert stages["reports"]["seconds"] == 0.2
     assert stages["analyses"]["seconds"] == 0.2
+
+
+def test_a_baseline_checkout_with_its_own_tests_package_is_scanned_with_this_harness(
+    tmp_path,
+):
+    """The workflow passes a checkout of an older tag as --inventag-root.
+
+    That checkout has its own ``tests/__init__.py`` and no ``tests/latency.py``.
+    The harness must still come from this repository, and ``inventag`` from the
+    checkout. Slow because it is a real run of the script (one small estate).
+    """
+    import shutil
+
+    baseline = tmp_path / "baseline"
+    shutil.copytree(
+        SCRIPT.parents[1] / "inventag",
+        baseline / "inventag",
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
+    (baseline / "tests").mkdir()
+    (baseline / "tests" / "__init__.py").write_text("# old tests package\n")
+    out = tmp_path / "result.json"
+    proc = run_benchmark(
+        "--scale",
+        "0.05",
+        "--inventag-root",
+        str(baseline),
+        "--json",
+        str(out),
+        timeout=300,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    result = json.loads(out.read_text())
+    assert Path(result["inventag_root"]) == baseline.resolve()
