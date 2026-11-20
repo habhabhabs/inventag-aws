@@ -179,7 +179,13 @@ def test_the_plan_job_checks_the_tag_against_the_version_file():
 
 
 def _plan(
-    tmp_path, tag="", ref="", dry_run="true", version="1.4.0", event="workflow_dispatch"
+    tmp_path,
+    tag="",
+    ref="",
+    dry_run="true",
+    version="1.4.0",
+    event="workflow_dispatch",
+    include_macos="true",
 ):
     """Run the plan step in a tiny tree; return (result, outputs as a dict)."""
     import subprocess
@@ -201,6 +207,7 @@ def _plan(
             "REF": ref,
             "DRY_RUN": dry_run,
             "EVENT_NAME": event,
+            "INCLUDE_MACOS": include_macos,
             "GITHUB_OUTPUT": str(out),
         },
         capture_output=True,
@@ -219,6 +226,7 @@ def test_plan_accepts_the_tag_of_the_version_and_returns_its_ref(tmp_path):
         "ref": "refs/tags/v1.4.0",
         "version": "1.4.0",
         "dry_run": "false",
+        "include_macos": "true",
     }
 
 
@@ -1079,3 +1087,120 @@ def test_the_arm64_smoke_is_in_the_arm64_job_only_with_no_new_runner_label():
         "provenance",
         "publish",
     }
+
+
+# ---- B3b: the INCLUDE_MACOS switch (architect ruling 4) --------------------
+
+MACOS_JOBS = (
+    "build-macos-arm64",
+    "build-macos-x86_64",
+    "smoke-macos-arm64",
+    "smoke-macos-x86_64",
+)
+
+
+def test_the_macos_switch_is_a_workflow_level_value_that_is_on():
+    # Fallback decided by the architect (not the default): if macOS is not
+    # green after three dry-run rounds, v1.4.0 ships the Linux files only and
+    # this value is set to 'false'.
+    assert DATA["env"]["INCLUDE_MACOS"] == "true"
+    assert "INCLUDE_MACOS" in _comment_text()
+
+
+def test_plan_reads_the_switch_and_passes_it_on_as_an_output(tmp_path):
+    assert "include_macos" in JOBS["plan"]["outputs"]
+    assert (
+        _step("plan", "version")["env"]["INCLUDE_MACOS"] == "${{ env.INCLUDE_MACOS }}"
+    )
+    for value in ("true", "false"):
+        result, out = _plan(tmp_path, tag="v1.4.0", include_macos=value)
+        assert result.returncode == 0, result.stderr
+        assert out["include_macos"] == value
+    for bad in ("", "yes", "True", "1"):
+        result, _ = _plan(tmp_path, tag="v1.4.0", include_macos=bad)
+        assert result.returncode != 0, bad
+        assert "INCLUDE_MACOS" in result.stdout + result.stderr
+
+
+def test_the_four_macos_jobs_run_only_when_the_switch_is_on():
+    for name in MACOS_JOBS:
+        # The env context is not available in a job condition: the plan job passes the value on.
+        assert JOBS[name]["if"] == "needs.plan.outputs.include_macos == 'true'", name
+
+
+def test_provenance_runs_when_the_macos_jobs_were_switched_off_and_not_after_a_failure():
+    job = JOBS["provenance"]
+    condition = " ".join(str(job["if"]).split())
+    assert "!cancelled()" in condition and "!failure()" in condition
+    # Still listed in needs: a skipped job satisfies it only with the condition above.
+    assert set(job["needs"]) == BUILDS_AND_SMOKES | {"plan"}
+
+
+def _expected_files(tmp_path, include_macos, drop=(), stray_macos=False):
+    import subprocess
+
+    release = tmp_path / "release"
+    release.mkdir(exist_ok=True)
+    names = []
+    for cpu in ("x86_64", "arm64"):
+        base = f"inventag-1.4.0-linux-{cpu}"
+        deb_cpu, rpm_cpu = (
+            ("amd64", "x86_64") if cpu == "x86_64" else ("arm64", "aarch64")
+        )
+        names += [
+            f"{base}.tar.gz",
+            f"{base}.THIRD-PARTY-LICENSES.txt",
+            f"inventag_1.4.0_{deb_cpu}.deb",
+            f"inventag-1.4.0-1.{rpm_cpu}.rpm",
+        ]
+    if include_macos == "true" or stray_macos:
+        names += [
+            f"inventag-1.4.0-darwin-{cpu}{ext}"
+            for cpu in ("arm64", "x86_64")
+            for ext in (".tar.gz", ".THIRD-PARTY-LICENSES.txt")
+        ]
+    for name in names:
+        if name not in drop:
+            (release / name).write_text("x", encoding="utf-8")
+    return subprocess.run(
+        ["bash", "-c", _step("provenance", "expected file")["run"]],
+        env={
+            "PATH": "/usr/bin:/bin",
+            "RUNNER_TEMP": str(tmp_path),
+            "VERSION": "1.4.0",
+            "INCLUDE_MACOS": include_macos,
+        },
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+
+def test_provenance_checks_the_files_it_expects_for_each_state_of_the_switch(tmp_path):
+    step = _step("provenance", "expected file")
+    assert step["env"]["INCLUDE_MACOS"] == "${{ needs.plan.outputs.include_macos }}"
+    cases = (
+        ("on", "true", False, 0),
+        # Switched off: the Linux files alone are the whole set.
+        ("off", "false", False, 0),
+        # Switched off but a macOS file is there: something is wrong.
+        ("stray", "false", True, 1),
+    )
+    for name, switch, stray, code in cases:
+        work = tmp_path / name
+        work.mkdir()
+        result = _expected_files(work, switch, stray_macos=stray)
+        assert (result.returncode != 0) == bool(code), (name, result.stdout)
+
+
+def test_provenance_fails_when_an_expected_file_is_missing(tmp_path):
+    for drop in (
+        "inventag-1.4.0-darwin-arm64.tar.gz",
+        "inventag_1.4.0_arm64.deb",
+        "inventag-1.4.0-linux-x86_64.THIRD-PARTY-LICENSES.txt",
+    ):
+        work = tmp_path / drop
+        work.mkdir()
+        result = _expected_files(work, "true", drop=(drop,))
+        assert result.returncode != 0, drop
+        assert drop in result.stdout + result.stderr
