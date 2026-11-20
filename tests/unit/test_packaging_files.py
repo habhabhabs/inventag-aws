@@ -860,8 +860,9 @@ def test_the_unmapped_list_comes_first_in_a_build_log(tpl, tmp_path):
 # ------------------- licence-text sources (B2d, architect dry-run ruling 4)
 NO_SOURCE_GOLDEN = (
     "_internal/yaml/_yaml.so: licence text of libyaml (in PyYAML): no verified "
-    "source in the table; add the upstream text under scripts/packaging/licenses/ "
-    "(first line: its address, version or commit, and date)"
+    "source in the table; store the upstream text unchanged under "
+    "scripts/packaging/licenses/ and its address, tag, sha256 and date in "
+    "SOURCES.json"
 )
 
 
@@ -1116,3 +1117,46 @@ def test_upstream_texts_come_from_the_projects_repository_at_a_release_tag():
         assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", entry["fetched"]), name
     # The wheel names libyaml's version (the module holds "0.2.5"): that tag.
     assert upstream["libyaml-License"]["tag"] == "0.2.5"
+
+
+YAML_TEXT = "repo:scripts/packaging/licenses/libyaml-License"
+FFI_TEXT = "repo:scripts/packaging/licenses/libffi-LICENSE"
+
+
+@pytest.mark.parametrize("plat, suffix", [("linux", "x86_64-linux-gnu"), ("darwin", "darwin")])
+def test_libyaml_and_libffi_texts_are_the_sourced_upstream_files(tpl, plat, suffix):
+    rows = tpl.TABLES[plat]
+    for rel, name, text in (
+        (f"_internal/yaml/_yaml.cpython-312-{suffix}.so", "libyaml (in PyYAML)", YAML_TEXT),
+        (f"_internal/_cffi_backend.cpython-312-{suffix}.so", "libffi (in cffi)", FFI_TEXT),
+    ):
+        (carried,) = [c for c in tpl.match_row(rel, rows).carries if c.name == name]
+        assert carried.text == (text,), (plat, name)
+    (ffi,) = tpl.match_row(f"_internal/_cffi_backend.cpython-312-{suffix}.so", rows).carries
+    assert ffi.version == ""  # the wheel does not say which libffi: not recorded
+
+
+def test_every_repository_text_of_the_tables_has_a_source_entry(tpl):
+    entries = _sources()["files"]
+    used = set()
+    for rows in tpl.TABLES.values():
+        for row in rows:
+            sources = list(row.extra_text) + [s for c in row.carries for s in c.text]
+            used |= {s for s in sources if s.startswith("repo:")}
+    assert used
+    for source in sorted(used):
+        path = ROOT / source.removeprefix("repo:")
+        assert path.is_file(), source
+        assert path.parent == LICENSES and path.name in entries, source
+
+
+def test_a_sourced_text_is_labelled_with_its_upstream_address(tpl, tmp_path):
+    bundle, work = _fake_bundle(tmp_path)
+    build = tpl.Build(bundle, work, ROOT)
+    label, text = build.read_text(YAML_TEXT, None)
+    address = _sources()["files"]["libyaml-License"]["address"]
+    assert label == f"libyaml-License (from {address})"
+    assert text == (LICENSES / "libyaml-License").read_text("utf-8")
+    # A text without an upstream record keeps its file name as the label.
+    label, _ = build.read_text("repo:scripts/packaging/licenses/GPL-3.txt", None)
+    assert label == "GPL-3.txt"
