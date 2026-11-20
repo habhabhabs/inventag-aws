@@ -421,9 +421,12 @@ def test_every_build_uploads_its_files_and_fails_when_there_are_none():
         upload = [
             s for s in _steps(name) if s.get("uses", "").startswith("actions/upload-")
         ]
-        assert len(upload) == 1, name
-        assert upload[0]["with"]["name"] == name
-        assert upload[0]["with"]["if-no-files-found"] == "error"
+        # One upload of the files of the build; the macOS build has a second
+        # one for its build record (evidence, B3d).
+        files = [u for u in upload if u["with"]["name"] == name]
+        assert len(files) == 1, name
+        assert len(upload) == (2 if name in MACOS_BUILDS else 1), name
+        assert files[0]["with"]["if-no-files-found"] == "error"
         text = _run_text(name)
         assert "THIRD-PARTY-LICENSES" in text and "components.json" in text
 
@@ -1264,7 +1267,7 @@ def _macos_names():
 
 def test_the_macos_build_prints_its_evidence_between_the_build_and_the_collect_step():
     names = _macos_names()
-    evidence = [n for n in names if "evidence" in n]
+    evidence = [n for n in names if "macOS evidence" in n]
     assert len(evidence) == 1
     built = names.index(
         "Build the executable, check the licences, run selftest, write the archive"
@@ -1277,7 +1280,7 @@ def test_the_macos_build_prints_its_evidence_between_the_build_and_the_collect_s
     # Only the macOS build has it.
     for job, step in _all_steps():
         if job != "build-macos-arm64":
-            assert "evidence" not in step.get("name", "")
+            assert "macOS evidence" not in step.get("name", "")
 
 
 MACOS_EVIDENCE_COMMANDS = (
@@ -1297,7 +1300,7 @@ MACOS_EVIDENCE_COMMANDS = (
 
 
 def test_the_macos_evidence_step_runs_the_commands_that_the_licence_rows_need():
-    run = _step("build-macos-arm64", "evidence")["run"]
+    run = _step("build-macos-arm64", "macOS evidence")["run"]
     for command in MACOS_EVIDENCE_COMMANDS:
         assert command in run, command
     # Both the copy of lxml in the build environment and the one in the bundle.
@@ -1343,7 +1346,7 @@ def test_the_macos_evidence_step_prints_every_section_with_the_tools_stubbed(tmp
     )
     python.chmod(0o755)
     # The step names the python.org framework by an absolute path: point it at the stub tree.
-    run = _step("build-macos-arm64", "evidence")["run"].replace(
+    run = _step("build-macos-arm64", "macOS evidence")["run"].replace(
         "/Library/Frameworks/Python.framework/Versions/3.12", str(fw)
     )
     result = subprocess.run(
@@ -1372,7 +1375,7 @@ def test_the_macos_build_record_and_notices_are_uploaded_with_the_macos_build():
     assert names.index(step["name"]) > names.index("Upload the files of this build")
     assert step["uses"] == UPLOAD_PIN or step["uses"].startswith(UPLOAD_PIN)
     assert step["with"]["name"] == "macos-build-record-arm64"
-    paths = step["with"]["path"].split()
+    paths = step["with"]["path"].splitlines()
     assert "${{ runner.temp }}/work/build-record-macos.txt" in paths
     assert "${{ runner.temp }}/work/dist/inventag/THIRD-PARTY-LICENSES.txt" in paths
     assert step["with"]["if-no-files-found"] == "error"

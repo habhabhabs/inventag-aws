@@ -486,6 +486,31 @@ jobs:
         export SOURCE_DATE_EPOCH
         bash scripts/packaging/build_binary.sh build "$RUNNER_TEMP/venv" "$RUNNER_TEMP/work"
 
+    # Evidence for the licence rows of the macOS bundle (b2f report, "Evidence
+    # run 6 must print"). It changes nothing; it prints what a person reads.
+    - name: macOS evidence for the licence rows
+      shell: bash
+      run: |
+        set -u
+        work="$RUNNER_TEMP/work"; bundle="$work/dist/inventag"; venv="$RUNNER_TEMP/venv"
+        fw=/Library/Frameworks/Python.framework/Versions/3.12
+        cat "$work/build-record-macos.txt"
+        site="$("$venv/bin/python" -c 'import lxml,os;print(os.path.dirname(lxml.__file__))')"
+        for f in $(cd "$site" && find . -name '*.so' | sort); do
+          echo "== lxml/${f#./}"
+          for p in "$site/$f" "$bundle/_internal/lxml/${f#./}"; do
+            if [ ! -e "$p" ]; then echo "missing: $p"; continue; fi
+            lipo -archs "$p"; otool -L "$p"; shasum -a 256 "$p"
+            codesign -v "$p" && echo "codesign -v: ok" || echo "codesign -v: failed"
+            codesign -dv "$p" 2>&1 | head -5
+          done
+        done
+        find "$fw" -maxdepth 6 \( -iname '*licen*' -o -iname 'copying*' \) -print
+        grep -n -i -E 'mpdecimal|libmpdec|Stefan Krah' "$fw/lib/python3.12/LICENSE.txt" || echo "no libmpdec notice in LICENSE.txt"
+        find "$fw" -maxdepth 6 -iname 'license.html' -exec grep -n -i -E 'mpdecimal|libmpdec' {} + || echo "no license.html names libmpdec"
+        "$venv/bin/python" -c "import decimal;print(decimal.__libmpdec_version__)"
+        strings -a "$bundle"/_internal/python3.12/lib-dynload/_lzma*.so | grep -E '^5\.[0-9]+\.[0-9]+$' || echo "no xz version string"
+
     - name: Collect the files of this build
       run: |
         out="$RUNNER_TEMP/work"
@@ -502,6 +527,18 @@ jobs:
       with:
         name: build-macos-arm64
         path: ${{ runner.temp }}/upload/*
+        if-no-files-found: error
+        retention-days: 7
+
+    # Evidence, not a release file: the name does not start with "build-", so
+    # provenance and the release do not collect it.
+    - name: Attach the macOS build record and notices
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: macos-build-record-arm64
+        path: |
+          ${{ runner.temp }}/work/build-record-macos.txt
+          ${{ runner.temp }}/work/dist/inventag/THIRD-PARTY-LICENSES.txt
         if-no-files-found: error
         retention-days: 7
 
