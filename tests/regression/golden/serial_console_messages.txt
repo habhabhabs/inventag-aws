@@ -1,0 +1,5 @@
+- Account 2: no credentials given; InvenTag will assume the --cross-account-role role (default InvenTagCrossAccountRole) in this account, or use the default credentials only if they belong to this account
+redshift-serverless list_workgroups in eu-west-1 failed (404); its resources there may be incomplete.
+redshift-serverless list_workgroups in us-east-1 failed (404); its resources there may be incomplete.
+workmail list_organizations in eu-west-1 failed (404); its resources there may be incomplete.
+workmail list_organizations in us-east-1 failed (404); its resources there may be incomplete.
