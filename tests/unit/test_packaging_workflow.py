@@ -575,6 +575,32 @@ def test_the_pipx_install_of_the_wheel_is_smoked():
     assert "inventag selftest" in text
 
 
+UV_SHA256 = re.compile(r"--hash=sha256:[0-9a-f]{64}")
+
+
+def test_uv_installs_the_wheel_runs_it_and_removes_it_with_uv_pinned_by_version_and_sha256():
+    # B6 fix 3, way (a): the sentence "uv tool install gives the same result"
+    # of the install page cites this step.
+    step = _step("smoke-pipx", "uv")
+    run = step["run"]
+    assert re.search(r"uv==\d+\.\d+\.\d+", run)
+    assert "--require-hashes" in run and UV_SHA256.search(run)
+    assert "--only-binary" in run
+    steps = [s.get("name", "") for s in _steps("smoke-pipx")]
+    assert steps.index(step["name"]) > steps.index(
+        "Build the wheel, install it with pipx, run it, remove it"
+    )
+    # The wheel of the commit, not the file of PyPI.
+    assert re.search(r"uv tool install .*inventag_aws-", run)
+    assert 'test "$(inventag --version)" = "inventag $VERSION"' in run
+    assert "inventag selftest" in run
+    assert "uv tool uninstall inventag-aws" in run
+    # The program must be gone from the PATH after the uninstall.
+    assert "hash -r" in run and "command -v inventag" in run
+    assert run.index("uv tool uninstall") < run.index("command -v inventag")
+    assert "left: inventag is still on the PATH" in run
+
+
 def test_the_smoke_jobs_use_the_artifacts_of_their_build():
     for name in ("smoke-linux", "smoke-macos-arm64"):
         down = [
@@ -1273,8 +1299,8 @@ def test_every_path_check_after_an_uninstall_forgets_bashs_command_cache_first()
                     "hash -r" in earlier
                     for earlier in lines[max(0, number - 3) : number]
                 ), (job, step.get("name"))
-    # smoke-linux, the two arm64 smokes and pipx
-    assert checked == 4
+    # smoke-linux, the two arm64 smokes, pipx and uv
+    assert checked == 5
 
 
 # ---- B3d: the macOS evidence steps and the build record (b2f report) -------
