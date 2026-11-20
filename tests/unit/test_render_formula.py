@@ -73,7 +73,7 @@ def test_the_version_and_three_checksums_are_filled_in(rendered):
     assert f"/inventag-{VERSION}-" in rendered
     for key, name in ARCHIVES.items():
         assert digest(name) in rendered, key
-    assert rendered.count("sha256 ") == 3
+    assert len(set(re.findall(r'sha256 "([0-9a-f]{64})"', rendered))) == 3
     assert "{{" not in rendered and "}}" not in rendered
 
 
@@ -89,7 +89,7 @@ def test_each_checksum_sits_under_the_url_of_its_own_archive(rendered):
 def test_the_urls_point_at_the_github_release_of_this_repository(rendered):
     base = f"https://github.com/habhabhabs/inventag-aws/releases/download/v{VERSION}/"
     urls = re.findall(r'url "([^"]+)"', rendered)
-    assert len(urls) == 3
+    assert len(set(urls)) == 3  # an Intel Mac names the arm64 archive again
     assert all(u.startswith(base) for u in urls)
 
 
@@ -420,7 +420,7 @@ def test_archive_dir_turns_the_three_urls_into_file_urls(rf, tmp_path):
     base = folder.as_uri()
     assert base.startswith("file:///") and "%20" in base
     urls = re.findall(r'url "([^"]+)"', text)
-    assert sorted(urls) == sorted(f"{base}/{name}" for name in ARCHIVES.values())
+    assert set(urls) == {f"{base}/{name}" for name in ARCHIVES.values()}
     assert "/releases/download/" not in text
     assert not re.search(r"^\s*version\s", text, re.M)
     for name in ARCHIVES.values():
@@ -478,3 +478,66 @@ def test_the_default_render_is_unchanged_by_the_new_option(rf):
     assert rf.render(template, VERSION, sums_text()) == rf.render(
         template, VERSION, sums_text(), archive_dir=None
     )
+
+
+# --------------------------- B4c: what brew style accepted not (dry run 16, 20 Nov)
+def test_url_and_sha256_are_not_directly_in_on_macos(rendered):
+    # brew style: "on_macos cannot include url" / "sha256". They sit in on_arm or
+    # on_intel blocks, one level deeper (six spaces), as on Linux.
+    assert not re.search(r"^ {4}(url|sha256) ", rendered, re.M)
+    macos = rendered.split("on_macos do", 1)[1].split("on_linux do", 1)[0]
+    assert "on_arm do" in macos and "on_intel do" in macos
+    arm = macos.split("on_arm do", 1)[1].split("on_intel do", 1)[0]
+    assert "darwin-arm64" in arm and "sha256 " in arm
+
+
+def test_an_intel_mac_still_loads_the_formula_and_names_the_arm64_archive(rendered):
+    intel = rendered.split("on_macos do", 1)[1].split("on_linux do", 1)[0]
+    intel = intel.split("on_intel do", 1)[1]
+    assert "darwin-arm64.tar.gz" in intel and "darwin-x86_64" not in rendered
+    assert re.search(r'sha256 "[0-9a-f]{64}"', intel)
+
+
+def test_the_four_url_blocks_use_the_three_archives_and_checksums(rendered):
+    pairs = re.findall(
+        r'url ".*?-([a-z0-9_]+-[a-z0-9_]+)\.tar\.gz"\s+sha256 "([0-9a-f]{64})"',
+        rendered,
+    )
+    assert len(pairs) == 4
+    assert dict(pairs) == {key: digest(name) for key, name in ARCHIVES.items()}
+
+
+def test_install_comes_before_caveats_and_caveats_before_test(rendered):
+    assert (
+        rendered.index("def install")
+        < rendered.index("def caveats")
+        < rendered.index("test do")
+    )
+
+
+@pytest.mark.parametrize("mask", ["077", "022", "027"])
+def test_the_output_file_is_world_readable_whatever_the_umask(tmp_path, mask):
+    # brew style: "Incorrect file permissions (600)". mkstemp makes 0600.
+    sums = tmp_path / "SHA256SUMS"
+    sums.write_text(sums_text(), "utf-8")
+    target = tmp_path / "out" / "inventag.rb"
+    done = subprocess.run(
+        [
+            "bash",
+            "-c",
+            f'umask {mask}; exec "$0" -I "$@"',
+            sys.executable,
+            str(SCRIPT),
+            "--version",
+            VERSION,
+            "--sums",
+            str(sums),
+            "--output",
+            str(target),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert done.returncode == 0, done.stderr
+    assert (target.stat().st_mode & 0o777) == 0o644
