@@ -32,13 +32,23 @@ cli_main = importlib.import_module("inventag.cli.main")
 
 out = os.path.join(sys.argv[2], "out")
 generator = cbg.CloudBOMGenerator(cbg.MultiAccountConfig(output_directory=out))
-logger = logging.getLogger("sigterm-child")
-logger.addHandler(logging.StreamHandler(sys.stderr))
-logger.setLevel(logging.INFO)
+if sys.argv[3] == "redaction":
+    # The CLI's own logging: every record goes through redact(), which takes
+    # the lock of the registered secrets.
+    from inventag.cli.logging_setup import setup_logging
+    from inventag.security import redaction
+
+    logger = setup_logging(account_specific=True)
+else:
+    logger = logging.getLogger("sigterm-child")
+    logger.addHandler(logging.StreamHandler(sys.stderr))
+    logger.setLevel(logging.INFO)
 cli_main._install_sigterm_message(logger, out, 0.0)
 
 if sys.argv[3] == "limiter":
     held = generator.limiter._condition
+elif sys.argv[3] == "redaction":
+    held = redaction._registered_lock  # what redact() and register_secret() hold
 else:
     import boto3
     from inventag.core.daemon_pool import DaemonThreadPool
@@ -87,7 +97,7 @@ def _sigterm_while_holding(what, tmp_path):
         except subprocess.TimeoutExpired:
             pytest.fail(f"SIGTERM while the main thread holds the {what} lock: hang")
         elapsed = time.monotonic() - started
-        return child.returncode, child.stderr.read(), elapsed
+        return child.returncode, child.stdout.read() + child.stderr.read(), elapsed
     finally:
         if child.poll() is None:
             child.kill()
@@ -102,6 +112,17 @@ def test_sigterm_ends_the_process_while_the_main_thread_holds_a_lock(what, tmp_p
     assert code == -signal.SIGTERM, err
     assert elapsed < 2
     assert err.strip().splitlines() == [MESSAGE]
+
+
+def test_sigterm_with_the_cli_logging_ends_the_process_while_redact_holds_its_lock(
+    tmp_path,
+):
+    """SEC2 (review of SEC1, S1): the handler's line goes through the CLI's
+    redacting formatter; the main thread may be inside redact() at that moment."""
+    code, out, elapsed = _sigterm_while_holding("redaction", tmp_path)
+    assert code == -signal.SIGTERM, out
+    assert elapsed < 2
+    assert [line for line in out.splitlines() if line.strip()][-1].endswith(MESSAGE)
 
 
 # ------------------------------------------- the stop the handler asks for, in-process
