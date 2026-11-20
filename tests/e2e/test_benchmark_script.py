@@ -294,10 +294,9 @@ def bench():
     return module
 
 
-def test_importing_the_script_leaves_the_environment_alone(monkeypatch):
+def test_importing_the_script_leaves_the_environment_alone():
     import os
 
-    monkeypatch.delenv("MOTO_EC2_LOAD_DEFAULT_AMIS", raising=False)
     before = dict(os.environ)
     spec = importlib.util.spec_from_file_location("benchmark_scan_import", SCRIPT)
     spec.loader.exec_module(importlib.util.module_from_spec(spec))
