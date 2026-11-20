@@ -162,6 +162,8 @@ passe donc facilement inaperçu. Une exécution par défaut affiche un avertisse
 ```text title="Sortie (simulated AWS error response)"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
+inventag - WARNING - Notes about this run:
+inventag - WARNING -   - Permissions: 1 action(s) were not allowed for account 123456789012: ce:GetCostAndUsage. Effect: billing checks are skipped. All of them are in the AWS managed policy ReadOnlyAccess.
 ```
 
 ```bash title="Terminal"
@@ -181,6 +183,8 @@ echo $?
 [AWS Account 123456789012 (moto)] inventag.discovery.inventory - DEBUG - Cost Explorer detail: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
 [AWS Account 123456789012 (moto)] inventag.discovery.comprehensive_discovery - DEBUG - Cost Explorer detail: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
 ```
+
+La ligne `Permissions:` des notes d’exécution nomme l’action refusée. Voir [Les notes d’exécution ont une ligne Permissions](#the-run-notes-have-a-permissions-line).
 
 **Correction :** ajoutez `ce:GetCostAndUsage` à la politique, ou acceptez que les données
 de facturation soient absentes.
@@ -204,6 +208,22 @@ L’erreur AWS est consignée au niveau de débogage. Exécutez l’appel AWS CL
 
 **Correction :** utilisez la politique de `config/defaults/iam-policy-read-only.json`, qui
 couvre chaque appel qu’InvenTag effectue. Voir [Autorisations IAM](../reference/iam-permissions.md).
+
+### Les notes d’exécution ont une ligne Permissions {#the-run-notes-have-a-permissions-line}
+
+**Ce que vous voyez :** une ligne qui commence par `Permissions:` dans les notes d’exécution. Elle apparaît dans la console à la fin de l’exécution et dans les « Run notes » du rapport Excel. Il y a une ligne pour chaque compte qui n’a pas eu le droit d’utiliser une action IAM. Une exécution à laquelle rien n’a été refusé n’affiche pas cette ligne. Voici une ligne d’une exécution hors ligne avec une politique à laquelle il manque cinq actions (données d’exemple) :
+
+```text
+Permissions: 5 action(s) were not allowed for account 123456789012: ce:GetCostAndUsage, lambda:GetFunctionConfiguration, pricing:GetProducts, s3:GetBucketLocation, tag:GetResources. Effect: some rows lack details; tags from the Tagging API are missing; billing checks are skipped; cost estimates are missing. All of them are in the AWS managed policy ReadOnlyAccess.
+```
+
+La ligne nomme chaque action, dans l’ordre. Après `Effect:`, elle dit ce qui manque au rapport. La dernière phrase dit si la politique gérée AWS `ReadOnlyAccess` inclut les actions. Un appel dont InvenTag ne connaît pas l’action IAM est nommé par son nom d’API, avec `(IAM action not known to InvenTag)`.
+
+**Cause :** l’identité n’a pas le droit d’utiliser ces actions. InvenTag voit seulement qu’AWS a refusé l’appel. Il ne peut pas savoir si c’est la politique de l’identité, une politique de contrôle de service ou une limite de permissions qui l’a refusé.
+
+Non vérifié sur un vrai AWS : les actions nommées sont celles des tables propres d’InvenTag, et un refus par une politique de contrôle de service ou une limite de permissions est aussi affiché comme l’action.
+
+**Correction :** ajoutez les actions nommées à la politique, ou acceptez que le rapport n’ait pas ce que dit le texte de `Effect`. La même liste est dans la clé `permissions_denied` du fichier de `--audit-output`. Voir [Exécuter avec ReadOnlyAccess seul](./read-only-access.md#run-with-only-readonlyaccess).
 
 ### Bloqué par la protection en lecture seule {#blocked-by-the-read-only-guard}
 
@@ -301,11 +321,13 @@ Si une liste échoue encore après cela, InvenTag consigne un avertissement pour
 sqs list_queues in us-east-1 failed (ThrottlingException); its resources there may be incomplete.
 ```
 
-**Correction :** analysez moins de comptes à la fois (`--max-concurrent-accounts 2`), analysez
+**Correction :** envoyez moins de requêtes à la fois (`--concurrency 16`), analysez moins de comptes à la fois (`--max-concurrent-accounts 2`), analysez
 moins de régions, ou accordez plus de temps aux gros comptes
 (`--account-processing-timeout 3600`).
 
-Non vérifié sur un vrai AWS : que moins de comptes ou de régions à la fois réduisent la limitation des requêtes.
+InvenTag baisse aussi sa propre limite pour un service et une région après une réponse de limitation. Voir [Concurrence](./run-a-scan.md#when-aws-throttles).
+
+Non vérifié sur un vrai AWS : que moins de requêtes, de comptes ou de régions à la fois réduisent la limitation des requêtes.
 
 ## Limites de temps et résultats partiels {#time-limits-and-partial-results}
 
@@ -316,6 +338,8 @@ Resource discovery failed for account 123456789012: timed out after 60 seconds (
 ```
 
 Le compte compte comme échoué, mais les ressources trouvées avant la limite sont dans le rapport, et les « Run notes » nomment le compte. Les autres comptes sont conservés. Si aucun compte ne se termine, InvenTag écrit quand même le rapport, consigne `No account finished within its time limit (--account-processing-timeout)` et se termine avec le code 1. (Texte des messages issu d’une exécution hors ligne avec une limite de 60 secondes.)
+
+Une requête qui attend une place libre sous `--concurrency` compte dans la limite de temps.
 
 **Correction :** augmentez `--account-processing-timeout` (1800 par défaut), analysez moins de régions ou de services, ou analysez moins de comptes à la fois. Exécutez la même commande avec `--resume` pour n’analyser que les comptes qui ne se sont pas terminés.
 
@@ -338,7 +362,7 @@ Stopped by the user (Ctrl-C). No report was written.
 Terminated (SIGTERM). No report was written.
 ```
 
-Si un fichier de rapport avait déjà été écrit, la ligne dit à la place `1 report file(s) already written stay in <output folder>.` Ctrl-C se termine avec le code 1. Un SIGTERM termine le processus par le signal après la ligne.
+Après le signal, aucune nouvelle requête AWS ne démarre, et une requête qui attend une place libre se termine aussitôt. Si un fichier de rapport avait déjà été écrit, la ligne dit à la place `1 report file(s) already written stay in <output folder>.` Ctrl-C se termine avec le code 1. Un SIGTERM termine le processus par le signal après la ligne.
 
 ### Les résultats enregistrés ne sont pas réutilisés {#saved-results-are-not-reused}
 
@@ -447,6 +471,8 @@ inventag: error: --resume: needs state management (saved results live in the sta
 ```
 
 Une valeur hors limites arrête l’exécution avec le code de sortie 1 et nomme l’option : `--max-concurrent-accounts must be a positive integer`, `--account-processing-timeout must be at least 60 seconds`, `--resume-max-age-hours must be above 0 and at most 168`. Une valeur qui n’est pas un nombre pour `--state-retention-days` ou `--state-max-snapshots` arrête l’exécution avec le code de sortie 2 : `expected a whole number or 'none'`.
+
+Une valeur de `--concurrency` qui n’est pas un nombre entier de 1 à 256 arrête l’exécution avec le code de sortie 2 : `inventag: error: argument --concurrency: must be a whole number from 1 to 256, not '0'`.
 
 Un chemin `--audit-output`, `--log-file` ou `--output-directory` où l’on ne peut pas écrire arrête l’exécution dès le début, avant tout appel à AWS, avec un message qui nomme l’option et le code de sortie 1.
 

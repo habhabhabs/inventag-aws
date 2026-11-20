@@ -168,8 +168,8 @@ bom_output/state/state_20261112_090100.json
     "Search",
     "BatchGet"
   ],
-  "total_calls": 96,
-  "allowed_calls": 96,
+  "total_calls": 93,
+  "allowed_calls": 93,
   "blocked_calls": 0,
   "operations": [
     {
@@ -219,7 +219,7 @@ bom_output/state/state_20261112_090100.json
 使用 `--s3-bucket acme-inventory-reports --s3-key-prefix bom-reports/` 时，每次运行都会把文件放在以该次运行命名的文件夹下：
 
 ```text title="Objects in s3://acme-inventory-reports"
-bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
+bom-reports/20261112_090000/multi_account_bom_20261112_090000.xlsx
 ```
 
 ## 终端输出 {#terminal-output}

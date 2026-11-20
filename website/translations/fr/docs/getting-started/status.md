@@ -150,7 +150,19 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   tentatives, ou une erreur) est un avertissement et un compte dans l’instantané
   (`metadata.tags.coverage_summary`).
 - **Tous les appels d’un compte refusés :** le compte ne compte pas comme en
-  échec, et l’exécution se termine avec le code 0.
+  échec, et l’exécution se termine avec le code 0. Avec `--fail-on-account-error`,
+  un compte dont tous les listages ont été refusés compte quand même comme
+  analysé, et l’exécution se termine avec le code 0. Pour qu’un job de CI échoue
+  quand rien n’a pu être lu, ajoutez `--fail-if-empty`.
+- **Une exécution qui n’a pas eu le droit d’utiliser une action IAM** affiche une
+  ligne `Permissions:` par compte dans les notes d’exécution, et écrit la liste
+  `permissions_denied` dans le fichier de `--audit-output` (voir
+  [Exécuter avec ReadOnlyAccess seul](../guides/read-only-access.md#run-with-only-readonlyaccess)).
+  La ligne ne nomme pas `ec2:DescribeRegions` ni `account:ListRegions`, et un
+  envoi avec une clé KMS qui échoue est nommé seulement `s3:PutObject`.
+
+  Non vérifié sur un vrai AWS : quelle action S3 nomme quand un envoi avec une
+  clé KMS est refusé.
 - **Le premier rapport de changements après une mise à jour depuis v1.1.4**
   liste les ressources des services nouvellement couverts comme ajoutées, alors
   qu’elles existaient déjà.
@@ -186,6 +198,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   avec le code 0.
 - **Certaines valeurs non valides s’arrêtent avec le code de sortie 1, pas 2,**
   par exemple `--max-concurrent-accounts 0` ou `--account-processing-timeout 0`.
+  Une valeur de `--concurrency` hors de 1 à 256 s’arrête avec le code de sortie 2.
 - **Les valeurs du bloc `settings` d’un fichier de comptes remplacent les
   options de ligne de commande correspondantes**, par exemple
   `max_concurrent_accounts`.
@@ -241,6 +254,16 @@ standard) ; `AWS_RETRY_MODE` et `AWS_MAX_ATTEMPTS` modifient ce réglage.
 - Par défaut, quatre comptes sont analysés en même temps
   (`--max-concurrent-accounts`). Chaque compte dispose de 1800 secondes à partir
   du début de son analyse (`--account-processing-timeout`).
+- Une exécution a au plus 64 requêtes AWS en cours (`--concurrency`), au plus 16
+  pour un compte et au plus 4 pour un service dans une région d’un compte. Après
+  une réponse de limitation, InvenTag baisse la limite de ce service et de cette
+  région. Voir [Concurrence](../guides/run-a-scan.md#concurrency).
+
+  Non vérifié sur un vrai AWS : toute accélération due aux requêtes en parallèle,
+  et le comportement de la limite de requêtes et de la pause après une réponse de
+  limitation avec les limites de débit réelles d’AWS.
+- L’ordre des lignes du journal et leurs horodatages peuvent changer d’une
+  exécution à l’autre. Les fichiers ne dépendent pas du minutage des threads.
 - Quand certains comptes échouent, les résultats des comptes terminés sont
   enregistrés. Relancez la même commande avec `--resume` dans les 24 heures
   (`--resume-max-age-hours`) pour n’analyser que les autres.
@@ -271,7 +294,13 @@ standard) ; `AWS_RETRY_MODE` et `AWS_MAX_ATTEMPTS` modifient ce réglage.
   [Configurer un accès en lecture seule](../guides/read-only-access.md).
 - **Les journaux de débogage sont caviardés** par défaut : jetons de session,
   clés, signatures et les valeurs secrètes listées plus haut sont masqués. Traitez
-  quand même les journaux de débogage comme sensibles.
+  quand même les journaux de débogage comme sensibles. Avec `--debug`, un secret
+  qu’AWS renvoie sous forme de liste sous le nom d’un champ masqué peut apparaître
+  dans le fichier journal.
+- **La protection en lecture seule connaît les opérations par leur nom.** Une
+  opération qu’ajoute un SDK AWS plus récent est autorisée quand son nom commence
+  comme une lecture, jusqu’à ce qu’une version d’InvenTag la nomme. Voir
+  [Sécurité](../security/index.md).
 - **Deux fonctions de la bibliothèque peuvent écrire dans AWS** lorsqu’elles sont
   appelées depuis votre propre code Python (la CLI ne les appelle pas) :
   `CredentialManager.setup_cross_account_roles()` ne s’exécute qu’avec
