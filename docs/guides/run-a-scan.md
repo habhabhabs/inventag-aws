@@ -93,7 +93,8 @@ Not verified against real AWS: how AWS throttles calls and how the SDK retries c
 
 InvenTag scans up to four accounts at a time. Change that with
 `--max-concurrent-accounts` (at least 1), or use
-`--disable-parallel-processing` to scan one account at a time.
+`--disable-parallel-processing` to scan one account at a time. For the
+requests inside the accounts, see [Concurrency](#concurrency).
 
 Each account has `--account-processing-timeout` seconds (default 1800, at
 least 60), counted from when that account's scan starts. Discovery stops a
@@ -111,6 +112,76 @@ Resource discovery failed for account 123456789012: timed out after 60 seconds (
 
 If no account finishes, InvenTag still writes the report with what it found,
 logs `No account finished within its time limit`, and exits with code 1.
+
+## Concurrency
+
+InvenTag sends AWS requests from several threads at the same time. Three
+settings control how many:
+
+| Setting | Default | What it limits |
+|---|---|---|
+| `--concurrency N` | 64 | The most AWS requests in flight at once, for the whole run. |
+| `--max-concurrent-accounts N` | 4 | The accounts that are scanned at the same time. |
+| `--disable-parallel-processing` | off | Scans one account after the other. It does not change the threads inside an account. |
+
+`--concurrency` takes a whole number from 1 to 256. A value outside this
+range, or a value that is not a whole number, stops the run with exit code 2
+before anything is scanned. In a config template, the field is
+`spec.concurrency`. A flag that you type wins over the template.
+
+```bash title="Terminal"
+inventag --concurrency 16 --create-excel
+```
+
+With `--concurrency 1`, InvenTag sends one request at a time in the whole run.
+
+Two more limits are fixed. You cannot change them:
+
+- At most 16 requests of one account are in flight at the same time.
+- At most 4 requests are in flight for one service in one region of one
+  account.
+
+Each account also has 8 threads for the detail calls. A detail call reads one
+detail of one resource, for example the S3 bucket location or the Lambda
+function configuration. InvenTag makes the same calls as with
+`--concurrency 1`. Only the order in time changes.
+
+A request that waits for a free place counts against
+`--account-processing-timeout`.
+
+### When AWS throttles
+
+When AWS answers a request with a throttling error, InvenTag lowers the limit
+for that service and region of that account. It halves the limit, but never
+below 1. It starts no new request for that service and region for 0.5 to 1
+second. After 10 answers without a throttling error, it raises the limit by 1,
+up to 4. The AWS SDK still retries the request in standard mode, as described
+under [Throttling and failed calls](#throttling-and-failed-calls). InvenTag has
+no retry loop of its own.
+
+Not verified against real AWS: how the request limit and the pause behave
+under real AWS rate limits.
+
+### What does not depend on timing
+
+For the same AWS answers, a run with `--concurrency 1` and a run with
+`--concurrency 64` write the same files and make the same calls. Rows and
+analysis sheets follow the order of your accounts, whatever order the accounts
+finish in. The order of log lines and the time stamps can differ from run to
+run.
+
+### Stop a run
+
+Ctrl-C and SIGTERM stop every waiting request at once, and no new request
+starts. The message and the exit status are the same as in v1.3.1. See
+[Troubleshooting](./troubleshooting.md#the-run-is-stopped-with-ctrl-c-or-sigterm).
+
+### Speed
+
+More requests at the same time can make a run shorter. Not verified against
+real AWS: any speed-up. The benchmark script `scripts/benchmark_scan.py` runs
+a simulated AWS with a fixed delay per request. A result from it is not a
+promise for a real account.
 
 ## Continue after a failed run
 

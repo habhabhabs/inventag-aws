@@ -123,8 +123,13 @@ inventag --accounts-file accounts.yaml --create-excel
 | 設定 | 設定範本欄位 | 引數 |
 |---|---|---|
 | 同時掃描的帳戶數（預設 4） | `max_concurrent_accounts` | `--max-concurrent-accounts` |
+| 整個執行中同時在途的 AWS 請求數（預設 64，1 到 256） | `concurrency` | `--concurrency` |
 | 每個帳戶允許的秒數（預設 1800，至少 60） | `account_processing_timeout` | `--account-processing-timeout` |
 | 一次一個帳戶 | `parallel_processing: false` | `--disable-parallel-processing` |
+
+InvenTag 平行檢查各帳戶的憑證，同時最多檢查 `--max-concurrent-accounts` 個。結果保持你的帳戶列表的順序。帶 `mfa_serial` 的設定檔需要輸入驗證碼，所以在連線了終端時，InvenTag 會先處理這類設定檔，並且一次處理一個。
+
+`--concurrency` 的上限由所有帳戶共享。一個帳戶同時在途的請求從不超過 16 個。行和分析工作表按你的帳戶列表的順序排列，與帳戶完成的先後無關。見[併發](./run-a-scan.md#concurrency)。
 
 如果某個帳戶失敗，例如因為無法擔任它的角色，InvenTag 會記錄錯誤，並報告成功的那些帳戶。
 它不會用你的預設憑證掃描該帳戶，除非這些憑證屬於該帳戶。Excel 報告的 `Summary` 工作表和 Word 報告都有「執行備註」（Run notes）部分，

@@ -78,7 +78,7 @@ InvenTag 為 46 個 AWS 服務提供了自己的唯讀列舉呼叫。其他服�
 ## 時間限制與平行帳戶 {#time-limit-and-parallel-accounts}
 
 InvenTag 預設同時掃描最多四個帳戶。用 `--max-concurrent-accounts`（至少為 1）修改，
-或用 `--disable-parallel-processing` 一次只掃描一個帳戶。
+或用 `--disable-parallel-processing` 一次只掃描一個帳戶。帳戶內部的請求見[併發](#concurrency)。
 
 每個帳戶有 `--account-processing-timeout` 秒（預設 1800，至少 60），從該帳戶開始掃描時計時。
 發現過程會提前一點結束，提前 300 秒或限制的 20%（取較小者），以便還能讀取標籤、詳情和帳單資料。
@@ -91,6 +91,51 @@ Resource discovery failed for account 123456789012: timed out after 60 seconds (
 ```
 
 如果沒有任何帳戶完成，InvenTag 仍會用已找到的內容寫出報告，記錄 `No account finished within its time limit`，並以結束代碼 1 結束。
+
+## 併發 {#concurrency}
+
+InvenTag 會用多個執行緒同時傳送 AWS 請求。三個設定控制同時傳送多少個：
+
+| 設定 | 預設值 | 限制什麼 |
+|---|---|---|
+| `--concurrency N` | 64 | 整個執行中同時在途的 AWS 請求數上限。 |
+| `--max-concurrent-accounts N` | 4 | 同時掃描的帳戶數。 |
+| `--disable-parallel-processing` | 關 | 一個帳戶接一個帳戶地掃描。它不改變帳戶內部的執行緒。 |
+
+`--concurrency` 接受 1 到 256 的整數。超出此範圍的值，或不是整數的值，會在掃描開始前以結束代碼 2 停止執行。在設定範本中，對應的欄位是 `spec.concurrency`。你在命令列輸入的標誌優先於範本。
+
+```bash title="Terminal"
+inventag --concurrency 16 --create-excel
+```
+
+使用 `--concurrency 1` 時，InvenTag 在整個執行中一次只傳送一個請求。
+
+另有兩個限制是固定的，不能更改：
+
+- 同一個帳戶同時在途的請求最多 16 個。
+- 同一個帳戶、同一個區域、同一個服務同時在途的請求最多 4 個。
+
+每個帳戶還有 8 個執行緒用於詳情呼叫。詳情呼叫讀取單個資源的一項詳情，例如 S3 儲存貯體的位置或 Lambda 函式的設定。InvenTag 發出的呼叫與 `--concurrency 1` 時相同，只是時間順序不同。
+
+等待空閒名額的請求計入 `--account-processing-timeout`。
+
+### AWS 限流時 {#when-aws-throttles}
+
+當 AWS 以限流錯誤回應某個請求時，InvenTag 會降低該帳戶、該服務和該區域的上限。它把上限減半，但不低於 1。在 0.5 到 1 秒內，它不為該服務和區域發起新請求。連續 10 次回應都沒有限流錯誤後，它把上限加 1，最多加到 4。AWS SDK 仍會以 standard 模式重試請求，見[限流與失敗的呼叫](#throttling-and-failed-calls)。InvenTag 自己沒有重試迴圈。
+
+未針對真實的 AWS 驗證：在真實 AWS 的速率限制下，請求上限和暫停如何表現。
+
+### 不依賴時間的內容 {#what-does-not-depend-on-timing}
+
+對於相同的 AWS 回應，用 `--concurrency 1` 和用 `--concurrency 64` 的執行寫出相同的檔案，併發出相同的呼叫。行和分析工作表按你的帳戶順序排列，與帳戶完成的先後無關。日誌行的順序和時間戳在每次執行中可能不同。
+
+### 停止執行 {#stop-a-run}
+
+Ctrl-C 和 SIGTERM 會立即結束所有等待中的請求，並且不再發起新請求。訊息和退出狀態與 v1.3.1 相同。見[故障排查](./troubleshooting.md#the-run-is-stopped-with-ctrl-c-or-sigterm)。
+
+### 速度 {#speed}
+
+同時傳送更多請求可以縮短執行時間。未針對真實的 AWS 驗證：任何提速。基準指令碼 `scripts/benchmark_scan.py` 執行一個模擬的 AWS，每個請求有固定延遲。它的結果不是對真實帳戶的承諾。
 
 ## 失敗的執行之後繼續 {#continue-after-a-failed-run}
 
