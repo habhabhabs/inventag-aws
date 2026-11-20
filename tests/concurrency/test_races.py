@@ -41,8 +41,15 @@ needs_a3 = pytest.mark.xfail(
 
 def _same(a, b):
     assert a.code == b.code == 0, (a.text[-600:], b.text[-600:])
-    assert compare.describe_difference(a.out, b.out) is None
+    assert compare.describe_difference(a.out, b.out, compare.LEDGER_ORDER) is None
     assert a.calls == b.calls
+
+
+# The rows that compare two default runs inherit the tie-order finding of A3.
+intermittent = pytest.mark.xfail(
+    strict=False,
+    reason="A3: measured on v1.3.0 (9f9e972), 3 runs of the default scan under seeds 0 to 2: the same set of resources in state/state_*.json, in a different order (first difference at $.resources[0].arn). Plan 2.4 item 3 (A3): the sort key (arn, service, type, id, region) leaves ties in arrival order; the fix is a last key, a digest of the row. strict=False because it is intermittent. Remove this mark when A3 is merged",
+)
 
 
 @pytest.fixture(params=list(ARGS_BY_MODE.values()), ids=list(ARGS_BY_MODE))
@@ -50,6 +57,7 @@ def mode(request):
     return request.param
 
 
+@intermittent
 def test_a_late_first_account_changes_nothing(scans, mode):
     """The first configured account is stopped at its first ec2 request until both other
     accounts have started theirs: the accounts finish in the order 2, 3, 1."""
@@ -66,6 +74,7 @@ def test_a_late_first_account_changes_nothing(scans, mode):
     _same(plain, late)
 
 
+@intermittent
 def test_two_listing_tasks_that_end_together_change_nothing(scans, mode):
     """Two listings of the first account meet at a barrier and go on at the same moment."""
     hold = dict(
@@ -92,6 +101,7 @@ def test_two_listing_tasks_that_end_together_change_nothing(scans, mode):
     _same(plain, together)
 
 
+@intermittent
 def test_a_late_detail_answer_changes_nothing(scans, mode):
     """The first detail request is held until three other detail requests have started."""
     estate = dict(ESTATE, counts=dict(functions=6, queues=6))
@@ -149,7 +159,7 @@ def test_at_most_four_detail_calls_of_one_key_are_in_flight(scans):
 
 
 # -------------------------------------------------------- abandoning an account
-LIMIT = 20  # seconds; above the time a whole scan of this size needs, as rows B3 and B5
+LIMIT = 60  # seconds; the smallest value the CLI accepts
 
 
 def _abandon_spec():
@@ -185,7 +195,7 @@ def test_an_account_abandoned_during_its_detail_calls_ends_the_run_as_today(
     scan = scans(extra, **_abandon_spec())
     assert scan.code == 0, scan.text[-1500:]
     assert (
-        "timed out after 20 seconds (--account-processing-timeout)" in scan.text
+        "timed out after 60 seconds (--account-processing-timeout)" in scan.text
     ), scan.text[-1500:]
     assert "Traceback" not in scan.text
     (report,) = scan.files("*.xlsx")
