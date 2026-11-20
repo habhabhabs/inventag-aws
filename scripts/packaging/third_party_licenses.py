@@ -1123,7 +1123,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     rows = TABLES.get(ns.platform, ())
     build = Build(ns.bundle, ns.workpath, ns.repo_root)
     entries = unmapped_files(build, rows)
-    print(unmapped_report(entries, ns.platform, platform.python_version()), end="")
+    report = unmapped_report(entries, ns.platform, platform.python_version())
+    print(report, end="", flush=True)  # before any stderr line in a CI log
     if ns.list_unmapped:
         return 1 if entries else 0
     comps, problems = collect(build, rows)
