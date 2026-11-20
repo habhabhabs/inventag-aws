@@ -2048,3 +2048,162 @@ def test_the_licence_check_reports_the_python_pin(tpl, tmp_path, capsys, monkeyp
     args += ["--out", str(tmp_path / "T.txt"), "--platform", "freebsd"]
     assert tpl.main(args) == 1
     assert "LICENCE CHECK: pin freebsd" in capsys.readouterr().err
+
+
+# ------------- a file's own install name is not a link (B2g, dry run 6)
+# Dry run 6 (macOS arm64) failed on exactly two files, both Rust extension
+# modules that carry an install name (LC_ID_DYLIB), which PyInstaller rewrites
+# to "@rpath/<basename>". ``otool -L`` prints that name as the first entry,
+# before the libraries the file loads.
+RPDS = "_internal/rpds/rpds.cpython-312-darwin.so"
+RPDS_ID = "@rpath/rpds.cpython-312-darwin.so"
+RUST = "_internal/cryptography/hazmat/bindings/_rust.abi3.so"
+RUST_ID = "@rpath/cryptography.hazmat.bindings._rust.abi3.so"
+OTOOL_TAIL = "(compatibility version 0.0.0, current version 0.0.0)"
+
+
+def _otool(path, entries, arch=None):
+    head = f"/b/{path}" + (f" (architecture {arch})" if arch else "") + ":\n"
+    return head + "".join(f"\t{e} {OTOOL_TAIL}\n" for e in entries)
+
+
+def _ids(*names):
+    """A thin arm64 Mach-O file whose load commands are these LC_ID_DYLIB
+    names (0xD), each a dylib_command with its name after the fixed part."""
+    import struct
+
+    body = b""
+    for name in names:
+        raw = name.encode() + b"\0"
+        raw += b"\0" * (-(24 + len(raw)) % 8)
+        body += struct.pack("<IIIIII", 0xD, 24 + len(raw), 24, 2, 0, 0) + raw
+    header = struct.pack(
+        "<IiiIIIII", 0xFEEDFACF, 0x0100000C, 0, 6, len(names), len(body), 0, 0
+    )
+    return header + body
+
+
+def test_otool_output_skips_the_files_own_install_name(tpl):
+    out = _otool(RPDS, [RPDS_ID, "/usr/lib/libiconv.2.dylib", LIBSYSTEM])
+    assert tpl.otool_libraries(out, [RPDS_ID]) == [
+        LIBSYSTEM,
+        "/usr/lib/libiconv.2.dylib",
+    ]
+    # Every architecture of a universal file names it first.
+    fat = _otool(RUST, [RUST_ID, LIBSYSTEM], "x86_64")
+    fat += _otool(RUST, [RUST_ID, "/usr/lib/libiconv.2.dylib", LIBSYSTEM], "arm64")
+    assert tpl.otool_libraries(fat, [RUST_ID]) == [
+        LIBSYSTEM,
+        "/usr/lib/libiconv.2.dylib",
+    ]
+
+
+def test_an_entry_is_kept_unless_it_is_first_and_the_files_own_id(tpl):
+    # No id read from the file (an extension module is a bundle, no
+    # LC_ID_DYLIB): nothing is skipped, as before.
+    out = _otool(RPDS, [RPDS_ID, LIBSYSTEM])
+    assert tpl.otool_libraries(out) == [LIBSYSTEM, RPDS_ID]
+    assert tpl.otool_libraries(out, []) == [LIBSYSTEM, RPDS_ID]
+    # The id is not the first entry: it is a library the file loads.
+    later = _otool(RPDS, [LIBSYSTEM, RPDS_ID])
+    assert tpl.otool_libraries(later, [RPDS_ID]) == [LIBSYSTEM, RPDS_ID]
+    # The first entry is skipped once; the same name loaded again stays.
+    twice = _otool(RPDS, [RPDS_ID, LIBSYSTEM, RPDS_ID])
+    assert tpl.otool_libraries(twice, [RPDS_ID]) == [LIBSYSTEM, RPDS_ID]
+
+
+def test_the_install_name_is_read_from_the_load_commands(tpl):
+    assert tpl.macho_install_names(_ids(RPDS_ID)) == [RPDS_ID]
+    assert tpl.macho_install_names(_fat(_ids(RUST_ID), _ids(RUST_ID))) == [RUST_ID]
+    assert tpl.macho_install_names(_macho(SAMPLE_SYMBOLS)) == []
+    assert tpl.macho_install_names(_macho_version(0x32, 0x000B0000)) == []
+    assert tpl.macho_install_names(b"\x7fELF" + b"\0" * 60) == []
+    assert tpl.macho_install_names(b"\xcf\xfa\xed\xfe" + b"\0" * 4) == []
+
+
+def test_the_build_skips_the_install_name_it_reads_from_the_file(
+    tpl, tmp_path, monkeypatch
+):
+    path = tmp_path / RPDS
+    path.parent.mkdir(parents=True)
+    path.write_bytes(_ids(RPDS_ID))
+    text = _otool(RPDS, [RPDS_ID, "/usr/lib/libiconv.2.dylib", LIBSYSTEM])
+    monkeypatch.setattr(tpl, "_run", lambda cmd: text.strip())
+    build = object.__new__(tpl.Build)
+    build.bundle = tmp_path
+    assert build.linked_libraries(RPDS) == [LIBSYSTEM, "/usr/lib/libiconv.2.dylib"]
+    path.write_bytes(_macho(SAMPLE_SYMBOLS))  # no install name in the file
+    assert build.linked_libraries(RPDS) == [
+        LIBSYSTEM,
+        "/usr/lib/libiconv.2.dylib",
+        RPDS_ID,
+    ]
+
+
+def _wheel_collect(tpl, monkeypatch, files):
+    _no_runtime(tpl, monkeypatch)
+    build = _DarwinBuild(files)
+    build.distribution_of_bundled = lambda rel: object()
+    return tpl.collect(build, tpl.TABLES["darwin"])[1]
+
+
+def _unresolved(rel, lib):
+    return (
+        f"{rel}: links {lib}, which does not resolve to a bundled file with a row "
+        "(architect-package-dryrun-5.md ruling 2)"
+    )
+
+
+def test_dry_run_6_files_pass_once_their_own_id_is_skipped(tpl, monkeypatch):
+    rust = _otool(RUST, [RUST_ID, "/usr/lib/libiconv.2.dylib", LIBSYSTEM])
+    rpds = _otool(RPDS, [RPDS_ID, "/usr/lib/libiconv.2.dylib", LIBSYSTEM])
+    files = {
+        RUST: {"links": tpl.otool_libraries(rust, [RUST_ID])},
+        RPDS: {"links": tpl.otool_libraries(rpds, [RPDS_ID])},
+    }
+    assert _wheel_collect(tpl, monkeypatch, files) == []
+    # Without the id (the old reading) the two dry-run-6 lines come back.
+    files = {
+        RUST: {"links": tpl.otool_libraries(rust)},
+        RPDS: {"links": tpl.otool_libraries(rpds)},
+    }
+    assert sorted(_wheel_collect(tpl, monkeypatch, files)) == [
+        _unresolved(RUST, RUST_ID),
+        _unresolved(RPDS, RPDS_ID),
+    ]
+
+
+def test_a_real_rpath_link_that_does_not_resolve_still_fails(tpl, monkeypatch):
+    out = _otool(RUST, [RUST_ID, "@rpath/libmissing.dylib", LIBSYSTEM])
+    files = {RUST: {"links": tpl.otool_libraries(out, [RUST_ID])}}
+    assert _wheel_collect(tpl, monkeypatch, files) == [
+        _unresolved(RUST, "@rpath/libmissing.dylib")
+    ]
+
+
+@pytest.mark.parametrize(
+    "lib",
+    [
+        "@loader_path/lib/rpds.cpython-312-darwin.so",
+        "@executable_path/rpds.cpython-312-darwin.so",
+        "@rpath/other/rpds.cpython-312-darwin.so",
+        RPDS_ID,  # the id's own text, loaded again after the id: a real link
+    ],
+)
+def test_a_link_with_the_files_basename_but_another_path_still_fails(
+    tpl, monkeypatch, lib
+):
+    out = _otool(RPDS, [RPDS_ID, LIBSYSTEM, lib])
+    files = {RPDS: {"links": tpl.otool_libraries(out, [RPDS_ID])}}
+    assert _wheel_collect(tpl, monkeypatch, files) == [_unresolved(RPDS, lib)]
+
+
+def test_an_absolute_link_with_the_files_basename_still_fails(tpl, monkeypatch):
+    lib = "/opt/homebrew/lib/rpds.cpython-312-darwin.so"
+    out = _otool(RPDS, [RPDS_ID, LIBSYSTEM, lib])
+    files = {RPDS: {"links": tpl.otool_libraries(out, [RPDS_ID])}}
+    assert _wheel_collect(tpl, monkeypatch, files) == [
+        f"{RPDS}: links {lib}, an absolute path outside the bundle and outside "
+        "/usr/lib/ and /System/Library/: a user's Mac need not have it "
+        "(architect-package-dryrun-5.md ruling 2)"
+    ]
