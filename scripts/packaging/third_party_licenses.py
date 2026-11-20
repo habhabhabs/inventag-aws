@@ -250,7 +250,9 @@ LINUX_ROWS: Tuple[Row, ...] = (
             Carried(
                 "libyaml (in PyYAML)",
                 "MIT",
-                ("pkgdoc:/usr/share/doc/libyaml-0-2/copyright",),
+                # No verified source: the wheel's licence files hold only
+                # PyYAML's text, and the repository has no sourced copy.
+                (),
                 "strings:^(0\\.2\\.[0-9]+)$",
             ),
         ),
@@ -262,7 +264,9 @@ LINUX_ROWS: Tuple[Row, ...] = (
             Carried(
                 "libffi (in cffi)",
                 "MIT",
-                ("pkgdoc:/usr/share/doc/libffi8/copyright",),
+                # No verified source: the wheel's licence files hold only
+                # cffi's text, and the repository has no sourced copy.
+                (),
                 # Linked statically: the module defines ffi_prep_cif itself.
                 requires_strings=b"ffi_prep_cif",
             ),
@@ -787,7 +791,14 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
             ):
                 continue
             got = [build.read_text(s, source) for s in carried.text]
-            if any(g is None for g in got):
+            if not carried.text:
+                problems.append(
+                    f"{rel}: licence text of {carried.name}: no verified source in "
+                    "the table; add the upstream text under "
+                    "scripts/packaging/licenses/ (first line: its address, version "
+                    "or commit, and date)"
+                )
+            elif any(g is None for g in got):
                 problems.append(f"{rel}: licence text of {carried.name} not found")
             if carried.name == LXML_ICONV:
                 iconv_versions[rel] = build.read_version(carried.version, rel, source)
