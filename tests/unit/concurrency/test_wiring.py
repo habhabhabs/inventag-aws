@@ -326,3 +326,22 @@ def test_a_finished_scan_is_not_stopped_later(aws, tmp_path, monkeypatch):
     generator._scan_account(ACCOUNTS[0], _contexts()[ACCOUNTS[0]])
     cbg.stop_running_scans()
     assert FakeInventory.last.comprehensive_discovery.stops == 0
+
+
+def test_a_finished_scan_keeps_no_reference_to_its_discovery_engine(
+    aws, tmp_path, monkeypatch
+):
+    """The account's deadline lives as long as the session (the limiter's
+    handler holds it); it must not keep the engine and all it read alive."""
+    import gc
+    import weakref
+
+    generator = _generator(tmp_path)
+    deadline = generator._new_deadline(ACCOUNTS[0])
+    monkeypatch.setattr(FakeInventory, "during", staticmethod(lambda: None))
+    monkeypatch.setattr(cbg, "AWSResourceInventory", FakeInventory)
+    generator._scan_account(ACCOUNTS[0], _contexts()[ACCOUNTS[0]], deadline)
+    engine = weakref.ref(FakeInventory.last.comprehensive_discovery)
+    FakeInventory.last = None
+    gc.collect()
+    assert engine() is None
