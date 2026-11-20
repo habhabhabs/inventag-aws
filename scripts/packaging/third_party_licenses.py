@@ -100,6 +100,12 @@ LXML_PARAGRAPH = (
     "installation directory. "
     "You can replace them with your own build of lxml of the same version."
 )
+# macOS (architect-package-dryrun-5.md ruling 1): the modules are the wheel's
+# signed files; a replaced module must be signed again to load.
+LXML_MACOS_RESIGN = (
+    "After replacing a module on macOS, sign it again "
+    "(`codesign -s - --force <file>`)."
+)
 LIBICONV_HOME = "https://www.gnu.org/software/libiconv/"
 # How the version was read (architect ruling 2 of 20 Nov 2026, work order B2b).
 LIBICONV_VERSION_FROM = "version read from the module's own symbol _libiconv_version"
@@ -1308,6 +1314,8 @@ def add_libiconv_note(comp: Component) -> None:
     """
     names = ", ".join(sorted(Path(f).name for f in comp.files))
     comp.notes = [LXML_PARAGRAPH.format(files=names)]
+    if any(f.endswith("-darwin.so") for f in comp.files):
+        comp.notes.append(LXML_MACOS_RESIGN)
     if comp.version:
         comp.urls.append(LIBICONV_DOWNLOAD.format(version=comp.version))
     lxml = _installed("lxml")
