@@ -497,14 +497,18 @@ def test_the_linux_builds_print_the_libiconv_lines_of_their_notices_file(tmp_pat
         names = [s.get("name", "") for s in _steps(job)]
         printed = [n for n in names if "libiconv lines" in n]
         assert len(printed) == 1, job
-        assert names.index("Hand the files back to the runner user") < names.index(
-            printed[0]
-        ) < names.index("Collect the files of this build")
+        assert (
+            names.index("Hand the files back to the runner user")
+            < names.index(printed[0])
+            < names.index("Collect the files of this build")
+        )
         work = tmp_path / job
         work.mkdir()
         result = _libiconv_print_run(job, work, GOOD_NOTICE + "- other: MIT\n")
         assert result.returncode == 0, result.stderr
-        assert "GNU libiconv, linked into lxml's extension modules 1.18" in result.stdout
+        assert (
+            "GNU libiconv, linked into lxml's extension modules 1.18" in result.stdout
+        )
         assert f"source: {GNU_TARBALL}" in result.stdout
 
 
@@ -661,7 +665,10 @@ def test_the_macos_smoke_runs_version_and_selftest_before_any_python_is_set_up()
     assert '"$BIN/inventag" selftest' in before
     assert "env -i PATH=/usr/bin:/bin" in before
     assert "selftest" not in after.replace("smoke_scan", "")
-    assert "scripts/packaging/smoke_scan.py" in after and "scripts/packaging/smoke_scan.py" not in before
+    assert (
+        "scripts/packaging/smoke_scan.py" in after
+        and "scripts/packaging/smoke_scan.py" not in before
+    )
     # Nothing before the Python step uses Python.
     assert "python" not in before.lower().replace("setup-python", "")
 
@@ -1142,7 +1149,9 @@ def test_the_attest_job_never_runs_on_a_pull_request_and_is_the_only_one_with_a_
     assert set(job["needs"]) == {"plan", "provenance"}
     assert job["runs-on"] == "ubuntu-24.04"
     # It signs the files provenance kept, after checking them once more.
-    down = [s for s in _steps("attest") if s.get("uses", "").startswith("actions/download-")]
+    down = [
+        s for s in _steps("attest") if s.get("uses", "").startswith("actions/download-")
+    ]
     assert len(down) == 1 and down[0]["with"]["name"] == "release-files"
     run = _run_text("attest")
     assert "sha256sum -c SHA256SUMS" in run
