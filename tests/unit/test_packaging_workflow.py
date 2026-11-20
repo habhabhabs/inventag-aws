@@ -2433,6 +2433,7 @@ def _homebrew_run(tmp_path, fail="", lxml="same"):
     import subprocess
     import tarfile
 
+    tmp_path.mkdir(parents=True, exist_ok=True)
     release = tmp_path / "release"
     release.mkdir()
     version = "1.4.0"
