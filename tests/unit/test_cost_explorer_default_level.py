@@ -30,7 +30,12 @@ def _run(tmp_path, error, extra_args=()):
 
 def _billing_warnings(outcome):
     found = _WARNING.findall(outcome.stdout + "\n" + outcome.stderr)
-    return [m for m in found if re.search(r"cost explorer|billing", m, re.I)]
+    return [
+        m
+        for m in found
+        if re.search(r"cost explorer|billing", m, re.I)
+        and "Permissions:" not in m  # the summary of denied actions has its own tests
+    ]
 
 
 @pytest.mark.parametrize(

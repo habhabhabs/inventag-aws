@@ -113,7 +113,7 @@ def test_a_tagging_only_account_keeps_its_change_report(
 
     # A true note: the service APIs were not read, the Tagging API was.
     notes = run_notes(reports(tmp_path / "out")[-1])
-    mine = [n for n in notes if GOOD_ID in n]
+    mine = [n for n in notes if GOOD_ID in n and not n.startswith("Permissions:")]
     assert len(mine) == 1, notes
     assert "Tagging API" in mine[0]
     assert "left out of change tracking" not in mine[0]
