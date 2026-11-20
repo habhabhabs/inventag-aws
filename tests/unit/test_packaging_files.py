@@ -43,7 +43,7 @@ def _version_lines(base: Path):
     """Lines under ``base`` that hold a version number, as path:line: text."""
     found = []
     for path in sorted(base.rglob("*")):
-        if path.is_file():
+        if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc":
             for n, line in enumerate(path.read_text("utf-8").splitlines(), 1):
                 if VERSION_RX.search(line):
                     found.append(f"{path.relative_to(base.parent)}:{n}: {line.strip()}")
