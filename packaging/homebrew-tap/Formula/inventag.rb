@@ -14,10 +14,17 @@ class Inventag < Formula
   license "MIT"
 
   on_macos do
-    # Only the Apple Silicon archive exists. The URL is declared for every Mac
-    # so that the formula loads; on an Intel Mac install stops at its first line.
-    url "{{BASE_URL}}/inventag-{{VERSION}}-darwin-arm64.tar.gz"
-    sha256 "{{SHA256_DARWIN_ARM64}}"
+    # Only the Apple Silicon archive exists. brew style wants url and sha256
+    # inside on_arm or on_intel. An Intel Mac gets the same archive declared so
+    # that the formula loads; install then stops with a message on its first line.
+    on_arm do
+      url "{{BASE_URL}}/inventag-{{VERSION}}-darwin-arm64.tar.gz"
+      sha256 "{{SHA256_DARWIN_ARM64}}"
+    end
+    on_intel do
+      url "{{BASE_URL}}/inventag-{{VERSION}}-darwin-arm64.tar.gz"
+      sha256 "{{SHA256_DARWIN_ARM64}}"
+    end
   end
 
   on_linux do
@@ -29,12 +36,6 @@ class Inventag < Formula
       url "{{BASE_URL}}/inventag-{{VERSION}}-linux-arm64.tar.gz"
       sha256 "{{SHA256_LINUX_ARM64}}"
     end
-  end
-
-  def caveats
-    <<~EOS
-      Third-party licences: see THIRD-PARTY-LICENSES.txt in the installation directory
-    EOS
   end
 
   def install
@@ -51,6 +52,12 @@ class Inventag < Formula
     zsh_completion.install libexec/"share/completions/_inventag"
     fish_completion.install libexec/"share/completions/inventag.fish"
     man1.install libexec/"share/man/man1/inventag.1"
+  end
+
+  def caveats
+    <<~EOS
+      Third-party licences: see THIRD-PARTY-LICENSES.txt in the installation directory
+    EOS
   end
 
   test do

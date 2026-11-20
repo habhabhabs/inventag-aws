@@ -126,6 +126,9 @@ def write_atomic(path: Path, text: str) -> None:
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
             handle.write(text)
+            # mkstemp makes 0600; brew style wants a readable formula (0644),
+            # whatever the umask of the caller.
+            os.fchmod(handle.fileno(), 0o644)
         os.replace(tmp, path)
     except BaseException:
         if os.path.exists(tmp):
