@@ -209,6 +209,87 @@ def test_dockerfile_runs_as_non_root_from_the_hash_pinned_lock():
     assert re.search(r'^ENTRYPOINT \["inventag"\]', text, re.M)
 
 
+def test_dockerfile_puts_the_libiconv_notice_next_to_the_lgpl_text():
+    # Architect review F3: the image carries the same paragraph as the
+    # executable, written by the notices script, not typed by hand.
+    text = (PACKAGING / "docker" / "Dockerfile").read_text("utf-8")
+    assert re.search(
+        r"COPY scripts/packaging/third_party_licenses\.py "
+        r"/src/scripts/packaging/third_party_licenses\.py",
+        text,
+    )
+    assert re.search(
+        r"/opt/inventag/bin/python /src/scripts/packaging/third_party_licenses\.py "
+        r"\\\s*--lxml-notice --out /src/LIBICONV-IN-LXML\.txt",
+        text,
+    )
+    assert re.search(
+        r"^COPY --from=build /src/LIBICONV-IN-LXML\.txt "
+        r"/usr/share/doc/inventag/LIBICONV-IN-LXML\.txt$",
+        text,
+        re.M,
+    )
+    assert re.search(r"/usr/share/doc/inventag/LGPL-2\.1\.txt$", text, re.M)
+
+
+class _FakeLxml:
+    """An installed lxml distribution with three extension modules."""
+
+    version = "6.1.3"
+
+    def __init__(self, root: Path):
+        self.root = root
+        self.metadata = {"Name": "lxml"}
+        lxml = root / "lxml"
+        lxml.mkdir()
+        for name in ("etree", "objectify"):
+            (lxml / f"{name}.cpython-313-x86_64-linux-gnu.so").write_bytes(
+                b"\0libiconv_open\0"
+            )
+        (lxml / "_elementpath.cpython-313-x86_64-linux-gnu.so").write_bytes(b"\0")
+        (lxml / "__init__.py").write_text("")
+        self.files = sorted(p.relative_to(root) for p in lxml.iterdir())
+
+    def locate_file(self, f):
+        return self.root / f
+
+
+def test_container_notice_has_the_executables_paragraph(tpl, tmp_path, monkeypatch):
+    lxml = _FakeLxml(tmp_path)
+    monkeypatch.setattr(tpl, "_installed", lambda name: lxml)
+    monkeypatch.setattr(tpl, "_source_urls", lambda metadata: [])
+    monkeypatch.setattr(tpl, "_iconv_version", lambda path: "1.18")
+    text = tpl.libiconv_notice()
+    files = "etree.cpython-313-x86_64-linux-gnu.so, objectify.cpython-313-x86_64-linux-gnu.so"
+    assert tpl.LXML_PARAGRAPH.format(files=files) in text
+    assert "_elementpath" not in text
+    assert f"- {tpl.LXML_ICONV} 1.18: LGPL-2.1" in text
+    assert tpl.LIBICONV_DOWNLOAD.format(version="1.18") in text
+    assert "LGPL-2.1.txt" in text
+    assert "Not legal advice" in text
+    for word in ("complies", "satisfies", "meets", "compliant"):
+        assert word not in text.lower()
+    out = tmp_path / "notice.txt"
+    assert tpl.main(["--lxml-notice", "--out", str(out)]) == 0
+    assert out.read_text("utf-8") == text
+
+
+def test_container_notice_records_no_version_when_the_modules_disagree(
+    tpl, tmp_path, monkeypatch
+):
+    lxml = _FakeLxml(tmp_path)
+    monkeypatch.setattr(tpl, "_installed", lambda name: lxml)
+    monkeypatch.setattr(tpl, "_source_urls", lambda metadata: [])
+    versions = {"etree": "1.18", "objectify": "1.17"}
+    monkeypatch.setattr(
+        tpl, "_iconv_version", lambda path: versions[Path(path).name.split(".")[0]]
+    )
+    text = tpl.libiconv_notice()
+    assert f"- {tpl.LXML_ICONV} (version not recorded): LGPL-2.1" in text
+    assert "libiconv-1.1" not in text  # no versioned tarball address
+    assert "https://www.gnu.org/software/libiconv/" in text
+
+
 # -------------------------------------------------------------- man page
 def test_manpage_is_generated_from_the_parser():
     gen = _load("gen_manpage")
