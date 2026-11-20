@@ -231,8 +231,9 @@ _LXML = (
     ),
 )
 
-LINUX_ROWS: Tuple[Row, ...] = (
-    Row("inventag", "pyinstaller"),
+# Files of the wheels, the same on every platform (each row's carried
+# libraries are found in the file by their strings).
+WHEEL_ROWS: Tuple[Row, ...] = (
     Row("_internal/lxml/*.so", "package", carries=_LXML, unmodified=True),
     Row(
         "_internal/cryptography/hazmat/bindings/_rust.abi3.so",
@@ -278,37 +279,44 @@ LINUX_ROWS: Tuple[Row, ...] = (
     Row("_internal/charset_normalizer/*.so", "package"),
     Row("_internal/psutil/*.so", "package"),
     Row("_internal/rpds/*.so", "package"),
-    Row(
-        "_internal/python3.*/lib-dynload/_decimal*.so",
-        "cpython",
-        carries=(
-            Carried(
-                "libmpdec (in CPython's _decimal)",
-                "BSD-2-Clause",
-                ("pkgdoc",),
-                "python:decimal.__libmpdec_version__",
-                # Dry run 3 (AlmaLinux 9) bundled libmpdec.so.3 as a file of its
-                # own; a _decimal that names that file loads it.
-                loads_instead=b"libmpdec.so",
+)
+
+LINUX_ROWS: Tuple[Row, ...] = (
+    (Row("inventag", "pyinstaller"),)
+    + WHEEL_ROWS
+    + (
+        Row(
+            "_internal/python3.*/lib-dynload/_decimal*.so",
+            "cpython",
+            carries=(
+                Carried(
+                    "libmpdec (in CPython's _decimal)",
+                    "BSD-2-Clause",
+                    ("pkgdoc",),
+                    "python:decimal.__libmpdec_version__",
+                    # Dry run 3 (AlmaLinux 9) bundled libmpdec.so.3 as a file of its
+                    # own; a _decimal that names that file loads it.
+                    loads_instead=b"libmpdec.so",
+                ),
             ),
         ),
-    ),
-    Row("_internal/python3.*/lib-dynload/*.so", "cpython"),
-    Row("_internal/libpython3.*.so*", "cpython"),
-    Row("_internal/libssl.so.3", "system", "Apache-2.0"),
-    Row("_internal/libcrypto.so.3", "system", "Apache-2.0"),
-    Row("_internal/libffi.so.*", "system", "MIT"),
-    Row("_internal/libexpat.so.*", "system", "MIT"),
-    Row("_internal/libz.so.*", "system", "Zlib"),
-    Row("_internal/libbz2.so.*", "system", "bzip2-1.0.6"),
-    # xz 5.4.x: liblzma is in the public domain (0BSD from xz 5.6.0 on).
-    Row("_internal/liblzma.so.*", "system", "LicenseRef-public-domain"),
-    Row(
-        "_internal/libgcc_s.so.1",
-        "system",
-        GCC_EXCEPTION,
-        extra_text=("repo:scripts/packaging/licenses/GPL-3.txt",),
-    ),
+        Row("_internal/python3.*/lib-dynload/*.so", "cpython"),
+        Row("_internal/libpython3.*.so*", "cpython"),
+        Row("_internal/libssl.so.3", "system", "Apache-2.0"),
+        Row("_internal/libcrypto.so.3", "system", "Apache-2.0"),
+        Row("_internal/libffi.so.*", "system", "MIT"),
+        Row("_internal/libexpat.so.*", "system", "MIT"),
+        Row("_internal/libz.so.*", "system", "Zlib"),
+        Row("_internal/libbz2.so.*", "system", "bzip2-1.0.6"),
+        # xz 5.4.x: liblzma is in the public domain (0BSD from xz 5.6.0 on).
+        Row("_internal/liblzma.so.*", "system", "LicenseRef-public-domain"),
+        Row(
+            "_internal/libgcc_s.so.1",
+            "system",
+            GCC_EXCEPTION,
+            extra_text=("repo:scripts/packaging/licenses/GPL-3.txt",),
+        ),
+    )
 )
 
 # Only the Linux table exists, and its text sources were read on a Debian-family
