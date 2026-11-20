@@ -79,6 +79,9 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 - SIGTERM could hang the process when the main thread held a lock that the
   signal handler needed. The handler now takes none of the run's locks: it stops
   new AWS requests, prints its line and ends by the signal.
+- Known limit: a SIGTERM that arrives while the process writes to standard
+  output can lose its SIGTERM line. The process still ends by the signal with
+  the same status. A fix is planned for v1.4.1.
 
 ### Library notes
 
