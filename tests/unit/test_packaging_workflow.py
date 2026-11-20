@@ -1253,6 +1253,134 @@ def test_every_path_check_after_an_uninstall_forgets_bashs_command_cache_first()
     assert checked == 4
 
 
+# ---- B3d: the macOS evidence steps and the build record (b2f report) -------
+
+UPLOAD_PIN = "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+
+
+def _macos_names():
+    return [s.get("name", "") for s in _steps("build-macos-arm64")]
+
+
+def test_the_macos_build_prints_its_evidence_between_the_build_and_the_collect_step():
+    names = _macos_names()
+    evidence = [n for n in names if "evidence" in n]
+    assert len(evidence) == 1
+    built = names.index(
+        "Build the executable, check the licences, run selftest, write the archive"
+    )
+    assert (
+        built
+        < names.index(evidence[0])
+        < names.index("Collect the files of this build")
+    )
+    # Only the macOS build has it.
+    for job, step in _all_steps():
+        if job != "build-macos-arm64":
+            assert "evidence" not in step.get("name", "")
+
+
+MACOS_EVIDENCE_COMMANDS = (
+    'cat "$work/build-record-macos.txt"',
+    "lipo -archs",
+    "otool -L",
+    "codesign -v",
+    "codesign -dv",
+    "shasum -a 256",
+    "-iname '*licen*'",
+    "-iname 'copying*'",
+    "Stefan Krah",
+    "decimal.__libmpdec_version__",
+    "_lzma*.so",
+    "'^5\\.[0-9]+\\.[0-9]+$'",
+)
+
+
+def test_the_macos_evidence_step_runs_the_commands_that_the_licence_rows_need():
+    run = _step("build-macos-arm64", "evidence")["run"]
+    for command in MACOS_EVIDENCE_COMMANDS:
+        assert command in run, command
+    # Both the copy of lxml in the build environment and the one in the bundle.
+    assert "$bundle/_internal/lxml/" in run and '"$site/$f"' in run
+
+
+def test_the_macos_evidence_step_prints_every_section_with_the_tools_stubbed(tmp_path):
+    import subprocess
+
+    stubs = tmp_path / "stubs"
+    stubs.mkdir()
+    for tool in ("lipo", "otool", "codesign", "shasum", "strings"):
+        (stubs / tool).write_text(
+            '#!/bin/bash\necho "[$(basename "$0") $*]"\n'
+            + ("echo 5.8.4\n" if tool == "strings" else ""),
+            encoding="utf-8",
+        )
+        (stubs / tool).chmod(0o755)
+    work = tmp_path / "work"
+    site = tmp_path / "venv" / "site" / "lxml"
+    bundle_lxml = work / "dist" / "inventag" / "_internal" / "lxml"
+    lib_dynload = (
+        work / "dist" / "inventag" / "_internal" / "python3.12" / "lib-dynload"
+    )
+    fw = tmp_path / "fw"
+    for directory in (site, bundle_lxml, lib_dynload, fw / "lib" / "python3.12"):
+        directory.mkdir(parents=True)
+    (site / "etree.so").write_text("x", encoding="utf-8")
+    (bundle_lxml / "etree.so").write_text("x", encoding="utf-8")
+    (lib_dynload / "_lzma.cpython-312-darwin.so").write_text("x", encoding="utf-8")
+    (fw / "lib" / "python3.12" / "LICENSE.txt").write_text(
+        "libmpdec\nStefan Krah\n", encoding="utf-8"
+    )
+    (work / "build-record-macos.txt").write_text(
+        "BUILD RECORD: a link\n", encoding="utf-8"
+    )
+    python = tmp_path / "venv" / "bin" / "python"
+    python.parent.mkdir(parents=True)
+    python.write_text(
+        "#!/bin/bash\n"
+        f'case "$2" in *lxml*) echo "{site}" ;; *) echo 2.5.1 ;; esac\n',
+        encoding="utf-8",
+    )
+    python.chmod(0o755)
+    # The step names the python.org framework by an absolute path: point it at the stub tree.
+    run = _step("build-macos-arm64", "evidence")["run"].replace(
+        "/Library/Frameworks/Python.framework/Versions/3.12", str(fw)
+    )
+    result = subprocess.run(
+        ["bash", "-e", "-o", "pipefail", "-c", run],
+        env={
+            "PATH": f"{stubs}:/usr/bin:/bin",
+            "RUNNER_TEMP": str(tmp_path),
+        },
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    out = result.stdout
+    assert result.returncode == 0, out + result.stderr
+    assert "BUILD RECORD: a link" in out
+    assert "== lxml/etree.so" in out
+    assert out.count("[lipo -archs") == 2 and out.count("[otool -L") == 2
+    assert out.count("[shasum -a 256") == 2 and out.count("[codesign -dv") == 2
+    assert "LICENSE.txt" in out and "Stefan Krah" in out
+    assert "2.5.1" in out and "5.8.4" in out
+
+
+def test_the_macos_build_record_and_notices_are_uploaded_with_the_macos_build():
+    names = _macos_names()
+    step = _step("build-macos-arm64", "Attach the macOS build record")
+    assert names.index(step["name"]) > names.index("Upload the files of this build")
+    assert step["uses"] == UPLOAD_PIN or step["uses"].startswith(UPLOAD_PIN)
+    assert step["with"]["name"] == "macos-build-record-arm64"
+    paths = step["with"]["path"].split()
+    assert "${{ runner.temp }}/work/build-record-macos.txt" in paths
+    assert "${{ runner.temp }}/work/dist/inventag/THIRD-PARTY-LICENSES.txt" in paths
+    assert step["with"]["if-no-files-found"] == "error"
+    # Not a "build-*" artifact: provenance and the release do not pick it up
+    # as a release file (it is evidence, not a file of the release).
+    assert not step["with"]["name"].startswith("build-")
+
+
 # ---- B3b: the INCLUDE_MACOS switch (architect ruling 4) --------------------
 
 MACOS_JOBS = (
