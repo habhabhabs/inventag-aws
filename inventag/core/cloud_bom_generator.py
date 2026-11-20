@@ -199,19 +199,20 @@ def _expired_listings(context) -> int:
     )
 
 
-# The limiter of every generator in this process (one per run), so that
-# SIGTERM and Ctrl-C can stop them all (stop_running_scans).
-_RUN_LIMITERS: "weakref.WeakSet" = weakref.WeakSet()
-_RUN_LIMITERS_LOCK = threading.Lock()
+# Every generator in this process (one per run), so that SIGTERM and Ctrl-C
+# can stop them all (stop_running_scans).
+_RUNS: "weakref.WeakSet" = weakref.WeakSet()
+_RUNS_LOCK = threading.Lock()
 
 
 def stop_running_scans() -> None:
-    """Stop the limiter of every run in this process: every request waiting
-    for a slot ends at once, and no new AWS request starts (SIGTERM, Ctrl-C)."""
-    with _RUN_LIMITERS_LOCK:
-        limiters = list(_RUN_LIMITERS)
-    for limiter in limiters:
-        limiter.stop()
+    """Stop every run in this process: every request waiting for a slot ends
+    at once, no new AWS request starts, and detail calls not started do not
+    start (SIGTERM, Ctrl-C)."""
+    with _RUNS_LOCK:
+        runs = list(_RUNS)
+    for run in runs:
+        run.stop()
 
 
 class AccountSessionError(Exception):
@@ -268,6 +269,9 @@ class _AccountDeadline:
         # Written by the worker, read by the main thread after the scan ends.
         self.coverage: List[Dict[str, Any]] = []
         self.unfinished_listings = 0  # discovery's own limit (coverage "timeout")
+        # Called once when the account is abandoned (stop its detail calls).
+        self._on_abandon: List[Any] = []
+        self._abandon_lock = threading.Lock()
 
     def start(self) -> None:
         self.started_at = self._clock()
@@ -306,11 +310,26 @@ class _AccountDeadline:
             )
 
     def abandon(self) -> None:
-        """The main thread gave up on this account: refuse its further calls."""
+        """The main thread gave up on this account: refuse its further calls
+        and stop its detail calls."""
         self.expired = True
-        self.abandoned = True
-        if self.abandoned_at is None:
-            self.abandoned_at = time.monotonic()
+        with self._abandon_lock:
+            first = not self.abandoned
+            self.abandoned = True
+            if self.abandoned_at is None:
+                self.abandoned_at = time.monotonic()
+            callbacks = list(self._on_abandon) if first else []
+        for callback in callbacks:
+            callback()
+
+    def on_abandon(self, callback) -> None:
+        """Call ``callback`` once when the account is abandoned (at once if
+        it already is)."""
+        with self._abandon_lock:
+            if not self.abandoned:
+                self._on_abandon.append(callback)
+                return
+        callback()
 
     def _hook_id(self, event: str) -> str:
         return f"{self.UNIQUE_ID}-{event}-{id(self)}"
@@ -449,8 +468,11 @@ class CloudBOMGenerator:
         # At most --concurrency AWS requests in flight for the whole run,
         # attached to each account's session for its scan (_scan_account).
         self.limiter = InFlightLimiter(config.concurrency)
-        with _RUN_LIMITERS_LOCK:
-            _RUN_LIMITERS.add(self.limiter)
+        # Discovery engines of the accounts being scanned now (stop()).
+        self._running_engines: set = set()
+        self._engines_lock = threading.Lock()
+        with _RUNS_LOCK:
+            _RUNS.add(self)
         self._processing_stats = {
             "total_accounts": 0,
             "successful_accounts": 0,
@@ -1994,6 +2016,33 @@ class CloudBOMGenerator:
             )
         return resources
 
+    def stop(self) -> None:
+        """Stop this run (SIGTERM, Ctrl-C): the limiter starts no new AWS
+        request, and running scans start no new detail call."""
+        self.limiter.stop()
+        with self._engines_lock:
+            engines = list(self._running_engines)
+        for engine in engines:
+            engine.stop_detail_calls()
+
+    def _track_engine(self, engine, deadline) -> bool:
+        """Make ``engine``'s detail calls stop when the account is abandoned
+        or the run is stopped. False when the engine has none to stop."""
+        stop = getattr(engine, "stop_detail_calls", None)
+        if not callable(stop):
+            return False
+        with self._engines_lock:
+            self._running_engines.add(engine)
+        if deadline is not None:
+            deadline.on_abandon(stop)
+        if self.limiter.stopped:
+            stop()
+        return True
+
+    def _untrack_engine(self, engine) -> None:
+        with self._engines_lock:
+            self._running_engines.discard(engine)
+
     def _attach_limiter(self, session, account_id: str, deadline) -> None:
         """Put the run's limiter on an account's session, after the read-only
         guard (installed on every client) and the account's deadline, then
@@ -2099,10 +2148,13 @@ class CloudBOMGenerator:
         # are removed here, before any report, snapshot or log sees them.
         # This is the second line: discovery already applied the same
         # deny-list (inventag.security.secret_values) at the source.
-        resources = [
-            mask_secret_values(resource)
-            for resource in inventory.discover_all_resources()
-        ]
+        tracked = engine is not None and self._track_engine(engine, deadline)
+        try:
+            found = inventory.discover_all_resources()
+        finally:
+            if tracked:
+                self._untrack_engine(engine)
+        resources = [mask_secret_values(resource) for resource in found]
         if deadline is not None:
             entries = self._coverage_entries(inventory, account_id)
             deadline.coverage = entries
