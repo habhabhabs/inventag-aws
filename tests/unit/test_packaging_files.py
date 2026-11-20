@@ -584,3 +584,29 @@ def test_smoke_scan_refuses_blocked_or_write_calls():
     assert smoke.check_audit(_audit(operations=[])) and smoke.check_audit(
         _audit(total_calls=0)
     )
+
+
+NOT_RECORDED_LINE = (
+    "    version not recorded: the lxml modules do not all hold the same "
+    "symbol _libiconv_version"
+)
+
+
+@pytest.mark.parametrize(
+    "versions",
+    [{ETREE: "1.18", OBJECTIFY: ""}, {ETREE: "", OBJECTIFY: ""}],
+    ids=["one-module-without-the-symbol", "no-module-with-the-symbol"],
+)
+def test_a_module_without_the_libiconv_symbol_gives_no_version(
+    tpl, monkeypatch, versions
+):
+    comps = _collect_iconv(tpl, monkeypatch, versions)
+    iconv = [c for c in comps if c.name == tpl.LXML_ICONV]
+    assert len(iconv) == 1
+    assert iconv[0].version == ""
+    assert iconv[0].files == [ETREE, OBJECTIFY]
+    text = tpl.render(comps)
+    assert f"- {tpl.LXML_ICONV} (version not recorded): LGPL-2.1" in text
+    assert NOT_RECORDED_LINE + "\n" in text
+    assert "libiconv-1.1" not in text
+    assert "https://www.gnu.org/software/libiconv/" in text
