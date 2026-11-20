@@ -1170,3 +1170,181 @@ def test_a_sourced_text_is_labelled_with_its_upstream_address(tpl, tmp_path):
     # A text without an upstream record keeps its file name as the label.
     label, _ = build.read_text("repo:scripts/packaging/licenses/GPL-3.txt", None)
     assert label == "GPL-3.txt"
+
+
+# ------------- rpm rows: libmpdec.so.3 and libuuid.so.1 (B2e, ruling 2)
+BSD_HEAD = (
+    "Redistribution and use in source and binary forms, with or without\n"
+    "modification, are permitted provided that the following conditions\n"
+    "are met:\n"
+    "1. Redistributions of source code must retain the above copyright\n"
+    "   notice, this list of conditions and the following disclaimer.\n"
+    "2. Redistributions in binary form must reproduce the above copyright\n"
+    "   notice, this list of conditions and the following disclaimer in the\n"
+    "   documentation and/or other materials provided with the distribution.\n"
+)
+BSD_THIRD = (
+    "3. Neither the name of the copyright holder nor the names of its\n"
+    "   contributors may be used to endorse or promote products derived from\n"
+    "   this software without specific prior written permission.\n"
+)
+MPDEC_FILE = "/usr/share/licenses/mpdecimal/LICENSE.txt"
+UUID_FILES = [
+    "/usr/share/licenses/libuuid/COPYING",
+    "/usr/share/licenses/libuuid/COPYING.BSD-3-Clause",
+]
+RPM_TEXTS = {
+    MPDEC_FILE: "Copyright (c) 2008-2020 Sample\n\n" + BSD_HEAD,
+    UUID_FILES[0]: "This library is free software; see COPYING.BSD-3-Clause.\n",
+    UUID_FILES[1]: "Copyright (c) Sample\n\n" + BSD_HEAD + BSD_THIRD,
+}
+
+
+class _RpmBuild(_SampleBuild):
+    """Two system libraries of AlmaLinux 9 packages, as dry run 4 printed them."""
+
+    def __init__(self, licences, texts, versions=None):
+        files = ["_internal/libmpdec.so.3", "_internal/libuuid.so.1"]
+        super().__init__(files, b"", same=True)
+        self.licences, self.texts = licences, texts
+        self.versions = versions or {
+            "mpdecimal": "2.5.1-3.el9",
+            "libuuid": "2.37.4-28.el9_9.1",
+        }
+
+    def source_of(self, rel):
+        return "/lib64/" + Path(rel).name
+
+    def owning_package(self, path):
+        pkg = {"libmpdec.so.3": "mpdecimal", "libuuid.so.1": "libuuid"}[Path(path).name]
+        return pkg, self.versions[pkg]
+
+    def package_licence(self, pkg):
+        return self.licences.get(pkg)
+
+    def read_text(self, source, owner):
+        kind, _, arg = source.partition(":")
+        if kind == "path":
+            return (Path(arg).name, self.texts[arg]) if arg in self.texts else None
+        return super().read_text(source, owner)
+
+
+RPM_LICENCES = {
+    "mpdecimal": ("BSD", [MPDEC_FILE]),
+    "libuuid": ("BSD", UUID_FILES),
+}
+
+
+def _rpm_collect(tpl, monkeypatch, licences=None, texts=None, versions=None):
+    _no_runtime(tpl, monkeypatch)
+    build = _RpmBuild(
+        RPM_LICENCES if licences is None else licences,
+        RPM_TEXTS if texts is None else texts,
+        versions,
+    )
+    comps, problems = tpl.collect(build, tpl.LINUX_ROWS)
+    return {c.name: c for c in comps}, problems
+
+
+def test_rpm_rows_read_version_and_licence_id_from_the_package(tpl, monkeypatch):
+    comps, problems = _rpm_collect(tpl, monkeypatch)
+    assert problems == []
+    mpdec, uuid = comps["libmpdec.so.3"], comps["libuuid.so.1"]
+    assert (mpdec.version, mpdec.spdx, mpdec.section) == (
+        "2.5.1-3.el9",
+        "BSD-2-Clause",
+        "c-library",
+    )
+    assert (uuid.version, uuid.spdx) == ("2.37.4-28.el9_9.1", "BSD-3-Clause")
+    assert [label for label, _ in mpdec.texts] == ["mpdecimal: LICENSE.txt"]
+    assert [label for label, _ in uuid.texts] == [
+        "libuuid: COPYING",
+        "libuuid: COPYING.BSD-3-Clause",
+    ]
+    assert uuid.texts[1][1] == RPM_TEXTS[UUID_FILES[1]]
+    assert mpdec.notes == [
+        "From the system package mpdecimal 2.5.1-3.el9 (rpm licence field: BSD); "
+        "licence id read from " + MPDEC_FILE
+    ]
+    assert mpdec.files == ["_internal/libmpdec.so.3"]
+
+
+def test_rpm_versions_and_ids_are_read_never_typed(tpl, monkeypatch):
+    texts = dict(RPM_TEXTS)
+    texts[MPDEC_FILE] = BSD_HEAD + BSD_THIRD
+    comps, problems = _rpm_collect(
+        tpl,
+        monkeypatch,
+        texts=texts,
+        versions={"mpdecimal": "9.9-1.el9", "libuuid": "8.8-1.el9"},
+    )
+    assert problems == []
+    assert comps["libmpdec.so.3"].spdx == "BSD-3-Clause"
+    assert comps["libmpdec.so.3"].version == "9.9-1.el9"
+    assert comps["libuuid.so.1"].version == "8.8-1.el9"
+
+
+ARCHITECT = "goes to the architect (ruling 2), not into a row"
+
+
+@pytest.mark.parametrize(
+    "licences, texts, expected",
+    [
+        (
+            {**RPM_LICENCES, "mpdecimal": ("LGPLv2+", [MPDEC_FILE])},
+            RPM_TEXTS,
+            f"_internal/libmpdec.so.3: licence field of mpdecimal is LGPLv2+: GPL or "
+            f"LGPL {ARCHITECT}",
+        ),
+        (
+            RPM_LICENCES,
+            {**RPM_TEXTS, UUID_FILES[0]: "GNU Lesser General Public License 2.1\n"},
+            f"_internal/libuuid.so.1: licence file {UUID_FILES[0]} of libuuid names "
+            f"the GPL or LGPL: {ARCHITECT}",
+        ),
+        (
+            {**RPM_LICENCES, "mpdecimal": ("BSD", [])},
+            RPM_TEXTS,
+            "_internal/libmpdec.so.3: mpdecimal lists no licence file "
+            "(rpm -q --licensefiles)",
+        ),
+        (
+            RPM_LICENCES,
+            {k: v for k, v in RPM_TEXTS.items() if k != MPDEC_FILE},
+            f"_internal/libmpdec.so.3: licence file {MPDEC_FILE} of mpdecimal not "
+            "found",
+        ),
+        (
+            RPM_LICENCES,
+            {**RPM_TEXTS, MPDEC_FILE: "Some other licence.\n"},
+            "_internal/libmpdec.so.3: the licence files of mpdecimal are not a BSD "
+            "text this row accepts (BSD-2-Clause, BSD-3-Clause)",
+        ),
+        (
+            {**RPM_LICENCES, "mpdecimal": ("MIT", [MPDEC_FILE])},
+            RPM_TEXTS,
+            "_internal/libmpdec.so.3: licence field of mpdecimal is MIT; its "
+            "licence files say BSD-2-Clause",
+        ),
+        (
+            {"libuuid": RPM_LICENCES["libuuid"]},
+            RPM_TEXTS,
+            "_internal/libmpdec.so.3: licence field and files of mpdecimal not "
+            "readable (rpm)",
+        ),
+    ],
+    ids=[
+        "lgpl-field",
+        "lgpl-in-a-file",
+        "no-licence-file",
+        "file-missing",
+        "not-bsd",
+        "field-and-file-disagree",
+        "no-rpm",
+    ],
+)
+def test_rpm_rows_fail_without_their_evidence(
+    tpl, monkeypatch, licences, texts, expected
+):
+    _, problems = _rpm_collect(tpl, monkeypatch, licences, texts)
+    assert expected in problems
