@@ -42,7 +42,7 @@ from botocore.exceptions import (
 
 # Import InvenTag components
 from ..discovery import AWSResourceInventory
-from ..discovery.aws_clients import enable_client_cache
+from ..discovery.aws_clients import enable_client_cache, reset_client_cache
 from ..discovery.coverage import DETAIL_SOURCE, EMPTY, FAILED_OUTCOMES, OK
 from ..discovery.regions import discover_regions
 from .daemon_pool import DaemonThreadPool
@@ -2297,13 +2297,16 @@ class CloudBOMGenerator:
         turn the session's client cache on. Clients copy the session's
         handlers when they are created, so this comes before discovery
         creates any. The limiter stays on the session after the scan (the
-        analyses use it too); the deadline it waits on ends with the scan."""
+        analyses use it too); the deadline it waits on ends with the scan.
+        The cache is emptied first: a client cached by an earlier scan of
+        this session carries that scan's deadline (library use)."""
         if getattr(session, "events", None) is None:
             return
         account = str(account_id)
         # A second scan of the account (library use) gets its new deadline.
         self.limiter.detach(session, account)
         self.limiter.attach(session, account, deadline)
+        reset_client_cache(session)
         enable_client_cache(session)
 
     def _discover_account_resources(

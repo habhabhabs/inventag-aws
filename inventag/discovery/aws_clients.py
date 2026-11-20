@@ -18,7 +18,8 @@ themselves are thread-safe and are used without the lock.
 
 Client cache: after :func:`enable_client_cache` on a session, that session
 gets one client per (service, region, retry settings), created under the
-lock and shared by threads, so threads on one API share one connection pool
+lock and shared by threads (:func:`reset_client_cache` empties it at the start
+of each scan), so threads on one API share one connection pool
 (and one SDK retry quota). A paginator or page iterator is never shared:
 create one per call. Sessions without the cache get a new client per call.
 Cost Explorer (``ce``) clients are never cached: during an account's scan
@@ -54,6 +55,17 @@ def enable_client_cache(session) -> None:
     """Share one client per service, region and retry settings on ``session``."""
     with _CREATE_LOCK:
         _CACHES.setdefault(session, {})
+
+
+def reset_client_cache(session) -> None:
+    """Drop the clients cached on ``session``; a cache that is on stays on.
+
+    A client keeps the session handlers of the moment it was created, so a
+    new scan of the same session (a new deadline) starts with an empty cache.
+    """
+    with _CREATE_LOCK:
+        if session in _CACHES:
+            _CACHES[session] = {}
 
 
 def _new_client(session, service_name: str, region_name: Optional[str]):
