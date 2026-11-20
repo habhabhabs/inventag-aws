@@ -795,7 +795,7 @@ for (const theme of ['light', 'dark']) {
     await page.keyboard.press('Enter');
     await page.waitForTimeout(200);
     const clip2 = await page.evaluate(() => navigator.clipboard.readText());
-    if (!clip2.includes('pip install inventag-aws')) fail(`code block copy button did not copy the block [${theme}]`);
+    if (!clip2.includes('pipx install inventag-aws')) fail(`code block copy button did not copy the block [${theme}]`);
     // theme toggle: Docusaurus 3.10 cycles system -> light -> dark, so check
     // that the button's state (its label) changes, not only data-theme
     await hydrated(page);
