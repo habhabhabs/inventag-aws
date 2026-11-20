@@ -72,6 +72,11 @@ PACKAGING_PATHS = [
     ".github/workflows/package.yml",
     "inventag/cli/selftest.py",
     "inventag/cli/completion.py",
+    # B6 fix 4: an application change can break the bundle (a missed import or
+    # data file); the dry run must see it before the release does.
+    "inventag/**",
+    "pyproject.toml",
+    "requirements.txt",
 ]
 
 
