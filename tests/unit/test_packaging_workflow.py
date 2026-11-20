@@ -2417,6 +2417,7 @@ def test_the_homebrew_step_runs_the_commands_of_the_b4b_interface_in_order():
         "render_formula.py",
         "--archive-dir",
         "brew tap-new",
+        "brew trust local/inventag",
         "brew style",
         "brew audit --strict",
         "brew install",
