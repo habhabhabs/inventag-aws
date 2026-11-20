@@ -944,12 +944,11 @@ jobs:
           exit 1
         fi
 
-  # Checksums, SBOMs and build attestations of every file of the release. The
-  # only job with id-token and attestations: write. No key of ours: the
-  # attestation is signed keyless with this workflow's identity; users check
-  # it with `gh attestation verify`.
+  # Checksums, SBOMs and the notices check of every file of the release. It
+  # holds read access only, so it can run on a pull request. The attestation
+  # is made by the next job, `attest`.
   provenance:
-    name: Checksums, SBOMs and attestations
+    name: Checksums and SBOMs
     needs:
     - plan
     - build-linux-x86_64
@@ -965,8 +964,6 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-      id-token: write
-      attestations: write
     env:
       VERSION: ${{ needs.plan.outputs.version }}
     steps:
@@ -1135,14 +1132,6 @@ jobs:
           echo '```'
         } >> "$GITHUB_STEP_SUMMARY"
 
-    # Keyless build attestation (the workflow's identity). Not made in a dry
-    # run: it would sign files that no release carries.
-    - name: Create the build attestation of the files (keyless)
-      if: needs.plan.outputs.dry_run == 'false'
-      uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-      with:
-        subject-checksums: ${{ runner.temp }}/release/SHA256SUMS
-
     - name: Keep the release files
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
@@ -1151,10 +1140,43 @@ jobs:
         if-no-files-found: error
         retention-days: 7
 
+  # Keyless build attestation of the files of the release (the workflow's
+  # identity; no key of ours). Users check it with `gh attestation verify`.
+  # The only job with id-token and attestations: write, and it never runs on a
+  # pull request: a same-repository pull request runs the workflow file of its
+  # own branch, so a job it could start would sign files that pass the check
+  # in the docs (B6 fix 5). Not run in a dry run: it would sign files that no
+  # release carries.
+  attest:
+    name: Build attestation
+    needs: [plan, provenance]
+    if: github.event_name != 'pull_request' && needs.plan.outputs.dry_run == 'false'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+    - name: Download the release files
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: release-files
+        path: ${{ runner.temp }}/release
+
+    - name: Check the checksums of the release files
+      run: |
+        cd "$RUNNER_TEMP/release"
+        sha256sum -c SHA256SUMS
+
+    - name: Create the build attestation of the files (keyless)
+      uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+      with:
+        subject-checksums: ${{ runner.temp }}/release/SHA256SUMS
+
   # The only job that writes to the release. Skipped in a dry run.
   publish:
     name: Attach to the release
-    needs: [plan, provenance]
+    needs: [plan, provenance, attest]
     if: needs.plan.outputs.dry_run == 'false'
     runs-on: ubuntu-24.04
     permissions:

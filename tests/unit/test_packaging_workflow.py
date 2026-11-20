@@ -1236,6 +1236,7 @@ def test_the_arm64_smoke_is_in_the_arm64_job_only_with_no_new_runner_label():
         "smoke-macos-arm64",
         "smoke-pipx",
         "provenance",
+        "attest",
         "publish",
     }
 
