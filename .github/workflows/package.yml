@@ -1329,6 +1329,7 @@ jobs:
         release="$RUNNER_TEMP/release"
         python3 scripts/packaging/render_formula.py --version "$VERSION" --sums "$release/SHA256SUMS" --archive-dir "$release" --output "$RUNNER_TEMP/inventag.rb"
         brew tap-new --no-git local/inventag
+        brew trust local/inventag
         tap="$(brew --repository local/inventag)"
         mkdir -p "$tap/Formula"
         cp "$RUNNER_TEMP/inventag.rb" "$tap/Formula/inventag.rb"
