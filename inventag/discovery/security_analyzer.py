@@ -12,15 +12,20 @@ Provides detailed analysis of network security configurations including:
 - Port and protocol analysis with common service identification
 """
 
+import copy
 import boto3
 from typing import Dict, List, Any, Optional, Set, Tuple
 from dataclasses import dataclass, field
 from collections import defaultdict
 from botocore.exceptions import ClientError
 from .aws_clients import create_client
+from .ordered_tasks import run_ordered
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Regions read at the same time (the analysis reads each region in its own task).
+_REGION_WORKERS = 8
 
 
 def _collect(client, operation: str, key: str, **kwargs) -> List[Dict[str, Any]]:
@@ -135,9 +140,18 @@ class SecurityAnalyzer:
     - Port and protocol analysis with common service identification
     """
 
-    def __init__(self, session: Optional[boto3.Session] = None):
-        """Initialize the SecurityAnalyzer."""
+    def __init__(
+        self,
+        session: Optional[boto3.Session] = None,
+        max_workers: int = _REGION_WORKERS,
+    ):
+        """Initialize the SecurityAnalyzer.
+
+        ``max_workers`` regions are read at the same time; the answer does not
+        depend on it.
+        """
         self.session = session or boto3.Session()
+        self.max_workers = max_workers
         self.sg_cache: Dict[str, SecurityGroupAnalysis] = {}
         self.nacl_cache: Dict[str, NACLAnalysis] = {}
         self.region_clients: Dict[str, Any] = {}
@@ -192,12 +206,11 @@ class SecurityAnalyzer:
         """
         logger.info("Starting security group analysis...")
 
-        # Get unique regions from resources
-        regions = self._extract_regions(sg_resources)
+        # Get unique regions from resources, in sorted order
+        regions = sorted(self._extract_regions(sg_resources))
 
         # Cache security group information for each region
-        for region in regions:
-            self._cache_security_group_info(region)
+        self._cache_regions(regions, "_cache_security_group_info")
 
         # Map resources to security groups
         self._map_resources_to_security_groups(sg_resources)
@@ -279,12 +292,11 @@ class SecurityAnalyzer:
         """
         logger.info("Starting NACL analysis...")
 
-        # Get unique regions from resources
-        regions = self._extract_regions(nacl_resources)
+        # Get unique regions from resources, in sorted order
+        regions = sorted(self._extract_regions(nacl_resources))
 
         # Cache NACL information for each region
-        for region in regions:
-            self._cache_nacl_info(region)
+        self._cache_regions(regions, "_cache_nacl_info")
 
         # Analyze NACL rules for optimization opportunities
         self._analyze_nacl_optimization()
@@ -406,6 +418,32 @@ class SecurityAnalyzer:
             if region and region != "global":
                 regions.add(region)
         return regions
+
+    def _cache_regions(self, regions: List[str], reader: str) -> None:
+        """Read the regions at the same time; merge them in the order given.
+
+        ``reader`` names the method that fills the caches of one region. Each
+        task fills its own copy of the caches (a task writes nothing shared);
+        this thread merges the copies in region order, so the caches do not
+        depend on which region finished first. A task that raised stops the
+        analysis with the error of the first such region.
+        """
+
+        def read(region: str) -> "SecurityAnalyzer":
+            scratch = copy.copy(self)
+            scratch.sg_cache = {}
+            scratch.nacl_cache = {}
+            scratch.region_clients = {}
+            getattr(scratch, reader)(region)
+            return scratch
+
+        answers = run_ordered(read, regions, self.max_workers, "inventag-security")
+        for scratch, error in answers:
+            if error is not None:
+                raise error
+            self.sg_cache.update(scratch.sg_cache)
+            self.nacl_cache.update(scratch.nacl_cache)
+            self.region_clients.update(scratch.region_clients)
 
     def _cache_security_group_info(self, region: str):
         """Cache security group information for a region."""
