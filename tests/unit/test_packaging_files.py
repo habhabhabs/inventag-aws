@@ -104,6 +104,27 @@ def test_spec_builds_one_directory_without_strip_or_upx():
         assert f'"{module}"' in spec
 
 
+def test_the_spec_is_tracked_and_not_ignored():
+    # .gitignore ignores *.spec (PyInstaller writes one per build); the
+    # project's own spec is the exception, so a change to it is never lost.
+    spec = "packaging/pyinstaller/inventag.spec"
+    tracked = subprocess.run(
+        ["git", "ls-files", spec],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert tracked.stdout.strip() != ""
+    ignored = subprocess.run(
+        ["git", "check-ignore", "--no-index", "-q", spec],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert ignored.returncode == 1, f"{spec} matches a rule in .gitignore"
+
+
 def test_build_script_refuses_a_one_file_build():
     script = SCRIPTS / "build_binary.sh"
     result = subprocess.run(
