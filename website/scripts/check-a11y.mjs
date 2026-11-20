@@ -85,8 +85,11 @@ const PAGES = [
   ['intro', '/docs/getting-started/introduction'],
   ['quick-start', '/docs/getting-started/quick-start'],
   ['status', '/docs/getting-started/status'],
-  ['cli-guide', '/docs/user-guides/cli-user-guide'],
-  ['production-safety', '/docs/user-guides/production-safety'],
+  ['cli-guide-run-a-scan', '/docs/user-guides/cli-user-guide'],
+  ['production-safety-read-only-access', '/docs/user-guides/production-safety'],
+  ['track-changes', '/docs/architecture/state-management'],
+  ['scan-multiple-accounts', '/docs/guides/scan-multiple-accounts'],
+  ['troubleshooting', '/docs/guides/troubleshooting'],
   ['archived', `/docs/${VERSIONS[0]}/getting-started/quick-start`],
   ['not-found', '/this-page-does-not-exist'],
 ];
@@ -96,7 +99,7 @@ const VIEWPORTS = [
   ['768', {width: 768, height: 1024}, 2, true],
   ['1440', {width: 1440, height: 900}, 1, false],
 ];
-const SHOT_PAGES = new Set(['landing', 'intro', 'quick-start', 'cli-guide']);
+const SHOT_PAGES = new Set(['landing', 'intro', 'quick-start', 'cli-guide-run-a-scan']);
 const SHOT_VIEWPORTS = {'390': {width: 390, height: 844}, '1440': {width: 1440, height: 900}};
 
 function auditInPage(isTouch) {
