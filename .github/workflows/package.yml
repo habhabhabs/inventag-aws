@@ -526,6 +526,17 @@ jobs:
           -v "$RUNNER_TEMP/smoke-shared:$RUNNER_TEMP/smoke-shared" \
           "$IMAGE" sleep infinity
 
+    # The images are pulled by tag on purpose. The digest of what a run got
+    # goes into the job summary so that a failure can be tied to an image.
+    - name: Record the digest of the image
+      run: |
+        digest=$(docker image inspect --format '{{join .RepoDigests ", "}}' "$IMAGE")
+        if [ -z "$digest" ]; then
+          echo "::error::No digest is recorded for the image $IMAGE."
+          exit 1
+        fi
+        echo "- smoke image $IMAGE: $digest" >> "$GITHUB_STEP_SUMMARY"
+
     - name: Install the package
       run: |
         docker exec -i -e VERSION -e FORMAT -e SHELLS smoke bash -s <<'INSTALL'
