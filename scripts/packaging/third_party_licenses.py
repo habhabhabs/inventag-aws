@@ -31,7 +31,9 @@ Rules: plan section 3.4 and the architect's decision 1 of 20 Nov 2026
   is written into the build record (``BUILD RECORD:`` lines, and the file
   ``--build-record``) with the lowest macOS version the files state. Any other
   absolute path fails; ``@rpath``, ``@loader_path`` and ``@executable_path``
-  must resolve to a bundled file with a row.
+  must resolve to a bundled file with a row. A file's own install name
+  (LC_ID_DYLIB, the first ``otool -L`` entry) names the file, not a library
+  it loads, and is not checked.
 - The build Python is 3.12 (``BUILD_PYTHON``); any other version fails.
 - No system C library (``libc``, ``libm``, ``libpthread``, ``ld-``), readline
   or gdbm may be in the bundle.
@@ -705,15 +707,59 @@ def licence_file_lines(text: str) -> List[str]:
     return sorted(line.strip() for line in text.splitlines() if line.startswith("/"))
 
 
-def otool_libraries(text: str) -> List[str]:
-    """The library names in ``otool -L`` output (every architecture), sorted."""
-    return sorted(
-        {
-            line.strip().split(" (compatibility version")[0]
-            for line in text.splitlines()
-            if line[:1] in ("\t", " ") and line.strip()
-        }
-    )
+def otool_libraries(text: str, own_ids: Sequence[str] = ()) -> List[str]:
+    """The library names in ``otool -L`` output (every architecture), sorted.
+    ``otool -L`` prints a file's own install name (LC_ID_DYLIB) as the first
+    entry of each architecture; that entry is skipped when it is one of
+    ``own_ids`` (read from the file), as it names the file, not a library it
+    loads. Every other entry stays, also one with the same text."""
+    found = set()
+    first = False
+    for line in text.splitlines():
+        if line[:1] not in ("\t", " "):
+            first = True  # a header: "<path>:" or "<path> (architecture x):"
+            continue
+        if not line.strip():
+            continue
+        name = line.strip().split(" (compatibility version")[0]
+        if not (first and name in own_ids):
+            found.add(name)
+        first = False
+    return sorted(found)
+
+
+def macho_install_names(data: bytes) -> List[str]:
+    """The install names (LC_ID_DYLIB) of a 64-bit little-endian Mach-O file,
+    of every slice of a universal one, sorted; empty when it has none (an
+    extension module built as a bundle) or is not one."""
+    import struct
+
+    names = set()
+    try:
+        if data[:4] == b"\xca\xfe\xba\xbe":
+            (count,) = struct.unpack_from(">I", data, 4)
+            for i in range(count):
+                _cpu, _sub, offset, size, _align = struct.unpack_from(
+                    ">iiIII", data, 8 + 20 * i
+                )
+                names.update(macho_install_names(data[offset : offset + size]))
+            return sorted(names)
+        if data[:4] != b"\xcf\xfa\xed\xfe" or len(data) < 32:
+            return []
+        (ncmds,) = struct.unpack_from("<I", data, 16)
+        pos = 32
+        for _ in range(ncmds):
+            cmd, cmdsize = struct.unpack_from("<II", data, pos)
+            if cmd == 0xD:  # LC_ID_DYLIB: dylib_command, name at its offset
+                (at,) = struct.unpack_from("<I", data, pos + 8)
+                raw = data[pos + at : pos + cmdsize].split(b"\0", 1)[0]
+                names.add(raw.decode("utf-8", "replace"))
+            if cmdsize < 8:
+                break
+            pos += cmdsize
+    except struct.error:
+        pass
+    return sorted(names)
 
 
 def sourced_label(path: Path) -> str:
@@ -868,7 +914,10 @@ class Build:
     def linked_libraries(self, rel: str) -> List[str]:
         """The libraries a bundled Mach-O file loads (``otool -L``, macOS)."""
         out = _run(["otool", "-L", str(self.file_path(rel))])
-        return otool_libraries(out) if out else []
+        if not out:
+            return []
+        own = macho_install_names(self.file_path(rel).read_bytes())
+        return otool_libraries(out, own)
 
     def min_os(self, rel: str, arch: str) -> Optional[Tuple[int, int, int]]:
         """The minimum macOS version a bundled Mach-O file states, or None."""
