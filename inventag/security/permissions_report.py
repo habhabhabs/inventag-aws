@@ -26,6 +26,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
 
 from .iam_policy import (
     NOT_IN_READONLYACCESS,
+    PARENT_LISTINGS,
     action_for,
     botocore_call,
     in_readonlyaccess,
@@ -100,6 +101,14 @@ def _entry(account: str, service: str, operation: str, kind: str, regions) -> En
     }
 
 
+def _call_of(item: Mapping[str, Any]) -> Tuple[str, str]:
+    """(service, operation) of a ledger entry, as botocore names when known."""
+    service, operation = str(item.get("service") or ""), str(
+        item.get("operation") or ""
+    )
+    return botocore_call(service, operation) or (service, operation)
+
+
 def _sort_key(entry: Entry) -> Tuple:
     return (
         entry["account"],
@@ -137,14 +146,29 @@ def build(
             )
         found[key] = entry
 
+    denied_ledger = []
     for item in coverage:
         kind = _KIND_OF_SOURCE.get(str(item.get("source", "")))
         code = str(item.get("error_code") or "")
         if kind is None or item.get("outcome") != "denied" or code in _NOT_A_PERMISSION:
             continue
+        denied_ledger.append((kind, item))
+    # Listings that were refused, by account, call and region: a child listing that
+    # reads its parent first is recorded as refused when the parent was (see
+    # PARENT_LISTINGS), and then its own action was never tried.
+    refused = {
+        (str(i.get("account_id") or ""), *_call_of(i), str(i.get("region") or ""))
+        for kind, i in denied_ledger
+        if kind == "listing"
+    }
+    for kind, item in denied_ledger:
+        account = str(item.get("account_id") or "")
         region = str(item.get("region") or "")
+        parent = PARENT_LISTINGS.get(_call_of(item))
+        if kind == "listing" and parent and (account, *parent, region) in refused:
+            continue
         add(
-            item.get("account_id") or "",
+            account,
             str(item.get("service") or ""),
             str(item.get("operation") or ""),
             kind,

@@ -26,6 +26,7 @@ fail with AccessDenied and are skipped.
 """
 
 import copy
+import functools
 from typing import Dict, List, Optional, Tuple
 
 # IAM action -> (botocore service name, botocore operation name)
@@ -265,6 +266,14 @@ LEDGER_CLIENT_SERVICES: Dict[str, str] = {
     "wafv2-cloudfront": "wafv2",
 }
 
+# Listings that read a parent listing first (table entries with ``per_parent``):
+# (child service, API name) -> (parent service, API name). When the parent is
+# refused the child never runs, yet the ledger records the child as refused. A
+# test keeps this equal to the table.
+PARENT_LISTINGS: Dict[Tuple[str, str], Tuple[str, str]] = {
+    ("ecs", "ListServices"): ("ecs", "ListClusters"),
+}
+
 # Calls that need an action which ``READ_ONLY_ACTIONS`` does not key by that
 # call: the classic load balancer API shares the action of the v2 API, and the
 # identity and upload calls are outside the read-only policy file.
@@ -294,17 +303,24 @@ NOT_IN_READONLYACCESS: Dict[str, str] = {
 }
 
 
+@functools.lru_cache(maxsize=None)
+def _botocore_session():
+    import botocore.session
+
+    return botocore.session.get_session()
+
+
+@functools.lru_cache(maxsize=None)
 def _api_name(service: str, operation: str) -> Optional[str]:
     """The botocore API name of ``operation`` (``list_buckets`` -> ``ListBuckets``).
 
     None when botocore has no such service or operation.
     """
-    import botocore.session
     from botocore import xform_name
     from botocore.exceptions import BotoCoreError
 
     try:
-        model = botocore.session.get_session().get_service_model(service)
+        model = _botocore_session().get_service_model(service)
     except BotoCoreError:
         return None
     names = model.operation_names
