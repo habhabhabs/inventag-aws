@@ -532,3 +532,83 @@ def test_R5_provisional_readonlyaccess_minus_five_patterns_keeps_the_allowed_row
     assert "lambda GetFunctionConfiguration in us-east-1 (denied, 1)" in run.text
     assert "Not read in account" in run.workbook_text()
     assert len(run.snapshots()) == 1
+
+
+ONLY_IDENTITY = ["sts:GetCallerIdentity"]
+
+
+def _assert_read_nothing(run: Run) -> None:
+    """The run finished, said that nothing could be read, and left no empty estate behind."""
+    run.sim.assert_all_mapped()
+    assert run.sim.seen_set > {
+        "sts:GetCallerIdentity"
+    }, "the run made no listing at all"
+    # every call but the identity check was refused, and each refusal is in the ledger
+    assert run.sim.denied_set == run.sim.seen_set - {"sts:GetCallerIdentity"}
+    assert run.ledger and {e.outcome for e in run.ledger} == {"denied"}
+    assert "No permission for" in run.text
+    assert (
+        "Every service listing of account 123456789012 was denied or failed" in run.text
+    )
+    assert "left out of change tracking" in run.text
+    assert "No resources to report: nothing could be read" in run.text
+    # no report that looks like an empty estate, and no snapshot to compare against
+    assert not list(run.out_dir.glob("*.xlsx")) and not list(run.out_dir.glob("*.docx"))
+    assert run.snapshots() == []
+    assert "No state snapshot was saved: nothing was read in this run." in run.text
+
+
+def test_R6_provisional_only_the_identity_call_reads_nothing_and_ends_with_exit_0(
+    aws, run_as
+):
+    """R6: an identity that may only call sts:GetCallerIdentity."""
+    run = run_as(ONLY_IDENTITY, "--create-excel", "--create-word")
+    assert run.code == 0, run.text
+    _assert_read_nothing(run)
+
+
+def test_R6_provisional_only_the_identity_call_with_fail_if_empty_exits_6(aws, run_as):
+    run = run_as(ONLY_IDENTITY, "--create-excel", "--fail-if-empty")
+    assert run.code == 6, run.text
+    _assert_read_nothing(run)
+    assert "--fail-if-empty is set (exit code 6)" in run.text
+
+
+def test_R6_provisional_only_the_identity_call_with_fail_on_account_error_exits_0_today(
+    aws, run_as
+):
+    """What v1.3.1 does: the account's session worked, so no account failed (see the finding)."""
+    run = run_as(ONLY_IDENTITY, "--create-excel", "--fail-on-account-error")
+    assert run.code == 0, run.text
+    _assert_read_nothing(run)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "FINDING R6-1: the plan expects exit 5 with --fail-on-account-error when every "
+        "listing of the account was denied; v1.3.1 exits 0. The code looks only at accounts "
+        "whose session failed (inventag/cli/main.py:1205 reads results['failed_accounts'], "
+        "built by CloudBOMGenerator._failed_accounts, inventag/core/cloud_bom_generator.py:784), "
+        "and not at _accounts_that_read_nothing (cloud_bom_generator.py:840). The exit code is a "
+        "published interface: this is a decision for the architect, not a fix for W1."
+    ),
+)
+def test_R6_FINDING_provisional_account_that_read_nothing_exits_5_with_fail_on_account_error(
+    aws, run_as
+):
+    run = run_as(ONLY_IDENTITY, "--create-excel", "--fail-on-account-error")
+    assert run.code == 5, run.text
+
+
+def test_R6_provisional_without_region_list_permission_every_region_is_scanned(
+    aws, run_as
+):
+    """ec2:DescribeRegions and account:ListRegions are both refused: all regions are tried."""
+    run = run_as(ONLY_IDENTITY, "--create-excel", scope=False)
+    assert run.code == 0, run.text
+    _assert_read_nothing(run)
+    assert {"ec2:DescribeRegions", "account:ListRegions"} <= run.sim.denied_set
+    regions = {e.region for e in run.ledger} - {"global"}
+    assert len(regions) > 10, sorted(regions)
+    assert REGION in regions
