@@ -746,8 +746,43 @@ def test_provenance_takes_the_files_of_the_builds_and_nothing_else():
     assert down["with"]["merge-multiple"] is True
 
 
-def _libiconv_run(tmp_path, notices, stub_fails=""):
-    """Run the notices-address step with a stub curl; return (exit code, requested URLs)."""
+LIB_HEADER_LATER = """/* Copyright (C) 1999-2023 Free Software Foundation, Inc.
+   This file is part of the GNU LIBICONV Library.
+
+   The GNU LIBICONV Library is free software; you can redistribute it
+   and/or modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either version 2.1
+   of the License, or (at your option) any later version.
+*/
+"""
+LIB_HEADER_ONLY = """/* Copyright (C) 1999-2023 Free Software Foundation, Inc.
+   The GNU LIBICONV Library is free software; you can redistribute it
+   and/or modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation, version 2.1
+   of the License.
+*/
+"""
+LIB_HEADER_NONE = "/* Copyright (C) 1999-2023 Free Software Foundation, Inc. */\n"
+COPYING_LIB = (
+    "                  GNU LESSER GENERAL PUBLIC LICENSE\n"
+    "                       Version 2.1, February 1999\n"
+)
+
+
+def _libiconv_run(
+    tmp_path,
+    notices,
+    stub_fails="",
+    header=LIB_HEADER_LATER,
+    pages_fail=0,
+    tarball_fails=0,
+):
+    """Run the notices-address step with a stub curl; return (result, requested URLs).
+
+    The stub tarball holds lib/iconv.c with `header` and COPYING.LIB. `pages_fail`
+    and `tarball_fails`: the project page / the tarball fail this many times and
+    then answer. The stub sleep records its argument and does not wait.
+    """
     import subprocess
     import tarfile
 
@@ -759,23 +794,36 @@ def _libiconv_run(tmp_path, notices, stub_fails=""):
     bin_dir.mkdir()
     calls = tmp_path / "calls.log"
     payload = tmp_path / "libiconv-1.18"
-    payload.mkdir()
+    (payload / "lib").mkdir(parents=True)
     (payload / "README").write_text("libiconv", encoding="utf-8")
+    (payload / "lib" / "aaa.h").write_text("/* no licence here */\n", encoding="utf-8")
+    (payload / "lib" / "iconv.c").write_text(header + "int x;\n", encoding="utf-8")
+    (payload / "COPYING.LIB").write_text(COPYING_LIB, encoding="utf-8")
     sample = tmp_path / "sample.tar.gz"
     with tarfile.open(sample, "w:gz") as archive:
         archive.add(payload, arcname="libiconv-1.18")
+    counts = tmp_path / "counts"
+    counts.mkdir()
     stub = bin_dir / "curl"
     stub.write_text(
         "#!/bin/bash\n"
         'out=""; url=""\n'
         'while [ $# -gt 0 ]; do case "$1" in -o) out="$2"; shift 2;;'
-        ' --max-time|--retry) shift 2;; -*) shift;; *) url="$1"; shift;; esac; done\n'
+        ' --max-time|--retry|--retry-delay) shift 2;; -*) shift;; *) url="$1"; shift;; esac; done\n'
         f'echo "$url" >> "{calls}"\n'
         f'case "$url" in *"{stub_fails}"*) [ -n "{stub_fails}" ] && exit 22;; esac\n'
+        f'case "$url" in *.tar.gz) kind=tarball; limit={tarball_fails};;'
+        f" *) kind=page; limit={pages_fail};; esac\n"
+        f'n=$(cat "{counts}/$kind" 2>/dev/null || echo 0); echo $((n + 1)) > "{counts}/$kind"\n'
+        '[ "$n" -lt "$limit" ] && exit 28\n'
         f'case "$url" in *.tar.gz) cp "{sample}" "$out";; *) echo page > "$out";; esac\n',
         encoding="utf-8",
     )
     stub.chmod(0o755)
+    (bin_dir / "sleep").write_text(
+        f'#!/bin/bash\necho "$@" >> "{tmp_path}/sleeps.log"\n', encoding="utf-8"
+    )
+    (bin_dir / "sleep").chmod(0o755)
     summary = tmp_path / "summary.md"
     script = _step("provenance", "libiconv")["run"]
     result = subprocess.run(
@@ -789,12 +837,15 @@ def _libiconv_run(tmp_path, notices, stub_fails=""):
         text=True,
         timeout=60,
     )
+    result.summary = summary.read_text("utf-8") if summary.exists() else ""
+    sleeps = tmp_path / "sleeps.log"
+    result.sleeps = sleeps.read_text("utf-8").split() if sleeps.exists() else []
     urls = calls.read_text("utf-8").split() if calls.exists() else []
     return result, urls
 
 
 GOOD_NOTICE = (
-    "- GNU libiconv, linked into lxml's extension modules 1.18: LGPL-2.1\n"
+    "- GNU libiconv, linked into lxml's extension modules 1.18: LGPL-2.1-or-later\n"
     f"    source: {GNU_PAGE}\n"
     f"    source: {GNU_TARBALL}\n"
     "    source: https://github.com/lxml/lxml\n"
@@ -854,6 +905,88 @@ def test_a_downloaded_tarball_that_is_not_libiconv_fails_the_job(tmp_path):
     # The stub serves a tarball holding libiconv-1.18/: not the 9.99 asked for.
     result, _urls = _libiconv_run(tmp_path, {"a.THIRD-PARTY-LICENSES.txt": notice})
     assert result.returncode != 0
+
+
+def _notice_with(spdx):
+    return GOOD_NOTICE.replace("LGPL-2.1-or-later", spdx)
+
+
+def test_the_provenance_job_prints_the_licence_evidence_of_the_tarball(tmp_path):
+    # B6 fix 12: the id is written from the source. The job prints the licence
+    # header of a lib/ file and the first lines of COPYING.LIB of the tarball.
+    result, _urls = _libiconv_run(tmp_path, {"a.THIRD-PARTY-LICENSES.txt": GOOD_NOTICE})
+    assert result.returncode == 0, result.stdout + result.stderr
+    for text in (result.stdout, result.summary):
+        assert "GNU Lesser General Public" in text
+        assert "any later version" in text
+        assert "GNU LESSER GENERAL PUBLIC LICENSE" in text
+        assert "Version 2.1, February 1999" in text
+    # The file with no licence words is passed over; the one that has them is named.
+    assert "lib/iconv.c" in result.stdout and "lib/aaa.h" not in result.stdout
+    assert "LGPL-2.1-or-later" in result.stdout
+
+
+def _sub(tmp_path, name):
+    folder = tmp_path / name
+    folder.mkdir()
+    return folder
+
+
+def test_the_provenance_job_passes_when_the_notices_id_is_the_one_the_tarball_states(
+    tmp_path,
+):
+    only, _ = _libiconv_run(
+        _sub(tmp_path, "only"),
+        {"a.THIRD-PARTY-LICENSES.txt": _notice_with("LGPL-2.1-only")},
+        header=LIB_HEADER_ONLY,
+    )
+    assert only.returncode == 0, only.stdout + only.stderr
+    later, _ = _libiconv_run(
+        _sub(tmp_path, "later"), {"a.THIRD-PARTY-LICENSES.txt": GOOD_NOTICE}
+    )
+    assert later.returncode == 0, later.stdout + later.stderr
+
+
+def test_the_provenance_job_fails_when_the_notices_id_differs_from_the_tarball(
+    tmp_path,
+):
+    cases = {
+        # the tarball says "or later", the notices say "only"
+        "only-vs-later": ("LGPL-2.1-only", LIB_HEADER_LATER),
+        "later-vs-only": ("LGPL-2.1-or-later", LIB_HEADER_ONLY),
+        # the deprecated id names neither
+        "deprecated-vs-later": ("LGPL-2.1", LIB_HEADER_LATER),
+        "deprecated-vs-only": ("LGPL-2.1", LIB_HEADER_ONLY),
+    }
+    for name, (spdx, header) in cases.items():
+        work = tmp_path / name
+        work.mkdir()
+        result, _urls = _libiconv_run(
+            work, {"a.THIRD-PARTY-LICENSES.txt": _notice_with(spdx)}, header=header
+        )
+        assert result.returncode != 0, name
+        text = result.stdout + result.stderr
+        assert "::error::" in text and spdx in text, name
+        # one cause, one next step
+        assert "LXML_ICONV_SPDX" in text, name
+
+
+def test_the_provenance_job_fails_when_the_tarball_states_no_licence_or_the_notices_no_id(
+    tmp_path,
+):
+    result, _ = _libiconv_run(
+        _sub(tmp_path, "none"),
+        {"a.THIRD-PARTY-LICENSES.txt": GOOD_NOTICE},
+        header=LIB_HEADER_NONE,
+    )
+    assert result.returncode != 0
+    assert "::error::" in result.stdout + result.stderr
+    no_id = GOOD_NOTICE.replace(": LGPL-2.1-or-later", "")
+    result, _ = _libiconv_run(
+        _sub(tmp_path, "noid"), {"a.THIRD-PARTY-LICENSES.txt": no_id}
+    )
+    assert result.returncode != 0
+    assert "::error::" in result.stdout + result.stderr
 
 
 def test_the_sbom_script_writes_stable_cyclonedx_for_every_artefact(tmp_path):
