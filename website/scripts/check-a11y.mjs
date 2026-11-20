@@ -56,8 +56,7 @@
  *   `--only-site-v2` runs only the checks below:
  *   - reduced motion: no it-motion class, nothing waiting, no animation at all
  *   - JavaScript off: nothing transparent on the landing and 404 pages
- *   - hero: headline, lead and buttons are never animated or transparent; the
- *     terminal card is the only hero motion
+ *   - hero: no motion at all (nothing in it animated or faded, no data-hero)
  *   - docs pages have no scroll reveal
  *   - Tab into a waiting tile shows it fully at once; a table-of-contents style
  *     jump and a fast flick never leave a waiting element in view
@@ -489,7 +488,7 @@ async function siteV2Checks() {
       await page.goto(BASE + p, {waitUntil: 'networkidle'});
       await hydrated(page);
       const r = await page.evaluate(`({motion: document.documentElement.classList.contains('it-motion'), waiting: document.querySelectorAll('.is-pending').length,
-        anim: document.getAnimations().filter((a) => a.playState === 'running').length, faded: ${opacity0('[data-reveal], [data-hero]')}})`);
+        anim: document.getAnimations().filter((a) => a.playState === 'running').length, faded: ${opacity0('[data-reveal]')}})`);
       if (r.motion || r.waiting || r.anim || r.faded) fail(`reduced motion ${p}: it-motion ${r.motion}, waiting ${r.waiting}, running animations ${r.anim}, faded ${r.faded}`);
     }
     // a change to reduce while the page is open shows everything at once
@@ -525,16 +524,19 @@ async function siteV2Checks() {
     const page = await ctx.newPage();
     await page.goto(BASE + '/', {waitUntil: 'commit'});
     await page.waitForSelector('h1');
+    // the hero has no motion at all: nothing in it is animated or faded, and nothing is marked data-hero
     const hero = await page.evaluate(() => {
-      const still = ['h1', '[class*="heroLead"]', '[class*="heroCopy"] .button'].map((s) => document.querySelector(s));
+      const box = document.querySelector('main header');
+      const all = box ? [box, ...box.querySelectorAll('*')] : [];
       return {
-        animatedText: still.filter((e) => e && e.getAnimations().length).length,
-        fadedText: still.filter((e) => e && parseFloat(getComputedStyle(e).opacity) < 1).length,
-        heroMarks: [...document.querySelectorAll('[data-hero]')].map((e) => e.className.toString().slice(0, 30)),
+        found: !!box,
+        animated: all.filter((e) => e.getAnimations().length).length,
+        faded: all.filter((e) => parseFloat(getComputedStyle(e).opacity) < 1 && !e.closest('.sr-only')).length,
+        marks: document.querySelectorAll('[data-hero]').length,
       };
     });
-    if (hero.animatedText || hero.fadedText) fail(`hero: headline, lead or buttons animated (${hero.animatedText}) or faded (${hero.fadedText})`);
-    if (hero.heroMarks.length !== 1 || !/terminal/.test(hero.heroMarks[0])) fail(`hero: the terminal card must be the only hero motion; marks: ${hero.heroMarks.join(', ') || 'none'}`);
+    if (!hero.found) fail('hero: no hero header found on the landing page');
+    if (hero.animated || hero.faded || hero.marks) fail(`hero: must have no motion; animated ${hero.animated}, faded ${hero.faded}, data-hero marks ${hero.marks}`);
     await page.waitForLoadState('networkidle');
     await hydrated(page);
     // focus inside a waiting tile: fully visible within 50 ms

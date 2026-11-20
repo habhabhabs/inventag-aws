@@ -191,7 +191,6 @@ function Hero(): ReactNode {
       </div>
       <div className={styles.heroAside}>
         <CommandSnippet
-          hero
           title={translate({id: 'home.quickStartTitle', message: 'Quick start'})}
           lines={QUICK_START}
           footnote={
