@@ -94,6 +94,12 @@ LXML_PARAGRAPH = (
     "You can replace them with your own build of lxml of the same version."
 )
 LIBICONV_HOME = "https://www.gnu.org/software/libiconv/"
+# How the version was read (architect ruling 2 of 20 Nov 2026, work order B2b).
+LIBICONV_VERSION_FROM = "version read from the module's own symbol _libiconv_version"
+LIBICONV_NO_VERSION = (
+    "version not recorded: the lxml modules do not all hold the same symbol "
+    "_libiconv_version"
+)
 LIBICONV_DOWNLOAD = "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-{version}.tar.gz"
 LXML_SOURCE = (
     "lxml {version} source (the Source address in its package metadata): {url}"
@@ -208,8 +214,9 @@ _LXML = (
         # Neither the wheel's notices nor lxml's headers name the version;
         # libiconv's own exported variable does: (major << 8) | minor.
         "elfsym:_libiconv_version",
+        # One component for all modules, its addresses and notes: see
+        # libiconv_component.
         requires_strings=b"libiconv_open",
-        urls=(LIBICONV_HOME,),
     ),
 )
 
@@ -303,6 +310,7 @@ class Component:
     texts: List[Tuple[str, str]] = field(default_factory=list)  # (label, text)
     notes: List[str] = field(default_factory=list)
     urls: List[str] = field(default_factory=list)
+    version_from: str = ""  # how the version was read, when the file says so
 
 
 def is_allowed(spdx: str, allowed: Iterable[str]) -> bool:
@@ -398,6 +406,8 @@ def render(comps: Sequence[Component]) -> str:
         out += ["", title, "-" * len(title)]
         for c in part:
             out.append(f"- {c.name} {c.version or '(version not recorded)'}: {c.spdx}")
+            if c.version_from:
+                out.append(f"    {c.version_from}")
             for u in c.urls:
                 out.append(f"    source: {u}")
             for f in c.files:
@@ -419,16 +429,18 @@ def render(comps: Sequence[Component]) -> str:
 def components_json(comps: Sequence[Component]) -> str:
     import json
 
-    rows = [
-        {
+    rows = []
+    for c in sorted(comps, key=lambda c: (c.name.casefold(), c.version)):
+        row = {
             "name": c.name,
             "version": c.version or "version not recorded",
             "licence": c.spdx,
             "section": c.section,
             "files": sorted(c.files),
         }
-        for c in sorted(comps, key=lambda c: (c.name.casefold(), c.version))
-    ]
+        if c.version_from:
+            row["version_from"] = c.version_from
+        rows.append(row)
     return json.dumps(rows, indent=2, sort_keys=True) + "\n"
 
 
@@ -702,7 +714,10 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
     add(_cpython(problems))
     add(_bootloader(problems))
 
-    # Every binary file of the bundle.
+    # Every binary file of the bundle. libiconv's modules are gathered first and
+    # become one component (architect ruling 2).
+    iconv_versions: Dict[str, str] = {}
+    iconv_texts: List[Tuple[str, str]] = []
     binaries = build.binaries()
     problems += forbidden_problems(binaries)
     for rel in binaries:
@@ -740,6 +755,10 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
             got = [build.read_text(s, source) for s in carried.text]
             if any(g is None for g in got):
                 problems.append(f"{rel}: licence text of {carried.name} not found")
+            if carried.name == LXML_ICONV:
+                iconv_versions[rel] = build.read_version(carried.version, rel, source)
+                iconv_texts = iconv_texts or [g for g in got if g is not None]
+                continue
             add(
                 Component(
                     carried.name,
@@ -752,10 +771,9 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
                 )
             )
 
+    if iconv_versions:
+        add(libiconv_component(iconv_versions, iconv_texts))
     out = sorted(comps.values(), key=lambda c: (c.name.casefold(), c.version))
-    for comp in out:
-        if comp.name == LXML_ICONV:
-            add_libiconv_note(comp)
     for comp in out:
         problems += licence_problems(comp)
         problems += openssl_problems(comp)
@@ -788,17 +806,21 @@ def libiconv_component(
     ``versions`` maps each module (its path) to the version its own symbol
     gives, "" when it has none. The executable's notices and the container
     notice both build the component here. The version is recorded only when
-    every module gives the same one.
+    every module gives the same one; otherwise there is no version and no
+    versioned download address, and the line that says how the version was
+    read says why there is none.
     """
     found = set(versions.values())
+    version = found.pop() if len(found) == 1 else ""
     comp = Component(
         LXML_ICONV,
-        found.pop() if len(found) == 1 else "",
+        version,
         LXML_ICONV_SPDX,
         "c-library",
         sorted(versions),
         list(texts),
         urls=[LIBICONV_HOME],
+        version_from=LIBICONV_VERSION_FROM if version else LIBICONV_NO_VERSION,
     )
     add_libiconv_note(comp)
     return comp
@@ -843,6 +865,7 @@ def libiconv_notice() -> str:
         return "\n".join(out) + "\n"
     comp = libiconv_component(versions)
     out.append(f"- {comp.name} {comp.version or '(version not recorded)'}: {comp.spdx}")
+    out.append(f"    {comp.version_from}")
     out += [f"    source: {u}" for u in comp.urls]
     out += [f"    file: {f}" for f in comp.files]
     out += [""] + comp.notes
