@@ -336,7 +336,9 @@ def test_a_role_that_could_not_be_assumed_is_sts_assumerole_and_other_failures_a
     ]
 
 
-def test_an_upload_that_was_denied_is_s3_putobject_once_for_the_run_account():
+def test_an_upload_that_was_denied_is_s3_putobject_once_with_no_account():
+    """SEC1 (security P3-3): the upload uses the default credentials, not the
+    session of a scanned account, so no account id is named for it."""
     found = pr.build(
         upload_outcomes=[
             {"error_code": DENIED},
@@ -347,7 +349,7 @@ def test_an_upload_that_was_denied_is_s3_putobject_once_for_the_run_account():
         run_account=ACCOUNT,
     )
     assert [(e["account"], e["action"], e["kind"]) for e in found] == [
-        (ACCOUNT, "s3:PutObject", "upload")
+        ("", "s3:PutObject", "upload")
     ]
 
 
@@ -555,10 +557,13 @@ def test_golden_notes_of_a_role_that_could_not_be_assumed():
     ]
 
 
+UPLOADER = "the identity that uploads the reports (the default credentials)"
+
+
 def test_golden_notes_of_a_report_upload_that_was_denied():
     found = pr.build(upload_outcomes=[{"error_code": DENIED}], run_account=ACCOUNT)
     assert pr.notes(found) == [
-        "Permissions: 1 action(s) were not allowed for account 123456789012: "
+        f"Permissions: 1 action(s) were not allowed for {UPLOADER}: "
         "s3:PutObject. Effect: the reports were not uploaded. "
         "s3:PutObject is not in ReadOnlyAccess; it is needed only for "
         "uploading the reports (--s3-bucket)."
@@ -572,12 +577,12 @@ def test_golden_notes_that_mix_an_action_readonlyaccess_includes_with_one_it_doe
         run_account=ACCOUNT,
     )
     assert pr.notes(found) == [
-        "Permissions: 2 action(s) were not allowed for account 123456789012: "
-        "s3:ListAllMyBuckets, s3:PutObject. "
-        "Effect: resources of some services are missing; the reports were not uploaded. "
+        "Permissions: 1 action(s) were not allowed for account 123456789012: "
+        "s3:ListAllMyBuckets. Effect: resources of some services are missing. " + IN,
+        f"Permissions: 1 action(s) were not allowed for {UPLOADER}: "
+        "s3:PutObject. Effect: the reports were not uploaded. "
         "s3:PutObject is not in ReadOnlyAccess; it is needed only for "
-        "uploading the reports (--s3-bucket). "
-        "The other actions that InvenTag knows are in the AWS managed policy ReadOnlyAccess."
+        "uploading the reports (--s3-bucket).",
     ]
 
 
@@ -619,10 +624,26 @@ def test_golden_notes_have_one_line_per_account_sorted_by_account():
 
 
 def test_golden_notes_of_a_denial_that_names_no_account_say_this_run():
-    found = pr.build(upload_outcomes=[{"error_code": DENIED}])
+    found = pr.build(cost_denials=[("pricing", "GetProducts", DENIED)])
     assert pr.notes(found)[0].startswith(
-        "Permissions: 1 action(s) were not allowed for this run: s3:PutObject."
+        "Permissions: 1 action(s) were not allowed for this run: pricing:GetProducts."
     )
+
+
+def test_an_upload_denial_is_its_own_line_also_beside_a_denial_with_no_account():
+    found = pr.build(
+        upload_outcomes=[{"error_code": DENIED}],
+        cost_denials=[("pricing", "GetProducts", DENIED)],
+    )
+    lines = pr.notes(found)
+    assert len(lines) == 2
+    assert lines[0].startswith(
+        "Permissions: 1 action(s) were not allowed for this run: pricing:GetProducts."
+    )
+    assert lines[1].startswith(
+        f"Permissions: 1 action(s) were not allowed for {UPLOADER}: s3:PutObject."
+    )
+    assert "123456789012" not in lines[1]
 
 
 def test_a_clean_run_has_no_entries_and_no_notes():
