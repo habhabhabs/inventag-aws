@@ -1643,7 +1643,12 @@ def _macos_man_run(tmp_path, man_output="INVENTAG(1)\n", page=None, renderer="wo
     for tool in ("man", "zsh"):
         if (stubs / tool).exists():
             (stubs / tool).chmod(0o755)
-    run = _step("smoke-macos-arm64", "check the man page")["run"]
+    # The two steps that were one before B3i-6: unpack and run, then the checks.
+    run = (
+        _step("smoke-macos-arm64", "Unpack")["run"]
+        + "\n"
+        + _step("smoke-macos-arm64", "Check the man page")["run"]
+    )
     return subprocess.run(
         ["bash", "-e", "-c", run],
         env={
