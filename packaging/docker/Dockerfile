@@ -14,19 +14,26 @@ ARG PYTHON_DIGEST
 FROM python:3.13-slim@${PYTHON_DIGEST} AS build
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1
 COPY requirements-lock.txt /src/requirements-lock.txt
+COPY scripts/packaging/third_party_licenses.py /src/scripts/packaging/third_party_licenses.py
 COPY dist/ /src/dist/
+# The libiconv notice is written by the same function as the executable's
+# THIRD-PARTY-LICENSES.txt, from the lxml modules installed here.
 RUN python -m venv /opt/inventag \
  && /opt/inventag/bin/pip install --require-hashes --no-deps --only-binary :all: \
       -r /src/requirements-lock.txt \
  && /opt/inventag/bin/pip install --no-deps --no-index /src/dist/inventag_aws-*-py3-none-any.whl \
- && /opt/inventag/bin/pip check
+ && /opt/inventag/bin/pip check \
+ && /opt/inventag/bin/python /src/scripts/packaging/third_party_licenses.py \
+      --lxml-notice --out /src/LIBICONV-IN-LXML.txt
 
 FROM python:3.13-slim@${PYTHON_DIGEST}
 COPY --from=build /opt/inventag /opt/inventag
 COPY LICENSE /usr/share/doc/inventag/LICENSE
 # lxml's wheel (installed as pip installs it) links GNU libiconv (LGPL-2.1);
-# its own notices stay in its .dist-info/licenses; the LGPL text is added here.
+# its own notices stay in its .dist-info/licenses; the LGPL text and the
+# notice that says which modules carry libiconv are added here.
 COPY scripts/packaging/licenses/LGPL-2.1.txt /usr/share/doc/inventag/LGPL-2.1.txt
+COPY --from=build /src/LIBICONV-IN-LXML.txt /usr/share/doc/inventag/LIBICONV-IN-LXML.txt
 RUN useradd --create-home --uid 10001 --user-group inventag
 ENV PATH=/opt/inventag/bin:$PATH PYTHONDONTWRITEBYTECODE=1
 USER 10001:10001

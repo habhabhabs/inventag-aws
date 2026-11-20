@@ -779,6 +779,67 @@ def add_libiconv_note(comp: Component) -> None:
         ]
 
 
+def _iconv_version(path: Path) -> str:
+    """libiconv's version from its own symbol in the module, or ""."""
+    raw = elf_symbol_bytes(Path(path).read_bytes(), "_libiconv_version")
+    if raw is None or len(raw) < 2:
+        return ""
+    value = int.from_bytes(raw, "little")
+    return f"{value >> 8}.{value & 0xFF}"
+
+
+def libiconv_notice() -> str:
+    """The libiconv notice of the container image (architect review F3).
+
+    The image installs lxml's wheel as pip does, so the modules are found
+    through the installed distribution. The paragraph and the addresses come
+    from ``add_libiconv_note``, as in THIRD-PARTY-LICENSES.txt. If the modules
+    do not name one version, the version is not recorded.
+    """
+    lxml = _installed("lxml")
+    files: List[str] = []
+    versions = set()
+    for f in sorted((lxml.files or []) if lxml else [], key=str):
+        rel = str(f).replace(os.sep, "/")
+        path = Path(lxml.locate_file(f))
+        if not fnmatch.fnmatch(rel, "lxml/*.so"):
+            continue
+        if b"libiconv_open" not in path.read_bytes():
+            continue
+        files.append(rel)
+        versions.add(_iconv_version(path))
+    out = [
+        "GNU libiconv in lxml's extension modules (container image)",
+        "",
+        "Not legal advice: this file lists what the image build found and where",
+        "the texts and sources are; it makes no statement about any licence.",
+        "",
+    ]
+    if not files:
+        out.append("No lxml extension module in this image contains GNU libiconv.")
+        return "\n".join(out) + "\n"
+    version = versions.pop() if len(versions) == 1 else ""
+    comp = Component(
+        LXML_ICONV,
+        version,
+        LXML_ICONV_SPDX,
+        "c-library",
+        files,
+        urls=["https://www.gnu.org/software/libiconv/"],
+    )
+    add_libiconv_note(comp)
+    out.append(f"- {comp.name} {comp.version or '(version not recorded)'}: {comp.spdx}")
+    out += [f"    source: {u}" for u in comp.urls]
+    out += [f"    file: {f}" for f in comp.files]
+    out += [""] + comp.notes
+    out += [
+        "",
+        "The text of the GNU Lesser General Public License version 2.1 is in",
+        "LGPL-2.1.txt in this directory.",
+    ]
+    return "\n".join(out) + "\n"
+
+
 def elf_symbol_bytes(data: bytes, name: str) -> Optional[bytes]:
     """The bytes of a defined data symbol in a 64-bit little-endian ELF file."""
     import struct
@@ -892,9 +953,15 @@ def _bootloader(problems: List[str]) -> Component:
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--bundle", type=Path, required=True, help="dist/inventag")
-    parser.add_argument("--workpath", type=Path, required=True, help="build/inventag")
+    parser.add_argument("--bundle", type=Path, help="dist/inventag")
+    parser.add_argument("--workpath", type=Path, help="build/inventag")
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument(
+        "--lxml-notice",
+        action="store_true",
+        help="write only the libiconv notice for the installed lxml (container "
+        "image); --bundle and --workpath are not used",
+    )
     parser.add_argument(
         "--components-json",
         type=Path,
@@ -906,6 +973,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--repo-root", type=Path, default=Path(__file__).resolve().parents[2]
     )
     ns = parser.parse_args(argv)
+    if ns.lxml_notice:
+        ns.out.write_text(libiconv_notice(), encoding="utf-8")
+        print(f"libiconv notice written to {ns.out}")
+        return 0
+    if ns.bundle is None or ns.workpath is None:
+        parser.error("--bundle and --workpath are required")
     rows = TABLES.get(ns.platform)
     if rows is None:
         print(f"LICENCE CHECK: no licence table for {ns.platform}", file=sys.stderr)
