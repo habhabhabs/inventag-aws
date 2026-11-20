@@ -851,15 +851,18 @@ def main(argv=None) -> int:
 
     prepare_environment()
     root = Path(args.inventag_root).resolve() if args.inventag_root else REPO_ROOT
+    # The harness (tests.latency) always comes from this repository. A baseline
+    # checkout has its own tests/ package without it, so load the harness first
+    # (it stays in sys.modules), then put the root of the scanned inventag first.
+    sys.path.insert(0, str(REPO_ROOT))
+    from tests.latency import inject_latency
+
     sys.path.insert(0, str(root))
-    sys.path.insert(1, str(REPO_ROOT))  # tests.* (the harness) when root is elsewhere
 
     watchdog = Watchdog(args.time_limit, args.memory_limit)
     watchdog.start()
 
     from moto import mock_aws
-
-    from tests.latency import inject_latency
 
     import inventag
 
