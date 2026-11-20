@@ -490,6 +490,24 @@ def _walk(node) -> List[str]:
     return []
 
 
+# ELF; Mach-O 32/64-bit in both byte orders; Mach-O universal ("fat").
+BINARY_HEADERS = frozenset(
+    {
+        b"\x7fELF",
+        b"\xfe\xed\xfa\xce",
+        b"\xfe\xed\xfa\xcf",
+        b"\xce\xfa\xed\xfe",
+        b"\xcf\xfa\xed\xfe",
+        b"\xca\xfe\xba\xbe",
+    }
+)
+
+
+def _binary_header(path: Path) -> bool:
+    with open(path, "rb") as f:
+        return f.read(4) in BINARY_HEADERS
+
+
 class Build:
     """What the build environment and the bundle say. Kept apart for tests."""
 
@@ -504,10 +522,16 @@ class Build:
 
     # -- the bundle
     def binaries(self) -> List[str]:
+        """Every shared library, extension module and executable: by name, and
+        by an ELF or Mach-O header (a macOS bundle carries CPython as
+        ``_internal/Python``, with no suffix)."""
         out = []
         for p in sorted(self.bundle.rglob("*")):
             if p.is_file() and (
-                ".so" in p.name or p.suffix == ".dylib" or p == self.bundle / "inventag"
+                ".so" in p.name
+                or p.suffix == ".dylib"
+                or p == self.bundle / "inventag"
+                or _binary_header(p)
             ):
                 out.append(str(p.relative_to(self.bundle)))
         return out
