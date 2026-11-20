@@ -8,6 +8,7 @@ privilege) and the rules of this workflow (build image pinned, no release
 trigger, the notices addresses fetched, nothing published in a dry run).
 """
 
+import ast
 import re
 from pathlib import Path
 
@@ -21,6 +22,16 @@ DATA = yaml.safe_load(TEXT)
 JOBS = DATA["jobs"]
 PINNED = re.compile(r"^[\w.-]+/[\w.-]+(/[\w./-]+)?@[0-9a-f]{40}$")
 NAMED_IMAGE = re.compile(r"^(ubuntu|macos)-\d+(\.\d+)?(-(arm|intel))?$")
+
+
+def _pinned_python():
+    # Read as data (no import): the assignment of PINNED_PYTHON in the licence check.
+    path = ROOT / "scripts" / "packaging" / "third_party_licenses.py"
+    for node in ast.parse(path.read_text(encoding="utf-8")).body:
+        target = getattr(node, "target", None) or (getattr(node, "targets", [None])[0])
+        if getattr(target, "id", "") == "PINNED_PYTHON":
+            return ast.literal_eval(node.value)
+    raise AssertionError("PINNED_PYTHON not found")
 
 
 def _triggers():
@@ -407,13 +418,23 @@ def test_the_macos_builds_use_python_3_12_and_gnu_tar_and_the_same_scripts():
     for name in MACOS_BUILDS:
         steps = _steps(name)
         python = [s for s in steps if "setup-python" in s.get("uses", "")]
-        assert python and python[0]["with"]["python-version"] == "3.12"
+        assert python and python[0]["with"]["python-version"].startswith("3.12")
         text = _run_text(name)
         assert "gnu-tar" in text and "gnubin" in text
         assert "scripts/packaging/build_binary.sh venv" in text
         assert "scripts/packaging/build_binary.sh build" in text
         assert "--no-selftest" not in text
         assert "pip install" not in text
+
+
+def test_the_macos_build_asks_for_the_python_patch_version_that_the_licence_check_pins():
+    # B6 fix 1: a pin in the licence check alone is a tripwire that fails after
+    # the PyPI publish. The workflow asks for the same patch version.
+    pinned = _pinned_python()["darwin"]
+    want = ".".join(str(part) for part in pinned)
+    for name in MACOS_BUILDS:
+        python = [s for s in _steps(name) if "setup-python" in s.get("uses", "")]
+        assert python[0]["with"]["python-version"] == want
 
 
 def test_every_build_uploads_its_files_and_fails_when_there_are_none():
