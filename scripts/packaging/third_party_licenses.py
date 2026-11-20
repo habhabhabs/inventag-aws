@@ -1767,14 +1767,26 @@ def lxml_iconv_report() -> Optional[Tuple[int, int]]:
     except ImportError:
         return None
     value = getattr(etree, "ICONV_COMPILED_VERSION", None)
-    return (int(value[0]), int(value[1])) if value else None
+    try:
+        return (int(value[0]), int(value[1]))
+    except (TypeError, ValueError, IndexError):  # not a pair of numbers
+        return None
 
 
 _VERSION_IN_TEXT = re.compile(r"(?<![\w.])(\d+\.\d+(?:\.\d+)?)(?![\w.])")
 
 
-def _version_key(version: str) -> Tuple[int, ...]:
-    return tuple(int(n) for n in version.split("."))
+_VERSION_PART = re.compile(r"[0-9]+|[^0-9.+_-]+")
+
+
+def _version_key(version: Optional[str]) -> Tuple[Tuple[int, int, str], ...]:
+    """A sort key for any version text (dry run 11: "2.9.0.post0" made the
+    numeric key raise). Runs of ASCII digits compare by value; any other part
+    compares as text after a number in the same place; never raises."""
+    return tuple(
+        (0, int(part), "") if part.isascii() and part.isdigit() else (1, 0, part)
+        for part in _VERSION_PART.findall(version or "")
+    )
 
 
 def lxml_build_config(licenses: Path) -> Tuple[Optional[BuildConfig], List[str]]:
@@ -1824,7 +1836,10 @@ def lxml_build_config(licenses: Path) -> Tuple[Optional[BuildConfig], List[str]]
             f"names {len(versions)} libiconv versions ({', '.join(versions)}); "
             "usable only when it names exactly one",
         )
-    number = int(spec["line"])
+    try:
+        number = int(spec["line"])
+    except (TypeError, ValueError):
+        return refused(name, f"line {spec['line']} names no libiconv version")
     cited = lines[number - 1] if 1 <= number <= len(lines) else ""
     if "iconv" not in cited.lower() or versions[0] not in _VERSION_IN_TEXT.findall(
         cited
@@ -2073,9 +2088,9 @@ def iconv_evidence(
         return []
     shown = "not read" if report is None else f"({report[0]}, {report[1]})"
     out.append(f"{IC_EVIDENCE}lxml.etree.ICONV_COMPILED_VERSION {shown}")
-    for c in sorted(comps, key=lambda c: _version_key(c.version or "0")):
-        if c.name == LXML_ICONV:
-            out += [f"{IC_EVIDENCE}notices: {line}" for line in component_lines(c)]
+    iconv = [c for c in comps if c.name == LXML_ICONV]
+    for c in sorted(iconv, key=lambda c: _version_key(c.version)):
+        out += [f"{IC_EVIDENCE}notices: {line}" for line in component_lines(c)]
     return out
 
 

@@ -2936,7 +2936,11 @@ def test_the_version_key_is_total_and_stable(tpl):
     keys = [tpl._version_key(v) for v in ODD_VERSIONS]  # never raises
     assert all(isinstance(k, tuple) for k in keys)
     ordered = sorted(ODD_VERSIONS, key=tpl._version_key)
-    assert sorted(reversed(ODD_VERSIONS), key=tpl._version_key) == ordered
+    again = sorted(reversed(ODD_VERSIONS), key=tpl._version_key)
+    # The same order whatever the input order (None and "" are equal keys).
+    assert [tpl._version_key(v) for v in again] == [
+        tpl._version_key(v) for v in ordered
+    ]
     # Numbers by value; a text part after a number of the same place.
     assert ordered.index("1.9") < ordered.index("1.18")
     assert tpl._version_key("1.2") < tpl._version_key("1.2.post0")
