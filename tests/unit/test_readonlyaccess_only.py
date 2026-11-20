@@ -79,11 +79,8 @@ class Run:
     @property
     def permission_lines(self) -> List[str]:
         """The "Permissions:" lines of the run notes on the console (log prefix removed)."""
-        return [
-            t[t.index("Permissions:") :].strip()
-            for t in self.text.splitlines()
-            if "Permissions:" in t
-        ]
+        lines = [t for t in self.text.splitlines() if "Permissions:" in t]
+        return ["Permissions:" + t.split("Permissions:", 1)[1].rstrip() for t in lines]
 
     @property
     def permission_actions(self) -> set:
@@ -504,6 +501,41 @@ def test_R3_provisional_readonlyaccess_cannot_assume_a_role_and_the_default_acco
     assert again.sim.denied_set == {"sts:AssumeRole"}
     assert again.permission_lines == [ROLE_LINE]
     _assert_in_report(again, aws)
+
+
+def test_R3_provisional_the_audit_file_holds_the_same_permissions_list(
+    aws, run_as, tmp_path
+):
+    """--audit-output: the key is in the audit file when something was denied, else absent.
+
+    Needs the patch v14-w2-audit-output.patch (inventag/cli/main.py and safety.py).
+    """
+    audit = tmp_path / "audit" / "audit.json"
+    run = run_as(
+        read_only_access_actions(),
+        "--create-excel",
+        "--audit-output",
+        str(audit),
+        accounts=_two_accounts(),
+        scope=False,
+    )
+    assert run.code == 0, run.text
+    written = json.loads(audit.read_text())
+    assert written["permissions_denied"] == run.results["permissions_denied"]
+    assert written["permissions_denied"][0]["action"] == "sts:AssumeRole"
+    # what the audit file held before is still there
+    assert written["read_only_enforced"] is True and written["operations"]
+
+    clean_audit = tmp_path / "audit" / "clean.json"
+    clean = run_as(
+        read_only_access_actions(),
+        "--create-excel",
+        "--audit-output",
+        str(clean_audit),
+        out=tmp_path / "out-clean",
+    )
+    assert clean.code == 0, clean.text
+    assert "permissions_denied" not in json.loads(clean_audit.read_text())
 
 
 UPLOAD_LINE = (
