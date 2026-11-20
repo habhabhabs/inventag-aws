@@ -12,27 +12,29 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/habhabhabs/inventag-aws/blob/main/LICENSE)
 
-**Install:** `pip install inventag-aws` ([PyPI](https://pypi.org/project/inventag-aws/))  
+**Install:** `pipx install inventag-aws` ([PyPI](https://pypi.org/project/inventag-aws/))  
 **Docs:** <https://habhabhabs.github.io/inventag-aws/>
 
 ## Quick start
 
-Install from [PyPI](https://pypi.org/project/inventag-aws/) with pip:
+Install with [pipx](https://pipx.pypa.io/). It puts the `inventag` command on
+your PATH, and you activate nothing:
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install inventag-aws
+pipx install inventag-aws
+inventag selftest                     # checks this copy, offline
 
 inventag --validate-credentials       # uses your current AWS credentials
 inventag --create-excel --verbose     # -> bom_output/multi_account_bom_<timestamp>.xlsx
 ```
 
-A virtual environment is optional. `pipx install inventag-aws` gives you the
-same `inventag` command without activating anything, and plain
-`pip install inventag-aws` works wherever your Python allows it (newer Linux and
-Homebrew Pythons refuse system-wide installs). To upgrade later, run
-`pip install --upgrade inventag-aws`. To work on the code
-or run the newest unreleased version, install from source instead:
+Other ways to install: a standalone archive (Linux x86_64 and arm64, macOS
+arm64), a `.deb` or an `.rpm` package (no Python needed), `pip` in a virtual
+environment, or Homebrew (the tap is not published yet). The Linux builds need
+glibc 2.34 or later. There is no executable for Intel Macs or for Windows. The
+[Installation page](https://habhabhabs.github.io/inventag-aws/docs/getting-started/installation)
+has a table to choose, with the systems, upgrade and uninstall for each. To
+work on the code or run the newest unreleased version, install from source:
 
 ```bash
 git clone https://github.com/habhabhabs/inventag-aws.git
@@ -42,9 +44,7 @@ pip install -e .
 inventag --validate-credentials
 ```
 
-Not verified against Debian, Ubuntu or Homebrew: the externally-managed-environment error and the two ways around it.
-
-Python 3.11 or later is required. Use a read-only IAM identity. By default, discovery makes one
+Python 3.11 or later is required for pipx, pip and source installs. The packaged builds need no Python. Use a read-only IAM identity. By default, discovery makes one
 Cost Explorer request for each account, and AWS bills each
 request. Add `--no-billing-validation` to make no Cost Explorer request.
 Details:
