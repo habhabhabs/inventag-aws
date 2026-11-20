@@ -52,11 +52,15 @@ def test_it_is_a_reusable_workflow_and_can_be_started_by_hand_only():
     assert set(_triggers()) == {"workflow_call", "workflow_dispatch"}
 
 
-def test_both_triggers_take_a_tag_and_a_dry_run_flag_that_defaults_to_true():
+def test_both_triggers_take_a_tag_a_ref_and_a_dry_run_flag_that_defaults_to_true():
     for name in ("workflow_call", "workflow_dispatch"):
         inputs = _triggers()[name]["inputs"]
-        assert inputs["tag"]["required"] is True
-        assert inputs["tag"]["type"] == "string"
+        # A real run takes a tag; a dry run may take a branch or commit instead
+        # (plan 5.2: a dry run on the integration branch before the tag exists).
+        for key in ("tag", "ref"):
+            assert inputs[key]["type"] == "string"
+            assert inputs[key]["required"] is False
+            assert inputs[key]["default"] == ""
         assert inputs["dry_run"]["type"] == "boolean"
         assert inputs["dry_run"]["default"] is True
 
@@ -122,20 +126,85 @@ def test_no_expression_of_the_inputs_is_pasted_into_a_script():
 
 def test_one_run_per_tag_and_a_running_package_is_never_cancelled():
     group = DATA["concurrency"]
-    assert "inputs.tag" in group["group"]
+    assert "inputs.tag" in group["group"] and "inputs.ref" in group["group"]
     assert group["cancel-in-progress"] is False
 
 
 def test_the_plan_job_checks_the_tag_against_the_version_file():
     plan = JOBS["plan"]
-    assert plan["outputs"].keys() >= {"tag", "version", "dry_run"}
+    assert plan["outputs"].keys() >= {"tag", "ref", "version", "dry_run"}
     text = _run_text("plan")
     assert "inventag/_version.py" in text
     assert "^v[0-9]+\\.[0-9]+\\.[0-9]+$" in text
     for needed in ("requirements-lock.txt", "requirements-lock-build.txt"):
         assert needed in text
     checkout = [s for s in _steps("plan") if "checkout" in s.get("uses", "")][0]
-    assert checkout["with"]["ref"] == "refs/tags/${{ inputs.tag }}"
+    assert (
+        checkout["with"]["ref"]
+        == "${{ inputs.ref || format('refs/tags/{0}', inputs.tag) }}"
+    )
+
+
+def _plan(tmp_path, tag="", ref="", dry_run="true", version="1.4.0"):
+    """Run the plan step in a tiny tree; return (result, outputs as a dict)."""
+    import subprocess
+
+    (tmp_path / "inventag").mkdir(exist_ok=True)
+    (tmp_path / "inventag" / "_version.py").write_text(
+        f'__version__ = "{version}"\n', encoding="utf-8"
+    )
+    for name in ("requirements-lock.txt", "requirements-lock-build.txt"):
+        (tmp_path / name).write_text("", encoding="utf-8")
+    out = tmp_path / "github-output"
+    out.write_text("", encoding="utf-8")
+    result = subprocess.run(
+        ["bash", "-c", _step("plan", "version")["run"]],
+        cwd=tmp_path,
+        env={
+            "PATH": "/usr/bin:/bin",
+            "TAG": tag,
+            "REF": ref,
+            "DRY_RUN": dry_run,
+            "GITHUB_OUTPUT": str(out),
+        },
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    pairs = [line.split("=", 1) for line in out.read_text("utf-8").splitlines()]
+    return result, dict(pairs)
+
+
+def test_plan_accepts_the_tag_of_the_version_and_returns_its_ref(tmp_path):
+    result, out = _plan(tmp_path, tag="v1.4.0", dry_run="false")
+    assert result.returncode == 0, result.stderr
+    assert out == {
+        "tag": "v1.4.0",
+        "ref": "refs/tags/v1.4.0",
+        "version": "1.4.0",
+        "dry_run": "false",
+    }
+
+
+def test_plan_refuses_a_tag_that_is_not_the_version_in_the_commit(tmp_path):
+    result, _ = _plan(tmp_path, tag="v1.4.1", version="1.4.0")
+    assert result.returncode != 0
+
+
+def test_plan_refuses_a_malformed_tag_and_a_missing_tag(tmp_path):
+    for tag in ("1.4.0", "v1.4", "v1.4.0; echo x", ""):
+        result, _ = _plan(tmp_path, tag=tag)
+        assert result.returncode != 0, tag
+
+
+def test_plan_takes_a_branch_only_for_a_dry_run(tmp_path):
+    result, out = _plan(tmp_path, ref="next/v1.4", dry_run="true", version="1.3.0")
+    assert result.returncode == 0, result.stderr
+    assert out["ref"] == "next/v1.4" and out["version"] == "1.3.0"
+    assert out["dry_run"] == "true"
+    refused, _ = _plan(tmp_path, ref="next/v1.4", dry_run="false")
+    assert refused.returncode != 0
+    assert "dry run" in refused.stdout + refused.stderr
 
 
 def test_every_other_job_waits_for_the_plan():
@@ -174,11 +243,18 @@ def test_the_four_builds_run_on_the_four_named_systems():
         assert JOBS[name]["runs-on"] == label
 
 
+def test_every_job_after_the_plan_checks_out_the_ref_the_plan_checked():
+    found = list(_non_plan_checkouts())
+    assert len(found) >= 8
+    for name, step in found:
+        assert step["with"]["ref"] == "${{ needs.plan.outputs.ref }}", name
+
+
 def test_every_build_packages_the_tag_the_plan_checked():
     for name in (*LINUX_BUILDS, *MACOS_BUILDS):
         checkout = [s for s in _steps(name) if "checkout" in s.get("uses", "")]
         assert len(checkout) == 1, name
-        assert checkout[0]["with"]["ref"] == "refs/tags/${{ needs.plan.outputs.tag }}"
+        assert checkout[0]["with"]["ref"] == "${{ needs.plan.outputs.ref }}"
 
 
 def test_the_build_image_is_pinned_by_digest_or_the_job_refuses_to_run():
