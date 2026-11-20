@@ -53,6 +53,12 @@ name: Package
     - '.github/workflows/package.yml'
     - 'inventag/cli/selftest.py'
     - 'inventag/cli/completion.py'
+    # An application change can break the bundle (a missed import or data
+    # file): the dry run sees it before a release does (B6 fix 4). Cost: one
+    # Package dry run per pull request that changes the application.
+    - 'inventag/**'
+    - 'pyproject.toml'
+    - 'requirements.txt'
   workflow_dispatch:
     inputs:
       tag:
