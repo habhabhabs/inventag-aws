@@ -5,6 +5,7 @@
 # No version number here: the version is inventag/_version.py.
 # -*- mode: python -*-
 import os
+import sys
 
 from PyInstaller.utils.hooks import copy_metadata
 
@@ -49,6 +50,21 @@ a = Analysis(
     ],
     noarchive=False,
 )
+
+# macOS: PyInstaller thins, re-paths and re-signs every collected binary, so
+# lxml's modules would no longer be the files of the hash-pinned wheel. They
+# go in as data files at the same paths instead: COLLECT copies them unchanged
+# (architect-package-dryrun-5.md ruling 1; decision 2, condition 2). This is
+# done after Analysis, which would reclassify them as binaries again.
+if sys.platform == "darwin":
+
+    def _lxml_module(dest):
+        parts = dest.replace(os.sep, "/").split("/")
+        return parts[0] == "lxml" and parts[-1].endswith(".so")
+
+    a.datas += [(d, s, "DATA") for d, s, _t in a.binaries if _lxml_module(d)]
+    a.binaries = [e for e in a.binaries if not _lxml_module(e[0])]
+
 pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
