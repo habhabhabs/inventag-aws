@@ -318,7 +318,7 @@ def test_the_smoke_installs_each_format_the_way_a_user_does():
 
 def test_the_smoke_runs_version_selftest_man_and_three_completions():
     text = _run_text("smoke-linux")
-    assert "inventag --version" in text and '"$VERSION"' in text
+    assert "inventag --version" in text and '"inventag $VERSION"' in text
     assert "inventag selftest" in text
     assert "man -w inventag" in text or "man -l" in text
     for check in ("bash -n", "zsh -n", "fish -n"):
