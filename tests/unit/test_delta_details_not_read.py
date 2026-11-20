@@ -14,8 +14,11 @@ name the resources, so the rule is per unit:
   additive key that the generator writes; see the S1 report);
 * denied, throttled, error (a stopped or timed-out detail call is recorded as
   "error") and timeout are treated alike;
-* a resource whose only changes are such fields is "not compared", the other
-  changes of a resource stay;
+* a resource whose only changes are such fields is unchanged (its listing
+  fields were compared; the line below says which fields were not), the other
+  changes of a resource stay; nothing is counted under ``not_compared``, which
+  stays for resources a run did not see (A-05, and A-22's pin in
+  ``test_patch2_tracks_together.py``);
 * the change report names the units in one line (``details_not_compared``);
 * a clean pair of runs gives the same report as before, byte for byte.
 """
@@ -234,11 +237,9 @@ def test_a_detail_call_denied_in_this_run_does_not_make_the_function_modified():
     )
     assert _modified(report) == {}
     assert report.summary["modified_count"] == 0
-    reason = (
-        f"details of lambda Function in {REG} of account {ACC} were not read "
-        "(this run: denied)"
-    )
-    assert report.change_statistics["not_compared"] == {reason: 1}
+    assert [c.resource_id for c in report.unchanged_resources] == ["fn"]
+    assert "not_compared" not in report.change_statistics
+    assert "not_compared_count" not in report.summary
 
 
 def test_a_detail_call_denied_in_the_previous_run_does_not_make_the_function_modified():
@@ -248,11 +249,9 @@ def test_a_detail_call_denied_in_the_previous_run_does_not_make_the_function_mod
         previous=[_unit("lambda", "Function")],
     )
     assert _modified(report) == {}
-    reason = (
-        f"details of lambda Function in {REG} of account {ACC} were not read "
-        "(previous run: denied)"
-    )
-    assert report.change_statistics["not_compared"] == {reason: 1}
+    assert [c.resource_id for c in report.unchanged_resources] == ["fn"]
+    assert "not_compared" not in report.change_statistics
+    assert "not_compared_count" not in report.summary
 
 
 def test_the_s3_region_written_by_GetBucketLocation_is_not_compared():
