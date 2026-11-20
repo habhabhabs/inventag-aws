@@ -59,6 +59,9 @@ Add `pricing:GetProducts` only if you use `--enable-cost-analysis` (it also
 calls `cloudwatch:GetMetricStatistics`, which `ReadOnlyAccess` covers), and
 `s3:PutObject` on your reports bucket if you use `--s3-bucket`.
 
+To run with `ReadOnlyAccess` alone, see
+[Run with only ReadOnlyAccess](#run-with-only-readonlyaccess).
+
 `ReadOnlyAccess` is broad: it can read data such as S3 object listings and
 some configuration that InvenTag never looks at. If that is too much for your
 organisation, use option 2.
@@ -95,6 +98,134 @@ No permission for sqs (list_queues in us-east-1: AccessDenied). Resources of sqs
 Where an action for a detail of a resource is missing, discovery carries on
 and leaves that detail empty.
 
+## Run with only ReadOnlyAccess
+
+You can attach only the AWS managed policy `ReadOnlyAccess` to the identity
+and add nothing else. This section says what works, what does not, and what
+InvenTag prints when AWS refuses an action.
+
+The policy list in this section is PROVISIONAL. The project tests InvenTag
+against a list of the `ReadOnlyAccess` actions that it wrote by hand from the
+AWS reference page (policy version v192, 13 Nov 2026). The list stays
+provisional until the project has a raw copy of the AWS policy. Not verified
+against real AWS: that the list is what `ReadOnlyAccess` allows today, and a
+scan with only `ReadOnlyAccess` attached.
+
+### What works
+
+By the provisional list, `ReadOnlyAccess` includes every one of the 122 read
+actions in `config/defaults/iam-policy-read-only.json`, and `apigateway:GET`.
+These include `tag:GetResources`, `ce:GetCostAndUsage` and
+`ec2:DescribeRegions`, so the three extras of option 1 are a safeguard and not
+a need.
+
+In the tests, a scan of one account with only these actions exits with code 0.
+AWS refuses no call. The log has no `No permission for` warning, and every
+resource that the test created is in the report. This holds with
+`--create-excel --create-word`, and also when you add
+`--enable-network-analysis`, `--enable-security-analysis`,
+`--enable-cost-analysis` and billing validation.
+
+### Three actions that ReadOnlyAccess does not include
+
+| Action | Needed only for | What happens without it |
+|---|---|---|
+| `sts:AssumeRole` | Scanning other accounts through a role (`role_arn`, or `--cross-account-role`) | That account fails. InvenTag scans the other accounts. The run exits with code 0, or with code 5 when you pass `--fail-on-account-error`. |
+| `s3:PutObject` | Uploading the reports with `--s3-bucket` | The upload fails, and the reports stay in the local output folder. The run exits with code 1. |
+| `kms:GenerateDataKey` | Uploading the reports with `--s3-encryption aws:kms` and a KMS key | Not tested. |
+
+Not verified against real AWS: that a refused `kms:GenerateDataKey` stops the
+upload, and which action S3 names then. Under a simulated AWS, the failed
+upload is named `s3:PutObject` only.
+
+### What else can refuse a call
+
+An identity with `ReadOnlyAccess` can still be refused. These are the causes
+that InvenTag cannot see apart from each other:
+
+- a service control policy or a permissions boundary
+- the policy of a resource, for example a KMS key policy or a bucket policy
+- a region or a service that is not enabled for the account
+- a later version of `ReadOnlyAccess`, because AWS changes the policy
+
+Not verified against real AWS: these causes, and which of them AWS reports as
+access denied.
+
+The repository policy in option 2 is the choice with the fewest rights.
+`ReadOnlyAccess` is wider than InvenTag needs, for example `s3:Get*`. The
+read-only guard still refuses the calls that return object contents or
+secrets, whatever the policy allows.
+
+### When an action is refused
+
+No refused action stops the run. This is what the run does:
+
+| Refused | What the run does |
+|---|---|
+| `sts:AssumeRole` for one account | The account fails with its reason. The other accounts are scanned. |
+| `ec2:DescribeRegions` | InvenTag asks `account:ListRegions`. If that fails too, it scans every region. |
+| A listing of a service | One warning for the service. The run notes say `Not read`. The next change report leaves that listing out. |
+| A detail call of a resource | The row stays, and the detail is empty. A run note counts the resources. |
+| `tag:GetResources` | One warning. The scan goes on with the listings of the services. |
+| `ce:GetCostAndUsage` | One warning. Billing checks are skipped. |
+| `pricing:GetProducts` with `--enable-cost-analysis` | One warning. The cost estimates are missing. |
+| `s3:PutObject` with `--s3-bucket` | The upload fails. Exit code 1. |
+
+When only `sts:GetCallerIdentity` is allowed, the run finishes. It writes no
+report and no snapshot, and the log says `No resources to report: nothing could
+be read`. The exit code is 0. With `--fail-on-account-error`, an account whose
+every listing was refused still counts as scanned and the run exits with code
+0. To make a CI job fail when nothing could be read, add `--fail-if-empty`.
+
+### The Permissions line and permissions_denied
+
+When a run is not allowed to use an IAM action, the run notes get one line for
+each account. The line is on the console, and in the "Run notes" of the Excel
+report. It names each action, says what the report lacks, and says whether
+`ReadOnlyAccess` includes the action. A run that is denied nothing prints no
+such line. This is the line for a role that cannot be assumed (sample from an
+offline run):
+
+```text
+Permissions: 1 action(s) were not allowed for account 222222222222: sts:AssumeRole. Effect: the account was not scanned. sts:AssumeRole is not in ReadOnlyAccess; it is needed only for scanning other accounts through a role.
+```
+
+The line has InvenTag's own words. It has no text from the AWS error. A call
+for which InvenTag knows no IAM action is named by its API name, with the
+words `(IAM action not known to InvenTag)`.
+
+With `--audit-output`, the file also has the key `permissions_denied`. The key
+is there only when something was denied. Each entry has these fields:
+
+```json
+"permissions_denied": [
+  {
+    "account": "123456789012",
+    "action": "s3:GetBucketLocation",
+    "service": "s3",
+    "operation": "GetBucketLocation",
+    "regions": ["us-east-1"],
+    "kind": "detail"
+  }
+]
+```
+
+| Field | Meaning |
+|---|---|
+| `account` | The account ID. |
+| `action` | The IAM action, or `null` when InvenTag does not know it. |
+| `service`, `operation` | The AWS API names of the refused call. |
+| `regions` | The regions in which the call was refused. Empty for an entry without a region, for example the kind `role`. |
+| `kind` | `role`, `listing`, `detail`, `tagging`, `billing`, `pricing`, `analysis` or `upload`. |
+
+The list is sorted by account and action. InvenTag makes no extra AWS call to
+build it. Not verified against real AWS: the actions named are those of
+InvenTag's tables, and a refusal by a service control policy or a permissions
+boundary is shown as the action too.
+
+The line does not name `ec2:DescribeRegions` or `account:ListRegions`. See
+[Feature status](../getting-started/status.md#when-a-run-goes-wrong).
+
 ## What the read-only guard blocks
 
 InvenTag checks every AWS call in the process before it is sent. It allows
@@ -110,7 +241,9 @@ download link for the code), `cloudformation:GetTemplate`,
 `ec2:GetLaunchTemplateData`, `glue:GetConnection` and Athena query results.
 It also blocks API keys with their values and `ec2:DescribeInstanceAttribute`
 for user data, and it checks presigned URLs and database authentication tokens
-by the same rules. Check a name with
+by the same rules. The guard knows operations by name. An operation that a newer AWS SDK adds is
+allowed when its name starts like a read, until an InvenTag release names it.
+Check a name with
 `inventag --validate-operations <service>:<Operation>`. Where the answer depends on a parameter, it names the rule: `apigateway:GetApiKeys` shows `ALLOWED` with `blocked when includeValues=true`, and `ec2:DescribeInstanceAttribute` shows `ALLOWED` with `blocked when Attribute=userdata`. The guard blocks these calls only when they are called with that parameter.
 
 IAM Identity Center (SSO) and web-identity profiles work under the guard.

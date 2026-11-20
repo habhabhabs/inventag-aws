@@ -62,6 +62,8 @@ Añade `pricing:GetProducts` solo si usas `--enable-cost-analysis` (también
 llama a `cloudwatch:GetMetricStatistics`, que `ReadOnlyAccess` cubre), y
 `s3:PutObject` en tu bucket de informes si usas `--s3-bucket`.
 
+Para ejecutar solo con `ReadOnlyAccess`, consulta [Ejecutar solo con ReadOnlyAccess](#run-with-only-readonlyaccess).
+
 `ReadOnlyAccess` es amplia: puede leer datos como los listados de objetos de S3
 y parte de la configuración que InvenTag nunca consulta. Si eso es demasiado
 para tu organización, usa la opción 2.
@@ -94,6 +96,95 @@ No permission for sqs (list_queues in us-east-1: AccessDenied). Resources of sqs
 
 Cuando falta una acción para un detalle de un recurso, el descubrimiento continúa y deja ese detalle vacío.
 
+## Ejecutar solo con ReadOnlyAccess {#run-with-only-readonlyaccess}
+
+Puedes adjuntar a la identidad solo la política administrada de AWS `ReadOnlyAccess` y no añadir nada más. Esta sección dice qué funciona, qué no funciona y qué imprime InvenTag cuando AWS rechaza una acción.
+
+La lista de políticas de esta sección es PROVISIONAL. El proyecto prueba InvenTag con una lista de las acciones de `ReadOnlyAccess` que escribió a mano a partir de la página de referencia de AWS (versión de la política v192, 13 de noviembre de 2026). La lista sigue siendo provisional hasta que el proyecto tenga una copia sin modificar de la política de AWS. No verificado contra AWS real: que la lista sea lo que `ReadOnlyAccess` permite hoy, y un análisis con solo `ReadOnlyAccess` adjunta.
+
+### Qué funciona {#what-works}
+
+Según la lista provisional, `ReadOnlyAccess` incluye las 122 acciones de lectura de `config/defaults/iam-policy-read-only.json` y `apigateway:GET`. Entre ellas están `tag:GetResources`, `ce:GetCostAndUsage` y `ec2:DescribeRegions`, así que los tres extras de la opción 1 son una salvaguarda y no una necesidad.
+
+En las pruebas, un análisis de una cuenta con solo estas acciones termina con el código 0. AWS no rechaza ninguna llamada. El registro no tiene la advertencia `No permission for`, y cada recurso que creó la prueba está en el informe. Esto se cumple con `--create-excel --create-word`, y también cuando añades `--enable-network-analysis`, `--enable-security-analysis`, `--enable-cost-analysis` y la validación de facturación.
+
+### Tres acciones que ReadOnlyAccess no incluye {#three-actions-that-readonlyaccess-does-not-include}
+
+| Acción | Solo se necesita para | Qué pasa sin ella |
+|---|---|---|
+| `sts:AssumeRole` | Analizar otras cuentas mediante un rol (`role_arn` o `--cross-account-role`) | Esa cuenta falla. InvenTag analiza las demás cuentas. La ejecución termina con el código 0, o con el código 5 si pasas `--fail-on-account-error`. |
+| `s3:PutObject` | Subir los informes con `--s3-bucket` | La subida falla y los informes se quedan en la carpeta de salida local. La ejecución termina con el código 1. |
+| `kms:GenerateDataKey` | Subir los informes con `--s3-encryption aws:kms` y una clave KMS | No probado. |
+
+No verificado contra AWS real: que un `kms:GenerateDataKey` rechazado detenga la subida, y qué acción nombra entonces S3. Con un AWS simulado, la subida fallida se nombra solo como `s3:PutObject`.
+
+### Qué más puede rechazar una llamada {#what-else-can-refuse-a-call}
+
+Una identidad con `ReadOnlyAccess` todavía puede recibir un rechazo. Estas son las causas que InvenTag no puede distinguir entre sí:
+
+- una política de control de servicios o un límite de permisos
+- la política de un recurso, por ejemplo la política de una clave KMS o la de un bucket
+- una región o un servicio que no está habilitado en la cuenta
+- una versión posterior de `ReadOnlyAccess`, porque AWS cambia la política
+
+No verificado contra AWS real: estas causas, y cuáles de ellas AWS informa como acceso denegado.
+
+La política del repositorio de la opción 2 es la elección con menos derechos. `ReadOnlyAccess` es más amplia de lo que InvenTag necesita, por ejemplo `s3:Get*`. La protección de solo lectura sigue rechazando las llamadas que devuelven el contenido de objetos o secretos, sea cual sea lo que permita la política.
+
+### Cuando se rechaza una acción {#when-an-action-is-refused}
+
+Ninguna acción rechazada detiene la ejecución. Esto es lo que hace la ejecución:
+
+| Rechazada | Qué hace la ejecución |
+|---|---|
+| `sts:AssumeRole` para una cuenta | La cuenta falla con su motivo. Las demás cuentas se analizan. |
+| `ec2:DescribeRegions` | InvenTag pregunta a `account:ListRegions`. Si también falla, analiza todas las regiones. |
+| Un listado de un servicio | Una advertencia para el servicio. Las notas de la ejecución dicen `Not read`. El siguiente informe de cambios deja fuera ese listado. |
+| Una llamada de detalle de un recurso | La fila se queda y el detalle está vacío. Una nota de la ejecución cuenta los recursos. |
+| `tag:GetResources` | Una advertencia. El análisis sigue con los listados de los servicios. |
+| `ce:GetCostAndUsage` | Una advertencia. Se omiten las comprobaciones de facturación. |
+| `pricing:GetProducts` con `--enable-cost-analysis` | Una advertencia. Faltan las estimaciones de costes. |
+| `s3:PutObject` con `--s3-bucket` | La subida falla. Código de salida 1. |
+
+Cuando solo se permite `sts:GetCallerIdentity`, la ejecución termina. No escribe ningún informe ni ninguna instantánea, y el registro dice `No resources to report: nothing could be read`. El código de salida es 0. Con `--fail-on-account-error`, una cuenta cuyos listados se rechazaron todos sigue contando como analizada y la ejecución termina con el código 0. Para que un trabajo de CI falle cuando no se pudo leer nada, añade `--fail-if-empty`.
+
+### La línea Permissions y permissions_denied {#the-permissions-line-and-permissions_denied}
+
+Cuando una ejecución no tiene permiso para usar una acción de IAM, las notas de la ejecución tienen una línea por cada cuenta. La línea está en la consola y en las «Run notes» del informe de Excel. Nombra cada acción, dice qué le falta al informe y dice si `ReadOnlyAccess` incluye la acción. Una ejecución a la que no se le deniega nada no imprime esa línea. Esta es la línea de un rol que no se puede asumir (ejemplo de una ejecución sin conexión):
+
+```text
+Permissions: 1 action(s) were not allowed for account 222222222222: sts:AssumeRole. Effect: the account was not scanned. sts:AssumeRole is not in ReadOnlyAccess; it is needed only for scanning other accounts through a role.
+```
+
+La línea tiene palabras propias de InvenTag. No tiene texto del error de AWS. Una llamada de la que InvenTag no conoce la acción de IAM se nombra por su nombre de API, con las palabras `(IAM action not known to InvenTag)`.
+
+Con `--audit-output`, el archivo también tiene la clave `permissions_denied`. La clave solo está cuando se denegó algo. Cada entrada tiene estos campos:
+
+```json
+"permissions_denied": [
+  {
+    "account": "123456789012",
+    "action": "s3:GetBucketLocation",
+    "service": "s3",
+    "operation": "GetBucketLocation",
+    "regions": ["us-east-1"],
+    "kind": "detail"
+  }
+]
+```
+
+| Campo | Significado |
+|---|---|
+| `account` | El ID de la cuenta. |
+| `action` | La acción de IAM, o `null` cuando InvenTag no la conoce. |
+| `service`, `operation` | Los nombres de API de AWS de la llamada rechazada. |
+| `regions` | Las regiones en las que se rechazó la llamada. Vacío en una entrada sin región, por ejemplo el tipo `role`. |
+| `kind` | `role`, `listing`, `detail`, `tagging`, `billing`, `pricing`, `analysis` o `upload`. |
+
+La lista está ordenada por cuenta y acción. InvenTag no hace ninguna llamada extra a AWS para construirla. No verificado contra AWS real: las acciones nombradas son las de las tablas propias de InvenTag, y un rechazo por una política de control de servicios o por un límite de permisos también se muestra como la acción.
+
+La línea no nombra `ec2:DescribeRegions` ni `account:ListRegions`. Consulta [Estado de las funciones](../getting-started/status.md#when-a-run-goes-wrong).
+
 ## Qué bloquea la protección de solo lectura {#what-the-read-only-guard-blocks}
 
 InvenTag comprueba cada llamada a AWS del proceso antes de enviarla. Solo permite operaciones cuyo nombre empieza por `List`, `Describe`, `Get`, `Head`,
@@ -103,7 +194,7 @@ Algunas operaciones parecen lecturas pero devuelven secretos o datos de clientes
 Ejemplos: `secretsmanager:GetSecretValue`, `ssm:GetParameter`, `s3:GetObject`, `dynamodb:GetItem`, `lambda:GetFunction` (devuelve un enlace de descarga del código),
 `cloudformation:GetTemplate`, `ec2:GetLaunchTemplateData`, `glue:GetConnection` y los resultados de consultas de Athena.
 También bloquea las claves de API con sus valores y `ec2:DescribeInstanceAttribute` para los datos de usuario, y comprueba las URL prefirmadas y los tokens de autenticación de bases de datos con las mismas reglas.
-Comprueba un nombre con `inventag --validate-operations <service>:<Operation>`. Cuando la respuesta depende de un parámetro, nombra la regla: `apigateway:GetApiKeys` muestra `ALLOWED` con `blocked when includeValues=true`, y `ec2:DescribeInstanceAttribute` muestra `ALLOWED` con `blocked when Attribute=userdata`. La protección bloquea estas llamadas solo cuando se hacen con ese parámetro.
+La protección conoce las operaciones por su nombre. Una operación que añade un SDK de AWS más nuevo se permite cuando su nombre empieza como una lectura, hasta que una versión de InvenTag la nombra. Comprueba un nombre con `inventag --validate-operations <service>:<Operation>`. Cuando la respuesta depende de un parámetro, nombra la regla: `apigateway:GetApiKeys` muestra `ALLOWED` con `blocked when includeValues=true`, y `ec2:DescribeInstanceAttribute` muestra `ALLOWED` con `blocked when Attribute=userdata`. La protección bloquea estas llamadas solo cuando se hacen con ese parámetro.
 
 Los perfiles de IAM Identity Center (SSO) y de identidad web funcionan con la protección activa. La protección deja que el paso de inicio de sesión cambie un token por credenciales, y nada más.
 

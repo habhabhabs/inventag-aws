@@ -115,6 +115,7 @@ Changes detected in S3 service resources
   区域或服务，其资源会显示为新增，所以两次运行请使用相同的区域、服务和过滤条件。
 - 快照会记下其运行未能读取的列出调用（`metadata.tags.units_not_read`：账户、服务、区域、来源和结果；只有某个列出调用失败时才出现）。
   下一份变更报告会把这些列出调用的资源排除在外，而不是显示为新增。v1.2.2 或更早版本写出的快照没有这份列表，所以与它的第一次比较和以前一样。
+- 当读取资源详情的调用（例如 S3 存储桶位置或 Lambda 函数配置）在两次运行之一中失败时，该调用所增加的字段不会为该服务和区域的资源做比较。变更报告用一行文字列出这些单元，这行以 `Details not read, so the fields they add are not compared:` 开头。State Comparison 数据把它称为 `details_not_compared`。快照在 `metadata.tags.details_not_read` 中记录详情调用失败的单元。只有在这样的调用失败时才有这个键。
 - 快照会记下写出它的 InvenTag 版本（`metadata.tags.inventag_version`）。升级后的第一份变更报告不会把新版本首次读取的字段算作变更，
   并用一行说明排除了多少个字段。在这段时间内对这类字段的真实变更不会被报告，仅此一次。
 - 变更报告按固定顺序列出属性变更，所以同一变更的两份报告完全相同。

@@ -132,6 +132,15 @@ son ARN.
   les montrer comme ajoutées. Un instantané écrit par v1.2.2 ou une version
   antérieure n’a pas cette liste, donc la première comparaison avec lui se
   comporte comme avant.
+- Quand un appel qui lit les détails d’une ressource (par exemple l’emplacement
+  d’un bucket S3 ou la configuration d’une fonction Lambda) échoue dans l’une des
+  deux exécutions, les champs que cet appel ajoute ne sont pas comparés pour les
+  ressources de ce service et de cette région. Le rapport de changements nomme ces
+  unités dans une ligne qui commence par
+  `Details not read, so the fields they add are not compared:`. Les données de
+  State Comparison l’appellent `details_not_compared`. Un instantané enregistre les
+  unités dont les appels de détail ont échoué dans `metadata.tags.details_not_read`.
+  La clé n’est là que lorsqu’un tel appel a échoué.
 - Un instantané enregistre la version d’InvenTag qui l’a écrit
   (`metadata.tags.inventag_version`). Le premier rapport de changements après
   une mise à jour ne compte pas comme un changement un champ que la nouvelle
