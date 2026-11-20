@@ -337,6 +337,74 @@ jobs:
     - name: Build the .deb and the .rpm
       run: bash scripts/packaging/build_linux_packages.sh "$RUNNER_TEMP/work/out"
 
+    # The arm64 packages are installed once here, on the arm64 runner, in a
+    # fresh container each (.deb on debian:12). The x86_64 packages are smoked by
+    # smoke-linux. The image is pulled by tag; its digest goes into the summary.
+    - name: "Start smoke container: .deb on debian:12"
+      env:
+        IMAGE: debian:12
+      run: |
+        docker run -d --name smoke-deb -v "$RUNNER_TEMP/work/out/pkg:/pkg:ro" "$IMAGE" sleep infinity
+        digest=$(docker image inspect --format '{{join .RepoDigests ", "}}' "$IMAGE")
+        if [ -z "$digest" ]; then
+          echo "::error::No digest is recorded for the image $IMAGE."
+          exit 1
+        fi
+        echo "- smoke image $IMAGE: $digest (arm64)" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: "Install smoke: .deb on debian:12"
+      run: |
+        docker exec -i -e VERSION smoke-deb bash -s <<'SMOKE'
+        set -euo pipefail
+        test "$(uname -m)" = aarch64
+        dpkg -i /pkg/inventag_*_arm64.deb
+        test "$(inventag --version)" = "inventag $VERSION"
+        inventag selftest
+        dpkg -r inventag
+        if command -v inventag; then
+          echo "left: inventag is still on the PATH"
+          exit 1
+        fi
+        SMOKE
+
+    - name: "Remove smoke container: .deb on debian:12"
+      if: always()
+      run: docker rm -f smoke-deb
+
+    # The arm64 packages are installed once here, on the arm64 runner, in a
+    # fresh container each (.rpm on rockylinux:9). The x86_64 packages are smoked by
+    # smoke-linux. The image is pulled by tag; its digest goes into the summary.
+    - name: "Start smoke container: .rpm on rockylinux:9"
+      env:
+        IMAGE: rockylinux:9
+      run: |
+        docker run -d --name smoke-rpm -v "$RUNNER_TEMP/work/out/pkg:/pkg:ro" "$IMAGE" sleep infinity
+        digest=$(docker image inspect --format '{{join .RepoDigests ", "}}' "$IMAGE")
+        if [ -z "$digest" ]; then
+          echo "::error::No digest is recorded for the image $IMAGE."
+          exit 1
+        fi
+        echo "- smoke image $IMAGE: $digest (arm64)" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: "Install smoke: .rpm on rockylinux:9"
+      run: |
+        docker exec -i -e VERSION smoke-rpm bash -s <<'SMOKE'
+        set -euo pipefail
+        test "$(uname -m)" = aarch64
+        dnf install -y -q /pkg/inventag-*.aarch64.rpm
+        test "$(inventag --version)" = "inventag $VERSION"
+        inventag selftest
+        dnf remove -y -q inventag
+        if command -v inventag; then
+          echo "left: inventag is still on the PATH"
+          exit 1
+        fi
+        SMOKE
+
+    - name: "Remove smoke container: .rpm on rockylinux:9"
+      if: always()
+      run: docker rm -f smoke-rpm
+
     - name: Collect the files of this build
       run: |
         out="$RUNNER_TEMP/work/out"
