@@ -268,3 +268,120 @@ def test_the_scripts_a_build_calls_exist_in_the_repository():
     for name in (*LINUX_BUILDS, *MACOS_BUILDS):
         for path in set(re.findall(r"scripts/packaging/[\w.]+", _run_text(name))):
             assert (ROOT / path).is_file(), (name, path)
+
+
+# ---- stage 3: smoke tests on fresh systems --------------------------------
+
+SMOKE_SYSTEMS = {
+    # system: (image, format) as in plan 3.5, plus the glibc floor (AlmaLinux 8)
+    "ubuntu-22.04": ("ubuntu:22.04", "deb"),
+    "ubuntu-24.04": ("ubuntu:24.04", "deb"),
+    "debian-12": ("debian:12", "deb"),
+    "debian-12-tar": ("debian:12", "tar"),
+    "fedora": ("fedora:latest", "rpm"),
+    "rockylinux-9": ("rockylinux:9", "rpm"),
+    "rockylinux-9-tar": ("rockylinux:9", "tar"),
+    "almalinux-8": ("almalinux:8", "rpm"),
+}
+
+
+def _matrix(job):
+    return JOBS[job]["strategy"]["matrix"]["include"]
+
+
+def test_the_workflow_never_hides_a_failure():
+    code = "\n".join(
+        line for line in TEXT.splitlines() if not line.lstrip().startswith("#")
+    )
+    assert "continue-on-error" not in code
+    assert "|| true" not in code
+    assert "set +e" not in code
+
+
+def test_the_linux_smoke_matrix_covers_the_systems_of_the_plan():
+    seen = {m["system"]: (m["image"], m["format"]) for m in _matrix("smoke-linux")}
+    assert seen == SMOKE_SYSTEMS
+    assert JOBS["smoke-linux"]["strategy"]["fail-fast"] is False
+    assert JOBS["smoke-linux"]["needs"] == ["plan", "build-linux-x86_64"]
+
+
+def test_the_smoke_installs_each_format_the_way_a_user_does():
+    text = _run_text("smoke-linux")
+    assert "dpkg -i" in text
+    assert "dnf install" in text
+    assert "tar -xzf" in text
+    assert "dpkg -r inventag" in text
+    assert "dnf remove" in text
+    # The deb is not blocked by the image's own exclusion of man pages.
+    assert "/etc/dpkg/dpkg.cfg.d/excludes" in text
+
+
+def test_the_smoke_runs_version_selftest_man_and_three_completions():
+    text = _run_text("smoke-linux")
+    assert "inventag --version" in text and '"$VERSION"' in text
+    assert "inventag selftest" in text
+    assert "man -w inventag" in text or "man -l" in text
+    for check in ("bash -n", "zsh -n", "fish -n"):
+        assert check in text
+    for matrix in _matrix("smoke-linux"):
+        assert set(matrix["shells"].split()) <= {"bash", "zsh", "fish"}
+        assert "bash" in matrix["shells"].split()
+
+
+def test_the_smoke_scan_runs_against_a_moto_server_outside_the_executable():
+    text = _run_text("smoke-linux")
+    assert "scripts/packaging/smoke_scan.py" in text
+    assert "docker exec" in text and "AWS_ENDPOINT_URL" in text
+    assert "--network host" in text
+    pins = [
+        s["run"]
+        for s in _steps("smoke-linux")
+        if "pip install" in s.get("run", "") and "moto" in s["run"]
+    ]
+    assert len(pins) == 1
+    dev = (ROOT / "requirements-dev.txt").read_text(encoding="utf-8")
+    pinned = re.search(r"^moto\[all\]==([\d.]+)", dev, re.M).group(1)
+    assert f'"moto[server]=={pinned}"' in pins[0]
+
+
+def test_the_smoke_checks_that_the_uninstall_left_nothing():
+    text = _run_text("smoke-linux")
+    assert "/opt/inventag" in text
+    assert "left:" in text
+    assert "command -v inventag" in text
+
+
+def test_the_macos_smoke_jobs_unpack_run_scan_and_remove():
+    for name, (label, cpu) in {
+        "smoke-macos-arm64": MACOS_BUILDS["build-macos-arm64"],
+        "smoke-macos-x86_64": MACOS_BUILDS["build-macos-x86_64"],
+    }.items():
+        job = JOBS[name]
+        assert job["runs-on"] == label
+        assert job["needs"] == ["plan", f"build-macos-{cpu}"]
+        text = _run_text(name)
+        assert "tar -xzf" in text
+        assert "inventag selftest" in text
+        assert "scripts/packaging/smoke_scan.py" in text
+        assert "rm -rf" in text
+        for check in ("bash -n", "zsh -n"):
+            assert check in text
+
+
+def test_the_pipx_install_of_the_wheel_is_smoked():
+    job = JOBS["smoke-pipx"]
+    assert job["runs-on"] == "ubuntu-24.04"
+    text = _run_text("smoke-pipx")
+    assert "pip wheel --no-deps" in text
+    assert "pipx install" in text and "pipx uninstall inventag-aws" in text
+    assert "inventag selftest" in text
+
+
+def test_the_smoke_jobs_use_the_artifacts_of_their_build():
+    for name in ("smoke-linux", "smoke-macos-arm64", "smoke-macos-x86_64"):
+        down = [
+            s for s in _steps(name) if s.get("uses", "").startswith("actions/download-")
+        ]
+        assert len(down) == 1, name
+        build = [n for n in JOBS[name]["needs"] if n.startswith("build-")][0]
+        assert down[0]["with"]["name"] == build
