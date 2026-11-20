@@ -413,6 +413,37 @@ def _add_source(resource: Dict[str, Any], source: str) -> None:
     resource["sources"] = "+".join(sorted(current))
 
 
+class _RowSink:
+    """Rows one listing task has found, owned by that task (plan 2.4, 2.5).
+
+    A listing worker adds to its own sink only. The coordinating thread reads
+    every sink after the tasks end or the time limit is reached, in task
+    submission order, and writes the rows to ``resources`` itself. ``close``
+    hands over the rows and refuses later ones, so a worker that is still
+    running after the limit adds nothing more. A lock guards the list: no
+    correctness comes from the GIL (rule T1).
+    """
+
+    __slots__ = ("_lock", "_rows", "_closed")
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._rows: List[Dict[str, Any]] = []
+        self._closed = False
+
+    def add(self, row: Dict[str, Any]) -> bool:
+        with self._lock:
+            if self._closed:
+                return False
+            self._rows.append(row)
+            return True
+
+    def close(self) -> List[Dict[str, Any]]:
+        with self._lock:
+            self._closed = True
+            return list(self._rows)
+
+
 class ComprehensiveAWSDiscovery:
     """
     Comprehensive AWS resource discovery that finds ALL resources regardless of tags.
@@ -1044,8 +1075,12 @@ class ComprehensiveAWSDiscovery:
         ):
             self._discover_cloudfront_certificates()
 
-        # Sort by priority (critical services first)
+        # Sort by priority (critical services first); the sort is stable, so
+        # the order of the tasks is fixed by the service table and the region
+        # list. Each task gets its own sink, merged below in this order.
         discovery_tasks.sort(key=lambda x: x["priority"])
+        for task in discovery_tasks:
+            task["rows"] = _RowSink()
 
         self.logger.info(
             f"🔍 Executing {len(discovery_tasks)} discovery tasks with {max_workers} workers"
@@ -1102,6 +1137,13 @@ class ComprehensiveAWSDiscovery:
                 "Found resources are kept."
             )
         finally:
+            # The coordinating thread writes the rows, in task order. A sink
+            # is closed here: a worker still running adds nothing more.
+            for task in discovery_tasks:
+                rows = task["rows"].close()
+                if rows:
+                    self.resources.extend(rows)
+                    self.services_with_primary_resources.add(task["service"])
             executor.shutdown(wait=self._stop.is_set() is False, cancel_futures=True)
 
     def _discover_cloudfront_certificates(self) -> int:
@@ -1175,6 +1217,9 @@ class ComprehensiveAWSDiscovery:
         region = task["region"]
         config = task["config"]
         resources_found = 0
+        # A task run by the coordinator's pool carries its own sink; a direct
+        # call has none and adds to ``resources``.
+        sink = task.get("rows")
 
         try:
             # Create service client (handle special cases like VPC using EC2 client)
@@ -1184,9 +1229,14 @@ class ComprehensiveAWSDiscovery:
             # Execute all operations for this service
             for operation_config in config["operations"]:
                 try:
-                    resources_found += self._execute_discovery_operation(
-                        client, service_name, region, operation_config
-                    )
+                    if sink is None:
+                        resources_found += self._execute_discovery_operation(
+                            client, service_name, region, operation_config
+                        )
+                    else:
+                        resources_found += self._execute_discovery_operation(
+                            client, service_name, region, operation_config, sink
+                        )
                 except ClientError as e:
                     error_code = e.response.get("Error", {}).get("Code", "")
                     if error_code in ["AccessDenied", "UnauthorizedOperation"]:
@@ -1357,7 +1407,12 @@ class ComprehensiveAWSDiscovery:
             )
 
     def _execute_discovery_operation(
-        self, client, service_name: str, region: str, operation_config
+        self,
+        client,
+        service_name: str,
+        region: str,
+        operation_config,
+        sink: Optional[_RowSink] = None,
     ) -> int:
         """Execute a single discovery operation and extract resources.
 
@@ -1425,6 +1480,7 @@ class ComprehensiveAWSDiscovery:
                         operation_name,
                         spec,
                         problems,
+                        sink,
                     )
             if problems:
                 # Some of what the answer held was not read, so the listing
@@ -1503,8 +1559,12 @@ class ComprehensiveAWSDiscovery:
         operation_name: str,
         spec: Optional[Dict[str, Any]] = None,
         problems: Optional[List[int]] = None,
+        sink: Optional[_RowSink] = None,
     ) -> int:
         """Extract resources from AWS API response.
+
+        With ``sink`` (a listing worker) the rows go to the task's own sink;
+        without it they go to ``resources`` (the calling thread owns it).
 
         An item in a form InvenTag cannot read is skipped with one warning
         (service, operation and region; never the payload) and the other items
@@ -1573,10 +1633,15 @@ class ComprehensiveAWSDiscovery:
                     # silent-ok: the item is counted as skipped and warned about once below
                     self.logger.debug(f"Item of {service_name} not readable: {e}")
                 if resource:
-                    self.resources.append(resource)
-                    resources_added += 1
-                    # Track service with primary resources for smart fallback logic
-                    self.services_with_primary_resources.add(service_name)
+                    if sink is not None:
+                        if sink.add(resource):
+                            resources_added += 1
+                    else:
+                        self.resources.append(resource)
+                        resources_added += 1
+                        # Track service with primary resources for smart
+                        # fallback logic (a sink's owner does it at the merge)
+                        self.services_with_primary_resources.add(service_name)
                 else:
                     skipped += 1
 
