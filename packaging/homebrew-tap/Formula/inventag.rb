@@ -11,25 +11,30 @@
 class Inventag < Formula
   desc "Read-only AWS inventory, tag checks and BOM reports"
   homepage "https://habhabhabs.github.io/inventag-aws/"
-  version "{{VERSION}}"
   license "MIT"
 
   on_macos do
     # Only the Apple Silicon archive exists. The URL is declared for every Mac
     # so that the formula loads; on an Intel Mac install stops at its first line.
-    url "https://github.com/habhabhabs/inventag-aws/releases/download/v#{version}/inventag-#{version}-darwin-arm64.tar.gz"
+    url "{{BASE_URL}}/inventag-{{VERSION}}-darwin-arm64.tar.gz"
     sha256 "{{SHA256_DARWIN_ARM64}}"
   end
 
   on_linux do
     on_intel do
-      url "https://github.com/habhabhabs/inventag-aws/releases/download/v#{version}/inventag-#{version}-linux-x86_64.tar.gz"
+      url "{{BASE_URL}}/inventag-{{VERSION}}-linux-x86_64.tar.gz"
       sha256 "{{SHA256_LINUX_X86_64}}"
     end
     on_arm do
-      url "https://github.com/habhabhabs/inventag-aws/releases/download/v#{version}/inventag-#{version}-linux-arm64.tar.gz"
+      url "{{BASE_URL}}/inventag-{{VERSION}}-linux-arm64.tar.gz"
       sha256 "{{SHA256_LINUX_ARM64}}"
     end
+  end
+
+  def caveats
+    <<~EOS
+      Third-party licences: see THIRD-PARTY-LICENSES.txt in the installation directory
+    EOS
   end
 
   def install
