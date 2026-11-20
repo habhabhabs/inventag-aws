@@ -941,6 +941,7 @@ def _run_digest(tmp_path, run, inspect_output, image="debian:12"):
         env={
             "PATH": f"{bin_dir}:/usr/bin:/bin",
             "IMAGE": image,
+            "RUNNER_TEMP": str(tmp_path),
             "GITHUB_STEP_SUMMARY": str(summary),
         },
         capture_output=True,
@@ -985,3 +986,88 @@ def test_no_digest_is_typed_into_the_workflow_for_a_smoke_image():
     # here is the build image's, which the dry run prints (placeholder).
     typed = re.findall(r"sha256:[0-9a-f]{64}", TEXT)
     assert typed == []
+
+
+# ---- B3b: install smoke of the arm64 packages (architect ruling 3) ---------
+
+ARM64_SMOKES = {
+    # step name fragment: (image, install, uninstall)
+    ".deb on debian:12": (
+        "debian:12",
+        "dpkg -i /pkg/inventag_*_arm64.deb",
+        "dpkg -r inventag",
+    ),
+    ".rpm on rockylinux:9": (
+        "rockylinux:9",
+        "dnf install -y -q /pkg/inventag-*.aarch64.rpm",
+        "dnf remove -y -q inventag",
+    ),
+}
+
+
+def _arm64_names():
+    return [s.get("name", "") for s in _steps("build-linux-arm64")]
+
+
+def test_the_arm64_build_installs_its_deb_and_rpm_in_fresh_containers_on_the_same_runner():
+    names = _arm64_names()
+    built = names.index("Build the .deb and the .rpm")
+    uploaded = names.index("Upload the files of this build")
+    for fragment, (image, install, uninstall) in ARM64_SMOKES.items():
+        start = _step("build-linux-arm64", f"Start smoke container: {fragment}")
+        check = _step("build-linux-arm64", f"Install smoke: {fragment}")
+        remove = _step("build-linux-arm64", f"Remove smoke container: {fragment}")
+        # Between the build of the packages and the upload: a package that
+        # does not install is never uploaded.
+        order = [names.index(s["name"]) for s in (start, check, remove)]
+        assert built < order[0] < order[1] < order[2] < uploaded
+        assert start["env"]["IMAGE"] == image
+        # The packages the build made, read-only, in a fresh container.
+        assert "$RUNNER_TEMP/work/out/pkg:/pkg:ro" in start["run"]
+        run = check["run"]
+        assert install in run and uninstall in run
+        # It really ran on arm64 (not under emulation of another CPU).
+        assert 'test "$(uname -m)" = aarch64' in run
+        assert 'test "$(inventag --version)" = "inventag $VERSION"' in run
+        assert "inventag selftest" in run
+        # Nothing is left on the PATH after the uninstall.
+        assert "command -v inventag" in run
+        # The container goes whether the checks passed or not.
+        assert remove["if"] == "always()"
+        assert "docker rm -f" in remove["run"]
+
+
+def test_the_arm64_smoke_images_are_named_by_tag_and_their_digest_is_recorded(tmp_path):
+    for index, (fragment, (image, _, _)) in enumerate(ARM64_SMOKES.items()):
+        start = _step("build-linux-arm64", f"Start smoke container: {fragment}")
+        work = tmp_path / str(index)
+        work.mkdir()
+        result, summary, calls = _run_digest(
+            work, start["run"], SOME_DIGEST, image=image
+        )
+        assert result.returncode == 0, result.stderr
+        assert f"{image}: {SOME_DIGEST}" in summary
+        assert "RepoDigests" in calls
+        empty = tmp_path / f"empty{index}"
+        empty.mkdir()
+        refused, _, _ = _run_digest(empty, start["run"], "", image=image)
+        assert refused.returncode != 0
+
+
+def test_the_arm64_smoke_is_in_the_arm64_job_only_with_no_new_runner_label():
+    names = [n.get("name", "") for n in _steps("build-linux-x86_64")]
+    assert not [n for n in names if "smoke" in n.lower()]
+    assert JOBS["build-linux-arm64"]["runs-on"] == "ubuntu-24.04-arm"
+    assert set(JOBS) == {
+        "plan",
+        "build-linux-x86_64",
+        "build-linux-arm64",
+        "build-macos-arm64",
+        "build-macos-x86_64",
+        "smoke-linux",
+        "smoke-macos-arm64",
+        "smoke-macos-x86_64",
+        "smoke-pipx",
+        "provenance",
+        "publish",
+    }
