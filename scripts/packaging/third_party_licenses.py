@@ -92,6 +92,10 @@ LXML_PARAGRAPH = (
     "build. The lxml modules are separate files in the installation directory. "
     "You can replace them with your own build of lxml of the same version."
 )
+LIBICONV_DOWNLOAD = "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-{version}.tar.gz"
+LXML_SOURCE = (
+    "lxml {version} source (the Source address in its package metadata): {url}"
+)
 COPYLEFT = re.compile(r"\b(A?GPL|LGPL)", re.IGNORECASE)
 
 GCC_PARAGRAPH = (
@@ -198,14 +202,12 @@ _LXML = (
     Carried(
         LXML_ICONV,
         LXML_ICONV_SPDX,
-        _LXML_TEXT + ("path:/usr/share/common-licenses/LGPL-2.1",),
-        # Neither the wheel's notices nor lxml's headers name the version.
-        "",
+        _LXML_TEXT + ("repo:scripts/packaging/licenses/LGPL-2.1.txt",),
+        # Neither the wheel's notices nor lxml's headers name the version;
+        # libiconv's own exported variable does: (major << 8) | minor.
+        "elfsym:_libiconv_version",
         requires_strings=b"libiconv_open",
-        urls=(
-            "https://www.gnu.org/software/libiconv/ (version not recorded in the wheel)",
-            "https://ftp.gnu.org/pub/gnu/libiconv/",
-        ),
+        urls=("https://www.gnu.org/software/libiconv/",),
     ),
 )
 
@@ -276,7 +278,7 @@ LINUX_ROWS: Tuple[Row, ...] = (
         "_internal/libgcc_s.so.1",
         "system",
         GCC_EXCEPTION,
-        extra_text=("path:/usr/share/common-licenses/GPL-3",),
+        extra_text=("repo:scripts/packaging/licenses/GPL-3.txt",),
     ),
 )
 
@@ -382,6 +384,8 @@ def render(comps: Sequence[Component]) -> str:
         "InvenTag itself is under the MIT licence (LICENSE). The executable also",
         "carries the components below: name, version, licence (SPDX id), and the",
         "licence texts. Identical texts are written once and referred to.",
+        "Not legal advice: this file lists what the build found and where the",
+        "texts and sources are; it makes no statement about any licence.",
     ]
     for key, title in sections:
         part = [c for c in comps if c.section == key]
@@ -588,6 +592,9 @@ class Build:
             target = arg or owner_file
             owner = self.owning_package(target) if target else None
             return self.package_doc(owner[0]) if owner else None
+        if kind == "repo":
+            p = self.repo_root / arg
+            return (p.name, p.read_text("utf-8", "replace")) if p.is_file() else None
         if kind == "path":
             p = Path(arg)
             return (p.name, p.read_text("utf-8", "replace")) if p.is_file() else None
@@ -636,6 +643,12 @@ class Build:
 
             module = arg.split(".")[0]
             return str(eval(arg, {module: __import__(module)}))  # table constant
+        if kind == "elfsym":
+            raw = elf_symbol_bytes(self.file_path(rel).read_bytes(), arg)
+            if raw is None or len(raw) < 2:
+                return ""
+            value = int.from_bytes(raw, "little")
+            return f"{value >> 8}.{value & 0xFF}"
         if kind == "pkg":
             owner = self.owning_package(owner_file) if owner_file else None
             return owner[1] if owner else ""
@@ -740,12 +753,13 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
         if comp.name == LXML_ICONV:
             names = ", ".join(sorted(Path(f).name for f in comp.files))
             comp.notes = [LXML_PARAGRAPH.format(files=names)]
+            if comp.version:
+                comp.urls.append(LIBICONV_DOWNLOAD.format(version=comp.version))
             lxml = _installed("lxml")
             if lxml is not None:
                 comp.urls += [
-                    f"lxml {lxml.version} source and wheel build: {u}"
-                    for u in _urls(lxml.metadata)
-                    if "github.com" in u
+                    LXML_SOURCE.format(version=lxml.version, url=u)
+                    for u in _source_urls(lxml.metadata)
                 ]
     for comp in out:
         problems += licence_problems(comp)
@@ -753,7 +767,50 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
     return out, sorted(set(problems))
 
 
+def elf_symbol_bytes(data: bytes, name: str) -> Optional[bytes]:
+    """The bytes of a defined data symbol in a 64-bit little-endian ELF file."""
+    import struct
+
+    if data[:4] != b"\x7fELF" or data[4] != 2 or data[5] != 1:
+        return None
+    (shoff,) = struct.unpack_from("<Q", data, 0x28)
+    shentsize, shnum = struct.unpack_from("<HH", data, 0x3A)
+    sections = [
+        struct.unpack_from("<IIQQQQIIQQ", data, shoff + i * shentsize)
+        for i in range(shnum)
+    ]
+    for sh in sections:
+        if sh[1] not in (2, 11):  # SHT_SYMTAB, SHT_DYNSYM
+            continue
+        strtab = sections[sh[6]]
+        for off in range(sh[4], sh[4] + sh[5], 24):
+            st_name, _info, _other, shndx, value, size = struct.unpack_from(
+                "<IBBHQQ", data, off
+            )
+            start = strtab[4] + st_name
+            if (
+                data[start : data.index(b"\0", start)] != name.encode()
+                or not 0 < shndx < shnum
+            ):
+                continue
+            target = sections[shndx]
+            if target[1] == 8:  # SHT_NOBITS: zero-initialised, no bytes in the file
+                return None
+            pos = target[4] + value - target[3]
+            return data[pos : pos + size]
+    return None
+
+
 SOURCE_LABELS = ("source", "source code", "repository", "code", "homepage", "home")
+
+
+def _source_urls(metadata) -> List[str]:
+    """Only the Project-URL labelled "Source"."""
+    return sorted(
+        e.partition(",")[2].strip()
+        for e in metadata.get_all("Project-URL") or []
+        if e.partition(",")[0].strip().lower() == "source"
+    )
 
 
 def _urls(metadata) -> List[str]:
