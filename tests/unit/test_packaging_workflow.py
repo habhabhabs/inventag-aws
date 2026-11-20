@@ -267,6 +267,37 @@ def test_plan_takes_a_branch_only_for_a_dry_run(tmp_path):
     assert "dry run" in refused.stdout + refused.stderr
 
 
+def test_plan_refuses_a_ref_with_characters_outside_the_allowed_set(tmp_path):
+    # B6 fix 6: the ref is written to the step output; a newline would add an
+    # output line, a space or a quote has no place in a ref.
+    for ref in (
+        "next/v1.4\ntag=v9.9.9",
+        "next/v1.4\n",
+        "a b",
+        "x;echo y",
+        'x"y',
+        "x$(id)",
+        "x`id`",
+        "x\ty",
+    ):
+        result, out = _plan(tmp_path, ref=ref, dry_run="true")
+        assert result.returncode != 0, repr(ref)
+        assert out == {}, repr(ref)
+        assert "ref" in result.stdout + result.stderr, repr(ref)
+
+
+def test_plan_takes_the_refs_of_branches_and_commits(tmp_path):
+    for ref in (
+        "next/v1.4",
+        "v14/b3i",
+        "release-1.4_rc.1",
+        "0123456789abcdef0123456789abcdef01234567",
+    ):
+        result, out = _plan(tmp_path, ref=ref, dry_run="true")
+        assert result.returncode == 0, (ref, result.stdout + result.stderr)
+        assert out["ref"] == ref
+
+
 def test_plan_takes_the_commit_of_a_pull_request_as_a_dry_run(tmp_path):
     sha = "0123456789abcdef0123456789abcdef01234567"
     result, out = _plan(tmp_path, ref=sha, dry_run="true", event="pull_request")
