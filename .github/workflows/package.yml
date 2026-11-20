@@ -652,25 +652,41 @@ jobs:
         test "$(inventag --version)" = "inventag $VERSION"
         inventag selftest
         # The package must put a valid man page in the right place. That is
-        # read from the file itself: the minimal images of dry run 8 have no
-        # col (fedora, amazonlinux) or a man that refuses (ubuntu).
+        # read from the files themselves, not from the man tools of the image
+        # (dry runs 8 and 9: no col on fedora and amazonlinux; the minimized
+        # Ubuntu man prints the unminimize text).
         if [ "$FORMAT" = tar ]; then
           page=/opt/inventag/share/man/man1/inventag.1
         else
           page=/usr/share/man/man1/inventag.1.gz
         fi
-        test -s "$page"
-        case "$page" in
-          *.gz) roff=$(gzip -dc "$page") ;;
-          *) roff=$(cat "$page") ;;
-        esac
+        if [ "$FORMAT" = deb ]; then
+          # The .deb is the proof; the installed file is checked below if dpkg put it there.
+          deb=$(ls /artifacts/inventag_*_amd64.deb)
+          roff=$(dpkg-deb --fsys-tarfile "$deb" | tar -xOf - --wildcards '*usr/share/man/man1/inventag.1.gz' | gzip -dc)
+          if [ -e "$page" ]; then
+            test "$(gzip -dc "$page")" = "$roff"
+          elif grep -qs '^path-exclude=/usr/share/man' /etc/dpkg/dpkg.cfg /etc/dpkg/dpkg.cfg.d/*; then
+            echo "note: this image's dpkg excludes /usr/share/man; the page was read from the .deb"
+          else
+            echo "the page is not installed at $page"
+            exit 1
+          fi
+        else
+          test -s "$page"
+          case "$page" in
+            *.gz) roff=$(gzip -dc "$page") ;;
+            *) roff=$(cat "$page") ;;
+          esac
+        fi
         first=$(sed -n 1p <<<"$roff")
         [[ "$first" == ".TH INVENTAG 1 "* ]]
         name=$(sed -n '/^\.SH NAME$/{n;p;}' <<<"$roff")
         grep -q '^inventag ' <<<"$name"
-        # Rendering is extra: only where man and col both work.
-        if command -v man > /dev/null && command -v col > /dev/null && rendered=$(man "$page" 2> /dev/null); then
-          grep -q -i inventag <<<"$rendered"
+        # Rendering is extra: only where man and col both work, and only when
+        # man printed a page (the minimized Ubuntu man exits 0 with a notice).
+        if command -v man > /dev/null && command -v col > /dev/null && [ -e "$page" ] && rendered=$(man "$page" 2> /dev/null) && ! grep -q unminimize <<<"$rendered"; then
+          grep -q 'INVENTAG(1)' <<<"$rendered"
         else
           echo "note: man or col is missing or does not render here; the roff file was checked"
         fi

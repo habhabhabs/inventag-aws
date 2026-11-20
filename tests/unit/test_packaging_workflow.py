@@ -1738,7 +1738,6 @@ def test_the_linux_man_check_looks_at_the_path_of_each_format():
     run = _step("smoke-linux", "man page")["run"]
     assert "/usr/share/man/man1/inventag.1.gz" in run
     assert "/opt/inventag/share/man/man1/inventag.1" in run
-    assert "unminimize" not in run
 
 
 def _macos_man_text_run(tmp_path, page, renderer):
