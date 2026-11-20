@@ -17,9 +17,9 @@ import logging
 import re
 import time
 import threading
-from concurrent.futures import as_completed
+from concurrent.futures import CancelledError, as_completed
 from concurrent.futures import TimeoutError as FuturesTimeout
-from typing import Dict, List, Optional, Any
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from datetime import datetime, timedelta, timezone
 import boto3
 from botocore.exceptions import ClientError
@@ -413,6 +413,11 @@ def _add_source(resource: Dict[str, Any], source: str) -> None:
     resource["sources"] = "+".join(sorted(current))
 
 
+class DetailCallsStopped(Exception):
+    """A detail call that was not sent because the account's detail calls
+    were stopped (``stop_detail_calls``)."""
+
+
 class _RowSink:
     """Rows one listing task has found, owned by that task (plan 2.4, 2.5).
 
@@ -520,6 +525,10 @@ class ComprehensiveAWSDiscovery:
         # found before the limit are kept; unfinished calls are recorded.
         self.discovery_timeout = discovery_timeout
         self._stop = threading.Event()
+        # Detail calls (one read per resource): their own stop flag and the
+        # pool of the call that is running now (see ``stop_detail_calls``).
+        self._detail_stop = threading.Event()
+        self._detail_pool = None
         # One entry per listing call: what was tried and how it ended
         self.coverage = coverage if coverage is not None else CoverageLedger()
         # Set by the inventory step when it already warned about a failed Cost
@@ -2369,42 +2378,55 @@ class ComprehensiveAWSDiscovery:
         s3_client = self._client("s3")
         s3_failures: Dict[str, Dict] = {}
 
-        for resource in self.resources:
-            if (
-                resource.get("service") == "S3"
-                and resource.get("resource_type") == "Bucket"
-            ):
-                bucket_name = resource.get("resource_id")
-                try:
-                    # Use boto3 S3 API to get bucket location
-                    response = s3_client.get_bucket_location(Bucket=bucket_name)
-                    region = (
-                        response.get("LocationConstraint") or "us-east-1"
-                    )  # us-east-1 returns None
+        buckets = [
+            resource
+            for resource in self.resources
+            if resource.get("service") == "S3"
+            and resource.get("resource_type") == "Bucket"
+        ]
 
-                    # Update resource with correct region
-                    resource["region"] = region
-                    resource["raw_data"]["boto3_region"] = region
+        def locate(bucket_name):
+            def call():
+                # Use boto3 S3 API to get bucket location
+                response = s3_client.get_bucket_location(Bucket=bucket_name)
+                return response.get("LocationConstraint") or "us-east-1"
+                # (us-east-1 returns None)
 
-                    # Reconstruct ARN with correct region
-                    resource["arn"] = f"arn:aws:s3:::{bucket_name}"
+            return call
 
-                    self.logger.debug(
-                        f"Enhanced S3 bucket {bucket_name} with region {region}"
-                    )
+        answers = self._read_details(
+            [("s3", locate(resource.get("resource_id"))) for resource in buckets]
+        )
+        # The coordinating thread writes the rows, in resource order.
+        for resource, (ok, answer) in zip(buckets, answers):
+            bucket_name = resource.get("resource_id")
+            listed_in = resource.get("region") or GLOBAL_REGION_LABEL
+            try:
+                if not ok:
+                    raise answer
+                region = answer
 
-                except Exception as e:
-                    self.logger.debug(
-                        f"Failed to get S3 bucket region for {bucket_name}: {e}"
-                    )
-                    self._detail_failure(
-                        s3_failures.setdefault(
-                            resource.get("region") or GLOBAL_REGION_LABEL, {}
-                        ),
-                        "GetBucketLocation",
-                        e,
-                    )
-                    continue
+                # Update resource with correct region
+                resource["region"] = region
+                resource["raw_data"]["boto3_region"] = region
+
+                # Reconstruct ARN with correct region
+                resource["arn"] = f"arn:aws:s3:::{bucket_name}"
+
+                self.logger.debug(
+                    f"Enhanced S3 bucket {bucket_name} with region {region}"
+                )
+
+            except Exception as e:
+                self.logger.debug(
+                    f"Failed to get S3 bucket region for {bucket_name}: {e}"
+                )
+                self._detail_failure(
+                    s3_failures.setdefault(listed_in, {}),
+                    "GetBucketLocation",
+                    e,
+                )
+                continue
 
         for region, failures in s3_failures.items():
             self._record_detail_failures("s3", region, "Bucket", failures)
@@ -2420,6 +2442,138 @@ class ComprehensiveAWSDiscovery:
 
         # EKS cluster subnets (one DescribeCluster per cluster)
         self._enhance_eks_clusters()
+
+    # Detail calls (one read per resource): a pool of DETAIL_WORKERS daemon
+    # threads per account, at most DETAIL_PER_GROUP calls at once for one
+    # service and region (plan 2.1).
+    DETAIL_WORKERS = 8
+    DETAIL_PER_GROUP = 4
+
+    def stop_detail_calls(self) -> None:
+        """Stop the detail calls of this account: calls not started do not
+        start (their rows keep the fields they have and a detail record says
+        so); calls already sent end by themselves. Called when the account is
+        abandoned or the run is stopped."""
+        self._detail_stop.set()
+        pool = self._detail_pool
+        if pool is not None:
+            pool.shutdown(wait=False, cancel_futures=True)
+
+    def _read_details(
+        self, jobs: List[Tuple[str, Callable[[], Any]]]
+    ) -> List[Tuple[bool, Any]]:
+        """Run detail calls in the detail pool; one answer per job, by index.
+
+        ``jobs`` is a list of (group, call). A call reads AWS and returns what
+        it read; it never touches a row (the caller writes the rows, on its
+        own thread, in the order of ``jobs``). The result at index ``i`` is
+        ``(True, answer)`` or ``(False, exception)``. A group is a service and
+        region; at most ``DETAIL_PER_GROUP`` of its calls are in flight.
+        """
+        results: List[Tuple[bool, Any]] = [(False, DetailCallsStopped())] * len(jobs)
+        if not jobs or self._detail_stop.is_set():
+            return results
+        gates = {
+            group: threading.BoundedSemaphore(self.DETAIL_PER_GROUP)
+            for group, _ in jobs
+        }
+
+        def run(group: str, call: Callable[[], Any]) -> Any:
+            with gates[group]:
+                if self._detail_stop.is_set():
+                    raise DetailCallsStopped()
+                return call()
+
+        # Submit the groups in turn, so the workers are not all held by one
+        # group's waiting calls while another group could run.
+        queues: Dict[str, List[int]] = {}
+        for index, (group, _) in enumerate(jobs):
+            queues.setdefault(group, []).append(index)
+        order: List[int] = []
+        while any(queues.values()):
+            for group in queues:
+                if queues[group]:
+                    order.append(queues[group].pop(0))
+
+        pool = self._make_pool(self.DETAIL_WORKERS)
+        self._detail_pool = pool
+        finished = False
+        try:
+            futures = {
+                index: pool.submit(run, jobs[index][0], jobs[index][1])
+                for index in order
+            }
+            for index in range(len(jobs)):
+                future = futures[index]
+                try:
+                    results[index] = (True, future.result())
+                except CancelledError:
+                    results[index] = (False, DetailCallsStopped())
+                except Exception as error:
+                    results[index] = (False, error)
+            finished = True
+        finally:
+            self._detail_pool = None
+            pool.shutdown(wait=finished, cancel_futures=True)
+        return results
+
+    def _enhance_per_region(
+        self,
+        grouped: Dict[str, List[Dict]],
+        *,
+        service: str,
+        resource_type: str,
+        make_client: Callable[[str], Any],
+        make_call: Callable[[Any, Dict], Callable[[], Any]],
+        apply: Callable[[Dict, Any, str], None],
+        operation: str,
+        client_text: str,
+        failure_text: str,
+    ) -> None:
+        """Read one detail answer per resource, in the region it was listed in.
+
+        Clients are made here, one per region, in region order. The calls run
+        in the detail pool (``_read_details``). Answers are applied and
+        failures counted here, in resource order, so rows and ledger records
+        do not depend on which call ended first. A region whose client cannot
+        be made counts one failure per resource, as before.
+        """
+        plan = []
+        for region, resources in grouped.items():
+            try:
+                plan.append((region, resources, make_client(region), None))
+            except Exception as e:
+                self.logger.debug(
+                    f"Failed to create {client_text} client for {region}: {e}"
+                )
+                plan.append((region, resources, None, e))
+
+        jobs = [
+            (f"{service}:{region}", make_call(client, resource))
+            for region, resources, client, error in plan
+            if error is None
+            for resource in resources
+        ]
+        answers = iter(self._read_details(jobs))
+
+        for region, resources, client, error in plan:
+            failures: Dict = {}
+            if error is not None:
+                for _ in resources:
+                    self._detail_failure(failures, "", error)
+            else:
+                for resource in resources:
+                    ok, answer = next(answers)
+                    try:
+                        if not ok:
+                            raise answer
+                        apply(resource, answer, region)
+                    except Exception as e:
+                        self.logger.debug(
+                            failure_text.format(id=resource.get("resource_id"), error=e)
+                        )
+                        self._detail_failure(failures, operation, e)
+            self._record_detail_failures(service, region, resource_type, failures)
 
     def _detail_failure(self, failures: Dict, operation: str, error: Exception):
         """Count one failed detail call. An answer of "nothing configured" (or
@@ -2483,158 +2637,132 @@ class ComprehensiveAWSDiscovery:
         function in every region gave a function the region (and settings) of
         a same-named function in another region.
         """
-        grouped = self._resources_by_region("LAMBDA", lambda t: t == "Function")
-        for region, lambda_functions in grouped.items():
-            failures: Dict = {}
-            try:
-                lambda_client = self._client("lambda", region)
 
-                for resource in lambda_functions:
-                    function_name = resource.get("resource_id")
-                    try:
-                        # Get detailed function configuration. GetFunction would
-                        # also return a presigned URL to download the code,
-                        # which an inventory never needs.
-                        config = lambda_client.get_function_configuration(
-                            FunctionName=function_name
-                        )
-                        config.pop("ResponseMetadata", None)
-                        config = mask_secret_values(config)
+        def make_call(client, resource):
+            function_name = resource.get("resource_id")
 
-                        resource["raw_data"]["boto3_config"] = config
-                        resource["raw_data"]["runtime"] = config.get("Runtime")
-                        resource["raw_data"]["memory_size"] = config.get("MemorySize")
-                        resource["raw_data"]["timeout"] = config.get("Timeout")
+            def call():
+                # Get detailed function configuration. GetFunction would
+                # also return a presigned URL to download the code,
+                # which an inventory never needs.
+                config = client.get_function_configuration(FunctionName=function_name)
+                config.pop("ResponseMetadata", None)
+                config = mask_secret_values(config)
+                return {
+                    "boto3_config": config,
+                    "runtime": config.get("Runtime"),
+                    "memory_size": config.get("MemorySize"),
+                    "timeout": config.get("Timeout"),
+                }
 
-                        self.logger.debug(
-                            f"Enhanced Lambda function {function_name} in {region}"
-                        )
+            return call
 
-                    except Exception as e:
-                        self.logger.debug(
-                            f"Failed to enhance Lambda function {function_name}: {e}"
-                        )
-                        self._detail_failure(failures, "GetFunctionConfiguration", e)
-                        continue
+        def apply(resource, answer, region):
+            resource["raw_data"].update(answer)
+            self.logger.debug(
+                f"Enhanced Lambda function {resource.get('resource_id')} in {region}"
+            )
 
-                self._record_detail_failures("lambda", region, "Function", failures)
-
-            except Exception as e:
-                self.logger.debug(f"Failed to create Lambda client for {region}: {e}")
-                for _ in lambda_functions:
-                    self._detail_failure(failures, "", e)
-                self._record_detail_failures("lambda", region, "Function", failures)
-                continue
+        self._enhance_per_region(
+            self._resources_by_region("LAMBDA", lambda t: t == "Function"),
+            service="lambda",
+            resource_type="Function",
+            make_client=lambda region: self._client("lambda", region),
+            make_call=make_call,
+            apply=apply,
+            operation="GetFunctionConfiguration",
+            client_text="Lambda",
+            failure_text="Failed to enhance Lambda function {id}: {error}",
+        )
 
     def _enhance_rds_resources(self):
         """Enhance RDS instances with detailed metadata, read in their own region."""
-        grouped = self._resources_by_region("RDS", lambda t: t == "DBInstance")
-        for region, rds_instances in grouped.items():
-            failures: Dict = {}
-            try:
-                rds_client = self._client("rds", region)
 
-                for resource in rds_instances:
-                    instance_id = resource.get("resource_id")
-                    try:
-                        # Get detailed instance information
-                        response = rds_client.describe_db_instances(
-                            DBInstanceIdentifier=instance_id
-                        )
-                        instances = response.get("DBInstances", [])
+        def make_call(client, resource):
+            instance_id = resource.get("resource_id")
 
-                        if instances:
-                            instance = instances[0]
-                            resource["raw_data"]["boto3_instance"] = mask_secret_values(
-                                instance
-                            )
-                            resource["raw_data"]["engine"] = instance.get("Engine")
-                            resource["raw_data"]["engine_version"] = instance.get(
-                                "EngineVersion"
-                            )
-                            resource["raw_data"]["instance_class"] = instance.get(
-                                "DBInstanceClass"
-                            )
-                            resource["raw_data"]["availability_zone"] = instance.get(
-                                "AvailabilityZone"
-                            )
+            def call():
+                # Get detailed instance information
+                response = client.describe_db_instances(
+                    DBInstanceIdentifier=instance_id
+                )
+                instances = response.get("DBInstances", [])
+                if not instances:
+                    return None
+                instance = instances[0]
+                return {
+                    "boto3_instance": mask_secret_values(instance),
+                    "engine": instance.get("Engine"),
+                    "engine_version": instance.get("EngineVersion"),
+                    "instance_class": instance.get("DBInstanceClass"),
+                    "availability_zone": instance.get("AvailabilityZone"),
+                }
 
-                            self.logger.debug(
-                                f"Enhanced RDS instance {instance_id} in {region}"
-                            )
+            return call
 
-                    except Exception as e:
-                        self.logger.debug(
-                            f"Failed to enhance RDS instance {instance_id}: {e}"
-                        )
-                        self._detail_failure(failures, "DescribeDBInstances", e)
-                        continue
+        def apply(resource, answer, region):
+            if answer:
+                resource["raw_data"].update(answer)
+                self.logger.debug(
+                    f"Enhanced RDS instance {resource.get('resource_id')} in {region}"
+                )
 
-                self._record_detail_failures("rds", region, "DBInstance", failures)
-
-            except Exception as e:
-                self.logger.debug(f"Failed to create RDS client for {region}: {e}")
-                for _ in rds_instances:
-                    self._detail_failure(failures, "", e)
-                self._record_detail_failures("rds", region, "DBInstance", failures)
-                continue
+        self._enhance_per_region(
+            self._resources_by_region("RDS", lambda t: t == "DBInstance"),
+            service="rds",
+            resource_type="DBInstance",
+            make_client=lambda region: self._client("rds", region),
+            make_call=make_call,
+            apply=apply,
+            operation="DescribeDBInstances",
+            client_text="RDS",
+            failure_text="Failed to enhance RDS instance {id}: {error}",
+        )
 
     def _enhance_cloudformation_stacks(self):
         """Enhance CloudFormation stacks with detailed metadata, read in their
         own region."""
-        grouped = self._resources_by_region("CLOUDFORMATION", lambda t: t == "Stack")
-        for region, cf_stacks in grouped.items():
-            failures: Dict = {}
-            try:
-                cf_client = self._client("cloudformation", region)
 
-                for resource in cf_stacks:
-                    stack_name = resource.get("resource_id")
-                    try:
-                        # Get detailed stack information
-                        response = cf_client.describe_stacks(StackName=stack_name)
-                        stacks = response.get("Stacks", [])
+        def make_call(client, resource):
+            stack_name = resource.get("resource_id")
 
-                        if stacks:
-                            stack = stacks[0]
-                            resource["raw_data"]["boto3_stack"] = mask_secret_values(
-                                stack
-                            )
-                            resource["raw_data"]["stack_status"] = stack.get(
-                                "StackStatus"
-                            )
-                            resource["raw_data"]["creation_time"] = stack.get(
-                                "CreationTime"
-                            )
-                            resource["raw_data"]["drift_status"] = stack.get(
-                                "DriftInformation", {}
-                            ).get("StackDriftStatus")
+            def call():
+                # Get detailed stack information
+                response = client.describe_stacks(StackName=stack_name)
+                stacks = response.get("Stacks", [])
+                if not stacks:
+                    return None
+                stack = stacks[0]
+                return {
+                    "boto3_stack": mask_secret_values(stack),
+                    "stack_status": stack.get("StackStatus"),
+                    "creation_time": stack.get("CreationTime"),
+                    "drift_status": stack.get("DriftInformation", {}).get(
+                        "StackDriftStatus"
+                    ),
+                }
 
-                            self.logger.debug(
-                                f"Enhanced CloudFormation stack {stack_name} in {region}"
-                            )
+            return call
 
-                    except Exception as e:
-                        self.logger.debug(
-                            f"Failed to enhance CloudFormation stack {stack_name}: {e}"
-                        )
-                        self._detail_failure(failures, "DescribeStacks", e)
-                        continue
-
-                self._record_detail_failures(
-                    "cloudformation", region, "Stack", failures
-                )
-
-            except Exception as e:
+        def apply(resource, answer, region):
+            if answer:
+                resource["raw_data"].update(answer)
                 self.logger.debug(
-                    f"Failed to create CloudFormation client for {region}: {e}"
+                    f"Enhanced CloudFormation stack {resource.get('resource_id')} "
+                    f"in {region}"
                 )
-                for _ in cf_stacks:
-                    self._detail_failure(failures, "", e)
-                self._record_detail_failures(
-                    "cloudformation", region, "Stack", failures
-                )
-                continue
+
+        self._enhance_per_region(
+            self._resources_by_region("CLOUDFORMATION", lambda t: t == "Stack"),
+            service="cloudformation",
+            resource_type="Stack",
+            make_client=lambda region: self._client("cloudformation", region),
+            make_call=make_call,
+            apply=apply,
+            operation="DescribeStacks",
+            client_text="CloudFormation",
+            failure_text="Failed to enhance CloudFormation stack {id}: {error}",
+        )
 
     def _enhance_eks_clusters(self):
         """Add ``resourcesVpcConfig`` (subnets, VPC) to EKS cluster rows (A-08a).
@@ -2643,32 +2771,34 @@ class ComprehensiveAWSDiscovery:
         read in the region the cluster was listed in. A failure keeps the row
         and is recorded as a detail record (``_record_detail_failures``).
         """
-        grouped = self._resources_by_region("EKS", lambda t: t == "Cluster")
-        for region, clusters in grouped.items():
-            failures: Dict = {}
-            try:
-                eks_client = self._client("eks", region)
 
-                for resource in clusters:
-                    name = resource.get("resource_id")
-                    try:
-                        answer = eks_client.describe_cluster(name=name)
-                        config = (answer.get("cluster") or {}).get("resourcesVpcConfig")
-                        if isinstance(config, dict):
-                            resource["raw_data"]["resourcesVpcConfig"] = (
-                                mask_secret_values(config)
-                            )
-                    except Exception as e:
-                        self.logger.debug(f"Failed to describe EKS cluster {name}: {e}")
-                        self._detail_failure(failures, "DescribeCluster", e)
+        def make_call(client, resource):
+            name = resource.get("resource_id")
 
-                self._record_detail_failures("eks", region, "Cluster", failures)
+            def call():
+                answer = client.describe_cluster(name=name)
+                config = (answer.get("cluster") or {}).get("resourcesVpcConfig")
+                if isinstance(config, dict):
+                    return mask_secret_values(config)
+                return None
 
-            except Exception as e:
-                self.logger.debug(f"Failed to create EKS client for {region}: {e}")
-                for _ in clusters:
-                    self._detail_failure(failures, "", e)
-                self._record_detail_failures("eks", region, "Cluster", failures)
+            return call
+
+        def apply(resource, answer, region):
+            if answer is not None:
+                resource["raw_data"]["resourcesVpcConfig"] = answer
+
+        self._enhance_per_region(
+            self._resources_by_region("EKS", lambda t: t == "Cluster"),
+            service="eks",
+            resource_type="Cluster",
+            make_client=lambda region: self._client("eks", region),
+            make_call=make_call,
+            apply=apply,
+            operation="DescribeCluster",
+            client_text="EKS",
+            failure_text="Failed to describe EKS cluster {id}: {error}",
+        )
 
     def _remove_duplicates_with_priority(self):
         """Remove duplicates prioritizing service API discoveries over fallback methods."""
