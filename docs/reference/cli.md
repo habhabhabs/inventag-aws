@@ -126,6 +126,7 @@ YAML or JSON file. See [Layout files for one report](../templates/layout-flags.m
 | Flag | Default | Status | What it does |
 |---|---|---|---|
 | `--max-concurrent-accounts N` | `4` | Works | Accounts scanned at the same time (at least 1). |
+| `--concurrency N` | `64` | Works | Most AWS requests in flight at once, for the whole run (1 to 256). 1 sends one request at a time. Out of range: exit code 2. |
 | `--account-processing-timeout SECONDS` | `1800` | Works | Time allowed per account, counted from when its scan starts (at least 60). An account that runs out of time counts as failed; the resources it found stay in the report. |
 | `--disable-parallel-processing` | off | Works | Scan one account at a time. |
 | `--resume` | off | Works | Reuse the saved results of accounts that finished in an earlier run of the same command that did not complete (same accounts, regions, services and filters), and scan only the others. With `--disable-state-management`: exit code 2. |

@@ -120,6 +120,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | 引數 | 預設值 | 狀態 | 功能 |
 |---|---|---|---|
 | `--max-concurrent-accounts N` | `4` | 可用 | 同時掃描的帳戶數（至少 1）。 |
+| `--concurrency N` | `64` | 可用 | 整個執行中同時進行的 AWS 請求的最大數量（1 到 256）。1 表示一次只傳送一個請求。超出範圍：結束代碼 2。 |
 | `--account-processing-timeout SECONDS` | `1800` | 可用 | 每個帳戶允許的時間，從該帳戶開始掃描時算起（至少 60）。超時的帳戶算作失敗；它找到的資源保留在報告中。 |
 | `--disable-parallel-processing` | 關 | 可用 | 一次只掃描一個帳戶。 |
 | `--resume` | 關 | 可用 | 複用同一條命令之前未完成的執行中已完成帳戶的儲存結果（相同的帳戶、區域、服務和篩選條件），只掃描其他帳戶。與 `--disable-state-management` 一起使用：結束代碼 2。 |

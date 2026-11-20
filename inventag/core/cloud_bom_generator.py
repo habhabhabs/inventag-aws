@@ -44,6 +44,7 @@ from ..discovery import AWSResourceInventory
 from ..discovery.coverage import DETAIL_SOURCE, EMPTY, FAILED_OUTCOMES, OK
 from ..discovery.regions import discover_regions
 from .daemon_pool import DaemonThreadPool
+from .limiter import DEFAULT_LIMIT
 from .log_context import account_log_context
 from ..compliance import ComprehensiveTagComplianceChecker
 from ..reporting import BOMConverter, BOMDataProcessor, BOMProcessingConfig
@@ -370,6 +371,8 @@ class MultiAccountConfig:
     cross_account_role_name: str = "InvenTagCrossAccountRole"
     parallel_account_processing: bool = True
     max_concurrent_accounts: int = 4
+    # Most AWS requests in flight at once for the whole run (--concurrency).
+    concurrency: int = DEFAULT_LIMIT
     account_processing_timeout: int = 1800  # 30 minutes per account
     consolidate_accounts: bool = True
     generate_per_account_reports: bool = False

@@ -133,6 +133,7 @@ le validateur accepte.
 | `spec.tag_policy` | nom de modèle ou chemin relatif | non défini | Politique d’étiquetage à vérifier, par nom ou par chemin relatif. |
 | `spec.fail_on_tag_violations` | true ou false | `false` | Se termine avec le code 3 après l’écriture des rapports si une ressource concernée enfreint la politique d’étiquetage. Nécessite `tag_policy`. |
 | `spec.max_concurrent_accounts` | nombre entier (min 1, max 64) | `4` | Comptes analysés en même temps (`--max-concurrent-accounts`). |
+| `spec.concurrency` | nombre entier (min 1, max 256) | `64` | Nombre maximal de requêtes AWS en cours en même temps, pour toute l'exécution (`--concurrency`). 1 envoie une requête à la fois. |
 | `spec.account_processing_timeout` | nombre entier (min 60) | `1800` | Secondes allouées par compte (`--account-processing-timeout`). |
 | `spec.parallel_processing` | true ou false | `true` | Analyse les comptes en parallèle. `false` équivaut à `--disable-parallel-processing`. |
 | `spec.accounts[].account_id` | texte | obligatoire | ID de compte AWS à 12 chiffres, entre guillemets pour que YAML conserve les zéros initiaux. |

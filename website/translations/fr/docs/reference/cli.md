@@ -127,6 +127,7 @@ un fichier YAML ou JSON. Voir [Fichiers de mise en page pour un rapport](../temp
 | Option | Par défaut | État | Ce qu’elle fait |
 |---|---|---|---|
 | `--max-concurrent-accounts N` | `4` | Fonctionne | Nombre de comptes analysés en même temps (au moins 1). |
+| `--concurrency N` | `64` | Fonctionne | Nombre maximal de requêtes AWS en cours en même temps, pour toute l'exécution (de 1 à 256). 1 envoie une requête à la fois. Hors limites : code de sortie 2. |
 | `--account-processing-timeout SECONDS` | `1800` | Fonctionne | Durée accordée par compte, comptée à partir du début de son analyse (au moins 60). Un compte qui dépasse son temps compte comme en échec ; les ressources trouvées restent dans le rapport. |
 | `--disable-parallel-processing` | désactivé | Fonctionne | Analyse un compte à la fois. |
 | `--resume` | désactivé | Fonctionne | Réutilise les résultats enregistrés des comptes terminés lors d’une exécution précédente de la même commande qui ne s’est pas achevée (mêmes comptes, régions, services et filtres), et n’analyse que les autres. Avec `--disable-state-management` : code de sortie 2. |

@@ -124,6 +124,7 @@ spec:                      # the settings for this kind
 | `spec.tag_policy` | 範本名稱或相對路徑 | 未設定 | 要檢查的標籤策略，按名稱或相對路徑指定。 |
 | `spec.fail_on_tag_violations` | true 或 false | `false` | 如果任何範圍內的資源違反標籤策略，則在寫出報告後以結束代碼 3 結束。需要 `tag_policy`。 |
 | `spec.max_concurrent_accounts` | 整數（最小 1，最大 64） | `4` | 同時掃描的帳戶數（`--max-concurrent-accounts`）。 |
+| `spec.concurrency` | 整數（最小 1，最大 256） | `64` | 整個執行中同時進行的 AWS 請求的最大數量（`--concurrency`）。1 表示一次只傳送一個請求。 |
 | `spec.account_processing_timeout` | 整數（最小 60） | `1800` | 每個帳戶允許的秒數（`--account-processing-timeout`）。 |
 | `spec.parallel_processing` | true 或 false | `true` | 平行掃描帳戶。`false` 等同於 `--disable-parallel-processing`。 |
 | `spec.accounts[].account_id` | 文字 | 必填 | 12 位 AWS 帳戶 ID，放在引號中，以便 YAML 保留前導零。 |
