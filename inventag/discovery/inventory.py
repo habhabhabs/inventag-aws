@@ -7,6 +7,7 @@ Extracted from scripts/aws_resource_inventory.py and enhanced for the unified in
 Now includes AI-capable intelligent discovery for sustainable service-agnostic resource detection.
 """
 
+import hashlib
 import json
 import yaml
 import boto3
@@ -72,6 +73,39 @@ class ProgressSpinner:
     def update_message(self, new_message):
         """Update the spinner message."""
         self.message = new_message
+
+
+class _RowSortKey:
+    """Sort key of one inventory row: the five fields, then a digest of the
+    row's canonical JSON. The digest is computed only when two rows tie on the
+    five fields, so the common case costs nothing."""
+
+    __slots__ = ("fields", "row", "_digest")
+
+    def __init__(self, resource: Dict[str, Any]):
+        self.row = resource
+        self.fields = (
+            resource.get("arn", ""),
+            resource.get("service", ""),
+            resource.get("type", ""),
+            resource.get("id", ""),
+            resource.get("region", ""),
+        )
+        self._digest = None
+
+    @property
+    def digest(self) -> str:
+        if self._digest is None:
+            canonical = json.dumps(
+                self.row, sort_keys=True, default=str, separators=(",", ":")
+            )
+            self._digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        return self._digest
+
+    def __lt__(self, other: "_RowSortKey") -> bool:
+        if self.fields != other.fields:
+            return self.fields < other.fields
+        return self.digest < other.digest
 
 
 class AWSResourceInventory:
@@ -770,17 +804,11 @@ class AWSResourceInventory:
 
         self.logger.info("Ensuring consistent results for state management...")
 
-        # Sort resources by ARN, then by service, type, and ID for consistency
-        def sort_key(resource):
-            return (
-                resource.get("arn", ""),
-                resource.get("service", ""),
-                resource.get("type", ""),
-                resource.get("id", ""),
-                resource.get("region", ""),
-            )
-
-        self.resources.sort(key=sort_key)
+        # Sort resources by ARN, then by service, type, ID and region; rows
+        # that are equal on all five (for example rows with no ARN) end in
+        # the order of a digest of the row, so the order never depends on
+        # the order the rows were found in (plan 2.4, rule 3).
+        self.resources.sort(key=_RowSortKey)
 
         # Normalize resource data for consistency
         for resource in self.resources:
