@@ -161,7 +161,8 @@ jobs:
           tests/unit/test_s3_upload_*.py \
           tests/unit/test_legacy_checker_s3_upload.py \
           tests/unit/test_checker_upload_sse.py \
-          tests/unit/test_skipped_upload_is_told.py
+          tests/unit/test_skipped_upload_is_told.py \
+          tests/unit/concurrency
 
   basic-security:
     name: Basic Security Checks
