@@ -316,3 +316,43 @@ def test_two_accounts_on_one_session_object_keep_their_own_handlers():
         "dynamodb", config=Config(retries={"total_max_attempts": 1})
     ).list_tables()
     assert seen == [1]
+
+
+IAM_OK = (
+    200,
+    b"<ListUsersResponse><ListUsersResult><Users/>"
+    b"<IsTruncated>false</IsTruncated></ListUsersResult></ListUsersResponse>",
+)
+
+
+@pytest.mark.parametrize(
+    "service, region_name, call, answer, key_region",
+    [
+        # A regional client: the key's region is the client's region.
+        ("dynamodb", "us-west-2", "list_tables", OK, "us-west-2"),
+        # A global client: the key's region is the signing region.
+        ("iam", "eu-west-1", "list_users", IAM_OK, "us-east-1"),
+    ],
+)
+def test_the_keys_region_for_a_regional_and_a_global_client(
+    service, region_name, call, answer, key_region
+):
+    session = _session()
+    limiter = InFlightLimiter(8)
+    limiter.attach(session, ACCOUNT)
+    seen = []
+
+    def respond(request, **kwargs):
+        seen.append(dict(limiter._per_key))
+        return _response(request, *answer)
+
+    session.events.register("before-send", respond)
+    client = session.client(
+        service,
+        region_name=region_name,
+        config=Config(retries={"total_max_attempts": 1}),
+    )
+    getattr(client, call)()
+    held = {key: count for key, count in seen[0].items() if count}
+    assert held == {(ACCOUNT, service, key_region): 1}
+    assert limiter.in_flight() == 0
