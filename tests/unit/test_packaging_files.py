@@ -610,3 +610,40 @@ def test_a_module_without_the_libiconv_symbol_gives_no_version(
     assert NOT_RECORDED_LINE + "\n" in text
     assert "libiconv-1.1" not in text
     assert "https://www.gnu.org/software/libiconv/" in text
+
+
+READ_FROM = "version read from the module's own symbol _libiconv_version"
+
+
+def test_the_libiconv_lines_say_how_the_version_was_read(tpl, monkeypatch):
+    comps = _collect_iconv(tpl, monkeypatch, {ETREE: "1.18", OBJECTIFY: "1.18"})
+    text = tpl.render(comps)
+    head = f"- {tpl.LXML_ICONV} 1.18: LGPL-2.1\n    {READ_FROM}\n"
+    assert head in text
+    assert text.count(READ_FROM) == 1  # only the libiconv component says it
+    assert tpl.LIBICONV_DOWNLOAD.format(version="1.18") in text
+    rows = json.loads(tpl.components_json(comps))
+    iconv = [r for r in rows if r["name"] == tpl.LXML_ICONV]
+    assert iconv == [
+        {
+            "files": [ETREE, OBJECTIFY],
+            "licence": "LGPL-2.1",
+            "name": tpl.LXML_ICONV,
+            "section": "c-library",
+            "version": "1.18",
+            "version_from": READ_FROM,
+        }
+    ]
+    assert all("version_from" not in r for r in rows if r["name"] != tpl.LXML_ICONV)
+
+
+def test_the_container_notice_says_how_the_version_was_read(tpl, tmp_path, monkeypatch):
+    lxml = _FakeLxml(tmp_path)
+    monkeypatch.setattr(tpl, "_installed", lambda name: lxml)
+    monkeypatch.setattr(tpl, "_source_urls", lambda metadata: [])
+    monkeypatch.setattr(tpl, "_iconv_version", lambda path: "1.18")
+    text = tpl.libiconv_notice()
+    assert f"- {tpl.LXML_ICONV} 1.18: LGPL-2.1\n    {READ_FROM}\n" in text
+    monkeypatch.setattr(tpl, "_iconv_version", lambda path: "")
+    text = tpl.libiconv_notice()
+    assert f"(version not recorded): LGPL-2.1\n{NOT_RECORDED_LINE}\n" in text
