@@ -119,6 +119,11 @@ def _at(entry, region):
     return dict(entry, region=region)
 
 
+def _without_permissions(notes):
+    """The notes of this test's subject: the Permissions lines (W2) have their own tests."""
+    return [n for n in notes if not n.startswith("Permissions:")]
+
+
 def test_listings_are_grouped_by_service_and_region_with_their_reasons(tmp_path):
     generator = _generator(
         tmp_path,
@@ -132,7 +137,7 @@ def test_listings_are_grouped_by_service_and_region_with_their_reasons(tmp_path)
             ]
         },
     )
-    notes = generator._run_notes()
+    notes = _without_permissions(generator._run_notes())
     assert notes == [
         "Not read in account 111111111111, so the report is partial there: "
         "dynamodb in us-east-1 (throttled); "
@@ -144,7 +149,9 @@ def test_a_long_list_is_capped(tmp_path):
     entries = [_entry("ok", count=1, service="s3")] + [
         _entry("denied", "AccessDenied", service=f"svc{i:02d}") for i in range(14)
     ]
-    notes = _generator(tmp_path, {"111111111111": entries})._run_notes()
+    notes = _without_permissions(
+        _generator(tmp_path, {"111111111111": entries})._run_notes()
+    )
     assert len(notes) == 1
     assert notes[0].count(" (denied)") == 10
     assert notes[0].endswith(", and 4 more.")
@@ -177,6 +184,6 @@ def test_accounts_with_their_own_note_are_not_listed_again(tmp_path):
             ],
         },
     )
-    notes = generator._run_notes()
+    notes = _without_permissions(generator._run_notes())
     assert len(notes) == 2
     assert not any(n.startswith("Not read") for n in notes)
