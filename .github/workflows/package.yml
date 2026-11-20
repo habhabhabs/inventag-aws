@@ -738,3 +738,210 @@ jobs:
           echo "left: inventag is still on the PATH"
           exit 1
         fi
+
+  # Checksums, SBOMs and build attestations of every file of the release. The
+  # only job with id-token and attestations: write. No key of ours: the
+  # attestation is signed keyless with this workflow's identity; users check
+  # it with `gh attestation verify`.
+  provenance:
+    name: Checksums, SBOMs and attestations
+    needs:
+    - plan
+    - build-linux-x86_64
+    - build-linux-arm64
+    - build-macos-arm64
+    - build-macos-x86_64
+    - smoke-linux
+    - smoke-macos-arm64
+    - smoke-macos-x86_64
+    - smoke-pipx
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+    - name: Download the files of the builds
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        pattern: build-*
+        merge-multiple: true
+        path: ${{ runner.temp }}/release
+
+    # Architect review F2: the notices file of a release names where the
+    # source of GNU libiconv is. An address is a claim that the source is
+    # there, so this job fetches both (the project page and the versioned
+    # tarball) and fails the packaging job on any error. The two addresses
+    # come from the notices files themselves, one per system.
+    - name: The libiconv source addresses of the notices files answer
+      shell: bash
+      run: |
+        set -euo pipefail
+        release="$RUNNER_TEMP/release"
+        check="$RUNNER_TEMP/libiconv-check"
+        mkdir -p "$check"
+        : > "$check/urls.txt"
+        shopt -s nullglob
+        files=("$release"/*.THIRD-PARTY-LICENSES.txt)
+        if [ "${#files[@]}" -eq 0 ]; then
+          echo "::error::No notices file (THIRD-PARTY-LICENSES.txt) was built."
+          exit 1
+        fi
+        for file in "${files[@]}"; do
+          name=$(basename "$file")
+          if ! grep -Eq '^ *source: https://www\.gnu\.org/software/libiconv/$' "$file"; then
+            echo "::error::$name does not name https://www.gnu.org/software/libiconv/."
+            exit 1
+          fi
+          if ! tarball=$(grep -Eo 'https://ftp\.gnu\.org/pub/gnu/libiconv/libiconv-[0-9]+(\.[0-9]+)*\.tar\.gz' "$file" | sort -u); then
+            echo "::error::$name names no versioned libiconv tarball."
+            exit 1
+          fi
+          {
+            echo "https://www.gnu.org/software/libiconv/"
+            echo "$tarball"
+          } >> "$check/urls.txt"
+        done
+        sort -u "$check/urls.txt" > "$check/unique.txt"
+        n=0
+        while IFS= read -r url; do
+          n=$((n + 1))
+          target="$check/download-$n"
+          echo "Requesting $url"
+          # --retry covers a dropped connection only; an HTTP error fails.
+          curl --fail --silent --show-error --location --max-time 120 --retry 3 -o "$target" "$url"
+          case "$url" in
+            *.tar.gz)
+              base=$(basename "$url" .tar.gz)
+              tar -tzf "$target" > "$check/list-$n.txt"
+              if ! awk -v b="$base/" 'index($0, b) == 1 { found = 1 } END { exit !found }' "$check/list-$n.txt"; then
+                echo "::error::$url is not the source tarball of $base."
+                exit 1
+              fi
+              echo "- $url: $(sha256sum "$target" | cut -d' ' -f1)" >> "${GITHUB_STEP_SUMMARY:-/dev/null}" ;;
+            *)
+              echo "- $url: answered" >> "${GITHUB_STEP_SUMMARY:-/dev/null}" ;;
+          esac
+        done < "$check/unique.txt"
+        echo "$n libiconv source address(es) fetched."
+
+    - name: One CycloneDX SBOM per archive, .deb and .rpm
+      run: |
+        python3 -I - "$RUNNER_TEMP/release" "$VERSION" <<'PY'
+        import json
+        import re
+        import sys
+        from pathlib import Path
+
+        release, version = Path(sys.argv[1]), sys.argv[2]
+        CPU = re.compile(r"(x86_64|amd64|aarch64|arm64)")
+        CPU_NAME = {"x86_64": "x86_64", "amd64": "x86_64", "aarch64": "arm64", "arm64": "arm64"}
+        SPDX = re.compile(r"^[A-Za-z0-9.+-]+( (AND|OR|WITH) [A-Za-z0-9.+-]+)*$")
+
+
+        def components_file(artefact):
+            if artefact.name.endswith(".tar.gz"):
+                return release / (artefact.name[: -len(".tar.gz")] + ".components.json")
+            cpu = CPU_NAME[CPU.search(artefact.name).group(1)]
+            return release / f"inventag-{version}-linux-{cpu}.components.json"
+
+
+        def component(row):
+            out = {"type": "library", "name": row["name"]}
+            if row.get("version"):
+                out["version"] = row["version"]
+            licence = row["licence"]
+            out["licenses"] = [{"expression": licence} if SPDX.match(licence) else {"license": {"name": licence}}]
+            if row["section"] == "package":
+                name = re.sub(r"[-_.]+", "-", row["name"]).lower()
+                out["purl"] = f"pkg:pypi/{name}@{row['version']}"
+            if row.get("files"):
+                out["properties"] = [{"name": "inventag:files", "value": ", ".join(sorted(row["files"]))}]
+            return out
+
+
+        artefacts = sorted(p for p in release.iterdir() if p.name.endswith((".tar.gz", ".deb", ".rpm")))
+        if not artefacts:
+            sys.exit("no archive, .deb or .rpm to describe")
+        for artefact in artefacts:
+            rows = json.loads(components_file(artefact).read_text(encoding="utf-8"))
+            rows.sort(key=lambda r: (r["name"].lower(), r["name"], r.get("version", "")))
+            bom = {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.5",
+                "version": 1,
+                "metadata": {
+                    "component": {"type": "application", "name": "inventag", "version": version},
+                    "properties": [{"name": "inventag:artefact", "value": artefact.name}],
+                },
+                "components": [component(r) for r in rows],
+            }
+            out = release / (artefact.name + ".cdx.json")
+            out.write_text(json.dumps(bom, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            print(f"wrote {out.name}: {len(rows)} components")
+        PY
+
+    - name: Write and check the checksums of every file
+      run: |
+        cd "$RUNNER_TEMP/release"
+        export LC_ALL=C
+        find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | sort | xargs sha256sum > "$RUNNER_TEMP/SHA256SUMS.new"
+        mv "$RUNNER_TEMP/SHA256SUMS.new" SHA256SUMS
+        sha256sum -c SHA256SUMS
+        {
+          echo "### Files of this release"
+          echo
+          echo '```'
+          cat SHA256SUMS
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    # Keyless build attestation (the workflow's identity). Not made in a dry
+    # run: it would sign files that no release carries.
+    - name: Create the build attestation of the files (keyless)
+      if: needs.plan.outputs.dry_run == 'false'
+      uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+      with:
+        subject-checksums: ${{ runner.temp }}/release/SHA256SUMS
+
+    - name: Keep the release files
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: release-files
+        path: ${{ runner.temp }}/release/*
+        if-no-files-found: error
+        retention-days: 7
+
+  # The only job that writes to the release. Skipped in a dry run.
+  publish:
+    name: Attach to the release
+    needs: [plan, provenance]
+    if: needs.plan.outputs.dry_run == 'false'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ needs.plan.outputs.tag }}
+    steps:
+    - name: Download the release files
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: release-files
+        path: ${{ runner.temp }}/release
+
+    - name: Upload to the GitHub release of the tag
+      run: |
+        gh release view "$TAG" > /dev/null
+        gh release upload "$TAG" "$RUNNER_TEMP"/release/* --clobber
+        gh release view "$TAG" --json assets --jq '.assets[].name' | sort > "$RUNNER_TEMP/have.txt"
+        find "$RUNNER_TEMP/release" -maxdepth 1 -type f -printf '%f\n' | sort > "$RUNNER_TEMP/want.txt"
+        missing=$(comm -13 "$RUNNER_TEMP/have.txt" "$RUNNER_TEMP/want.txt")
+        if [ -n "$missing" ]; then
+          echo "::error::Not on the release after the upload: $missing"
+          exit 1
+        fi
+        echo "$(wc -l < "$RUNNER_TEMP/want.txt") files are on the release $TAG."
