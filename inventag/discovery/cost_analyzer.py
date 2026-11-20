@@ -146,6 +146,9 @@ class CostAnalyzer:
         self._warned_apis: Set[str] = set()
         self._warned_pricing_reasons: Set[str] = set()
         self._warned_steps: Set[Tuple[str, str]] = set()
+        # (service, operation, error class) of each call AWS refused, for the
+        # run's permissions summary. Written under _warn_lock.
+        self._denials: Set[Tuple[str, str, str]] = set()
 
         # Historical cost data storage
         self._historical_costs: Dict[str, List[Tuple[datetime, Decimal]]] = defaultdict(
@@ -306,6 +309,22 @@ class CostAnalyzer:
         "OptInRequired",
     }
 
+    # The call behind each ``api`` label of ``_log_aws_failure``.
+    _API_CALLS = {
+        "pricing": ("pricing", "GetProducts"),
+        "cloudwatch": ("cloudwatch", "GetMetricStatistics"),
+        "cost-explorer": ("ce", "GetCostAndUsage"),
+    }
+
+    def permission_denials(self) -> List[Tuple[str, str, str]]:
+        """The calls AWS refused so far, sorted: (service, operation, error class).
+
+        Read by the generator for the Permissions block of the run notes; it
+        replaces reading the warnings.
+        """
+        with self._warn_lock:
+            return sorted(self._denials)
+
     def _log_aws_failure(self, api: str, message: str, error: Exception) -> None:
         """Log a denied permission once per API at WARNING, other errors at DEBUG.
 
@@ -317,6 +336,8 @@ class CostAnalyzer:
             code = response.get("Error", {}).get("Code", "")
         if code in self._DENIED:
             with self._warn_lock:
+                if api in self._API_CALLS:
+                    self._denials.add((*self._API_CALLS[api], code))
                 first = api not in self._warned_apis
                 self._warned_apis.add(api)
             if first:

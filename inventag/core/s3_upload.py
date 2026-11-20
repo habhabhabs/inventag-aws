@@ -124,7 +124,9 @@ def upload_files(
 ) -> Dict[str, Any]:
     """Upload ``files`` to ``s3://bucket/key_prefix/<timestamp>/<name>``.
 
-    Returns ``{"uploaded": [{"file", "key", "url"}], "errors": [{"file", "error"}]}``.
+    Returns ``{"uploaded": [{"file", "key", "url"}], "errors": [{"file", "error",
+    "error_code"}]}``. ``error_code`` is the AWS error code of a failed call
+    (``AccessDenied``), or "" when the failure did not come from AWS.
     """
     validate_bucket_name(bucket)
     if public_read:
@@ -168,7 +170,13 @@ def upload_files(
         except Exception as e:  # report every failure; caller decides exit code
             reason = f"{e}{_region_hint(e)}"
             logger.error(f"Failed to upload {file_path} to s3://{bucket}: {reason}")
-            result["errors"].append({"file": str(path), "error": reason})
+            response = getattr(e, "response", None)
+            code = ""
+            if isinstance(response, dict):
+                code = str(response.get("Error", {}).get("Code") or "")
+            result["errors"].append(
+                {"file": str(path), "error": reason, "error_code": code}
+            )
     if result["errors"]:
         _log_upload_summary(bucket, result["uploaded"], result["errors"])
     return result
