@@ -21,8 +21,10 @@ Rules: plan section 3.4 and the architect's decision 1 of 20 Nov 2026
   bzip2-1.0.6, 0BSD or public domain. GPL is accepted only for the exact files
   in ``NAMED_FILE_EXCEPTIONS``. Any other GPL, LGPL or AGPL item fails.
 - ``--list-unmapped`` only lists every bundled binary with no row, with its
-  source and owning packages; the check prints the same list first. A system
-  with no table is checked against an empty one.
+  source and owning packages, the system package's licence field and licence
+  files (rpm) and the libraries the file links (``otool -L``, macOS); the
+  check prints the same list first. A system with no table is checked against
+  an empty one.
 - The build Python is 3.12 (``BUILD_PYTHON``); any other version fails.
 - No system C library (``libc``, ``libm``, ``libpthread``, ``ld-``), readline
   or gdbm may be in the bundle.
@@ -540,6 +542,31 @@ def _binary_header(path: Path) -> bool:
         return f.read(4) in BINARY_HEADERS
 
 
+def _run(cmd: Sequence[str]) -> Optional[str]:
+    """A command's output, or None when it is missing or fails."""
+    try:
+        r = subprocess.run(list(cmd), capture_output=True, text=True, check=False)
+    except FileNotFoundError:
+        return None
+    return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
+
+
+def licence_file_lines(text: str) -> List[str]:
+    """The paths in ``rpm -q --licensefiles`` output, sorted."""
+    return sorted(line.strip() for line in text.splitlines() if line.startswith("/"))
+
+
+def otool_libraries(text: str) -> List[str]:
+    """The library names in ``otool -L`` output (every architecture), sorted."""
+    return sorted(
+        {
+            line.strip().split(" (compatibility version")[0]
+            for line in text.splitlines()
+            if line[:1] in ("\t", " ") and line.strip()
+        }
+    )
+
+
 class Build:
     """What the build environment and the bundle say. Kept apart for tests."""
 
@@ -639,6 +666,23 @@ class Build:
             if r.returncode == 0 and r.stdout.strip():
                 return r.stdout.strip()
         return ""
+
+    def package_licence(self, pkg: str) -> Optional[Tuple[str, List[str]]]:
+        """The licence field and licence files of a system package (rpm); for
+        dpkg, which has no licence field, the copyright file."""
+        tag = _run(["rpm", "-q", "--qf", "%{LICENSE}", pkg])
+        if tag is not None:
+            files = _run(["rpm", "-q", "--licensefiles", pkg]) or ""
+            return tag, licence_file_lines(files)
+        if _run(["dpkg-query", "-W", pkg]) is not None:
+            doc = Path("/usr/share/doc") / pkg / "copyright"
+            return "not recorded by dpkg", [str(doc)] if doc.is_file() else []
+        return None
+
+    def linked_libraries(self, rel: str) -> List[str]:
+        """The libraries a bundled Mach-O file loads (``otool -L``, macOS)."""
+        out = _run(["otool", "-L", str(self.file_path(rel))])
+        return otool_libraries(out) if out else []
 
     def package_doc(self, pkg: str) -> Optional[Tuple[str, str]]:
         for path in (
@@ -856,6 +900,8 @@ class Unmapped:
     source: str
     python_package: str
     system_package: str
+    licence: str = ""  # the system package's licence field and files
+    linked: Tuple[str, ...] = ()
 
 
 def unmapped_files(build: Build, rows: Sequence[Row]) -> List[Unmapped]:
@@ -868,12 +914,20 @@ def unmapped_files(build: Build, rows: Sequence[Row]) -> List[Unmapped]:
         source = build.source_of(rel)
         dist = build.distribution_of_bundled(rel)
         owner = build.owning_package(source) if source else None
+        lic = build.package_licence(owner[0]) if owner else None
         out.append(
             Unmapped(
                 rel,
                 source or "not in PyInstaller's tables",
                 f"{dist.metadata['Name']} {dist.version}" if dist else "none",
                 f"{owner[0]} {owner[1]}".rstrip() if owner else "none found",
+                (
+                    f"licence of {owner[0]}: {lic[0]} | licence files: "
+                    f"{', '.join(sorted(lic[1])) or 'none'}"
+                    if owner and lic
+                    else ""
+                ),
+                tuple(build.linked_libraries(rel)),
             )
         )
     return out
@@ -881,11 +935,15 @@ def unmapped_files(build: Build, rows: Sequence[Row]) -> List[Unmapped]:
 
 def unmapped_report(entries: Sequence[Unmapped], plat: str, python: str) -> str:
     out = [f"unmapped files: {len(entries)} (platform {plat}, Python {python})"]
-    out += [
-        f"UNMAPPED {e.file} | source: {e.source} | python package: "
-        f"{e.python_package} | system package: {e.system_package}"
-        for e in sorted(entries, key=lambda e: e.file)
-    ]
+    for e in sorted(entries, key=lambda e: e.file):
+        out.append(
+            f"UNMAPPED {e.file} | source: {e.source} | python package: "
+            f"{e.python_package} | system package: {e.system_package}"
+        )
+        if e.licence:
+            out.append(f"    {e.licence}")
+        if e.linked:
+            out.append(f"    linked: {', '.join(e.linked)}")
     return "\n".join(out) + "\n"
 
 
