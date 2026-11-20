@@ -6,9 +6,9 @@ The full, maintained version of this page is
 The short version:
 
 ```bash
-# 1. install (Python 3.11 or later)
-python3 -m venv .venv && source .venv/bin/activate
-pip install inventag-aws
+# 1. install (Python 3.11 or later; pipx puts the command on your PATH)
+pipx install inventag-aws
+inventag selftest
 
 # 2. check credentials (any boto3 credential source: profile, SSO, env vars)
 inventag --validate-credentials
@@ -21,6 +21,9 @@ inventag --create-excel --account-regions us-east-1,ap-southeast-1 --verbose
 inventag --accounts-file accounts.json --create-excel --create-word
 ```
 
+Other ways to install: a standalone archive, a `.deb` or an `.rpm` package (no
+Python needed), `pip` in a virtual environment, or Homebrew (the tap is not
+published yet). See [Install InvenTag](docs/getting-started/installation.md).
 To run from a clone of the repository instead, use `git clone
 https://github.com/habhabhabs/inventag-aws.git`, then `pip install -e .` inside it.
 
@@ -34,4 +37,5 @@ Before you rely on it:
 - `--compliance-standard` and `--disable-production-safety` are not implemented.
   The CLI stops with exit code `2` if you use one of them. See
   [Current status](docs/getting-started/status.md).
-- The `inventag` command works the same on Linux, macOS and Windows.
+- The packaged builds are for Linux and macOS (Apple silicon). Not verified
+  against Windows: any install method.
