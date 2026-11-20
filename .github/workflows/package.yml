@@ -85,7 +85,7 @@ env:
   # value below is written by hand after a dry run: the jobs fail, name the
   # digest of almalinux:9 at that moment, and the same value must be printed by
   # both CPUs before it is written in. Nothing here is a guess.
-  ALMALINUX_9_DIGEST: TO-BE-FILLED-BY-THE-DRY-RUN
+  ALMALINUX_9_DIGEST: 02df05719ef287ebd0df0a1eedb9172a00bd70703aed7b25660e426b8e0d6047
   # nfpm builds the .deb and .rpm. The sha256 of each Linux tarball is in the
   # job that uses it (from checksums.txt of the v2.49.0 release).
   NFPM_VERSION: '2.49.0'
