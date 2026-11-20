@@ -79,7 +79,8 @@ def test_the_version_and_three_checksums_are_filled_in(rendered):
 
 def test_each_checksum_sits_under_the_url_of_its_own_archive(rendered):
     pairs = re.findall(
-        r'url ".*?/inventag-#\{version\}-([a-z0-9_-]+)\.tar\.gz"\s+sha256 "([0-9a-f]{64})"',
+        r'url ".*?/inventag-#\{version\}-([a-z0-9_-]+)\.tar\.gz"'
+        r'\s+sha256 "([0-9a-f]{64})"',
         rendered,
     )
     assert dict(pairs) == {key: digest(name) for key, name in ARCHIVES.items()}

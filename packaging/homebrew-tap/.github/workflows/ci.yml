@@ -1,0 +1,66 @@
+# Checks of the tap: style, audit, install and test of the formula, on an Apple
+# Silicon Mac and on Linux x86_64. Nothing here writes to the repository and no
+# secret is used. Until Formula/inventag.rb exists (the first release writes
+# it), the jobs say so and stop with success.
+name: Tap checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  formula-macos:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+    - name: Check out the tap
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # checkout, pinned by commit as in the workflows of inventag-aws
+      with:
+        persist-credentials: false
+
+    - name: Style, audit, install and test
+      shell: bash
+      run: |
+        if [ ! -f Formula/inventag.rb ]; then
+          echo "No Formula/inventag.rb yet: the first release writes it."
+          exit 0
+        fi
+        brew tap habhabhabs/inventag "$GITHUB_WORKSPACE"
+        brew style habhabhabs/inventag
+        brew audit --strict habhabhabs/inventag/inventag
+        brew install habhabhabs/inventag/inventag
+        brew test habhabhabs/inventag/inventag
+        inventag --version
+        inventag selftest
+        man -w inventag
+        brew uninstall inventag
+
+  formula-linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+    - name: Check out the tap
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # checkout, pinned by commit as in the workflows of inventag-aws
+      with:
+        persist-credentials: false
+
+    - name: Style, audit, install and test
+      shell: bash
+      run: |
+        if [ ! -f Formula/inventag.rb ]; then
+          echo "No Formula/inventag.rb yet: the first release writes it."
+          exit 0
+        fi
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+        brew tap habhabhabs/inventag "$GITHUB_WORKSPACE"
+        brew style habhabhabs/inventag
+        brew audit --strict habhabhabs/inventag/inventag
+        brew install habhabhabs/inventag/inventag
+        brew test habhabhabs/inventag/inventag
+        inventag --version
+        inventag selftest
+        brew uninstall inventag
