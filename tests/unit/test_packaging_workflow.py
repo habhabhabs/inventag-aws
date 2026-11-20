@@ -1208,3 +1208,11 @@ def test_provenance_fails_when_an_expected_file_is_missing(tmp_path):
         result = _expected_files(work, "true", drop=(drop,))
         assert result.returncode != 0, drop
         assert named in result.stdout + result.stderr
+
+
+def test_the_workflow_checks_of_actions_run_this_test_file():
+    checks = yaml.safe_load(
+        (ROOT / ".github" / "workflows" / "actions-checks.yml").read_text("utf-8")
+    )
+    text = str(checks)
+    assert "tests/unit/test_packaging_workflow.py" in text
