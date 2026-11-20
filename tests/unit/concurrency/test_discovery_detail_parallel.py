@@ -149,6 +149,10 @@ def test_workers_do_not_write_the_resources():
             writers.add(threading.current_thread())
             super().__setitem__(key, value)
 
+        def update(self, *args, **kwargs):
+            writers.add(threading.current_thread())
+            super().update(*args, **kwargs)
+
     rows = _functions(6)
     for row in rows:
         row["raw_data"] = Spy()
