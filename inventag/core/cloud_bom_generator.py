@@ -2652,7 +2652,8 @@ class CloudBOMGenerator:
             )
 
             # Save current state
-            all_regions = list(
+            # Sorted: the order must not follow the hash seed (plan 2.4).
+            all_regions = sorted(
                 set(
                     region
                     for ctx in self.account_contexts.values()
