@@ -473,6 +473,50 @@ def test_the_macos_build_asks_for_the_python_patch_version_that_the_licence_chec
         assert python[0]["with"]["python-version"] == want
 
 
+def _libiconv_print_run(job, tmp_path, notices):
+    import subprocess
+
+    out = tmp_path / "work" / "out" / "dist" / "inventag"
+    out.mkdir(parents=True)
+    if notices is not None:
+        (out / "THIRD-PARTY-LICENSES.txt").write_text(notices, encoding="utf-8")
+    run = _step(job, "libiconv lines")["run"]
+    return subprocess.run(
+        ["bash", "-e", "-o", "pipefail", "-c", run],
+        env={"PATH": "/usr/bin:/bin", "RUNNER_TEMP": str(tmp_path)},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+
+def test_the_linux_builds_print_the_libiconv_lines_of_their_notices_file(tmp_path):
+    # B6 fix 11: the macOS job prints them; the Linux text was proven only
+    # indirectly, by the addresses that provenance fetches.
+    for job in LINUX_BUILDS:
+        names = [s.get("name", "") for s in _steps(job)]
+        printed = [n for n in names if "libiconv lines" in n]
+        assert len(printed) == 1, job
+        assert names.index("Hand the files back to the runner user") < names.index(
+            printed[0]
+        ) < names.index("Collect the files of this build")
+        work = tmp_path / job
+        work.mkdir()
+        result = _libiconv_print_run(job, work, GOOD_NOTICE + "- other: MIT\n")
+        assert result.returncode == 0, result.stderr
+        assert "GNU libiconv, linked into lxml's extension modules 1.18" in result.stdout
+        assert f"source: {GNU_TARBALL}" in result.stdout
+
+
+def test_a_linux_build_whose_notices_file_has_no_libiconv_component_fails(tmp_path):
+    for job in LINUX_BUILDS:
+        work = tmp_path / job
+        work.mkdir()
+        result = _libiconv_print_run(job, work, "- boto3 1.44: Apache-2.0\n")
+        assert result.returncode != 0, job
+        assert "libiconv" in result.stdout + result.stderr
+
+
 def test_every_build_uploads_its_files_and_fails_when_there_are_none():
     for name in (*LINUX_BUILDS, *MACOS_BUILDS):
         upload = [
