@@ -20,6 +20,10 @@ Rules: plan section 3.4 and the architect's decision 1 of 20 Nov 2026
 - C libraries ("C libraries carried in the bundle") may also be Zlib,
   bzip2-1.0.6, 0BSD or public domain. GPL is accepted only for the exact files
   in ``NAMED_FILE_EXCEPTIONS``. Any other GPL, LGPL or AGPL item fails.
+- ``--list-unmapped`` only lists every bundled binary with no row, with its
+  source and owning packages; the check prints the same list first. A system
+  with no table is checked against an empty one.
+- The build Python is 3.12 (``BUILD_PYTHON``); any other version fails.
 - No system C library (``libc``, ``libm``, ``libpthread``, ``ld-``), readline
   or gdbm may be in the bundle.
 - OpenSSL must be version 3 or later (Apache-2.0).
@@ -38,6 +42,7 @@ import fnmatch
 import hashlib
 import importlib.metadata as md
 import os
+import platform
 import re
 import subprocess
 import sys
@@ -296,9 +301,11 @@ LINUX_ROWS: Tuple[Row, ...] = (
     ),
 )
 
-# Only the Linux table exists: the macOS bundle has not been built or read
-# (no libgcc there; a macOS build fails on its first unmapped file until its
-# table is written from a real bundle).
+# Only the Linux table exists, and its text sources were read on a Debian-family
+# build host. The macOS bundle and the AlmaLinux 8 (rpm) build have not been
+# read here: their first build prints every unmapped binary (unmapped_report)
+# and fails; rows are written from that list and the libraries' own licence
+# files, never from memory (architect ruling 4 (a), work order B2c).
 TABLES: Dict[str, Tuple[Row, ...]] = {"linux": LINUX_ROWS}
 
 
@@ -807,6 +814,47 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
     return out, sorted(set(problems))
 
 
+@dataclass(frozen=True)
+class Unmapped:
+    """A bundled binary with no row, and what the build says about it."""
+
+    file: str
+    source: str
+    python_package: str
+    system_package: str
+
+
+def unmapped_files(build: Build, rows: Sequence[Row]) -> List[Unmapped]:
+    """Every bundled binary with no row (architect ruling 4 (a)): one run
+    gives the whole list a new table needs, never only the first file."""
+    out = []
+    for rel in build.binaries():
+        if match_row(rel, rows) is not None:
+            continue
+        source = build.source_of(rel)
+        dist = build.distribution_of_bundled(rel)
+        owner = build.owning_package(source) if source else None
+        out.append(
+            Unmapped(
+                rel,
+                source or "not in PyInstaller's tables",
+                f"{dist.metadata['Name']} {dist.version}" if dist else "none",
+                f"{owner[0]} {owner[1]}".rstrip() if owner else "none found",
+            )
+        )
+    return out
+
+
+def unmapped_report(entries: Sequence[Unmapped], plat: str, python: str) -> str:
+    out = [f"unmapped files: {len(entries)} (platform {plat}, Python {python})"]
+    out += [
+        f"UNMAPPED {e.file} | source: {e.source} | python package: "
+        f"{e.python_package} | system package: {e.system_package}"
+        for e in sorted(entries, key=lambda e: e.file)
+    ]
+    return "\n".join(out) + "\n"
+
+
 def add_libiconv_note(comp: Component) -> None:
     """The libiconv paragraph and source addresses (architect decision 2).
 
@@ -1037,7 +1085,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--bundle", type=Path, help="dist/inventag")
     parser.add_argument("--workpath", type=Path, help="build/inventag")
-    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--out", type=Path, help="THIRD-PARTY-LICENSES.txt")
+    parser.add_argument(
+        "--list-unmapped",
+        action="store_true",
+        help="only list every bundled binary with no row in the table, with its "
+        "source and owning packages; exit 1 when there is one (the licence check "
+        "prints the same list first)",
+    )
     parser.add_argument(
         "--lxml-notice",
         action="store_true",
@@ -1055,17 +1110,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--repo-root", type=Path, default=Path(__file__).resolve().parents[2]
     )
     ns = parser.parse_args(argv)
+    if ns.out is None and not ns.list_unmapped:
+        parser.error("--out is required")
     if ns.lxml_notice:
         ns.out.write_text(libiconv_notice(), encoding="utf-8")
         print(f"libiconv notice written to {ns.out}")
         return 0
     if ns.bundle is None or ns.workpath is None:
         parser.error("--bundle and --workpath are required")
-    rows = TABLES.get(ns.platform)
-    if rows is None:
-        print(f"LICENCE CHECK: no licence table for {ns.platform}", file=sys.stderr)
-        return 1
-    comps, problems = collect(Build(ns.bundle, ns.workpath, ns.repo_root), rows)
+    # A system without a table is checked against an empty one, so the list
+    # below names every binary of its first build.
+    rows = TABLES.get(ns.platform, ())
+    build = Build(ns.bundle, ns.workpath, ns.repo_root)
+    entries = unmapped_files(build, rows)
+    print(unmapped_report(entries, ns.platform, platform.python_version()), end="")
+    if ns.list_unmapped:
+        return 1 if entries else 0
+    comps, problems = collect(build, rows)
+    if ns.platform not in TABLES:
+        problems.insert(0, f"no licence table for {ns.platform}")
     ns.out.write_text(render(comps), encoding="utf-8")
     if ns.components_json:
         ns.components_json.write_text(components_json(comps), encoding="utf-8")
