@@ -3,8 +3,19 @@
 One :class:`InFlightLimiter` per run is attached to every boto3 session the
 run creates (:meth:`InFlightLimiter.attach`). It acts on botocore's events:
 
+* ``before-call.<service>.<operation>`` fires once per call, in the calling
+  thread, before the first ``before-send``. The limiter's handler keeps the
+  call's region there, per thread: the region of the call's request signer
+  (``request_signer.region_name``), which every supported botocore gives.
+  For a regional client it is the client's region; for a global service
+  (IAM, Route 53, CloudFront) it is the signing region (``us-east-1`` in the
+  ``aws`` partition), which is fine for a key. The request context's
+  ``client_region`` is not read: at botocore 1.35.0 the request that
+  ``before-send`` receives carries no context.
 * ``before-send.<service>.<operation>`` fires before each HTTP attempt. The
-  limiter's handler is registered first and takes a slot there.
+  limiter's handler is registered first and takes a slot there, for the
+  region kept in ``before-call``. A retry is a second ``before-send`` without
+  a second ``before-call``, so it keeps the call's region.
 * ``response-received.<service>.<operation>`` fires after each attempt, also
   when the attempt raised. The handler gives the slot back there.
 
@@ -262,6 +273,11 @@ class InFlightLimiter:
         """Register the limiter on a session. Affects clients created later."""
         events = session.events
         events.register_first(
+            "before-call",
+            self._on_before_call,
+            unique_id=self._hook_id(account_id, "call"),
+        )
+        events.register_first(
             "before-send",
             functools.partial(self._on_before_send, account_id, deadline),
             unique_id=self._hook_id(account_id, "send"),
@@ -274,10 +290,15 @@ class InFlightLimiter:
 
     def detach(self, session, account_id: str) -> None:
         events = session.events
+        events.unregister("before-call", unique_id=self._hook_id(account_id, "call"))
         events.unregister("before-send", unique_id=self._hook_id(account_id, "send"))
         events.unregister(
             "response-received", unique_id=self._hook_id(account_id, "response")
         )
+
+    def _on_before_call(self, request_signer=None, **kwargs):
+        # Once per call, in the calling thread, before its first before-send.
+        self._local.region = getattr(request_signer, "region_name", None)
 
     def _on_before_send(
         self, account_id, deadline, request=None, event_name="", **kwargs
@@ -287,8 +308,7 @@ class InFlightLimiter:
         self._give_back_held(throttled=False, answered=False)
         parts = (event_name or "").split(".")
         service = parts[1] if len(parts) > 1 else ""
-        context = getattr(request, "context", None) or {}
-        region = context.get("client_region")
+        region = getattr(self._local, "region", None)
         self._local.slot = self.acquire(account_id, service, region, deadline)
 
     def _on_response_received(
