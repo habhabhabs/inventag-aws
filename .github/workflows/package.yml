@@ -410,3 +410,331 @@ jobs:
         path: ${{ runner.temp }}/upload/*
         if-no-files-found: error
         retention-days: 7
+
+  # Fresh systems: install each format the way a user does, run the commands,
+  # scan a simulated AWS (a moto server started here, outside the executable),
+  # remove the package and check that nothing is left. The container shares the
+  # runner's network so that it reaches the moto server on 127.0.0.1.
+  smoke-linux:
+    name: Smoke (${{ matrix.system }})
+    needs: [plan, build-linux-x86_64]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - { system: ubuntu-22.04, image: 'ubuntu:22.04', format: deb, shells: 'bash zsh fish' }
+        - { system: ubuntu-24.04, image: 'ubuntu:24.04', format: deb, shells: 'bash zsh fish' }
+        - { system: debian-12, image: 'debian:12', format: deb, shells: 'bash zsh fish' }
+        - { system: debian-12-tar, image: 'debian:12', format: tar, shells: 'bash zsh fish' }
+        # Fedora is floating on purpose: "current Fedora" is what the plan tests.
+        - { system: fedora, image: 'fedora:latest', format: rpm, shells: 'bash zsh fish' }
+        - { system: rockylinux-9, image: 'rockylinux:9', format: rpm, shells: 'bash zsh' }
+        - { system: rockylinux-9-tar, image: 'rockylinux:9', format: tar, shells: 'bash zsh' }
+        # The build image's own release: the glibc 2.28 floor.
+        - { system: almalinux-8, image: 'almalinux:8', format: rpm, shells: 'bash zsh' }
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      FORMAT: ${{ matrix.format }}
+      SHELLS: ${{ matrix.shells }}
+      IMAGE: ${{ matrix.image }}
+    steps:
+    - name: Checkout the tag
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: refs/tags/${{ needs.plan.outputs.tag }}
+        persist-credentials: false
+
+    - name: Download the build
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: build-linux-x86_64
+        path: ${{ runner.temp }}/artifacts
+
+    - name: Set up Python 3.12 for the moto server
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: '3.12'
+
+    - name: Install moto (the version of requirements-dev.txt)
+      run: python -m pip install "moto[server]==5.2.5"
+
+    - name: Start a fresh system
+      run: |
+        mkdir -p "$RUNNER_TEMP/smoke-shared"
+        docker run -d --name smoke --network host \
+          -v "$RUNNER_TEMP/artifacts:/artifacts:ro" \
+          -v "$RUNNER_TEMP/smoke-shared:$RUNNER_TEMP/smoke-shared" \
+          "$IMAGE" sleep infinity
+
+    - name: Install the package
+      run: |
+        docker exec -i -e VERSION -e FORMAT -e SHELLS smoke bash -s <<'INSTALL'
+        set -euo pipefail
+        cd /artifacts
+        if command -v apt-get > /dev/null; then
+          # Ubuntu images exclude man pages from every package.
+          rm -f /etc/dpkg/dpkg.cfg.d/excludes
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          apt-get install -y -qq man-db $SHELLS > /dev/null
+        else
+          dnf install -y -q --setopt=tsflags= man-db $(printf '%s\n' $SHELLS | grep -v '^bash$')
+        fi
+        case "$FORMAT" in
+          deb)
+            dpkg -i inventag_*_amd64.deb
+            dpkg -L inventag | sort > /tmp/inventag-files.txt ;;
+          rpm)
+            dnf install -y -q --setopt=tsflags= ./inventag-*.x86_64.rpm
+            rpm -ql inventag | sort > /tmp/inventag-files.txt ;;
+          tar)
+            tar -xzf "inventag-${VERSION}-linux-x86_64.tar.gz" -C /opt
+            ln -s /opt/inventag/inventag /usr/local/bin/inventag
+            { echo /usr/local/bin/inventag; tar -tzf "inventag-${VERSION}-linux-x86_64.tar.gz" | sed 's|^|/opt/|'; } | sort > /tmp/inventag-files.txt ;;
+        esac
+        wc -l /tmp/inventag-files.txt
+        INSTALL
+
+    - name: Version, selftest and the man page
+      run: |
+        docker exec -i -e VERSION -e FORMAT smoke bash -s <<'RUN'
+        set -euo pipefail
+        test "$(inventag --version)" = "inventag $VERSION"
+        inventag selftest
+        if [ "$FORMAT" = tar ]; then
+          man -l /opt/inventag/share/man/man1/inventag.1 > /tmp/man.txt
+        else
+          man -w inventag
+          man inventag > /tmp/man.txt
+        fi
+        grep -q -i inventag /tmp/man.txt
+        RUN
+
+    - name: Completions load in the shells of this system
+      run: |
+        docker exec -i -e FORMAT -e SHELLS smoke bash -s <<'COMPLETIONS'
+        set -euo pipefail
+        case "$FORMAT" in
+          deb) B=/usr/share/bash-completion/completions/inventag; Z=/usr/share/zsh/vendor-completions/_inventag; F=/usr/share/fish/vendor_completions.d/inventag.fish ;;
+          rpm) B=/usr/share/bash-completion/completions/inventag; Z=/usr/share/zsh/site-functions/_inventag; F=/usr/share/fish/vendor_completions.d/inventag.fish ;;
+          tar) B=/opt/inventag/share/completions/inventag.bash; Z=/opt/inventag/share/completions/_inventag; F=/opt/inventag/share/completions/inventag.fish ;;
+        esac
+        for shell in $SHELLS; do
+          case "$shell" in
+            bash)
+              bash -n "$B"
+              bash -c 'source "$1" && complete -p inventag' _ "$B" ;;
+            zsh)
+              zsh -n "$Z"
+              zsh -c 'fpath=("$(dirname "$1")" $fpath); autoload -Uz compinit && compinit -u -d /tmp/zcompdump && autoload -Uz _inventag && whence -w _inventag' _ "$Z" ;;
+            fish)
+              fish -n "$F"
+              fish -c 'source $argv[1]; complete -c inventag' "$F" | grep -q inventag ;;
+          esac
+          echo "completion loads in $shell"
+        done
+        COMPLETIONS
+
+    - name: Scan a simulated AWS with the installed program
+      run: |
+        export TMPDIR="$RUNNER_TEMP/smoke-shared"
+        python scripts/packaging/smoke_scan.py --keep "$RUNNER_TEMP/smoke-keep" -- \
+          docker exec \
+            -e AWS_ENDPOINT_URL -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY \
+            -e AWS_DEFAULT_REGION -e AWS_CONFIG_FILE -e AWS_SHARED_CREDENTIALS_FILE \
+            -e HOME -e LANG smoke inventag
+
+    - name: Remove the package and check that nothing is left
+      run: |
+        docker exec -i -e FORMAT smoke bash -s <<'UNINSTALL'
+        set -euo pipefail
+        case "$FORMAT" in
+          deb) dpkg -r inventag ;;
+          rpm) dnf remove -y -q inventag ;;
+          tar) rm -rf /opt/inventag; rm -f /usr/local/bin/inventag ;;
+        esac
+        status=0
+        while IFS= read -r path; do
+          if [ -L "$path" ] || { [ -e "$path" ] && [ ! -d "$path" ]; }; then
+            echo "left: $path"; status=1
+          fi
+        done < /tmp/inventag-files.txt
+        if [ -e /opt/inventag ]; then
+          echo "left: /opt/inventag"; find /opt/inventag | head -20; status=1
+        fi
+        if command -v inventag; then
+          echo "left: inventag is still on the PATH"; status=1
+        fi
+        exit $status
+        UNINSTALL
+
+    - name: Keep the scan evidence
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: smoke-${{ matrix.system }}
+        path: ${{ runner.temp }}/smoke-keep
+        if-no-files-found: warn
+        retention-days: 7
+
+  smoke-macos-arm64:
+    name: Smoke (macOS arm64)
+    needs: [plan, build-macos-arm64]
+    runs-on: macos-15
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      CPU: arm64
+    steps:
+    - name: Checkout the tag
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: refs/tags/${{ needs.plan.outputs.tag }}
+        persist-credentials: false
+
+    - name: Download the build
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: build-macos-arm64
+        path: ${{ runner.temp }}/artifacts
+
+    - name: Set up Python 3.12 for the moto server
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: '3.12'
+
+    - name: Install moto (the version of requirements-dev.txt)
+      run: python -m pip install "moto[server]==5.2.5"
+
+    - name: Unpack, run, check the man page and the completions
+      run: |
+        mkdir -p "$RUNNER_TEMP/install"
+        tar -xzf "$RUNNER_TEMP/artifacts/inventag-${VERSION}-darwin-${CPU}.tar.gz" -C "$RUNNER_TEMP/install"
+        BIN="$RUNNER_TEMP/install/inventag"
+        test "$(env -i PATH=/usr/bin:/bin "$BIN/inventag" --version)" = "inventag $VERSION"
+        env -i PATH=/usr/bin:/bin HOME="$RUNNER_TEMP" "$BIN/inventag" selftest
+        man -l "$BIN/share/man/man1/inventag.1" > "$RUNNER_TEMP/man.txt"
+        grep -q -i inventag "$RUNNER_TEMP/man.txt"
+        bash -n "$BIN/share/completions/inventag.bash"
+        zsh -n "$BIN/share/completions/_inventag"
+
+    - name: Scan a simulated AWS with the unpacked program
+      run: |
+        python scripts/packaging/smoke_scan.py --keep "$RUNNER_TEMP/smoke-keep" -- \
+          "$RUNNER_TEMP/install/inventag/inventag"
+
+    - name: Remove the directory and check that nothing is left
+      run: |
+        rm -rf "$RUNNER_TEMP/install"
+        test ! -e "$RUNNER_TEMP/install"
+
+    - name: Keep the scan evidence
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: smoke-macos-arm64
+        path: ${{ runner.temp }}/smoke-keep
+        if-no-files-found: warn
+        retention-days: 7
+
+  smoke-macos-x86_64:
+    name: Smoke (macOS x86_64)
+    needs: [plan, build-macos-x86_64]
+    runs-on: macos-15-intel
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      CPU: x86_64
+    steps:
+    - name: Checkout the tag
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: refs/tags/${{ needs.plan.outputs.tag }}
+        persist-credentials: false
+
+    - name: Download the build
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: build-macos-x86_64
+        path: ${{ runner.temp }}/artifacts
+
+    - name: Set up Python 3.12 for the moto server
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: '3.12'
+
+    - name: Install moto (the version of requirements-dev.txt)
+      run: python -m pip install "moto[server]==5.2.5"
+
+    - name: Unpack, run, check the man page and the completions
+      run: |
+        mkdir -p "$RUNNER_TEMP/install"
+        tar -xzf "$RUNNER_TEMP/artifacts/inventag-${VERSION}-darwin-${CPU}.tar.gz" -C "$RUNNER_TEMP/install"
+        BIN="$RUNNER_TEMP/install/inventag"
+        test "$(env -i PATH=/usr/bin:/bin "$BIN/inventag" --version)" = "inventag $VERSION"
+        env -i PATH=/usr/bin:/bin HOME="$RUNNER_TEMP" "$BIN/inventag" selftest
+        man -l "$BIN/share/man/man1/inventag.1" > "$RUNNER_TEMP/man.txt"
+        grep -q -i inventag "$RUNNER_TEMP/man.txt"
+        bash -n "$BIN/share/completions/inventag.bash"
+        zsh -n "$BIN/share/completions/_inventag"
+
+    - name: Scan a simulated AWS with the unpacked program
+      run: |
+        python scripts/packaging/smoke_scan.py --keep "$RUNNER_TEMP/smoke-keep" -- \
+          "$RUNNER_TEMP/install/inventag/inventag"
+
+    - name: Remove the directory and check that nothing is left
+      run: |
+        rm -rf "$RUNNER_TEMP/install"
+        test ! -e "$RUNNER_TEMP/install"
+
+    - name: Keep the scan evidence
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: smoke-macos-x86_64
+        path: ${{ runner.temp }}/smoke-keep
+        if-no-files-found: warn
+        retention-days: 7
+
+  # The primary install path of the docs (pipx), proven from the wheel of the
+  # tag. The wheel is built here from the tagged source; the PyPI file is the
+  # same source built by release.yml.
+  smoke-pipx:
+    name: Smoke (pipx, wheel of the tag)
+    needs: plan
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+    - name: Checkout the tag
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: refs/tags/${{ needs.plan.outputs.tag }}
+        persist-credentials: false
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: '3.12'
+
+    - name: Build the wheel, install it with pipx, run it, remove it
+      run: |
+        python -m pip install "pipx==1.4.3"
+        python -m pip wheel --no-deps -w "$RUNNER_TEMP/dist" .
+        python -m pipx install "$RUNNER_TEMP"/dist/inventag_aws-"${VERSION}"-py3-none-any.whl
+        export PATH="$HOME/.local/bin:$PATH"
+        test "$(inventag --version)" = "inventag $VERSION"
+        inventag selftest
+        python -m pipx uninstall inventag-aws
+        if command -v inventag; then
+          echo "left: inventag is still on the PATH"
+          exit 1
+        fi
