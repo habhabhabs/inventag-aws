@@ -11,8 +11,12 @@ for read-only work whose result may be dropped.
 Same interface as the parts of ThreadPoolExecutor that InvenTag uses:
 ``submit``, ``shutdown(wait, cancel_futures)``, use as a context manager.
 Work is taken in submission order; at most ``max_workers`` run at once.
+Each task runs in a copy of the submitter's context (``contextvars``), so a
+worker logs with the account of the scan that submitted it
+(``core/log_context.py``); what a task changes in it stays in that task.
 """
 
+import contextvars
 import itertools
 import queue
 import threading
@@ -37,7 +41,8 @@ class DaemonThreadPool:
         with self._lock:
             if self._shut:
                 raise RuntimeError("cannot schedule new futures after shutdown")
-            self._work.put((future, fn, args, kwargs))
+            context = contextvars.copy_context()
+            self._work.put((future, context.run, (fn, *args), kwargs))
             if not self._idle.acquire(blocking=False) and (
                 len(self._threads) < self._max_workers
             ):
