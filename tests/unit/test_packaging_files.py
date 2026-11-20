@@ -791,8 +791,9 @@ def test_list_unmapped_names_each_file_its_source_and_owners(tpl):
 
 
 def _expected_fake_listing(tpl):
+    # A platform with no table (darwin has one since B2d): every binary.
     return [
-        f"unmapped files: 3 (platform darwin, Python {tpl.platform.python_version()})",
+        f"unmapped files: 3 (platform freebsd, Python {tpl.platform.python_version()})",
         f"UNMAPPED _internal/Python | source: {FRAMEWORK}/Python | python package: "
         "none | system package: none found",
         f"UNMAPPED _internal/libssl.3.dylib | source: {FRAMEWORK}/lib/libssl.3.dylib"
@@ -805,7 +806,7 @@ def _expected_fake_listing(tpl):
 def test_list_unmapped_mode_works_on_a_platform_without_a_table(tpl, tmp_path, capsys):
     bundle, work = _fake_bundle(tmp_path)
     args = ["--bundle", str(bundle), "--workpath", str(work), "--list-unmapped"]
-    code = tpl.main(args + ["--platform", "darwin"])
+    code = tpl.main(args + ["--platform", "freebsd"])
     out = capsys.readouterr().out
     assert code == 1
     assert out.splitlines() == _expected_fake_listing(tpl)
@@ -819,13 +820,13 @@ def test_the_licence_check_prints_the_unmapped_list_first(tpl, tmp_path, capsys)
     bundle, work = _fake_bundle(tmp_path)
     out_file = tmp_path / "THIRD-PARTY-LICENSES.txt"
     args = ["--bundle", str(bundle), "--workpath", str(work), "--out", str(out_file)]
-    code = tpl.main(args + ["--platform", "darwin"])
+    code = tpl.main(args + ["--platform", "freebsd"])
     captured = capsys.readouterr()
     expected = _expected_fake_listing(tpl)
     assert code == 1
     assert captured.out.splitlines()[: len(expected)] == expected
     assert captured.out.splitlines()[-1] == "licence check: FAIL"
-    assert "LICENCE CHECK: no licence table for darwin" in captured.err
+    assert "LICENCE CHECK: no licence table for freebsd" in captured.err
     assert "LICENCE CHECK: _internal/Python: no row in the licence table" in (
         captured.err
     )
@@ -837,7 +838,7 @@ def test_the_unmapped_list_comes_first_in_a_build_log(tpl, tmp_path):
     # written out before the first LICENCE CHECK line.
     bundle, work = _fake_bundle(tmp_path)
     args = ["--bundle", str(bundle), "--workpath", str(work)]
-    args += ["--out", str(tmp_path / "T.txt"), "--platform", "darwin"]
+    args += ["--out", str(tmp_path / "T.txt"), "--platform", "freebsd"]
     run = subprocess.run(
         [sys.executable, str(SCRIPTS / "third_party_licenses.py"), *args],
         stdout=subprocess.PIPE,
@@ -919,3 +920,66 @@ def test_decimal_carries_libmpdec_only_when_it_does_not_load_the_library(
     build = _SampleBuild([DECIMAL], strings, same=True)
     comps, _ = tpl.collect(build, tpl.LINUX_ROWS)
     assert (MPDEC_IN_DECIMAL in [c.name for c in comps]) is carried
+
+
+# ------------------------- the darwin table (B2d, macOS arm64, dry run 3)
+# Every binary of the macOS arm64 bundle in dry run 3 (pull request #51, at
+# 757a837), as its `--list-unmapped` list printed it, with the owner it named.
+DARWIN_WHEEL_FILES = {
+    "_internal/_cffi_backend.cpython-312-darwin.so": "cffi",
+    "_internal/charset_normalizer/cd.cpython-312-darwin.so": "charset-normalizer",
+    "_internal/charset_normalizer/md.cpython-312-darwin.so": "charset-normalizer",
+    "_internal/cryptography/hazmat/bindings/_rust.abi3.so": "cryptography",
+    "_internal/lxml/_elementpath.cpython-312-darwin.so": "lxml",
+    "_internal/lxml/builder.cpython-312-darwin.so": "lxml",
+    "_internal/lxml/etree.cpython-312-darwin.so": "lxml",
+    "_internal/lxml/html/_difflib.cpython-312-darwin.so": "lxml",
+    "_internal/lxml/html/diff.cpython-312-darwin.so": "lxml",
+    "_internal/lxml/objectify.cpython-312-darwin.so": "lxml",
+    "_internal/lxml/sax.cpython-312-darwin.so": "lxml",
+    "_internal/psutil/_psutil_osx.abi3.so": "psutil",
+    "_internal/rpds/rpds.cpython-312-darwin.so": "rpds-py",
+    "_internal/yaml/_yaml.cpython-312-darwin.so": "PyYAML",
+}
+# Files of the build's Python.framework (python.org build from setup-python):
+# no verified licence source yet, so no row (gaps in the B2d report).
+DARWIN_DYNLOAD = (
+    "_asyncio _bisect _blake2 _bz2 _codecs_cn _codecs_hk _codecs_iso2022 "
+    "_codecs_jp _codecs_kr _codecs_tw _contextvars _csv _ctypes _datetime "
+    "_decimal _elementtree _hashlib _heapq _json _lzma _md5 _multibytecodec "
+    "_multiprocessing _opcode _pickle _posixshmem _posixsubprocess _queue "
+    "_random _scproxy _sha1 _sha2 _sha3 _socket _ssl _statistics _struct _uuid "
+    "array binascii fcntl grp math mmap pyexpat resource select termios "
+    "unicodedata zlib"
+).split()
+DARWIN_FRAMEWORK_FILES = [
+    "_internal/Python",
+    "_internal/Python.framework/Python",
+    "_internal/Python.framework/Versions/3.12/Python",
+    "_internal/libcrypto.3.dylib",
+    "_internal/libssl.3.dylib",
+] + [f"_internal/python3.12/lib-dynload/{m}.cpython-312-darwin.so" for m in DARWIN_DYNLOAD]
+
+
+def test_the_darwin_table_maps_the_wheel_files_of_dry_run_3(tpl):
+    rows = tpl.TABLES["darwin"]
+    assert len(DARWIN_WHEEL_FILES) + len(DARWIN_FRAMEWORK_FILES) + 1 == 70
+    assert tpl.match_row("inventag", rows).origin == "pyinstaller"
+    for rel in DARWIN_WHEEL_FILES:
+        row = tpl.match_row(rel, rows)
+        assert row is not None and row.origin == "package", rel
+    # The same carried libraries as on Linux, found by the same strings.
+    lxml = tpl.match_row("_internal/lxml/etree.cpython-312-darwin.so", rows)
+    assert lxml.carries == tpl._LXML and lxml.unmodified
+    rust = tpl.match_row("_internal/cryptography/hazmat/bindings/_rust.abi3.so", rows)
+    assert [c.name for c in rust.carries] == ["OpenSSL (in cryptography)"]
+    for rel, name in (
+        ("_internal/yaml/_yaml.cpython-312-darwin.so", "libyaml (in PyYAML)"),
+        ("_internal/_cffi_backend.cpython-312-darwin.so", "libffi (in cffi)"),
+    ):
+        assert [c.name for c in tpl.match_row(rel, rows).carries] == [name]
+
+
+def test_the_darwin_table_has_no_row_for_the_python_framework_yet(tpl):
+    rows = tpl.TABLES["darwin"]
+    assert [f for f in DARWIN_FRAMEWORK_FILES if tpl.match_row(f, rows)] == []
