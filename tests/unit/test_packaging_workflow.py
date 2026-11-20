@@ -497,7 +497,7 @@ def test_the_smoke_runs_version_selftest_man_and_three_completions():
     text = _run_text("smoke-linux")
     assert "inventag --version" in text and '"inventag $VERSION"' in text
     assert "inventag selftest" in text
-    assert "man -w inventag" in text or "man -l" in text
+    assert 'gzip -dc "$page"' in text and ".TH INVENTAG 1 " in text
     for check in ("bash -n", "zsh -n", "fish -n"):
         assert check in text
     for matrix in _matrix("smoke-linux"):
