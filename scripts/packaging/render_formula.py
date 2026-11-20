@@ -6,13 +6,20 @@ A release-time tool (plan 3.4, work order B4); it is not part of the package.
     python scripts/packaging/render_formula.py --version 1.4.0 \\
         --sums SHA256SUMS --output Formula/inventag.rb
 
-The template is ``packaging/homebrew-tap/Formula/inventag.rb``. It holds four
-``{{...}}`` values: the version and the checksums of the three archives that
+The template is ``packaging/homebrew-tap/Formula/inventag.rb``. It holds five
+``{{...}}`` values: the version (written literally into the three URLs; the
+formula has no ``version`` line), the base of the URLs and the checksums of the
+three archives that
 ``.github/workflows/package.yml`` attaches to a release:
 
     inventag-<version>-darwin-arm64.tar.gz
     inventag-<version>-linux-x86_64.tar.gz
     inventag-<version>-linux-arm64.tar.gz
+
+With ``--archive-dir <absolute folder>`` the URLs are ``file://`` URLs of that
+folder instead of the GitHub release. This is for a dry run that installs the
+formula before anything is published; the checksums still come from
+``SHA256SUMS``.
 
 ``SHA256SUMS`` is the file the workflow's provenance job writes with
 ``sha256sum``: ``<64 lower-case hex>  <file name>``, one file per line. Lines for
@@ -33,6 +40,7 @@ from pathlib import Path
 from typing import Dict, Optional, Sequence
 
 ROOT = Path(__file__).resolve().parents[2]
+RELEASE_BASE = "https://github.com/habhabhabs/inventag-aws/releases/download/v{}"
 DEFAULT_TEMPLATE = ROOT / "packaging" / "homebrew-tap" / "Formula" / "inventag.rb"
 
 # placeholder -> archive suffix after "inventag-<version>-"
@@ -80,11 +88,23 @@ def parse_sums(text: str) -> Dict[str, str]:
     return found
 
 
-def render(template: str, version: str, sums: str) -> str:
+def archive_base(archive_dir: Path) -> str:
+    """The ``file://`` URL of an absolute, existing folder."""
+    if not archive_dir.is_absolute():
+        raise RenderError(f"--archive-dir {str(archive_dir)!r} is not an absolute path")
+    if not archive_dir.is_dir():
+        raise RenderError(f"--archive-dir {str(archive_dir)!r} is not a folder")
+    return archive_dir.as_uri()
+
+
+def render(
+    template: str, version: str, sums: str, archive_dir: Optional[Path] = None
+) -> str:
     """The formula text. Raises RenderError; never returns a half-filled file."""
     bare = clean_version(version)
     listed = parse_sums(sums)
-    values = {"VERSION": bare}
+    base = archive_base(archive_dir) if archive_dir else RELEASE_BASE.format(bare)
+    values = {"VERSION": bare, "BASE_URL": base}
     for key, suffix in ARCHIVES.items():
         name = f"inventag-{bare}-{suffix}"
         if name not in listed:
@@ -125,6 +145,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument(
         "--template", default=str(DEFAULT_TEMPLATE), help="the formula template"
     )
+    parser.add_argument(
+        "--archive-dir",
+        help="absolute folder that holds the archives: the URLs become file:// URLs "
+        "of it (for a dry run before publishing)",
+    )
     parser.add_argument("--output", help="write here (default: standard output)")
     args = parser.parse_args(argv)
     try:
@@ -134,7 +159,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         except (OSError, UnicodeDecodeError) as exc:
             name = getattr(exc, "filename", None) or args.sums
             raise RenderError(f"cannot read {name}: {type(exc).__name__}") from exc
-        text = render(template, args.version, sums)
+        folder = Path(args.archive_dir) if args.archive_dir else None
+        text = render(template, args.version, sums, archive_dir=folder)
         if args.output:
             write_atomic(Path(args.output), text)
         else:
