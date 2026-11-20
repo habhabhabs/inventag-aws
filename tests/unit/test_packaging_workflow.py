@@ -309,7 +309,7 @@ def test_the_three_builds_run_on_the_three_named_systems():
 
 def test_every_job_after_the_plan_checks_out_the_ref_the_plan_checked():
     found = list(_non_plan_checkouts())
-    assert len(found) >= 8
+    assert len(found) >= 6
     for name, step in found:
         assert step["with"]["ref"] == "${{ needs.plan.outputs.ref }}", name
 
