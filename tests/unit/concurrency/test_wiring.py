@@ -256,3 +256,73 @@ def test_a_waiting_call_ends_at_once_when_the_run_is_stopped(
     worker.join(30)
     assert not worker.is_alive()
     assert errors == ["LimiterStopped"]
+
+
+# ---------------------------------------------------------------- detail calls
+# A3's ``ComprehensiveAWSDiscovery.stop_detail_calls()`` is called when the
+# account is abandoned (its time limit in a parallel run) and on the stop
+# event (SIGTERM, Ctrl-C), so detail calls not started do not start.
+
+
+class FakeEngine:
+    def __init__(self):
+        self.stops = 0
+
+    def stop_detail_calls(self):
+        self.stops += 1
+
+
+class FakeInventory:
+    """Stands in for AWSResourceInventory; runs ``during`` while it scans."""
+
+    during = None
+
+    def __init__(self, **kwargs):
+        self.comprehensive_discovery = FakeEngine()
+        FakeInventory.last = self
+
+    def discover_all_resources(self):
+        FakeInventory.during()
+        return []
+
+
+def test_abandon_stops_the_detail_calls_once_also_when_registered_late():
+    deadline = cbg._AccountDeadline("111111111111", 60)
+    early, late = FakeEngine(), FakeEngine()
+    deadline.on_abandon(early.stop_detail_calls)
+    deadline.abandon()
+    deadline.abandon()
+    deadline.on_abandon(late.stop_detail_calls)
+    assert (early.stops, late.stops) == (1, 1)
+
+
+@pytest.mark.parametrize("how", ["abandon", "stop"])
+def test_the_scan_stops_its_detail_calls_when_abandoned_or_stopped(
+    aws, tmp_path, monkeypatch, how
+):
+    generator = _generator(tmp_path)
+    deadline = generator._new_deadline(ACCOUNTS[0])
+
+    def during():
+        if how == "abandon":
+            deadline.abandon()  # what the main thread does at the time limit
+        else:
+            cbg.stop_running_scans()
+
+    monkeypatch.setattr(FakeInventory, "during", staticmethod(during))
+    monkeypatch.setattr(cbg, "AWSResourceInventory", FakeInventory)
+    context = _contexts()[ACCOUNTS[0]]
+    try:
+        generator._scan_account(ACCOUNTS[0], context, deadline)
+    except cbg.AccountTimeoutError:
+        assert how == "abandon"
+    assert FakeInventory.last.comprehensive_discovery.stops == 1
+
+
+def test_a_finished_scan_is_not_stopped_later(aws, tmp_path, monkeypatch):
+    generator = _generator(tmp_path)
+    monkeypatch.setattr(FakeInventory, "during", staticmethod(lambda: None))
+    monkeypatch.setattr(cbg, "AWSResourceInventory", FakeInventory)
+    generator._scan_account(ACCOUNTS[0], _contexts()[ACCOUNTS[0]])
+    cbg.stop_running_scans()
+    assert FakeInventory.last.comprehensive_discovery.stops == 0
