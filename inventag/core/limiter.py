@@ -40,10 +40,14 @@ retry stays the only retry mechanism.
 Waiting counts against the account's time limit: the wait ends with the
 deadline's own :class:`AccountTimeoutError`. :meth:`InFlightLimiter.stop`
 makes every waiter raise :class:`LimiterStopped` and refuses new requests.
+:meth:`InFlightLimiter.request_stop` is the SIGTERM handler's form: it takes
+no lock and wakes nobody; it only refuses the next request.
 
 Clock, wait and random source are injected, so tests run without real time.
 No correctness rests on the GIL: all shared state is read and written under
-one condition lock.
+one condition lock, except the one flag :meth:`InFlightLimiter.request_stop`
+sets. That flag only ever goes from False to True, and a waiter that does not
+see it yet stops at its next look (the process ends a moment later anyway).
 """
 
 import functools
@@ -136,6 +140,8 @@ class InFlightLimiter:
         self._good_answers: dict = defaultdict(int)
         self._paused_until: dict = {}
         self._stopped = False
+        # Set without the lock, by a signal handler (request_stop).
+        self._stop_requested = False
         self._local = threading.local()
 
     # -- counts -------------------------------------------------------------
@@ -158,6 +164,8 @@ class InFlightLimiter:
 
     @property
     def stopped(self) -> bool:
+        if self._stop_requested:
+            return True
         with self._condition:
             return self._stopped
 
@@ -209,7 +217,7 @@ class InFlightLimiter:
             self._queue.append(waiter)
             try:
                 while True:
-                    if self._stopped:
+                    if self._stopped or self._stop_requested:
                         raise LimiterStopped(
                             "The run was stopped; no new AWS request is started."
                         )
@@ -263,6 +271,11 @@ class InFlightLimiter:
         with self._condition:
             self._stopped = True
             self._condition.notify_all()
+
+    def request_stop(self) -> None:
+        """No new request starts. Takes no lock and wakes nobody, so a signal
+        handler can call it while its own thread holds the lock (SIGTERM)."""
+        self._stop_requested = True
 
     # -- botocore events ------------------------------------------------------
 

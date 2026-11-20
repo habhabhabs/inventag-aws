@@ -209,11 +209,33 @@ _RUNS_LOCK = threading.Lock()
 def stop_running_scans() -> None:
     """Stop every run in this process: every request waiting for a slot ends
     at once, no new AWS request starts, and detail calls not started do not
-    start (SIGTERM, Ctrl-C)."""
+    start (Ctrl-C, after the stack has unwound: this takes locks)."""
     with _RUNS_LOCK:
         runs = list(_RUNS)
     for run in runs:
         run.stop()
+
+
+def request_stop_of_running_scans() -> None:
+    """The SIGTERM handler's stop: no new AWS request starts in any run of
+    this process. It takes no lock, wakes nobody and shuts no pool down: the
+    handler runs on the main thread, which may hold any of those locks, and
+    the process ends by the signal a moment later. Every detail call is an
+    AWS request, so the limiter's flag stops those too."""
+    for run in _snapshot(_RUNS):
+        run.request_stop()
+
+
+def _snapshot(items) -> list:
+    """A copy of a set that another thread may change, taken without a lock.
+    When the copy keeps failing, nothing is returned: the caller's stop is
+    then left to the process ending."""
+    for _ in range(3):
+        try:
+            return list(items)
+        except RuntimeError:  # silent-ok: changed size during the copy; try again
+            continue
+    return []
 
 
 class AccountSessionError(Exception):
@@ -2238,6 +2260,16 @@ class CloudBOMGenerator:
             engines = list(self._running_engines)
         for engine in engines:
             engine.stop_detail_calls()
+
+    def request_stop(self) -> None:
+        """Lock-free form of :meth:`stop` (SIGTERM): the limiter refuses new
+        requests; an engine that offers a lock-free stop of its detail calls
+        (``request_detail_stop``) is asked for it."""
+        self.limiter.request_stop()
+        for engine in _snapshot(self._running_engines):
+            request = getattr(engine, "request_detail_stop", None)
+            if callable(request):
+                request()
 
     def _track_engine(self, engine, deadline) -> bool:
         """Make ``engine``'s detail calls stop when the account is abandoned

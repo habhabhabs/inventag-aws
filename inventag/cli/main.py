@@ -40,6 +40,7 @@ from ..core import (
 )
 from ..core.cloud_bom_generator import (
     _mfa_serial_without_terminal,
+    request_stop_of_running_scans,
     stop_running_scans,
 )
 from ..reporting import BOMProcessingConfig
@@ -1649,12 +1650,16 @@ def _written_reports_note(output_dir, since) -> str:
 def _install_sigterm_message(logger, output_dir, since):
     """Say one line when the process is asked to stop (SIGTERM), then end as
     before: the default action, so the exit status (killed by SIGTERM) is the
-    same. The handler removes itself first, so a second SIGTERM is not held
-    back. Ctrl-C is left to Python (KeyboardInterrupt). Returns the handler
-    that was there before, to put back; None when none could be set."""
+    same. The handler takes no lock: it runs on the main thread, which may
+    hold the limiter's or a pool's lock at that moment, so it only sets the
+    stop flags (no new AWS request) and the process ends a moment later.
+    Ctrl-C is left to Python (KeyboardInterrupt), which stops the scans with
+    the locks once the stack has unwound. Returns the handler that was there
+    before, to put back; None when none could be set. After its line the
+    handler puts the default action back and sends SIGTERM again."""
 
     def handler(signum, frame):
-        stop_running_scans()  # no new AWS request; waiting ones end at once
+        request_stop_of_running_scans()  # lock-free: no new AWS request
         logger.warning(
             "Terminated (SIGTERM). " + _written_reports_note(output_dir, since)
         )
