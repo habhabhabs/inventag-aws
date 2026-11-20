@@ -1212,10 +1212,14 @@ def test_upstream_texts_come_from_the_projects_repository_at_a_release_tag():
         assert repo.startswith("https://github.com/"), name
         slug = repo.removeprefix("https://github.com/")
         assert entry["address"].startswith(
-            f"https://raw.githubusercontent.com/{slug}/refs/tags/{entry['tag']}/"
+            (
+                f"https://raw.githubusercontent.com/{slug}/refs/tags/{entry['tag']}/",
+                f"https://raw.githubusercontent.com/{slug}/{entry['tag']}/",
+            )
         ), name
         assert entry["http_status"] == 200, name
-        assert re.fullmatch(r"[0-9a-f]{40}", entry["commit"]), name
+        # A commit is recorded as read, or as "not read: <why>", never guessed.
+        assert re.fullmatch(r"[0-9a-f]{40}|not read: .+", entry["commit"]), name
         assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", entry["fetched"]), name
     # The wheel names libyaml's version (the module holds "0.2.5"): that tag.
     assert upstream["libyaml-License"]["tag"] == "0.2.5"
@@ -1691,16 +1695,10 @@ def test_libraries_inside_framework_modules_get_their_own_rows(tpl, monkeypatch)
             "text of repo:scripts/packaging/licenses/expat-COPYING\n",
         )
     ]
-    # libmpdec: no verified text and no licence id from evidence yet: it fails
-    # by name (B2f: upstream's address was refused by the network proxy).
-    assert sorted(problems) == [
-        f"{_dyn('_decimal')}: licence text of libmpdec (in CPython's _decimal): no "
-        "verified source in the table; store the upstream text unchanged under "
-        "scripts/packaging/licenses/ and its address, tag, sha256 and date in "
-        "SOURCES.json",
-        "libmpdec (in CPython's _decimal) 9.9: licence NOASSERTION is not in the "
-        "allow-list",
-    ]
+    # libmpdec: CPython's own notice at v3.12.10 (section of Doc/license.rst).
+    assert problems == []
+    mpdec = comps["libmpdec (in CPython's _decimal)"]
+    assert (mpdec.spdx, mpdec.version) == ("BSD-2-Clause", "9.9")
 
 
 def test_a_module_that_loads_the_library_carries_no_copy(tpl, monkeypatch):
@@ -1988,6 +1986,46 @@ def test_liblzma_licence_is_chosen_by_its_version_only_with_evidence(
         version_from,
     )
     assert [label for label, _ in lzma.texts] == list(XZ_TEXTS)
+
+
+# ------------- libmpdec on macOS (manager: option (b), CPython at v3.12.10)
+CPYTHON_LICENSE = "cpython-v3.12.10-Doc-license.rst"
+MPDEC_TEXT = f"section:scripts/packaging/licenses/{CPYTHON_LICENSE}:libmpdec"
+
+
+def test_the_libmpdec_notice_is_cpythons_own_file_at_the_tag():
+    entry = _sources()["files"][CPYTHON_LICENSE]
+    assert entry["repository"] == "https://github.com/python/cpython"
+    assert entry["tag"] == "v3.12.10"
+    assert entry["address"] == (
+        "https://raw.githubusercontent.com/python/cpython/v3.12.10/Doc/license.rst"
+    )
+    assert entry["commit"].startswith("not read: ")
+
+
+def test_the_libmpdec_section_is_a_full_bsd_2_clause_notice(tpl):
+    text = (LICENSES / CPYTHON_LICENSE).read_text("utf-8")
+    section = tpl.rst_section(text, "libmpdec")
+    words = " ".join(section.split())
+    assert words.startswith("libmpdec -------- The :mod:`!_decimal` C extension")
+    assert "Copyright (c) 2008-2020 Stefan Krah. All rights reserved." in words
+    assert "IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE" in words
+    assert "W3C C14N" not in section  # stops at the next heading
+    assert tpl.bsd_id(section) == "BSD-2-Clause"
+    assert tpl.rst_section(text, "no such heading") is None
+
+
+def test_the_darwin_libmpdec_row_reads_that_section(tpl, monkeypatch, tmp_path):
+    row = tpl.match_row(_dyn("_decimal"), tpl.TABLES["darwin"])
+    (mpdec,) = row.carries
+    assert (mpdec.spdx, mpdec.text) == ("BSD-2-Clause", (MPDEC_TEXT,))
+    bundle, work = _fake_bundle(tmp_path)
+    label, text = tpl.Build(bundle, work, ROOT).read_text(MPDEC_TEXT, None)
+    assert label == (
+        f"{CPYTHON_LICENSE} (from https://raw.githubusercontent.com/python/cpython/"
+        "v3.12.10/Doc/license.rst), section libmpdec"
+    )
+    assert "Stefan Krah" in text and "W3C" not in text
 
 
 PIN_GOLDEN = (
