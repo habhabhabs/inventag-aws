@@ -274,6 +274,9 @@ InvenTag retries a throttled call up to 10 times (standard retry mode);
   field or `Name` tag for the resource; the ID column identifies it. For
   Lambda functions, IAM roles and KMS aliases, a template report shows the ID
   as the name.
+- On an Intel Mac, `pip install inventag-aws` compiles the cryptography library, because cryptography publishes no ready-made build for Intel Macs from version 50. This needs a Rust toolchain.
+
+  Not verified against an Intel Mac: `pip install inventag-aws`.
 
 ## Security notes
 

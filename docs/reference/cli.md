@@ -59,7 +59,7 @@ Not verified against Windows or macOS: the `inventag` command works the same as 
 | `selftest` | Checks that this copy of InvenTag works: packages, built-in templates, AWS service data, the read-only guard, and an Excel and a Word file written to a temporary folder and removed. It makes no AWS call, opens no network connection and needs no credentials. Exit code 0: every check passed. Exit code 1: a check failed; the other checks still run. Exit code 2: an unknown argument. |
 | `completion bash\|zsh\|fish` | Prints a shell completion script to standard output. It only reads the options of the command and makes no AWS call and no network connection. Exit code 0. A missing or unknown shell: usage line and exit code 2. |
 
-To install a completion script:
+To install a completion script, see [Shell completion](../getting-started/installation.md#shell-completion). The lines are:
 
 ```text
 source <(inventag completion bash)

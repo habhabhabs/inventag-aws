@@ -198,16 +198,18 @@ With `--audit-output`, the file also has the key `permissions_denied`. The key
 is there only when something was denied. Each entry has these fields:
 
 ```json
-"permissions_denied": [
-  {
-    "account": "123456789012",
-    "action": "s3:GetBucketLocation",
-    "service": "s3",
-    "operation": "GetBucketLocation",
-    "regions": ["us-east-1"],
-    "kind": "detail"
-  }
-]
+{
+  "permissions_denied": [
+    {
+      "account": "123456789012",
+      "action": "s3:GetBucketLocation",
+      "service": "s3",
+      "operation": "GetBucketLocation",
+      "regions": ["us-east-1"],
+      "kind": "detail"
+    }
+  ]
+}
 ```
 
 | Field | Meaning |
