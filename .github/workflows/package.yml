@@ -42,6 +42,20 @@ name: Package
 permissions:
   contents: read
 
+env:
+  # The build image: the official almalinux:8 image (AlmaLinux 8, glibc 2.28,
+  # the distribution's own Python 3.12 with a shared libpython), pinned by the
+  # digest of its multi-architecture index. AlmaLinux 8 gets security fixes
+  # until RHEL 8's end of maintenance (2029; not verified here). A new digest
+  # is a reviewed change: the executable carries this image's OpenSSL, zlib,
+  # expat, bzip2 and xz. The value below is written by the first dry run:
+  # that job fails, names the digest of almalinux:8 at that moment, and this
+  # line is set to it by hand. Nothing here is a guess.
+  ALMALINUX_8_DIGEST: TO-BE-FILLED-BY-THE-DRY-RUN
+  # nfpm builds the .deb and .rpm. The sha256 of each Linux tarball is in the
+  # job that uses it (from checksums.txt of the v2.49.0 release).
+  NFPM_VERSION: '2.49.0'
+
 # One run per tag. A running package job is never cancelled: a half-uploaded
 # release is worse than a late one.
 concurrency:
@@ -90,3 +104,309 @@ jobs:
           echo "dry_run=$DRY_RUN"
         } >> "$GITHUB_OUTPUT"
         echo "Packaging $TAG (version $VERSION), dry run: $DRY_RUN"
+
+  # The Linux executable is built inside AlmaLinux 8 so that it runs on glibc
+  # 2.28 or later. The container is driven with docker from the runner (not as
+  # a job container: the checkout action needs a newer libc than the image has).
+  # build-linux-arm64 below runs the same commands on the arm64 runner.
+  build-linux-x86_64:
+    name: Build (Linux x86_64)
+    needs: plan
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      CPU: x86_64
+      NFPM_SHA256: 2afaa5ffb5e3493402e31e7c67a5a1fb42133e3f66fc315ca0051934125561c7
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+    - name: Checkout the tag
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: refs/tags/${{ needs.plan.outputs.tag }}
+        persist-credentials: false
+
+    - name: Pull the build image by digest
+      run: |
+        if ! printf '%s' "$ALMALINUX_8_DIGEST" | grep -Eq '^[0-9a-f]{64}$'; then
+          docker pull almalinux:8 > /dev/null
+          NOW=$(docker image inspect --format '{{index .RepoDigests 0}}' almalinux:8)
+          echo "::error::ALMALINUX_8_DIGEST in package.yml is not a sha256 digest. almalinux:8 is $NOW now. Write the 64 hex digits after sha256: into package.yml, review them, and run again."
+          exit 1
+        fi
+        docker pull "almalinux@sha256:${ALMALINUX_8_DIGEST}"
+
+    - name: Start the build container
+      run: |
+        mkdir -p "$RUNNER_TEMP/work"
+        SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+        docker run -d --name build \
+          -v "$GITHUB_WORKSPACE:/src:ro" -v "$RUNNER_TEMP/work:/work" \
+          -e SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" -e LANG=C.UTF-8 \
+          "almalinux@sha256:${ALMALINUX_8_DIGEST}" sleep infinity
+
+    - name: Build-image check (AlmaLinux 8, system Python 3.12 with a shared libpython)
+      run: |
+        docker exec -i -e ALMALINUX_8_DIGEST build bash -s <<'CHECK'
+        set -euo pipefail
+        . /etc/os-release
+        test "$ID" = almalinux
+        case "$VERSION_ID" in 8|8.*) ;; *) echo "not AlmaLinux 8: $VERSION_ID"; exit 1;; esac
+        dnf install -y python3.12 python3.12-pip binutils tar gzip
+        python3.12 -c 'import sys, sysconfig; assert sys.version_info[:2] == (3, 12), sys.version; assert sysconfig.get_config_var("Py_ENABLE_SHARED") == 1, "no shared libpython"'
+        ldd "$(python3.12 -c 'import sys; print(sys.executable)')" | grep libpython3.12
+        test "$(rpm -q --qf '%{VERSION}' glibc)" = 2.28
+        {
+          echo "image: almalinux@sha256:${ALMALINUX_8_DIGEST:-unknown}"
+          echo "PRETTY_NAME: $PRETTY_NAME"
+          rpm -q almalinux-release glibc openssl-libs zlib expat bzip2-libs xz-libs python3.12 python3.12-libs python3.12-pip
+        } | tee /work/build-image.txt
+        CHECK
+
+    - name: Install the build environment from the hash-pinned locks
+      run: docker exec build bash /src/scripts/packaging/build_binary.sh venv /work/venv python3.12
+
+    - name: Build the executable, check the licences, run selftest, write the archive
+      run: docker exec build bash /src/scripts/packaging/build_binary.sh build /work/venv /work/out
+
+    - name: Hand the files back to the runner user
+      run: docker exec build chown -R "$(id -u):$(id -g)" /work
+
+    - name: Install nfpm (version and sha256 pinned)
+      run: |
+        cd "$RUNNER_TEMP"
+        curl -sSfL -o nfpm.tar.gz "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_${CPU}.tar.gz"
+        echo "${NFPM_SHA256}  nfpm.tar.gz" | sha256sum -c -
+        mkdir -p "$RUNNER_TEMP/bin"
+        tar -xzf nfpm.tar.gz -C "$RUNNER_TEMP/bin" nfpm
+        echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+    - name: Build the .deb and the .rpm
+      run: bash scripts/packaging/build_linux_packages.sh "$RUNNER_TEMP/work/out"
+
+    - name: Collect the files of this build
+      run: |
+        out="$RUNNER_TEMP/work/out"
+        up="$RUNNER_TEMP/upload"
+        mkdir -p "$up"
+        base="inventag-${VERSION}-linux-${CPU}"
+        cp "$out/$base.tar.gz" "$up/"
+        cp "$out/dist/inventag/THIRD-PARTY-LICENSES.txt" "$up/$base.THIRD-PARTY-LICENSES.txt"
+        cp "$out/components.json" "$up/$base.components.json"
+        cp "$RUNNER_TEMP/work/build-image.txt" "$up/$base.build-image.txt"
+        cp "$out"/pkg/*.deb "$out"/pkg/*.rpm "$up/"
+        ls -l "$up"
+
+    - name: Upload the files of this build
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: build-linux-x86_64
+        path: ${{ runner.temp }}/upload/*
+        if-no-files-found: error
+        retention-days: 7
+
+  build-linux-arm64:
+    name: Build (Linux arm64)
+    needs: plan
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    env:
+      CPU: arm64
+      NFPM_SHA256: d4eee71839e92c68cbd3b101640bad32d2856fc551acae0635be9118e48c9d9c
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+    - name: Checkout the tag
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: refs/tags/${{ needs.plan.outputs.tag }}
+        persist-credentials: false
+
+    - name: Pull the build image by digest
+      run: |
+        if ! printf '%s' "$ALMALINUX_8_DIGEST" | grep -Eq '^[0-9a-f]{64}$'; then
+          docker pull almalinux:8 > /dev/null
+          NOW=$(docker image inspect --format '{{index .RepoDigests 0}}' almalinux:8)
+          echo "::error::ALMALINUX_8_DIGEST in package.yml is not a sha256 digest. almalinux:8 is $NOW now. Write the 64 hex digits after sha256: into package.yml, review them, and run again."
+          exit 1
+        fi
+        docker pull "almalinux@sha256:${ALMALINUX_8_DIGEST}"
+
+    - name: Start the build container
+      run: |
+        mkdir -p "$RUNNER_TEMP/work"
+        SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+        docker run -d --name build \
+          -v "$GITHUB_WORKSPACE:/src:ro" -v "$RUNNER_TEMP/work:/work" \
+          -e SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" -e LANG=C.UTF-8 \
+          "almalinux@sha256:${ALMALINUX_8_DIGEST}" sleep infinity
+
+    - name: Build-image check (AlmaLinux 8, system Python 3.12 with a shared libpython)
+      run: |
+        docker exec -i -e ALMALINUX_8_DIGEST build bash -s <<'CHECK'
+        set -euo pipefail
+        . /etc/os-release
+        test "$ID" = almalinux
+        case "$VERSION_ID" in 8|8.*) ;; *) echo "not AlmaLinux 8: $VERSION_ID"; exit 1;; esac
+        dnf install -y python3.12 python3.12-pip binutils tar gzip
+        python3.12 -c 'import sys, sysconfig; assert sys.version_info[:2] == (3, 12), sys.version; assert sysconfig.get_config_var("Py_ENABLE_SHARED") == 1, "no shared libpython"'
+        ldd "$(python3.12 -c 'import sys; print(sys.executable)')" | grep libpython3.12
+        test "$(rpm -q --qf '%{VERSION}' glibc)" = 2.28
+        {
+          echo "image: almalinux@sha256:${ALMALINUX_8_DIGEST:-unknown}"
+          echo "PRETTY_NAME: $PRETTY_NAME"
+          rpm -q almalinux-release glibc openssl-libs zlib expat bzip2-libs xz-libs python3.12 python3.12-libs python3.12-pip
+        } | tee /work/build-image.txt
+        CHECK
+
+    - name: Install the build environment from the hash-pinned locks
+      run: docker exec build bash /src/scripts/packaging/build_binary.sh venv /work/venv python3.12
+
+    - name: Build the executable, check the licences, run selftest, write the archive
+      run: docker exec build bash /src/scripts/packaging/build_binary.sh build /work/venv /work/out
+
+    - name: Hand the files back to the runner user
+      run: docker exec build chown -R "$(id -u):$(id -g)" /work
+
+    - name: Install nfpm (version and sha256 pinned)
+      run: |
+        cd "$RUNNER_TEMP"
+        curl -sSfL -o nfpm.tar.gz "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_${CPU}.tar.gz"
+        echo "${NFPM_SHA256}  nfpm.tar.gz" | sha256sum -c -
+        mkdir -p "$RUNNER_TEMP/bin"
+        tar -xzf nfpm.tar.gz -C "$RUNNER_TEMP/bin" nfpm
+        echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+    - name: Build the .deb and the .rpm
+      run: bash scripts/packaging/build_linux_packages.sh "$RUNNER_TEMP/work/out"
+
+    - name: Collect the files of this build
+      run: |
+        out="$RUNNER_TEMP/work/out"
+        up="$RUNNER_TEMP/upload"
+        mkdir -p "$up"
+        base="inventag-${VERSION}-linux-${CPU}"
+        cp "$out/$base.tar.gz" "$up/"
+        cp "$out/dist/inventag/THIRD-PARTY-LICENSES.txt" "$up/$base.THIRD-PARTY-LICENSES.txt"
+        cp "$out/components.json" "$up/$base.components.json"
+        cp "$RUNNER_TEMP/work/build-image.txt" "$up/$base.build-image.txt"
+        cp "$out"/pkg/*.deb "$out"/pkg/*.rpm "$up/"
+        ls -l "$up"
+
+    - name: Upload the files of this build
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: build-linux-arm64
+        path: ${{ runner.temp }}/upload/*
+        if-no-files-found: error
+        retention-days: 7
+
+  build-macos-arm64:
+    name: Build (macOS arm64)
+    needs: plan
+    runs-on: macos-15
+    permissions:
+      contents: read
+    env:
+      CPU: arm64
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+    - name: Checkout the tag
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: refs/tags/${{ needs.plan.outputs.tag }}
+        persist-credentials: false
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: '3.12'
+
+    # build_binary.sh writes the archive with GNU tar options (--sort, --owner).
+    - name: Put GNU tar first on the PATH
+      run: |
+        brew install gnu-tar
+        echo "$(brew --prefix gnu-tar)/libexec/gnubin" >> "$GITHUB_PATH"
+
+    - name: Install the build environment from the hash-pinned locks
+      run: bash scripts/packaging/build_binary.sh venv "$RUNNER_TEMP/venv" python
+
+    - name: Build the executable, check the licences, run selftest, write the archive
+      run: |
+        SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+        export SOURCE_DATE_EPOCH
+        bash scripts/packaging/build_binary.sh build "$RUNNER_TEMP/venv" "$RUNNER_TEMP/work"
+
+    - name: Collect the files of this build
+      run: |
+        out="$RUNNER_TEMP/work"
+        up="$RUNNER_TEMP/upload"
+        mkdir -p "$up"
+        base="inventag-${VERSION}-darwin-${CPU}"
+        cp "$out/$base.tar.gz" "$up/"
+        cp "$out/dist/inventag/THIRD-PARTY-LICENSES.txt" "$up/$base.THIRD-PARTY-LICENSES.txt"
+        cp "$out/components.json" "$up/$base.components.json"
+        ls -l "$up"
+
+    - name: Upload the files of this build
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: build-macos-arm64
+        path: ${{ runner.temp }}/upload/*
+        if-no-files-found: error
+        retention-days: 7
+
+  build-macos-x86_64:
+    name: Build (macOS x86_64)
+    needs: plan
+    runs-on: macos-15-intel
+    permissions:
+      contents: read
+    env:
+      CPU: x86_64
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+    - name: Checkout the tag
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: refs/tags/${{ needs.plan.outputs.tag }}
+        persist-credentials: false
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: '3.12'
+
+    # build_binary.sh writes the archive with GNU tar options (--sort, --owner).
+    - name: Put GNU tar first on the PATH
+      run: |
+        brew install gnu-tar
+        echo "$(brew --prefix gnu-tar)/libexec/gnubin" >> "$GITHUB_PATH"
+
+    - name: Install the build environment from the hash-pinned locks
+      run: bash scripts/packaging/build_binary.sh venv "$RUNNER_TEMP/venv" python
+
+    - name: Build the executable, check the licences, run selftest, write the archive
+      run: |
+        SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+        export SOURCE_DATE_EPOCH
+        bash scripts/packaging/build_binary.sh build "$RUNNER_TEMP/venv" "$RUNNER_TEMP/work"
+
+    - name: Collect the files of this build
+      run: |
+        out="$RUNNER_TEMP/work"
+        up="$RUNNER_TEMP/upload"
+        mkdir -p "$up"
+        base="inventag-${VERSION}-darwin-${CPU}"
+        cp "$out/$base.tar.gz" "$up/"
+        cp "$out/dist/inventag/THIRD-PARTY-LICENSES.txt" "$up/$base.THIRD-PARTY-LICENSES.txt"
+        cp "$out/components.json" "$up/$base.components.json"
+        ls -l "$up"
+
+    - name: Upload the files of this build
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: build-macos-x86_64
+        path: ${{ runner.temp }}/upload/*
+        if-no-files-found: error
+        retention-days: 7
