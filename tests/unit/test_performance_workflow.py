@@ -1,4 +1,7 @@
-"""The weekly performance job exists, is scheduled, and is least-privilege (T-05)."""
+"""The weekly performance job exists, is scheduled, and is least-privilege (T-05).
+
+It also runs the slow regression tests (`-m slow`), which no other workflow runs.
+"""
 
 import re
 from pathlib import Path
@@ -36,9 +39,16 @@ def test_it_runs_the_performance_marker_and_the_delta_scaling_test():
     assert (ROOT / "tests/unit/test_delta_detector_scaling.py").exists()
 
 
+def test_it_runs_the_slow_regression_tests():
+    commands = _commands()
+    assert any("-m slow" in c and "tests/regression" in c for c in commands)
+    assert (ROOT / "tests/regression/test_failure_matrix.py").exists()
+
+
 def test_the_marker_it_selects_is_the_one_pytest_ini_excludes():
     ini = (ROOT / "pytest.ini").read_text(encoding="utf-8")
     assert "not performance" in ini
+    assert "not slow" in ini
 
 
 def test_it_has_least_privilege_and_pinned_actions():
