@@ -78,8 +78,12 @@ class Run:
 
     @property
     def permission_lines(self) -> List[str]:
-        """The "Permissions:" lines of the run notes on the console."""
-        return [t.strip(" -") for t in self.text.splitlines() if "Permissions:" in t]
+        """The "Permissions:" lines of the run notes on the console (log prefix removed)."""
+        return [
+            t[t.index("Permissions:") :].strip()
+            for t in self.text.splitlines()
+            if "Permissions:" in t
+        ]
 
     @property
     def permission_actions(self) -> set:
