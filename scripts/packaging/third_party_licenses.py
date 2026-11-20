@@ -117,11 +117,18 @@ LXML_MACOS_RESIGN = (
     "(`codesign -s - --force <file>`)."
 )
 LIBICONV_HOME = "https://www.gnu.org/software/libiconv/"
-# How the version was read (architect ruling 2 of 20 Nov 2026, work order B2b).
+# How the version was read (architect ruling 2 of 20 Nov 2026, work order B2b;
+# architect-run10-macos-iconv.md section 1: sources in this order, per slice).
+LIBICONV_SYMBOL = "_libiconv_version"  # the C name; Mach-O adds an underscore
 LIBICONV_VERSION_FROM = "version read from the module's own symbol _libiconv_version"
-LIBICONV_NO_VERSION = (
-    "version not recorded: the lxml modules do not all hold the same symbol "
-    "_libiconv_version"
+LIBICONV_CONFIG_FROM = (
+    "version named in lxml's build configuration for this release "
+    "({path}:{line} at tag {tag}); not read from the carried file"
+)
+LIBICONV_NO_VERSION = "version not recorded: no source gave the version of {slices}"
+TO_ARCHITECT_IC = (
+    "they must agree; this goes to the architect "
+    "(architect-run10-macos-iconv.md section 1)"
 )
 LIBICONV_DOWNLOAD = "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-{version}.tar.gz"
 LXML_SOURCE = (
@@ -267,10 +274,10 @@ _LXML = (
         LXML_ICONV_SPDX,
         _LXML_TEXT + ("repo:scripts/packaging/licenses/LGPL-2.1.txt",),
         # Neither the wheel's notices nor lxml's headers name the version;
-        # libiconv's own exported variable does: (major << 8) | minor.
-        "elfsym:_libiconv_version",
-        # One component for all modules, its addresses and notes: see
-        # libiconv_component.
+        # libiconv's own exported variable does: (major << 8) | minor. Read
+        # per slice by Build.iconv_reads (ELF and Mach-O); the version rule,
+        # the components, addresses and notes: see libiconv_components.
+        "symbol:" + LIBICONV_SYMBOL,
         requires_strings=b"libiconv_open",
     ),
 )
@@ -498,6 +505,9 @@ class Component:
     notes: List[str] = field(default_factory=list)
     urls: List[str] = field(default_factory=list)
     version_from: str = ""  # how the version was read, when the file says so
+    # More lines under the version (libiconv: the files and architectures of
+    # each version, the cross-checks).
+    details: List[str] = field(default_factory=list)
 
 
 def is_allowed(spdx: str, allowed: Iterable[str]) -> bool:
@@ -612,6 +622,7 @@ def component_lines(c: Component) -> List[str]:
     """A component's lines in the list of THIRD-PARTY-LICENSES.txt."""
     out = [f"- {c.name} {c.version or '(version not recorded)'}: {c.spdx}"]
     out += [f"    {line}" for line in c.version_from.splitlines()]
+    out += [f"    {line}" for line in c.details]
     out += [f"    source: {u}" for u in c.urls]
     out += [f"    file: {f}" for f in c.files]
     return out
@@ -914,6 +925,25 @@ class Build:
             return "not recorded by dpkg", [str(doc)] if doc.is_file() else []
         return None
 
+    def iconv_reads(self, rel: str) -> List["SymbolRead"]:
+        """libiconv's version symbol in a bundled file, per architecture."""
+        return symbol_reads(self.file_path(rel).read_bytes(), LIBICONV_SYMBOL)
+
+    def lxml_iconv_report(self) -> Optional[Tuple[int, int]]:
+        return lxml_iconv_report()
+
+    def iconv_build_config(self) -> Tuple[Optional["BuildConfig"], List[str]]:
+        return lxml_build_config(self.repo_root / "scripts" / "packaging" / "licenses")
+
+    def wheel_file(self, rel: str) -> Optional[Path]:
+        """The file of the installed wheel that a bundled file comes from."""
+        dist = self.distribution_of_bundled(rel)
+        inner = rel.split("_internal/", 1)[-1]
+        for f in (dist.files or []) if dist else []:
+            if str(f) == inner:
+                return Path(dist.locate_file(f))
+        return None
+
     def linked_libraries(self, rel: str) -> List[str]:
         """The libraries a bundled Mach-O file loads (``otool -L``, macOS)."""
         out = _run(["otool", "-L", str(self.file_path(rel))])
@@ -1022,12 +1052,6 @@ class Build:
 
             module = arg.split(".")[0]
             return str(eval(arg, {module: __import__(module)}))  # table constant
-        if kind == "elfsym":
-            raw = elf_symbol_bytes(self.file_path(rel).read_bytes(), arg)
-            if raw is None or len(raw) < 2:
-                return ""
-            value = int.from_bytes(raw, "little")
-            return f"{value >> 8}.{value & 0xFF}"
         if kind == "pkg":
             owner = self.owning_package(owner_file) if owner_file else None
             return owner[1] if owner else ""
@@ -1035,7 +1059,11 @@ class Build:
 
 
 # ------------------------------------------------------------------ check
-def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[str]]:
+def collect(
+    build: Build, rows: Sequence[Row], arch: Optional[str] = None
+) -> Tuple[List[Component], List[str]]:
+    """``arch``: the build machine's architecture (default: this machine's),
+    whose slice lxml's own report describes."""
     problems: List[str] = []
     comps: Dict[str, Component] = {}
 
@@ -1078,8 +1106,8 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
     add(_bootloader(problems))
 
     # Every binary file of the bundle. libiconv's modules are gathered first and
-    # become one component (architect ruling 2).
-    iconv_versions: Dict[str, str] = {}
+    # become one component per version (architect-run10-macos-iconv.md).
+    iconv_reads: Dict[str, List[SymbolRead]] = {}
     iconv_texts: List[Tuple[str, str]] = []
     binaries = build.binaries()
     problems += forbidden_problems(binaries)
@@ -1130,7 +1158,7 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
             elif any(g is None for g in got):
                 problems.append(f"{rel}: licence text of {carried.name} not found")
             if carried.name == LXML_ICONV:
-                iconv_versions[rel] = build.read_version(carried.version, rel, source)
+                iconv_reads[rel] = build.iconv_reads(rel)
                 iconv_texts = iconv_texts or [g for g in got if g is not None]
                 continue
             version = build.read_version(carried.version, rel, source)
@@ -1148,8 +1176,19 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
                 )
             )
 
-    if iconv_versions:
-        add(libiconv_component(iconv_versions, iconv_texts))
+    if iconv_reads:
+        config, found = build.iconv_build_config()
+        problems += found
+        iconv, found = libiconv_components(
+            iconv_reads,
+            iconv_texts,
+            build.lxml_iconv_report(),
+            arch or platform.machine(),
+            config,
+        )
+        problems += found
+        for comp in iconv:
+            add(comp)
     out = sorted(comps.values(), key=lambda c: (c.name.casefold(), c.version))
     for comp in out:
         problems += licence_problems(comp)
@@ -1551,53 +1590,506 @@ def add_libiconv_note(comp: Component) -> None:
         ]
 
 
-def libiconv_component(
-    versions: Dict[str, str], texts: Sequence[Tuple[str, str]] = ()
-) -> Component:
-    """The one libiconv component for the lxml modules that carry it.
+# ------------------------------------- libiconv's version, per slice
+# architect-run10-macos-iconv.md section 1: a version is read or cited, never
+# typed. Sources, in order, for each slice (architecture) of each module:
+# 1. the symbol in the carried file; 2. lxml's build configuration at the
+# release tag, stored with its SOURCES.json entry; otherwise not recorded.
+# lxml's own report (ICONV_COMPILED_VERSION) is only a cross-check.
+@dataclass(frozen=True)
+class SymbolRead:
+    """A data symbol read in one slice of a file. ``arch`` is "" for an ELF
+    file (one architecture); ``raw`` is None when the symbol was not found."""
 
-    ``versions`` maps each module (its path) to the version its own symbol
-    gives, "" when it has none. The executable's notices and the container
-    notice both build the component here. The version is recorded only when
-    every module gives the same one; otherwise there is no version and no
-    versioned download address, and the line that says how the version was
-    read says why there is none.
-    """
-    found = set(versions.values())
-    version = found.pop() if len(found) == 1 else ""
-    comp = Component(
-        LXML_ICONV,
-        version,
-        LXML_ICONV_SPDX,
-        "c-library",
-        sorted(versions),
-        list(texts),
-        urls=[LIBICONV_HOME],
-        version_from=LIBICONV_VERSION_FROM if version else LIBICONV_NO_VERSION,
-    )
-    add_libiconv_note(comp)
-    return comp
+    arch: str
+    raw: Optional[bytes]
+    address: int = 0  # the symbol's address (Mach-O)
+    section: str = ""  # "<segment>,<section>" that holds it (Mach-O)
+    offset: int = 0  # where its bytes are in the whole file (Mach-O)
 
 
-def _iconv_version(path: Path) -> str:
-    """libiconv's version from its own symbol in the module, or ""."""
-    raw = elf_symbol_bytes(Path(path).read_bytes(), "_libiconv_version")
+@dataclass(frozen=True)
+class BuildConfig:
+    """libiconv's version as lxml's build configuration names it."""
+
+    version: str
+    path: str  # the file in lxml's repository
+    line: int
+    tag: str
+    platforms: Tuple[str, ...]  # "darwin", "linux": whose wheels it is for
+
+
+MACHO_ARCH = {cpu: name for name, cpu in MACHO_CPU.items()}
+MACHO_MAGICS = (
+    b"\xca\xfe\xba\xbe",  # universal
+    b"\xcf\xfa\xed\xfe",  # 64-bit little-endian, the only kind read
+    b"\xce\xfa\xed\xfe",
+    b"\xfe\xed\xfa\xcf",
+    b"\xfe\xed\xfa\xce",
+)
+# Section types with no bytes in the file (S_ZEROFILL, S_GB_ZEROFILL,
+# S_THREAD_LOCAL_ZEROFILL).
+ZEROFILL = (0x1, 0xC, 0x12)
+
+
+def _arch_name(data: bytes) -> str:
+    import struct
+
+    if len(data) < 8:
+        return "unknown"
+    (cpu,) = struct.unpack_from("<i", data, 4)
+    return MACHO_ARCH.get(cpu, f"cputype 0x{cpu & 0xFFFFFFFF:x}")
+
+
+def _thin_symbol(data: bytes, name: str, size: int) -> SymbolRead:
+    """``size`` bytes of the defined symbol ``name`` in a thin 64-bit
+    little-endian Mach-O file. Anything out of the file's bounds, ambiguous or
+    not in a section with bytes is "not found", never a guess."""
+    import struct
+
+    none = SymbolRead(_arch_name(data), None)
+    if data[:4] != b"\xcf\xfa\xed\xfe" or len(data) < 32:
+        return none
+    try:
+        ncmds, sizeofcmds = struct.unpack_from("<II", data, 16)
+        end_cmds = 32 + sizeofcmds
+        if end_cmds > len(data):
+            return none
+        sections = []
+        symtab = None
+        pos = 32
+        for _ in range(ncmds):
+            cmd, cmdsize = struct.unpack_from("<II", data, pos)
+            if cmdsize < 8 or pos + cmdsize > end_cmds:
+                return none
+            if cmd == 0x19:  # LC_SEGMENT_64, then its section_64 entries
+                (nsects,) = struct.unpack_from("<I", data, pos + 64)
+                if 72 + 80 * nsects > cmdsize:
+                    return none
+                for k in range(nsects):
+                    sect, seg, addr, sz, offset, _a, _r, _n, flags = struct.unpack_from(
+                        "<16s16sQQIIIII", data, pos + 72 + 80 * k
+                    )
+                    sections.append((seg, sect, addr, sz, offset, flags))
+            elif cmd == 0x2:  # LC_SYMTAB
+                symtab = struct.unpack_from("<IIII", data, pos + 8)
+            pos += cmdsize
+        if symtab is None:
+            return none
+        symoff, nsyms, stroff, strsize = symtab
+        if symoff + 16 * nsyms > len(data) or stroff + strsize > len(data):
+            return none
+        want = name.encode()
+        found = set()
+        for k in range(nsyms):
+            strx, n_type, n_sect, _desc, value = struct.unpack_from(
+                "<IBBHQ", data, symoff + 16 * k
+            )
+            # Not a debugging entry; defined in a section (N_SECT).
+            if n_type & 0xE0 or n_type & 0x0E != 0x0E or strx >= strsize:
+                continue
+            end = data.find(b"\0", stroff + strx, stroff + strsize)
+            if end < 0 or data[stroff + strx : end] != want:
+                continue
+            if not 1 <= n_sect <= len(sections):
+                continue
+            seg, sect, addr, sz, offset, flags = sections[n_sect - 1]
+            if flags & 0xFF in ZEROFILL or not addr <= value <= addr + sz - size:
+                continue
+            at = offset + value - addr
+            if at + size > len(data):
+                continue
+            label = ",".join(
+                x.rstrip(b"\0").decode("ascii", "replace") for x in (seg, sect)
+            )
+            found.add((value, label, at, data[at : at + size]))
+    except struct.error:
+        return none
+    if len(found) != 1:
+        return none
+    value, label, at, raw = found.pop()
+    return SymbolRead(none.arch, raw, value, label, at)
+
+
+def macho_symbol_reads(data: bytes, name: str, size: int = 4) -> List[SymbolRead]:
+    """The symbol ``name`` (its Mach-O spelling) in every slice of a thin or
+    universal file, in the order of the file; at least one entry."""
+    import struct
+
+    if data[:4] != b"\xca\xfe\xba\xbe":
+        return [_thin_symbol(data, name, size)]
+    if len(data) < 8:
+        return [SymbolRead("unknown", None)]
+    (count,) = struct.unpack_from(">I", data, 4)
+    reads = []
+    for i in range(count):
+        at = 8 + 20 * i
+        if at + 20 > len(data):
+            reads.append(SymbolRead("unknown", None))
+            break
+        cpu, _sub, offset, sz, _align = struct.unpack_from(">iiIII", data, at)
+        arch = MACHO_ARCH.get(cpu, f"cputype 0x{cpu & 0xFFFFFFFF:x}")
+        if offset + sz > len(data):
+            reads.append(SymbolRead(arch, None))
+            continue
+        got = _thin_symbol(data[offset : offset + sz], name, size)
+        if got.raw is None:
+            reads.append(SymbolRead(arch, None))
+        else:
+            reads.append(replace(got, arch=arch, offset=offset + got.offset))
+    return reads or [SymbolRead("unknown", None)]
+
+
+def symbol_reads(data: bytes, c_name: str) -> List[SymbolRead]:
+    """The C variable ``c_name`` in an ELF file (one read, arch "") or in each
+    slice of a Mach-O file (where its name has a leading underscore)."""
+    if data[:4] in MACHO_MAGICS:
+        return macho_symbol_reads(data, "_" + c_name)
+    try:
+        raw = elf_symbol_bytes(data, c_name)
+    except (IndexError, ValueError):  # a cut file: not found
+        raw = None
+    return [SymbolRead("", raw)]
+
+
+def libiconv_version_of(raw: Optional[bytes]) -> str:
+    """libiconv's encoding: major = value >> 8, minor = value & 0xff."""
     if raw is None or len(raw) < 2:
         return ""
     value = int.from_bytes(raw, "little")
-    return f"{value >> 8}.{value & 0xFF}"
+    return f"{value >> 8}.{value & 0xFF}" if value else ""
 
 
-def libiconv_notice() -> str:
+def lxml_iconv_report() -> Optional[Tuple[int, int]]:
+    """lxml.etree.ICONV_COMPILED_VERSION of the build Python, or None."""
+    try:
+        from lxml import etree
+    except ImportError:
+        return None
+    value = getattr(etree, "ICONV_COMPILED_VERSION", None)
+    return (int(value[0]), int(value[1])) if value else None
+
+
+_VERSION_IN_TEXT = re.compile(r"(?<![\w.])(\d+\.\d+(?:\.\d+)?)(?![\w.])")
+
+
+def _version_key(version: str) -> Tuple[int, ...]:
+    return tuple(int(n) for n in version.split("."))
+
+
+def lxml_build_config(licenses: Path) -> Tuple[Optional[BuildConfig], List[str]]:
+    """Source 2: the stored file of lxml's build configuration whose
+    SOURCES.json entry has ``libiconv_version`` ({path, line, for}). Usable
+    only when the stored file is the one recorded (sha256) and names exactly
+    one libiconv version, on the cited line."""
+    import json
+
+    sources = licenses / "SOURCES.json"
+    if not sources.is_file():
+        return None, []
+    files = json.loads(sources.read_text("utf-8")).get("files", {})
+    entries = [(n, e) for n, e in sorted(files.items()) if "libiconv_version" in e]
+    if not entries:
+        return None, []
+
+    def refused(name: str, why: str) -> Tuple[None, List[str]]:
+        return None, [
+            f"lxml build configuration {name}: {why} "
+            "(architect-run10-macos-iconv.md section 1)"
+        ]
+
+    if len(entries) > 1:
+        return refused(", ".join(n for n, _ in entries), "more than one entry")
+    name, entry = entries[0]
+    path = licenses / name
+    if not path.is_file():
+        return refused(name, "the stored file is missing")
+    data = path.read_bytes()
+    if hashlib.sha256(data).hexdigest() != entry.get("sha256"):
+        return refused(name, "sha256 differs from its SOURCES.json entry")
+    lines = data.decode("utf-8", "replace").splitlines()
+    spec = entry["libiconv_version"]
+    versions = sorted(
+        {
+            v
+            for line in lines
+            if "iconv" in line.lower()
+            for v in _VERSION_IN_TEXT.findall(line)
+        },
+        key=_version_key,
+    )
+    if len(versions) != 1:
+        return refused(
+            name,
+            f"names {len(versions)} libiconv versions ({', '.join(versions)}); "
+            "usable only when it names exactly one",
+        )
+    number = int(spec["line"])
+    cited = lines[number - 1] if 1 <= number <= len(lines) else ""
+    if "iconv" not in cited.lower() or versions[0] not in _VERSION_IN_TEXT.findall(
+        cited
+    ):
+        return refused(name, f"line {number} names no libiconv version")
+    return (
+        BuildConfig(
+            versions[0], spec["path"], number, entry["tag"], tuple(spec["for"])
+        ),
+        [],
+    )
+
+
+def _where(rel: str, arch: str) -> str:
+    return f"{Path(rel).name} ({arch})" if arch else Path(rel).name
+
+
+def _archs(arches: Iterable[str]) -> str:
+    shown = sorted(a for a in set(arches) if a)
+    return f" ({', '.join(shown)})" if shown else ""
+
+
+def libiconv_components(
+    reads: Dict[str, List[SymbolRead]],
+    texts: Sequence[Tuple[str, str]] = (),
+    report: Optional[Tuple[int, int]] = None,
+    arch: str = "",
+    config: Optional[BuildConfig] = None,
+) -> Tuple[List[Component], List[str]]:
+    """The libiconv components of the lxml modules that carry it, and the
+    problems of the cross-checks (architect-run10-macos-iconv.md section 1).
+
+    ``reads`` maps each module (its path) to its symbol per slice; ``report``
+    is lxml's ICONV_COMPILED_VERSION in the build Python, which runs the slice
+    of ``arch``; ``config`` is source 2. One component per version, with the
+    files (and architectures) that carry it and its versioned address. When a
+    slice has no version from any source, one component without a version.
+    The executable's notices and the container notice both build them here.
+    """
+    problems: List[str] = []
+    cited = (
+        f"lxml's build configuration ({config.path}:{config.line} at tag "
+        f"{config.tag})"
+        if config
+        else ""
+    )
+    # (module, arch, symbol's version, version, source)
+    slices = []
+    for rel in sorted(reads):
+        for r in reads[rel] or [SymbolRead("", None)]:
+            symbol = libiconv_version_of(r.raw)
+            applies = (
+                config is not None
+                and ("darwin" if r.arch else "linux") in config.platforms
+            )
+            if symbol:
+                slices.append((rel, r.arch, symbol, symbol, "symbol"))
+                if applies and config.version != symbol:
+                    problems.append(
+                        f"{_where(rel, r.arch)}: libiconv {symbol} from the symbol "
+                        f"{LIBICONV_SYMBOL}, {config.version} from {cited}: "
+                        + TO_ARCHITECT_IC
+                    )
+            elif applies:
+                slices.append((rel, r.arch, "", config.version, "config"))
+            else:
+                slices.append((rel, r.arch, "", "", ""))
+
+    # The cross-check line.
+    if report is None:
+        part = "lxml.etree.ICONV_COMPILED_VERSION not read"
+    elif tuple(report) == (0, 0):
+        part = (
+            "lxml.etree.ICONV_COMPILED_VERSION is (0, 0), so lxml gives no "
+            "version to compare"
+        )
+    else:
+        shown = f"lxml.etree.ICONV_COMPILED_VERSION is ({report[0]}, {report[1]})"
+        said = f"{report[0]}.{report[1]}"
+        target = next(
+            (
+                s
+                for s in slices
+                if Path(s[0]).name.startswith("etree.") and s[1] in ("", arch) and s[3]
+            ),
+            None,
+        )
+        if target is None:
+            part = f"{shown}; no lxml.etree slice of {arch} with a version to compare"
+        elif target[3] == said:
+            part = f"{shown}, as {_where(target[0], target[1])} gives"
+        else:
+            where = _where(target[0], target[1])
+            part = f"{shown}, {where} gives {target[3]}: they disagree"
+            source = (
+                f"the symbol {LIBICONV_SYMBOL}"
+                if target[4] == "symbol"
+                else "lxml's build configuration"
+            )
+            problems.append(
+                f"{where}: libiconv {target[3]} from {source}, {said} from "
+                f"lxml.etree.ICONV_COMPILED_VERSION: " + TO_ARCHITECT_IC
+            )
+    parts = [part]
+    applied = [s for s in slices if s[4] == "config"] + [
+        s
+        for s in slices
+        if s[4] == "symbol"
+        and config is not None
+        and ("darwin" if s[1] else "linux") in config.platforms
+    ]
+    if config is None:
+        parts.append("lxml's build configuration is not recorded")
+    elif not applied:
+        parts.append("lxml's build configuration is not recorded for these files")
+    else:
+        compared = [s for s in applied if s[4] == "symbol"]
+        differ = [s for s in compared if s[2] != config.version]
+        if not compared:
+            parts.append(
+                f"{cited} names {config.version}; no slice has the symbol to compare"
+            )
+        elif not differ:
+            parts.append(
+                f"{cited} names {config.version}, as the symbol does in every slice "
+                "that has it"
+            )
+        else:
+            parts.append(
+                f"{cited} names {config.version}; "
+                + ", ".join(f"{_where(s[0], s[1])} gives {s[2]}" for s in differ)
+                + " (they disagree)"
+            )
+    cross = "cross-check: " + "; ".join(parts)
+
+    missing = [s for s in slices if not s[3]]
+    if missing:
+        comp = Component(
+            LXML_ICONV,
+            "",
+            LXML_ICONV_SPDX,
+            "c-library",
+            sorted(reads),
+            list(texts),
+            urls=[LIBICONV_HOME],
+            version_from=LIBICONV_NO_VERSION.format(
+                slices=", ".join(_where(s[0], s[1]) for s in missing)
+            ),
+            details=[cross],
+        )
+        add_libiconv_note(comp)
+        return [comp], problems
+
+    versions = sorted({s[3] for s in slices}, key=_version_key)
+    comps = []
+    for version in versions:
+        mine = [s for s in slices if s[3] == version]
+        files = sorted({s[0] for s in mine})
+        how = []
+        by_symbol = [s[1] for s in mine if s[4] == "symbol"]
+        by_config = [s[1] for s in mine if s[4] == "config"]
+        if by_symbol:
+            how.append(LIBICONV_VERSION_FROM + _archs(by_symbol))
+        if by_config:
+            how.append(
+                LIBICONV_CONFIG_FROM.format(
+                    path=config.path, line=config.line, tag=config.tag
+                )
+                + _archs(by_config)
+            )
+        details = []
+        if len(versions) > 1:
+            details = [
+                f"carried in: {rel}" + _archs(s[1] for s in mine if s[0] == rel)
+                for rel in files
+            ]
+        comp = Component(
+            LXML_ICONV,
+            version,
+            LXML_ICONV_SPDX,
+            "c-library",
+            files,
+            list(texts),
+            urls=[LIBICONV_HOME],
+            version_from="\n".join(how),
+            details=details + [cross],
+        )
+        add_libiconv_note(comp)
+        comps.append(comp)
+    return comps, problems
+
+
+def _iconv_reads(path: Path) -> List[SymbolRead]:
+    """libiconv's version symbol in an installed module, per architecture."""
+    return symbol_reads(Path(path).read_bytes(), LIBICONV_SYMBOL)
+
+
+IC_EVIDENCE = "libiconv evidence: "
+
+
+def iconv_evidence(
+    build, rows: Sequence[Row], comps: Sequence[Component], report
+) -> List[str]:
+    """The macOS build record's libiconv lines (architect-run10-macos-iconv.md
+    section 3, the script's own part): for each module that carries libiconv,
+    read from the wheel's file, each slice's symbol address, section, file
+    offset, its 4 bytes and the decoded version; lxml's report; the resulting
+    component lines of the notices file."""
+    out: List[str] = []
+    for rel in build.binaries():
+        row = match_row(rel, rows)
+        if row is None or not any(c.name == LXML_ICONV for c in row.carries):
+            continue
+        if not build.contains(rel, b"libiconv_open"):
+            continue
+        wheel = build.wheel_file(rel)
+        if wheel is not None:
+            data = Path(wheel).read_bytes()
+            same = "yes" if build.same_as_wheel(rel) else "no"
+            out.append(
+                f"{IC_EVIDENCE}{rel}: read from the wheel's file {wheel} (the "
+                f"bundled file is byte-identical: {same})"
+            )
+        else:
+            data = build.file_path(rel).read_bytes()
+            out.append(
+                f"{IC_EVIDENCE}{rel}: read from the bundled file (no wheel file)"
+            )
+        macho = data[:4] in MACHO_MAGICS
+        name = ("_" if macho else "") + LIBICONV_SYMBOL
+        for r in symbol_reads(data, LIBICONV_SYMBOL):
+            where = f"{rel} ({r.arch})" if r.arch else rel
+            if r.raw is None:
+                out.append(f"{IC_EVIDENCE}{where}: no symbol {name}")
+                continue
+            at = (
+                f" at 0x{r.address:x}, section {r.section}, file offset 0x{r.offset:x},"
+                if macho
+                else ":"
+            )
+            out.append(
+                f"{IC_EVIDENCE}{where}: symbol {name}{at} bytes {r.raw.hex(' ')}, "
+                f"version {libiconv_version_of(r.raw) or 'none'}"
+            )
+    if not out:
+        return []
+    shown = "not read" if report is None else f"({report[0]}, {report[1]})"
+    out.append(f"{IC_EVIDENCE}lxml.etree.ICONV_COMPILED_VERSION {shown}")
+    for c in sorted(comps, key=lambda c: _version_key(c.version or "0")):
+        if c.name == LXML_ICONV:
+            out += [f"{IC_EVIDENCE}notices: {line}" for line in component_lines(c)]
+    return out
+
+
+def libiconv_notice(problems: Optional[List[str]] = None) -> str:
     """The libiconv notice of the container image (architect review F3).
 
     The image installs lxml's wheel as pip does, so the modules are found
-    through the installed distribution. The paragraph and the addresses come
-    from ``add_libiconv_note``, as in THIRD-PARTY-LICENSES.txt. If the modules
-    do not name one version, the version is not recorded.
+    through the installed distribution. The components, paragraph and
+    addresses come from ``libiconv_components``, as in THIRD-PARTY-LICENSES.txt
+    (one block per version). The cross-check problems are added to
+    ``problems`` when given.
     """
     lxml = _installed("lxml")
-    versions: Dict[str, str] = {}
+    reads: Dict[str, List[SymbolRead]] = {}
     for f in sorted((lxml.files or []) if lxml else [], key=str):
         rel = str(f).replace(os.sep, "/")
         path = Path(lxml.locate_file(f))
@@ -1605,7 +2097,7 @@ def libiconv_notice() -> str:
             continue
         if b"libiconv_open" not in path.read_bytes():
             continue
-        versions[rel] = _iconv_version(path)
+        reads[rel] = _iconv_reads(path)
     out = [
         "GNU libiconv in lxml's extension modules (container image)",
         "",
@@ -1613,15 +2105,18 @@ def libiconv_notice() -> str:
         "the texts and sources are; it makes no statement about any licence.",
         "",
     ]
-    if not versions:
+    if not reads:
         out.append("No lxml extension module in this image contains GNU libiconv.")
         return "\n".join(out) + "\n"
-    comp = libiconv_component(versions)
-    out.append(f"- {comp.name} {comp.version or '(version not recorded)'}: {comp.spdx}")
-    out.append(f"    {comp.version_from}")
-    out += [f"    source: {u}" for u in comp.urls]
-    out += [f"    file: {f}" for f in comp.files]
-    out += [""] + comp.notes
+    config, found = lxml_build_config(Path(__file__).resolve().parent / "licenses")
+    comps, more = libiconv_components(
+        reads, report=lxml_iconv_report(), arch=platform.machine(), config=config
+    )
+    if problems is not None:
+        problems += found + more
+    for i, comp in enumerate(comps):
+        out += ([""] if i else []) + component_lines(comp)
+        out += [""] + comp.notes
     out += [
         "",
         "The text of the GNU Lesser General Public License version 2.1 is in",
@@ -1797,9 +2292,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if ns.out is None and not ns.list_unmapped:
         parser.error("--out is required")
     if ns.lxml_notice:
-        ns.out.write_text(libiconv_notice(), encoding="utf-8")
+        problems: List[str] = []
+        ns.out.write_text(libiconv_notice(problems), encoding="utf-8")
         print(f"libiconv notice written to {ns.out}")
-        return 0
+        for p in problems:
+            print(f"LICENCE CHECK: {p}", file=sys.stderr)
+        return 1 if problems else 0
     if ns.bundle is None or ns.workpath is None:
         parser.error("--bundle and --workpath are required")
     # A system without a table is checked against an empty one, so the list
@@ -1821,6 +2319,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print(f"{len(comps)} components written to {ns.out}")
     if any(r.links for r in rows):
         record = build_record(build, rows, platform.machine())
+        record += iconv_evidence(build, rows, comps, build.lxml_iconv_report())
         print("".join(f"BUILD RECORD: {line}\n" for line in record), end="")
         if ns.build_record:
             ns.build_record.write_text("".join(f"{x}\n" for x in record), "utf-8")
