@@ -27,13 +27,15 @@ inventag templates list [--kind K] [--all]
 inventag templates show NAME|PATH [--resolved]
 inventag templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] [--force]
 inventag templates validate NAME|PATH [NAME|PATH ...]
+inventag selftest                      check this copy of InvenTag, offline
+inventag completion bash|zsh|fish      print a shell completion script
 ```
 
 The `inventag` command works the same on Linux, macOS and Windows.
 
 Not verified against Windows or macOS: the `inventag` command works the same as on Linux.
 
-`templates` must be the first word after the program name.
+`templates`, `selftest` and `completion` must be the first word after the program name.
 
 ## Templates
 
@@ -49,6 +51,21 @@ Not verified against Windows or macOS: the `inventag` command works the same as 
 | `templates show NAME` | Prints the file. `--resolved` prints the result after `extends` and defaults. |
 | `templates init NAME --output PATH` | Copies a template into your project. `--extend` writes a short file that inherits; `--name` sets the name; `--force` overwrites. |
 | `templates validate NAME\|PATH ...` | Checks files and the templates they refer to. Exit code 0 if all are valid, 1 otherwise. |
+
+### `selftest` and `completion`
+
+| Command | What it does |
+|---|---|
+| `selftest` | Checks that this copy of InvenTag works: packages, built-in templates, AWS service data, the read-only guard, and an Excel and a Word file written to a temporary folder and removed. It makes no AWS call, opens no network connection and needs no credentials. Exit code 0: every check passed. Exit code 1: a check failed; the other checks still run. Exit code 2: an unknown argument. |
+| `completion bash\|zsh\|fish` | Prints a shell completion script to standard output. It only reads the options of the command and makes no AWS call and no network connection. Exit code 0. A missing or unknown shell: usage line and exit code 2. |
+
+To install a completion script:
+
+```text
+source <(inventag completion bash)
+inventag completion zsh > "${fpath[1]}/_inventag"
+inventag completion fish > ~/.config/fish/completions/inventag.fish
+```
 
 ## Accounts
 

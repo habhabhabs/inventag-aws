@@ -22,13 +22,15 @@ inventag templates list [--kind K] [--all]
 inventag templates show NAME|PATH [--resolved]
 inventag templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] [--force]
 inventag templates validate NAME|PATH [NAME|PATH ...]
+inventag selftest                      check this copy of InvenTag, offline
+inventag completion bash|zsh|fish      print a shell completion script
 ```
 
 `inventag` 命令在 Linux、macOS 和 Windows 上的用法相同。
 
 未针对 Windows 或 macOS 验证：`inventag` 命令的行为与在 Linux 上相同。
 
-`templates` 必须是程序名之后的第一个词。
+`templates`、`selftest` 和 `completion` 必须是程序名之后的第一个词。
 
 ## 模板 {#templates}
 
@@ -44,6 +46,21 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | `templates show NAME` | 打印该文件。`--resolved` 打印应用 `extends` 和默认值之后的结果。 |
 | `templates init NAME --output PATH` | 把模板复制到你的项目中。`--extend` 写出一个继承原模板的简短文件；`--name` 设置名称；`--force` 覆盖已有文件。 |
 | `templates validate NAME\|PATH ...` | 检查文件以及它们引用的模板。全部有效时退出码为 0，否则为 1。 |
+
+### `selftest` 和 `completion` {#selftest-and-completion}
+
+| 命令 | 作用 |
+|---|---|
+| `selftest` | 检查这份 InvenTag 是否能正常工作：软件包、内置模板、AWS 服务数据、只读保护，以及写入临时文件夹后删除的一个 Excel 文件和一个 Word 文件。它不调用 AWS，不打开网络连接，也不需要凭证。退出码 0：所有检查通过。退出码 1：有检查失败；其他检查仍会运行。退出码 2：未知参数。 |
+| `completion bash\|zsh\|fish` | 把 shell 补全脚本输出到标准输出。它只读取命令自身的选项，不调用 AWS，也不打开网络连接。退出码 0。缺少 shell 名或 shell 名未知：显示用法行，退出码 2。 |
+
+安装补全脚本：
+
+```text
+source <(inventag completion bash)
+inventag completion zsh > "${fpath[1]}/_inventag"
+inventag completion fish > ~/.config/fish/completions/inventag.fish
+```
 
 ## 账户 {#accounts}
 
