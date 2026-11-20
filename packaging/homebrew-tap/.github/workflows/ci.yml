@@ -37,6 +37,27 @@ jobs:
         inventag --version
         inventag selftest
         man -w inventag
+        # Homebrew may relink or re-sign files in its keg. The lxml modules must be
+        # the files of the release archive (the download in Homebrew's cache).
+        # Same comparison as check_lxml.sh in the InvenTag repository.
+        archive="$(brew --cache --formula habhabhabs/inventag/inventag)"
+        keg="$(brew --prefix habhabhabs/inventag/inventag)/libexec"
+        work="$(mktemp -d)"
+        tar -xzf "$archive" -C "$work" --strip-components=1
+        found=0
+        status=0
+        while IFS= read -r so; do
+          found=1
+          if [ "$(shasum -a 256 "$work/$so" | cut -d' ' -f1)" = "$(shasum -a 256 "$keg/$so" | cut -d' ' -f1)" ]; then
+            echo "ok $so"
+          else
+            echo "DIFFERENT $so"
+            status=1
+          fi
+        done < <(cd "$work" && find . -type f -path '*/lxml/*' -name '*.so' | sort)
+        rm -rf "$work"
+        [ "$found" = 1 ] || { echo "the archive has no lxml module to compare"; exit 1; }
+        [ "$status" = 0 ] || { echo "Homebrew changed an lxml module: report it to the InvenTag maintainers"; exit 1; }
         brew uninstall inventag
 
   formula-linux:
@@ -63,4 +84,25 @@ jobs:
         brew test habhabhabs/inventag/inventag
         inventag --version
         inventag selftest
+        # Homebrew may relink or re-sign files in its keg. The lxml modules must be
+        # the files of the release archive (the download in Homebrew's cache).
+        # Same comparison as check_lxml.sh in the InvenTag repository.
+        archive="$(brew --cache --formula habhabhabs/inventag/inventag)"
+        keg="$(brew --prefix habhabhabs/inventag/inventag)/libexec"
+        work="$(mktemp -d)"
+        tar -xzf "$archive" -C "$work" --strip-components=1
+        found=0
+        status=0
+        while IFS= read -r so; do
+          found=1
+          if [ "$(sha256sum "$work/$so" | cut -d' ' -f1)" = "$(sha256sum "$keg/$so" | cut -d' ' -f1)" ]; then
+            echo "ok $so"
+          else
+            echo "DIFFERENT $so"
+            status=1
+          fi
+        done < <(cd "$work" && find . -type f -path '*/lxml/*' -name '*.so' | sort)
+        rm -rf "$work"
+        [ "$found" = 1 ] || { echo "the archive has no lxml module to compare"; exit 1; }
+        [ "$status" = 0 ] || { echo "Homebrew changed an lxml module: report it to the InvenTag maintainers"; exit 1; }
         brew uninstall inventag
