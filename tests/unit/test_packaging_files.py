@@ -668,3 +668,27 @@ def test_the_container_notice_says_how_the_version_was_read(tpl, tmp_path, monke
     monkeypatch.setattr(tpl, "_iconv_version", lambda path: "")
     text = tpl.libiconv_notice()
     assert f"(version not recorded): LGPL-2.1\n{NOT_RECORDED_LINE}\n" in text
+
+
+# ------------------------------------------- Python 3.12 only (B2c, ruling 4 (b))
+PY313_GOLDEN = (
+    "CPython 3.13.18: the executable is built with Python 3.12 only; create the "
+    "build environment with python3.12 (build_binary.sh venv <dir> python3.12) "
+    "and build again"
+)
+
+
+def test_a_build_with_python_other_than_3_12_is_refused(tpl):
+    assert tpl.python_version_problems((3, 13, 18)) == [PY313_GOLDEN]
+    assert tpl.python_version_problems((3, 11, 9))[0].startswith("CPython 3.11.9: ")
+    assert tpl.python_version_problems((3, 12, 3)) == []
+
+
+def test_the_check_of_the_build_python_reaches_the_problems(tpl):
+    problems = []
+    comp = tpl._cpython(problems, version_info=(3, 13, 18))
+    assert PY313_GOLDEN in problems
+    assert comp.version == "3.13.18"
+    problems = []
+    tpl._cpython(problems, version_info=(3, 12, 3))
+    assert not [p for p in problems if "3.12 only" in p]
