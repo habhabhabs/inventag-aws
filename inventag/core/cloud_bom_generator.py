@@ -331,6 +331,12 @@ class _AccountDeadline:
                 return
         callback()
 
+    def forget_on_abandon(self, callback) -> None:
+        """Drop ``callback`` (its scan ended). The deadline lives as long as
+        the session, so it must not keep a finished engine alive."""
+        with self._abandon_lock:
+            self._on_abandon = [c for c in self._on_abandon if c != callback]
+
     def _hook_id(self, event: str) -> str:
         return f"{self.UNIQUE_ID}-{event}-{id(self)}"
 
@@ -2039,9 +2045,11 @@ class CloudBOMGenerator:
             stop()
         return True
 
-    def _untrack_engine(self, engine) -> None:
+    def _untrack_engine(self, engine, deadline) -> None:
         with self._engines_lock:
             self._running_engines.discard(engine)
+        if deadline is not None:
+            deadline.forget_on_abandon(engine.stop_detail_calls)
 
     def _attach_limiter(self, session, account_id: str, deadline) -> None:
         """Put the run's limiter on an account's session, after the read-only
@@ -2153,7 +2161,7 @@ class CloudBOMGenerator:
             found = inventory.discover_all_resources()
         finally:
             if tracked:
-                self._untrack_engine(engine)
+                self._untrack_engine(engine, deadline)
         resources = [mask_secret_values(resource) for resource in found]
         if deadline is not None:
             entries = self._coverage_entries(inventory, account_id)
