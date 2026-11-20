@@ -142,3 +142,129 @@ def test_every_other_job_waits_for_the_plan():
     for name, job in JOBS.items():
         if name != "plan":
             assert "plan" in job["needs"], name
+
+
+# ---- stage 2: the four builds, the build image, nfpm ----------------------
+
+# name: (runner label, CPU as build_binary.sh names it, nfpm arch)
+LINUX_BUILDS = {
+    "build-linux-x86_64": ("ubuntu-24.04", "x86_64", "amd64"),
+    "build-linux-arm64": ("ubuntu-24.04-arm", "arm64", "arm64"),
+}
+MACOS_BUILDS = {
+    "build-macos-arm64": ("macos-15", "arm64"),
+    "build-macos-x86_64": ("macos-15-intel", "x86_64"),
+}
+# Read from nfpm's own checksums.txt of the v2.49.0 release (GitHub, 20 Nov 2026).
+NFPM_SHA256 = {
+    "x86_64": "2afaa5ffb5e3493402e31e7c67a5a1fb42133e3f66fc315ca0051934125561c7",
+    "arm64": "d4eee71839e92c68cbd3b101640bad32d2856fc551acae0635be9118e48c9d9c",
+}
+DIGEST_PLACEHOLDER = "TO-BE-FILLED-BY-THE-DRY-RUN"
+
+
+def _non_plan_checkouts():
+    for name, step in _all_steps():
+        if name != "plan" and step.get("uses", "").startswith("actions/checkout@"):
+            yield name, step
+
+
+def test_the_four_builds_run_on_the_four_named_systems():
+    for name, (label, *_rest) in {**LINUX_BUILDS, **MACOS_BUILDS}.items():
+        assert JOBS[name]["runs-on"] == label
+
+
+def test_every_build_packages_the_tag_the_plan_checked():
+    for name in (*LINUX_BUILDS, *MACOS_BUILDS):
+        checkout = [s for s in _steps(name) if "checkout" in s.get("uses", "")]
+        assert len(checkout) == 1, name
+        assert checkout[0]["with"]["ref"] == "refs/tags/${{ needs.plan.outputs.tag }}"
+
+
+def test_the_build_image_is_pinned_by_digest_or_the_job_refuses_to_run():
+    value = str(DATA["env"]["ALMALINUX_8_DIGEST"])
+    assert value == DIGEST_PLACEHOLDER or re.fullmatch(r"[0-9a-f]{64}", value)
+    for name in LINUX_BUILDS:
+        text = _run_text(name)
+        # The check comes first and refuses anything that is not 64 hex
+        # digits; the refusal names the digest the tag has now.
+        check = text.index("[0-9a-f]{64}")
+        pinned_pull = text.index('docker pull "almalinux@sha256:${ALMALINUX_8_DIGEST}"')
+        assert check < pinned_pull
+        assert "almalinux:8" in text[check:pinned_pull]
+        # After the pinned pull no line names the image by tag.
+        assert "almalinux:" not in text[pinned_pull:]
+        assert ":latest" not in text
+
+
+def test_the_build_image_check_names_the_system_python_libc_and_packages():
+    for name in LINUX_BUILDS:
+        text = _run_text(name)
+        assert 'test "$ID" = almalinux' in text
+        assert "VERSION_ID" in text
+        assert "python3.12 python3.12-pip" in text
+        assert "Py_ENABLE_SHARED" in text
+        assert "libpython3.12" in text
+        assert "rpm -q" in text and "glibc" in text and "2.28" in text
+        assert "build-image" in text
+
+
+def test_the_linux_builds_use_the_scripts_of_the_repository_and_the_lock():
+    for name in LINUX_BUILDS:
+        text = _run_text(name)
+        assert "scripts/packaging/build_binary.sh venv" in text
+        assert "python3.12" in text
+        assert "scripts/packaging/build_binary.sh build" in text
+        assert "scripts/packaging/build_linux_packages.sh" in text
+        # No install of our own: the script installs from the hash-pinned lock.
+        assert "pip install" not in text
+        assert "--no-selftest" not in text
+        # The source tree is mounted read-only into the build container.
+        assert ":/src:ro" in text
+
+
+def test_the_two_linux_builds_run_the_same_commands_and_differ_in_env_only():
+    a, b = (JOBS[n] for n in LINUX_BUILDS)
+    assert _run_text("build-linux-x86_64") == _run_text("build-linux-arm64")
+    assert a["env"]["CPU"] == "x86_64" and b["env"]["CPU"] == "arm64"
+
+
+def test_nfpm_is_pinned_by_version_and_sha256_and_checked_before_use():
+    assert str(DATA["env"]["NFPM_VERSION"]) == "2.49.0"
+    for name, (_label, cpu, _arch) in LINUX_BUILDS.items():
+        assert JOBS[name]["env"]["NFPM_SHA256"] == NFPM_SHA256[cpu]
+        run = [s["run"] for s in _steps(name) if "sha256sum -c" in s.get("run", "")]
+        assert len(run) == 1
+        assert run[0].index("sha256sum -c") < run[0].index("tar -x")
+        assert "nfpm_${NFPM_VERSION}_Linux_${CPU}" in run[0]
+
+
+def test_the_macos_builds_use_python_3_12_and_gnu_tar_and_the_same_scripts():
+    for name in MACOS_BUILDS:
+        steps = _steps(name)
+        python = [s for s in steps if "setup-python" in s.get("uses", "")]
+        assert python and python[0]["with"]["python-version"] == "3.12"
+        text = _run_text(name)
+        assert "gnu-tar" in text and "gnubin" in text
+        assert "scripts/packaging/build_binary.sh venv" in text
+        assert "scripts/packaging/build_binary.sh build" in text
+        assert "--no-selftest" not in text
+        assert "pip install" not in text
+
+
+def test_every_build_uploads_its_files_and_fails_when_there_are_none():
+    for name in (*LINUX_BUILDS, *MACOS_BUILDS):
+        upload = [
+            s for s in _steps(name) if s.get("uses", "").startswith("actions/upload-")
+        ]
+        assert len(upload) == 1, name
+        assert upload[0]["with"]["name"] == name
+        assert upload[0]["with"]["if-no-files-found"] == "error"
+        text = _run_text(name)
+        assert "THIRD-PARTY-LICENSES" in text and "components.json" in text
+
+
+def test_the_scripts_a_build_calls_exist_in_the_repository():
+    for name in (*LINUX_BUILDS, *MACOS_BUILDS):
+        for path in set(re.findall(r"scripts/packaging/[\w.]+", _run_text(name))):
+            assert (ROOT / path).is_file(), (name, path)
