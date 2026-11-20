@@ -1,0 +1,34 @@
+{
+  "status": "PROVISIONAL",
+  "file": "ReadOnlyAccess.json",
+  "file_sha256": "f3026cfdddc9a14bb50b1705bb06a536db5b5ff6fec3cd1acaf76e902582b0cf",
+  "what_this_file_is": "A PROVISIONAL list of the Action patterns of the AWS managed policy ReadOnlyAccess, written by hand from the table in section 1 of reports/v14-plan-readonlyaccess.md (the architect's plan, 20 Nov 2026). It is NOT a copy of the policy document. It was written for the shape of an IAM policy document (Version, Statement, Action, Resource) so that the raw copy can replace it as a file.",
+  "how_it_was_written": [
+    "Actions the plan's table quotes as entries of the policy are written as quoted: sts:GetAccessKeyInfo, sts:GetCallerIdentity, sts:GetSessionToken, ec2:Describe*, account:ListRegions, tag:Get*, ce:GetCostAndUsage, pricing:GetProducts, cloudwatch:Get*, apigateway:GET, the five glue Get* actions, athena:ListWorkGroups, kafka:ListClustersV2, redshift-serverless:ListNamespaces and ListWorkgroups, s3:DescribeJob, s3:Get*, s3:List*, kms:Describe*, kms:Get*, kms:List*.",
+    "For every other service that the 122 actions of inventag/security/iam_policy.py use, the table says 'the service's Describe*, List* or Get* wildcard'. This file writes all three wildcards for each such service. That can be wider than the real policy for a service, never narrower for an action InvenTag lists, so the completeness test cannot fail because of the provisional width, and a real copy that is narrower is what the test must then catch.",
+    "organizations:Describe* and organizations:List* are written because the plan says they are in the policy. Nothing else from the plan's 'not called by InvenTag' row is written.",
+    "sts:AssumeRole, s3:PutObject and kms:GenerateDataKey are deliberately absent: the plan says ReadOnlyAccess does not grant them."
+  ],
+  "basis": {
+    "plan": "reports/v14-plan-readonlyaccess.md, section 1 (table) and section 3, W1 item 1",
+    "claimed_policy_version": "v192, last edited 13 Nov 2026 (as read by the architect through a fetch tool, by named action, not as a raw copy)",
+    "address": "https://docs.aws.amazon.com/aws-managed-policy/latest/reference/ReadOnlyAccess.html"
+  },
+  "must_replace_with": {
+    "what": "The raw policy document of ReadOnlyAccess, unedited, as JSON with Version and Statement, saved as ReadOnlyAccess.json in this folder.",
+    "ways": [
+      "The weekly job of register row C-13 downloads the reference page on a GitHub runner, extracts the JSON, and the lead commits it.",
+      "Or the owner runs, with any AWS identity that may read IAM: aws iam get-policy-version --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess --version-id v192 --query PolicyVersion.Document > ReadOnlyAccess.json"
+    ],
+    "then": [
+      "Replace this file's content: status becomes the string 'RAW_COPY', and set address, policy_version, retrieved_at (UTC date) and sha256 of the raw file; remove what_this_file_is and how_it_was_written.",
+      "Rename the tests that say PROVISIONAL (tests/unit/test_readonlyaccess_only.py and tests/unit/test_iam_actions_complete.py) and drop the PROVISIONAL caveat of the docs page.",
+      "Any difference the real copy shows (an action InvenTag lists that it does not grant, a wildcard narrower than written here) goes to the architect: it is a finding, not something to edit away.",
+      "tests/policy_sim.py reads Allow statements with Resource '*' and no Condition or NotAction; if the real document uses anything else the loader raises on purpose, and the loader is to be extended, not bypassed."
+    ]
+  },
+  "not_verified": [
+    "That any entry of this file is in the real ReadOnlyAccess policy.",
+    "Anything about real AWS."
+  ]
+}
