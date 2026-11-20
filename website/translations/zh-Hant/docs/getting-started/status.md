@@ -164,6 +164,10 @@ InvenTag 會把被限流的呼叫最多重試 10 次（standard 重試模式）�
 - 在範本報告中，如果 AWS 沒有為資源返回 `Name` 欄位或 `Name` 標籤，Name 列為空；ID 欄用於識別該資源。
   對於 Lambda 函式、IAM 角色和 KMS 別名，範本報告會把 ID 顯示為名稱。
 
+- 在 Intel Mac 上，`pip install inventag-aws` 會編譯 cryptography 庫，因為從版本 50 起，cryptography 不再為 Intel Mac 發佈現成的建置。這需要 Rust 工具鏈。
+
+  未針對 Intel Mac 驗證：`pip install inventag-aws`。
+
 ## 安全說明 {#security-notes}
 
 - **仍然使用唯讀 IAM 身份。** 防護會阻止寫入呼叫，而你的 IAM（身份和存取管理）策略是第二道獨立的安全網。

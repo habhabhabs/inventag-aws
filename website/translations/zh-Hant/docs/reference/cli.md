@@ -54,7 +54,7 @@ inventag completion bash|zsh|fish      print a shell completion script
 | `selftest` | 檢查這份 InvenTag 是否能正常工作：軟體包、內建範本、AWS 服務資料、唯讀保護，以及寫入臨時資料夾後刪除的一個 Excel 檔案和一個 Word 檔案。它不呼叫 AWS，不開啟網路連線，也不需要憑證。結束代碼 0：所有檢查透過。結束代碼 1：有檢查失敗；其他檢查仍會執行。結束代碼 2：未知引數。 |
 | `completion bash\|zsh\|fish` | 把 shell 補全指令碼輸出到標準輸出。它唯讀取命令自身的選項，不呼叫 AWS，也不開啟網路連線。結束代碼 0。缺少 shell 名或 shell 名未知：顯示用法行，結束代碼 2。 |
 
-安裝補全指令碼：
+安裝補全指令碼，見 [命令列補全](../getting-started/installation.md#shell-completion)。命令如下：
 
 ```text
 source <(inventag completion bash)

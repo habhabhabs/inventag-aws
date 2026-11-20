@@ -152,16 +152,18 @@ Permissions: 1 action(s) were not allowed for account 222222222222: sts:AssumeRo
 使用 `--audit-output` 時，該檔案還會有鍵 `permissions_denied`。只有在有操作被拒絕時才有這個鍵。每個條目有以下欄位：
 
 ```json
-"permissions_denied": [
-  {
-    "account": "123456789012",
-    "action": "s3:GetBucketLocation",
-    "service": "s3",
-    "operation": "GetBucketLocation",
-    "regions": ["us-east-1"],
-    "kind": "detail"
-  }
-]
+{
+  "permissions_denied": [
+    {
+      "account": "123456789012",
+      "action": "s3:GetBucketLocation",
+      "service": "s3",
+      "operation": "GetBucketLocation",
+      "regions": ["us-east-1"],
+      "kind": "detail"
+    }
+  ]
+}
 ```
 
 | 欄位 | 含義 |
