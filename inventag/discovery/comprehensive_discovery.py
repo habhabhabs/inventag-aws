@@ -2522,7 +2522,9 @@ class ComprehensiveAWSDiscovery:
                     results[index] = (True, future.result())
                 except CancelledError:
                     results[index] = (False, DetailCallsStopped())
-                except Exception as error:
+                except (
+                    Exception
+                ) as error:  # silent-ok: kept as the answer; the caller counts it as a detail failure
                     results[index] = (False, error)
             finished = True
         finally:
@@ -2555,7 +2557,9 @@ class ComprehensiveAWSDiscovery:
         for region, resources in grouped.items():
             try:
                 plan.append((region, resources, make_client(region), None))
-            except Exception as e:
+            except (
+                Exception
+            ) as e:  # silent-ok: kept in the plan; counted as one detail failure per resource below
                 self.logger.debug(
                     f"Failed to create {client_text} client for {region}: {e}"
                 )
