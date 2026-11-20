@@ -56,6 +56,8 @@ InvenTag 还会调用 `account:ListRegions`，但仅在 `ec2:DescribeRegions` �
 `cloudwatch:GetMetricStatistics`，`ReadOnlyAccess` 已覆盖该调用）；
 如果使用 `--s3-bucket`，则需要在报告存储桶上添加 `s3:PutObject`。
 
+要只用 `ReadOnlyAccess` 运行，见[仅使用 ReadOnlyAccess 运行](#run-with-only-readonlyaccess)。
+
 `ReadOnlyAccess` 范围很宽：它可以读取 S3 对象列表等数据，以及 InvenTag 从不查看的某些配置。
 如果这对你的组织来说太宽，请使用方案 2。
 
@@ -85,6 +87,95 @@ No permission for sqs (list_queues in us-east-1: AccessDenied). Resources of sqs
 
 如果缺少的是某个资源细节所需的操作，发现过程会继续进行，并把该细节留空。
 
+## 仅使用 ReadOnlyAccess 运行 {#run-with-only-readonlyaccess}
+
+你可以只给该身份附加 AWS 托管策略 `ReadOnlyAccess`，不再添加其他任何东西。本节说明哪些可用、哪些不可用，以及 AWS 拒绝某个操作时 InvenTag 会输出什么。
+
+本节中的策略列表是 PROVISIONAL（暂定）的。项目依据一份它根据 AWS 参考页面（策略版本 v192，2026 年 11 月 13 日）手工编写的 `ReadOnlyAccess` 操作列表来测试 InvenTag。在项目拿到 AWS 策略的原始副本之前，这份列表一直是暂定的。未针对真实的 AWS 验证：该列表与 `ReadOnlyAccess` 当前允许的内容一致，以及只附加 `ReadOnlyAccess` 的扫描。
+
+### 哪些可用 {#what-works}
+
+按这份暂定列表，`ReadOnlyAccess` 包含 `config/defaults/iam-policy-read-only.json` 中全部 122 个读取操作，以及 `apigateway:GET`。其中有 `tag:GetResources`、`ce:GetCostAndUsage` 和 `ec2:DescribeRegions`，所以方案 1 的三项额外权限是一种保险，不是必需。
+
+在测试中，只用这些操作扫描一个账户时，运行以退出码 0 结束。AWS 不拒绝任何调用。日志里没有 `No permission for` 警告，测试创建的每个资源都在报告中。使用 `--create-excel --create-word` 时如此，再加上 `--enable-network-analysis`、`--enable-security-analysis`、`--enable-cost-analysis` 和账单验证时也是如此。
+
+### ReadOnlyAccess 不包含的三个操作 {#three-actions-that-readonlyaccess-does-not-include}
+
+| 操作 | 仅在以下情况需要 | 没有它会怎样 |
+|---|---|---|
+| `sts:AssumeRole` | 通过角色扫描其他账户（`role_arn` 或 `--cross-account-role`） | 该账户失败。InvenTag 扫描其他账户。运行以退出码 0 结束；传入 `--fail-on-account-error` 时以退出码 5 结束。 |
+| `s3:PutObject` | 用 `--s3-bucket` 上传报告 | 上传失败，报告留在本地输出文件夹。运行以退出码 1 结束。 |
+| `kms:GenerateDataKey` | 用 `--s3-encryption aws:kms` 和 KMS 密钥上传报告 | 未测试。 |
+
+未针对真实的 AWS 验证：被拒绝的 `kms:GenerateDataKey` 会让上传停止，以及此时 S3 会点名哪个操作。在模拟的 AWS 下，失败的上传只被点名为 `s3:PutObject`。
+
+### 还有什么会拒绝调用 {#what-else-can-refuse-a-call}
+
+附加了 `ReadOnlyAccess` 的身份仍可能被拒绝。下面这些原因，InvenTag 无法彼此区分：
+
+- 服务控制策略或权限边界
+- 资源的策略，例如 KMS 密钥策略或存储桶策略
+- 账户中未启用的区域或服务
+- `ReadOnlyAccess` 的更新版本，因为 AWS 会修改该策略
+
+未针对真实的 AWS 验证：这些原因，以及其中哪些会被 AWS 报告为拒绝访问。
+
+方案 2 中的仓库策略是权限最少的选择。`ReadOnlyAccess` 比 InvenTag 需要的更宽，例如 `s3:Get*`。无论策略允许什么，只读防护仍会拒绝返回对象内容或机密的调用。
+
+### 某个操作被拒绝时 {#when-an-action-is-refused}
+
+没有任何被拒绝的操作会让运行停止。运行的处理如下：
+
+| 被拒绝的操作 | 运行的处理 |
+|---|---|
+| 某个账户的 `sts:AssumeRole` | 该账户失败并给出原因。其他账户照常扫描。 |
+| `ec2:DescribeRegions` | InvenTag 改问 `account:ListRegions`。如果它也失败，就扫描所有区域。 |
+| 某个服务的列举 | 对该服务给出一条警告。运行备注写 `Not read`。下一份变更报告会略过该列举。 |
+| 某个资源的详情调用 | 行保留，详情为空。一条运行备注会统计这些资源。 |
+| `tag:GetResources` | 一条警告。扫描继续，使用各服务的列举。 |
+| `ce:GetCostAndUsage` | 一条警告。跳过账单检查。 |
+| 使用 `--enable-cost-analysis` 时的 `pricing:GetProducts` | 一条警告。缺少费用估算。 |
+| 使用 `--s3-bucket` 时的 `s3:PutObject` | 上传失败。退出码 1。 |
+
+只允许 `sts:GetCallerIdentity` 时，运行会结束。它不写报告，也不写快照，日志会写 `No resources to report: nothing could be read`。退出码为 0。使用 `--fail-on-account-error` 时，如果某个账户的每个列举都被拒绝，它仍算作已扫描，运行以退出码 0 结束。要让 CI 作业在什么都读不到时失败，请加上 `--fail-if-empty`。
+
+### Permissions 行与 permissions_denied {#the-permissions-line-and-permissions_denied}
+
+当运行无权使用某个 IAM 操作时，运行备注中每个账户会有一行。这一行出现在控制台上，也出现在 Excel 报告的“运行备注”（Run notes）中。它列出每个操作，说明报告因此缺少什么，并说明 `ReadOnlyAccess` 是否包含该操作。没有被拒绝任何操作的运行不会输出这样的行。下面是无法代入某个角色时的一行（来自离线运行的示例）：
+
+```text
+Permissions: 1 action(s) were not allowed for account 222222222222: sts:AssumeRole. Effect: the account was not scanned. sts:AssumeRole is not in ReadOnlyAccess; it is needed only for scanning other accounts through a role.
+```
+
+这一行用的是 InvenTag 自己的文字，不含任何 AWS 错误文本。如果 InvenTag 不知道某个调用对应的 IAM 操作，就用它的 API 名称，并加上 `(IAM action not known to InvenTag)`。
+
+使用 `--audit-output` 时，该文件还会有键 `permissions_denied`。只有在有操作被拒绝时才有这个键。每个条目有以下字段：
+
+```json
+"permissions_denied": [
+  {
+    "account": "123456789012",
+    "action": "s3:GetBucketLocation",
+    "service": "s3",
+    "operation": "GetBucketLocation",
+    "regions": ["us-east-1"],
+    "kind": "detail"
+  }
+]
+```
+
+| 字段 | 含义 |
+|---|---|
+| `account` | 账户 ID。 |
+| `action` | IAM 操作；InvenTag 不知道时为 `null`。 |
+| `service`、`operation` | 被拒绝调用的 AWS API 名称。 |
+| `regions` | 调用被拒绝的区域。没有区域的条目为空，例如种类 `role`。 |
+| `kind` | `role`、`listing`、`detail`、`tagging`、`billing`、`pricing`、`analysis` 或 `upload`。 |
+
+该列表按账户和操作排序。InvenTag 不会为生成它而额外发出任何 AWS 调用。未针对真实的 AWS 验证：所列出的操作取自 InvenTag 自己的表格，而服务控制策略或权限边界的拒绝也会显示为该操作。
+
+这一行不会列出 `ec2:DescribeRegions` 或 `account:ListRegions`。见[功能状态](../getting-started/status.md#when-a-run-goes-wrong)。
+
 ## 只读保护拦截什么 {#what-the-read-only-guard-blocks}
 
 InvenTag 会在进程中的每一次 AWS 调用发出之前检查它。它只允许名称以 `List`、`Describe`、`Get`、`Head`、`Lookup`、`Search` 或 `BatchGet` 开头的操作，
@@ -94,7 +185,7 @@ InvenTag 会在进程中的每一次 AWS 调用发出之前检查它。它只允
 例如：`secretsmanager:GetSecretValue`、`ssm:GetParameter`、`s3:GetObject`、`dynamodb:GetItem`、`lambda:GetFunction`（它会返回代码的下载链接）、
 `cloudformation:GetTemplate`、`ec2:GetLaunchTemplateData`、`glue:GetConnection` 和 Athena 查询结果。
 它还会拦截带值的 API 密钥以及用于获取用户数据的 `ec2:DescribeInstanceAttribute`，并按同样的规则检查预签名 URL 和数据库认证令牌。
-可以用 `inventag --validate-operations <service>:<Operation>` 检查某个名称。当答案取决于某个参数时，它会给出规则：`apigateway:GetApiKeys` 显示 `ALLOWED` 并附带 `blocked when includeValues=true`，`ec2:DescribeInstanceAttribute` 显示 `ALLOWED` 并附带 `blocked when Attribute=userdata`。只有带该参数调用这些操作时，保护机制才会拦截。
+保护机制按名称识别操作。较新的 AWS SDK 新增的操作，只要名称以读取类前缀开头就会被允许，直到某个 InvenTag 发行版为它命名。可以用 `inventag --validate-operations <service>:<Operation>` 检查某个名称。当答案取决于某个参数时，它会给出规则：`apigateway:GetApiKeys` 显示 `ALLOWED` 并附带 `blocked when includeValues=true`，`ec2:DescribeInstanceAttribute` 显示 `ALLOWED` 并附带 `blocked when Attribute=userdata`。只有带该参数调用这些操作时，保护机制才会拦截。
 
 IAM Identity Center（SSO）和 web identity 配置文件在保护机制下可以正常工作。保护机制只允许登录步骤用令牌换取凭证，别的都不允许。
 

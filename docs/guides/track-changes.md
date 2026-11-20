@@ -151,6 +151,14 @@ What to know:
   the resources of those listings out instead of showing them as added. A
   snapshot written by v1.2.2 or earlier has no such list, so the first
   comparison with it behaves as before.
+- When a call that reads the details of a resource (for example the S3 bucket
+  location or the Lambda function configuration) fails in one of the two runs,
+  the fields that call adds are not compared for the resources of that service
+  and region. The change report names those units in one line that starts
+  `Details not read, so the fields they add are not compared:`. The State
+  Comparison data calls it `details_not_compared`. A snapshot records the units
+  whose detail calls failed in `metadata.tags.details_not_read`. The key is
+  there only when such a call failed.
 - A snapshot records the InvenTag version that wrote it
   (`metadata.tags.inventag_version`). The first change report after an
   upgrade does not count a field that the new version reads for the first

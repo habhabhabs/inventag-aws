@@ -36,6 +36,22 @@ Not verified against real AWS: `GetCallerIdentity` needs no permission, the IAM 
 
 Not verified against real AWS: these are the only extra permissions that role assumption, cost analysis and the upload need.
 
+By the provisional list that the project tests against, the AWS managed policy
+`ReadOnlyAccess` includes every action of the repository policy, but it does
+not include `sts:AssumeRole`, `s3:PutObject` and `kms:GenerateDataKey`. The
+list is provisional until the project has a raw copy of the AWS policy. Not
+verified against real AWS: that the list is what `ReadOnlyAccess` allows today.
+See [Run with only ReadOnlyAccess](../guides/read-only-access.md#run-with-only-readonlyaccess).
+
+## When an action is refused
+
+When a run is not allowed to use an IAM action, the run notes have one
+`Permissions:` line for each account. The line names each action and says what
+the report lacks. The `--audit-output` file has the same list in the key
+`permissions_denied`. A run that is denied nothing prints and writes nothing
+new. The fields and a sample are in
+[Run with only ReadOnlyAccess](../guides/read-only-access.md#the-permissions-line-and-permissions_denied).
+
 ## What InvenTag never needs
 
 Any write, create, delete or tag action, apart from `s3:PutObject` on a reports
