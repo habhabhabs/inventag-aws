@@ -158,16 +158,18 @@ La ligne a les mots propres d’InvenTag. Elle n’a aucun texte de l’erreur A
 Avec `--audit-output`, le fichier a aussi la clé `permissions_denied`. La clé est là seulement quand quelque chose a été refusé. Chaque entrée a ces champs :
 
 ```json
-"permissions_denied": [
-  {
-    "account": "123456789012",
-    "action": "s3:GetBucketLocation",
-    "service": "s3",
-    "operation": "GetBucketLocation",
-    "regions": ["us-east-1"],
-    "kind": "detail"
-  }
-]
+{
+  "permissions_denied": [
+    {
+      "account": "123456789012",
+      "action": "s3:GetBucketLocation",
+      "service": "s3",
+      "operation": "GetBucketLocation",
+      "regions": ["us-east-1"],
+      "kind": "detail"
+    }
+  ]
+}
 ```
 
 | Champ | Sens |

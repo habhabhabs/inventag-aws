@@ -60,7 +60,7 @@ No verificado contra Windows ni macOS: el comando `inventag` funciona igual que 
 | `selftest` | Comprueba que esta copia de InvenTag funciona: paquetes, plantillas integradas, datos de servicios de AWS, la protección de solo lectura, y un archivo de Excel y uno de Word escritos en una carpeta temporal y borrados. No hace ninguna llamada a AWS, no abre ninguna conexión de red y no necesita credenciales. Código de salida 0: todas las comprobaciones pasaron. Código de salida 1: una comprobación falló; las demás comprobaciones se ejecutan igualmente. Código de salida 2: un argumento desconocido. |
 | `completion bash\|zsh\|fish` | Imprime un script de autocompletado de shell en la salida estándar. Solo lee las opciones del comando y no hace ninguna llamada a AWS ni ninguna conexión de red. Código de salida 0. Si falta el shell o es desconocido: línea de uso y código de salida 2. |
 
-Para instalar un script de autocompletado:
+Para instalar un script de autocompletado, consulte [Autocompletado del intérprete](../getting-started/installation.md#shell-completion). Las líneas son:
 
 ```text
 source <(inventag completion bash)

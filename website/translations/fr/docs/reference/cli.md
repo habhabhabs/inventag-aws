@@ -60,7 +60,7 @@ Non vérifié sur Windows ni sur macOS : la commande `inventag` fonctionne de la
 | `selftest` | Vérifie que cette copie d’InvenTag fonctionne : paquets, modèles intégrés, données des services AWS, la protection en lecture seule, et un fichier Excel et un fichier Word écrits dans un dossier temporaire puis supprimés. Aucun appel à AWS, aucune connexion réseau, aucun identifiant nécessaire. Code de sortie 0 : toutes les vérifications ont réussi. Code de sortie 1 : une vérification a échoué ; les autres vérifications s’exécutent quand même. Code de sortie 2 : un argument inconnu. |
 | `completion bash\|zsh\|fish` | Écrit un script de complétion pour le shell sur la sortie standard. Il lit seulement les options de la commande et ne fait aucun appel à AWS ni aucune connexion réseau. Code de sortie 0. Shell absent ou inconnu : ligne d’utilisation et code de sortie 2. |
 
-Pour installer un script de complétion :
+Pour installer un script de complétion, voir [Complétion du shell](../getting-started/installation.md#shell-completion). Les lignes sont :
 
 ```text
 source <(inventag completion bash)

@@ -286,6 +286,10 @@ standard); `AWS_RETRY_MODE` y `AWS_MAX_ATTEMPTS` cambian este ajuste.
   identifica. Para funciones Lambda, roles de IAM y alias de KMS, un informe de
   plantilla muestra el ID como nombre.
 
+- En un Mac con Intel, `pip install inventag-aws` compila la biblioteca cryptography, porque desde la versión 50 cryptography no publica ninguna compilación lista para los Mac con Intel. Esto necesita una cadena de herramientas de Rust.
+
+  No verificado contra un Mac con Intel: `pip install inventag-aws`.
+
 ## Notas de seguridad {#security-notes}
 
 - **Usa de todos modos una identidad de IAM de solo lectura.** La protección

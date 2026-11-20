@@ -161,16 +161,18 @@ La línea tiene palabras propias de InvenTag. No tiene texto del error de AWS. U
 Con `--audit-output`, el archivo también tiene la clave `permissions_denied`. La clave solo está cuando se denegó algo. Cada entrada tiene estos campos:
 
 ```json
-"permissions_denied": [
-  {
-    "account": "123456789012",
-    "action": "s3:GetBucketLocation",
-    "service": "s3",
-    "operation": "GetBucketLocation",
-    "regions": ["us-east-1"],
-    "kind": "detail"
-  }
-]
+{
+  "permissions_denied": [
+    {
+      "account": "123456789012",
+      "action": "s3:GetBucketLocation",
+      "service": "s3",
+      "operation": "GetBucketLocation",
+      "regions": ["us-east-1"],
+      "kind": "detail"
+    }
+  ]
+}
 ```
 
 | Campo | Significado |
