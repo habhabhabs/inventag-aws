@@ -150,7 +150,19 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   error) es una advertencia y un recuento en la instantánea
   (`metadata.tags.coverage_summary`).
 - **Todas las llamadas de una cuenta denegadas:** la cuenta no cuenta como
-  fallida, y la ejecución termina con el código 0.
+  fallida, y la ejecución termina con el código 0. Con `--fail-on-account-error`,
+  una cuenta cuyos listados se rechazaron todos sigue contando como analizada, y
+  la ejecución termina con el código 0. Para que un trabajo de CI falle cuando no
+  se pudo leer nada, añade `--fail-if-empty`.
+- **Una ejecución que no tuvo permiso para usar una acción de IAM** imprime una
+  línea `Permissions:` por cada cuenta en las notas de la ejecución, y escribe la
+  lista `permissions_denied` en el archivo de `--audit-output` (consulta
+  [Ejecutar solo con ReadOnlyAccess](../guides/read-only-access.md#run-with-only-readonlyaccess)).
+  La línea no nombra `ec2:DescribeRegions` ni `account:ListRegions`, y una
+  subida con una clave KMS que falla se nombra solo como `s3:PutObject`.
+
+  No verificado contra AWS real: qué acción nombra S3 cuando se rechaza una
+  subida con una clave KMS.
 - **El primer informe de cambios después de actualizar desde v1.1.4** lista los
   recursos de los servicios que ahora se cubren como añadidos, aunque ya
   existían.
@@ -186,6 +198,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   el código 0.
 - **Algunos valores no válidos se detienen con el código de salida 1, no 2,**
   por ejemplo `--max-concurrent-accounts 0` o `--account-processing-timeout 0`.
+  Un valor de `--concurrency` fuera de 1 a 256 se detiene con el código de salida 2.
 - **Los valores del bloque `settings` de un archivo de cuentas sustituyen a las
   opciones de línea de comandos correspondientes**, por ejemplo
   `max_concurrent_accounts`.
@@ -241,6 +254,16 @@ standard); `AWS_RETRY_MODE` y `AWS_MAX_ATTEMPTS` cambian este ajuste.
 - De forma predeterminada se analizan cuatro cuentas a la vez
   (`--max-concurrent-accounts`). Cada cuenta tiene 1800 segundos desde que
   empieza su análisis (`--account-processing-timeout`).
+- Una ejecución tiene como máximo 64 solicitudes a AWS en curso (`--concurrency`),
+  como máximo 16 para una cuenta y como máximo 4 para un servicio en una región
+  de una cuenta. Después de una respuesta de limitación, InvenTag baja el límite
+  de ese servicio y esa región. Consulta [Concurrencia](../guides/run-a-scan.md#concurrency).
+
+  No verificado contra AWS real: cualquier aceleración de las solicitudes en
+  paralelo, y cómo se comportan el límite de solicitudes y la pausa después de
+  una respuesta de limitación con los límites de tasa reales de AWS.
+- El orden de las líneas del registro y sus marcas de tiempo pueden cambiar de una
+  ejecución a otra. Los archivos no dependen del tiempo de los hilos.
 - Cuando algunas cuentas fallan, se guardan los resultados de las que
   terminaron. Ejecuta el mismo comando con `--resume` en menos de 24 horas
   (`--resume-max-age-hours`) para analizar solo las demás.
@@ -271,7 +294,13 @@ standard); `AWS_RETRY_MODE` y `AWS_MAX_ATTEMPTS` cambian este ajuste.
   [Configurar el acceso de solo lectura](../guides/read-only-access.md).
 - **Los registros de depuración se ocultan** de forma predeterminada: los tokens
   de sesión, las claves, las firmas y los valores secretos indicados arriba se
-  enmascaran. Aun así, trata los registros de depuración como confidenciales.
+  enmascaran. Aun así, trata los registros de depuración como confidenciales. Con
+  `--debug`, un secreto que AWS devuelve como lista bajo el nombre de un campo
+  enmascarado puede aparecer en el archivo de registro.
+- **La protección de solo lectura conoce las operaciones por su nombre.** Una
+  operación que añade un SDK de AWS más nuevo se permite cuando su nombre empieza
+  como una lectura, hasta que una versión de InvenTag la nombra. Consulta
+  [Seguridad](../security/index.md).
 - **Dos funciones de la biblioteca pueden escribir en AWS** cuando se llaman
   desde tu propio código Python (la CLI no las llama):
   `CredentialManager.setup_cross_account_roles()` solo se ejecuta con
