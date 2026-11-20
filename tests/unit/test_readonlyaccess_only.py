@@ -585,6 +585,7 @@ def test_R6_provisional_only_the_identity_call_with_fail_on_account_error_exits_
 
 @pytest.mark.xfail(
     strict=True,
+    raises=AssertionError,
     reason=(
         "FINDING R6-1: the plan expects exit 5 with --fail-on-account-error when every "
         "listing of the account was denied; v1.3.1 exits 0. The code looks only at accounts "
@@ -612,3 +613,89 @@ def test_R6_provisional_without_region_list_permission_every_region_is_scanned(
     regions = {e.region for e in run.ledger} - {"global"}
     assert len(regions) > 10, sorted(regions)
     assert REGION in regions
+
+
+def _two_runs(aws, run_as, first_deny, second_deny):
+    """Two runs into one folder, a second apart (state files are named by the second)."""
+    import time
+
+    args = R5_ARGS[:2]  # reports only: the change report is what is under test
+    first = run_as(read_only_access_actions(), *args, deny=first_deny)
+    time.sleep(1.1)
+    second = run_as(read_only_access_actions(), *args, deny=second_deny)
+    for run in (first, second):
+        run.sim.assert_all_mapped()
+        assert run.code == 0, run.text
+    return first, second
+
+
+def _changes(run: Run) -> dict:
+    """The change report of a run: {title: type} of each "### ... was <type> in <SERVICE>" line."""
+    import re
+
+    reports = sorted(run.out_dir.glob("changelog_*.md"))
+    assert reports, "the second run wrote no change report"
+    text = reports[-1].read_text()
+    found = {}
+    for title, kind in re.findall(
+        r"^### (.+) was (added|removed|modified) in ", text, re.M
+    ):
+        found[title] = kind
+    return {"text": text, "changes": found}
+
+
+# moto's default Athena work group "primary" carries a creation time that moto sets from
+# the clock on every run, so it differs between two runs of an unchanged estate. It has
+# nothing to do with a denied unit, and it is the only change two identical runs show.
+MOTO_CLOCK_CHANGE = {"WorkGroup 'primary'": "modified"}
+
+
+def test_R7_provisional_second_run_as_in_R5_adds_and_removes_nothing_for_the_denied_units(
+    aws, run_as
+):
+    """R7: run R5 twice; the second change report is not made of what was not read."""
+    _, second = _two_runs(aws, run_as, R5_DENY, R5_DENY)
+    report = _changes(second)
+    assert report["changes"] == MOTO_CLOCK_CHANGE, report["text"]
+    # the report says what it could not compare, in its own words
+    assert (
+        "The previous run did not read tagging API in us-east-1 of account 123456789012 (denied)"
+        in report["text"]
+    )
+
+
+def test_R7_provisional_a_full_run_then_R5_adds_and_removes_nothing(aws, run_as):
+    """Units that become unreadable are not "removed", and what is no longer seen is not "added"."""
+    _, second = _two_runs(aws, run_as, (), R5_DENY)
+    kinds = set(_changes(second)["changes"].values())
+    assert not kinds & {"added", "removed"}, _changes(second)["text"]
+
+
+def test_R7_provisional_R5_then_a_full_run_adds_and_removes_nothing(aws, run_as):
+    _, second = _two_runs(aws, run_as, R5_DENY, ())
+    report = _changes(second)
+    assert not set(report["changes"].values()) & {"added", "removed"}, report["text"]
+    assert "The previous run did not read tagging API in us-east-1" in report["text"]
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "FINDING R7-1: when a detail call is denied in one of two runs (here "
+        "s3:GetBucketLocation and lambda:GetFunctionConfiguration), the change report lists the "
+        "S3 bucket and the Lambda function as 'modified' (raw_data.boto3_region, memory_size, "
+        "runtime, timeout, boto3_config), although nothing changed in the account. The run notes "
+        "say the details were not read, but the change report does not use them: "
+        "_RunScope (inventag/state/delta_detector.py:389) skips every ledger entry whose source is "
+        "not 'service-api' (line 417), so the 'service-api-detail' entries that discovery writes "
+        "(inventag/discovery/coverage.py:30) never make a field 'not compared'. A false change "
+        "report is a behaviour fix for the lead of the change report, not for W1."
+    ),
+)
+def test_R7_FINDING_provisional_a_denied_detail_call_does_not_make_a_resource_modified(
+    aws, run_as
+):
+    _, second = _two_runs(aws, run_as, (), R5_DENY)
+    modified = {t for t, k in _changes(second)["changes"].items() if k == "modified"}
+    assert modified <= set(MOTO_CLOCK_CHANGE), modified
