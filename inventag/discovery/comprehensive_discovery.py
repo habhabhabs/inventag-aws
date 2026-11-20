@@ -45,6 +45,9 @@ from .arn_utils import (
 GLOBAL_REGION_LABEL = "global"
 GLOBAL_HOME_REGION = "us-east-1"
 
+# Guards the "already warned" sets of every discovery object (``_warn_once``).
+_WARN_LOCK = threading.Lock()
+
 
 def _arn(service: str, resource: str) -> str:
     return "arn:{partition}:" + service + ":{region}:{account}:" + resource
@@ -1981,12 +1984,18 @@ class ComprehensiveAWSDiscovery:
 
     def _warn_once(self, key: str, message: str) -> None:
         """Log a warning once per key (a service or region), not once per call."""
-        warned = self.__dict__.setdefault("_warned_keys", set())
-        if key in warned:
+        # Check and add are one step under a lock: listing and detail workers
+        # call this at the same time (plan 2.5, rule T1). The lock is shared
+        # by all instances; it is held for a set lookup only.
+        with _WARN_LOCK:
+            warned = self.__dict__.setdefault("_warned_keys", set())
+            first = key not in warned
+            if first:
+                warned.add(key)
+        if first:
+            self.logger.warning(message)
+        else:
             self.logger.debug(message)
-            return
-        warned.add(key)
-        self.logger.warning(message)
 
     def _enrich_with_tagging_api(self):
         """Enrich discovered resources with tags from the ResourceGroupsTagging API.
