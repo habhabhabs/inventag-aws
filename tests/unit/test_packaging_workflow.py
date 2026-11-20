@@ -278,7 +278,7 @@ def test_every_other_job_waits_for_the_plan():
             assert "plan" in job["needs"], name
 
 
-# ---- stage 2: the four builds, the build image, nfpm ----------------------
+# ---- stage 2: the three builds, the build image, nfpm ----------------------
 
 # name: (runner label, CPU as build_binary.sh names it, nfpm arch)
 LINUX_BUILDS = {
@@ -287,7 +287,6 @@ LINUX_BUILDS = {
 }
 MACOS_BUILDS = {
     "build-macos-arm64": ("macos-15", "arm64"),
-    "build-macos-x86_64": ("macos-15-intel", "x86_64"),
 }
 # Read from nfpm's own checksums.txt of the v2.49.0 release (GitHub, 20 Nov 2026).
 NFPM_SHA256 = {
@@ -303,7 +302,7 @@ def _non_plan_checkouts():
             yield name, step
 
 
-def test_the_four_builds_run_on_the_four_named_systems():
+def test_the_three_builds_run_on_the_three_named_systems():
     for name, (label, *_rest) in {**LINUX_BUILDS, **MACOS_BUILDS}.items():
         assert JOBS[name]["runs-on"] == label
 
@@ -529,7 +528,6 @@ def test_the_smoke_checks_that_the_uninstall_left_nothing():
 def test_the_macos_smoke_jobs_unpack_run_scan_and_remove():
     for name, (label, cpu) in {
         "smoke-macos-arm64": MACOS_BUILDS["build-macos-arm64"],
-        "smoke-macos-x86_64": MACOS_BUILDS["build-macos-x86_64"],
     }.items():
         job = JOBS[name]
         assert job["runs-on"] == label
@@ -554,7 +552,7 @@ def test_the_pipx_install_of_the_wheel_is_smoked():
 
 
 def test_the_smoke_jobs_use_the_artifacts_of_their_build():
-    for name in ("smoke-linux", "smoke-macos-arm64", "smoke-macos-x86_64"):
+    for name in ("smoke-linux", "smoke-macos-arm64"):
         down = [
             s for s in _steps(name) if s.get("uses", "").startswith("actions/download-")
         ]
@@ -569,10 +567,8 @@ BUILDS_AND_SMOKES = {
     "build-linux-x86_64",
     "build-linux-arm64",
     "build-macos-arm64",
-    "build-macos-x86_64",
     "smoke-linux",
     "smoke-macos-arm64",
-    "smoke-macos-x86_64",
     "smoke-pipx",
 }
 GNU_PAGE = "https://www.gnu.org/software/libiconv/"
@@ -1105,10 +1101,8 @@ def test_the_arm64_smoke_is_in_the_arm64_job_only_with_no_new_runner_label():
         "build-linux-x86_64",
         "build-linux-arm64",
         "build-macos-arm64",
-        "build-macos-x86_64",
         "smoke-linux",
         "smoke-macos-arm64",
-        "smoke-macos-x86_64",
         "smoke-pipx",
         "provenance",
         "publish",
@@ -1119,10 +1113,20 @@ def test_the_arm64_smoke_is_in_the_arm64_job_only_with_no_new_runner_label():
 
 MACOS_JOBS = (
     "build-macos-arm64",
-    "build-macos-x86_64",
     "smoke-macos-arm64",
-    "smoke-macos-x86_64",
 )
+
+
+def test_there_is_no_macos_x86_64_job_and_nothing_refers_to_one():
+    # Architect ruling 3 of package-dryrun-1: cryptography 50 publishes no
+    # macOS x86_64 wheel, so there is no Intel Mac executable.
+    assert not [name for name in JOBS if "x86_64" in name and "macos" in name]
+    for name, job in JOBS.items():
+        for need in job.get("needs", []):
+            assert "macos-x86_64" not in need, (name, need)
+    for fragment in ("macos-x86_64", "macos-15-intel", "darwin-x86_64"):
+        assert fragment not in TEXT, fragment
+    assert set(MACOS_JOBS) == {name for name in JOBS if "macos" in name}
 
 
 def test_the_macos_switch_is_a_workflow_level_value_that_is_on():
@@ -1148,7 +1152,7 @@ def test_plan_reads_the_switch_and_passes_it_on_as_an_output(tmp_path):
         assert "INCLUDE_MACOS" in result.stdout + result.stderr
 
 
-def test_the_four_macos_jobs_run_only_when_the_switch_is_on():
+def test_the_two_macos_jobs_run_only_when_the_switch_is_on():
     for name in MACOS_JOBS:
         # The env context is not available in a job condition: the plan job passes the value on.
         assert JOBS[name]["if"] == "needs.plan.outputs.include_macos == 'true'", name
@@ -1182,7 +1186,7 @@ def _expected_files(tmp_path, include_macos, drop=(), stray_macos=False):
     if include_macos == "true" or stray_macos:
         names += [
             f"inventag-1.4.0-darwin-{cpu}{ext}"
-            for cpu in ("arm64", "x86_64")
+            for cpu in ("arm64",)
             for ext in (".tar.gz", ".THIRD-PARTY-LICENSES.txt")
         ]
     for name in names:
