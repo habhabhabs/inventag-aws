@@ -361,3 +361,50 @@ def test_a_bundled_file_without_a_row_fails(tpl, monkeypatch):
     build = _SampleBuild(["_internal/libmystery.so.1"], b"", same=True)
     _, problems = tpl.collect(build, _sample_rows(tpl))
     assert problems == ["_internal/libmystery.so.1: no row in the licence table"]
+
+
+# ------------------------------------------------------------- smoke scan
+def _audit(**over):
+    report = {
+        "read_only_enforced": True,
+        "allowed_prefixes": ["Describe", "List", "Get"],
+        "total_calls": 3,
+        "allowed_calls": 3,
+        "blocked_calls": 0,
+        "blocked": [],
+        "operations": [
+            {
+                "service": "ec2",
+                "operation": "DescribeInstances",
+                "allowed": True,
+                "count": 1,
+            },
+            {"service": "s3", "operation": "ListBuckets", "allowed": True, "count": 1},
+            {
+                "service": "s3",
+                "operation": "GetBucketLocation",
+                "allowed": True,
+                "count": 1,
+            },
+        ],
+    }
+    report.update(over)
+    return report
+
+
+def test_smoke_scan_accepts_a_clean_audit():
+    assert _load("smoke_scan").check_audit(_audit()) == []
+
+
+def test_smoke_scan_refuses_blocked_or_write_calls():
+    smoke = _load("smoke_scan")
+    assert smoke.check_audit(_audit(blocked_calls=1, allowed_calls=2))
+    assert smoke.check_audit(_audit(read_only_enforced=False))
+    write = _audit()
+    write["operations"].append(
+        {"service": "ec2", "operation": "RunInstances", "allowed": True, "count": 1}
+    )
+    assert any("RunInstances" in p for p in smoke.check_audit(write))
+    assert smoke.check_audit(_audit(operations=[])) and smoke.check_audit(
+        _audit(total_calls=0)
+    )
