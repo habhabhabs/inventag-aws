@@ -3,7 +3,9 @@ name: Weekly performance tests
 # The performance tests (`-m performance`) are excluded from every other run
 # (pytest.ini: -m "not performance and not slow"), so nothing else would notice
 # the next quadratic code path. This job runs them once a week, and the
-# delta-detector scaling test next to them. It never makes a release.
+# delta-detector scaling test next to them. The slow regression tests
+# (`-m slow`, tests/regression) are excluded the same way and run here too.
+# It never makes a release.
 "on":
   schedule:
     # Mondays at 03:17 UTC (a scheduled run uses the default branch)
@@ -43,3 +45,9 @@ jobs:
     - name: Delta detector scaling test
       shell: bash
       run: python -m pytest -v --timeout=600 tests/unit/test_delta_detector_scaling.py
+
+    # `-m slow` replaces the -m of pytest.ini: the regression rows that need a
+    # real child process or more than 30 seconds.
+    - name: Slow regression tests (-m slow)
+      shell: bash
+      run: python -m pytest -m slow -v --timeout=900 tests/regression
