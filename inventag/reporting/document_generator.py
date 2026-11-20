@@ -22,7 +22,11 @@ import yaml
 from typing import Dict, List, Any, Optional, Union, Set
 from dataclasses import dataclass, field, replace as dataclass_replace
 from datetime import datetime, timezone
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import (
+    ThreadPoolExecutor,
+    TimeoutError as FuturesTimeoutError,
+    wait,
+)
 from pathlib import Path
 import threading
 from abc import ABC, abstractmethod
@@ -524,20 +528,25 @@ class DocumentGenerator:
 
         with ThreadPoolExecutor(max_workers=self.config.max_worker_threads) as executor:
             # Submit generation tasks
-            future_to_format = {
-                executor.submit(self._generate_single_document, bom_data, fmt): fmt
+            futures = [
+                (fmt, executor.submit(self._generate_single_document, bom_data, fmt))
                 for fmt in formats
-            }
+            ]
 
-            # Collect results
-            for future in as_completed(
-                future_to_format, timeout=self.config.generation_timeout
-            ):
+            # The formats finish in any order; the results are listed in the
+            # order they were asked for.
+            _, unfinished = wait(
+                [future for _, future in futures],
+                timeout=self.config.generation_timeout,
+            )
+            if unfinished:
+                raise FuturesTimeoutError(
+                    f"{len(unfinished)} (of {len(futures)}) futures unfinished"
+                )
+            for format_type, future in futures:
                 try:
-                    result = future.result()
-                    results.append(result)
+                    results.append(future.result())
                 except Exception as e:
-                    format_type = future_to_format[future]
                     self.logger.error(f"Failed to generate {format_type} document: {e}")
                     results.append(
                         DocumentGenerationResult(
