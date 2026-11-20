@@ -1,6 +1,7 @@
 """Shared pytest fixtures."""
 
 import datetime
+import importlib.util
 import os
 import sys
 from pathlib import Path
@@ -21,12 +22,22 @@ def repo_root():
     return REPO_ROOT
 
 
+def _moto_installed() -> bool:
+    try:
+        return importlib.util.find_spec("moto") is not None
+    except (ImportError, ValueError):
+        return False
+
+
 def _run_uses_moto(session) -> bool:
     """True when a collected test file uses moto: imported at module level (so it
     is in ``sys.modules`` by now) or inside a fixture or test (found in the text
     of the collected files). A run of pure unit tests does not import moto."""
     if "moto" in sys.modules:
         return True
+    if not _moto_installed():
+        # Nothing to warm up: a test that needs moto fails on its own import.
+        return False
     files = {Path(str(item.fspath)) for item in session.items}
     return any("moto" in path.read_text(encoding="utf-8") for path in files)
 
