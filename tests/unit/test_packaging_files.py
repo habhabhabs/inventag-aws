@@ -361,11 +361,22 @@ class _FakeLxml:
         return self.root / f
 
 
+def _container_versions(tpl, monkeypatch, versions, report=(0, 0)):
+    """The container's lxml modules give ``versions[<module>]`` from their
+    symbol ("" = no symbol); lxml's own report is ``report``."""
+    monkeypatch.setattr(
+        tpl,
+        "_iconv_reads",
+        lambda path: _elf_read(tpl, versions[Path(path).name.split(".")[0]]),
+    )
+    monkeypatch.setattr(tpl, "lxml_iconv_report", lambda: report)
+
+
 def test_container_notice_has_the_executables_paragraph(tpl, tmp_path, monkeypatch):
     lxml = _FakeLxml(tmp_path)
     monkeypatch.setattr(tpl, "_installed", lambda name: lxml)
     monkeypatch.setattr(tpl, "_source_urls", lambda metadata: [])
-    monkeypatch.setattr(tpl, "_iconv_version", lambda path: "1.18")
+    _container_versions(tpl, monkeypatch, {"etree": "1.18", "objectify": "1.18"})
     text = tpl.libiconv_notice()
     files = "etree.cpython-313-x86_64-linux-gnu.so, objectify.cpython-313-x86_64-linux-gnu.so"
     assert tpl.LXML_PARAGRAPH.format(files=files) in text
@@ -381,19 +392,24 @@ def test_container_notice_has_the_executables_paragraph(tpl, tmp_path, monkeypat
     assert out.read_text("utf-8") == text
 
 
-def test_container_notice_records_no_version_when_the_modules_disagree(
+def test_container_notice_lists_each_version_when_the_modules_differ(
     tpl, tmp_path, monkeypatch
 ):
+    # architect-run10-macos-iconv.md section 1: each version with its files and
+    # one versioned address; nothing collapsed to "version not recorded".
     lxml = _FakeLxml(tmp_path)
     monkeypatch.setattr(tpl, "_installed", lambda name: lxml)
     monkeypatch.setattr(tpl, "_source_urls", lambda metadata: [])
-    versions = {"etree": "1.18", "objectify": "1.17"}
-    monkeypatch.setattr(
-        tpl, "_iconv_version", lambda path: versions[Path(path).name.split(".")[0]]
-    )
+    _container_versions(tpl, monkeypatch, {"etree": "1.18", "objectify": "1.17"})
     text = tpl.libiconv_notice()
-    assert f"- {tpl.LXML_ICONV} (version not recorded): LGPL-2.1" in text
-    assert "libiconv-1.1" not in text  # no versioned tarball address
+    assert "version not recorded" not in text
+    for version, module in (("1.17", "objectify"), ("1.18", "etree")):
+        assert f"- {tpl.LXML_ICONV} {version}: LGPL-2.1" in text
+        assert tpl.LIBICONV_DOWNLOAD.format(version=version) in text
+        assert (
+            f"    carried in: lxml/{module}.cpython-313-x86_64-linux-gnu.so\n" in text
+        )
+    assert text.index("1.17: LGPL") < text.index("1.18: LGPL")
     assert "https://www.gnu.org/software/libiconv/" in text
 
 
@@ -498,6 +514,18 @@ class _SampleBuild:
 
     def read_version(self, source, rel, owner):
         return "9.9" if source else ""
+
+    def iconv_reads(self, rel):
+        return _elf_read(None, "9.9")
+
+    def lxml_iconv_report(self):
+        return (0, 0)
+
+    def iconv_build_config(self):
+        return None, []
+
+    def wheel_file(self, rel):
+        return None
 
 
 LXML_GOLDEN = (
@@ -607,9 +635,10 @@ class _IconvBuild(_SampleBuild):
         self.versions = versions
 
     def read_version(self, source, rel, owner):
-        if source == "elfsym:_libiconv_version":
-            return self.versions[rel]
         return ""
+
+    def iconv_reads(self, rel):
+        return _elf_read(None, self.versions[rel])
 
 
 def _collect_iconv(tpl, monkeypatch, versions):
@@ -625,24 +654,34 @@ def _collect_iconv(tpl, monkeypatch, versions):
     return comps
 
 
-def test_two_lxml_modules_with_different_libiconv_versions_give_one_component(
+def test_two_lxml_modules_with_different_libiconv_versions_list_each_version(
     tpl, monkeypatch
 ):
+    # architect-run10-macos-iconv.md section 1 replaces "modules disagree, so
+    # version not recorded": each version with its files and its address.
     comps = _collect_iconv(tpl, monkeypatch, {ETREE: "1.18", OBJECTIFY: "1.17"})
     iconv = [c for c in comps if c.name == tpl.LXML_ICONV]
-    assert len(iconv) == 1
-    assert iconv[0].version == ""
-    assert iconv[0].files == [ETREE, OBJECTIFY]
+    assert [(c.version, c.files) for c in iconv] == [
+        ("1.17", [OBJECTIFY]),
+        ("1.18", [ETREE]),
+    ]
     text = tpl.render(comps)
-    assert f"- {tpl.LXML_ICONV} (version not recorded): LGPL-2.1" in text
-    assert "libiconv-1.1" not in text  # no versioned tarball address
-    assert "https://www.gnu.org/software/libiconv/" in text
-    assert "etree.cpython-312.so, objectify.cpython-312.so" in text
+    assert "version not recorded" not in text
+    for version, rel in (("1.17", OBJECTIFY), ("1.18", ETREE)):
+        head = (
+            f"- {tpl.LXML_ICONV} {version}: LGPL-2.1\n    {READ_FROM}\n"
+            f"    carried in: {rel}\n    {LINUX_CROSS}\n"
+            "    source: https://www.gnu.org/software/libiconv/\n"
+            f"    source: {tpl.LIBICONV_DOWNLOAD.format(version=version)}\n"
+        )
+        assert head in text
     rows = [
         r for r in json.loads(tpl.components_json(comps)) if "libiconv" in r["name"]
     ]
-    assert len(rows) == 1 and rows[0]["version"] == "version not recorded"
-    assert rows[0]["files"] == [ETREE, OBJECTIFY]
+    assert [(r["version"], r["files"]) for r in rows] == [
+        ("1.17", [OBJECTIFY]),
+        ("1.18", [ETREE]),
+    ]
 
 
 # ------------------------------------------------------------- smoke scan
@@ -693,18 +732,25 @@ def test_smoke_scan_refuses_blocked_or_write_calls():
 
 
 NOT_RECORDED_LINE = (
-    "    version not recorded: the lxml modules do not all hold the same "
-    "symbol _libiconv_version"
+    "    version not recorded: no source gave the version of "
+    "objectify.cpython-312.so"
 )
 
 
 @pytest.mark.parametrize(
-    "versions",
-    [{ETREE: "1.18", OBJECTIFY: ""}, {ETREE: "", OBJECTIFY: ""}],
+    "versions, line",
+    [
+        ({ETREE: "1.18", OBJECTIFY: ""}, NOT_RECORDED_LINE),
+        (
+            {ETREE: "", OBJECTIFY: ""},
+            "    version not recorded: no source gave the version of "
+            "etree.cpython-312.so, objectify.cpython-312.so",
+        ),
+    ],
     ids=["one-module-without-the-symbol", "no-module-with-the-symbol"],
 )
 def test_a_module_without_the_libiconv_symbol_gives_no_version(
-    tpl, monkeypatch, versions
+    tpl, monkeypatch, versions, line
 ):
     comps = _collect_iconv(tpl, monkeypatch, versions)
     iconv = [c for c in comps if c.name == tpl.LXML_ICONV]
@@ -713,12 +759,17 @@ def test_a_module_without_the_libiconv_symbol_gives_no_version(
     assert iconv[0].files == [ETREE, OBJECTIFY]
     text = tpl.render(comps)
     assert f"- {tpl.LXML_ICONV} (version not recorded): LGPL-2.1" in text
-    assert NOT_RECORDED_LINE + "\n" in text
+    assert line + "\n" in text
     assert "libiconv-1.1" not in text
     assert "https://www.gnu.org/software/libiconv/" in text
 
 
 READ_FROM = "version read from the module's own symbol _libiconv_version"
+# Linux: lxml reports (0, 0) and the build configuration is not stored.
+LINUX_CROSS = (
+    "cross-check: lxml.etree.ICONV_COMPILED_VERSION is (0, 0), so lxml gives no "
+    "version to compare; lxml's build configuration is not recorded"
+)
 
 
 RESIGN_GOLDEN = (
@@ -740,7 +791,9 @@ def test_the_replace_sentence_adds_signing_only_for_macos_modules(
 ):
     # architect-package-dryrun-5.md ruling 1: the macOS notices add one line.
     monkeypatch.setattr(tpl, "_installed", lambda name: None)
-    comp = tpl.libiconv_component({f"_internal/lxml/{module}": "1.17"})
+    reads = {f"_internal/lxml/{module}": _elf_read(tpl, "1.17")}
+    (comp,), problems = tpl.libiconv_components(reads)
+    assert problems == []
     assert comp.notes[0] == tpl.LXML_PARAGRAPH.format(files=module)
     assert comp.notes[1:] == ([RESIGN_GOLDEN] if resign else [])
 
@@ -748,7 +801,7 @@ def test_the_replace_sentence_adds_signing_only_for_macos_modules(
 def test_the_libiconv_lines_say_how_the_version_was_read(tpl, monkeypatch):
     comps = _collect_iconv(tpl, monkeypatch, {ETREE: "1.18", OBJECTIFY: "1.18"})
     text = tpl.render(comps)
-    head = f"- {tpl.LXML_ICONV} 1.18: LGPL-2.1\n    {READ_FROM}\n"
+    head = f"- {tpl.LXML_ICONV} 1.18: LGPL-2.1\n    {READ_FROM}\n    {LINUX_CROSS}\n"
     assert head in text
     assert text.count(READ_FROM) == 1  # only the libiconv component says it
     assert tpl.LIBICONV_DOWNLOAD.format(version="1.18") in text
@@ -771,12 +824,17 @@ def test_the_container_notice_says_how_the_version_was_read(tpl, tmp_path, monke
     lxml = _FakeLxml(tmp_path)
     monkeypatch.setattr(tpl, "_installed", lambda name: lxml)
     monkeypatch.setattr(tpl, "_source_urls", lambda metadata: [])
-    monkeypatch.setattr(tpl, "_iconv_version", lambda path: "1.18")
+    _container_versions(tpl, monkeypatch, {"etree": "1.18", "objectify": "1.18"})
     text = tpl.libiconv_notice()
     assert f"- {tpl.LXML_ICONV} 1.18: LGPL-2.1\n    {READ_FROM}\n" in text
-    monkeypatch.setattr(tpl, "_iconv_version", lambda path: "")
+    assert f"    {READ_FROM}\n    {LINUX_CROSS}\n    source: " in text
+    _container_versions(tpl, monkeypatch, {"etree": "", "objectify": ""})
     text = tpl.libiconv_notice()
-    assert f"(version not recorded): LGPL-2.1\n{NOT_RECORDED_LINE}\n" in text
+    assert (
+        f"(version not recorded): LGPL-2.1\n    version not recorded: no source "
+        "gave the version of etree.cpython-313-x86_64-linux-gnu.so, "
+        "objectify.cpython-313-x86_64-linux-gnu.so\n"
+    ) in text
 
 
 # ------------------------------------------- Python 3.12 only (B2c, ruling 4 (b))
@@ -2207,3 +2265,601 @@ def test_an_absolute_link_with_the_files_basename_still_fails(tpl, monkeypatch):
         "/usr/lib/ and /System/Library/: a user's Mac need not have it "
         "(architect-package-dryrun-5.md ruling 2)"
     ]
+
+
+# ---------- libiconv's version on macOS (architect-run10-macos-iconv.md)
+# Dry run 10: the macOS lxml modules (universal2: arm64 and x86_64) carry
+# libiconv, but its version was read only from an ELF symbol. Mach-O names the
+# C variable ``_libiconv_version`` as ``__libiconv_version``. The fixtures are
+# built here from bytes: no binary file is committed.
+ARM64, X86_64 = 0x0100000C, 0x01000007
+SECT_ADDR = 0x8000
+DATA_OFF = 32 + 72 + 80 + 24  # header, LC_SEGMENT_64 with one section, LC_SYMTAB
+VALUE_AT = 8  # where the symbol's 4 bytes are in the section
+
+
+def _iconv_raw(version):
+    """libiconv's encoding: (major << 8) | minor, a little-endian int."""
+    major, minor = (int(x) for x in version.split("."))
+    return ((major << 8) | minor).to_bytes(4, "little")
+
+
+def _elf_read(tpl, version):
+    """What reading the symbol of a (one-architecture) ELF module gives."""
+    mod = tpl if tpl is not None else _load("third_party_licenses")
+    return [mod.SymbolRead("", _iconv_raw(version) if version else None)]
+
+
+def _macho_iconv(
+    version=None,
+    cputype=ARM64,
+    name="__libiconv_version",
+    n_type=0x0F,
+    n_sect=1,
+    zerofill=False,
+    magic=0xFEEDFACF,
+):
+    """A thin 64-bit little-endian Mach-O file: one __DATA,__data section and a
+    symbol table. With ``version`` the symbol ``name`` points at those 4 bytes
+    of the section; without, the file has only another symbol."""
+    import struct
+
+    content = bytearray(16)
+    symbols = [("_other_data", 0x0F, 1, SECT_ADDR)]
+    if version is not None:
+        content[VALUE_AT : VALUE_AT + 4] = _iconv_raw(version)
+        symbols.append((name, n_type, n_sect, SECT_ADDR + VALUE_AT))
+    symoff = DATA_OFF + len(content)
+    strtab, nlist = b"\0", b""
+    for sym, kind, sect, value in symbols:
+        nlist += struct.pack("<IBBHQ", len(strtab), kind, sect, 0, value)
+        strtab += sym.encode() + b"\0"
+    stroff = symoff + len(nlist)
+    seg = struct.pack(
+        "<II16sQQQQiiII", 0x19, 152, b"__DATA", SECT_ADDR, 16, DATA_OFF, 16, 3, 3, 1, 0
+    )
+    sect = struct.pack(
+        "<16s16sQQIIIIIIII",
+        b"__data",
+        b"__DATA",
+        SECT_ADDR,
+        16,
+        0 if zerofill else DATA_OFF,
+        0,
+        0,
+        0,
+        1 if zerofill else 0,  # S_ZEROFILL: no bytes in the file
+        0,
+        0,
+        0,
+    )
+    symtab = struct.pack("<IIIIII", 0x2, 24, symoff, len(symbols), stroff, len(strtab))
+    header = struct.pack("<IiiIIIII", magic, cputype, 0, 8, 2, 152 + 24, 0, 0)
+    return header + seg + sect + symtab + bytes(content) + nlist + strtab
+
+
+def _universal(*slices):
+    """A universal file of these thin slices (cputype read from each)."""
+    import struct
+
+    offset = 4096
+    head = struct.pack(">II", 0xCAFEBABE, len(slices))
+    body = b""
+    for data in slices:
+        (cpu,) = struct.unpack_from("<i", data, 4)
+        head += struct.pack(">iiIII", cpu, 0, offset + len(body), len(data), 12)
+        body += data
+    return head + b"\0" * (offset - len(head)) + body
+
+
+def _found(tpl, arch, version, slice_at=0):
+    return tpl.SymbolRead(
+        arch,
+        _iconv_raw(version),
+        SECT_ADDR + VALUE_AT,
+        "__DATA,__data",
+        slice_at + DATA_OFF + VALUE_AT,
+    )
+
+
+def test_the_macho_symbol_is_read_from_a_thin_file(tpl):
+    data = _macho_iconv("1.18")
+    assert tpl.macho_symbol_reads(data, "__libiconv_version") == [
+        _found(tpl, "arm64", "1.18")
+    ]
+    assert tpl.libiconv_version_of(_iconv_raw("1.18")) == "1.18"
+    assert tpl.libiconv_version_of(bytes.fromhex("12010000")) == "1.18"
+    assert tpl.libiconv_version_of(None) == ""
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        _macho_iconv(None),
+        _macho_iconv("1.18", name="__libiconv_version_other"),
+        _macho_iconv("1.18", n_type=0x01, n_sect=0),  # undefined: no section
+        _macho_iconv("1.18", n_type=0x2E),  # a debugging (stab) entry
+        _macho_iconv("1.18", n_sect=2),  # names a section the file has not
+        _macho_iconv("1.18", zerofill=True),  # zero-filled: no bytes in the file
+    ],
+    ids=["absent", "other-name", "undefined", "stab", "bad-section", "zerofill"],
+)
+def test_a_missing_or_unusable_macho_symbol_is_not_found(tpl, data):
+    assert tpl.macho_symbol_reads(data, "__libiconv_version") == [
+        tpl.SymbolRead("arm64", None)
+    ]
+
+
+def test_only_64_bit_little_endian_macho_is_read(tpl):
+    for magic in (0xFEEDFACE, 0xCFFAEDFE):  # 32-bit; 64-bit big-endian
+        data = _macho_iconv("1.18", magic=magic)
+        reads = tpl.macho_symbol_reads(data, "__libiconv_version")
+        assert [r.raw for r in reads] == [None]
+    assert [r.raw for r in tpl.macho_symbol_reads(b"\x7fELF" + b"\0" * 60, "x")] == [
+        None
+    ]
+
+
+def test_each_slice_of_a_universal_file_is_read_same_value(tpl):
+    first = _macho_iconv("1.18", X86_64)
+    data = _universal(first, _macho_iconv("1.18", ARM64))
+    assert tpl.macho_symbol_reads(data, "__libiconv_version") == [
+        _found(tpl, "x86_64", "1.18", 4096),
+        _found(tpl, "arm64", "1.18", 4096 + len(first)),
+    ]
+
+
+def test_each_slice_of_a_universal_file_is_read_different_values(tpl):
+    first = _macho_iconv("1.17", X86_64)
+    data = _universal(first, _macho_iconv("1.18", ARM64))
+    assert tpl.macho_symbol_reads(data, "__libiconv_version") == [
+        _found(tpl, "x86_64", "1.17", 4096),
+        _found(tpl, "arm64", "1.18", 4096 + len(first)),
+    ]
+    # A slice with the symbol and one without (a stripped slice).
+    data = _universal(_macho_iconv(None, X86_64), _macho_iconv("1.18", ARM64))
+    reads = tpl.macho_symbol_reads(data, "__libiconv_version")
+    assert [(r.arch, tpl.libiconv_version_of(r.raw)) for r in reads] == [
+        ("x86_64", ""),
+        ("arm64", "1.18"),
+    ]
+
+
+def test_a_truncated_thin_file_gives_not_found_never_a_wrong_value(tpl):
+    data = _macho_iconv("1.18")
+    for end in range(len(data)):
+        reads = tpl.macho_symbol_reads(data[:end], "__libiconv_version")
+        assert all(r.raw is None for r in reads), end
+        assert reads, end  # one "not found" entry, never nothing
+
+
+def test_a_truncated_universal_file_gives_not_found_never_a_wrong_value(tpl):
+    first = _macho_iconv("1.17", X86_64)
+    data = _universal(first, _macho_iconv("1.18", ARM64))
+    right = {"x86_64": _iconv_raw("1.17"), "arm64": _iconv_raw("1.18")}
+    for end in range(len(data)):
+        reads = tpl.macho_symbol_reads(data[:end], "__libiconv_version")
+        assert reads, end
+        for r in reads:
+            assert r.raw is None or r.raw == right[r.arch], end
+        # The last slice is cut: never found.
+        assert all(r.raw is None for r in reads if r.arch == "arm64"), end
+
+
+def test_the_symbol_is_read_by_the_files_kind(tpl, tmp_path):
+    # ELF: _libiconv_version (unchanged); Mach-O: __libiconv_version per slice.
+    macho = tmp_path / "etree.cpython-312-darwin.so"
+    macho.write_bytes(_universal(_macho_iconv("1.17", X86_64), _macho_iconv("1.18")))
+    reads = tpl.symbol_reads(macho.read_bytes(), "_libiconv_version")
+    assert [(r.arch, tpl.libiconv_version_of(r.raw)) for r in reads] == [
+        ("x86_64", "1.17"),
+        ("arm64", "1.18"),
+    ]
+    assert tpl.symbol_reads(b"not a binary", "_libiconv_version") == [
+        tpl.SymbolRead("", None)
+    ]
+    bundle = tmp_path / "b"
+    (bundle / "_internal" / "lxml").mkdir(parents=True)
+    (bundle / "_internal" / "lxml" / macho.name).write_bytes(macho.read_bytes())
+    build = tpl.Build(bundle, tmp_path / "w", ROOT)
+    assert build.iconv_reads(f"_internal/lxml/{macho.name}") == reads
+
+
+# The version rule: sources in order, per slice.
+D_ETREE = "_internal/lxml/etree.cpython-312-darwin.so"
+D_OBJECTIFY = "_internal/lxml/objectify.cpython-312-darwin.so"
+MAC_READ_FROM = READ_FROM + " (arm64, x86_64)"
+MAC_CROSS = (
+    "cross-check: lxml.etree.ICONV_COMPILED_VERSION is (0, 0), so lxml gives no "
+    "version to compare; lxml's build configuration is not recorded"
+)
+
+
+def _slices(tpl, **by_arch):
+    """Reads of one universal module: arch=version ("" = no symbol)."""
+    return [
+        tpl.SymbolRead(arch, _iconv_raw(v) if v else None, 1, "__DATA,__data", 2)
+        for arch, v in sorted(by_arch.items())
+    ]
+
+
+def _config(tpl, version="1.17", platforms=("darwin",)):
+    return tpl.BuildConfig(
+        version, ".github/workflows/wheels.yml", 42, "lxml-6.1.3", platforms
+    )
+
+
+def test_macos_slices_with_one_version_give_one_component(tpl, monkeypatch):
+    monkeypatch.setattr(tpl, "_installed", lambda name: None)
+    reads = {
+        D_ETREE: _slices(tpl, arm64="1.17", x86_64="1.17"),
+        D_OBJECTIFY: _slices(tpl, arm64="1.17", x86_64="1.17"),
+    }
+    comps, problems = tpl.libiconv_components(reads, report=(0, 0), arch="arm64")
+    assert problems == []
+    (comp,) = comps
+    assert (comp.version, comp.files) == ("1.17", [D_ETREE, D_OBJECTIFY])
+    assert comp.version_from == MAC_READ_FROM
+    assert comp.details == [MAC_CROSS]
+    assert comp.urls == [
+        tpl.LIBICONV_HOME,
+        tpl.LIBICONV_DOWNLOAD.format(version="1.17"),
+    ]
+    assert tpl.render([comp]).startswith(
+        "\n".join(
+            [
+                *tpl.render([]).splitlines(),
+                "",
+                "C libraries carried in the bundle",
+                "-" * 33,
+                f"- {tpl.LXML_ICONV} 1.17: LGPL-2.1",
+                f"    {MAC_READ_FROM}",
+                f"    {MAC_CROSS}",
+                f"    source: {tpl.LIBICONV_HOME}",
+                f"    source: {tpl.LIBICONV_DOWNLOAD.format(version='1.17')}",
+                f"    file: {D_ETREE}",
+                f"    file: {D_OBJECTIFY}",
+            ]
+        )
+    )
+
+
+def test_macos_slices_with_two_versions_list_each_with_files_and_address(
+    tpl, monkeypatch
+):
+    monkeypatch.setattr(tpl, "_installed", lambda name: None)
+    reads = {
+        D_ETREE: _slices(tpl, arm64="1.18", x86_64="1.17"),
+        D_OBJECTIFY: _slices(tpl, arm64="1.18", x86_64="1.18"),
+    }
+    comps, problems = tpl.libiconv_components(reads, report=(0, 0), arch="arm64")
+    assert problems == []
+    assert [(c.version, c.files) for c in comps] == [
+        ("1.17", [D_ETREE]),
+        ("1.18", [D_ETREE, D_OBJECTIFY]),
+    ]
+    old, new = comps
+    assert old.version_from == READ_FROM + " (x86_64)"
+    assert old.details == [f"carried in: {D_ETREE} (x86_64)", MAC_CROSS]
+    assert new.version_from == READ_FROM + " (arm64, x86_64)"
+    assert new.details == [
+        f"carried in: {D_ETREE} (arm64)",
+        f"carried in: {D_OBJECTIFY} (arm64, x86_64)",
+        MAC_CROSS,
+    ]
+    assert tpl.LIBICONV_DOWNLOAD.format(version="1.17") in old.urls
+    assert tpl.LIBICONV_DOWNLOAD.format(version="1.18") in new.urls
+    assert tpl.LIBICONV_DOWNLOAD.format(version="1.18") not in old.urls
+    assert tpl.licence_problems(old) == tpl.licence_problems(new) == []
+
+
+def test_a_slice_without_the_symbol_and_no_other_source_records_no_version(
+    tpl, monkeypatch
+):
+    monkeypatch.setattr(tpl, "_installed", lambda name: None)
+    reads = {
+        D_ETREE: _slices(tpl, arm64="1.17", x86_64=""),
+        D_OBJECTIFY: _slices(tpl, arm64="1.17", x86_64="1.17"),
+    }
+    (comp,), problems = tpl.libiconv_components(reads, report=(0, 0), arch="arm64")
+    assert problems == []
+    assert comp.version == ""
+    assert comp.files == [D_ETREE, D_OBJECTIFY]
+    assert comp.version_from == (
+        "version not recorded: no source gave the version of "
+        "etree.cpython-312-darwin.so (x86_64)"
+    )
+    assert comp.urls == [tpl.LIBICONV_HOME]  # no versioned address
+
+
+def test_the_build_configuration_gives_the_version_of_a_slice_without_the_symbol(
+    tpl, monkeypatch
+):
+    monkeypatch.setattr(tpl, "_installed", lambda name: None)
+    reads = {D_ETREE: _slices(tpl, arm64="1.17", x86_64="")}
+    (comp,), problems = tpl.libiconv_components(
+        reads, report=(0, 0), arch="arm64", config=_config(tpl)
+    )
+    assert problems == []
+    assert comp.version == "1.17"
+    assert comp.version_from.splitlines() == [
+        READ_FROM + " (arm64)",
+        "version named in lxml's build configuration for this release "
+        "(.github/workflows/wheels.yml:42 at tag lxml-6.1.3); not read from the "
+        "carried file (x86_64)",
+    ]
+    assert comp.details == [
+        "cross-check: lxml.etree.ICONV_COMPILED_VERSION is (0, 0), so lxml gives "
+        "no version to compare; lxml's build configuration "
+        "(.github/workflows/wheels.yml:42 at tag lxml-6.1.3) names 1.17, as the "
+        "symbol does in every slice that has it"
+    ]
+    rendered = tpl.render([comp])
+    assert f"    {READ_FROM} (arm64)\n    version named in lxml's" in rendered
+
+
+def test_the_build_configuration_of_another_system_is_not_a_source(tpl, monkeypatch):
+    monkeypatch.setattr(tpl, "_installed", lambda name: None)
+    reads = {D_ETREE: _slices(tpl, arm64="1.17", x86_64="")}
+    (comp,), _ = tpl.libiconv_components(
+        reads, report=(0, 0), arch="arm64", config=_config(tpl, platforms=("linux",))
+    )
+    assert comp.version == ""
+
+
+def test_the_symbol_and_the_build_configuration_must_agree(tpl, monkeypatch):
+    monkeypatch.setattr(tpl, "_installed", lambda name: None)
+    reads = {D_ETREE: _slices(tpl, arm64="1.18", x86_64="1.17")}
+    _, problems = tpl.libiconv_components(
+        reads, report=(0, 0), arch="arm64", config=_config(tpl, "1.17")
+    )
+    assert problems == [
+        "etree.cpython-312-darwin.so (arm64): libiconv 1.18 from the symbol "
+        "_libiconv_version, 1.17 from lxml's build configuration "
+        "(.github/workflows/wheels.yml:42 at tag lxml-6.1.3): they must agree; "
+        "this goes to the architect (architect-run10-macos-iconv.md section 1)"
+    ]
+
+
+def test_the_linux_symbol_is_cross_checked_against_a_linux_build_configuration(
+    tpl, monkeypatch
+):
+    monkeypatch.setattr(tpl, "_installed", lambda name: None)
+    reads = {ETREE: _elf_read(tpl, "1.18")}
+    (comp,), problems = tpl.libiconv_components(
+        reads, report=(0, 0), arch="x86_64", config=_config(tpl, "1.18", ("linux",))
+    )
+    assert problems == []
+    assert comp.version_from == READ_FROM  # Linux keeps its wording
+    assert comp.details[0].endswith(
+        "lxml's build configuration (.github/workflows/wheels.yml:42 at tag "
+        "lxml-6.1.3) names 1.18, as the symbol does in every slice that has it"
+    )
+    _, problems = tpl.libiconv_components(
+        reads, report=(0, 0), arch="x86_64", config=_config(tpl, "1.17", ("linux",))
+    )
+    assert problems and "they must agree" in problems[0]
+
+
+@pytest.mark.parametrize(
+    "report, detail, problem",
+    [
+        (
+            (1, 17),
+            "lxml.etree.ICONV_COMPILED_VERSION is (1, 17), as "
+            "etree.cpython-312-darwin.so (arm64) gives",
+            None,
+        ),
+        (
+            (1, 16),
+            "lxml.etree.ICONV_COMPILED_VERSION is (1, 16), "
+            "etree.cpython-312-darwin.so (arm64) gives 1.17: they disagree",
+            "etree.cpython-312-darwin.so (arm64): libiconv 1.17 from the symbol "
+            "_libiconv_version, 1.16 from lxml.etree.ICONV_COMPILED_VERSION: they "
+            "must agree; this goes to the architect "
+            "(architect-run10-macos-iconv.md section 1)",
+        ),
+        (
+            (0, 0),
+            "lxml.etree.ICONV_COMPILED_VERSION is (0, 0), so lxml gives no version "
+            "to compare",
+            None,
+        ),
+        (None, "lxml.etree.ICONV_COMPILED_VERSION not read", None),
+    ],
+    ids=["agrees", "disagrees", "zero", "not-read"],
+)
+def test_lxmls_own_report_is_only_a_cross_check(
+    tpl, monkeypatch, report, detail, problem
+):
+    monkeypatch.setattr(tpl, "_installed", lambda name: None)
+    reads = {
+        D_ETREE: _slices(tpl, arm64="1.17", x86_64="1.17"),
+        D_OBJECTIFY: _slices(tpl, arm64="1.17", x86_64="1.17"),
+    }
+    (comp,), problems = tpl.libiconv_components(reads, report=report, arch="arm64")
+    assert comp.version == "1.17"  # never from the report
+    assert comp.details == [
+        f"cross-check: {detail}; lxml's build configuration is not recorded"
+    ]
+    assert problems == ([problem] if problem else [])
+
+
+def test_lxmls_report_is_not_a_source_for_a_slice_without_the_symbol(tpl, monkeypatch):
+    monkeypatch.setattr(tpl, "_installed", lambda name: None)
+    reads = {D_ETREE: _slices(tpl, arm64="", x86_64="")}
+    (comp,), problems = tpl.libiconv_components(reads, report=(1, 17), arch="arm64")
+    assert comp.version == ""
+    assert problems == []
+
+
+def test_collect_reads_every_slice_of_the_macos_modules(tpl, monkeypatch):
+    class _MacIconv(_SampleBuild):
+        def __init__(self):
+            super().__init__([D_ETREE, D_OBJECTIFY], b"libiconv_open", same=True)
+
+        def iconv_reads(self, rel):
+            return _slices(tpl, arm64="1.17", x86_64="1.17")
+
+    _no_runtime(tpl, monkeypatch)
+    rows = (
+        tpl.Row("_internal/lxml/*.so", "package", carries=tpl._LXML, unmodified=True),
+    )
+    comps, problems = tpl.collect(_MacIconv(), rows, arch="arm64")
+    assert problems == []
+    (iconv,) = [c for c in comps if c.name == tpl.LXML_ICONV]
+    assert (iconv.version, iconv.version_from) == ("1.17", MAC_READ_FROM)
+    assert iconv.notes[1:] == [RESIGN_GOLDEN]
+
+
+# Source 2: lxml's build configuration, stored with a SOURCES.json entry.
+WHEELS_YML = (
+    "name: Wheel build\n"
+    "env:\n"
+    "  LIBICONV_VERSION: 1.17\n"
+    "  LIBXML2_VERSION: 2.14.4\n"
+)
+
+
+def _stored_config(tmp_path, text, line=3, digest=None):
+    import hashlib
+
+    lic = tmp_path / "licenses"
+    lic.mkdir()
+    (lic / "lxml-wheels.yml").write_text(text)
+    entry = {
+        "component": "lxml's build configuration (libiconv version, macOS wheels)",
+        "repository": "https://github.com/lxml/lxml",
+        "tag": "lxml-6.1.3",
+        "address": "https://raw.githubusercontent.com/lxml/lxml/lxml-6.1.3/"
+        ".github/workflows/wheels.yml",
+        "sha256": digest or hashlib.sha256(text.encode()).hexdigest(),
+        "libiconv_version": {
+            "path": ".github/workflows/wheels.yml",
+            "line": line,
+            "for": ["darwin"],
+        },
+    }
+    (lic / "SOURCES.json").write_text(json.dumps({"files": {"lxml-wheels.yml": entry}}))
+    return lic
+
+
+def test_the_build_configuration_is_read_from_its_stored_file(tpl, tmp_path):
+    lic = _stored_config(tmp_path, WHEELS_YML)
+    assert tpl.lxml_build_config(lic) == (
+        tpl.BuildConfig(
+            "1.17", ".github/workflows/wheels.yml", 3, "lxml-6.1.3", ("darwin",)
+        ),
+        [],
+    )
+
+
+def test_no_build_configuration_is_none(tpl, tmp_path):
+    assert tpl.lxml_build_config(tmp_path) == (None, [])
+    assert tpl.lxml_build_config(LICENSES) == (None, [])  # not needed so far
+
+
+@pytest.mark.parametrize(
+    "text, line, digest, problem",
+    [
+        (
+            WHEELS_YML + "  # libiconv 1.18 for arm64\n",
+            3,
+            None,
+            "names 2 libiconv versions (1.17, 1.18); usable only when it names "
+            "exactly one",
+        ),
+        (WHEELS_YML, 2, None, "line 2 names no libiconv version"),
+        (WHEELS_YML, 3, "0" * 64, "sha256 differs from its SOURCES.json entry"),
+    ],
+    ids=["two-versions", "wrong-line", "changed-file"],
+)
+def test_an_unusable_build_configuration_is_a_problem_not_a_source(
+    tpl, tmp_path, text, line, digest, problem
+):
+    lic = _stored_config(tmp_path, text, line, digest)
+    config, problems = tpl.lxml_build_config(lic)
+    assert config is None
+    assert problems == [
+        f"lxml build configuration lxml-wheels.yml: {problem} "
+        "(architect-run10-macos-iconv.md section 1)"
+    ]
+
+
+# The evidence of section 3 in the macOS build record.
+class _EvidenceIconvBuild(_SampleBuild):
+    def __init__(self, tmp_path, data):
+        super().__init__(
+            [D_ETREE, "_internal/lxml/_elementpath.cpython-312-darwin.so"],
+            b"",
+            same=True,
+        )
+        self.wheel = tmp_path / "site-packages" / "lxml" / Path(D_ETREE).name
+        self.wheel.parent.mkdir(parents=True)
+        self.wheel.write_bytes(data)
+
+    def contains(self, rel, needle):
+        return rel == D_ETREE and needle == b"libiconv_open"
+
+    def wheel_file(self, rel):
+        return self.wheel if rel == D_ETREE else None
+
+
+def test_the_build_record_holds_the_libiconv_evidence(tpl, tmp_path, monkeypatch):
+    monkeypatch.setattr(tpl, "_installed", lambda name: None)
+    first = _macho_iconv(None, X86_64)
+    data = _universal(first, _macho_iconv("1.17", ARM64))
+    build = _EvidenceIconvBuild(tmp_path, data)
+    rows = (
+        tpl.Row("_internal/lxml/*.so", "package", carries=tpl._LXML, unmodified=True),
+    )
+    comps, _ = tpl.libiconv_components(
+        {D_ETREE: tpl.symbol_reads(data, "_libiconv_version")},
+        report=(0, 0),
+        arch="arm64",
+    )
+    at = 4096 + len(first) + DATA_OFF + VALUE_AT
+    assert tpl.iconv_evidence(build, rows, comps, (0, 0)) == [
+        f"libiconv evidence: {D_ETREE}: read from the wheel's file {build.wheel} "
+        "(the bundled file is byte-identical: yes)",
+        f"libiconv evidence: {D_ETREE} (x86_64): no symbol __libiconv_version",
+        f"libiconv evidence: {D_ETREE} (arm64): symbol __libiconv_version at "
+        f"0x{SECT_ADDR + VALUE_AT:x}, section __DATA,__data, file offset 0x{at:x}, "
+        "bytes 11 01 00 00, version 1.17",
+        "libiconv evidence: lxml.etree.ICONV_COMPILED_VERSION (0, 0)",
+        f"libiconv evidence: notices: - {tpl.LXML_ICONV} (version not recorded): "
+        "LGPL-2.1",
+        "libiconv evidence: notices:     version not recorded: no source gave the "
+        "version of etree.cpython-312-darwin.so (x86_64)",
+        f"libiconv evidence: notices:     {MAC_CROSS}",
+        f"libiconv evidence: notices:     source: {tpl.LIBICONV_HOME}",
+        f"libiconv evidence: notices:     file: {D_ETREE}",
+    ]
+    assert data[at : at + 4] == bytes.fromhex("11010000")
+
+
+def test_no_libiconv_module_gives_no_evidence_lines(tpl, tmp_path):
+    build = _EvidenceIconvBuild(tmp_path, b"")
+    build.contains = lambda rel, needle: False
+    rows = (
+        tpl.Row("_internal/lxml/*.so", "package", carries=tpl._LXML, unmodified=True),
+    )
+    assert tpl.iconv_evidence(build, rows, [], (0, 0)) == []
+
+
+def test_the_licence_check_writes_the_libiconv_evidence_into_the_build_record(
+    tpl, tmp_path, capsys, monkeypatch
+):
+    monkeypatch.setattr(tpl, "build_record", lambda build, rows, arch: ["line one"])
+    monkeypatch.setattr(
+        tpl,
+        "iconv_evidence",
+        lambda build, rows, comps, report: ["libiconv evidence: x"],
+    )
+    bundle, work = _fake_bundle(tmp_path)
+    record = tmp_path / "build-record.txt"
+    args = ["--bundle", str(bundle), "--workpath", str(work)]
+    args += ["--out", str(tmp_path / "T.txt"), "--build-record", str(record)]
+    tpl.main(args + ["--platform", "darwin"])
+    assert "BUILD RECORD: libiconv evidence: x\n" in capsys.readouterr().out
+    assert record.read_text("utf-8") == "line one\nlibiconv evidence: x\n"
