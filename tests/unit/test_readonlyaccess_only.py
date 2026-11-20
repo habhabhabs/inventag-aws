@@ -471,3 +471,64 @@ def test_R4_provisional_readonlyaccess_cannot_upload_reports_and_the_run_ends_wi
         Bucket="w1-report-bucket"
     )
     assert objects.get("KeyCount", 0) == 0
+
+
+# R5 and R7: ReadOnlyAccess minus five patterns. Written as an explicit Deny, which wins.
+R5_DENY = (
+    "tag:Get*",
+    "ce:GetCostAndUsage",
+    "pricing:GetProducts",
+    "s3:Get*",
+    "lambda:Get*",
+)
+R5_ARGS = (
+    "--create-excel",
+    "--create-word",
+    "--enable-network-analysis",
+    "--enable-security-analysis",
+    "--enable-cost-analysis",
+)
+
+
+def _ledger_actions(run: Run) -> set:
+    """The IAM actions of the ledger's denied entries (each entry names service and operation)."""
+    actions = set()
+    for entry in run.denied_ledger:
+        action = iam_action_for(entry.service, entry.operation)
+        assert action, f"a denied ledger entry has no IAM action: {entry}"
+        actions.add(action)
+    return actions
+
+
+def test_R5_provisional_readonlyaccess_minus_five_patterns_keeps_the_allowed_rows_and_names_the_rest(
+    aws, run_as
+):
+    """R5: R2 with tag, Cost Explorer, pricing, s3 Get* and lambda Get* taken away."""
+    run = run_as(read_only_access_actions(), *R5_ARGS, deny=R5_DENY, billing=True)
+    run.sim.assert_all_mapped()
+    assert run.code == 0, run.text
+    # the denied set, by action name (a pin: a new call under a denied pattern shows here)
+    assert run.sim.denied_set == {
+        "ce:GetCostAndUsage",
+        "lambda:GetFunctionConfiguration",
+        "pricing:GetProducts",
+        "s3:GetBucketLocation",
+        "tag:GetResources",
+    }
+    assert all(matches_any(a, R5_DENY) for a in run.sim.denied_set)
+    # the report has the rows of the allowed listings (the details of two are thinner)
+    _assert_in_report(run, aws)
+    assert not any(
+        e.source == "service-api" for e in run.denied_ledger
+    ), "a listing was denied that the policy allows"
+    # what the run reports equals what the simulator denied, except pricing:
+    # the cost analysis keeps no ledger entry (see the next assertions)
+    assert _ledger_actions(run) == run.sim.denied_set - {"pricing:GetProducts"}
+    assert "Cost analysis: access to the pricing API was denied" in run.text
+    # the notes of the run, as the report carries them today
+    assert "Allow ce:GetCostAndUsage for this role." in run.text
+    assert "resourcegroupstaggingapi in us-east-1 (denied)" in run.text
+    assert "s3 GetBucketLocation in us-east-1 (denied, 1)" in run.text
+    assert "lambda GetFunctionConfiguration in us-east-1 (denied, 1)" in run.text
+    assert "Not read in account" in run.workbook_text()
+    assert len(run.snapshots()) == 1
