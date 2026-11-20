@@ -113,26 +113,8 @@ ALLOWED = {
 # tests/unit/test_unmasked_secret_fields_never_read.py. Each name: one operation
 # that returns it, and what the botocore documentation says.
 KNOWN_UNMASKED = {
-    "presharedkey": "ec2:DescribeVpnConnections: the pre-shared key (PSK) of a VPN tunnel",
     "authkey": "directconnect:DescribeVirtualInterfaces: the authentication key for BGP",
-    "passphrase": "ivs:GetChannel: auto-generated passphrase to enable encryption (SRT)",
     "secret": "codebuild:BatchGetProjects: the secret token of the repository webhook",
-    "secrettoken": "codepipeline:ListWebhooks: the GitHub HMAC secret token",
-    "webidentitytoken": "sts:GetWebIdentityToken: a signed JSON Web Token of the caller",
-    "jwttoken": "datazone:GetConnection: the jwt token of the connection",
-    "playergatewaytoken": "gamelift:GetPlayerConnectionDetails: access token a game client sends",
-    "devicetoken": "chime-sdk-identity:DescribeAppInstanceUserEndpoint: push device token",
-    "voipdevicetoken": "chime-sdk-identity:DescribeAppInstanceUserEndpoint: VOIP device token",
-    "tokenvalue": "ec2:DescribeIpamExternalResourceVerificationTokens: token value",
-    "billingtoken": "managedblockchain:GetAccessor: token used when making calls to the network",
-    "tasktoken": "stepfunctions:GetActivityTask: token that authorises SendTaskSuccess and others",
-    "callbacktoken": "sagemaker:ListPipelineExecutionSteps: pipeline token from the SQS queue",
-    "workunittoken": "lakeformation:GetWorkUnits: a work token used to query the execution service",
-    "registrationtoken": "marketplace-agreement:GetAgreementEntitlements: short-lived registration token",
-    "exporttoken": "payment-cryptography:GetParametersForExport: token to initiate key export",
-    "importtoken": "payment-cryptography:GetParametersForImport: token to initiate key import",
-    "purchasetoken": "ec2:DescribeScheduledInstanceAvailability: the purchase token (two hours)",
-    "offertoken": "bedrock:ListFoundationModelAgreementOffers: 'Offer token.' (the documentation does not say more)",
     "accesskey": "datasync:DescribeLocationObjectStorage: the access key to authenticate with object storage",
 }
 
