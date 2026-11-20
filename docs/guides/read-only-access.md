@@ -194,6 +194,12 @@ The line has InvenTag's own words. It has no text from the AWS error. A call
 for which InvenTag knows no IAM action is named by its API name, with the
 words `(IAM action not known to InvenTag)`.
 
+The upload of the reports with `--s3-bucket` uses the default credentials, not the credentials of a scanned account. When S3 refuses it, the line names no account. It names the identity that uploads the reports (sample from the tests):
+
+```text
+Permissions: 1 action(s) were not allowed for the identity that uploads the reports (the default credentials): s3:PutObject. Effect: the reports were not uploaded. s3:PutObject is not in ReadOnlyAccess; it is needed only for uploading the reports (--s3-bucket).
+```
+
 With `--audit-output`, the file also has the key `permissions_denied`. The key
 is there only when something was denied. Each entry has these fields:
 
@@ -214,7 +220,7 @@ is there only when something was denied. Each entry has these fields:
 
 | Field | Meaning |
 |---|---|
-| `account` | The account ID. |
+| `account` | The account ID. Empty for the kind `upload`: the upload uses the default credentials, not a scanned account's. |
 | `action` | The IAM action, or `null` when InvenTag does not know it. |
 | `service`, `operation` | The AWS API names of the refused call. |
 | `regions` | The regions in which the call was refused. Empty for an entry without a region, for example the kind `role`. |
