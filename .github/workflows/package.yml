@@ -466,10 +466,12 @@ jobs:
         ref: ${{ needs.plan.outputs.ref }}
         persist-credentials: false
 
-    - name: Set up Python 3.12
+    # The patch version is PINNED_PYTHON["darwin"] of
+    # scripts/packaging/third_party_licenses.py (a test compares the two).
+    - name: Set up Python 3.12.10
       uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
       with:
-        python-version: '3.12'
+        python-version: '3.12.10'
 
     # build_binary.sh writes the archive with GNU tar options (--sort, --owner).
     - name: Put GNU tar first on the PATH
