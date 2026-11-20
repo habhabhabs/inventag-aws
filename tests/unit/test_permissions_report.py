@@ -16,6 +16,7 @@ from moto import mock_aws
 from inventag.security.iam_policy import (
     LEDGER_CLIENT_SERVICES,
     NOT_IN_READONLYACCESS,
+    PARENT_LISTINGS,
     READ_ONLY_ACTIONS,
     action_for,
     all_policy_actions,
@@ -145,6 +146,23 @@ def test_the_ledger_services_that_are_not_botocore_names_are_exactly_those_of_th
         if config.get("client_service", key) != key
     }
     assert LEDGER_CLIENT_SERVICES == different
+
+
+def test_the_listings_that_read_their_parent_first_are_exactly_those_of_the_table():
+    """PARENT_LISTINGS holds each table entry with ``per_parent`` (ECS services), nothing else."""
+    from inventag.discovery.comprehensive_discovery import ComprehensiveAWSDiscovery
+    from inventag.security.iam_policy import botocore_call
+
+    _, table = _discovery_table()
+    expected = {}
+    for key, config in table.items():
+        for operation_config in config["operations"]:
+            spec = ComprehensiveAWSDiscovery._op_spec(operation_config)
+            if spec.get("per_parent"):
+                expected[botocore_call(key, spec["op"])] = botocore_call(
+                    key, spec["per_parent"]["op"]
+                )
+    assert expected and PARENT_LISTINGS == expected
 
 
 # ------------------------------------------------------------- what ReadOnlyAccess has
@@ -375,6 +393,37 @@ def test_a_run_time_listing_of_a_billed_service_is_the_optional_kind():
         coverage=[ledger("kendra", "list_indices", source=pr.OPTIONAL_SOURCE)]
     )
     assert [(e["kind"], e["action"]) for e in found] == [("optional", None)]
+
+
+def test_a_child_listing_denied_because_its_parent_was_is_not_listed_as_its_own_denial():
+    """ECS reads ListClusters first; when that is denied, ListServices never ran."""
+    both = pr.build(
+        coverage=[
+            ledger("ecs", "ListClusters"),
+            ledger("ecs", "ListServices"),
+            ledger("ecs", "ListClusters", region="eu-west-1"),
+            ledger("ecs", "ListServices", region="eu-west-1"),
+        ]
+    )
+    assert [(e["action"], e["regions"]) for e in both] == [
+        ("ecs:ListClusters", ["eu-west-1", "us-east-1"])
+    ]
+
+
+def test_a_child_listing_is_listed_when_its_parent_was_read_in_that_region():
+    found = pr.build(
+        coverage=[
+            ledger("ecs", "ListClusters", outcome="ok", error_code=""),
+            ledger("ecs", "ListServices"),
+            # another region where the parent was denied: its child is not listed there
+            ledger("ecs", "ListClusters", region="eu-west-1"),
+            ledger("ecs", "ListServices", region="eu-west-1"),
+        ]
+    )
+    assert [(e["action"], e["regions"]) for e in found] == [
+        ("ecs:ListClusters", ["eu-west-1"]),
+        ("ecs:ListServices", ["us-east-1"]),
+    ]
 
 
 def test_the_same_action_from_two_sources_is_one_entry_per_account_and_kind():
