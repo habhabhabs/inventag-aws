@@ -573,8 +573,9 @@ jobs:
         - { system: fedora, image: 'fedora:latest', format: rpm, shells: 'bash zsh fish' }
         - { system: rockylinux-9, image: 'rockylinux:9', format: rpm, shells: 'bash zsh' }
         - { system: rockylinux-9-tar, image: 'rockylinux:9', format: tar, shells: 'bash zsh' }
-        # The build image's own release: the glibc 2.28 floor.
-        - { system: almalinux-8, image: 'almalinux:8', format: rpm, shells: 'bash zsh' }
+        # The build image's own release: the glibc floor system.
+        - { system: almalinux-9, image: 'almalinux:9', format: rpm, shells: 'bash zsh' }
+        - { system: amazonlinux-2023, image: 'amazonlinux:2023', format: rpm, shells: 'bash zsh' }
     env:
       VERSION: ${{ needs.plan.outputs.version }}
       FORMAT: ${{ matrix.format }}
