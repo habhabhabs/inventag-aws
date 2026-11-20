@@ -190,6 +190,9 @@ class Row:
 # "strings:<regex>" (read in the bundled file), "python:<expression>"
 # (evaluated by the build Python), "pkg" (the system package version).
 _LXML_TEXT = ("dist:lxml:*LICENSES.txt",)
+# Licence texts stored unchanged in the repository; where each comes from is
+# in licenses/SOURCES.json (architect-package-dryrun-3.md ruling 1).
+LICENSES_REPO = "repo:scripts/packaging/licenses/"
 _LXML_H = "header:lxml:lxml/includes/"
 _LXML = (
     Carried(
@@ -256,9 +259,9 @@ WHEEL_ROWS: Tuple[Row, ...] = (
             Carried(
                 "libyaml (in PyYAML)",
                 "MIT",
-                # No verified source: the wheel's licence files hold only
-                # PyYAML's text, and the repository has no sourced copy.
-                (),
+                # The wheel's licence files hold only PyYAML's text: upstream
+                # libyaml's License at tag 0.2.5 (licenses/SOURCES.json).
+                (LICENSES_REPO + "libyaml-License",),
                 "strings:^(0\\.2\\.[0-9]+)$",
             ),
         ),
@@ -270,9 +273,10 @@ WHEEL_ROWS: Tuple[Row, ...] = (
             Carried(
                 "libffi (in cffi)",
                 "MIT",
-                # No verified source: the wheel's licence files hold only
-                # cffi's text, and the repository has no sourced copy.
-                (),
+                # The wheel's licence files hold only cffi's text: upstream
+                # libffi's LICENSE (licenses/SOURCES.json). The wheel does not
+                # say which libffi it carries, so no version is recorded.
+                (LICENSES_REPO + "libffi-LICENSE",),
                 # Linked statically: the module defines ffi_prep_cif itself.
                 requires_strings=b"ffi_prep_cif",
             ),
@@ -567,6 +571,19 @@ def otool_libraries(text: str) -> List[str]:
     )
 
 
+def sourced_label(path: Path) -> str:
+    """A repository text's label: its file name, and its upstream address when
+    SOURCES.json records one."""
+    import json
+
+    sources = path.parent / "SOURCES.json"
+    if sources.is_file():
+        entry = json.loads(sources.read_text("utf-8"))["files"].get(path.name, {})
+        if entry.get("address"):
+            return f"{path.name} (from {entry['address']})"
+    return path.name
+
+
 class Build:
     """What the build environment and the bundle say. Kept apart for tests."""
 
@@ -713,7 +730,9 @@ class Build:
             return self.package_doc(owner[0]) if owner else None
         if kind == "repo":
             p = self.repo_root / arg
-            return (p.name, p.read_text("utf-8", "replace")) if p.is_file() else None
+            if not p.is_file():
+                return None
+            return sourced_label(p), p.read_text("utf-8", "replace")
         if kind == "path":
             p = Path(arg)
             return (p.name, p.read_text("utf-8", "replace")) if p.is_file() else None
@@ -861,9 +880,9 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
             if not carried.text:
                 problems.append(
                     f"{rel}: licence text of {carried.name}: no verified source in "
-                    "the table; add the upstream text under "
-                    "scripts/packaging/licenses/ (first line: its address, version "
-                    "or commit, and date)"
+                    "the table; store the upstream text unchanged under "
+                    "scripts/packaging/licenses/ and its address, tag, sha256 and "
+                    "date in SOURCES.json"
                 )
             elif any(g is None for g in got):
                 problems.append(f"{rel}: licence text of {carried.name} not found")

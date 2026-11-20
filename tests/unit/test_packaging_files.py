@@ -1100,9 +1100,7 @@ def test_every_licence_text_has_a_source_entry_with_its_sha256():
 def test_upstream_texts_come_from_the_projects_repository_at_a_release_tag():
     # Ruling 1, condition 2: the project's own repository, at a release tag;
     # not a mirror, a package site or the default branch.
-    upstream = {
-        n: e for n, e in _sources()["files"].items() if "repository" in e
-    }
+    upstream = {n: e for n, e in _sources()["files"].items() if "repository" in e}
     assert set(upstream) >= {"libyaml-License", "libffi-LICENSE"}
     for name, entry in upstream.items():
         assert UPSTREAM_KEYS <= set(entry), name
@@ -1123,16 +1121,28 @@ YAML_TEXT = "repo:scripts/packaging/licenses/libyaml-License"
 FFI_TEXT = "repo:scripts/packaging/licenses/libffi-LICENSE"
 
 
-@pytest.mark.parametrize("plat, suffix", [("linux", "x86_64-linux-gnu"), ("darwin", "darwin")])
+@pytest.mark.parametrize(
+    "plat, suffix", [("linux", "x86_64-linux-gnu"), ("darwin", "darwin")]
+)
 def test_libyaml_and_libffi_texts_are_the_sourced_upstream_files(tpl, plat, suffix):
     rows = tpl.TABLES[plat]
     for rel, name, text in (
-        (f"_internal/yaml/_yaml.cpython-312-{suffix}.so", "libyaml (in PyYAML)", YAML_TEXT),
-        (f"_internal/_cffi_backend.cpython-312-{suffix}.so", "libffi (in cffi)", FFI_TEXT),
+        (
+            f"_internal/yaml/_yaml.cpython-312-{suffix}.so",
+            "libyaml (in PyYAML)",
+            YAML_TEXT,
+        ),
+        (
+            f"_internal/_cffi_backend.cpython-312-{suffix}.so",
+            "libffi (in cffi)",
+            FFI_TEXT,
+        ),
     ):
         (carried,) = [c for c in tpl.match_row(rel, rows).carries if c.name == name]
         assert carried.text == (text,), (plat, name)
-    (ffi,) = tpl.match_row(f"_internal/_cffi_backend.cpython-312-{suffix}.so", rows).carries
+    (ffi,) = tpl.match_row(
+        f"_internal/_cffi_backend.cpython-312-{suffix}.so", rows
+    ).carries
     assert ffi.version == ""  # the wheel does not say which libffi: not recorded
 
 
