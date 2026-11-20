@@ -898,3 +898,24 @@ def test_a_carried_library_without_a_verified_text_source_fails(tpl, monkeypatch
     build = _SampleBuild(["_internal/yaml/_yaml.so"], b"", same=True)
     _, problems = tpl.collect(build, rows)
     assert problems == [NO_SOURCE_GOLDEN]
+
+
+# ------------------- libmpdec: inside _decimal or a separate library (B2d)
+DECIMAL = "_internal/python3.12/lib-dynload/_decimal.cpython-312-x86_64-linux-gnu.so"
+MPDEC_IN_DECIMAL = "libmpdec (in CPython's _decimal)"
+
+
+@pytest.mark.parametrize(
+    "strings, carried",
+    [(b"mpd_qadd", True), (b"libmpdec.so.3\0mpd_qadd", False)],
+    ids=["linked-in", "linked-to-libmpdec.so"],
+)
+def test_decimal_carries_libmpdec_only_when_it_does_not_load_the_library(
+    tpl, monkeypatch, strings, carried
+):
+    # AlmaLinux 9 (dry run 3): _decimal loads the system's libmpdec.so.3,
+    # which is a file of its own in the bundle, so _decimal carries no copy.
+    _no_runtime(tpl, monkeypatch)
+    build = _SampleBuild([DECIMAL], strings, same=True)
+    comps, _ = tpl.collect(build, tpl.LINUX_ROWS)
+    assert (MPDEC_IN_DECIMAL in [c.name for c in comps]) is carried
