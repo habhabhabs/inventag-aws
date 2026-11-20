@@ -912,3 +912,76 @@ def test_the_release_job_is_only_in_a_tree_that_holds_what_it_packages():
     # On main before v1.4.0 this fails if the job was cherry-picked there
     # without the packaging files; on next/v1.4 it holds.
     assert _release_job_is_safe(RELEASE.read_text(encoding="utf-8"), ROOT)
+
+
+# ---- B3b: the digest of every image a smoke test pulled --------------------
+
+
+def _digest_step_run(job, fragment="digest"):
+    return _step(job, fragment)["run"]
+
+
+def _run_digest(tmp_path, run, inspect_output, image="debian:12"):
+    """Run a digest-recording step with a stub docker; return (code, summary text, calls)."""
+    import subprocess
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    calls = tmp_path / "docker.log"
+    stub = bin_dir / "docker"
+    stub.write_text(
+        "#!/bin/bash\n" f'echo "$@" >> "{calls}"\n' f"printf '%s' '{inspect_output}'\n",
+        encoding="utf-8",
+    )
+    stub.chmod(0o755)
+    summary = tmp_path / "summary.md"
+    summary.write_text("", encoding="utf-8")
+    result = subprocess.run(
+        ["bash", "-c", run],
+        env={
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "IMAGE": image,
+            "GITHUB_STEP_SUMMARY": str(summary),
+        },
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    return result, summary.read_text("utf-8"), calls.read_text("utf-8")
+
+
+SOME_DIGEST = "debian@sha256:" + "ab" * 32
+
+
+def test_every_linux_smoke_job_writes_the_digest_of_its_image_to_the_job_summary(
+    tmp_path,
+):
+    steps = _steps("smoke-linux")
+    names = [s.get("name", "") for s in steps]
+    # After the image was pulled (docker run pulls it) and before anything is installed.
+    assert names.index("Record the digest of the image") > names.index(
+        "Start a fresh system"
+    )
+    assert names.index("Record the digest of the image") < names.index(
+        "Install the package"
+    )
+    result, summary, calls = _run_digest(
+        tmp_path, _digest_step_run("smoke-linux"), SOME_DIGEST
+    )
+    assert result.returncode == 0, result.stderr
+    assert "image inspect" in calls and "RepoDigests" in calls and "debian:12" in calls
+    assert f"debian:12: {SOME_DIGEST}" in summary
+
+
+def test_a_smoke_image_with_no_recorded_digest_fails_the_job(tmp_path):
+    result, summary, _ = _run_digest(tmp_path, _digest_step_run("smoke-linux"), "")
+    assert result.returncode != 0
+    assert "digest" in result.stdout + result.stderr
+    assert "sha256" not in summary
+
+
+def test_no_digest_is_typed_into_the_workflow_for_a_smoke_image():
+    # The digests are written by each run (job summary); the only value typed
+    # here is the build image's, which the dry run prints (placeholder).
+    typed = re.findall(r"sha256:[0-9a-f]{64}", TEXT)
+    assert typed == []
