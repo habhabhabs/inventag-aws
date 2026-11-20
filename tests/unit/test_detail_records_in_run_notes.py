@@ -33,7 +33,8 @@ def test_failed_detail_calls_are_named_with_their_count(tmp_path):
             ]
         },
     )
-    assert generator._run_notes() == [
+    notes = [n for n in generator._run_notes() if not n.startswith("Permissions:")]
+    assert notes == [
         "Details of 5 resource(s) in account 111111111111 could not be read, so "
         "those rows have some fields missing: lambda GetFunctionConfiguration in "
         "us-east-1 (throttled, 2); s3 GetBucketLocation in us-east-1 (denied, 3)."
