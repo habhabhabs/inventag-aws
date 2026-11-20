@@ -21,6 +21,9 @@ gets one client per (service, region, retry settings), created under the
 lock and shared by threads, so threads on one API share one connection pool
 (and one SDK retry quota). A paginator or page iterator is never shared:
 create one per call. Sessions without the cache get a new client per call.
+Cost Explorer (``ce``) clients are never cached: during an account's scan
+``cloud_bom_generator`` gives them short timeouts for a window of time, and a
+cached client would cross that window.
 """
 
 import os
@@ -31,6 +34,8 @@ from typing import Optional
 from botocore.config import Config
 
 RETRY_MODE = "standard"
+# Services whose clients are never cached (see the module docstring).
+_NOT_CACHED = frozenset({"ce"})
 MAX_ATTEMPTS = 10
 
 _CREATE_LOCK = threading.RLock()
@@ -66,7 +71,7 @@ def create_client(session, service_name: str, region_name: Optional[str] = None)
     """
     with _CREATE_LOCK:
         cache = _CACHES.get(session)
-        if cache is None:
+        if cache is None or service_name in _NOT_CACHED:
             return _new_client(session, service_name, region_name)
         key = (
             service_name,
