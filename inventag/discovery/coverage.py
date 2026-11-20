@@ -91,6 +91,20 @@ class CoverageEntry:
     seconds: float = 0.0
 
 
+def _sort_key(entry: CoverageEntry) -> tuple:
+    return (
+        entry.account_id,
+        entry.region,
+        entry.source,
+        entry.service,
+        entry.resource_type,
+        entry.operation,
+        entry.outcome,
+        entry.error_code,
+        entry.count,
+    )
+
+
 class CoverageLedger:
     """Thread-safe list of :class:`CoverageEntry`."""
 
@@ -108,8 +122,13 @@ class CoverageLedger:
 
     @property
     def entries(self) -> List[CoverageEntry]:
+        """The entries in one fixed order, whatever the order threads recorded.
+
+        Sorted by account, region, source, service, resource type, operation,
+        outcome, error code and count. ``seconds`` is timing and is not a key.
+        """
         with self._lock:
-            return list(self._entries)
+            return sorted(self._entries, key=_sort_key)
 
     def to_dict(self) -> List[Dict[str, Any]]:
         return [asdict(e) for e in self.entries]
