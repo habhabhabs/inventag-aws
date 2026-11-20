@@ -45,11 +45,30 @@ def _all_steps():
 # ---- stage 1: triggers, permissions, the plan job -------------------------
 
 
-def test_it_is_a_reusable_workflow_and_can_be_started_by_hand_only():
+def test_it_is_a_reusable_workflow_started_by_hand_or_by_a_pull_request_that_touches_packaging():
     # No release, push or schedule trigger: a release created with the
     # workflow's own token starts no workflow, and a second trigger would
-    # package a tag twice (plan 3.5).
-    assert set(_triggers()) == {"workflow_call", "workflow_dispatch"}
+    # package a tag twice (plan 3.5). The pull request trigger (architect
+    # review of B3, ruling 1) is the dry run of the branch's own file.
+    assert set(_triggers()) == {"workflow_call", "workflow_dispatch", "pull_request"}
+    assert "pull_request_target" not in TEXT
+
+
+PACKAGING_PATHS = [
+    "packaging/**",
+    "scripts/packaging/**",
+    "requirements-lock*.txt",
+    ".github/workflows/package.yml",
+    "inventag/cli/selftest.py",
+    "inventag/cli/completion.py",
+]
+
+
+def test_the_pull_request_trigger_is_limited_to_the_paths_of_packaging():
+    trigger = _triggers()["pull_request"]
+    assert trigger["paths"] == PACKAGING_PATHS
+    # No other filter: every base branch, every default activity type.
+    assert set(trigger) == {"paths"}
 
 
 def test_both_triggers_take_a_tag_a_ref_and_a_dry_run_flag_that_defaults_to_true():
@@ -124,9 +143,12 @@ def test_no_expression_of_the_inputs_is_pasted_into_a_script():
         assert "${{ github.event" not in step.get("run", ""), name
 
 
-def test_one_run_per_tag_and_a_running_package_is_never_cancelled():
+def test_one_run_per_tag_or_pull_request_and_a_running_package_is_never_cancelled():
     group = DATA["concurrency"]
     assert "inputs.tag" in group["group"] and "inputs.ref" in group["group"]
+    # Both inputs are empty on a pull request: without its number the group
+    # would be the same empty string for every pull request.
+    assert "github.event.pull_request.number" in group["group"]
     assert group["cancel-in-progress"] is False
 
 
@@ -139,13 +161,26 @@ def test_the_plan_job_checks_the_tag_against_the_version_file():
     for needed in ("requirements-lock.txt", "requirements-lock-build.txt"):
         assert needed in text
     checkout = [s for s in _steps("plan") if "checkout" in s.get("uses", "")][0]
+    # A pull request builds its own commit (not the merge commit); a manual
+    # dry run its ref; a release its tag.
+    assert checkout["with"]["ref"] == (
+        "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha"
+        " || inputs.ref || format('refs/tags/{0}', inputs.tag) }}"
+    )
+    env = _step("plan", "version")["env"]
+    assert env["EVENT_NAME"] == "${{ github.event_name }}"
     assert (
-        checkout["with"]["ref"]
-        == "${{ inputs.ref || format('refs/tags/{0}', inputs.tag) }}"
+        env["DRY_RUN"] == "${{ github.event_name == 'pull_request' || inputs.dry_run }}"
+    )
+    assert env["REF"] == (
+        "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha"
+        " || inputs.ref }}"
     )
 
 
-def _plan(tmp_path, tag="", ref="", dry_run="true", version="1.4.0"):
+def _plan(
+    tmp_path, tag="", ref="", dry_run="true", version="1.4.0", event="workflow_dispatch"
+):
     """Run the plan step in a tiny tree; return (result, outputs as a dict)."""
     import subprocess
 
@@ -165,6 +200,7 @@ def _plan(tmp_path, tag="", ref="", dry_run="true", version="1.4.0"):
             "TAG": tag,
             "REF": ref,
             "DRY_RUN": dry_run,
+            "EVENT_NAME": event,
             "GITHUB_OUTPUT": str(out),
         },
         capture_output=True,
@@ -205,6 +241,27 @@ def test_plan_takes_a_branch_only_for_a_dry_run(tmp_path):
     refused, _ = _plan(tmp_path, ref="next/v1.4", dry_run="false")
     assert refused.returncode != 0
     assert "dry run" in refused.stdout + refused.stderr
+
+
+def test_plan_takes_the_commit_of_a_pull_request_as_a_dry_run(tmp_path):
+    sha = "0123456789abcdef0123456789abcdef01234567"
+    result, out = _plan(tmp_path, ref=sha, dry_run="true", event="pull_request")
+    assert result.returncode == 0, result.stderr
+    assert out["ref"] == sha and out["dry_run"] == "true" and out["tag"] == ""
+
+
+def test_plan_refuses_a_pull_request_that_is_not_a_dry_run(tmp_path):
+    sha = "0123456789abcdef0123456789abcdef01234567"
+    for dry_run in ("false", ""):
+        result, _ = _plan(tmp_path, ref=sha, dry_run=dry_run, event="pull_request")
+        assert result.returncode != 0, dry_run
+    # A pull request with no commit has nothing to build, and a tag is never
+    # packaged from a pull request.
+    result, _ = _plan(tmp_path, ref="", dry_run="true", event="pull_request")
+    assert result.returncode != 0
+    result, _ = _plan(tmp_path, tag="v1.4.0", dry_run="true", event="pull_request")
+    assert result.returncode != 0
+    assert "pull request" in result.stdout + result.stderr
 
 
 def test_every_other_job_waits_for_the_plan():
@@ -786,3 +843,72 @@ def test_the_package_job_passes_no_secret_and_leaves_the_other_jobs_alone():
     assert "secrets" not in job
     for name in ("check-for-release", "release", "publish-pypi"):
         assert "package" not in str(RELEASE_JOBS[name].get("outputs", {}))
+
+
+# ---- B3b: the pull request trigger and the release.yml job -----------------
+
+
+def _comment_text():
+    lines = [
+        ln.lstrip()[1:].strip()
+        for ln in TEXT.splitlines()
+        if ln.lstrip().startswith("#")
+    ]
+    return " ".join(" ".join(lines).split())
+
+
+def test_the_workflow_says_why_the_release_job_waits_for_v1_4_0():
+    comment = _comment_text()
+    assert "job of release.yml must not reach main before v1.4.0" in comment
+    assert "pull request" in comment and "dry run" in comment
+
+
+# What the `package` job of release.yml packages. A tree that lacks one of
+# these files must not call package.yml: a v1.3.2 patch made from main would
+# start packaging a tag that has no packaging/ (architect review of B3, M2).
+PACKAGED_FILES = (
+    "packaging/nfpm/nfpm.yaml",
+    "scripts/packaging/build_binary.sh",
+    "scripts/packaging/build_linux_packages.sh",
+    "inventag/cli/selftest.py",
+    "inventag/cli/completion.py",
+    "requirements-lock.txt",
+    "requirements-lock-build.txt",
+)
+
+
+def _calls_package(release_text):
+    jobs = yaml.safe_load(release_text)["jobs"]
+    return any(j.get("uses", "").endswith("/package.yml") for j in jobs.values())
+
+
+def _release_job_is_safe(release_text, tree):
+    """True when release.yml has no package job, or the tree holds what it packages."""
+    if not _calls_package(release_text):
+        return True
+    return all((Path(tree) / name).is_file() for name in PACKAGED_FILES)
+
+
+def test_a_release_job_for_a_tree_without_packaging_is_not_safe(tmp_path):
+    with_job = RELEASE.read_text(encoding="utf-8")
+    assert _calls_package(with_job)
+    assert not _release_job_is_safe(with_job, tmp_path)
+    (tmp_path / "packaging" / "nfpm").mkdir(parents=True)
+    for name in PACKAGED_FILES[:-1]:
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("", encoding="utf-8")
+    assert not _release_job_is_safe(with_job, tmp_path)  # one file still missing
+    (tmp_path / PACKAGED_FILES[-1]).write_text("", encoding="utf-8")
+    assert _release_job_is_safe(with_job, tmp_path)
+
+
+def test_a_release_without_the_package_job_is_safe_anywhere(tmp_path):
+    text = "jobs:\n  release:\n    runs-on: ubuntu-24.04\n"
+    assert _release_job_is_safe(text, tmp_path)
+
+
+def test_the_release_job_is_only_in_a_tree_that_holds_what_it_packages():
+    # On main before v1.4.0 this fails if the job was cherry-picked there
+    # without the packaging files; on next/v1.4 it holds.
+    assert _release_job_is_safe(RELEASE.read_text(encoding="utf-8"), ROOT)
