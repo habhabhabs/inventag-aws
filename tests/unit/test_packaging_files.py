@@ -1550,6 +1550,9 @@ class _DarwinBuild(_SampleBuild):
         name = Path(rel).name.split(".")[0]
         return self.info[rel].get("symbols", [f"_PyInit_{name}"])
 
+    def min_os(self, rel, arch):
+        return self.info[rel].get("minos")
+
 
 def _dyn(m):
     return f"{DYNLOAD}{m}.cpython-312-darwin.so"
@@ -1608,18 +1611,16 @@ THIRD_PARTY = "a third-party library inside needs its own row (architect ruling 
             f"(_Hacl_Hash_SHA2_digest_256): {THIRD_PARTY}",
         ),
         (
-            {_dyn("zlib"): {"links": [LIBSYSTEM, "/usr/lib/libz.1.dylib"]}},
-            f"{_dyn('zlib')}: links /usr/lib/libz.1.dylib, which is neither a macOS "
-            "system library this table accepts (/usr/lib/libSystem.B.dylib, "
-            "/System/Library/Frameworks/*) nor a bundled file with a row "
-            "(architect ruling 3.1)",
+            {_dyn("zlib"): {"links": [LIBSYSTEM, "/opt/homebrew/lib/libz.1.dylib"]}},
+            f"{_dyn('zlib')}: links /opt/homebrew/lib/libz.1.dylib, an absolute "
+            "path outside the bundle and outside /usr/lib/ and /System/Library/: "
+            "a user's Mac need not have it (architect-package-dryrun-5.md ruling 2)",
         ),
         (
             {_dyn("_ssl"): {"links": SSL_LINKS}},
-            f"{_dyn('_ssl')}: links @rpath/libcrypto.3.dylib, which is neither a "
-            "macOS system library this table accepts (/usr/lib/libSystem.B.dylib, "
-            "/System/Library/Frameworks/*) nor a bundled file with a row "
-            "(architect ruling 3.1)",
+            f"{_dyn('_ssl')}: links @rpath/libcrypto.3.dylib, which does not "
+            "resolve to a bundled file with a row (architect-package-dryrun-5.md "
+            "ruling 2)",
         ),
         (
             {_dyn("_json"): {"symbols": None}},
@@ -1708,6 +1709,194 @@ def test_a_module_that_loads_the_library_carries_no_copy(tpl, monkeypatch):
     )
     assert "libmpdec (in CPython's _decimal)" not in comps
     assert any("links @rpath/libmpdec.4.dylib" in p for p in problems)
+
+
+# ------------- macOS links to OS libraries (architect-package-dryrun-5.md ruling 2)
+OS_LINKS = {
+    _dyn("zlib"): {"links": [LIBSYSTEM, "/usr/lib/libz.1.dylib"]},
+    _dyn("binascii"): {"links": [LIBSYSTEM, "/usr/lib/libz.1.dylib"]},
+    _dyn("_bz2"): {"links": [LIBSYSTEM, "/usr/lib/libbz2.1.0.dylib"]},
+    _dyn("_ctypes"): {"links": [LIBSYSTEM, "/usr/lib/libffi.dylib"]},
+    _dyn("_scproxy"): {
+        "links": [
+            LIBSYSTEM,
+            "/System/Library/Frameworks/SystemConfiguration.framework/Versions/A/"
+            "SystemConfiguration",
+        ]
+    },
+}
+
+
+def test_links_to_os_libraries_need_no_row(tpl, monkeypatch):
+    # Run 5 failed on exactly these four modules; the libraries are part of
+    # macOS and are not carried, so they need no row.
+    _, problems = _darwin_collect(tpl, monkeypatch, OS_LINKS)
+    assert problems == []
+
+
+@pytest.mark.parametrize(
+    "lib",
+    [
+        "/opt/homebrew/lib/libz.1.dylib",
+        "/usr/local/lib/libffi.8.dylib",
+        "/Library/Frameworks/Python.framework/Versions/3.12/lib/libssl.3.dylib",
+        "/Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/libz.dylib",
+        "/usr/lib/../../opt/homebrew/lib/libz.dylib",
+        "/usr/libexec/x.dylib",
+    ],
+)
+def test_any_other_absolute_link_fails_the_build(tpl, monkeypatch, lib):
+    _, problems = _darwin_collect(
+        tpl, monkeypatch, {_dyn("zlib"): {"links": [LIBSYSTEM, lib]}}
+    )
+    assert problems == [
+        f"{_dyn('zlib')}: links {lib}, an absolute path outside the bundle and "
+        "outside /usr/lib/ and /System/Library/: a user's Mac need not have it "
+        "(architect-package-dryrun-5.md ruling 2)"
+    ]
+
+
+@pytest.mark.parametrize(
+    "lib, ok",
+    [
+        ("@rpath/libssl.3.dylib", True),
+        ("@loader_path/../../libssl.3.dylib", True),
+        ("@executable_path/_internal/libssl.3.dylib", True),
+        ("@loader_path/libssl.3.dylib", False),
+        ("@rpath/libmissing.dylib", False),
+        ("@executable_path/../outside.dylib", False),
+    ],
+)
+def test_relative_links_must_resolve_to_a_bundled_file_with_a_row(
+    tpl, monkeypatch, lib, ok
+):
+    files = {
+        _dyn("_ssl"): {"links": [LIBSYSTEM, lib]},
+        "_internal/libssl.3.dylib": {"links": [LIBSYSTEM, "@rpath/libssl.3.dylib"]},
+    }
+    _, problems = _darwin_collect(tpl, monkeypatch, files)
+    unresolved = (
+        f"{_dyn('_ssl')}: links {lib}, which does not resolve to a bundled file "
+        "with a row (architect-package-dryrun-5.md ruling 2)"
+    )
+    assert (unresolved not in problems) is ok
+    assert [p for p in problems if p != unresolved] == []
+
+
+def test_every_darwin_file_has_its_links_checked_also_wheel_files(tpl, monkeypatch):
+    # The rule covers every file of the bundle: also lxml's unprocessed modules
+    # and the other wheels' modules (ruling 1: they must link OS libraries only).
+    assert all(r.links == tpl.DARWIN_SYSTEM_LINKS for r in tpl.TABLES["darwin"])
+    assert tpl.DARWIN_SYSTEM_LINKS == ("/usr/lib/*", "/System/Library/*")
+    etree = "_internal/lxml/etree.cpython-312-darwin.so"
+    _no_runtime(tpl, monkeypatch)
+    build = _DarwinBuild(
+        {etree: {"links": [LIBSYSTEM, "/opt/homebrew/lib/libxml2.2.dylib"]}}
+    )
+    build.distribution_of_bundled = lambda rel: object()
+    _, problems = tpl.collect(build, tpl.TABLES["darwin"])
+    assert problems == [
+        f"{etree}: links /opt/homebrew/lib/libxml2.2.dylib, an absolute path "
+        "outside the bundle and outside /usr/lib/ and /System/Library/: a user's "
+        "Mac need not have it (architect-package-dryrun-5.md ruling 2)"
+    ]
+
+
+def test_the_build_record_lists_os_links_and_the_lowest_macos_version(tpl):
+    files = dict(OS_LINKS)
+    files[_dyn("zlib")] = dict(OS_LINKS[_dyn("zlib")], minos=(11, 0, 0))
+    files[_dyn("_ctypes")] = dict(OS_LINKS[_dyn("_ctypes")], minos=(10, 13, 0))
+    files["_internal/lxml/etree.cpython-312-darwin.so"] = {"minos": (11, 0, 0)}
+    files["_internal/libssl.3.dylib"] = {
+        "links": [LIBSYSTEM, "@rpath/libssl.3.dylib"],
+        "minos": (12, 3, 1),
+    }
+    record = tpl.build_record(_DarwinBuild(files), tpl.TABLES["darwin"], "arm64")
+    sc = (
+        "/System/Library/Frameworks/SystemConfiguration.framework/Versions/A/"
+        "SystemConfiguration"
+    )
+    links = [
+        (_dyn("_bz2"), "/usr/lib/libbz2.1.0.dylib"),
+        (_dyn("_bz2"), LIBSYSTEM),
+        (_dyn("_ctypes"), "/usr/lib/libffi.dylib"),
+        (_dyn("_ctypes"), LIBSYSTEM),
+        (_dyn("_scproxy"), sc),
+        (_dyn("_scproxy"), LIBSYSTEM),
+        (_dyn("binascii"), "/usr/lib/libz.1.dylib"),
+        (_dyn("binascii"), LIBSYSTEM),
+        (_dyn("zlib"), "/usr/lib/libz.1.dylib"),
+        (_dyn("zlib"), LIBSYSTEM),
+        ("_internal/lxml/etree.cpython-312-darwin.so", LIBSYSTEM),
+        ("_internal/libssl.3.dylib", LIBSYSTEM),
+    ]
+    assert record == sorted(
+        f"system library (not carried): {rel} -> {lib}" for rel, lib in links
+    ) + [
+        "lowest macOS version the files state: 12.3.1 (the highest minos over 4 "
+        "files that state one, arm64; from _internal/libssl.3.dylib)"
+    ]
+    assert not any("@rpath" in line for line in record)
+
+
+def test_the_build_record_says_when_no_file_states_a_macos_version(tpl):
+    record = tpl.build_record(
+        _DarwinBuild({_dyn("_json"): {}}), tpl.TABLES["darwin"], "arm64"
+    )
+    assert record == [
+        f"system library (not carried): {_dyn('_json')} -> {LIBSYSTEM}",
+        "lowest macOS version the files state: not recorded (no file states one)",
+    ]
+
+
+def _macho_version(cmd, version, cputype=0x0100000C):
+    import struct
+
+    if cmd == 0x32:  # LC_BUILD_VERSION: platform, minos, sdk, ntools
+        body = struct.pack("<IIIIII", cmd, 24, 1, version, 0, 0)
+    else:  # LC_VERSION_MIN_MACOSX: version, sdk
+        body = struct.pack("<IIII", cmd, 16, version, 0)
+    header = struct.pack("<IiiIIIII", 0xFEEDFACF, cputype, 0, 8, 1, len(body), 0, 0)
+    return header + body
+
+
+def test_macho_minos_is_read_from_the_load_commands(tpl):
+    assert tpl.macho_minos(_macho_version(0x32, 0x000B0000), "arm64") == (11, 0, 0)
+    assert tpl.macho_minos(_macho_version(0x24, 0x000A0D00), "arm64") == (10, 13, 0)
+    assert tpl.macho_minos(_macho_version(0x32, 0x000C0301), "arm64") == (12, 3, 1)
+    assert tpl.macho_minos(_macho(SAMPLE_SYMBOLS), "arm64") is None
+    assert tpl.macho_minos(b"\x7fELF" + b"\0" * 60, "arm64") is None
+    # A universal file: the slice of the build's architecture.
+    import struct
+
+    x86 = _macho_version(0x32, 0x000A0D00, 0x01000007)
+    arm = _macho_version(0x32, 0x000B0000, 0x0100000C)
+    offset = 4096
+    head = struct.pack(">II", 0xCAFEBABE, 2)
+    head += struct.pack(">iiIII", 0x01000007, 3, offset, len(x86), 12)
+    head += struct.pack(">iiIII", 0x0100000C, 0, offset + len(x86), len(arm), 12)
+    fat = head + b"\0" * (offset - len(head)) + x86 + arm
+    assert tpl.macho_minos(fat, "arm64") == (11, 0, 0)
+    assert tpl.macho_minos(fat, "x86_64") == (10, 13, 0)
+
+
+def test_the_licence_check_prints_and_writes_the_build_record(
+    tpl, tmp_path, capsys, monkeypatch
+):
+    monkeypatch.setattr(
+        tpl, "build_record", lambda build, rows, arch: ["line one", "line two"]
+    )
+    bundle, work = _fake_bundle(tmp_path)
+    record = tmp_path / "build-record.txt"
+    args = ["--bundle", str(bundle), "--workpath", str(work)]
+    args += ["--out", str(tmp_path / "T.txt"), "--build-record", str(record)]
+    tpl.main(args + ["--platform", "darwin"])
+    out = capsys.readouterr().out
+    assert "BUILD RECORD: line one\nBUILD RECORD: line two\n" in out
+    assert record.read_text("utf-8") == "line one\nline two\n"
+    # Linux: no link rule, no record lines; its output stays as it was.
+    tpl.main(args[:-2] + ["--platform", "linux"])
+    assert "BUILD RECORD" not in capsys.readouterr().out
 
 
 PIN_GOLDEN = (
