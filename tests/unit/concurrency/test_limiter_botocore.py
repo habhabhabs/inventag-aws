@@ -10,10 +10,12 @@ backoff sleep is replaced by a recorder, so nothing sleeps.
 """
 
 import io
+import threading
 import types
 
 import boto3
 import botocore.endpoint
+import botocore.hooks
 import pytest
 from botocore.awsrequest import AWSResponse
 from botocore.config import Config
@@ -355,4 +357,91 @@ def test_the_keys_region_for_a_regional_and_a_global_client(
     getattr(client, call)()
     held = {key: count for key, count in seen[0].items() if count}
     assert held == {(ACCOUNT, service, key_region): 1}
+    assert limiter.in_flight() == 0
+
+
+def _bare_session():
+    """Only an event emitter: the limiter's handlers and no others."""
+    return types.SimpleNamespace(events=botocore.hooks.HierarchicalEmitter())
+
+
+def _emit_call(session, region):
+    """What botocore emits for one call: ``before-call`` with the request signer."""
+    session.events.emit(
+        "before-call.dynamodb.ListTables",
+        model=None,
+        params={},
+        request_signer=types.SimpleNamespace(region_name=region),
+        context={},
+    )
+
+
+def _emit_send(session, context=None):
+    session.events.emit(
+        "before-send.dynamodb.ListTables",
+        request=types.SimpleNamespace(context=context or {}),
+    )
+
+
+def _emit_answer(session):
+    session.events.emit(
+        "response-received.dynamodb.ListTables",
+        parsed_response={},
+        response_dict={"status_code": 200},
+        exception=None,
+    )
+
+
+def test_before_call_gives_the_region_and_a_retry_keeps_it():
+    """before-call, then before-send, in one thread; the request context's
+    ``client_region`` is not read. A retry is a second before-send without a
+    second before-call: it keeps the region."""
+    session = _bare_session()
+    limiter = InFlightLimiter(8)
+    limiter.attach(session, ACCOUNT)
+    key = (ACCOUNT, "dynamodb", "ap-southeast-1")
+    _emit_call(session, "ap-southeast-1")
+    _emit_send(session, context={"client_region": "not-this-region"})
+    assert limiter.in_flight(key=key) == 1
+    _emit_answer(session)
+    assert limiter.in_flight() == 0
+    _emit_send(session)  # the SDK's retry: no before-call
+    assert limiter.in_flight(key=key) == 1
+    _emit_answer(session)
+    assert limiter.in_flight() == 0
+
+
+def test_the_region_is_kept_per_thread():
+    """A call in another thread does not change this thread's region."""
+    session = _bare_session()
+    limiter = InFlightLimiter(8)
+    limiter.attach(session, ACCOUNT)
+    other = threading.Thread(target=_emit_call, args=(session, "us-east-2"))
+    _emit_call(session, "ap-southeast-1")
+    other.start()
+    other.join()
+    _emit_send(session)
+    assert limiter.in_flight(key=(ACCOUNT, "dynamodb", "ap-southeast-1")) == 1
+    _emit_answer(session)
+    assert limiter.in_flight() == 0
+
+
+def test_a_retried_throttle_keeps_the_clients_region():
+    """Through a real client: both attempts hold the key of the client's region."""
+    clock = [100.0]
+
+    def advance(condition, timeout):
+        clock[0] += timeout
+
+    _, limiter, responder, client = _setup(
+        [THROTTLED, OK], attempts=2, clock=lambda: clock[0], wait=advance
+    )
+    client.meta.events.register(
+        "before-send",
+        lambda **kwargs: responder.seen_in_flight.append(
+            ("region", limiter.in_flight(key=KEY))
+        ),
+    )
+    client.list_tables()
+    assert responder.seen_in_flight.count(("region", 1)) == 2
     assert limiter.in_flight() == 0
