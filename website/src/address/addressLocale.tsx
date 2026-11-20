@@ -11,24 +11,28 @@ import codeTranslations from '@generated/codeTranslations';
  */
 export const LOCALES = ['zh-Hans', 'zh-Hant', 'es', 'fr'] as const;
 export type Messages = Record<string, {message: string}>;
-export type Bundle = {code: Messages; navbar: Messages};
+export type Bundle = {code: Messages; navbar: Messages; docs: Messages};
 
 const LOADERS: Record<string, () => Promise<Bundle>> = {
   'zh-Hans': async () => ({
     code: (await import('@site/i18n/zh-Hans/code.json')).default,
     navbar: (await import('@site/i18n/zh-Hans/docusaurus-theme-classic/navbar.json')).default,
+    docs: (await import('@site/i18n/zh-Hans/docusaurus-plugin-content-docs/current.json')).default,
   }),
   'zh-Hant': async () => ({
     code: (await import('@site/i18n/zh-Hant/code.json')).default,
     navbar: (await import('@site/i18n/zh-Hant/docusaurus-theme-classic/navbar.json')).default,
+    docs: (await import('@site/i18n/zh-Hant/docusaurus-plugin-content-docs/current.json')).default,
   }),
   es: async () => ({
     code: (await import('@site/i18n/es/code.json')).default,
     navbar: (await import('@site/i18n/es/docusaurus-theme-classic/navbar.json')).default,
+    docs: (await import('@site/i18n/es/docusaurus-plugin-content-docs/current.json')).default,
   }),
   fr: async () => ({
     code: (await import('@site/i18n/fr/code.json')).default,
     navbar: (await import('@site/i18n/fr/docusaurus-theme-classic/navbar.json')).default,
+    docs: (await import('@site/i18n/fr/docusaurus-plugin-content-docs/current.json')).default,
   }),
 };
 
@@ -67,7 +71,7 @@ export function restoreCodeMessages(): void {
 }
 
 /** Set by Root once the files of the address's locale are loaded; null on every normal page. */
-export type AddressLocale = {locale: string; navbar: Messages} | null;
+export type AddressLocale = {locale: string; navbar: Messages; docs: Messages} | null;
 export const AddressLocaleContext = createContext<AddressLocale>(null);
 export const useAddressLocale = (): AddressLocale => useContext(AddressLocaleContext);
 
@@ -100,4 +104,26 @@ export function AddressLocaleScope({children}: {children: ReactNode}): ReactNode
       {children}
     </DocusaurusContext.Provider>
   );
+}
+
+/**
+ * The label of the current docs version ("v1.3.1 (Current)") comes from the docs
+ * plugin's global data, built in English for this page. Under a language path the
+ * version menu (navbar and phone drawer) shows the label of that language
+ * (register X-14). Outside such a 404 page it passes the children through.
+ */
+export function AddressVersionScope({children}: {children: ReactNode}): ReactNode {
+  const address = useAddressLocale();
+  const context = useContext(DocusaurusContext);
+  const label = address?.docs['version.label']?.message;
+  const docsData = (context.globalData as Record<string, Record<string, {versions?: {name: string; label: string}[]}>>)[
+    'docusaurus-plugin-content-docs'
+  ];
+  if (!label || !docsData?.default?.versions) return <>{children}</>;
+  const versions = docsData.default.versions.map((v) => (v.name === 'current' ? {...v, label} : v));
+  const globalData = {
+    ...context.globalData,
+    'docusaurus-plugin-content-docs': {...docsData, default: {...docsData.default, versions}},
+  };
+  return <DocusaurusContext.Provider value={{...context, globalData}}>{children}</DocusaurusContext.Provider>;
 }

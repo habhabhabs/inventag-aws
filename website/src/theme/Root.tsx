@@ -1,11 +1,13 @@
 import React, {Fragment, useEffect, useRef, useState, type ReactNode} from 'react';
 import {translate} from '@docusaurus/Translate';
 import Link from '@docusaurus/Link';
+import Head from '@docusaurus/Head';
 import {useLocation} from '@docusaurus/router';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import {getChoice, setChoice} from '@site/src/clientModules/analyticsConsent';
 import {
   AddressLocaleContext,
+  AddressVersionScope,
   applyCodeMessages,
   loadBundle,
   localeInAddress,
@@ -36,7 +38,7 @@ export default function Root({children}: {children: ReactNode}): ReactNode {
   const {pathname} = useLocation();
   const {
     siteConfig: {baseUrl},
-    i18n: {currentLocale},
+    i18n: {currentLocale, localeConfigs},
   } = useDocusaurusContext();
   const wanted = localeInAddress(pathname, baseUrl, currentLocale);
   const [address, setAddress] = useState<AddressLocale>(null);
@@ -51,7 +53,7 @@ export default function Root({children}: {children: ReactNode}): ReactNode {
       if (cancelled) return;
       applyCodeMessages(bundle.code);
       applied = true;
-      setAddress({locale: wanted, navbar: bundle.navbar});
+      setAddress({locale: wanted, navbar: bundle.navbar, docs: bundle.docs});
     });
     return () => {
       cancelled = true;
@@ -156,7 +158,15 @@ export default function Root({children}: {children: ReactNode}): ReactNode {
     <>
       {/* a new key remounts the page once, so every text is read again in the address's language */}
       <Fragment key={address?.locale ?? 'build'}>
-        <AddressLocaleContext.Provider value={address}>{children}</AddressLocaleContext.Provider>
+        <AddressLocaleContext.Provider value={address}>
+          {address && (
+            // the page's language is the address's language (register X-14)
+            <Head>
+              <html lang={localeConfigs[address.locale]?.htmlLang ?? address.locale} dir={localeConfigs[address.locale]?.direction ?? 'ltr'} />
+            </Head>
+          )}
+          <AddressVersionScope>{children}</AddressVersionScope>
+        </AddressLocaleContext.Provider>
       </Fragment>
       <p className="sr-only" role="status" aria-live="polite">
         {saved}
