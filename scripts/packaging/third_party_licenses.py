@@ -181,6 +181,10 @@ class Row:
     # The bundled file must be byte-identical to the file of the hash-pinned
     # wheel (its RECORD hash): architect decision 2, condition 2.
     unmodified: bool = False
+    # Origin "system": the licence id is read at build time from the licence
+    # files the package installs (rpm), and must be one of these
+    # (architect-package-dryrun-3.md ruling 2).
+    spdx_from_files: Tuple[str, ...] = ()
 
 
 # Text sources: "dist:<package>:<file glob>", "pkgdoc" (the copyright file of
@@ -287,6 +291,8 @@ WHEEL_ROWS: Tuple[Row, ...] = (
     Row("_internal/rpds/*.so", "package"),
 )
 
+RPM_BSD = ("BSD-2-Clause", "BSD-3-Clause")
+
 LINUX_ROWS: Tuple[Row, ...] = (
     (Row("inventag", "pyinstaller"),)
     + WHEEL_ROWS
@@ -308,6 +314,10 @@ LINUX_ROWS: Tuple[Row, ...] = (
         ),
         Row("_internal/python3.*/lib-dynload/*.so", "cpython"),
         Row("_internal/libpython3.*.so*", "cpython"),
+        # AlmaLinux 9 (dry run 4): owner, version, licence field and licence
+        # files read from rpm at build time; the id from the files.
+        Row("_internal/libmpdec.so.3", "system", spdx_from_files=RPM_BSD),
+        Row("_internal/libuuid.so.1", "system", spdx_from_files=RPM_BSD),
         Row("_internal/libssl.so.3", "system", "Apache-2.0"),
         Row("_internal/libcrypto.so.3", "system", "Apache-2.0"),
         Row("_internal/libffi.so.*", "system", "MIT"),
@@ -857,6 +867,12 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
             if owner is None:
                 problems.append(f"{rel}: no system package owns {source}")
                 continue
+            if row.spdx_from_files:
+                comp, found = rpm_licence_component(build, rel, owner, row)
+                problems += found
+                if comp is not None:
+                    add(comp)
+                continue
             texts = []
             for src in ("pkgdoc",) + row.extra_text:
                 got = build.read_text(src, source)
@@ -909,6 +925,77 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
         problems += licence_problems(comp)
         problems += openssl_problems(comp)
     return out, sorted(set(problems))
+
+
+BSD_SOURCE = "redistributions of source code must retain"
+BSD_BINARY = "redistributions in binary form must reproduce"
+BSD_ENDORSE = "endorse or promote products derived from this software"
+BSD_ADVERT = "advertising materials"
+COPYLEFT_TEXT = re.compile(
+    r"\b(?:A?GPL|LGPL)|General\s+Public\s+License", re.IGNORECASE
+)
+TO_ARCHITECT = "goes to the architect (ruling 2), not into a row"
+
+
+def bsd_id(text: str) -> Optional[str]:
+    """The BSD licence a text states, by its clauses; None if not BSD."""
+    words = " ".join(text.split()).lower()
+    if BSD_SOURCE not in words or BSD_BINARY not in words:
+        return None
+    if BSD_ADVERT in words:
+        return "BSD-4-Clause"
+    return "BSD-3-Clause" if BSD_ENDORSE in words else "BSD-2-Clause"
+
+
+def rpm_licence_component(
+    build, rel: str, owner: Tuple[str, str], row: Row
+) -> Tuple[Optional[Component], List[str]]:
+    """A system library's component from its rpm package: the version rpm
+    gives, the licence files the package installs, and the licence id those
+    files state (architect-package-dryrun-3.md ruling 2). Nothing is typed."""
+    pkg, version = owner
+    lic = build.package_licence(pkg)
+    if lic is None:
+        return None, [f"{rel}: licence field and files of {pkg} not readable (rpm)"]
+    field, files = lic
+    if COPYLEFT.search(field):
+        return None, [
+            f"{rel}: licence field of {pkg} is {field}: GPL or LGPL {TO_ARCHITECT}"
+        ]
+    if not files:
+        return None, [f"{rel}: {pkg} lists no licence file (rpm -q --licensefiles)"]
+    problems, texts = [], []
+    for f in sorted(files):
+        got = build.read_text(f"path:{f}", None)
+        if got is None:
+            problems.append(f"{rel}: licence file {f} of {pkg} not found")
+            continue
+        if COPYLEFT_TEXT.search(got[1]):
+            problems.append(
+                f"{rel}: licence file {f} of {pkg} names the GPL or LGPL: "
+                f"{TO_ARCHITECT}"
+            )
+        texts.append((f"{pkg}: {Path(f).name}", got[1]))
+    if problems:
+        return None, problems
+    spdx = bsd_id("\n".join(text for _, text in texts))
+    if spdx not in row.spdx_from_files:
+        return None, [
+            f"{rel}: the licence files of {pkg} are not a BSD text this row "
+            f"accepts ({', '.join(row.spdx_from_files)})"
+        ]
+    if "BSD" not in field.upper():
+        return None, [
+            f"{rel}: licence field of {pkg} is {field}; its licence files say {spdx}"
+        ]
+    note = (
+        f"From the system package {pkg} {version} (rpm licence field: {field}); "
+        f"licence id read from {', '.join(sorted(files))}"
+    )
+    comp = Component(
+        Path(rel).name, version, spdx, "c-library", [rel], texts, notes=[note]
+    )
+    return comp, []
 
 
 @dataclass(frozen=True)
