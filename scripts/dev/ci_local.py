@@ -193,6 +193,7 @@ STEPS: List[Step] = [
         "tests/unit/test_workflow_runner_labels.py "
         "tests/unit/test_docs_examples_workflow.py "
         "tests/unit/test_performance_workflow.py "
+        "tests/unit/test_packaging_workflow.py "
         "tests/unit/test_workflows_run_no_migration_js.py "
         "tests/unit/test_release_tag.py "
         "tests/unit/test_release_runbook.py "
