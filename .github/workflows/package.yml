@@ -1292,6 +1292,55 @@ jobs:
       with:
         subject-checksums: ${{ runner.temp }}/release/SHA256SUMS
 
+  # The formula is installed before the owner publishes the tap (B6 fix 16).
+  # It needs SHA256SUMS and the three archives of this run, which exist only
+  # after provenance, so it is a job of its own and not a step of
+  # smoke-macos-arm64. Nothing waits for it: a failure turns the run red but
+  # does not stop the attachment. The formula points at the run's archive with
+  # a file:// URL (render_formula.py --archive-dir); a local tap, so nothing is
+  # published. brew audit --strict is a warning only: not verified against
+  # Homebrew that it accepts a file:// URL.
+  smoke-homebrew:
+    name: Smoke (Homebrew formula)
+    needs: [plan, provenance]
+    if: ${{ !cancelled() && needs.provenance.result == 'success' && needs.plan.outputs.include_macos == 'true' }}
+    runs-on: macos-15
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+    - name: Checkout the tag
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: ${{ needs.plan.outputs.ref }}
+        persist-credentials: false
+
+    - name: Download the release files
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: release-files
+        path: ${{ runner.temp }}/release
+
+    - name: Render the formula, install it from a local tap, check it, remove it
+      run: |
+        set -euo pipefail
+        export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_INSTALL_CLEANUP=1
+        release="$RUNNER_TEMP/release"
+        python3 scripts/packaging/render_formula.py --version "$VERSION" --sums "$release/SHA256SUMS" --archive-dir "$release" --output "$RUNNER_TEMP/inventag.rb"
+        brew tap-new --no-git local/inventag
+        tap="$(brew --repository local/inventag)"
+        mkdir -p "$tap/Formula"
+        cp "$RUNNER_TEMP/inventag.rb" "$tap/Formula/inventag.rb"
+        brew style local/inventag/inventag
+        if ! brew audit --strict local/inventag/inventag; then
+          echo "::warning::brew audit --strict reported problems with the rendered formula (read the output above). Not verified against Homebrew: that it accepts a file:// URL."
+        fi
+        brew install local/inventag/inventag
+        inventag selftest
+        bash packaging/homebrew-tap/check_lxml.sh "$release/inventag-${VERSION}-darwin-arm64.tar.gz" "$(brew --prefix inventag)/libexec"
+        brew uninstall local/inventag/inventag
+
   # The only job that writes to the release. Skipped in a dry run.
   publish:
     name: Attach to the release
