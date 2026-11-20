@@ -358,7 +358,15 @@ def test_the_linux_builds_use_the_scripts_of_the_repository_and_the_lock():
 
 def test_the_two_linux_builds_run_the_same_commands_and_differ_in_env_only():
     a, b = (JOBS[n] for n in LINUX_BUILDS)
-    assert _run_text("build-linux-x86_64") == _run_text("build-linux-arm64")
+    # The install smoke of the arm64 packages is the one difference (B3b):
+    # the x86_64 packages are installed by smoke-linux.
+    arm64 = "\n".join(
+        step.get("run", "")
+        for step in _steps("build-linux-arm64")
+        if "smoke container" not in step.get("name", "")
+        and not step.get("name", "").startswith("Install smoke")
+    )
+    assert _run_text("build-linux-x86_64") == arm64
     assert a["env"]["CPU"] == "x86_64" and b["env"]["CPU"] == "arm64"
 
 
