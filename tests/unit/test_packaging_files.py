@@ -1063,3 +1063,56 @@ def test_otool_output_gives_the_linked_libraries(tpl):
         "/usr/lib/libSystem.B.dylib",
         "@rpath/libssl.3.dylib",
     ]
+
+
+# --------------- sourced licence texts (B2e, architect dry-run-3 ruling 1)
+LICENSES = SCRIPTS / "licenses"
+UPSTREAM_KEYS = {
+    "component",
+    "repository",
+    "tag",
+    "commit",
+    "address",
+    "http_status",
+    "sha256",
+    "bytes",
+    "fetched",
+}
+
+
+def _sources():
+    return json.loads((LICENSES / "SOURCES.json").read_text("utf-8"))
+
+
+def test_every_licence_text_has_a_source_entry_with_its_sha256():
+    import hashlib
+
+    entries = _sources()["files"]
+    on_disk = sorted(p.name for p in LICENSES.iterdir() if p.name != "SOURCES.json")
+    assert sorted(entries) == on_disk
+    for name, entry in entries.items():
+        data = (LICENSES / name).read_bytes()
+        assert hashlib.sha256(data).hexdigest() == entry["sha256"], name
+        assert len(data) == entry["bytes"], name
+
+
+def test_upstream_texts_come_from_the_projects_repository_at_a_release_tag():
+    # Ruling 1, condition 2: the project's own repository, at a release tag;
+    # not a mirror, a package site or the default branch.
+    upstream = {
+        n: e for n, e in _sources()["files"].items() if "repository" in e
+    }
+    assert set(upstream) >= {"libyaml-License", "libffi-LICENSE"}
+    for name, entry in upstream.items():
+        assert UPSTREAM_KEYS <= set(entry), name
+        repo = entry["repository"]
+        assert repo.startswith("https://github.com/"), name
+        slug = repo.removeprefix("https://github.com/")
+        assert entry["address"].startswith(
+            f"https://raw.githubusercontent.com/{slug}/refs/tags/{entry['tag']}/"
+        ), name
+        assert entry["http_status"] == 200, name
+        assert re.fullmatch(r"[0-9a-f]{40}", entry["commit"]), name
+        assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", entry["fetched"]), name
+    # The wheel names libyaml's version (the module holds "0.2.5"): that tag.
+    assert upstream["libyaml-License"]["tag"] == "0.2.5"
