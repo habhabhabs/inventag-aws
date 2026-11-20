@@ -50,7 +50,9 @@ def run(tmp_path, shims, *args, identity=True):
     home = tmp_path / "home"
     home.mkdir(exist_ok=True)
     env = {
-        "PATH": f"{bin_dir}{os.pathsep}{Path(REAL_BASH).parent}{os.pathsep}/usr/bin:/bin",
+        "PATH": os.pathsep.join(
+            [str(bin_dir), str(Path(REAL_BASH).parent), "/usr/bin", "/bin"]
+        ),
         "HOME": str(home),
         "LANG": "C.UTF-8",
     }
