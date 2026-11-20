@@ -463,7 +463,7 @@ def test_R4_provisional_readonlyaccess_cannot_upload_reports_and_the_run_ends_wi
     assert "No file was uploaded to s3://w1-report-bucket" in run.text
     # each file is named with the reason AWS gave
     for name in names:
-        line = [l for l in run.text.splitlines() if "S3 upload of" in l and name in l]
+        line = [t for t in run.text.splitlines() if "S3 upload of" in t and name in t]
         assert line, f"no per-file failure for {name}"
         assert "AccessDenied" in line[0] and "PutObject" in line[0]
     # and nothing is in the bucket
