@@ -63,6 +63,32 @@
       "fetched": "2026-11-20T06:58:19Z",
       "how": "one recorded --net run in the sandbox (architect-package-dryrun-3.md ruling 1); file stored unchanged",
       "note": "the framework's OpenSSL version is read at build time (ssl.OPENSSL_VERSION); this text is from the newest release tag"
+    },
+    "xz-COPYING": {
+      "component": "liblzma (in CPython's _lzma, macOS)",
+      "repository": "https://github.com/tukaani-project/xz",
+      "tag": "v5.8.4",
+      "commit": "d3e650e63c110e830fd5391e7f8b45df0b91d3da",
+      "address": "https://raw.githubusercontent.com/tukaani-project/xz/refs/tags/v5.8.4/COPYING",
+      "http_status": 200,
+      "sha256": "616a3ad264ce29b8f1cb97e53037b139d406899ca8d1f799651e17bfa09830b8",
+      "bytes": 3119,
+      "fetched": "2026-11-20T07:17:03Z",
+      "how": "the second recorded --net run in the sandbox (architect-package-dryrun-5.md ruling 3); file stored unchanged",
+      "note": "liblzma's version in the macOS framework's _lzma was not printed by dry run 5: newest release tag; this COPYING states liblzma's licence (0BSD) for this version only"
+    },
+    "xz-COPYING.0BSD": {
+      "component": "liblzma (in CPython's _lzma, macOS)",
+      "repository": "https://github.com/tukaani-project/xz",
+      "tag": "v5.8.4",
+      "commit": "d3e650e63c110e830fd5391e7f8b45df0b91d3da",
+      "address": "https://raw.githubusercontent.com/tukaani-project/xz/refs/tags/v5.8.4/COPYING.0BSD",
+      "http_status": 200,
+      "sha256": "0b01625d853911cd0e2e088dcfb743261034a091bb379246cb25a14cc4c74bf1",
+      "bytes": 607,
+      "fetched": "2026-11-20T07:17:03Z",
+      "how": "the second recorded --net run in the sandbox (architect-package-dryrun-5.md ruling 3); file stored unchanged",
+      "note": "liblzma's version in the macOS framework's _lzma was not printed by dry run 5: newest release tag; this COPYING states liblzma's licence (0BSD) for this version only"
     }
   }
 }
