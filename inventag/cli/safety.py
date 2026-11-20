@@ -147,13 +147,23 @@ def validate_operations(
     return all_allowed, lines
 
 
-def write_audit_output(guard: Optional[ReadOnlyGuard], path: str) -> str:
-    """Write the guard's audit summary as JSON (owner-only file)."""
+def write_audit_output(
+    guard: Optional[ReadOnlyGuard],
+    path: str,
+    permissions_denied: Optional[list] = None,
+) -> str:
+    """Write the guard's audit summary as JSON (owner-only file).
+
+    ``permissions_denied`` (the run's list of IAM actions it was not allowed
+    to use) is added under that key, only when there is one.
+    """
     report = (
         guard.audit_report()
         if guard is not None
         else {"read_only_enforced": False, "operations": []}
     )
+    if permissions_denied:
+        report["permissions_denied"] = list(permissions_denied)
     output_path = Path(path)
     ensure_private_dir(output_path.parent)
 

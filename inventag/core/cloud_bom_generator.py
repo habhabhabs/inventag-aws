@@ -58,6 +58,7 @@ from ..security.arn import (
     partition_from_arn,
     validate_role_arn,
 )
+from ..security import permissions_report
 from ..security.read_only_guard import get_installed_guard
 from ..security.redaction import redact, register_secrets
 from ..security.secret_values import mask_secret_values
@@ -216,7 +217,15 @@ def stop_running_scans() -> None:
 
 
 class AccountSessionError(Exception):
-    """Raised when explicitly configured credentials for an account do not work."""
+    """Raised when explicitly configured credentials for an account do not work.
+
+    ``assume_role_error_code`` is the AWS error code when the cause was a
+    refused ``sts:AssumeRole`` of the account's role ARN (else "").
+    """
+
+    def __init__(self, message: str, *, assume_role_error_code: str = ""):
+        super().__init__(message)
+        self.assume_role_error_code = assume_role_error_code
 
 
 class ReportGenerationError(Exception):
@@ -403,6 +412,9 @@ class AccountContext:
     partial: bool = False
     # Regions dropped by the region access check (not scanned).
     skipped_regions: List[str] = field(default_factory=list)
+    # AWS error code when the account's role could not be assumed (the
+    # permissions summary reads it); "" otherwise.
+    assume_role_error_code: str = ""
 
 
 @dataclass
@@ -504,6 +516,11 @@ class CloudBOMGenerator:
         self.reused_accounts: Dict[str, str] = {}  # account -> scanned at (UTC)
         # Run notes of the state stage (snapshot, index, change report; A-18).
         self._state_notes: List[str] = []
+        # What the steps of the whole run were refused (permissions summary):
+        # cost analysis, network analysis and the report upload.
+        self._cost_denials: List[tuple] = []
+        self._analysis_denials: List[tuple] = []
+        self._upload_outcomes: List[Dict[str, Any]] = []
         # Region names botocore does not know (A-16): per account, the ones
         # that were not scanned; and the names already warned about.
         self._unknown_regions: Dict[str, List[str]] = {}
@@ -668,6 +685,9 @@ class CloudBOMGenerator:
                 "state_management": state_results,
                 "output_directory": str(self.output_dir),
             }
+            permissions = self._permissions_denied()
+            if permissions:
+                results["permissions_denied"] = permissions
 
             outcome = (
                 "completed (the state stage had a problem: see the run notes)"
@@ -704,6 +724,9 @@ class CloudBOMGenerator:
             }
             if isinstance(e, ReportGenerationError):
                 failure["bom_generation"] = e.bom_results
+            permissions = self._permissions_denied()
+            if permissions:
+                failure["permissions_denied"] = permissions
             return failure
 
     def generate_comprehensive_bom(
@@ -761,6 +784,7 @@ class CloudBOMGenerator:
                 results["error"] = (
                     f"S3 upload failed for {len(upload['errors'])} file(s)"
                 )
+                self._add_upload_permissions(results, upload["errors"])
         elif s3_upload_config and "bom_generation" in results:
             # A failed report format returns the files written so far.
             from .s3_upload import skipped_upload_message
@@ -1162,6 +1186,64 @@ class CloudBOMGenerator:
         for note in self._guard_block_notes():
             self.logger.error(note)
 
+    def _run_account(self) -> str:
+        """The account whose session the steps of the whole run use: the first
+        with a session (as in ``_generate_bom_documents``)."""
+        for acc_id, ctx in self.account_contexts.items():
+            if ctx.session:
+                return str(acc_id)
+        return ""
+
+    def _collect_run_denials(self, bom_processor) -> None:
+        """Keep the calls the processor's steps were refused (cost analysis,
+        the ElastiCache read of the network analysis) for the permissions
+        summary. Main thread only, after processing."""
+        cost = getattr(bom_processor, "cost_analyzer", None)
+        if cost is not None:
+            self._cost_denials = list(cost.permission_denials())
+        analyzer = getattr(bom_processor, "network_analyzer", None)
+        unread = getattr(analyzer, "unread_cache_regions", None) or {}
+        self._analysis_denials = [
+            ("elasticache", "DescribeCacheSubnetGroups", code, region)
+            for region, code in sorted(unread.items())
+        ]
+
+    def _permissions_denied(self) -> List[Dict[str, Any]]:
+        """The IAM actions this run was not allowed to use (empty when none):
+        the ``permissions_denied`` key and the Permissions run notes."""
+        return permissions_report.build(
+            coverage=[
+                entry
+                for ctx in self.account_contexts.values()
+                for entry in _coverage_of(ctx)
+            ],
+            account_failures=[
+                {
+                    "account_id": str(acc_id),
+                    "error_code": getattr(ctx, "assume_role_error_code", ""),
+                }
+                for acc_id, ctx in self.account_contexts.items()
+                if getattr(ctx, "assume_role_error_code", "")
+            ],
+            upload_outcomes=self._upload_outcomes,
+            cost_denials=self._cost_denials,
+            analysis_denials=self._analysis_denials,
+            run_account=self._run_account(),
+        )
+
+    def _add_upload_permissions(self, results: Dict[str, Any], errors) -> None:
+        """After a failed report upload: add what the upload was refused to
+        the result and, when AWS refused it, say so in the log (a failed run
+        prints no run notes)."""
+        self._upload_outcomes = list(errors)
+        permissions = self._permissions_denied()
+        if not any(e["kind"] == "upload" for e in permissions):
+            return
+        results["permissions_denied"] = permissions
+        results["run_notes"] = self._run_notes()
+        for note in permissions_report.notes(permissions):
+            self.logger.warning(note)
+
     def _run_notes(self) -> List[str]:
         """Lines for the report: which accounts are missing and why, and
         which accounts come from an earlier, interrupted run (``--resume``)."""
@@ -1202,6 +1284,7 @@ class CloudBOMGenerator:
         notes.extend(self._billing_timeout_notes())
         notes.extend(self._state_notes)
         notes.extend(self._guard_block_notes())
+        notes.extend(permissions_report.notes(self._permissions_denied()))
         if self.reused_accounts:
             notes.append(
                 f"{len(self.reused_accounts)} account(s) were not scanned again: "
@@ -1530,6 +1613,7 @@ class CloudBOMGenerator:
                 session=None,
                 caller_identity={},
                 processing_errors=[f"Context establishment failed: {cause}"],
+                assume_role_error_code=getattr(e, "assume_role_error_code", ""),
             )
             return context, []
 
@@ -1582,7 +1666,12 @@ class CloudBOMGenerator:
                 )
             except (InvalidRoleError, ClientError, BotoCoreError) as e:
                 raise AccountSessionError(
-                    f"Role assumption failed for account {credentials.account_id}: {e}"
+                    f"Role assumption failed for account {credentials.account_id}: {e}",
+                    assume_role_error_code=(
+                        str(e.response.get("Error", {}).get("Code") or "")
+                        if isinstance(e, ClientError)
+                        else ""
+                    ),
                 ) from e
 
         if credentials.access_key_id and credentials.secret_access_key:
@@ -2390,6 +2479,7 @@ class CloudBOMGenerator:
 
             # Process inventory data into BOM format
             bom_data = bom_processor.process_inventory_data(resources)
+            self._collect_run_denials(bom_processor)
 
             # Add multi-account metadata
             bom_data.generation_metadata.update(
@@ -2422,6 +2512,10 @@ class CloudBOMGenerator:
                     ],
                 }
             )
+
+            permissions = self._permissions_denied()
+            if permissions:
+                bom_data.generation_metadata["permissions_denied"] = permissions
 
             # Add compliance results to BOM data
             if compliance_results:

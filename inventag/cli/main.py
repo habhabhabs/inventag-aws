@@ -1562,7 +1562,11 @@ def main():
             signal.signal(signal.SIGTERM, previous_sigterm)
         if args.audit_output:
             try:
-                path = safety.write_audit_output(guard, args.audit_output)
+                path = safety.write_audit_output(
+                    guard,
+                    args.audit_output,
+                    getattr(args, "permissions_denied", None),
+                )
             except OSError as e:
                 print(
                     f"inventag: error: --audit-output: cannot write "
@@ -1798,6 +1802,8 @@ def _run(args, logger):
             )
         finally:
             generator_log.removeHandler(generator_lines)
+        # For the audit file (written by main() after this run ends).
+        args.permissions_denied = results.get("permissions_denied")
 
         end_time = datetime.now()
         processing_time = (end_time - start_time).total_seconds()
