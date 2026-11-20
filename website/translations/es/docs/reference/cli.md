@@ -28,13 +28,15 @@ inventag templates list [--kind K] [--all]
 inventag templates show NAME|PATH [--resolved]
 inventag templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] [--force]
 inventag templates validate NAME|PATH [NAME|PATH ...]
+inventag selftest                      check this copy of InvenTag, offline
+inventag completion bash|zsh|fish      print a shell completion script
 ```
 
 El comando `inventag` funciona igual en Linux, macOS y Windows.
 
 No verificado contra Windows ni macOS: el comando `inventag` funciona igual que en Linux.
 
-`templates` debe ser la primera palabra después del nombre del programa.
+`templates`, `selftest` y `completion` deben ser la primera palabra después del nombre del programa.
 
 ## Plantillas {#templates}
 
@@ -50,6 +52,21 @@ No verificado contra Windows ni macOS: el comando `inventag` funciona igual que 
 | `templates show NAME` | Imprime el archivo. `--resolved` imprime el resultado después de aplicar `extends` y los valores predeterminados. |
 | `templates init NAME --output PATH` | Copia una plantilla a tu proyecto. `--extend` escribe un archivo corto que hereda; `--name` define el nombre; `--force` sobrescribe. |
 | `templates validate NAME\|PATH ...` | Comprueba los archivos y las plantillas a las que hacen referencia. Código de salida 0 si todo es válido, 1 en caso contrario. |
+
+### `selftest` y `completion` {#selftest-and-completion}
+
+| Comando | Qué hace |
+|---|---|
+| `selftest` | Comprueba que esta copia de InvenTag funciona: paquetes, plantillas integradas, datos de servicios de AWS, la protección de solo lectura, y un archivo de Excel y uno de Word escritos en una carpeta temporal y borrados. No hace ninguna llamada a AWS, no abre ninguna conexión de red y no necesita credenciales. Código de salida 0: todas las comprobaciones pasaron. Código de salida 1: una comprobación falló; las demás comprobaciones se ejecutan igualmente. Código de salida 2: un argumento desconocido. |
+| `completion bash\|zsh\|fish` | Imprime un script de autocompletado de shell en la salida estándar. Solo lee las opciones del comando y no hace ninguna llamada a AWS ni ninguna conexión de red. Código de salida 0. Si falta el shell o es desconocido: línea de uso y código de salida 2. |
+
+Para instalar un script de autocompletado:
+
+```text
+source <(inventag completion bash)
+inventag completion zsh > "${fpath[1]}/_inventag"
+inventag completion fish > ~/.config/fish/completions/inventag.fish
+```
 
 ## Cuentas {#accounts}
 
