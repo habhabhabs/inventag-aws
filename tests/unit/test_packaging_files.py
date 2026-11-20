@@ -990,11 +990,6 @@ def test_the_darwin_table_maps_the_wheel_files_of_dry_run_3(tpl):
         assert [c.name for c in tpl.match_row(rel, rows).carries] == [name]
 
 
-def test_the_darwin_table_has_no_row_for_the_python_framework_yet(tpl):
-    rows = tpl.TABLES["darwin"]
-    assert [f for f in DARWIN_FRAMEWORK_FILES if tpl.match_row(f, rows)] == []
-
-
 # ------------- evidence for the next rows in the unmapped list (B2d)
 class _EvidenceBuild(_OwnedBuild):
     def __init__(self, files, sources, owners, licences, linked):
@@ -1348,3 +1343,293 @@ def test_rpm_rows_fail_without_their_evidence(
 ):
     _, problems = _rpm_collect(tpl, monkeypatch, licences, texts)
     assert expected in problems
+
+
+# ---------------- macOS: the Python framework's files (B2e, ruling 3)
+DYNLOAD = "_internal/python3.12/lib-dynload/"
+LIBSYSTEM = "/usr/lib/libSystem.B.dylib"
+
+
+def test_the_darwin_table_maps_every_file_of_dry_run_4(tpl):
+    # Dry run 4 (macOS arm64, Python 3.12.10) listed the same 55 framework
+    # files as dry run 3; each now has a row, decided per file at build time.
+    rows = tpl.TABLES["darwin"]
+    for rel in DARWIN_FRAMEWORK_FILES:
+        row = tpl.match_row(rel, rows)
+        assert row is not None, rel
+        assert row.in_build_python and row.links, rel
+    for rel in DARWIN_FRAMEWORK_FILES[:3]:
+        assert tpl.match_row(rel, rows).origin == "cpython"
+    for rel in ("_internal/libssl.3.dylib", "_internal/libcrypto.3.dylib"):
+        row = tpl.match_row(rel, rows)
+        assert row.origin == "framework"
+        (openssl,) = row.carries
+        assert openssl.name == "OpenSSL (in the Python.framework)"
+        assert openssl.spdx == "Apache-2.0"
+        assert openssl.text == ("repo:scripts/packaging/licenses/openssl-LICENSE.txt",)
+        assert openssl.version.startswith("python:ssl.OPENSSL_VERSION")
+    for m in DARWIN_DYNLOAD:
+        row = tpl.match_row(f"{DYNLOAD}{m}.cpython-312-darwin.so", rows)
+        assert row.origin == "cpython" and row.exports == ("_PyInit_{module}",), m
+    # Linux keeps its rows: no link or symbol check there.
+    assert all(not r.links and not r.exports for r in tpl.TABLES["linux"])
+
+
+# A thin 64-bit Mach-O with LC_SYMTAB, built by hand: (name, n_type, n_sect).
+def _macho(symbols):
+    import struct
+
+    strtab = b"\0"
+    nlist = b""
+    for name, n_type, n_sect in symbols:
+        nlist += struct.pack("<IBBHQ", len(strtab), n_type, n_sect, 0, 0)
+        strtab += name.encode() + b"\0"
+    header_size, cmd_size = 32, 24
+    symoff = header_size + cmd_size
+    stroff = symoff + len(nlist)
+    header = struct.pack("<IiiIIIII", 0xFEEDFACF, 0x0100000C, 0, 8, 1, cmd_size, 0, 0)
+    symtab = struct.pack(
+        "<IIIIII", 0x2, cmd_size, symoff, len(symbols), stroff, len(strtab)
+    )
+    return header + symtab + nlist + strtab
+
+
+def _fat(*slices):
+    import struct
+
+    offset = 4096
+    head = struct.pack(">II", 0xCAFEBABE, len(slices))
+    body = b""
+    for i, data in enumerate(slices):
+        head += struct.pack(
+            ">iiIII", 0x0100000C + i, 0, offset + len(body), len(data), 12
+        )
+        body += data
+    return head + b"\0" * (offset - len(head)) + body
+
+
+SAMPLE_SYMBOLS = [
+    ("_PyInit__json", 0x0F, 1),  # N_SECT | N_EXT: defined, exported
+    ("_scanner_helper", 0x0E, 1),  # N_SECT, not external: local
+    ("_hidden_helper", 0x1F, 1),  # N_PEXT: private external
+    ("_malloc", 0x01, 0),  # N_UNDF | N_EXT: undefined
+    ("debug_stab", 0x24, 1),  # a debugging entry (N_STAB bits)
+]
+
+
+def test_macho_defined_symbols_are_the_exported_definitions(tpl):
+    assert tpl.macho_defined_symbols(_macho(SAMPLE_SYMBOLS)) == ["_PyInit__json"]
+    fat = _fat(_macho(SAMPLE_SYMBOLS), _macho([("_Hacl_x", 0x0F, 1)]))
+    assert tpl.macho_defined_symbols(fat) == ["_Hacl_x", "_PyInit__json"]
+    assert tpl.macho_defined_symbols(b"\x7fELF" + b"\0" * 60) is None
+    assert tpl.macho_defined_symbols(b"\xcf\xfa\xed\xfe" + b"\0" * 4) is None
+
+
+class _DarwinBuild(_SampleBuild):
+    """Framework files of a macOS bundle: what otool -L and the symbol table
+    of each say, without a Mac."""
+
+    def __init__(self, files):
+        super().__init__(list(files), b"", same=True)
+        self.info = files
+
+    def source_of(self, rel):
+        default = FRAMEWORK + "/" + rel.split("_internal/", 1)[1]
+        return self.info[rel].get("source", default)
+
+    def python_prefix(self):
+        return FRAMEWORK
+
+    def distribution_of_bundled(self, rel):
+        return None
+
+    def contains(self, rel, needle):
+        return needle in self.info[rel].get("strings", b"")
+
+    def linked_libraries(self, rel):
+        return self.info[rel].get("links", [LIBSYSTEM])
+
+    def defined_symbols(self, rel):
+        name = Path(rel).name.split(".")[0]
+        return self.info[rel].get("symbols", [f"_PyInit_{name}"])
+
+
+def _dyn(m):
+    return f"{DYNLOAD}{m}.cpython-312-darwin.so"
+
+
+def _darwin_collect(tpl, monkeypatch, files):
+    _no_runtime(tpl, monkeypatch)
+    comps, problems = tpl.collect(_DarwinBuild(files), tpl.TABLES["darwin"])
+    return {c.name: c for c in comps}, problems
+
+
+SSL_LINKS = [LIBSYSTEM, "@rpath/libcrypto.3.dylib", "@rpath/libssl.3.dylib"]
+
+
+def test_cpython_files_that_carry_and_link_nothing_else_pass(tpl, monkeypatch):
+    comps, problems = _darwin_collect(
+        tpl,
+        monkeypatch,
+        {
+            "_internal/Python": {
+                "links": [
+                    "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/"
+                    "CoreFoundation",
+                    LIBSYSTEM,
+                    "@rpath/Python",
+                ]
+            },
+            _dyn("_json"): {},
+            _dyn("_ssl"): {"links": SSL_LINKS},
+            "_internal/libssl.3.dylib": {"links": SSL_LINKS},
+            "_internal/libcrypto.3.dylib": {
+                "links": [LIBSYSTEM, "@rpath/libcrypto.3.dylib"]
+            },
+        },
+    )
+    assert problems == []
+    openssl = comps["OpenSSL (in the Python.framework)"]
+    assert (openssl.version, openssl.spdx) == ("9.9", "Apache-2.0")
+    assert openssl.files == ["_internal/libssl.3.dylib", "_internal/libcrypto.3.dylib"]
+    assert set(comps) == {"CPython", "b", "OpenSSL (in the Python.framework)"}
+
+
+THIRD_PARTY = "a third-party library inside needs its own row (architect ruling 3.2)"
+
+
+@pytest.mark.parametrize(
+    "files, expected",
+    [
+        (
+            {
+                _dyn("_sha2"): {
+                    "symbols": ["_Hacl_Hash_SHA2_digest_256", "_PyInit__sha2"]
+                }
+            },
+            f"{_dyn('_sha2')}: defines symbols outside CPython's module init "
+            f"(_Hacl_Hash_SHA2_digest_256): {THIRD_PARTY}",
+        ),
+        (
+            {_dyn("zlib"): {"links": [LIBSYSTEM, "/usr/lib/libz.1.dylib"]}},
+            f"{_dyn('zlib')}: links /usr/lib/libz.1.dylib, which is neither a macOS "
+            "system library this table accepts (/usr/lib/libSystem.B.dylib, "
+            "/System/Library/Frameworks/*) nor a bundled file with a row "
+            "(architect ruling 3.1)",
+        ),
+        (
+            {_dyn("_ssl"): {"links": SSL_LINKS}},
+            f"{_dyn('_ssl')}: links @rpath/libcrypto.3.dylib, which is neither a "
+            "macOS system library this table accepts (/usr/lib/libSystem.B.dylib, "
+            "/System/Library/Frameworks/*) nor a bundled file with a row "
+            "(architect ruling 3.1)",
+        ),
+        (
+            {_dyn("_json"): {"symbols": None}},
+            f"{_dyn('_json')}: defined symbols not readable (Mach-O symbol table); "
+            "the row needs them (architect ruling 3.1)",
+        ),
+        (
+            {_dyn("_json"): {"links": []}},
+            f"{_dyn('_json')}: linked libraries not readable (otool -L); the row "
+            "needs them (architect ruling 3.1)",
+        ),
+        (
+            {_dyn("_json"): {"source": "/opt/homebrew/lib/_json.so"}},
+            f"{_dyn('_json')}: comes from /opt/homebrew/lib/_json.so, not from the "
+            f"build Python at {FRAMEWORK}",
+        ),
+    ],
+    ids=[
+        "third-party-symbols",
+        "links-a-library-outside-the-bundle",
+        "links-a-file-not-in-the-bundle",
+        "symbols-unreadable",
+        "links-unreadable",
+        "not-from-the-build-python",
+    ],
+)
+def test_a_framework_file_is_cpython_only_with_proof(tpl, monkeypatch, files, expected):
+    _, problems = _darwin_collect(tpl, monkeypatch, files)
+    assert expected in problems
+
+
+def test_libraries_inside_framework_modules_get_their_own_rows(tpl, monkeypatch):
+    comps, problems = _darwin_collect(
+        tpl,
+        monkeypatch,
+        {
+            _dyn("_decimal"): {
+                "strings": b"_mpd_qadd",
+                "symbols": ["_PyInit__decimal", "_mpd_qadd"],
+            },
+            _dyn("pyexpat"): {
+                "strings": b"_XML_ParserCreate",
+                "symbols": ["_PyInit_pyexpat", "_XML_ParserCreate"],
+            },
+            _dyn("_lzma"): {
+                "strings": b"_lzma_code",
+                "symbols": ["_PyInit__lzma", "_lzma_code"],
+            },
+        },
+    )
+    expat = comps["expat (in CPython's pyexpat)"]
+    assert (expat.spdx, expat.version, expat.files) == ("MIT", "9.9", [_dyn("pyexpat")])
+    assert expat.texts == [
+        (
+            "repo:scripts/packaging/licenses/expat-COPYING",
+            "text of repo:scripts/packaging/licenses/expat-COPYING\n",
+        )
+    ]
+    # No verified text and no licence id from evidence yet: they fail by name.
+    assert sorted(problems) == [
+        f"{_dyn('_decimal')}: licence text of libmpdec (in CPython's _decimal): no "
+        "verified source in the table; store the upstream text unchanged under "
+        "scripts/packaging/licenses/ and its address, tag, sha256 and date in "
+        "SOURCES.json",
+        f"{_dyn('_lzma')}: licence text of liblzma (in CPython's _lzma): no "
+        "verified source in the table; store the upstream text unchanged under "
+        "scripts/packaging/licenses/ and its address, tag, sha256 and date in "
+        "SOURCES.json",
+        "libmpdec (in CPython's _decimal) 9.9: licence NOASSERTION is not in the "
+        "allow-list",
+        "liblzma (in CPython's _lzma) (version not recorded): licence NOASSERTION "
+        "is not in the allow-list",
+    ]
+
+
+def test_a_module_that_loads_the_library_carries_no_copy(tpl, monkeypatch):
+    comps, problems = _darwin_collect(
+        tpl,
+        monkeypatch,
+        {
+            _dyn("_decimal"): {
+                "strings": b"_mpd_qadd libmpdec.4.dylib",
+                "links": [LIBSYSTEM, "@rpath/libmpdec.4.dylib"],
+            }
+        },
+    )
+    assert "libmpdec (in CPython's _decimal)" not in comps
+    assert any("links @rpath/libmpdec.4.dylib" in p for p in problems)
+
+
+PIN_GOLDEN = (
+    "CPython 3.12.11: the darwin rows were written from the files of Python "
+    "3.12.10 (dry run 4); build with python-version 3.12.10 (architect ruling 3.4)"
+)
+
+
+def test_the_macos_build_python_is_pinned_to_the_patch_version_of_dry_run_4(tpl):
+    assert tpl.PINNED_PYTHON == {"darwin": (3, 12, 10)}
+    assert tpl.pinned_python_problems("darwin", (3, 12, 11, "final", 0)) == [PIN_GOLDEN]
+    assert tpl.pinned_python_problems("darwin", (3, 12, 10, "final", 0)) == []
+    assert tpl.pinned_python_problems("linux", (3, 12, 16, "final", 0)) == []
+
+
+def test_the_licence_check_reports_the_python_pin(tpl, tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr(tpl, "pinned_python_problems", lambda plat, v: [f"pin {plat}"])
+    bundle, work = _fake_bundle(tmp_path)
+    args = ["--bundle", str(bundle), "--workpath", str(work)]
+    args += ["--out", str(tmp_path / "T.txt"), "--platform", "freebsd"]
+    assert tpl.main(args) == 1
+    assert "LICENCE CHECK: pin freebsd" in capsys.readouterr().err
