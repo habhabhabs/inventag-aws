@@ -1110,8 +1110,9 @@ def test_a_smoke_image_with_no_recorded_digest_fails_the_job(tmp_path):
 
 def test_no_digest_is_typed_into_the_workflow_for_a_smoke_image():
     # The digests are written by each run (job summary); the only value typed
-    # here is the build image's, which the dry run prints (placeholder).
-    typed = re.findall(r"sha256:[0-9a-f]{64}", TEXT)
+    # here is the build image's, which the dry run prints (placeholder). The
+    # one other digest is uv's wheel in `--hash=sha256:` form (B3i-2).
+    typed = re.findall(r"(?<!--hash=)sha256:[0-9a-f]{64}", TEXT)
     assert typed == []
 
 
