@@ -593,13 +593,7 @@ def render(comps: Sequence[Component]) -> str:
             continue
         out += ["", title, "-" * len(title)]
         for c in part:
-            out.append(f"- {c.name} {c.version or '(version not recorded)'}: {c.spdx}")
-            if c.version_from:
-                out.append(f"    {c.version_from}")
-            for u in c.urls:
-                out.append(f"    source: {u}")
-            for f in c.files:
-                out.append(f"    file: {f}")
+            out += component_lines(c)
     seen: Dict[str, str] = {}
     for c in comps:
         out += ["", "=" * 78, f"{c.name} {c.version}".rstrip(), "=" * 78]
@@ -612,6 +606,15 @@ def render(comps: Sequence[Component]) -> str:
             seen[digest] = f"{c.name}, {label}"
             out += ["", f"[{label}]", text.rstrip()]
     return "\n".join(out) + "\n"
+
+
+def component_lines(c: Component) -> List[str]:
+    """A component's lines in the list of THIRD-PARTY-LICENSES.txt."""
+    out = [f"- {c.name} {c.version or '(version not recorded)'}: {c.spdx}"]
+    out += [f"    {line}" for line in c.version_from.splitlines()]
+    out += [f"    source: {u}" for u in c.urls]
+    out += [f"    file: {f}" for f in c.files]
+    return out
 
 
 def components_json(comps: Sequence[Component]) -> str:
