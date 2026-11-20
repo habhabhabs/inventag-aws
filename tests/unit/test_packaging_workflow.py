@@ -117,15 +117,15 @@ def test_every_job_states_its_permissions_and_only_two_jobs_hold_more_than_read(
         for name, job in JOBS.items()
         if set(job["permissions"].items()) - {("contents", "read")}
     }
-    assert set(holders) <= {"provenance", "publish"}
-    if "provenance" in holders:
-        assert holders["provenance"] == {
-            "contents": "read",
-            "id-token": "write",
-            "attestations": "write",
-        }
-    if "publish" in holders:
-        assert holders["publish"] == {"contents": "write"}
+    # B6 fix 5: the attestation has its own job; provenance holds read only.
+    assert set(holders) == {"attest", "publish"}
+    assert holders["attest"] == {
+        "contents": "read",
+        "id-token": "write",
+        "attestations": "write",
+    }
+    assert holders["publish"] == {"contents": "write"}
+    assert JOBS["provenance"]["permissions"] == {"contents": "read"}
 
 
 def test_every_action_is_pinned_by_commit_with_its_version_in_a_comment():
@@ -850,11 +850,37 @@ def test_the_checksums_cover_every_file_sorted_and_are_checked_at_once():
 
 
 def test_the_attestation_is_keyless_and_only_made_for_a_real_release():
-    step = _step("provenance", "attest")
+    step = _step("attest", "attest")
     assert step["uses"].startswith("actions/attest@")
-    assert step["if"] == "needs.plan.outputs.dry_run == 'false'"
     assert step["with"]["subject-checksums"].endswith("/release/SHA256SUMS")
     assert "private-key" not in str(step) and "secret" not in str(step).lower()
+    # No step of provenance attests anything any more.
+    for provenance_step in _steps("provenance"):
+        assert "actions/attest" not in provenance_step.get("uses", "")
+
+
+def test_the_attest_job_never_runs_on_a_pull_request_and_is_the_only_one_with_a_token_for_it():
+    # B6 fix 5: a same-repository pull request runs the workflow file of its
+    # own branch; a job with id-token and attestations: write that a pull
+    # request can start could sign files that pass `gh attestation verify`.
+    job = JOBS["attest"]
+    condition = " ".join(str(job["if"]).split())
+    assert "github.event_name != 'pull_request'" in condition
+    assert "needs.plan.outputs.dry_run == 'false'" in condition
+    assert set(job["needs"]) == {"plan", "provenance"}
+    assert job["runs-on"] == "ubuntu-24.04"
+    # It signs the files provenance kept, after checking them once more.
+    down = [s for s in _steps("attest") if s.get("uses", "").startswith("actions/download-")]
+    assert len(down) == 1 and down[0]["with"]["name"] == "release-files"
+    run = _run_text("attest")
+    assert "sha256sum -c SHA256SUMS" in run
+    names = [s.get("name", "") for s in _steps("attest")]
+    assert names.index(_step("attest", "attest")["name"]) == len(names) - 1
+    # Nothing else in the workflow names id-token or attestations.
+    for name, other in JOBS.items():
+        if name != "attest":
+            assert "id-token" not in other["permissions"], name
+            assert "attestations" not in other["permissions"], name
 
 
 def test_provenance_keeps_the_release_files_for_the_publish_job():
@@ -865,7 +891,7 @@ def test_provenance_keeps_the_release_files_for_the_publish_job():
 
 def test_publish_attaches_to_the_release_only_when_it_is_not_a_dry_run():
     job = JOBS["publish"]
-    assert job["needs"] == ["plan", "provenance"]
+    assert job["needs"] == ["plan", "provenance", "attest"]
     assert job["if"] == "needs.plan.outputs.dry_run == 'false'"
     assert job["permissions"] == {"contents": "write"}
     assert job["env"]["GH_TOKEN"] == "${{ github.token }}"
