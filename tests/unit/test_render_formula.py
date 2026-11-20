@@ -216,14 +216,14 @@ def test_the_command_prints_the_formula_and_exits_0(rf, tmp_path, capsys):
     code, out, err = run_cli(rf, tmp_path, capsys, sums_text())
     assert code == 0
     assert err == ""
-    assert out.startswith("class Inventag < Formula")
+    assert "\nclass Inventag < Formula\n" in out
 
 
 def test_the_command_writes_the_output_file(rf, tmp_path, capsys):
     target = tmp_path / "Formula" / "inventag.rb"
     code, out, err = run_cli(rf, tmp_path, capsys, sums_text(), "--output", str(target))
     assert (code, out, err) == (0, "", "")
-    assert target.read_text("utf-8").startswith("class Inventag < Formula")
+    assert "\nclass Inventag < Formula\n" in target.read_text("utf-8")
     assert list(target.parent.iterdir()) == [target]  # no temporary file left
 
 
@@ -353,7 +353,7 @@ def test_the_formula_names_the_bundled_libiconv_and_its_notices(rendered):
 def test_the_formula_follows_the_homebrew_text_rules(rendered):
     assert rendered.endswith("\n") and not rendered.endswith("\n\n")
     assert "\t" not in rendered
-    assert not [l for l in rendered.splitlines() if l != l.rstrip()]
+    assert not [ln for ln in rendered.splitlines() if ln != ln.rstrip()]
     desc = re.search(r'^\s*desc "([^"]+)"', rendered, re.M).group(1)
     assert len(desc) <= 80 and not desc.endswith(".")
     assert not re.match(r"(?i)(a|an|the)\s", desc)
