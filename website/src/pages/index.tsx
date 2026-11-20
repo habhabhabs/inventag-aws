@@ -119,6 +119,16 @@ function StructuredData(): ReactNode {
   );
 }
 
+/** Same words as the footer's external links: the link opens a new tab. */
+function NewTab(): ReactNode {
+  return (
+    <span className="sr-only">
+      {' '}
+      {translate({id: 'theme.IconExternalLink.ariaLabel', message: '(opens in new tab)', description: 'The ARIA label to use for the external link icon'})}
+    </span>
+  );
+}
+
 function Hero(): ReactNode {
   return (
     <header className={styles.hero}>
@@ -138,6 +148,7 @@ function Hero(): ReactNode {
               {' '}
               <Translate id="home.releaseNotes">release notes</Translate>
             </span>
+            <NewTab />
           </Link>
         </p>
         <h1 className={styles.heroTitle}>
@@ -637,6 +648,7 @@ function Closing(): ReactNode {
           </Link>
           <Link className="button button--secondary button--lg" href={REPO}>
             <Translate id="home.sourceOnGitHub">Source on GitHub</Translate>
+            <NewTab />
           </Link>
         </div>
         <p className={styles.disclaimer}>
