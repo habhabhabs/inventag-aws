@@ -1035,13 +1035,13 @@ class DeltaDetector:
             current_run, previous_details_not_read, skipped
         )
         if details_not_read:
-            modified_resources = self._leave_out_details(
+            modified_resources, newly_unchanged = self._leave_out_details(
                 details_not_read,
                 modified_resources,
                 old_resources_map,
                 new_resources_map,
-                not_compared,
             )
+            unchanged_resources = unchanged_resources + newly_unchanged
 
         # Analyze compliance changes
         compliance_changes = self._analyze_compliance_changes(
@@ -1284,17 +1284,18 @@ class DeltaDetector:
         modified: List[ResourceChange],
         old_map: Dict[str, Dict],
         new_map: Dict[str, Dict],
-        not_compared: Dict[str, int],
-    ) -> List[ResourceChange]:
+    ) -> Tuple[List[ResourceChange], List[ResourceChange]]:
         """Drop the changes of fields that a failed detail call adds (A-78).
 
         For a resource of a unit whose detail call failed in either run: the
         fields of ``_DETAIL_FIELDS`` for its service and type; for a service
         without such a list, the fields the row of the failed run lacks. A
-        resource with nothing else changed is "not compared"; counts per
-        reason go into ``not_compared``.
+        resource with nothing else changed is unchanged (its listing fields
+        were compared), as in ``_leave_out_new_fields``; the change report's
+        ``details_not_compared`` line names the units.
         """
-        kept_modified = []
+        kept_modified: List[ResourceChange] = []
+        unchanged: List[ResourceChange] = []
         for change in modified:
             old = old_map[change.resource_arn]
             new = new_map[change.resource_arn]
@@ -1327,13 +1328,18 @@ class DeltaDetector:
                 change.severity = self._determine_change_severity(keep)
                 kept_modified.append(change)
                 continue
-            account, service, kind, region, run, outcome = units[0]
-            reason = (
-                f"details of {service} {kind} in {region} of account {account} "
-                f"were not read ({run} run: {outcome})"
+            unchanged.append(
+                ResourceChange(
+                    resource_arn=change.resource_arn,
+                    resource_id=change.resource_id,
+                    service=change.service,
+                    resource_type=change.resource_type,
+                    region=change.region,
+                    change_type=ChangeType.UNCHANGED,
+                    severity=ChangeSeverity.INFO,
+                )
             )
-            not_compared[reason] = not_compared.get(reason, 0) + 1
-        return kept_modified
+        return kept_modified, unchanged
 
     @staticmethod
     def _account_of(resource: Dict) -> str:
