@@ -149,7 +149,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   with code 0. To make a CI job fail when nothing could be read, add
   `--fail-if-empty`.
 - **A run that was not allowed to use an IAM action** prints one `Permissions:`
-  line for each account in the run notes, and writes the list `permissions_denied`
+  line for each account in the run notes, and one for the identity that uploads the reports when the upload was refused, and writes the list `permissions_denied`
   to the `--audit-output` file (see
   [Run with only ReadOnlyAccess](../guides/read-only-access.md#run-with-only-readonlyaccess)).
   The line does not name `ec2:DescribeRegions` or `account:ListRegions`, and

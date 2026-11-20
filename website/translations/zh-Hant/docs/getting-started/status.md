@@ -105,7 +105,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **你沒有權限的服務**會被跳過並記錄一條警告；只有 Resource Groups Tagging API 返回時，它的資源才會出現。
 - **因其他原因失敗的列出呼叫**（重試後仍被限流，或出現錯誤）會記為一條警告，並計入快照（`metadata.tags.coverage_summary`）。
 - **帳戶中的所有呼叫都被拒絕：** 該帳戶不算失敗，執行以結束代碼 0 結束。使用 `--fail-on-account-error` 時，如果某個帳戶的每個列舉都被拒絕，它仍算作已掃描，執行以結束代碼 0 結束。要讓 CI 作業在什麼都讀不到時失敗，請加上 `--fail-if-empty`。
-- **執行無權使用某個 IAM 操作：** 執行備註中，每個帳戶會輸出一列 `Permissions:`，並且 `permissions_denied` 列表會寫入 `--audit-output` 檔案（見[僅使用 ReadOnlyAccess 執行](../guides/read-only-access.md#run-with-only-readonlyaccess)）。這一行不會列出 `ec2:DescribeRegions` 或 `account:ListRegions`，帶 KMS 金鑰的上傳失敗時只會列出 `s3:PutObject`。
+- **執行無權使用某個 IAM 操作：** 執行備註中，每個帳戶會輸出一列 `Permissions:`，當上傳被拒絕時還會為上傳報告的身份輸出一行，並且 `permissions_denied` 列表會寫入 `--audit-output` 檔案（見[僅使用 ReadOnlyAccess 執行](../guides/read-only-access.md#run-with-only-readonlyaccess)）。這一行不會列出 `ec2:DescribeRegions` 或 `account:ListRegions`，帶 KMS 金鑰的上傳失敗時只會列出 `s3:PutObject`。
 
   未針對真實的 AWS 驗證：帶 KMS 金鑰的上傳被拒絕時，S3 會點名哪個操作。
 - **從 v1.1.4 升級後的第一份變更報告**會把新覆蓋服務的資源列為新增，儘管它們之前就存在。

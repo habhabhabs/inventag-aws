@@ -158,6 +158,12 @@ Permissions: 1 action(s) were not allowed for account 222222222222: sts:AssumeRo
 
 La línea tiene palabras propias de InvenTag. No tiene texto del error de AWS. Una llamada de la que InvenTag no conoce la acción de IAM se nombra por su nombre de API, con las palabras `(IAM action not known to InvenTag)`.
 
+La subida de los informes con `--s3-bucket` usa las credenciales predeterminadas, no las de una cuenta analizada. Cuando S3 la rechaza, la línea no nombra ninguna cuenta. Nombra la identidad que sube los informes (ejemplo de las pruebas):
+
+```text
+Permissions: 1 action(s) were not allowed for the identity that uploads the reports (the default credentials): s3:PutObject. Effect: the reports were not uploaded. s3:PutObject is not in ReadOnlyAccess; it is needed only for uploading the reports (--s3-bucket).
+```
+
 Con `--audit-output`, el archivo también tiene la clave `permissions_denied`. La clave solo está cuando se denegó algo. Cada entrada tiene estos campos:
 
 ```json
@@ -177,7 +183,7 @@ Con `--audit-output`, el archivo también tiene la clave `permissions_denied`. L
 
 | Campo | Significado |
 |---|---|
-| `account` | El ID de la cuenta. |
+| `account` | El ID de la cuenta. Vacío para el tipo `upload`: la subida usa las credenciales predeterminadas, no las de una cuenta analizada. |
 | `action` | La acción de IAM, o `null` cuando InvenTag no la conoce. |
 | `service`, `operation` | Los nombres de API de AWS de la llamada rechazada. |
 | `regions` | Las regiones en las que se rechazó la llamada. Vacío en una entrada sin región, por ejemplo el tipo `role`. |

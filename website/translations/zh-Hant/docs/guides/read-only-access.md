@@ -149,6 +149,12 @@ Permissions: 1 action(s) were not allowed for account 222222222222: sts:AssumeRo
 
 這一行用的是 InvenTag 自己的文字，不含任何 AWS 錯誤文字。如果 InvenTag 不知道某個呼叫對應的 IAM 操作，就用它的 API 名稱，並加上 `(IAM action not known to InvenTag)`。
 
+使用 `--s3-bucket` 上傳報告時，用的是預設憑證，而不是被掃描帳戶的憑證。S3 拒絕上傳時，這一行不含任何帳戶，而是列出上傳報告的身份（來自測試的範例）：
+
+```text
+Permissions: 1 action(s) were not allowed for the identity that uploads the reports (the default credentials): s3:PutObject. Effect: the reports were not uploaded. s3:PutObject is not in ReadOnlyAccess; it is needed only for uploading the reports (--s3-bucket).
+```
+
 使用 `--audit-output` 時，該檔案還會有鍵 `permissions_denied`。只有在有操作被拒絕時才有這個鍵。每個條目有以下欄位：
 
 ```json
@@ -168,7 +174,7 @@ Permissions: 1 action(s) were not allowed for account 222222222222: sts:AssumeRo
 
 | 欄位 | 含義 |
 |---|---|
-| `account` | 帳戶 ID。 |
+| `account` | 帳戶 ID。種類 `upload` 時為空：上傳使用預設憑證，而不是被掃描帳戶的憑證。 |
 | `action` | IAM 操作；InvenTag 不知道時為 `null`。 |
 | `service`、`operation` | 被拒絕呼叫的 AWS API 名稱。 |
 | `regions` | 呼叫被拒絕的區域。沒有區域的條目為空，例如種類 `role`。 |

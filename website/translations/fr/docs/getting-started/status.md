@@ -155,7 +155,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   analysé, et l’exécution se termine avec le code 0. Pour qu’un job de CI échoue
   quand rien n’a pu être lu, ajoutez `--fail-if-empty`.
 - **Une exécution qui n’a pas eu le droit d’utiliser une action IAM** affiche une
-  ligne `Permissions:` par compte dans les notes d’exécution, et écrit la liste
+  ligne `Permissions:` par compte dans les notes d’exécution, une pour l’identité qui envoie les rapports quand l’envoi a été refusé, et écrit la liste
   `permissions_denied` dans le fichier de `--audit-output` (voir
   [Exécuter avec ReadOnlyAccess seul](../guides/read-only-access.md#run-with-only-readonlyaccess)).
   La ligne ne nomme pas `ec2:DescribeRegions` ni `account:ListRegions`, et un
