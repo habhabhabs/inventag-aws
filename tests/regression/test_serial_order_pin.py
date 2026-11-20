@@ -174,19 +174,7 @@ def test_console_messages_of_a_clean_run_are_the_golden_set(serial):
     [
         "1",
         "2",
-        pytest.param(
-            "3",
-            marks=pytest.mark.xfail(
-                strict=True,
-                reason=(
-                    "A2: measured on v1.3.0 (9f9e972): inventag/core/cloud_bom_generator.py:2474 "
-                    "writes the snapshot's metadata.regions as list(set(...)), so its order "
-                    "follows the hash seed (seed 3 gives [us-east-1, eu-west-1], seeds 0 to 2 "
-                    "give [eu-west-1, us-east-1]); the fix is sorted(set(...)). Seeds 0 to 2 "
-                    "alone cannot see it. Remove this mark when A2 is merged"
-                ),
-            ),
-        ),
+        "3",
     ],
 )
 def test_a_serial_run_gives_the_same_files_under_another_hash_seed(
