@@ -1077,6 +1077,44 @@ class CloudBOMGenerator:
             for (account, service, region, source), outcome in sorted(units.items())
         ]
 
+    def _details_not_read(self) -> List[Dict[str, str]]:
+        """One entry per (account, service, region, resource type) whose
+        detail call failed in this run (ledger source ``service-api-detail``);
+        the worst outcome wins, as in ``_units_not_read``. The next change
+        report does not compare the fields those calls add (A-78)."""
+        rank = {"timeout": 0, "throttled": 1, "error": 2, "denied": 3}
+        units: Dict[tuple, tuple] = {}
+        for ctx in self.account_contexts.values():
+            for e in _coverage_of(ctx):
+                outcome = str(e.get("outcome", ""))
+                if e.get("source") != DETAIL_SOURCE or outcome not in rank:
+                    continue
+                if str(e.get("error_code", "")) == _NO_SUCH_SERVICE_CODE:
+                    continue
+                key = (
+                    str(e.get("account_id", "")),
+                    str(e.get("service", "")),
+                    str(e.get("region", "")),
+                    str(e.get("resource_type", "")),
+                )
+                found = (str(e.get("operation", "")), outcome)
+                if key not in units or rank[outcome] < rank[units[key][1]]:
+                    units[key] = found
+        return [
+            {
+                "account": account,
+                "service": service,
+                "region": region,
+                "resource_type": resource_type,
+                "operation": operation,
+                "outcome": outcome,
+            }
+            for (account, service, region, resource_type), (
+                operation,
+                outcome,
+            ) in sorted(units.items())
+        ]
+
     def _filter_texts(self) -> List[str]:
         """The service and tag filters of this run, as the options that set
         them (A-20); empty when no filter is set."""
@@ -2789,6 +2827,11 @@ class CloudBOMGenerator:
             units = self._units_not_read()
             if units:
                 snapshot_tags["units_not_read"] = units
+            # The units whose detail calls failed (A-78, additive key): the
+            # next change report does not compare the fields they add.
+            details = self._details_not_read()
+            if details:
+                snapshot_tags["details_not_read"] = details
 
             state_id = state_manager.save_state(
                 resources=resources,
