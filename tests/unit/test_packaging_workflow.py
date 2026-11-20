@@ -868,22 +868,66 @@ def test_the_provenance_job_requests_both_libiconv_addresses_of_each_notices_fil
 def test_the_provenance_job_fails_when_the_versioned_tarball_cannot_be_fetched(
     tmp_path,
 ):
+    # B6 fix 17: the tarball (the source pointer) stays a hard gate, with five
+    # tries and a pause between them.
     result, urls = _libiconv_run(
         tmp_path,
         {"a.THIRD-PARTY-LICENSES.txt": GOOD_NOTICE},
         stub_fails="libiconv-1.18.tar.gz",
     )
     assert result.returncode != 0
-    assert GNU_TARBALL in urls
+    assert urls.count(GNU_TARBALL) == 5
+    assert len(result.sleeps) == 4 and set(result.sleeps) == {"30"}
+    assert "::error::" in result.stdout + result.stderr
 
 
-def test_the_provenance_job_fails_when_the_gnu_page_cannot_be_fetched(tmp_path):
-    result, _urls = _libiconv_run(
+def test_the_provenance_job_goes_on_when_the_tarball_answers_after_two_failures(
+    tmp_path,
+):
+    result, urls = _libiconv_run(
+        tmp_path, {"a.THIRD-PARTY-LICENSES.txt": GOOD_NOTICE}, tarball_fails=2
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert urls.count(GNU_TARBALL) == 3 and len(result.sleeps) == 2
+
+
+def test_the_provenance_job_only_warns_when_the_gnu_project_page_cannot_be_fetched(
+    tmp_path,
+):
+    # B6 fix 17 (run 14: www.gnu.org timed out): a third-party page's uptime is
+    # no gate of the release. Three tries, then a warning and a summary line;
+    # the tarball is still fetched and checked.
+    result, urls = _libiconv_run(
         tmp_path,
         {"a.THIRD-PARTY-LICENSES.txt": GOOD_NOTICE},
         stub_fails="software/libiconv/",
     )
-    assert result.returncode != 0
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert urls.count(GNU_PAGE) == 3 and urls.count(GNU_TARBALL) == 1
+    assert result.sleeps == ["30", "30"]
+    assert f"::warning::{GNU_PAGE}" in result.stdout
+    assert f"- {GNU_PAGE}: not answered after 3 tries" in result.summary
+    assert "::error::" not in result.stdout + result.stderr
+
+
+def test_the_provenance_job_does_not_warn_when_the_project_page_answers_late(
+    tmp_path,
+):
+    result, urls = _libiconv_run(
+        tmp_path, {"a.THIRD-PARTY-LICENSES.txt": GOOD_NOTICE}, pages_fail=2
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert urls.count(GNU_PAGE) == 3
+    assert "::warning::" not in result.stdout
+    assert f"- {GNU_PAGE}: answered" in result.summary
+
+
+def test_the_notices_keep_both_libiconv_lines_when_the_page_is_unreachable():
+    # F2 is amended, not removed: the check that each notices file names both
+    # addresses stays a hard failure.
+    run = _step("provenance", "libiconv")["run"]
+    assert "does not name https://www.gnu.org/software/libiconv/" in run
+    assert "names no versioned libiconv tarball" in run
 
 
 def test_the_provenance_job_fails_when_a_notices_file_lost_an_address(tmp_path):
