@@ -56,21 +56,25 @@ SBOM 檔案使用 CycloneDX 格式，1.5 版，JSON 編碼。工作流根據建�
 該步驟以這個工作流的名義寫入建置證明。用 GitHub CLI 檢查一個檔案：
 
 ```bash title="Terminal"
-gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb --repo habhabhabs/inventag-aws
+gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb \
+  --repo habhabhabs/inventag-aws \
+  --signer-workflow habhabhabs/inventag-aws/.github/workflows/package.yml
 ```
 
 檢查校驗和，見[檢查下載的檔案](../getting-started/installation.md#check-the-download)。
 
-未針對 GitHub 驗證：對發佈檔案執行 `gh attestation verify`。測試執行不會生成任何建置證明。第一份真實的建置證明由第一次正式發佈執行生成，這次執行還沒有進行。
+`--repo` 指明儲存庫。如果證明是由另一個工作流檔案生成的，`--signer-workflow` 會讓檢查失敗。
+
+未針對 GitHub 驗證：對發佈檔案使用這些選項執行 `gh attestation verify`。這些選項讀自 `gh attestation verify --help`。測試執行不會生成任何建置證明。第一份真實的建置證明由第一次正式發佈執行生成，這次執行還沒有進行。
 
 ### 打包建置中的授權 {#licenses-in-the-packaged-builds}
 
 InvenTag 使用 MIT 授權。打包建置還攜帶其他專案的檔案。宣告檔案列出了它們和它們的授權文字。
 
 可執行檔案壓縮包、`.deb` 和 `.rpm` 包含 GNU libiconv，這是一個使用 GNU 寬通用公共授權（LGPL）2.1 版的庫。
-計劃中的 Homebrew formula 安裝同一個壓縮包，所以它也包含 libiconv。libiconv 的程式碼位於 lxml 的擴充套件模組內部。
+Homebrew formula（尚未發佈）安裝同一個壓縮包，所以它也包含 libiconv。libiconv 的程式碼位於 lxml 的擴充套件模組內部。
 InvenTag 需要 lxml 來寫 Word 檔案。lxml 專案建置這些模組，並把 libiconv 連結進去。
-InvenTag 原樣攜帶 lxml 的檔案：建置時會把每個檔案與鎖定檔案所指定的 wheel 中的檔案逐位元組比較。
+在壓縮包、`.deb` 和 `.rpm` 中，InvenTag 原樣攜帶 lxml 的檔案：建置時會把每個檔案與鎖定檔案所指定的 wheel 中的檔案逐位元組比較。
 
 - 用 pip、pipx 或 uv 安裝時，InvenTag 的檔案中不包含 libiconv。你的安裝工具會從 Python 包索引下載 lxml 自己的 wheel。
 - 宣告檔案是 `THIRD-PARTY-LICENSES.txt`：在壓縮包中是 `inventag/THIRD-PARTY-LICENSES.txt`，
@@ -87,6 +91,8 @@ InvenTag 原樣攜帶 lxml 的檔案：建置時會把每個檔案與鎖定檔�
   在 macOS 上，替換模組之後要重新簽名：`codesign -s - --force <file>`。
 
 未針對你自己建置的 lxml 驗證：你建置的模組能代替內建的模組正常工作。
+
+未針對 Homebrew 安裝驗證：Homebrew 不會改動 lxml 的檔案。
 
 未針對 GNU 的伺服器驗證：這兩個 libiconv 地址會一直有回應。工作流在它的測試執行當天取到了這兩個地址。
 
