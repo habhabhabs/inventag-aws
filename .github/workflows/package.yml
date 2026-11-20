@@ -651,13 +651,29 @@ jobs:
         set -euo pipefail
         test "$(inventag --version)" = "inventag $VERSION"
         inventag selftest
+        # The package must put a valid man page in the right place. That is
+        # read from the file itself: the minimal images of dry run 8 have no
+        # col (fedora, amazonlinux) or a man that refuses (ubuntu).
         if [ "$FORMAT" = tar ]; then
-          man -l /opt/inventag/share/man/man1/inventag.1 > /tmp/man.txt
+          page=/opt/inventag/share/man/man1/inventag.1
         else
-          man -w inventag
-          man inventag > /tmp/man.txt
+          page=/usr/share/man/man1/inventag.1.gz
         fi
-        grep -q -i inventag /tmp/man.txt
+        test -s "$page"
+        case "$page" in
+          *.gz) roff=$(gzip -dc "$page") ;;
+          *) roff=$(cat "$page") ;;
+        esac
+        first=$(sed -n 1p <<<"$roff")
+        [[ "$first" == ".TH INVENTAG 1 "* ]]
+        name=$(sed -n '/^\.SH NAME$/{n;p;}' <<<"$roff")
+        grep -q '^inventag ' <<<"$name"
+        # Rendering is extra: only where man and col both work.
+        if command -v man > /dev/null && command -v col > /dev/null && rendered=$(man "$page" 2> /dev/null); then
+          grep -q -i inventag <<<"$rendered"
+        else
+          echo "note: man or col is missing or does not render here; the roff file was checked"
+        fi
         RUN
 
     - name: Completions load in the shells of this system
@@ -775,9 +791,19 @@ jobs:
         BIN="$RUNNER_TEMP/install/inventag"
         test "$(env -i PATH=/usr/bin:/bin "$BIN/inventag" --version)" = "inventag $VERSION"
         env -i PATH=/usr/bin:/bin HOME="$RUNNER_TEMP" "$BIN/inventag" selftest
-        # macOS man has no -l (dry run 7); a name with a slash is a file.
-        man "$BIN/share/man/man1/inventag.1" > "$RUNNER_TEMP/man.txt"
-        grep -q -i inventag "$RUNNER_TEMP/man.txt"
+        # The man page is read from the file (roff source). macOS man has no -l
+        # (dry run 7); a name with a slash is a file. Rendering is extra.
+        page="$BIN/share/man/man1/inventag.1"
+        test -s "$page"
+        first=$(sed -n 1p "$page")
+        [[ "$first" == ".TH INVENTAG 1 "* ]]
+        name=$(sed -n '/^\.SH NAME$/{n;p;}' "$page")
+        grep -q '^inventag ' <<<"$name"
+        if command -v man > /dev/null && command -v col > /dev/null && rendered=$(man "$page" 2> /dev/null); then
+          grep -q -i inventag <<<"$rendered"
+        else
+          echo "note: man or col is missing or does not render here; the roff file was checked"
+        fi
         bash -n "$BIN/share/completions/inventag.bash"
         zsh -n "$BIN/share/completions/_inventag"
 
