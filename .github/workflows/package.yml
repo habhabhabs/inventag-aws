@@ -510,6 +510,37 @@ jobs:
         find "$fw" -maxdepth 6 -iname 'license.html' -exec grep -n -i -E 'mpdecimal|libmpdec' {} + || echo "no license.html names libmpdec"
         "$venv/bin/python" -c "import decimal;print(decimal.__libmpdec_version__)"
         strings -a "$bundle"/_internal/python3.12/lib-dynload/_lzma*.so | grep -E '^5\.[0-9]+\.[0-9]+$' || echo "no xz version string"
+        # libiconv in the lxml modules (architect-run10-macos-iconv.md section 3),
+        # read from the wheel's files (the bundle's are byte-identical by the
+        # licence check). Appended to the build record, which is attached to the
+        # run; the licence check already wrote its own read of each slice there.
+        record="$work/build-record-macos.txt"
+        {
+          echo "== libiconv evidence (architect-run10-macos-iconv.md section 3)"
+          for f in $(cd "$site" && find . -name '*.so' | sort); do
+            p="$site/${f#./}"
+            if ! grep -q libiconv_open "$p"; then continue; fi
+            echo "== libiconv: lxml/${f#./}"
+            archs="$(lipo -archs "$p")" || archs=""
+            echo "lipo -archs: ${archs:-failed}"
+            for a in $archs; do
+              echo "nm -arch $a:"
+              nm -arch "$a" "$p" | grep -i 'iconv_version' || echo "no symbol ($a)"
+              n="$(strings -arch "$a" "$p" | grep -c libiconv_open)" || n="${n:-failed}"
+              echo "strings -arch $a | grep -c libiconv_open: $n"
+            done
+            for a in arm64 x86_64; do
+              if codesign -v --architecture "$a" "$p"; then s=0; else s=$?; fi
+              echo "codesign -v --architecture $a: exit $s"
+            done
+            echo "codesign -dv --architecture arm64 (first five lines):"
+            codesign -dv --architecture arm64 "$p" 2>&1 | sed -n 1,5p || echo "codesign -dv: exit not 0"
+          done
+          echo "lxml in the build's Python (LXML_VERSION ICONV_COMPILED_VERSION LIBXML_VERSION LIBXML_COMPILED_VERSION LIBXSLT_VERSION):"
+          "$venv/bin/python" -c "from lxml import etree; print(etree.LXML_VERSION, etree.ICONV_COMPILED_VERSION, etree.LIBXML_VERSION, etree.LIBXML_COMPILED_VERSION, etree.LIBXSLT_VERSION)" || echo "lxml report failed"
+          echo "libiconv lines of the notices file:"
+          grep -n -A12 "^- GNU libiconv" "$bundle/THIRD-PARTY-LICENSES.txt" || echo "no libiconv component in the notices file"
+        } 2>&1 | tee -a "$record"
 
     - name: Collect the files of this build
       run: |
