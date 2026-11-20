@@ -9,7 +9,6 @@ the mark is removed in the same change.
 
 import threading
 
-import pytest
 
 from tests.concurrency import harness  # noqa: F401  (the package must import)
 
@@ -50,14 +49,6 @@ class _BarrierSet(set):
         return answer
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "A3: inventag/discovery/comprehensive_discovery.py:1982 _warn_once checks and adds "
-        "to _warned_keys without a lock (plan 2.5: 'a lock'), so two threads that ask for "
-        "the same key at the same moment both warn. Remove this mark when A3 is merged"
-    ),
-)
 def test_warn_once_warns_once_when_two_threads_ask_for_the_same_key_together():
     from inventag.discovery.comprehensive_discovery import ComprehensiveAWSDiscovery
 
@@ -80,15 +71,6 @@ def test_warn_once_warns_once_when_two_threads_ask_for_the_same_key_together():
     assert discovery.logger.debugs == ["sqs failed"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "A4: inventag/discovery/coverage.py:110 CoverageLedger.entries returns the entries "
-        "in the order they were recorded (plan 2.4 item 4: sorted by account, region, "
-        "source, service, resource type, operation, outcome, error code). Remove this mark "
-        "when A4 is merged"
-    ),
-)
 def test_the_ledger_lists_its_entries_in_sorted_order_whoever_recorded_first():
     from inventag.discovery.coverage import CoverageLedger
 
@@ -155,14 +137,6 @@ def test_the_ledger_lists_its_entries_in_sorted_order_whoever_recorded_first():
     assert keys == sorted(keys)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "A4: inventag/reporting/document_generator.py:525 _parallel_document_generation "
-        "returns the results in the order the formats finish (as_completed); plan 2.4 item "
-        "6: the order of the requested formats. Remove this mark when A4 is merged"
-    ),
-)
 def test_document_results_follow_the_order_of_the_requested_formats():
     from inventag.reporting.document_generator import (
         DocumentConfig,
@@ -190,15 +164,6 @@ def test_document_results_follow_the_order_of_the_requested_formats():
     assert [r.format_type for r in results] == ["word", "excel"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "A3: inventag/discovery/inventory.py:774 sorts by (arn, service, type, id, region); "
-        "rows that are equal on all five keep the order they arrived in, so workers that "
-        "finish in another order give another file. Plan 2.4 item 3: a last key, a digest "
-        "of the row's canonical JSON. Remove this mark when A3 is merged"
-    ),
-)
 def test_rows_with_equal_sort_keys_come_out_in_one_order_whatever_came_in_first():
     from inventag.discovery.inventory import AWSResourceInventory
 
