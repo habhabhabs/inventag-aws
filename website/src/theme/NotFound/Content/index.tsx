@@ -93,7 +93,7 @@ export default function NotFoundContent({className}: Props): ReactNode {
         </Head>
       )}
       <div className="row">
-        <div className="col col--6 col--offset-3 it-nf">
+        <div className="col col--6 col--offset-3 it-nf" data-reveal-group="">
           <Heading as="h1" className="hero__title">
             {t.title}
           </Heading>

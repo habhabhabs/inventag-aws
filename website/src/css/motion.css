@@ -1,0 +1,59 @@
+/* Motion: the landing page's scroll reveal and its one load moment.
+   Script: src/clientModules/reveal.js. Switch: the head script in
+   docusaurus.config.ts sets data-it-motion on <html> only without
+   prefers-reduced-motion and with IntersectionObserver. Without that
+   attribute (no JavaScript, reduced motion) no rule here hides anything.
+   Docs pages carry no marks and get no motion. */
+:root {
+  --it-ease-settle: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --it-dur-reveal: 360ms;
+  --it-rise: 8px;
+  --it-stagger: 40ms;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* A waiting element: set by reveal.js only below the fold */
+  html[data-it-motion] [data-reveal].is-pending {
+    opacity: 0;
+    transform: translate3d(0, var(--it-rise), 0);
+  }
+  html[data-it-motion] [data-reveal]:not(.is-done) {
+    transition:
+      opacity var(--it-dur-reveal) var(--it-ease-settle),
+      transform var(--it-dur-reveal) var(--it-ease-settle);
+    transition-delay: calc(var(--it-reveal-i, 0) * var(--it-stagger));
+  }
+  /* The hero's only motion: the terminal card fades in, 200 ms, no rise.
+     The headline, the lead and the buttons never move. */
+  html[data-it-motion] [data-hero] {
+    animation: it-fade-in 200ms ease-out both;
+  }
+}
+@keyframes it-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Reduced motion and print: everything shown at once */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal],
+  [data-hero] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
+@media print {
+  [data-reveal],
+  [data-hero] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}

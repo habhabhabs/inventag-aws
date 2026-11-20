@@ -15,10 +15,13 @@ export default function CommandSnippet({
   title,
   lines,
   footnote,
+  hero = false,
 }: {
   title: string;
   lines: Line[];
   footnote?: ReactNode;
+  /** The landing hero's card: the page's only load motion (a 200 ms fade, src/css/motion.css). */
+  hero?: boolean;
 }): ReactNode {
   const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const timer = useRef<number | undefined>(undefined);
@@ -49,7 +52,7 @@ export default function CommandSnippet({
   };
 
   return (
-    <figure ref={frameRef} className={styles.terminal} aria-labelledby="terminal-title">
+    <figure ref={frameRef} className={styles.terminal} aria-labelledby="terminal-title" data-hero={hero ? '' : undefined}>
       <div className={styles.terminalBar}>
         <figcaption id="terminal-title" className={styles.terminalTitle}>
           {title}

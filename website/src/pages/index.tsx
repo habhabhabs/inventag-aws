@@ -191,6 +191,7 @@ function Hero(): ReactNode {
       </div>
       <div className={styles.heroAside}>
         <CommandSnippet
+          hero
           title={translate({id: 'home.quickStartTitle', message: 'Quick start'})}
           lines={QUICK_START}
           footnote={
@@ -336,7 +337,7 @@ function Capabilities(): ReactNode {
   useCodeOverflow(bentoRef);
   return (
     <section className={styles.section} aria-labelledby="capabilities">
-      <div className={styles.sectionHead}>
+      <div className={styles.sectionHead} data-reveal="">
         <p className={styles.eyebrow}>
           <Translate id="home.cap.eyebrow">01 · What you get</Translate>
         </p>
@@ -349,7 +350,7 @@ function Capabilities(): ReactNode {
           </Translate>
         </p>
       </div>
-      <div ref={bentoRef} className={styles.bento}>
+      <div ref={bentoRef} className={styles.bento} data-reveal-group="">
         <Cell
           className={styles.span7}
           icon={<IconSheet />}
@@ -547,7 +548,7 @@ const steps = (): [string, string][] => [
 function HowItWorks(): ReactNode {
   return (
     <section className={styles.section} aria-labelledby="how-it-works">
-      <div className={styles.sectionHead}>
+      <div className={styles.sectionHead} data-reveal="">
         <p className={styles.eyebrow}>
           <Translate id="home.how.eyebrow">02 · How a run works</Translate>
         </p>
@@ -555,7 +556,7 @@ function HowItWorks(): ReactNode {
           <Translate id="home.how.title">Four steps, left to right.</Translate>
         </h2>
       </div>
-      <ol className={styles.steps}>
+      <ol className={styles.steps} data-reveal-group="">
         {steps().map(([title, text], i) => (
           <li key={title} className={styles.step}>
             <span className={styles.stepNo} aria-hidden="true">
@@ -574,7 +575,7 @@ function Honest(): ReactNode {
   return (
     <section className={`${styles.section} ${styles.honest}`} aria-labelledby="before-you-rely">
       <div className={styles.honestGrid}>
-        <div>
+        <div data-reveal="">
           <p className={styles.eyebrow}>
             <Translate id="home.honest.eyebrow">03 · Before you rely on it</Translate>
           </p>
@@ -582,7 +583,7 @@ function Honest(): ReactNode {
             <Translate id="home.honest.title">Plain about the edges.</Translate>
           </h2>
         </div>
-        <ul className={styles.honestList}>
+        <ul className={styles.honestList} data-reveal-group="">
           <li>
             <Translate
               id="home.honest.1"
@@ -630,7 +631,7 @@ function Closing(): ReactNode {
   const markDark = useBaseUrl('/img/logo-dark.svg');
   return (
     <section className={styles.closing} aria-labelledby="start">
-      <div className={styles.closingInner}>
+      <div className={styles.closingInner} data-reveal="">
         <ThemedImage
           className={styles.closingMark}
           sources={{light: mark, dark: markDark}}

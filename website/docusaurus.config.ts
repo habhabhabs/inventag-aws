@@ -127,6 +127,14 @@ const config: Config = {
       innerHTML:
         "(function(){try{if(!localStorage.getItem('theme-inventag')){var d=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';localStorage.setItem('theme-inventag',d);document.documentElement.setAttribute('data-theme',d);document.documentElement.setAttribute('data-theme-choice',d)}}catch(e){}})()",
     },
+    // Motion switch (src/css/motion.css, src/clientModules/reveal.js). Runs before the
+    // first paint; without it, or with reduced motion, nothing is ever hidden.
+    {
+      tagName: 'script',
+      attributes: {},
+      innerHTML:
+        "(function(){try{if('IntersectionObserver' in window&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.setAttribute('data-it-motion','')}catch(e){}})()",
+    },
     // favicon.ico comes from `favicon` above; these add the scalable and touch icons
     {tagName: 'link', attributes: {rel: 'icon', type: 'image/svg+xml', href: `${BASE_URL}img/favicon.svg`}},
     {tagName: 'link', attributes: {rel: 'apple-touch-icon', sizes: '180x180', href: `${BASE_URL}img/apple-touch-icon.png`}},
@@ -208,7 +216,7 @@ const config: Config = {
         },
         blog: false,
         theme: {
-          customCss: ['./src/css/custom.css', './src/css/docs-ui.css'],
+          customCss: ['./src/css/custom.css', './src/css/docs-ui.css', './src/css/motion.css'],
         },
         sitemap: {
           lastmod: 'date',
@@ -226,7 +234,7 @@ const config: Config = {
   customFields: {
     gaMeasurementId: 'G-CVK8311NYE',
   },
-  clientModules: ['./src/clientModules/analyticsConsent.ts', './src/clientModules/a11yPatches.js'],
+  clientModules: ['./src/clientModules/analyticsConsent.ts', './src/clientModules/a11yPatches.js', './src/clientModules/reveal.js'],
 
   plugins: [
     [
