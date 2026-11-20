@@ -345,3 +345,34 @@ def test_a_finished_scan_keeps_no_reference_to_its_discovery_engine(
     FakeInventory.last = None
     gc.collect()
     assert engine() is None
+
+
+def test_accounts_are_merged_in_configured_order_not_completion_order(
+    aws, tmp_path, monkeypatch
+):
+    """Plan 2.4 rule 2: the first account finishes last; its rows still come
+    first (the Network Analysis sheet follows this order)."""
+    generator = _generator(tmp_path, max_concurrent_accounts=2)
+    second_done = threading.Event()
+
+    def inner(account_id, context):
+        if account_id == ACCOUNTS[0]:
+            assert second_done.wait(30), "the second account did not finish"
+        rows = [{"service": "S3", "id": f"b-{account_id}", "region": "us-east-1"}]
+        if account_id == ACCOUNTS[1]:
+            # The main thread records the result after this returns; let the
+            # first account go only once it has.
+            original = generator._record_account_success
+
+            def record(*args, **kwargs):
+                result = original(*args, **kwargs)
+                if args[0] == ACCOUNTS[1]:
+                    second_done.set()
+                return result
+
+            generator._record_account_success = record
+        return rows
+
+    monkeypatch.setattr(generator, "_discover_account_resources_inner", inner)
+    found = generator._parallel_account_discovery(_contexts())
+    assert [r["id"] for r in found] == [f"b-{a}" for a in ACCOUNTS]
