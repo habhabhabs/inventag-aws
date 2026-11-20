@@ -54,15 +54,19 @@ def tree(root: Path) -> Dict[str, Path]:
 LEDGER_ORDER = ("coverage_summary",)
 
 
+def _sort_all(value):
+    if isinstance(value, dict):
+        return dict(sorted((k, _sort_all(v)) for k, v in value.items()))
+    if isinstance(value, list):
+        return [_sort_all(v) for v in value]
+    return value
+
+
 def _sort_named(value, names):
-    """Sort the keys of every dict that is the value of a key in ``names``."""
+    """Sort the keys of every dict (at every depth) under a key in ``names``."""
     if isinstance(value, dict):
         return {
-            k: (
-                dict(sorted(_sort_named(v, names).items()))
-                if k in names and isinstance(v, dict)
-                else _sort_named(v, names)
-            )
+            k: _sort_all(v) if k in names else _sort_named(v, names)
             for k, v in value.items()
         }
     if isinstance(value, list):

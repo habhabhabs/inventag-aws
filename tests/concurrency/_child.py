@@ -42,7 +42,6 @@ waits and deadlines still work.
 
 import atexit
 import datetime as _dt
-import functools
 import importlib.util
 import json
 import os
@@ -58,8 +57,15 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 
-def _at(real, epoch, secs=None):
-    return real(epoch if secs is None else secs)
+class _At:
+    """A callable that is not a function, so ``logging`` (which stores
+    ``time.localtime`` as a class attribute) does not bind it as a method."""
+
+    def __init__(self, real, epoch):
+        self.real, self.epoch = real, epoch
+
+    def __call__(self, secs=None):
+        return self.real(self.epoch if secs is None else secs)
 
 
 def install_fixed_clock(iso: str) -> None:
@@ -91,10 +97,8 @@ def install_fixed_clock(iso: str) -> None:
     _dt.date = FixedDate
     time.time = lambda: epoch
     time.time_ns = lambda: int(epoch * 1_000_000_000)
-    # ``functools.partial`` objects do not bind as methods: ``logging`` stores
-    # ``time.localtime`` as a class attribute and calls it as ``converter(secs)``
-    time.localtime = functools.partial(_at, real_localtime, epoch)
-    time.gmtime = functools.partial(_at, real_gmtime, epoch)
+    time.localtime = _At(real_localtime, epoch)
+    time.gmtime = _At(real_gmtime, epoch)
 
 
 def _load(name, path):
@@ -149,6 +153,16 @@ def touch_every_region(benchmark, regions, accounts) -> None:
             )
         for region in sorted(boto3.session.Session().get_available_regions("ec2")):
             boto3.client("ec2", region_name=region, **creds).describe_vpcs()
+            # moto also creates the default KMS keys and the Athena work group of a
+            # region on first use, with ids from the same shared random source
+            for service, call in (
+                ("kms", "list_keys"),
+                ("athena", "list_work_groups"),
+                ("events", "list_event_buses"),
+                ("iam", "list_roles"),
+            ):
+                client = boto3.client(service, region_name=region, **creds)
+                getattr(client, call)()
 
 
 class Holds:

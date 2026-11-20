@@ -205,11 +205,7 @@ def test_a_serial_run_gives_the_same_files_under_another_hash_seed(
 @pytest.mark.xfail(
     strict=False,
     reason=(
-        "A2/A3/A4 (cause not traced): measured on v1.3.0 (9f9e972): the default run "
-        "(accounts in parallel) differs from the sequential run in state/state_*.json at "
-        "$.resources[0].arn in some runs and not in others (3 of 5 comparisons), so the "
-        "snapshot of a parallel run is not reproducible; strict=False because it is "
-        "intermittent. Plan 2.4 requires it. Remove this mark when the order is fixed"
+        "A3: measured on v1.3.0 (9f9e972), 3 runs of the default scan under seeds 0 to 2: the same set of resources in state/state_*.json, in a different order (first difference at $.resources[0].arn). Plan 2.4 item 3 (A3): the sort key (arn, service, type, id, region) leaves ties in arrival order; the fix is a last key, a digest of the row. strict=False because it is intermittent. Remove this mark when A3 is merged"
     ),
 )
 def test_default_parallel_accounts_give_the_same_files_as_the_serial_run(
