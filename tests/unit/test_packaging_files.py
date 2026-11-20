@@ -251,6 +251,18 @@ def test_build_script_installs_only_from_the_hash_pinned_locks():
 
 
 # ------------------------------------------------------------------- nfpm
+def test_build_script_keeps_the_macos_build_record_as_a_file():
+    # architect-package-dryrun-5.md ruling 2: the licence check writes the
+    # build record (OS links, lowest macOS version) next to components.json.
+    text = (SCRIPTS / "build_binary.sh").read_text("utf-8")
+    call = text[text.index("third_party_licenses.py") :].split("\n\n")[0]
+    assert '--build-record "$work/build-record-macos.txt"' in call
+    result = subprocess.run(
+        ["bash", "-n", str(SCRIPTS / "build_binary.sh")], timeout=60
+    )
+    assert result.returncode == 0
+
+
 @pytest.fixture(scope="module")
 def nfpm():
     return yaml.safe_load((PACKAGING / "nfpm" / "nfpm.yaml").read_text("utf-8"))
