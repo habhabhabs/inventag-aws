@@ -14,10 +14,13 @@ from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 import json
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 
 from .aws_clients import create_client
+from .ordered_tasks import run_ordered
+
+# Workers of the price lookups (the pool of v1.3.0 had ten).
+_COST_WORKERS = 10
 
 
 @dataclass
@@ -221,23 +224,23 @@ class CostAnalyzer:
 
         cost_estimates = []
 
-        # Process resources in parallel for better performance
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            future_to_resource = {
-                executor.submit(self._estimate_single_resource_cost, resource): resource
-                for resource in resources
-            }
-
-            for future in as_completed(future_to_resource):
-                try:
-                    cost_estimate = future.result()
-                    if cost_estimate:
-                        cost_estimates.append(cost_estimate)
-                except Exception as e:
-                    resource = future_to_resource[future]
-                    self.logger.warning(
-                        f"Cost estimation failed for resource {resource.get('id', 'unknown')}: {e}"
-                    )
+        # Resources are estimated in parallel; the estimates are listed in the
+        # order of the resources, not in the order the workers finish.
+        for resource, (cost_estimate, error) in zip(
+            resources,
+            run_ordered(
+                self._estimate_single_resource_cost,
+                resources,
+                _COST_WORKERS,
+                "inventag-cost",
+            ),
+        ):
+            if error is not None:
+                self.logger.warning(
+                    f"Cost estimation failed for resource {resource.get('id', 'unknown')}: {error}"
+                )
+            elif cost_estimate:
+                cost_estimates.append(cost_estimate)
 
         self.logger.info(
             f"Generated cost estimates for {len(cost_estimates)} resources"
