@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import {useLocation} from '@docusaurus/router';
 import Heading from '@theme/Heading';
+import Head from '@docusaurus/Head';
 import type {Props} from '@theme/NotFound/Content';
 
 /**
@@ -59,7 +60,7 @@ const LOCALES = ['zh-Hans', 'zh-Hant', 'es', 'fr'];
 export default function NotFoundContent({className}: Props): ReactNode {
   const {
     siteConfig: {baseUrl},
-    i18n: {currentLocale},
+    i18n: {currentLocale, localeConfigs},
   } = useDocusaurusContext();
   const {pathname} = useLocation();
   const [locale, setLocale] = useState(currentLocale in STRINGS ? currentLocale : 'en');
@@ -84,6 +85,13 @@ export default function NotFoundContent({className}: Props): ReactNode {
 
   return (
     <main className={clsx('container margin-vert--xl', className)} lang={locale === 'en' ? 'en' : locale}>
+      {locale !== currentLocale && (
+        // the page's language is the address's language (register X-14); this Head is
+        // deeper than the layout's, so it wins
+        <Head>
+          <html lang={localeConfigs[locale]?.htmlLang ?? locale} dir={localeConfigs[locale]?.direction ?? 'ltr'} />
+        </Head>
+      )}
       <div className="row">
         <div className="col col--6 col--offset-3 it-nf">
           <Heading as="h1" className="hero__title">

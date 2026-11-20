@@ -1,7 +1,6 @@
 import React, {Fragment, useEffect, useRef, useState, type ReactNode} from 'react';
 import {translate} from '@docusaurus/Translate';
 import Link from '@docusaurus/Link';
-import Head from '@docusaurus/Head';
 import {useLocation} from '@docusaurus/router';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import {getChoice, setChoice} from '@site/src/clientModules/analyticsConsent';
@@ -38,7 +37,7 @@ export default function Root({children}: {children: ReactNode}): ReactNode {
   const {pathname} = useLocation();
   const {
     siteConfig: {baseUrl},
-    i18n: {currentLocale, localeConfigs},
+    i18n: {currentLocale},
   } = useDocusaurusContext();
   const wanted = localeInAddress(pathname, baseUrl, currentLocale);
   const [address, setAddress] = useState<AddressLocale>(null);
@@ -159,12 +158,6 @@ export default function Root({children}: {children: ReactNode}): ReactNode {
       {/* a new key remounts the page once, so every text is read again in the address's language */}
       <Fragment key={address?.locale ?? 'build'}>
         <AddressLocaleContext.Provider value={address}>
-          {address && (
-            // the page's language is the address's language (register X-14)
-            <Head>
-              <html lang={localeConfigs[address.locale]?.htmlLang ?? address.locale} dir={localeConfigs[address.locale]?.direction ?? 'ltr'} />
-            </Head>
-          )}
           <AddressVersionScope>{children}</AddressVersionScope>
         </AddressLocaleContext.Provider>
       </Fragment>
