@@ -1080,13 +1080,45 @@ jobs:
           echo "$name $notices_id" >> "$check/notices-ids.txt"
         done
         sort -u "$check/urls.txt" > "$check/unique.txt"
+        # B6 fix 17 (run 14: www.gnu.org timed out for 4 x 120 s). The versioned
+        # tarball is the source pointer and stays a hard gate: 5 tries with a
+        # pause. The project page is a courtesy address: 3 tries, then a
+        # warning. The notices keep both lines.
+        pause="${LIBICONV_RETRY_PAUSE:-30}"
+        fetch() {
+          local url="$1" target="$2" tries="$3" try=1
+          while :; do
+            if curl --fail --silent --show-error --location --max-time 120 -o "$target" "$url"; then
+              return 0
+            fi
+            if [ "$try" -ge "$tries" ]; then
+              return 1
+            fi
+            echo "Try $try of $tries failed for $url; waiting ${pause} s."
+            sleep "$pause"
+            try=$((try + 1))
+          done
+        }
         n=0
         while IFS= read -r url; do
           n=$((n + 1))
           target="$check/download-$n"
           echo "Requesting $url"
-          # --retry covers a dropped connection only; an HTTP error fails.
-          curl --fail --silent --show-error --location --max-time 120 --retry 3 -o "$target" "$url"
+          case "$url" in
+            *.tar.gz) tries=5 ;;
+            *) tries=3 ;;
+          esac
+          if ! fetch "$url" "$target" "$tries"; then
+            case "$url" in
+              *.tar.gz)
+                echo "::error::$url did not answer in $tries tries. It is the source of GNU libiconv named in the notices; run the job again when ftp.gnu.org answers."
+                exit 1 ;;
+              *)
+                echo "::warning::$url did not answer in $tries tries. The notices still name it; the versioned tarball was checked."
+                echo "- $url: not answered after $tries tries (warning only)" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+                continue ;;
+            esac
+          fi
           case "$url" in
             *.tar.gz)
               base=$(basename "$url" .tar.gz)
