@@ -848,3 +848,53 @@ def test_the_unmapped_list_comes_first_in_a_build_log(tpl, tmp_path):
     lines = run.stdout.splitlines()
     assert run.returncode == 1
     assert lines[:4] == _expected_fake_listing(tpl)
+
+
+# ------------------- licence-text sources (B2d, architect dry-run ruling 4)
+NO_SOURCE_GOLDEN = (
+    "_internal/yaml/_yaml.so: licence text of libyaml (in PyYAML): no verified "
+    "source in the table; add the upstream text under scripts/packaging/licenses/ "
+    "(first line: its address, version or commit, and date)"
+)
+
+
+def _no_runtime(tpl, monkeypatch):
+    monkeypatch.setattr(
+        tpl, "_cpython", lambda p: tpl.Component("CPython", "3", "PSF-2.0", "runtime")
+    )
+    monkeypatch.setattr(
+        tpl, "_bootloader", lambda p: tpl.Component("b", "6", tpl.BOOTLOADER, "runtime")
+    )
+    monkeypatch.setattr(tpl, "_installed", lambda name: None)
+
+
+def test_no_text_of_a_wheel_library_comes_from_the_build_systems_packages(tpl):
+    # A library inside a wheel: the text comes from the wheel's own licence
+    # files or from a sourced copy in the repository, never from the build
+    # system's package folder (that describes the system's library).
+    for plat, rows in tpl.TABLES.items():
+        for row in rows:
+            if row.origin != "package":
+                continue
+            for carried in row.carries:
+                for source in carried.text:
+                    assert source.startswith(("dist:", "repo:")), (
+                        plat,
+                        row.pattern,
+                        carried.name,
+                        source,
+                    )
+
+
+def test_a_carried_library_without_a_verified_text_source_fails(tpl, monkeypatch):
+    _no_runtime(tpl, monkeypatch)
+    rows = (
+        tpl.Row(
+            "_internal/yaml/_yaml*.so",
+            "package",
+            carries=(tpl.Carried("libyaml (in PyYAML)", "MIT", ()),),
+        ),
+    )
+    build = _SampleBuild(["_internal/yaml/_yaml.so"], b"", same=True)
+    _, problems = tpl.collect(build, rows)
+    assert problems == [NO_SOURCE_GOLDEN]
