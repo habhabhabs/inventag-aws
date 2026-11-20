@@ -68,14 +68,20 @@ to GitHub's `actions/attest` step. That step writes a build attestation in the
 name of the workflow. To check a file with the GitHub CLI:
 
 ```bash title="Terminal"
-gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb --repo habhabhabs/inventag-aws
+gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb \
+  --repo habhabhabs/inventag-aws \
+  --signer-workflow habhabhabs/inventag-aws/.github/workflows/package.yml
 ```
+
+`--repo` names the repository. `--signer-workflow` makes the check fail when a
+different workflow file made the attestation.
 
 To check a checksum, see
 [Check the download](../getting-started/installation.md#check-the-download).
 
-Not verified against GitHub: `gh attestation verify` on a release file. The
-test runs make no attestation. The first real attestation is made by the first
+Not verified against GitHub: `gh attestation verify` with these flags on a
+release file. The flags are read from `gh attestation verify --help`. The test
+runs make no attestation. The first real attestation is made by the first
 release run, and that run is not made yet.
 
 ### Licenses in the packaged builds
@@ -85,11 +91,12 @@ other projects. The notices file lists them with their license texts.
 
 The executable archives, the `.deb` and the `.rpm` carry GNU libiconv, a
 library under the GNU Lesser General Public License (LGPL) version 2.1. The
-planned Homebrew formula installs the same archive, so it carries it too. The
-libiconv code is inside the extension modules of lxml. InvenTag needs lxml to
-write Word files. The lxml project builds those modules and links libiconv
-into them. InvenTag carries the lxml files without a change: the build compares
-each file byte for byte with the file in the wheel of the lock.
+Homebrew formula (not published yet) installs the same archive, so it carries
+it too. The libiconv code is inside the extension modules of lxml. InvenTag
+needs lxml to write Word files. The lxml project builds those modules and links
+libiconv into them. In the archive, the `.deb` and the `.rpm`, InvenTag carries
+the lxml files without a change: the build compares each file byte for byte
+with the file in the wheel of the lock.
 
 - A pip, pipx or uv install does not carry libiconv in a file of InvenTag. Your
   installer downloads lxml's own wheel from the Python Package Index.
@@ -113,6 +120,9 @@ each file byte for byte with the file in the wheel of the lock.
 
 Not verified against your own lxml build: that a module that you build works in
 place of the bundled one.
+
+Not verified against a Homebrew install: that Homebrew leaves the lxml files
+unchanged.
 
 Not verified against GNU's servers: that the two libiconv addresses keep
 answering. The workflow fetched both on the day of its test run.

@@ -54,9 +54,20 @@ sidebar_position: 2
 
 ### 测试了什么 {#what-was-tested}
 
-发布工作流先构建每种格式，再把它安装到一个全新的系统上。在 x86_64 的 Linux 系统和 macOS 上，
-它运行 `inventag --version` 和 `inventag selftest`，检查手册页和补全文件，扫描一个模拟的 AWS，
-卸载软件包，并检查软件包的文件是否一个不剩。下面这些系统通过了测试：
+发布工作流先构建每种格式，再把它安装到一个全新的系统上。每种任务做的事如下：
+
+- **Linux x86_64：** 安装软件包或解压压缩包，运行 `inventag --version` 和 `inventag selftest`，
+  读取手册页文件，加载补全文件，扫描一个模拟的 AWS，卸载软件包，并检查软件包的文件是否一个不剩。
+- **Linux arm64：** 在 Debian 12 上安装 `.deb`，在 Rocky Linux 9 上安装 `.rpm`，
+  运行 `inventag --version` 和 `inventag selftest`，卸载软件包，并检查 `inventag` 已不在 PATH 中。
+  它不检查手册页、补全文件和扫描，也不检查软件包的文件是否一个不剩。
+- **macOS arm64：** 把压缩包解压到一个临时文件夹，运行 `inventag --version` 和 `inventag selftest`，
+  读取手册页文件，用 `bash -n` 和 `zsh -n` 检查 bash 和 zsh 补全文件的语法
+  （不加载任何文件，也不检查 fish 文件），扫描一个模拟的 AWS，并删除这个临时文件夹。
+- **Ubuntu 24.04 上的 pipx：** 安装由标签构建的 wheel，运行 `inventag --version` 和 `inventag selftest`，
+  卸载它，并检查 `inventag` 已不在 PATH 中。
+
+下面这些系统通过了测试：
 
 | 系统 | 格式 | CPU |
 |---|---|---|
@@ -94,7 +105,7 @@ inventag selftest
 `inventag selftest` 在离线状态下检查这份 InvenTag 是否能正常工作。它不调用 AWS，不打开网络连接，
 也不需要凭证。退出码 0 表示所有检查都通过。退出码 1 表示有检查失败。
 
-如果你使用 [uv](https://docs.astral.sh/uv/)，`uv tool install inventag-aws` 的效果相同。
+如果你使用 [uv](https://docs.astral.sh/uv/)，命令是 `uv tool install inventag-aws`。
 
 - **升级：** `pipx upgrade inventag-aws`。要安装某个指定版本，请固定版本：
   `pipx install inventag-aws==%INVENTAG_VERSION%`。
@@ -104,6 +115,8 @@ inventag selftest
 - **手册页：** 这种方式不安装手册页。请使用 `inventag --help`。
 
 未针对 pipx 验证：升级命令和固定版本命令。
+
+未针对 uv 验证：`uv tool install inventag-aws` 能得到可用的 `inventag` 和 `inventag selftest`，以及升级和卸载命令。
 
 ## 安装独立压缩包 {#install-the-standalone-archive}
 
@@ -171,7 +184,7 @@ inventag selftest
 并把许可证文件放在 `/usr/share/doc/inventag/`。软件包没有安装脚本。
 
 - **升级：** 用 `sudo dpkg -i` 安装更新的 `.deb`。
-- **卸载：** `sudo dpkg -r inventag`。测试检查过软件包的文件一个不剩。
+- **卸载：** `sudo dpkg -r inventag`。在 x86_64 上，测试检查过软件包的文件一个不剩。在 arm64 上，测试只检查了 `inventag` 已不在 PATH 中。
 - **补全：** 软件包会安装 bash、zsh 和 fish 的文件。见[命令行补全](#shell-completion)。
 - **手册页：** `man inventag`。文件是 `/usr/share/man/man1/inventag.1.gz`。
 
@@ -195,7 +208,7 @@ inventag selftest
 并把许可证文件放在 `/usr/share/doc/inventag/`。
 
 - **升级：** 用 `sudo dnf install` 安装更新的 `.rpm`。
-- **卸载：** `sudo dnf remove inventag`。测试检查过软件包的文件一个不剩。
+- **卸载：** `sudo dnf remove inventag`。在 x86_64 上，测试检查过软件包的文件一个不剩。在 arm64 上，测试只检查了 `inventag` 已不在 PATH 中。
 - **补全：** 软件包会安装 bash、zsh 和 fish 的文件。见[命令行补全](#shell-completion)。
 - **手册页：** `man inventag`。文件是 `/usr/share/man/man1/inventag.1.gz`。
 
@@ -211,12 +224,18 @@ Homebrew tap 由项目所有者创建。这个 tap 尚未发布，所以下面�
 brew install habhabhabs/inventag/inventag
 ```
 
-计划是提供一个从发布压缩包安装可执行文件的 formula。它面向 macOS arm64 和两种 Linux CPU，
-不面向 Intel 版 Mac。这个 formula 还没有编写。本页没有说明它会安装哪些补全文件或手册页。
-在那之前，请使用[命令行补全](#shell-completion)和 `inventag --help`。
+这个 formula 已经写好。它在仓库中，路径是 `packaging/homebrew-tap/Formula/inventag.rb`，
+`scripts/packaging/render_formula.py` 会用某个发布版本的 `SHA256SUMS` 填写它。
+它从发布压缩包安装可执行文件、手册页，以及 bash、zsh 和 fish 的补全文件。
+它面向 macOS arm64 和两种 Linux CPU，不面向 Intel 版 Mac：在 Intel 版 Mac 上，安装会停下并给出一条提示。
 
 - **升级：** `brew upgrade inventag`。
 - **卸载：** `brew uninstall inventag`。
+
+未针对 Homebrew 验证：这个 formula。`brew install`、`brew audit`、`brew style` 和 `brew test` 都没有对它运行过。
+升级命令和卸载命令也没有运行过。
+
+未针对 Intel 版 Mac 验证：那里的安装所显示的提示。
 
 未针对 GitHub Runner 之外的 macOS 验证：Homebrew 安装和 Gatekeeper 的行为。
 
@@ -314,10 +333,14 @@ grep darwin-arm64.tar.gz SHA256SUMS
 该步骤以这个工作流的名义写入构建证明。要检查一个文件，请使用 GitHub CLI：
 
 ```bash title="Terminal"
-gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb --repo habhabhabs/inventag-aws
+gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb \
+  --repo habhabhabs/inventag-aws \
+  --signer-workflow habhabhabs/inventag-aws/.github/workflows/package.yml
 ```
 
-未针对 GitHub 验证：对发布文件运行 `gh attestation verify`。测试运行不会生成任何构建证明。第一份真实的构建证明由第一次正式发布运行生成，这次运行还没有进行。
+`--repo` 指明仓库。如果证明是由另一个工作流文件生成的，`--signer-workflow` 会让检查失败。
+
+未针对 GitHub 验证：对发布文件使用这些选项运行 `gh attestation verify`。这些选项读自 `gh attestation verify --help`。测试运行不会生成任何构建证明。第一份真实的构建证明由第一次正式发布运行生成，这次运行还没有进行。
 
 每个 `.tar.gz`、`.deb` 和 `.rpm` 还有一份 SBOM，文件名是在原文件名后加 `.cdx.json`。
 见[软件物料清单](../security/sbom.md)。
@@ -325,9 +348,9 @@ gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb --repo habhabhabs/in
 ## 打包构建中的许可证 {#licenses-in-packaged-builds}
 
 InvenTag 使用 MIT 许可证。可执行文件压缩包、`.deb` 和 `.rpm` 包含 GNU libiconv，
-这是一个使用 GNU 宽通用公共许可证（LGPL）2.1 版的库。计划中的 Homebrew formula 安装同一个压缩包，所以它也包含 libiconv。
+这是一个使用 GNU 宽通用公共许可证（LGPL）2.1 版的库。Homebrew formula（尚未发布）安装同一个压缩包，所以它也包含 libiconv。
 libiconv 的代码位于 lxml 的扩展模块内部。InvenTag 需要 lxml 来写 Word 文件。lxml 项目构建这些模块，并把 libiconv 链接进去。
-InvenTag 原样携带 lxml 的文件，不做任何修改。
+在压缩包、`.deb` 和 `.rpm` 中，InvenTag 原样携带 lxml 的文件，不做任何修改。
 
 - 用 pip、pipx 或 uv 安装时，InvenTag 的文件中不包含 libiconv。你的安装工具会从 Python 包索引下载 lxml 自己的 wheel。
 - 声明文件是 `THIRD-PARTY-LICENSES.txt`。它列出每个携带的组件、它的许可证和许可证文本，并包含 LGPL 2.1 的全文。
@@ -348,6 +371,8 @@ InvenTag 原样携带 lxml 的文件，不做任何修改。
   在 macOS 上，替换模块之后要重新签名：`codesign -s - --force <file>`。
 
 未针对你自己构建的 lxml 验证：你构建的模块能代替内置的模块正常工作。
+
+未针对 Homebrew 安装验证：Homebrew 不会改动 lxml 的文件。
 
 未针对 GitHub Runner 之外的 macOS 验证：Homebrew 安装和 Gatekeeper 的行为。
 

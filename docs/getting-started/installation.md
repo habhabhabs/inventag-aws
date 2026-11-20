@@ -67,10 +67,27 @@ from the build record, not from a run on that version.
 ### What was tested
 
 The release workflow builds each format and then installs it on a fresh
-system. On the x86_64 Linux systems and on macOS it runs `inventag --version`
-and `inventag selftest`, checks the man page and the completion files, scans a
-simulated AWS, removes the package and checks that no file of the package is
-left. These systems passed:
+system. Each kind of job does this:
+
+- **Linux x86_64:** installs the package or unpacks the archive, runs
+  `inventag --version` and `inventag selftest`, reads the man page file, loads
+  the completion files, scans a simulated AWS, removes the package and checks
+  that no file of the package is left.
+- **Linux arm64:** installs the `.deb` on Debian 12 and the `.rpm` on Rocky
+  Linux 9, runs `inventag --version` and `inventag selftest`, removes the
+  package and checks that `inventag` is gone from the PATH. It does not check
+  the man page, the completion files or a scan, and it does not check that no
+  file of the package is left.
+- **macOS arm64:** unpacks the archive into a temporary folder, runs
+  `inventag --version` and `inventag selftest`, reads the man page file, checks
+  the bash and zsh completion files for syntax with `bash -n` and `zsh -n`
+  (nothing is loaded, and the fish file is not checked), scans a simulated AWS
+  and deletes the temporary folder.
+- **pipx on Ubuntu 24.04:** installs the wheel built from the tag, runs
+  `inventag --version` and `inventag selftest`, removes it and checks that
+  `inventag` is gone from the PATH.
+
+These systems passed:
 
 | System | Format | CPU |
 |---|---|---|
@@ -114,8 +131,8 @@ inventag selftest
 makes no AWS call, opens no network connection and needs no credentials. Exit
 code 0 means that every check passed. Exit code 1 means that a check failed.
 
-`uv tool install inventag-aws` gives the same result if you use
-[uv](https://docs.astral.sh/uv/).
+If you use [uv](https://docs.astral.sh/uv/), the command is
+`uv tool install inventag-aws`.
 
 - **Upgrade:** `pipx upgrade inventag-aws`. To install one release, pin it:
   `pipx install inventag-aws==%INVENTAG_VERSION%`.
@@ -127,6 +144,9 @@ code 0 means that every check passed. Exit code 1 means that a check failed.
 - **Man page:** this method installs none. Use `inventag --help`.
 
 Not verified against pipx: the upgrade and the pin commands.
+
+Not verified against uv: that `uv tool install inventag-aws` gives a working
+`inventag` and `inventag selftest`, and the upgrade and uninstall commands.
 
 ## Install the standalone archive
 
@@ -208,8 +228,9 @@ the license files in `/usr/share/doc/inventag/`. The package has no install
 script.
 
 - **Upgrade:** install the newer `.deb` with `sudo dpkg -i`.
-- **Uninstall:** `sudo dpkg -r inventag`. The test checked that no file of the
-  package is left.
+- **Uninstall:** `sudo dpkg -r inventag`. On x86_64, the test checked that no
+  file of the package is left. On arm64, it checked only that `inventag` is gone
+  from the PATH.
 - **Completion:** the package installs the files for bash, zsh and fish. See
   [Shell completion](#shell-completion).
 - **Man page:** `man inventag`. The file is
@@ -238,8 +259,9 @@ The package puts the program in `/opt/inventag/` and a link in
 the license files in `/usr/share/doc/inventag/`.
 
 - **Upgrade:** install the newer `.rpm` with `sudo dnf install`.
-- **Uninstall:** `sudo dnf remove inventag`. The test checked that no file of
-  the package is left.
+- **Uninstall:** `sudo dnf remove inventag`. On x86_64, the test checked that no
+  file of the package is left. On arm64, it checked only that `inventag` is gone
+  from the PATH.
 - **Completion:** the package installs the files for bash, zsh and fish. See
   [Shell completion](#shell-completion).
 - **Man page:** `man inventag`. The file is
@@ -259,14 +281,21 @@ the command below does not work today:
 brew install habhabhabs/inventag/inventag
 ```
 
-The plan is a formula that installs the executable from the release archive.
-It is for macOS arm64 and the two Linux CPUs. It is not for Intel Macs.
-The formula is not written yet. This page does not state which completion files
-or man page it installs. Use [Shell completion](#shell-completion) and
-`inventag --help` until then.
+The formula is written. It is in the repository, in
+`packaging/homebrew-tap/Formula/inventag.rb`, and
+`scripts/packaging/render_formula.py` fills it in from the `SHA256SUMS` of a
+release. It installs the executable from the release archive, the man page and
+the completion files for bash, zsh and fish. It is for macOS arm64 and the two
+Linux CPUs. It is not for Intel Macs: on one, the install stops with a message.
 
 - **Upgrade:** `brew upgrade inventag`.
 - **Uninstall:** `brew uninstall inventag`.
+
+Not verified against Homebrew: the formula. `brew install`, `brew audit`,
+`brew style` and `brew test` have not run on it. The upgrade and uninstall
+commands have not run.
+
+Not verified against an Intel Mac: the message that the install shows there.
 
 Not verified against macOS outside a GitHub runner: the Homebrew install and
 Gatekeeper's behavior.
@@ -377,11 +406,17 @@ The release workflow signs the files without a key of ours. It gives
 attestation in the name of the workflow. To check a file, use the GitHub CLI:
 
 ```bash title="Terminal"
-gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb --repo habhabhabs/inventag-aws
+gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb \
+  --repo habhabhabs/inventag-aws \
+  --signer-workflow habhabhabs/inventag-aws/.github/workflows/package.yml
 ```
 
-Not verified against GitHub: `gh attestation verify` on a release file. The
-test runs make no attestation. The first real attestation is made by the first
+`--repo` names the repository. `--signer-workflow` makes the check fail when a
+different workflow file made the attestation.
+
+Not verified against GitHub: `gh attestation verify` with these flags on a
+release file. The flags are read from `gh attestation verify --help`. The test
+runs make no attestation. The first real attestation is made by the first
 release run, and that run is not made yet.
 
 Each `.tar.gz`, `.deb` and `.rpm` also has an SBOM, named like the file with
@@ -391,11 +426,11 @@ Each `.tar.gz`, `.deb` and `.rpm` also has an SBOM, named like the file with
 
 InvenTag is under the MIT license. The executable archives, the `.deb` and the
 `.rpm` carry GNU libiconv, a library under the GNU Lesser General Public
-License (LGPL) version 2.1. The planned Homebrew formula installs the same
-archive, so it carries it too. The libiconv code is inside the extension
-modules of lxml. InvenTag needs lxml to write Word files. The lxml project
-builds those modules and links libiconv into them. InvenTag carries the lxml
-files without a change.
+License (LGPL) version 2.1. The Homebrew formula (not published yet) installs
+the same archive, so it carries it too. The libiconv code is inside the
+extension modules of lxml. InvenTag needs lxml to write Word files. The lxml
+project builds those modules and links libiconv into them. In the archive, the
+`.deb` and the `.rpm`, InvenTag carries the lxml files without a change.
 
 - A pip, pipx or uv install does not carry libiconv in a file of InvenTag. Your
   installer downloads lxml's own wheel from the Python Package Index.
@@ -423,6 +458,9 @@ files without a change.
 
 Not verified against your own lxml build: that a module that you build works in
 place of the bundled one.
+
+Not verified against a Homebrew install: that Homebrew leaves the lxml files
+unchanged.
 
 Not verified against macOS outside a GitHub runner: the Homebrew install and
 Gatekeeper's behavior.
