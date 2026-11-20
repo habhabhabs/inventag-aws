@@ -1035,8 +1035,13 @@ jobs:
     # Architect review F2: the notices file of a release names where the
     # source of GNU libiconv is. An address is a claim that the source is
     # there, so this job fetches both (the project page and the versioned
-    # tarball) and fails the packaging job on any error. The two addresses
-    # come from the notices files themselves, one per system.
+    # tarball). The two addresses come from the notices files themselves, one
+    # per system.
+    # B6 fix 12: the licence id of the notices is written from the source, not
+    # from memory. The step prints the licence header of a lib/ file and the
+    # first lines of COPYING.LIB of the tarball, works out the SPDX id the
+    # header states (-only or -or-later) and fails when a notices file names
+    # another one.
     - name: The libiconv source addresses of the notices files answer
       shell: bash
       run: |
@@ -1045,6 +1050,7 @@ jobs:
         check="$RUNNER_TEMP/libiconv-check"
         mkdir -p "$check"
         : > "$check/urls.txt"
+        : > "$check/notices-ids.txt"
         shopt -s nullglob
         files=("$release"/*.THIRD-PARTY-LICENSES.txt)
         if [ "${#files[@]}" -eq 0 ]; then
@@ -1065,6 +1071,13 @@ jobs:
             echo "https://www.gnu.org/software/libiconv/"
             echo "$tarball"
           } >> "$check/urls.txt"
+          # The id after the version on the libiconv line: "... 1.18: LGPL-2.1-or-later".
+          notices_id=$(sed -n -E 's/^- GNU libiconv.*[0-9]: (LGPL-[A-Za-z0-9.+-]*).*$/\1/p' "$file")
+          if [ -z "$notices_id" ]; then
+            echo "::error::$name has no licence id on its GNU libiconv line."
+            exit 1
+          fi
+          echo "$name $notices_id" >> "$check/notices-ids.txt"
         done
         sort -u "$check/urls.txt" > "$check/unique.txt"
         n=0
@@ -1082,7 +1095,53 @@ jobs:
                 echo "::error::$url is not the source tarball of $base."
                 exit 1
               fi
-              echo "- $url: $(sha256sum "$target" | cut -d' ' -f1)" >> "${GITHUB_STEP_SUMMARY:-/dev/null}" ;;
+              echo "- $url: $(sha256sum "$target" | cut -d' ' -f1)" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+              # The licence evidence of the tarball (B6 fix 12). tar and sed
+              # read the whole stream, so no pipe is closed early.
+              header=""
+              found_in=""
+              while IFS= read -r member; do
+                head_text=$(tar -xzOf "$target" "$member" | sed -n 1,40p)
+                # Words may wrap at a line end: look at the text with its lines joined.
+                joined=$(printf '%s' "$head_text" | tr '\n' ' ' | sed 's/[*#\/]//g; s/  */ /g')
+                if [[ "$joined" == *"General Public License"* ]]; then
+                  header="$head_text"
+                  found_in="$member"
+                  break
+                fi
+              done < <(sort "$check/list-$n.txt" | awk -v pattern="^${base}/lib/[^/]+[.][ch]$" '$0 ~ pattern')
+              if copying=$(tar -xzOf "$target" "$base/COPYING.LIB" | sed -n 1,3p); then
+                :
+              else
+                copying="(no COPYING.LIB in the tarball)"
+              fi
+              {
+                echo "Licence evidence of $base"
+                echo "licence header, first 40 lines of ${found_in:-no lib/ file}:"
+                printf '%s\n' "$header"
+                echo "COPYING.LIB, first 3 lines:"
+                printf '%s\n' "$copying"
+              } | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
+              if [ -z "$header" ]; then
+                echo "::error::No licence header was found in a lib/ file of $base."
+                exit 1
+              fi
+              flat=$(printf '%s' "$header" | tr '\n' ' ' | sed 's/[*#\/]//g; s/  */ /g')
+              if [[ "$flat" == *"Lesser General Public License"*"version 2.1"*"any later version"* ]]; then
+                stated="LGPL-2.1-or-later"
+              elif [[ "$flat" == *"Lesser General Public License"*"version 2.1"* ]]; then
+                stated="LGPL-2.1-only"
+              else
+                echo "::error::The licence header in $base names no LGPL version 2.1. Read it above and decide."
+                exit 1
+              fi
+              echo "The tarball states: $stated" | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
+              while read -r notices_name notices_id; do
+                if [ "$notices_id" != "$stated" ]; then
+                  echo "::error::$notices_name names $notices_id for GNU libiconv; the source $base states $stated. Write $stated in LXML_ICONV_SPDX of scripts/packaging/third_party_licenses.py."
+                  exit 1
+                fi
+              done < "$check/notices-ids.txt" ;;
             *)
               echo "- $url: answered" >> "${GITHUB_STEP_SUMMARY:-/dev/null}" ;;
           esac
