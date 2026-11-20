@@ -134,6 +134,15 @@ Qué debes saber:
   cambios deja fuera los recursos de esos listados en lugar de mostrarlos como
   añadidos. Una instantánea escrita por v1.2.2 o anterior no tiene esa lista, así
   que la primera comparación con ella se comporta como antes.
+- Cuando una llamada que lee los detalles de un recurso (por ejemplo la
+  ubicación de un bucket de S3 o la configuración de una función de Lambda)
+  falla en una de las dos ejecuciones, los campos que esa llamada añade no se
+  comparan para los recursos de ese servicio y esa región. El informe de cambios
+  nombra esas unidades en una línea que empieza por
+  `Details not read, so the fields they add are not compared:`. Los datos de
+  State Comparison lo llaman `details_not_compared`. Una instantánea registra las
+  unidades cuyas llamadas de detalle fallaron en `metadata.tags.details_not_read`.
+  La clave solo está cuando falló una llamada así.
 - Una instantánea registra la versión de InvenTag que la escribió
   (`metadata.tags.inventag_version`). El primer informe de cambios después de una
   actualización no cuenta como cambio un campo que la nueva versión lee por

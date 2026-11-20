@@ -35,6 +35,12 @@ sidebar_position: 3
 
 未針對真實的 AWS 驗證：這些是擔任角色、成本分析和上傳所需的僅有的額外權限。
 
+按專案用來測試的暫定列表，AWS 託管策略 `ReadOnlyAccess` 包含儲存庫策略中的每個操作，但不包含 `sts:AssumeRole`、`s3:PutObject` 和 `kms:GenerateDataKey`。在專案拿到 AWS 策略的原始副本之前，這份列表是暫定的。未針對真實的 AWS 驗證：該列表與 `ReadOnlyAccess` 目前允許的內容一致。見[僅使用 ReadOnlyAccess 執行](../guides/read-only-access.md#run-with-only-readonlyaccess)。
+
+## 某個操作被拒絕時 {#when-an-action-is-refused}
+
+當執行無權使用某個 IAM 操作時，執行備註中每個帳戶有一列 `Permissions:`。這一行列出每個操作，並說明報告因此缺少什麼。`--audit-output` 檔案在鍵 `permissions_denied` 中有同樣的列表。沒有被拒絕任何操作的執行，不會輸出或寫入任何新內容。欄位和範例見[僅使用 ReadOnlyAccess 執行](../guides/read-only-access.md#the-permissions-line-and-permissions_denied)。
+
 ## InvenTag 從不需要什麼 {#what-inventag-never-needs}
 
 任何寫入、建立、刪除或打標籤的操作，但如果你上傳報告，則需要對報告儲存貯體的 `s3:PutObject`。

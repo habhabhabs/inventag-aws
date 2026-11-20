@@ -48,7 +48,9 @@ mainteneur un canal privé.
   identifiants ou du matériel de clé, ou prennent une tâche dans une file
   d’attente. Chaque entrée de la liste de
   refus est vérifiée par rapport à la liste des opérations du SDK AWS. Elle est
-  toujours active.
+  toujours active. La protection connaît les opérations par leur nom. Une
+  opération qu’ajoute un SDK AWS plus récent est autorisée quand son nom commence
+  comme une lecture, jusqu’à ce qu’une version d’InvenTag la nomme.
 - **La connexion fonctionne toujours.** La protection laisse le SDK AWS échanger un
   jeton IAM Identity Center (SSO), d’identité web ou `aws login` contre des
   identifiants. Elle n’autorise que ces quatre appels non signés :
@@ -75,7 +77,10 @@ mainteneur un canal privé.
 
   Non vérifié sur Windows : fichiers lisibles uniquement par votre utilisateur.
 - **Ses journaux masquent les secrets.** Les jetons de session, les clés, les signatures de requête et les
-  valeurs masquées ci-dessus sont cachés, même avec `--debug`.
+  valeurs masquées ci-dessus sont cachés, même avec `--debug`. Une exception est
+  connue : avec `--debug`, un secret qu’AWS renvoie sous forme de liste sous le nom
+  d’un champ masqué peut apparaître dans le fichier journal. Voir
+  [État des fonctionnalités](../getting-started/status.md#security-notes).
 
 Vous pouvez vérifier ce qu’une exécution a fait avec `--audit-output audit.json`, et ce que la
 protection autorise avec `--validate-operations` :

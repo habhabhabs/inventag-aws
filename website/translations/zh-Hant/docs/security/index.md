@@ -32,7 +32,7 @@ sidebar_position: 1
   `stepfunctions:GetActivityTask`、Lake Formation 的四個 `GetTemporary...Credentials` 呼叫，
   以及 `payment-cryptography:GetParametersForImport` 和 `GetParametersForExport`：
   它們的名稱看起來像讀取，但它們會簽發權杖、憑證或金鑰材料，或者領取一個正在等待處理的活動任務。拒絕列表中的每個條目都會與 AWS SDK 的操作列表進行核對。
-  它始終開啟。
+  它始終開啟。防護按名稱識別操作。較新的 AWS SDK 新增的操作，只要名稱以讀取類字首開頭就會被允許，直到某個 InvenTag 發行版為它命名。
 - **登入仍然可用。** 防護允許 AWS SDK 把 IAM Identity Center（SSO）、Web 身份或 `aws login`
   權杖換成憑證。它只允許以下四個未簽名的呼叫：`sso:GetRoleCredentials`、
   `sso-oidc:CreateToken`、`sts:AssumeRoleWithWebIdentity` 和 `signin:CreateOAuth2Token`。
@@ -50,7 +50,7 @@ sidebar_position: 1
 - **它的檔案是私有的。** 報告、快照和日誌建立時只有你的使用者可讀。
 
   未針對 Windows 驗證：檔案只有你的使用者可讀。
-- **它的日誌會隱藏機密。** 會話權杖、金鑰、請求籤名以及上面提到的被遮蓋的值都會被隱藏，即使使用 `--debug` 也是如此。
+- **它的日誌會隱藏機密。** 會話權杖、金鑰、請求籤名以及上面提到的被遮蓋的值都會被隱藏，即使使用 `--debug` 也是如此。已知有一個例外：使用 `--debug` 時，AWS 以列表形式返回、且欄位名會被遮蓋的機密，可能出現在日誌檔案中。見[功能狀態](../getting-started/status.md#security-notes)。
 
 你可以用 `--audit-output audit.json` 檢查一次執行做了什麼，用 `--validate-operations`
 檢查防護允許什麼：
