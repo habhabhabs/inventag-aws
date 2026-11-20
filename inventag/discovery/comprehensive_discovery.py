@@ -2506,12 +2506,18 @@ class ComprehensiveAWSDiscovery:
         self._detail_pool = pool
         finished = False
         try:
-            futures = {
-                index: pool.submit(run, jobs[index][0], jobs[index][1])
-                for index in order
-            }
+            futures: Dict[int, Any] = {}
+            for index in order:
+                try:
+                    futures[index] = pool.submit(run, jobs[index][0], jobs[index][1])
+                except RuntimeError:
+                    # The pool was shut down by ``stop_detail_calls`` while
+                    # the jobs were still being queued: the rest do not run.
+                    break
             for index in range(len(jobs)):
-                future = futures[index]
+                future = futures.get(index)
+                if future is None:
+                    continue  # stays (False, DetailCallsStopped)
                 try:
                     results[index] = (True, future.result())
                 except CancelledError:
