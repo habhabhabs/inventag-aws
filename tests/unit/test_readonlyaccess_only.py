@@ -539,7 +539,8 @@ def test_R3_provisional_the_audit_file_holds_the_same_permissions_list(
 
 
 UPLOAD_LINE = (
-    "Permissions: 1 action(s) were not allowed for account 123456789012: "
+    "Permissions: 1 action(s) were not allowed for the identity that uploads the "
+    "reports (the default credentials): "
     "s3:PutObject. Effect: the reports were not uploaded. "
     "s3:PutObject is not in ReadOnlyAccess; it is needed only for "
     "uploading the reports (--s3-bucket)."
@@ -581,11 +582,12 @@ def test_R4_provisional_readonlyaccess_cannot_upload_reports_and_the_run_ends_wi
         Bucket="w1-report-bucket"
     )
     assert objects.get("KeyCount", 0) == 0
-    # W2: the block names s3:PutObject once, for the account that uploads, and the key holds it
+    # W2: the block names s3:PutObject once, and the key holds it. SEC1 (security
+    # P3-3): the upload uses the default credentials, so no account id is named.
     assert run.permission_lines == [UPLOAD_LINE]
     assert run.results["permissions_denied"] == [
         {
-            "account": DEFAULT_ACCOUNT,
+            "account": "",
             "action": "s3:PutObject",
             "service": "s3",
             "operation": "PutObject",
