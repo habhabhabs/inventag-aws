@@ -361,7 +361,8 @@ def test_the_macos_smoke_jobs_unpack_run_scan_and_remove():
         assert job["needs"] == ["plan", f"build-macos-{cpu}"]
         text = _run_text(name)
         assert "tar -xzf" in text
-        assert "inventag selftest" in text
+        assert '"$BIN/inventag" selftest' in text
+        assert '"inventag $VERSION"' in text
         assert "scripts/packaging/smoke_scan.py" in text
         assert "rm -rf" in text
         for check in ("bash -n", "zsh -n"):
