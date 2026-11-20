@@ -97,16 +97,6 @@ def test_a_transient_throttle_under_the_limiter_gives_the_result_of_a_clean_run(
 
 
 @needs_a2
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "A3 (and A2): the key's limit can only be seen on detail calls that run in a pool; "
-        "until A3 runs them in parallel there is nothing to halve. Written against plan 2.3 "
-        "(halve on a throttling answer, floor 1, no new request of that key before a pause), "
-        "not yet run against code: if it fails for another reason when A3 is merged, check "
-        "the assertion before the code"
-    ),
-)
 def test_a_throttle_halves_only_the_limit_of_its_own_key(scans):
     """Detail calls of ``lambda`` (cap 4) are throttled once each. After the first throttled
     answer no more than 2 requests of that key are in flight at once; the throttled
