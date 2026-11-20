@@ -70,7 +70,7 @@ def rendered(rf):
 
 # --------------------------------------------------------------- the render
 def test_the_version_and_three_checksums_are_filled_in(rendered):
-    assert f'version "{VERSION}"' in rendered
+    assert f"/inventag-{VERSION}-" in rendered
     for key, name in ARCHIVES.items():
         assert digest(name) in rendered, key
     assert rendered.count("sha256 ") == 3
@@ -79,7 +79,7 @@ def test_the_version_and_three_checksums_are_filled_in(rendered):
 
 def test_each_checksum_sits_under_the_url_of_its_own_archive(rendered):
     pairs = re.findall(
-        r'url ".*?/inventag-#\{version\}-([a-z0-9_-]+)\.tar\.gz"'
+        rf'url ".*?/inventag-{re.escape(VERSION)}-([a-z0-9_-]+)\.tar\.gz"'
         r'\s+sha256 "([0-9a-f]{64})"',
         rendered,
     )
@@ -87,7 +87,7 @@ def test_each_checksum_sits_under_the_url_of_its_own_archive(rendered):
 
 
 def test_the_urls_point_at_the_github_release_of_this_repository(rendered):
-    base = "https://github.com/habhabhabs/inventag-aws/releases/download/v#{version}/"
+    base = f"https://github.com/habhabhabs/inventag-aws/releases/download/v{VERSION}/"
     urls = re.findall(r'url "([^"]+)"', rendered)
     assert len(urls) == 3
     assert all(u.startswith(base) for u in urls)
@@ -277,7 +277,7 @@ def test_the_script_runs_as_a_program(tmp_path):
         check=False,
     )
     assert done.returncode == 0, done.stderr
-    assert f'version "{VERSION}"' in done.stdout
+    assert f"/inventag-{VERSION}-" in done.stdout
 
 
 # ------------------------------------------------------------ the template
@@ -287,10 +287,11 @@ def test_the_template_holds_no_version_number():
     assert not re.search(r"(?<![\w.])v?\d+\.\d+\.\d+(?![\w.])", text)
 
 
-def test_the_template_has_the_four_placeholders():
+def test_the_template_has_the_five_placeholders():
     text = TEMPLATE.read_text("utf-8")
     assert set(re.findall(r"\{\{([A-Z0-9_]+)\}\}", text)) == {
         "VERSION",
+        "BASE_URL",
         "SHA256_DARWIN_ARM64",
         "SHA256_LINUX_X86_64",
         "SHA256_LINUX_ARM64",
@@ -359,9 +360,7 @@ def test_the_formula_follows_the_homebrew_text_rules(rendered):
     assert len(desc) <= 80 and not desc.endswith(".")
     assert not re.match(r"(?i)(a|an|the)\s", desc)
     assert "inventag" not in desc.lower().split()[0]
-    order = [
-        rendered.index(k) for k in ('desc "', 'homepage "', 'version "', 'license "')
-    ]
+    order = [rendered.index(k) for k in ('desc "', 'homepage "', 'license "')]
     assert order == sorted(order)
 
 
@@ -383,3 +382,99 @@ def test_the_rendered_formula_and_the_template_pass_ruby_c(rendered, tmp_path):
         )
         assert done.returncode == 0, done.stderr
         assert "Syntax OK" in done.stdout
+
+
+# ------------------------------------------- B4b: literal version, caveats (rows 13, 14)
+def test_the_formula_has_no_version_line_and_no_interpolated_version(rendered):
+    # Homebrew reads the version from the URL; an explicit line beside versioned
+    # URLs is flagged by brew audit (architect triage, row 13).
+    assert not re.search(r"^\s*version\s", rendered, re.M)
+    assert "#{version}" not in rendered.split("def install", 1)[0]
+    for url in re.findall(r'url "([^"]+)"', rendered):
+        assert f"v{VERSION}/inventag-{VERSION}-" in url
+
+
+def test_the_caveats_say_where_the_third_party_licences_are(rendered):
+    assert "def caveats" in rendered
+    caveats = rendered.split("def caveats", 1)[1].split("\n  end\n", 1)[0]
+    assert (
+        "Third-party licences: see THIRD-PARTY-LICENSES.txt "
+        "in the installation directory"
+    ) in caveats
+    assert 'license "MIT"' in rendered  # the field still names InvenTag's licence
+    assert "all_of" not in rendered
+
+
+# ------------------------------------------- B4b: the file:// render mode (row 16)
+def archive_dir(tmp_path):
+    folder = tmp_path / "archives dir"  # a space: the URL must be encoded
+    folder.mkdir()
+    return folder
+
+
+def test_archive_dir_turns_the_three_urls_into_file_urls(rf, tmp_path):
+    folder = archive_dir(tmp_path)
+    text = rf.render(
+        TEMPLATE.read_text("utf-8"), VERSION, sums_text(), archive_dir=folder
+    )
+    base = folder.as_uri()
+    assert base.startswith("file:///") and "%20" in base
+    urls = re.findall(r'url "([^"]+)"', text)
+    assert sorted(urls) == sorted(f"{base}/{name}" for name in ARCHIVES.values())
+    assert "/releases/download/" not in text
+    assert not re.search(r"^\s*version\s", text, re.M)
+    for name in ARCHIVES.values():
+        assert digest(name) in text
+
+
+def test_archive_dir_changes_nothing_but_the_urls(rf, tmp_path):
+    folder = archive_dir(tmp_path)
+    template = TEMPLATE.read_text("utf-8")
+    plain = rf.render(template, VERSION, sums_text())
+    local = rf.render(template, VERSION, sums_text(), archive_dir=folder)
+    strip = re.compile(r'url "[^"]+"')
+    assert strip.sub("", plain) == strip.sub("", local)
+
+
+def test_archive_dir_must_be_an_absolute_existing_folder(rf, tmp_path):
+    template = TEMPLATE.read_text("utf-8")
+    for bad in (Path("relative/dir"), tmp_path / "missing"):
+        with pytest.raises(rf.RenderError, match="archive-dir"):
+            rf.render(template, VERSION, sums_text(), archive_dir=bad)
+    a_file = tmp_path / "file"
+    a_file.write_text("x")
+    with pytest.raises(rf.RenderError, match="archive-dir"):
+        rf.render(template, VERSION, sums_text(), archive_dir=a_file)
+
+
+def test_the_command_takes_archive_dir_and_writes_the_formula(rf, tmp_path, capsys):
+    folder = archive_dir(tmp_path)
+    target = tmp_path / "out" / "inventag.rb"
+    code, out, err = run_cli(
+        rf,
+        tmp_path,
+        capsys,
+        sums_text(),
+        "--archive-dir",
+        str(folder),
+        "--output",
+        str(target),
+    )
+    assert (code, out, err) == (0, "", "")
+    assert f'url "{folder.as_uri()}/{ARCHIVES["darwin-arm64"]}"' in target.read_text(
+        "utf-8"
+    )
+
+
+def test_the_command_refuses_a_relative_archive_dir_with_exit_2(rf, tmp_path, capsys):
+    code, out, err = run_cli(rf, tmp_path, capsys, sums_text(), "--archive-dir", "x")
+    assert code == 2 and out == ""
+    assert err.startswith("render_formula: ") and "archive-dir" in err
+    assert err.count("\n") == 1
+
+
+def test_the_default_render_is_unchanged_by_the_new_option(rf):
+    template = TEMPLATE.read_text("utf-8")
+    assert rf.render(template, VERSION, sums_text()) == rf.render(
+        template, VERSION, sums_text(), archive_dir=None
+    )
