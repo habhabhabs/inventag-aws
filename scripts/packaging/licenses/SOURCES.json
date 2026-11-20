@@ -13,6 +13,19 @@
       "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
       "bytes": 26530
     },
+    "cpython-v3.12.10-Doc-license.rst": {
+      "component": "libmpdec (in CPython's _decimal, macOS): its section 'libmpdec'",
+      "repository": "https://github.com/python/cpython",
+      "tag": "v3.12.10",
+      "commit": "not read: api.github.com refused the request (HTTP 403) in the recorded run",
+      "address": "https://raw.githubusercontent.com/python/cpython/v3.12.10/Doc/license.rst",
+      "http_status": 200,
+      "sha256": "341832873fd316a37927e79385093fbbfd40a467428480835fe435a80cadf4e5",
+      "bytes": 54130,
+      "fetched": "2026-11-20T08:06:39Z",
+      "how": "one recorded --net run in the sandbox, run by the manager with the owner's approval in chat (20 Nov 2026; scratch-b2f/bin/fetch-cpython.sh); file stored unchanged",
+      "note": "the tag's tree has no licence file for libmpdec (libmpdec/LICENSE.txt, libmpdec/COPYRIGHT.txt and _decimal/LICENSE.txt: HTTP 404); the notice is this file's section 'libmpdec', which says _decimal is built from the included copy unless --with-system-libmpdec; the address names the tag without refs/tags/"
+    },
     "expat-COPYING": {
       "component": "expat (in CPython's pyexpat, macOS)",
       "repository": "https://github.com/libexpat/libexpat",
