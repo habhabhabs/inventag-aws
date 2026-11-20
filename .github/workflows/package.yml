@@ -1,6 +1,6 @@
 name: Package
 
-# Builds the packaged forms of one release tag: the executable for four
+# Builds the packaged forms of one release tag: the executable for three
 # systems (a directory, as .tar.gz), a .deb and an .rpm for both Linux CPUs,
 # smoke tests on fresh systems, checksums, SBOMs and build attestations
 # (plan v14 section 3.5). Called by release.yml as its last job, after the PyPI
@@ -495,62 +495,6 @@ jobs:
         if-no-files-found: error
         retention-days: 7
 
-  build-macos-x86_64:
-    name: Build (macOS x86_64)
-    needs: plan
-    if: needs.plan.outputs.include_macos == 'true'
-    runs-on: macos-15-intel
-    permissions:
-      contents: read
-    env:
-      CPU: x86_64
-      VERSION: ${{ needs.plan.outputs.version }}
-    steps:
-    - name: Checkout the tag
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      with:
-        ref: ${{ needs.plan.outputs.ref }}
-        persist-credentials: false
-
-    - name: Set up Python 3.12
-      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-      with:
-        python-version: '3.12'
-
-    # build_binary.sh writes the archive with GNU tar options (--sort, --owner).
-    - name: Put GNU tar first on the PATH
-      run: |
-        brew install gnu-tar
-        echo "$(brew --prefix gnu-tar)/libexec/gnubin" >> "$GITHUB_PATH"
-
-    - name: Install the build environment from the hash-pinned locks
-      run: bash scripts/packaging/build_binary.sh venv "$RUNNER_TEMP/venv" python
-
-    - name: Build the executable, check the licences, run selftest, write the archive
-      run: |
-        SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
-        export SOURCE_DATE_EPOCH
-        bash scripts/packaging/build_binary.sh build "$RUNNER_TEMP/venv" "$RUNNER_TEMP/work"
-
-    - name: Collect the files of this build
-      run: |
-        out="$RUNNER_TEMP/work"
-        up="$RUNNER_TEMP/upload"
-        mkdir -p "$up"
-        base="inventag-${VERSION}-darwin-${CPU}"
-        cp "$out/$base.tar.gz" "$up/"
-        cp "$out/dist/inventag/THIRD-PARTY-LICENSES.txt" "$up/$base.THIRD-PARTY-LICENSES.txt"
-        cp "$out/components.json" "$up/$base.components.json"
-        ls -l "$up"
-
-    - name: Upload the files of this build
-      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-      with:
-        name: build-macos-x86_64
-        path: ${{ runner.temp }}/upload/*
-        if-no-files-found: error
-        retention-days: 7
-
   # Fresh systems: install each format the way a user does, run the commands,
   # scan a simulated AWS (a moto server started here, outside the executable),
   # remove the package and check that nothing is left. The container shares the
@@ -794,68 +738,6 @@ jobs:
         if-no-files-found: warn
         retention-days: 7
 
-  smoke-macos-x86_64:
-    name: Smoke (macOS x86_64)
-    needs: [plan, build-macos-x86_64]
-    if: needs.plan.outputs.include_macos == 'true'
-    runs-on: macos-15-intel
-    permissions:
-      contents: read
-    env:
-      VERSION: ${{ needs.plan.outputs.version }}
-      CPU: x86_64
-    steps:
-    - name: Checkout the tag
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      with:
-        ref: ${{ needs.plan.outputs.ref }}
-        persist-credentials: false
-
-    - name: Download the build
-      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-      with:
-        name: build-macos-x86_64
-        path: ${{ runner.temp }}/artifacts
-
-    - name: Set up Python 3.12 for the moto server
-      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-      with:
-        python-version: '3.12'
-
-    - name: Install moto (the version of requirements-dev.txt)
-      run: python -m pip install "moto[server]==5.2.5"
-
-    - name: Unpack, run, check the man page and the completions
-      run: |
-        mkdir -p "$RUNNER_TEMP/install"
-        tar -xzf "$RUNNER_TEMP/artifacts/inventag-${VERSION}-darwin-${CPU}.tar.gz" -C "$RUNNER_TEMP/install"
-        BIN="$RUNNER_TEMP/install/inventag"
-        test "$(env -i PATH=/usr/bin:/bin "$BIN/inventag" --version)" = "inventag $VERSION"
-        env -i PATH=/usr/bin:/bin HOME="$RUNNER_TEMP" "$BIN/inventag" selftest
-        man -l "$BIN/share/man/man1/inventag.1" > "$RUNNER_TEMP/man.txt"
-        grep -q -i inventag "$RUNNER_TEMP/man.txt"
-        bash -n "$BIN/share/completions/inventag.bash"
-        zsh -n "$BIN/share/completions/_inventag"
-
-    - name: Scan a simulated AWS with the unpacked program
-      run: |
-        python scripts/packaging/smoke_scan.py --keep "$RUNNER_TEMP/smoke-keep" -- \
-          "$RUNNER_TEMP/install/inventag/inventag"
-
-    - name: Remove the directory and check that nothing is left
-      run: |
-        rm -rf "$RUNNER_TEMP/install"
-        test ! -e "$RUNNER_TEMP/install"
-
-    - name: Keep the scan evidence
-      if: always()
-      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-      with:
-        name: smoke-macos-x86_64
-        path: ${{ runner.temp }}/smoke-keep
-        if-no-files-found: warn
-        retention-days: 7
-
   # The primary install path of the docs (pipx), proven from the wheel of the
   # tag. The wheel is built here from the tagged source; the PyPI file is the
   # same source built by release.yml.
@@ -904,12 +786,10 @@ jobs:
     - build-linux-x86_64
     - build-linux-arm64
     - build-macos-arm64
-    - build-macos-x86_64
     - smoke-linux
     - smoke-macos-arm64
-    - smoke-macos-x86_64
     - smoke-pipx
-    # With INCLUDE_MACOS off the four macOS jobs are skipped, and a skipped
+    # With INCLUDE_MACOS off the two macOS jobs are skipped, and a skipped
     # job in `needs` would skip this one too. This runs unless something
     # failed or the run was cancelled; the step below checks the files.
     if: ${{ !cancelled() && !failure() }}
@@ -950,10 +830,8 @@ jobs:
         want 'inventag-*.x86_64.rpm'
         want 'inventag-*.aarch64.rpm'
         if [ "$INCLUDE_MACOS" = true ]; then
-          for cpu in arm64 x86_64; do
-            want "inventag-${VERSION}-darwin-${cpu}.tar.gz"
-            want "inventag-${VERSION}-darwin-${cpu}.THIRD-PARTY-LICENSES.txt"
-          done
+          want "inventag-${VERSION}-darwin-arm64.tar.gz"
+          want "inventag-${VERSION}-darwin-arm64.THIRD-PARTY-LICENSES.txt"
         elif compgen -G '*darwin*' > /dev/null; then
           echo "::error::macOS files are in the builds although INCLUDE_MACOS is off."
           status=1
