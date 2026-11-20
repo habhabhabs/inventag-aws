@@ -134,6 +134,8 @@ jobs:
 
     - name: Generate security summary
       shell: bash
+      env:
+        REF_NAME: ${{ github.ref_name }}
       run: |
         echo "📊 Generating Security Summary"
         echo "============================="
@@ -163,7 +165,7 @@ jobs:
           echo ""
           echo "**Date**: $(date)"
           echo "**Repository**: ${{ github.repository }}"
-          echo "**Branch**: ${{ github.ref_name }}"
+          echo "**Branch**: ${REF_NAME}"
           echo ""
           echo "## Results"
           echo "- Bandit (Python) issues: $BANDIT_ISSUES"

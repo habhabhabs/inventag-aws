@@ -157,6 +157,8 @@ jobs:
 
       - name: Create SBOM summary documentation
         shell: bash  
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
           echo "📄 Creating enhanced SBOM summary with tables..."
           # Create enhanced SBOM summary with tables
@@ -172,7 +174,7 @@ jobs:
             echo ":::info Build Information"
             echo "- **Generated**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
             echo "- **Repository**: ${{ github.repository }}"
-            echo "- **Branch**: ${{ github.ref_name }}"
+            echo "- **Branch**: ${REF_NAME}"
             echo "- **Commit**: [\`${{ github.sha }}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})"
             echo ":::"
             echo ""
