@@ -73,6 +73,8 @@ class SlowOrFastInventory:
     clock = None
     calls_after_limit = 0
     fast_done = None
+    # False: the test sets fast_done itself, after the fast account is saved.
+    set_fast_done_on_return = True
 
     def __init__(self, session, regions, **kwargs):
         self.session = session
@@ -92,7 +94,7 @@ class SlowOrFastInventory:
                     SlowOrFastInventory.calls_after_limit += 1
                 except Exception:
                     pass
-        else:
+        elif SlowOrFastInventory.set_fast_done_on_return:
             SlowOrFastInventory.fast_done.set()
         return [resource]
 
@@ -383,10 +385,21 @@ def test_resume_reuses_finished_accounts_only_when_asked(aws, tmp_path, fake_sto
     assert fake_store.cleared == 1 and fake_store.saved == {}
 
 
-def test_timed_out_account_is_not_checkpointed(aws, tmp_path, fake_store):
+def test_timed_out_account_is_not_checkpointed(aws, tmp_path, fake_store, monkeypatch):
     clock = FakeClock()
     SlowOrFastInventory.clock = clock
     SlowOrFastInventory.fast_done = __import__("threading").Event()
+    # The slow account moves the shared fake clock past the limit. It must do
+    # this only after the fast account is saved, or a slow runner makes the
+    # fast account time out before its checkpoint.
+    monkeypatch.setattr(SlowOrFastInventory, "set_fast_done_on_return", False)
+    original_save = fake_store.save_account
+
+    def save_then_release(self, account_id, resources, regions=None):
+        original_save(self, account_id, resources, regions)
+        SlowOrFastInventory.fast_done.set()
+
+    monkeypatch.setattr(fake_store, "save_account", save_then_release)
     config = MultiAccountConfig(
         accounts=[], output_directory=str(tmp_path), account_processing_timeout=60
     )
