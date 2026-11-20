@@ -46,7 +46,11 @@ def test_selftest_exit_code_is_passed_through(monkeypatch):
 def test_completion_word_prints_the_script(shell, capsys):
     assert run_main("completion", shell) == 0
     out = capsys.readouterr().out
-    assert out.startswith(f"# {shell} completion for inventag")
+    # zsh's script starts with its "#compdef inventag" line.
+    assert any(
+        line.startswith(f"# {shell} completion for inventag")
+        for line in out.splitlines()[:2]
+    )
     # The new commands are offered by the script itself.
     assert "selftest" in out and "completion" in out
 
