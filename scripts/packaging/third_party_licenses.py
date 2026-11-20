@@ -246,6 +246,8 @@ LINUX_ROWS: Tuple[Row, ...] = (
                 "libffi (in cffi)",
                 "MIT",
                 ("pkgdoc:/usr/share/doc/libffi8/copyright",),
+                # Linked statically: the module defines ffi_prep_cif itself.
+                requires_strings=b"ffi_prep_cif",
             ),
         ),
     ),
