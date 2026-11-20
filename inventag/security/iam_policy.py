@@ -244,3 +244,99 @@ def all_policy_actions(policy: Optional[Dict] = None) -> List[str]:
         value = statement["Action"]
         actions.extend([value] if isinstance(value, str) else value)
     return actions
+
+
+# ---------------------------------------------------------------------------
+# From a call to the IAM action it needs (W2, the permissions summary of a run).
+#
+# The coverage ledger names a call by the discovery table's key and operation:
+# the key is not always a botocore service name ("msk" is read with the "kafka"
+# client) and the operation is not always the API name ("list_clusters_v2").
+# ``action_for`` turns either form into the IAM action, from the tables of this
+# module only. It never guesses: a call it has no action for gives None.
+# ---------------------------------------------------------------------------
+
+# Discovery table keys whose client is another botocore service. A test keeps
+# this equal to the ``client_service`` entries of the table.
+LEDGER_CLIENT_SERVICES: Dict[str, str] = {
+    "cognito": "cognito-idp",
+    "msk": "kafka",
+    "vpc": "ec2",
+    "wafv2-cloudfront": "wafv2",
+}
+
+# Calls that need an action which ``READ_ONLY_ACTIONS`` does not key by that
+# call: the classic load balancer API shares the action of the v2 API, and the
+# identity and upload calls are outside the read-only policy file.
+_OTHER_ACTIONS: Dict[Tuple[str, str], str] = {
+    ("elb", "DescribeLoadBalancers"): "elasticloadbalancing:DescribeLoadBalancers",
+    ("sts", "GetCallerIdentity"): "sts:GetCallerIdentity",
+    ("sts", "AssumeRole"): "sts:AssumeRole",
+    ("s3", "PutObject"): "s3:PutObject",
+}
+
+_APIGATEWAY_SERVICES = ("apigateway", "apigatewayv2")
+
+_ACTION_OF_CALL: Dict[Tuple[str, str], str] = {
+    target: action for action, target in READ_ONLY_ACTIONS.items()
+}
+_ACTION_OF_CALL.update(_OTHER_ACTIONS)
+
+# The actions of InvenTag that the AWS managed policy ``ReadOnlyAccess`` does
+# not include, each with the one feature that needs it. Everything else in
+# ``all_policy_actions()`` and ``sts:GetCallerIdentity`` it includes (checked
+# against the policy text, see tests/data/aws-managed/SOURCE.json). A test keeps
+# this table equal to that fixture. The application does not carry AWS's policy.
+NOT_IN_READONLYACCESS: Dict[str, str] = {
+    "sts:AssumeRole": "scanning other accounts through a role",
+    "s3:PutObject": "uploading the reports (--s3-bucket)",
+    "kms:GenerateDataKey": "uploading the reports with a KMS key (--s3-bucket)",
+}
+
+
+def _api_name(service: str, operation: str) -> Optional[str]:
+    """The botocore API name of ``operation`` (``list_buckets`` -> ``ListBuckets``).
+
+    None when botocore has no such service or operation.
+    """
+    import botocore.session
+    from botocore import xform_name
+    from botocore.exceptions import BotoCoreError
+
+    try:
+        model = botocore.session.get_session().get_service_model(service)
+    except BotoCoreError:
+        return None
+    names = model.operation_names
+    if operation in names:
+        return operation
+    for name in names:
+        if xform_name(name) == operation:
+            return name
+    return None
+
+
+def action_for(service: str, operation: str) -> Optional[str]:
+    """The IAM action a call needs, or None when InvenTag does not know it.
+
+    ``service`` is a botocore service name or a key of the discovery table;
+    ``operation`` is the API name or its snake_case form.
+    """
+    if not service or not operation:
+        return None
+    service = LEDGER_CLIENT_SERVICES.get(service, service)
+    api = _api_name(service, operation)
+    if api is None:
+        return None
+    if service in _APIGATEWAY_SERVICES and api.startswith("Get"):
+        return "apigateway:GET"  # API Gateway authorises by HTTP verb
+    return _ACTION_OF_CALL.get((service, api))
+
+
+def in_readonlyaccess(action: str) -> Optional[bool]:
+    """Whether ``ReadOnlyAccess`` includes ``action``; None when InvenTag has not checked."""
+    if action in NOT_IN_READONLYACCESS:
+        return False
+    if action == "sts:GetCallerIdentity" or action in all_policy_actions():
+        return True
+    return None
