@@ -56,6 +56,21 @@ def test_no_version_number_under_packaging():
     assert not found, "version numbers under packaging/:\n" + "\n".join(found)
 
 
+def test_the_version_check_skips_bytecode_left_by_a_build(tmp_path):
+    # A PyInstaller build leaves hooks/__pycache__/*.pyc under packaging/; they
+    # are not tracked files (architect review of B3, ruling 4 (c)).
+    hooks = tmp_path / "packaging" / "hooks"
+    (hooks / "__pycache__").mkdir(parents=True)
+    (hooks / "__pycache__" / "hook-x.cpython-312.pyc").write_bytes(b"\xff\xfe 1.2.3")
+    (hooks / "stray.pyc").write_bytes(b"\xff\xfe 1.2.3")
+    (hooks / "hook-x.py").write_text("name = 'x'\n", encoding="utf-8")
+    assert _version_lines(tmp_path / "packaging") == []
+    (hooks / "hook-x.py").write_text("version = '1.2.3'\n", encoding="utf-8")
+    assert _version_lines(tmp_path / "packaging") == [
+        "packaging/hooks/hook-x.py:1: version = '1.2.3'"
+    ]
+
+
 def test_the_version_check_would_see_a_version():
     assert VERSION_RX.search("version: 1.4.0")
     assert VERSION_RX.search("inventag-v1.4.0-linux")
