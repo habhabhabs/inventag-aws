@@ -152,6 +152,8 @@ InvenTag 會在沒有帳單資料的情況下繼續，執行也會成功，所�
 ```text title="輸出 (simulated AWS error response)"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
+inventag - WARNING - Notes about this run:
+inventag - WARNING -   - Permissions: 1 action(s) were not allowed for account 123456789012: ce:GetCostAndUsage. Effect: billing checks are skipped. All of them are in the AWS managed policy ReadOnlyAccess.
 ```
 
 ```bash title="Terminal"
@@ -171,6 +173,8 @@ echo $?
 [AWS Account 123456789012 (moto)] inventag.discovery.inventory - DEBUG - Cost Explorer detail: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
 [AWS Account 123456789012 (moto)] inventag.discovery.comprehensive_discovery - DEBUG - Cost Explorer detail: An error occurred (AccessDeniedException) when calling the GetCostAndUsage operation: User: arn:aws:sts::123456789012:assumed-role/InvenTagReadOnly/session is not authorized to perform: ce:GetCostAndUsage
 ```
+
+執行備註中的 `Permissions:` 行會指出被拒絕的操作。見[執行備註裡有一行 Permissions](#the-run-notes-have-a-permissions-line)。
 
 **解決辦法：** 把 `ce:GetCostAndUsage` 新增到策略中，或者接受缺少帳單資料。
 
@@ -192,6 +196,22 @@ AWS 錯誤在除錯級別記錄。請用同一個身份執行對應的 AWS CLI �
 
 **解決辦法：** 使用 `config/defaults/iam-policy-read-only.json` 中的策略，它涵蓋了 InvenTag 發出的每個呼叫。
 見 [IAM 權限](../reference/iam-permissions.md)。
+
+### 執行備註裡有一行 Permissions {#the-run-notes-have-a-permissions-line}
+
+**你會看到：** 執行備註裡有一行以 `Permissions:` 開頭。它出現在執行結束後的控制檯上，也出現在 Excel 報告的「執行備註」（Run notes）中。每個無權使用某個 IAM 操作的帳戶有一行。沒有被拒絕任何操作的執行不會輸出這樣的行。下面是一次離線執行中的一行，所用策略缺少五個操作（範例資料）：
+
+```text
+Permissions: 5 action(s) were not allowed for account 123456789012: ce:GetCostAndUsage, lambda:GetFunctionConfiguration, pricing:GetProducts, s3:GetBucketLocation, tag:GetResources. Effect: some rows lack details; tags from the Tagging API are missing; billing checks are skipped; cost estimates are missing. All of them are in the AWS managed policy ReadOnlyAccess.
+```
+
+這一行按順序列出每個操作。`Effect:` 之後說明報告因此缺少什麼。最後一句說明 AWS 託管策略 `ReadOnlyAccess` 是否包含這些操作。如果 InvenTag 不知道某個呼叫對應的 IAM 操作，就用它的 API 名稱，並加上 `(IAM action not known to InvenTag)`。
+
+**原因：** 該身份無權使用這些操作。InvenTag 只能看到 AWS 拒絕了呼叫。它無法分辨是身份策略、服務控制策略還是權限邊界拒絕的。
+
+未針對真實的 AWS 驗證：所列出的操作取自 InvenTag 自己的表格，而服務控制策略或權限邊界的拒絕也會顯示為該操作。
+
+**解決辦法：** 把列出的操作加入策略，或接受報告缺少 `Effect` 文字所說的內容。同樣的列表在 `--audit-output` 檔案的鍵 `permissions_denied` 中。見[僅使用 ReadOnlyAccess 執行](./read-only-access.md#run-with-only-readonlyaccess)。
 
 ### 被唯讀防護阻止 {#blocked-by-the-read-only-guard}
 
@@ -281,10 +301,12 @@ ec2:DescribeRegions is denied in every region, so region access cannot be checke
 sqs list_queues in us-east-1 failed (ThrottlingException); its resources there may be incomplete.
 ```
 
-**解決辦法：** 減少同時掃描的帳戶數（`--max-concurrent-accounts 2`），掃描更少的區域，
+**解決辦法：** 減少同時傳送的請求數（`--concurrency 16`），減少同時掃描的帳戶數（`--max-concurrent-accounts 2`），掃描更少的區域，
 或給大型帳戶更多時間（`--account-processing-timeout 3600`）。
 
-未針對真實的 AWS 驗證：同時掃描更少的帳戶或區域可以減少限流。
+收到限流回應後，InvenTag 也會降低它自己對該服務和區域的上限。見[併發](./run-a-scan.md#when-aws-throttles)。
+
+未針對真實的 AWS 驗證：同時傳送更少的請求、掃描更少的帳戶或區域可以減少限流。
 
 ## 時間限制和部分結果 {#time-limits-and-partial-results}
 
@@ -295,6 +317,8 @@ Resource discovery failed for account 123456789012: timed out after 60 seconds (
 ```
 
 該帳戶算作失敗，但在限制之前找到的資源會進入報告，並且「執行備註」會寫出該帳戶。其他帳戶會保留。如果沒有任何帳戶完成，InvenTag 仍會寫出報告，記錄 `No account finished within its time limit (--account-processing-timeout)`，並以結束代碼 1 結束。（訊息文字來自 60 秒限制的離線執行。）
+
+在 `--concurrency` 下等待空閒名額的請求計入時間限制。
 
 **解決辦法：** 提高 `--account-processing-timeout`（預設 1800），掃描更少的區域或服務，或減少同時掃描的帳戶數。用 `--resume` 執行同一條命令，只掃描沒有完成的帳戶。
 
@@ -317,7 +341,7 @@ Stopped by the user (Ctrl-C). No report was written.
 Terminated (SIGTERM). No report was written.
 ```
 
-如果已經寫出了報告檔案，這行訊息會改為 `1 report file(s) already written stay in <output folder>.`。Ctrl-C 以結束代碼 1 結束。SIGTERM 在輸出這行訊息後，由該訊號結束程序。
+訊號之後不會再發起新的 AWS 請求，等待空閒名額的請求會立即結束。如果已經寫出了報告檔案，這行訊息會改為 `1 report file(s) already written stay in <output folder>.`。Ctrl-C 以結束代碼 1 結束。SIGTERM 在輸出這行訊息後，由該訊號結束程序。
 
 ### 已儲存的結果沒有被重用 {#saved-results-are-not-reused}
 
@@ -423,6 +447,8 @@ inventag: error: --resume: needs state management (saved results live in the sta
 ```
 
 超出範圍的值會以結束代碼 1 停止，並寫出選項名稱：`--max-concurrent-accounts must be a positive integer`、`--account-processing-timeout must be at least 60 seconds`、`--resume-max-age-hours must be above 0 and at most 168`。`--state-retention-days` 或 `--state-max-snapshots` 的值如果不是數字，則以結束代碼 2 停止：`expected a whole number or 'none'`。
+
+`--concurrency` 的值如果不是 1 到 256 的整數，會以結束代碼 2 停止：`inventag: error: argument --concurrency: must be a whole number from 1 to 256, not '0'`。
 
 用於 `--audit-output`、`--log-file` 或 `--output-directory` 的路徑如果無法寫入，執行會在開始時（任何 AWS 呼叫之前）停止，給出指明該選項的訊息，結束代碼為 1。
 

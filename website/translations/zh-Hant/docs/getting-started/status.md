@@ -104,7 +104,10 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **範圍內沒有任何資源的標籤策略**會報告 `0 of 0 resources compliant (100.0%)`，儘管什麼都沒有檢查。
 - **你沒有權限的服務**會被跳過並記錄一條警告；只有 Resource Groups Tagging API 返回時，它的資源才會出現。
 - **因其他原因失敗的列出呼叫**（重試後仍被限流，或出現錯誤）會記為一條警告，並計入快照（`metadata.tags.coverage_summary`）。
-- **帳戶中的所有呼叫都被拒絕：** 該帳戶不算失敗，執行以結束代碼 0 結束。
+- **帳戶中的所有呼叫都被拒絕：** 該帳戶不算失敗，執行以結束代碼 0 結束。使用 `--fail-on-account-error` 時，如果某個帳戶的每個列舉都被拒絕，它仍算作已掃描，執行以結束代碼 0 結束。要讓 CI 作業在什麼都讀不到時失敗，請加上 `--fail-if-empty`。
+- **執行無權使用某個 IAM 操作：** 執行備註中，每個帳戶會輸出一列 `Permissions:`，並且 `permissions_denied` 列表會寫入 `--audit-output` 檔案（見[僅使用 ReadOnlyAccess 執行](../guides/read-only-access.md#run-with-only-readonlyaccess)）。這一行不會列出 `ec2:DescribeRegions` 或 `account:ListRegions`，帶 KMS 金鑰的上傳失敗時只會列出 `s3:PutObject`。
+
+  未針對真實的 AWS 驗證：帶 KMS 金鑰的上傳被拒絕時，S3 會點名哪個操作。
 - **從 v1.1.4 升級後的第一份變更報告**會把新覆蓋服務的資源列為新增，儘管它們之前就存在。
 - **掃描過程中會話過期**時，報告只包含會話過期前讀取到的內容，執行以結束代碼 0 結束，使用 `--fail-on-account-error` 時也是如此。未針對真實的 AWS 驗證：會話過期時 AWS 返回的錯誤程式碼。
 - **掃描開始時會話已經過期**時，不會生成報告檔案，結束代碼為 0。
@@ -116,7 +119,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 - **無法儲存的快照**（或失敗的快照列表、變更報告）會在執行摘要之後的說明中列出，並給出要檢查的資料夾，執行仍以結束代碼 0 結束。
 - **與 `--template` 一起使用的 Google 輸出**會被跳過，執行以結束代碼 0 結束。
 - **有些無效值以結束代碼 1 而不是 2 停止，** 例如 `--max-concurrent-accounts 0` 或
-  `--account-processing-timeout 0`。
+  `--account-processing-timeout 0`。`--concurrency` 的值超出 1 到 256 時，以結束代碼 2 停止。
 - **帳戶檔案 `settings` 塊中的值會覆蓋對應的命令列引數，** 例如 `max_concurrent_accounts`。
 - **使用 `--s3-bucket` 時結果為空**會讓執行以結束代碼 1 結束，並輸出 `Nothing to upload to s3://<bucket>/<prefix>/: the run wrote no report file because there are no resources to report.`，使用 `--fail-if-empty` 時也是如此。
 - **`--account-regions` 中輸入錯誤的區域名稱**只會被指出一次，並附上列出有效區域的命令，執行以結束代碼 0 結束。其他區域正常時，報告會不含該區域寫出，並且執行備註會說明這一點。
@@ -145,6 +148,10 @@ InvenTag 會把被限流的呼叫最多重試 10 次（standard 重試模式）�
 - 針對 moto（在程序內執行，因此沒有網路時間），`scripts/benchmark_scan.py --scale 60` 在一個區域中掃描了 10,948 個資源，發出了 2,053 次 API 呼叫：1,200 次 `s3:GetBucketLocation` 呼叫（每個儲存貯體一次）、600 次 `lambda:GetFunctionConfiguration` 呼叫（每個函式一次）、150 次 Resource Groups Tagging API 呼叫，以及 103 次其他呼叫。對真實帳戶有用的是呼叫次數。
 - 預設同時掃描四個帳戶（`--max-concurrent-accounts`）。每個帳戶從開始掃描起有 1800 秒
   （`--account-processing-timeout`）。
+- 一次執行最多有 64 個 AWS 請求在途（`--concurrency`），一個帳戶最多 16 個，同一個帳戶、同一個區域、同一個服務最多 4 個。收到限流回應後，InvenTag 會降低該服務和區域的上限。見[併發](../guides/run-a-scan.md#concurrency)。
+
+  未針對真實的 AWS 驗證：平行請求帶來的任何提速，以及請求上限和限流回應之後的暫停在真實 AWS 速率限制下如何表現。
+- 日誌行的順序和其中的時間戳在每次執行中可能不同。檔案不依賴執行緒的時間。
 - 當有些帳戶失敗時，已完成帳戶的結果會被儲存。在 24 小時內（`--resume-max-age-hours`）用 `--resume`
   執行同一條命令，只掃描其他帳戶。
 - Excel 工作表名稱會被截斷為 31 個字元，Excel 不允許的字元會變成 `-`，重複的名稱會加上 ` (2)`，日誌會列出每個被改名的工作表。
@@ -161,7 +168,8 @@ InvenTag 會把被限流的呼叫最多重試 10 次（standard 重試模式）�
 
 - **仍然使用唯讀 IAM 身份。** 防護會阻止寫入呼叫，而你的 IAM（身份和存取管理）策略是第二道獨立的安全網。
   參見[設定唯讀存取](../guides/read-only-access.md)。
-- **除錯日誌預設經過脫敏：** 會話權杖、金鑰、簽名以及上面列出的機密值都會被遮蓋。仍請把除錯日誌當作敏感資訊。
+- **除錯日誌預設經過脫敏：** 會話權杖、金鑰、簽名以及上面列出的機密值都會被遮蓋。仍請把除錯日誌當作敏感資訊。使用 `--debug` 時，AWS 以列表形式返回、且欄位名會被遮蓋的機密，可能出現在日誌檔案中。
+- **唯讀防護按名稱識別操作。** 較新的 AWS SDK 新增的操作，只要名稱以讀取類字首開頭就會被允許，直到某個 InvenTag 發行版為它命名。見[安全](../security/index.md)。
 - **兩個庫函式可以寫入 AWS**，前提是從你自己的 Python 程式碼中呼叫（CLI 不會呼叫它們）：
   `CredentialManager.setup_cross_account_roles()` 只在 `allow_iam_writes=True` 時執行，S3 生命週期輔助函式
   只在 `allow_bucket_writes=True` 時執行。在 CLI 執行中，唯讀防護會阻止這兩者。
