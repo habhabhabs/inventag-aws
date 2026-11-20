@@ -844,19 +844,6 @@ def test_R7_provisional_R5_then_a_full_run_adds_and_removes_nothing(aws, run_as)
     assert "The previous run did not read tagging API in us-east-1" in report["text"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "Register row A-78, blocks v1.4.0 (order S1): when a detail call is denied in one of two "
-        "runs (here s3:GetBucketLocation and lambda:GetFunctionConfiguration), the change report "
-        "lists the S3 bucket and the Lambda function as 'modified' although nothing changed. "
-        "_RunScope (inventag/state/delta_detector.py:389) skips every ledger entry whose source "
-        "is not 'service-api' (line 417), so the 'service-api-detail' entries that discovery "
-        "writes (inventag/discovery/coverage.py:30) never make a field 'not compared'. The fix "
-        "commit of S1 lifts this mark."
-    ),
-)
 def test_R7_FINDING_provisional_a_denied_detail_call_does_not_make_a_resource_modified(
     aws, run_as
 ):

@@ -620,6 +620,148 @@ class _PreviousUnread:
         )
 
 
+# Ledger source of a call that adds fields to a row a listing found
+# (``discovery.coverage.DETAIL_SOURCE``).
+_DETAIL_SOURCE = "service-api-detail"
+# The worst outcome names a unit (as the generator's ``units_not_read``).
+_OUTCOME_RANK = {"timeout": 0, "throttled": 1, "error": 2, "denied": 3}
+# The error code of a call to a service the endpoint does not know.
+_NO_SUCH_SERVICE_CODE = "404"
+
+# The fields each detail call writes into a row, by (service key, resource
+# type), as ``ComprehensiveDiscovery._enhance_*`` writes them. A failed call
+# leaves them out; S3 also keeps the region the bucket was listed in.
+_DETAIL_FIELDS: Dict[Tuple[str, str], frozenset] = {
+    ("s3", "bucket"): frozenset({"region", "raw_data.boto3_region"}),
+    ("lambda", "function"): frozenset(
+        {
+            "raw_data.boto3_config",
+            "raw_data.runtime",
+            "raw_data.memory_size",
+            "raw_data.timeout",
+        }
+    ),
+    ("rds", "dbinstance"): frozenset(
+        {
+            "raw_data.boto3_instance",
+            "raw_data.engine",
+            "raw_data.engine_version",
+            "raw_data.instance_class",
+            "raw_data.availability_zone",
+        }
+    ),
+    ("cloudformation", "stack"): frozenset(
+        {
+            "raw_data.boto3_stack",
+            "raw_data.stack_status",
+            "raw_data.creation_time",
+            "raw_data.drift_status",
+        }
+    ),
+    ("eks", "cluster"): frozenset({"raw_data.resourcesVpcConfig"}),
+}
+
+
+def _top_field(path: str) -> str:
+    """``raw_data.x.y`` -> ``raw_data.x``; ``tags.Env`` -> ``tags``."""
+    raw = _raw_field(path)
+    if raw is not None:
+        return f"raw_data.{raw}"
+    for i, ch in enumerate(path):
+        if ch in ".[":
+            return path[:i]
+    return path
+
+
+def _has_field(row: Dict, field_name: str) -> bool:
+    """True when ``row`` holds ``field_name`` (a ``_top_field`` value)."""
+    if field_name.startswith("raw_data."):
+        raw = row.get("raw_data")
+        return isinstance(raw, dict) and field_name[len("raw_data.") :] in raw
+    return field_name in row
+
+
+class _DetailsNotRead:
+    """Units whose detail calls failed in this run or in the previous one.
+
+    This run: the ``service-api-detail`` entries of its coverage ledger.
+    The previous run: ``metadata.tags.details_not_read`` of its snapshot (a
+    list of ``{account, service, region, resource_type, operation,
+    outcome}``). The ledger counts the resources of a unit but does not name
+    them, so every resource of the unit is treated as not read. Denied,
+    throttled, error (a stopped detail call) and timeout are alike.
+    """
+
+    def __init__(self, current_run: Any, previous_units: Any, skipped: Dict):
+        # (account, service, resource type, region, run) -> outcome
+        self.units: Dict[Tuple[str, str, str, str, str], str] = {}
+        entries = (current_run or {}).get("coverage") or []
+        for entry in entries if isinstance(entries, list) else []:
+            if isinstance(entry, dict) and entry.get("source") == _DETAIL_SOURCE:
+                self._add(entry, str(entry.get("account_id") or ""), "this", skipped)
+        if isinstance(previous_units, list):
+            for unit in previous_units:
+                if isinstance(unit, dict):
+                    self._add(unit, str(unit.get("account") or ""), "previous", skipped)
+        # (account, service) -> units, for one lookup per resource
+        self.by_service: Dict[Tuple[str, str], List[Tuple]] = {}
+        for unit, outcome in sorted(self.units.items()):
+            self.by_service.setdefault(unit[:2], []).append(unit + (outcome,))
+
+    def _add(self, entry: Dict, account: str, run: str, skipped: Dict) -> None:
+        outcome = str(entry.get("outcome") or "")
+        service = canonical_service(entry.get("service"))
+        region = str(entry.get("region") or "")
+        if outcome not in _OUTCOME_RANK or not service or not region:
+            return
+        if account in skipped:
+            return
+        if str(entry.get("error_code") or "") == _NO_SUCH_SERVICE_CODE:
+            return
+        key = (account, service, str(entry.get("resource_type") or ""), region, run)
+        known = self.units.get(key)
+        if known is None or _OUTCOME_RANK[outcome] < _OUTCOME_RANK[known]:
+            self.units[key] = outcome
+
+    def __bool__(self) -> bool:
+        return bool(self.units)
+
+    def matches(self, old: Dict, new: Dict, key: str) -> List[Tuple]:
+        """The failed units a resource belongs to (in either run's row)."""
+        found = []
+        for row in (new, old):
+            account = _RunScope._account(row, key)
+            parsed = parse_arn(row.get("arn") or key) or {}
+            services = {canonical_service(row.get("service"))}
+            services.add(canonical_service(parsed.get("service")))
+            kind = str(row.get("resource_type") or row.get("type") or "").lower()
+            regions = {str(old.get("region") or ""), str(new.get("region") or "")}
+            regions.add("global")
+            for service in sorted(s for s in services if s):
+                for unit in self.by_service.get((account, service), ()):
+                    unit_kind = unit[2].lower()
+                    if unit_kind and unit_kind != kind:
+                        continue
+                    if unit[3] in regions and unit not in found:
+                        found.append(unit)
+        return found
+
+    def line(self) -> Optional[str]:
+        """The change report's line that names the units (None if none)."""
+        if not self.units:
+            return None
+        parts = [
+            f"{service} {kind} in {region} of account {account} ({run} run: {outcome})"
+            for (account, service, kind, region, run), outcome in sorted(
+                self.units.items()
+            )
+        ]
+        return (
+            "Details not read, so the fields they add are not compared: "
+            f"{'; '.join(parts)}."
+        )
+
+
 _NOT_GIVEN = object()
 
 
@@ -778,6 +920,7 @@ class DeltaDetector:
         current_run: Optional[Dict[str, Any]] = None,
         previous_units_not_read: Any = None,
         previous_inventag_version: Any = _NOT_GIVEN,
+        previous_details_not_read: Any = None,
     ) -> DeltaReport:
         """
         Detect comprehensive changes between two resource states.
@@ -808,6 +951,12 @@ class DeltaDetector:
                 previous row of the same service and type had is a field this
                 version reads for the first time: not a modification. Not
                 given: every field is compared, as before.
+            previous_details_not_read: ``metadata.tags.details_not_read`` of
+                the previous snapshot: the units whose detail calls failed in
+                the previous run. With the ``service-api-detail`` entries of
+                ``current_run``, the fields those calls add are not compared
+                for the resources of those units (A-78). None or missing: only
+                the current run's entries count.
 
         Returns:
             DeltaReport with comprehensive change analysis
@@ -882,6 +1031,17 @@ class DeltaDetector:
                 new_resources_map,
                 not_compared,
             )
+        details_not_read = _DetailsNotRead(
+            current_run, previous_details_not_read, skipped
+        )
+        if details_not_read:
+            modified_resources, newly_unchanged = self._leave_out_details(
+                details_not_read,
+                modified_resources,
+                old_resources_map,
+                new_resources_map,
+            )
+            unchanged_resources = unchanged_resources + newly_unchanged
 
         # Analyze compliance changes
         compliance_changes = self._analyze_compliance_changes(
@@ -937,6 +1097,8 @@ class DeltaDetector:
             change_statistics["new_fields_not_compared"] = new_fields_line
         if previous_unread.line():
             change_statistics["previous_run_incomplete"] = previous_unread.line()
+        if details_not_read.line():
+            change_statistics["details_not_compared"] = details_not_read.line()
 
         return DeltaReport(
             state1_id=state1_id,
@@ -1116,6 +1278,69 @@ class DeltaDetector:
             kept_modified.append(change)
         return kept_added, kept_modified
 
+    def _leave_out_details(
+        self,
+        details: "_DetailsNotRead",
+        modified: List[ResourceChange],
+        old_map: Dict[str, Dict],
+        new_map: Dict[str, Dict],
+    ) -> Tuple[List[ResourceChange], List[ResourceChange]]:
+        """Drop the changes of fields that a failed detail call adds (A-78).
+
+        For a resource of a unit whose detail call failed in either run: the
+        fields of ``_DETAIL_FIELDS`` for its service and type; for a service
+        without such a list, the fields the row of the failed run lacks. A
+        resource with nothing else changed is unchanged (its listing fields
+        were compared), as in ``_leave_out_new_fields``; the change report's
+        ``details_not_compared`` line names the units.
+        """
+        kept_modified: List[ResourceChange] = []
+        unchanged: List[ResourceChange] = []
+        for change in modified:
+            old = old_map[change.resource_arn]
+            new = new_map[change.resource_arn]
+            units = details.matches(old, new, change.resource_arn)
+            if not units:
+                kept_modified.append(change)
+                continue
+
+            def not_read(attr: AttributeChange) -> bool:
+                name = _top_field(attr.attribute_path)
+                for account, service, kind, region, run, outcome in units:
+                    fields = _DETAIL_FIELDS.get((service, kind.lower()))
+                    if fields is not None:
+                        if name in fields:
+                            return True
+                        continue
+                    failed_row = new if run == "this" else old
+                    if name != "raw_data" and not _has_field(failed_row, name):
+                        return True
+                return False
+
+            keep = [a for a in change.attribute_changes if not not_read(a)]
+            if len(keep) == len(change.attribute_changes):
+                kept_modified.append(change)
+                continue
+            if not any(_raw_field(a.attribute_path) for a in keep):
+                keep = [a for a in keep if a.attribute_path != "raw_data"]
+            if keep:
+                change.attribute_changes = keep
+                change.severity = self._determine_change_severity(keep)
+                kept_modified.append(change)
+                continue
+            unchanged.append(
+                ResourceChange(
+                    resource_arn=change.resource_arn,
+                    resource_id=change.resource_id,
+                    service=change.service,
+                    resource_type=change.resource_type,
+                    region=change.region,
+                    change_type=ChangeType.UNCHANGED,
+                    severity=ChangeSeverity.INFO,
+                )
+            )
+        return kept_modified, unchanged
+
     @staticmethod
     def _account_of(resource: Dict) -> str:
         """Account a resource belongs to ("" when the record does not say)."""
@@ -1225,6 +1450,7 @@ class DeltaDetector:
             current_run=current_run,
             previous_units_not_read=self._units_not_read(previous_state),
             previous_inventag_version=self._inventag_version(previous_state),
+            previous_details_not_read=self._details_not_read(previous_state),
         )
 
     @staticmethod
@@ -1242,6 +1468,14 @@ class DeltaDetector:
         if not isinstance(tags, dict):
             return None
         return tags.get("units_not_read")
+
+    @staticmethod
+    def _details_not_read(snapshot) -> Any:
+        """``metadata.tags.details_not_read`` of a snapshot (None when absent)."""
+        tags = getattr(snapshot.metadata, "tags", None)
+        if not isinstance(tags, dict):
+            return None
+        return tags.get("details_not_read")
 
     @staticmethod
     def _warn_if_older_format(state_id: str, snapshot) -> None:
