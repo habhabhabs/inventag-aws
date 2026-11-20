@@ -190,12 +190,6 @@ def test_a_serial_run_gives_the_same_files_under_another_hash_seed(
     ).read_bytes()
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "A3: measured on v1.3.0 (9f9e972), 3 runs of the default scan under seeds 0 to 2: the same set of resources in state/state_*.json, in a different order (first difference at $.resources[0].arn). Plan 2.4 item 3 (A3): the sort key (arn, service, type, id, region) leaves ties in arrival order; the fix is a last key, a digest of the row. strict=False because it is intermittent. Remove this mark when A3 is merged"
-    ),
-)
 def test_default_parallel_accounts_give_the_same_files_as_the_serial_run(
     tmp_path_factory,
 ):
@@ -209,16 +203,6 @@ def test_default_parallel_accounts_give_the_same_files_as_the_serial_run(
     ), "the two runs did not make the same AWS calls"
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "A2/A3/A4 (cause not traced): measured on v1.3.0 (9f9e972): the default run "
-        "(accounts in parallel) differs from the sequential run in state/state_*.json at "
-        "$.resources[0].arn in some runs and not in others (3 of 5 comparisons), so the "
-        "snapshot of a parallel run is not reproducible; strict=False because it is "
-        "intermittent. Plan 2.4 requires it. Remove this mark when the order is fixed"
-    ),
-)
 def test_default_parallel_accounts_give_the_same_analysis_sheets_as_the_serial_run(
     serial, tmp_path_factory
 ):
@@ -227,16 +211,6 @@ def test_default_parallel_accounts_give_the_same_analysis_sheets_as_the_serial_r
     assert compare.describe_difference(serial.out, parallel.out) is None
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "A4: measured on v1.3.0 (9f9e972): the key order of coverage_summary in the "
-        "snapshot follows the order in which the listings of an account ended, so two "
-        "sequential runs differ in state/metadata.json in some runs and not in others "
-        "(hence strict=False). A4 sorts what CoverageLedger.entries returns (plan 2.4 "
-        "item 4). Remove this mark when A4 is merged"
-    ),
-)
 def test_snapshot_bytes_do_not_depend_on_the_order_the_listings_ended(
     serial, tmp_path_factory
 ):
@@ -244,16 +218,6 @@ def test_snapshot_bytes_do_not_depend_on_the_order_the_listings_ended(
     assert compare.describe_difference(serial.out, other.out) is None
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "A4: measured once on v1.3.0 (9f9e972): a run under hash seed 3 listed the VPCs of "
-        "the Network Analysis sheet in another order than a run under seed 0 (row 2: "
-        "vpc-...c13dbba against vpc-...33eddc); seeds 0 to 2 agree. Cause not traced; "
-        "plan 2.4 asks for sorted per-region analysis results. strict=False because the "
-        "difference was seen in one comparison only. Remove this mark when A4 is merged"
-    ),
-)
 def test_analysis_sheets_do_not_depend_on_the_hash_seed(serial, tmp_path_factory):
     other = _run(tmp_path_factory, "3", True)
     assert (
