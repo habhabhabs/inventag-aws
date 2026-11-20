@@ -256,6 +256,12 @@ jobs:
     - name: Hand the files back to the runner user
       run: docker exec build chown -R "$(id -u):$(id -g)" /work
 
+    # The macOS build prints these lines too. The same text, as built here,
+    # is then in the log (B6 fix 11); provenance fetches the addresses.
+    - name: Print the libiconv lines of the notices file
+      run: |
+        grep -n -A12 "^- GNU libiconv" "$RUNNER_TEMP/work/out/dist/inventag/THIRD-PARTY-LICENSES.txt" || { echo "::error::The notices file has no libiconv component."; exit 1; }
+
     - name: Install nfpm (version and sha256 pinned)
       run: |
         cd "$RUNNER_TEMP"
@@ -351,6 +357,12 @@ jobs:
 
     - name: Hand the files back to the runner user
       run: docker exec build chown -R "$(id -u):$(id -g)" /work
+
+    # The macOS build prints these lines too. The same text, as built here,
+    # is then in the log (B6 fix 11); provenance fetches the addresses.
+    - name: Print the libiconv lines of the notices file
+      run: |
+        grep -n -A12 "^- GNU libiconv" "$RUNNER_TEMP/work/out/dist/inventag/THIRD-PARTY-LICENSES.txt" || { echo "::error::The notices file has no libiconv component."; exit 1; }
 
     - name: Install nfpm (version and sha256 pinned)
       run: |
