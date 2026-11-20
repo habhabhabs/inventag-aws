@@ -1591,10 +1591,10 @@ def test_libraries_inside_framework_modules_get_their_own_rows(tpl, monkeypatch)
         "verified source in the table; store the upstream text unchanged under "
         "scripts/packaging/licenses/ and its address, tag, sha256 and date in "
         "SOURCES.json",
-        "libmpdec (in CPython's _decimal) 9.9: licence NOASSERTION is not in the "
-        "allow-list",
         "liblzma (in CPython's _lzma) (version not recorded): licence NOASSERTION "
         "is not in the allow-list",
+        "libmpdec (in CPython's _decimal) 9.9: licence NOASSERTION is not in the "
+        "allow-list",
     ]
 
 
