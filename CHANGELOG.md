@@ -76,9 +76,9 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   account. The snapshot lists its regions sorted.
 - The account id was sometimes read twice when listings started together, and
   the "already warned" check could print one warning twice.
-- SIGTERM can no longer hang the process. The handler takes no lock: it stops
-  new AWS requests, prints its line and ends by the signal, as in v1.3.x. (This
-  was found in the v1.4.0 development; no release had it.)
+- SIGTERM could hang the process when the main thread held a lock that the
+  signal handler needed. The handler now takes none of the run's locks: it stops
+  new AWS requests, prints its line and ends by the signal.
 
 ### Library notes
 
