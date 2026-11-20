@@ -126,9 +126,9 @@ YAML or JSON file. See [Layout files for one report](../templates/layout-flags.m
 | Flag | Default | Status | What it does |
 |---|---|---|---|
 | `--max-concurrent-accounts N` | `4` | Works | Accounts scanned at the same time (at least 1). |
-| `--concurrency N` | `64` | Works | Most AWS requests in flight at once, for the whole run (1 to 256). 1 sends one request at a time. Out of range: exit code 2. |
+| `--concurrency N` | `64` | Works | Most AWS requests in flight at once, for the whole run (1 to 256). 1 sends one request at a time. A value outside 1 to 256, or one that is not a whole number: exit code 2. In a config template: `spec.concurrency`. See [Concurrency](../guides/run-a-scan.md#concurrency). |
 | `--account-processing-timeout SECONDS` | `1800` | Works | Time allowed per account, counted from when its scan starts (at least 60). An account that runs out of time counts as failed; the resources it found stay in the report. |
-| `--disable-parallel-processing` | off | Works | Scan one account at a time. |
+| `--disable-parallel-processing` | off | Works | Scan one account at a time. It does not change the threads inside an account. |
 | `--resume` | off | Works | Reuse the saved results of accounts that finished in an earlier run of the same command that did not complete (same accounts, regions, services and filters), and scan only the others. With `--disable-state-management`: exit code 2. |
 | `--resume-max-age-hours HOURS` | `24` | Works | With `--resume`, reuse saved results only up to this age (at most 168). |
 
@@ -178,7 +178,7 @@ read, and reads that return secrets or data.
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--audit-output FILE` | none | Works | Write a JSON list of every AWS operation the run called, allowed and blocked. |
+| `--audit-output FILE` | none | Works | Write a JSON list of every AWS operation the run called, allowed and blocked. When the run was not allowed to use an IAM action, the file also has the list `permissions_denied`: see [Run with only ReadOnlyAccess](../guides/read-only-access.md#run-with-only-readonlyaccess). |
 | `--validate-operations SERVICE:OPERATION ...` | none | Works | Check operations against the guard, then exit (0 if all allowed, 1 if not). |
 | `--enforce-read-only`, `--security-validation`, `--enable-production-safety` | on | No effect | Kept so old commands still run. The guard is always on. |
 | `--disable-production-safety` | off | Stops with exit code 2 | The guard cannot be turned off. |
@@ -268,7 +268,7 @@ See [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
 |---|---|
 | 0 | Success. Also 0 when some accounts failed but others worked, and when no resources were found, unless you pass `--fail-on-account-error` or `--fail-if-empty`. See [Feature status](../getting-started/status.md#when-a-run-goes-wrong). |
 | 1 | An error: invalid arguments, configuration or template, a number out of range (for example `--max-concurrent-accounts 0`), failed credentials, every account failed (could not be scanned or ran out of time), a failed S3 upload, or a report format that could not be written |
-| 2 | Invalid command line: unknown, badly formed or conflicting options, flags that are not implemented, bad Google options, a layout file flag without the report it needs, or a role name without `--accounts-file` |
+| 2 | Invalid command line: unknown, badly formed or conflicting options, a `--concurrency` value outside 1 to 256, flags that are not implemented, bad Google options, a layout file flag without the report it needs, or a role name without `--accounts-file` |
 | 3 | Reports written, but a config template with `fail_on_tag_violations: true` found tag policy violations |
 | 4 | Reports written, but `--risk-threshold` found a security group rule at or above that level |
 | 5 | Reports written, but an account could not be scanned or ran out of time, and you passed `--fail-on-account-error` |
