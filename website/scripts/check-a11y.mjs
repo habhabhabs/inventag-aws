@@ -50,6 +50,23 @@
  *   failure is a warning, and a pass prints "remove it from OPEN_PHONE_ITEMS".
  *   Any other item fails the run. `--only-phone-leftovers` runs only these.
  * And: no infinite animations with prefers-reduced-motion.
+ * Scroll reveal and site v2 (site-v2-phase3.md): every page is revealed first
+ *   (scrolled to the end and back) and must then have no element still waiting
+ *   (.is-pending), so contrast is checked on the final text, not a faded one.
+ *   `--only-site-v2` runs only the checks below:
+ *   - reduced motion: no it-motion class, nothing waiting, no animation at all
+ *   - JavaScript off: nothing transparent on the landing and 404 pages
+ *   - hero: headline, lead and buttons are never animated or transparent; the
+ *     terminal card is the only hero motion
+ *   - docs pages have no scroll reveal
+ *   - Tab into a waiting tile shows it fully at once; a table-of-contents style
+ *     jump and a fast flick never leave a waiting element in view
+ *   - no table edge cue on a table that does not scroll (820 px); light theme
+ *     code blocks have a light body
+ *   - tablet header (768, 820 px), five languages: Docs link and language word
+ *     visible, no overlap, no sideways scroll
+ *   - 404 page under /fr/, /es/, /zh-Hans/, /zh-Hant/: html lang and the
+ *     version menu label follow the address's language (register X-14)
  * Exit code 1 if anything fails.
  */
 import {createRequire} from 'node:module';
@@ -76,6 +93,7 @@ const QUICK = process.argv.includes('--quick');
 // --strict-locales: a locale that is not served is a failure, not "skipped" (an assembled build must have it).
 const STRICT_LOCALES = process.argv.includes('--strict-locales');
 const ONLY_PHONE = process.argv.includes('--only-phone-leftovers');
+const ONLY_V2 = process.argv.includes('--only-site-v2');
 
 // Archived versions, newest first (never hard-coded: the check survives every release).
 const VERSIONS = JSON.parse(fs.readFileSync(new URL('../versions.json', import.meta.url), 'utf8'));
@@ -250,6 +268,23 @@ function auditInPage(isTouch) {
 }
 
 const hydrated = (page) => page.waitForSelector('html[data-has-hydrated="true"]', {timeout: 10000}).catch(() => {});
+
+// Scroll reveal (src/clientModules/reveal.js): scroll to the end in screen steps and back,
+// so every waiting element is shown, then report what is still waiting.
+async function revealPage(page) {
+  await page.evaluate(async () => {
+    const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+    for (let y = 0; y < document.documentElement.scrollHeight; y += Math.round(innerHeight * 0.8)) {
+      window.scrollTo(0, y);
+      await pause(60);
+    }
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    await pause(60);
+    window.scrollTo(0, 0);
+  });
+  await page.waitForTimeout(500);
+  return page.evaluate(() => document.querySelectorAll('.is-pending').length);
+}
 
 async function runAxe(page) {
   await page.addScriptTag({path: AXE_PATH});
@@ -435,6 +470,223 @@ if (ONLY_PHONE) {
   report();
 }
 
+// 7. site v2: scroll reveal, hero, code and table cues, tablet header, 404 language (X-14)
+async function siteV2Checks() {
+  const opacity0 = (sel) => `[...document.querySelectorAll('${sel}')].filter((e) => parseFloat(getComputedStyle(e).opacity) < 1).length`;
+  const served = async (page, locale, tag) => {
+    const res = await page.goto(BASE + locale + '/docs', {waitUntil: 'domcontentloaded'});
+    if (res && res.status() === 200) return true;
+    if (STRICT_LOCALES) fail(`${tag}: no ${locale.slice(1)} build is served (--strict-locales)`);
+    else console.log(`${tag}: skipped: no ${locale.slice(1)} build`);
+    return false;
+  };
+
+  // 7a. reduced motion: nothing waits, nothing animates (finite animations included)
+  {
+    const ctx = await newContext(browser, {viewport: {width: 390, height: 844}, dpr: 2, mobile: true, theme: 'dark', reducedMotion: 'reduce'});
+    const page = await ctx.newPage();
+    for (const p of ['/', '/this-page-does-not-exist']) {
+      await page.goto(BASE + p, {waitUntil: 'networkidle'});
+      await hydrated(page);
+      const r = await page.evaluate(`({motion: document.documentElement.classList.contains('it-motion'), waiting: document.querySelectorAll('.is-pending').length,
+        anim: document.getAnimations().filter((a) => a.playState === 'running').length, faded: ${opacity0('[data-reveal], [data-hero]')}})`);
+      if (r.motion || r.waiting || r.anim || r.faded) fail(`reduced motion ${p}: it-motion ${r.motion}, waiting ${r.waiting}, running animations ${r.anim}, faded ${r.faded}`);
+    }
+    // a change to reduce while the page is open shows everything at once
+    await ctx.close();
+    const ctx2 = await newContext(browser, {viewport: {width: 1440, height: 900}, theme: 'light'});
+    const page2 = await ctx2.newPage();
+    await page2.goto(BASE + '/', {waitUntil: 'networkidle'});
+    await hydrated(page2);
+    const before = await page2.evaluate(() => document.querySelectorAll('.is-pending').length);
+    if (!before) fail('motion: no element waits below the fold on the landing page (scroll reveal is not active)');
+    await page2.emulateMedia({reducedMotion: 'reduce'});
+    await page2.waitForTimeout(200);
+    const after = await page2.evaluate(() => document.querySelectorAll('.is-pending').length);
+    if (after) fail(`reduced motion switched on while open: ${after} element(s) still waiting`);
+    await ctx2.close();
+  }
+
+  // 7b. JavaScript off: nothing transparent
+  {
+    const ctx = await browser.newContext({viewport: {width: 1440, height: 900}, javaScriptEnabled: false});
+    const page = await ctx.newPage();
+    for (const p of ['/', '/this-page-does-not-exist', '/docs/getting-started/quick-start']) {
+      await page.goto(BASE + p, {waitUntil: 'load'});
+      const n = await page.evaluate(`[...document.querySelectorAll('main *')].filter((e) => parseFloat(getComputedStyle(e).opacity) < 1 && e.getBoundingClientRect().height > 0 && !e.closest('.hash-link')).length`);
+      if (n) fail(`JavaScript off ${p}: ${n} element(s) transparent`);
+    }
+    await ctx.close();
+  }
+
+  // 7c. hero, docs pages, focus, jump, flick (motion on)
+  {
+    const ctx = await newContext(browser, {viewport: {width: 1440, height: 900}, theme: 'dark'});
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/', {waitUntil: 'commit'});
+    await page.waitForSelector('h1');
+    const hero = await page.evaluate(() => {
+      const still = ['h1', '[class*="heroLead"]', '[class*="heroCopy"] .button'].map((s) => document.querySelector(s));
+      return {
+        animatedText: still.filter((e) => e && e.getAnimations().length).length,
+        fadedText: still.filter((e) => e && parseFloat(getComputedStyle(e).opacity) < 1).length,
+        heroMarks: [...document.querySelectorAll('[data-hero]')].map((e) => e.className.toString().slice(0, 30)),
+      };
+    });
+    if (hero.animatedText || hero.fadedText) fail(`hero: headline, lead or buttons animated (${hero.animatedText}) or faded (${hero.fadedText})`);
+    if (hero.heroMarks.length !== 1 || !/terminal/.test(hero.heroMarks[0])) fail(`hero: the terminal card must be the only hero motion; marks: ${hero.heroMarks.join(', ') || 'none'}`);
+    await page.waitForLoadState('networkidle');
+    await hydrated(page);
+    // focus inside a waiting tile: fully visible within 50 ms
+    const focus = await page.evaluate(async () => {
+      const w = [...document.querySelectorAll('[data-reveal].is-pending')].find((x) => x.querySelector('a, button'));
+      if (!w) return 'none';
+      w.querySelector('a, button').focus();
+      await new Promise((r) => setTimeout(r, 50));
+      return parseFloat(getComputedStyle(w).opacity);
+    });
+    if (focus === 'none') fail('focus: no waiting tile with a link to test');
+    else if (focus < 1) fail(`focus: a focused waiting tile is at opacity ${focus} after 50 ms (must be 1)`);
+    // a jump of more than a screen: nothing in view still waits after 100 ms
+    await page.goto(BASE + '/', {waitUntil: 'networkidle'});
+    await hydrated(page);
+    const jump = await page.evaluate(async () => {
+      window.scrollTo(0, Math.round(document.documentElement.scrollHeight / 2));
+      await new Promise((r) => setTimeout(r, 100));
+      return [...document.querySelectorAll('[data-reveal]')].filter((e) => {
+        const r = e.getBoundingClientRect();
+        return r.top < innerHeight && r.bottom > 0 && parseFloat(getComputedStyle(e).opacity) < 1;
+      }).length;
+    });
+    if (jump) fail(`jump: ${jump} element(s) in view not fully shown 100 ms after a jump to the middle of the landing page`);
+    for (const p of ['/docs/getting-started/quick-start', '/docs']) {
+      await page.goto(BASE + p, {waitUntil: 'networkidle'});
+      await hydrated(page);
+      const n = await page.evaluate(() => document.querySelectorAll('[data-reveal], .is-pending, [data-hero]').length);
+      if (n) fail(`docs page ${p}: ${n} scroll reveal mark(s); docs pages have none`);
+    }
+    await ctx.close();
+  }
+  {
+    // fast flick at 390: no element under opacity 0.5 in the reading band, on any frame
+    const ctx = await newContext(browser, {viewport: {width: 390, height: 844}, dpr: 2, mobile: true, theme: 'dark'});
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/', {waitUntil: 'networkidle'});
+    await hydrated(page);
+    await page.waitForTimeout(500);
+    const r = await page.evaluate(async () => {
+      const H = document.documentElement.scrollHeight - innerHeight;
+      let frames = 0;
+      let blank = 0;
+      await new Promise((done) => {
+        let t0 = 0;
+        const step = (t) => {
+          if (!t0) t0 = t;
+          const y = Math.min(H, ((t - t0) / 1000) * 3700);
+          window.scrollTo(0, y);
+          frames++;
+          const bad = [...document.querySelectorAll('[data-reveal]')].some((e) => {
+            const b = e.getBoundingClientRect();
+            return b.height > 60 && b.bottom > 120 && b.top < innerHeight - 120 && parseFloat(getComputedStyle(e).opacity) < 0.5;
+          });
+          if (bad) blank++;
+          if (y < H) requestAnimationFrame(step);
+          else done();
+        };
+        requestAnimationFrame(step);
+      });
+      return {frames, blank};
+    });
+    if (r.blank) fail(`fast flick (3700 px/s, 390 px): ${r.blank} of ${r.frames} frames show a waiting element in view`);
+    await ctx.close();
+  }
+
+  // 7d. tables at 820 px: a cue only on a table that scrolls; light code blocks have a light body
+  {
+    const ctx = await newContext(browser, {viewport: {width: 820, height: 1180}, dpr: 1, mobile: true, theme: 'light'});
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/docs/reference/cli', {waitUntil: 'networkidle'});
+    await hydrated(page);
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(400);
+    const t = await page.evaluate(() => [...document.querySelectorAll('.table-frame')].filter((f) => {
+      const sc = f.querySelector('.table-scroll');
+      return f.querySelector('.table-frame__edge') && !(sc.scrollWidth > sc.clientWidth + 1);
+    }).length);
+    if (t) fail(`tables 820 px: ${t} edge cue(s) on tables that do not scroll`);
+    const code = await page.evaluate(() => {
+      const pre = document.querySelector('.theme-code-block pre');
+      const m = getComputedStyle(pre).backgroundColor.match(/\d+/g).map(Number);
+      return (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255;
+    });
+    if (code < 0.7) fail(`light theme: a code block body is dark (luminance ${code.toFixed(2)})`);
+    await ctx.close();
+  }
+
+  // 7e. tablet header in five languages
+  for (const locale of ['', '/fr', '/es', '/zh-Hans', '/zh-Hant']) {
+    for (const w of [768, 820]) {
+      const tag = `tablet header ${locale ? locale.slice(1) : 'en'} ${w}px`;
+      const ctx = await newContext(browser, {viewport: {width: w, height: 1024}, dpr: 1, mobile: true, theme: 'light'});
+      const page = await ctx.newPage();
+      if (locale && !(await served(page, locale, tag))) {
+        await ctx.close();
+        continue;
+      }
+      for (const p of ['/', '/docs/reference/cli']) {
+        await page.goto(BASE + locale + p, {waitUntil: 'networkidle'});
+        await hydrated(page);
+        await page.evaluate(() => document.fonts.ready);
+        const r = await page.evaluate(() => {
+          const vis = (e) => !!e && e.getBoundingClientRect().width > 0 && getComputedStyle(e).display !== 'none' && getComputedStyle(e).visibility !== 'hidden';
+          const items = [...document.querySelectorAll('.navbar__inner a, .navbar__inner button')].filter((e) => vis(e) && e.getBoundingClientRect().top < 60 && !e.closest('.dropdown__menu'));
+          let overlap = 0;
+          for (let i = 0; i < items.length; i++)
+            for (let j = i + 1; j < items.length; j++) {
+              const a = items[i].getBoundingClientRect();
+              const b = items[j].getBoundingClientRect();
+              if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) overlap++;
+            }
+          const docs = document.querySelector('.navbar__items:not(.navbar__items--right) > .nav-ico-docs');
+          const lang = document.querySelector('.navbar__items--right > .dropdown:has([class*="iconLanguage"]) > .navbar__link');
+          return {docs: vis(docs), lang: vis(lang) && lang.textContent.trim().length > 1, tall: items.filter((e) => e.getBoundingClientRect().height > 50).length, overlap, hscroll: document.documentElement.scrollWidth > innerWidth};
+        });
+        if (!r.docs || !r.lang || r.overlap || r.tall || r.hscroll) fail(`${tag} ${p}: Docs link ${r.docs}, language word ${r.lang}, overlaps ${r.overlap}, wrapped ${r.tall}, sideways scroll ${r.hscroll}`);
+      }
+      await ctx.close();
+    }
+  }
+
+  // 7f. X-14: the 404 page under a language path speaks that language
+  for (const locale of ['fr', 'es', 'zh-Hans', 'zh-Hant']) {
+    const tag = `404 /${locale}/ (X-14)`;
+    const ctx = await newContext(browser, {viewport: {width: 1440, height: 900}, theme: 'light'});
+    const page = await ctx.newPage();
+    if (!(await served(page, '/' + locale, tag))) {
+      await ctx.close();
+      continue;
+    }
+    await page.goto(`${BASE}/${locale}/this-page-does-not-exist`, {waitUntil: 'networkidle'});
+    await hydrated(page);
+    await page.waitForTimeout(500);
+    const label = JSON.parse(fs.readFileSync(new URL(`../i18n/${locale}/docusaurus-plugin-content-docs/current.json`, import.meta.url), 'utf8'))['version.label'].message;
+    const r = await page.evaluate(() => ({
+      lang: document.documentElement.getAttribute('lang'),
+      version: [...document.querySelectorAll('.navbar__item.dropdown > .navbar__link')].map((e) => e.textContent.trim()),
+    }));
+    if (r.lang !== locale) fail(`${tag}: html lang is "${r.lang}", expected "${locale}"`);
+    if (!r.version.includes(label)) fail(`${tag}: version menu label is ${JSON.stringify(r.version)}, expected "${label}"`);
+    await ctx.close();
+  }
+}
+
+if (ONLY_V2) {
+  await siteV2Checks();
+  await browser.close();
+  report();
+}
+
+
 // 1. page sweep
 for (const [vName, viewport, dpr, touch] of viewports) {
   for (const theme of ['light', 'dark']) {
@@ -452,6 +704,8 @@ for (const [vName, viewport, dpr, touch] of viewports) {
       await page.evaluate(() => document.fonts.ready);
       await page.waitForTimeout(400);
       const tag = `${pName} [${vName}, ${theme}]`;
+      const waiting = await revealPage(page);
+      if (waiting) fail(`${tag}: ${waiting} element(s) still waiting to be revealed after scrolling the whole page`);
       const r = await page.evaluate(auditInPage, touch);
       for (const f of r.contrast) fail(`${tag} contrast ${f.ratio}:1 "${f.text}" (${f.color}; ${f.where})`);
       if (r.scrollWidth > r.clientWidth) fail(`${tag} horizontal scroll: ${r.scrollWidth} > ${r.clientWidth}`);
@@ -466,7 +720,7 @@ for (const [vName, viewport, dpr, touch] of viewports) {
   }
 }
 
-// 2. screenshots (consent already decided, so the banner does not cover content)
+// 2. screenshots (consent already decided, so the banner does not cover content; pages revealed first)
 if (SHOTS) {
   fs.mkdirSync(SHOTS, {recursive: true});
   for (const [vName, viewport] of Object.entries(SHOT_VIEWPORTS)) {
@@ -941,6 +1195,9 @@ for (const theme of ['light', 'dark']) {
 
 // 6g. phone leftovers
 await phoneLeftovers();
+
+// 7. site v2
+await siteV2Checks();
 
 // 5. reduced motion
 {
