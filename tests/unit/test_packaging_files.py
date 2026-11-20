@@ -692,3 +692,141 @@ def test_the_check_of_the_build_python_reaches_the_problems(tpl):
     problems = []
     tpl._cpython(problems, version_info=(3, 12, 3))
     assert not [p for p in problems if "3.12 only" in p]
+
+
+# ------------------------------------ files without a row (B2c, ruling 4 (a))
+MACHO_64 = b"\xcf\xfa\xed\xfe"  # Mach-O 64-bit, little-endian
+FRAMEWORK = "/Library/Frameworks/Python.framework/Versions/3.12"
+
+
+def _fake_bundle(tmp_path):
+    """A macOS-like bundle and PyInstaller's tables, without PyInstaller."""
+    bundle, work = tmp_path / "dist" / "inventag", tmp_path / "build"
+    (bundle / "_internal").mkdir(parents=True)
+    work.mkdir()
+    (bundle / "inventag").write_bytes(MACHO_64 + b"\0" * 12)
+    (bundle / "_internal" / "Python").write_bytes(MACHO_64 + b"\0" * 12)
+    (bundle / "_internal" / "libssl.3.dylib").write_bytes(MACHO_64 + b"\0" * 12)
+    (bundle / "_internal" / "base_library.zip").write_bytes(b"PK\3\4")
+    (bundle / "_internal" / "notes.txt").write_text("text\n", encoding="utf-8")
+    toc = [
+        ("Python", f"{FRAMEWORK}/Python", "BINARY"),
+        ("libssl.3.dylib", f"{FRAMEWORK}/lib/libssl.3.dylib", "BINARY"),
+    ]
+    (work / "PYZ-00.toc").write_text("[]", encoding="utf-8")
+    (work / "COLLECT-00.toc").write_text(repr(toc), encoding="utf-8")
+    return bundle, work
+
+
+def test_binaries_are_found_by_their_header_not_only_their_name(tpl, tmp_path):
+    # A macOS bundle carries CPython as "_internal/Python": no .so, no .dylib.
+    bundle, work = _fake_bundle(tmp_path)
+    (bundle / "_internal" / "tool").write_bytes(b"\x7fELF" + b"\0" * 12)
+    build = tpl.Build(bundle, work, ROOT)
+    assert build.binaries() == [
+        "_internal/Python",
+        "_internal/libssl.3.dylib",
+        "_internal/tool",
+        "inventag",
+    ]
+
+
+class _OwnedBuild(_SampleBuild):
+    """Sample bundle whose files have a source, a Python package and a
+    system package."""
+
+    class _Dist:
+        def __init__(self, name, version):
+            self.metadata, self.version = {"Name": name}, version
+
+    def __init__(self, files, sources, dists, owners):
+        super().__init__(files, b"", same=True)
+        self.sources, self.dists, self.owners = sources, dists, owners
+
+    def source_of(self, rel):
+        return self.sources.get(rel)
+
+    def distribution_of_bundled(self, rel):
+        d = self.dists.get(rel)
+        return self._Dist(*d) if d else None
+
+    def owning_package(self, path):
+        return self.owners.get(path)
+
+
+UNMAPPED_GOLDEN = [
+    "unmapped files: 3 (platform linux, Python 3.12.3)",
+    "UNMAPPED _internal/libuuid.so.1 | source: /usr/lib/x86_64-linux-gnu/"
+    "libuuid.so.1 | python package: none | system package: libuuid1 2.39",
+    "UNMAPPED _internal/mystery/_m.so | source: /venv/mystery/_m.so | python "
+    "package: mystery 1.0 | system package: none found",
+    "UNMAPPED _internal/zz.so | source: not in PyInstaller's tables | python "
+    "package: none | system package: none found",
+]
+
+
+def test_list_unmapped_names_each_file_its_source_and_owners(tpl):
+    uuid = "/usr/lib/x86_64-linux-gnu/libuuid.so.1"
+    build = _OwnedBuild(
+        [
+            "inventag",
+            "_internal/zz.so",
+            "_internal/mystery/_m.so",
+            "_internal/lxml/etree.so",
+            "_internal/libuuid.so.1",
+        ],
+        {
+            "_internal/libuuid.so.1": uuid,
+            "_internal/mystery/_m.so": "/venv/mystery/_m.so",
+        },
+        {"_internal/mystery/_m.so": ("mystery", "1.0")},
+        {uuid: ("libuuid1", "2.39")},
+    )
+    entries = tpl.unmapped_files(build, _sample_rows(tpl))
+    text = tpl.unmapped_report(entries, "linux", "3.12.3")
+    assert text.splitlines() == UNMAPPED_GOLDEN
+    assert tpl.unmapped_report([], "linux", "3.12.3") == (
+        "unmapped files: 0 (platform linux, Python 3.12.3)\n"
+    )
+
+
+def _expected_fake_listing(tpl):
+    return [
+        f"unmapped files: 3 (platform darwin, Python {tpl.platform.python_version()})",
+        f"UNMAPPED _internal/Python | source: {FRAMEWORK}/Python | python package: "
+        "none | system package: none found",
+        f"UNMAPPED _internal/libssl.3.dylib | source: {FRAMEWORK}/lib/libssl.3.dylib"
+        " | python package: none | system package: none found",
+        "UNMAPPED inventag | source: not in PyInstaller's tables | python package: "
+        "none | system package: none found",
+    ]
+
+
+def test_list_unmapped_mode_works_on_a_platform_without_a_table(tpl, tmp_path, capsys):
+    bundle, work = _fake_bundle(tmp_path)
+    args = ["--bundle", str(bundle), "--workpath", str(work), "--list-unmapped"]
+    code = tpl.main(args + ["--platform", "darwin"])
+    out = capsys.readouterr().out
+    assert code == 1
+    assert out.splitlines() == _expected_fake_listing(tpl)
+    assert not (bundle / "THIRD-PARTY-LICENSES.txt").exists()  # lists only
+
+
+def test_the_licence_check_prints_the_unmapped_list_first(tpl, tmp_path, capsys):
+    # The first dry run on a new system (macOS, AlmaLinux) prints every file
+    # that needs a row in one run (architect ruling 4 (a)): the check, which
+    # build_binary.sh runs right after PyInstaller, starts with the list.
+    bundle, work = _fake_bundle(tmp_path)
+    out_file = tmp_path / "THIRD-PARTY-LICENSES.txt"
+    args = ["--bundle", str(bundle), "--workpath", str(work), "--out", str(out_file)]
+    code = tpl.main(args + ["--platform", "darwin"])
+    captured = capsys.readouterr()
+    expected = _expected_fake_listing(tpl)
+    assert code == 1
+    assert captured.out.splitlines()[: len(expected)] == expected
+    assert captured.out.splitlines()[-1] == "licence check: FAIL"
+    assert "LICENCE CHECK: no licence table for darwin" in captured.err
+    assert "LICENCE CHECK: _internal/Python: no row in the licence table" in (
+        captured.err
+    )
+    assert out_file.is_file()
