@@ -1947,3 +1947,69 @@ def test_the_workflow_checks_of_actions_run_this_test_file():
     )
     text = str(checks)
     assert "tests/unit/test_packaging_workflow.py" in text
+
+
+# ---- B2h: libiconv evidence (architect-run10-macos-iconv.md section 3) -----
+
+
+def test_the_macos_evidence_step_records_the_libiconv_evidence(tmp_path):
+    import subprocess
+
+    stubs = tmp_path / "stubs"
+    stubs.mkdir()
+    outputs = {
+        "lipo": 'echo "x86_64 arm64"',
+        "nm": 'echo "0000000000008008 s __libiconv_version"',
+        "strings": "echo libiconv_open",
+        # The x86_64 part fails, as run 10's "not signed at all" may mean.
+        "codesign": 'echo "[codesign $*]"; [ "$1 $3" != "-v x86_64" ]',
+    }
+    for tool in ("lipo", "otool", "codesign", "shasum", "strings", "nm"):
+        body = outputs.get(tool, 'echo "[$(basename "$0") $*]"')
+        (stubs / tool).write_text(f"#!/bin/bash\n{body}\n", encoding="utf-8")
+        (stubs / tool).chmod(0o755)
+    work = tmp_path / "work"
+    site = tmp_path / "venv" / "site" / "lxml"
+    bundle = work / "dist" / "inventag"
+    for directory in (site, bundle / "_internal" / "lxml", tmp_path / "fw"):
+        directory.mkdir(parents=True)
+    (site / "etree.so").write_bytes(b"\0libiconv_open\0")
+    (site / "_elementpath.so").write_bytes(b"\0")
+    (bundle / "THIRD-PARTY-LICENSES.txt").write_text(
+        "- GNU libiconv, linked into lxml's extension modules 1.17: LGPL-2.1\n",
+        encoding="utf-8",
+    )
+    record = work / "build-record-macos.txt"
+    record.write_text("BUILD RECORD: a link\n", encoding="utf-8")
+    python = tmp_path / "venv" / "bin" / "python"
+    python.parent.mkdir(parents=True)
+    python.write_text(
+        "#!/bin/bash\n"
+        f'case "$2" in *ICONV*) echo "(6, 1, 3, 0) (0, 0)" ;; '
+        f'*lxml*) echo "{site}" ;; *) echo 2.5.1 ;; esac\n',
+        encoding="utf-8",
+    )
+    python.chmod(0o755)
+    run = _step("build-macos-arm64", "macOS evidence")["run"].replace(
+        "/Library/Frameworks/Python.framework/Versions/3.12", str(tmp_path / "fw")
+    )
+    result = subprocess.run(
+        ["bash", "-e", "-o", "pipefail", "-c", run],
+        env={"PATH": f"{stubs}:/usr/bin:/bin", "RUNNER_TEMP": str(tmp_path)},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    kept = record.read_text("utf-8")
+    assert kept.startswith("BUILD RECORD: a link\n")  # appended, not replaced
+    assert "== libiconv: lxml/etree.so" in kept
+    assert "_elementpath" not in kept.split("== libiconv evidence")[1]
+    assert "lipo -archs: x86_64 arm64" in kept
+    for arch in ("x86_64", "arm64"):
+        assert f"nm -arch {arch}:\n0000000000008008 s __libiconv_version" in kept
+        assert f"strings -arch {arch} | grep -c libiconv_open: 1" in kept
+    assert "codesign -v --architecture arm64: exit 0" in kept
+    assert "codesign -v --architecture x86_64: exit 1" in kept
+    assert "(6, 1, 3, 0) (0, 0)" in kept
+    assert "1.17: LGPL-2.1" in kept
