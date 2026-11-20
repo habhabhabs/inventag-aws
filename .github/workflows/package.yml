@@ -915,6 +915,29 @@ jobs:
           exit 1
         fi
 
+    # The install page says that `uv tool install` gives the same result as
+    # pipx (B6 fix 3). uv comes from PyPI, pinned by version and by the sha256
+    # of its wheel for this runner (Linux x86_64, glibc); pip refuses any other
+    # file. uv installs the wheel of the commit, as pipx did.
+    - name: Install the wheel with uv, run it, remove it
+      run: |
+        cat > "$RUNNER_TEMP/uv-requirements.txt" <<'REQ'
+        uv==0.13.9 \
+            --hash=sha256:d7f459fe4fd247d830351c75686d3996ace3c6f3f728eb0e85a30b7ada0cef19
+        REQ
+        python -m pip install --require-hashes --only-binary :all: -r "$RUNNER_TEMP/uv-requirements.txt"
+        uv --version
+        uv tool install --python "$(command -v python)" "$RUNNER_TEMP"/dist/inventag_aws-"${VERSION}"-py3-none-any.whl
+        export PATH="$HOME/.local/bin:$PATH"
+        test "$(inventag --version)" = "inventag $VERSION"
+        inventag selftest
+        uv tool uninstall inventag-aws
+        hash -r
+        if command -v inventag; then
+          echo "left: inventag is still on the PATH"
+          exit 1
+        fi
+
   # Checksums, SBOMs and build attestations of every file of the release. The
   # only job with id-token and attestations: write. No key of ours: the
   # attestation is signed keyless with this workflow's identity; users check
