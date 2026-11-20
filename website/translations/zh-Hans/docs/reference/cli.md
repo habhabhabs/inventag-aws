@@ -120,9 +120,9 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 | 参数 | 默认值 | 状态 | 功能 |
 |---|---|---|---|
 | `--max-concurrent-accounts N` | `4` | 可用 | 同时扫描的账户数（至少 1）。 |
-| `--concurrency N` | `64` | 可用 | 整个运行中同时进行的 AWS 请求的最大数量（1 到 256）。1 表示一次只发送一个请求。超出范围：退出码 2。 |
+| `--concurrency N` | `64` | 可用 | 整个运行中同时进行的 AWS 请求的最大数量（1 到 256）。1 表示一次只发送一个请求。超出 1 到 256 的值，或不是整数的值：退出码 2。在配置模板中：`spec.concurrency`。见[并发](../guides/run-a-scan.md#concurrency)。 |
 | `--account-processing-timeout SECONDS` | `1800` | 可用 | 每个账户允许的时间，从该账户开始扫描时算起（至少 60）。超时的账户算作失败；它找到的资源保留在报告中。 |
-| `--disable-parallel-processing` | 关 | 可用 | 一次只扫描一个账户。 |
+| `--disable-parallel-processing` | 关 | 可用 | 一次只扫描一个账户。它不改变账户内部的线程。 |
 | `--resume` | 关 | 可用 | 复用同一条命令之前未完成的运行中已完成账户的保存结果（相同的账户、区域、服务和筛选条件），只扫描其他账户。与 `--disable-state-management` 一起使用：退出码 2。 |
 | `--resume-max-age-hours HOURS` | `24` | 可用 | 与 `--resume` 一起使用时，只复用不超过这个时长的保存结果（最多 168）。 |
 
@@ -170,7 +170,7 @@ inventag templates validate NAME|PATH [NAME|PATH ...]
 
 | 参数 | 默认值 | 状态 | 功能 |
 |---|---|---|---|
-| `--audit-output FILE` | 无 | 可用 | 写出一份 JSON 列表，记录本次运行调用的每个 AWS 操作，包括被允许的和被阻止的。 |
+| `--audit-output FILE` | 无 | 可用 | 写出一份 JSON 列表，记录本次运行调用的每个 AWS 操作，包括被允许的和被阻止的。当运行无权使用某个 IAM 操作时，该文件还会有列表 `permissions_denied`：见[仅使用 ReadOnlyAccess 运行](../guides/read-only-access.md#run-with-only-readonlyaccess)。 |
 | `--validate-operations SERVICE:OPERATION ...` | 无 | 可用 | 对照防护检查这些操作，然后退出（全部允许为 0，否则为 1）。 |
 | `--enforce-read-only`, `--security-validation`, `--enable-production-safety` | 开 | 无效果 | 保留这些参数是为了让旧命令仍能运行。防护始终开启。 |
 | `--disable-production-safety` | 关 | 以退出码 2 停止 | 防护无法关闭。 |
@@ -252,7 +252,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 |---|---|
 | 0 | 成功。部分账户失败但其他账户正常，以及没有找到任何资源时，也是 0，除非你传入 `--fail-on-account-error` 或 `--fail-if-empty`。见[功能状态](../getting-started/status.md#when-a-run-goes-wrong)。 |
 | 1 | 出错：参数、配置或模板无效，数值超出范围（例如 `--max-concurrent-accounts 0`），凭证失败，所有账户都失败（无法扫描或超出时限），S3 上传失败，或某种报告格式无法写出 |
-| 2 | 命令行无效：未知、格式错误或相互冲突的选项，尚未实现的参数，Google 选项有误，版式文件参数缺少它所需的报告，或给了角色名称但没有 `--accounts-file` |
+| 2 | 命令行无效：未知、格式错误或相互冲突的选项，超出 1 到 256 的 `--concurrency` 值，尚未实现的参数，Google 选项有误，版式文件参数缺少它所需的报告，或给了角色名称但没有 `--accounts-file` |
 | 3 | 报告已写出，但带有 `fail_on_tag_violations: true` 的配置模板发现了标签策略违规 |
 | 4 | 报告已写出，但 `--risk-threshold` 发现有安全组规则达到或超过该级别 |
 | 5 | 报告已写出，但有账户无法扫描或超出时限，并且你传入了 `--fail-on-account-error` |
