@@ -365,6 +365,10 @@ class ChangelogGenerator:
             state_comparison["new_fields_not_compared"] = statistics[
                 "new_fields_not_compared"
             ]
+        if statistics.get("details_not_compared"):
+            state_comparison["details_not_compared"] = statistics[
+                "details_not_compared"
+            ]
 
         # Create changelog
         changelog = Changelog(
@@ -1110,6 +1114,10 @@ class ChangelogGenerator:
         if changelog.state_comparison.get("new_fields_not_compared"):
             lines.append(
                 f"**Note:** {changelog.state_comparison['new_fields_not_compared']}"
+            )
+        if changelog.state_comparison.get("details_not_compared"):
+            lines.append(
+                f"**Note:** {changelog.state_comparison['details_not_compared']}"
             )
         lines.append("")
 
