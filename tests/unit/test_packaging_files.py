@@ -753,6 +753,12 @@ class _OwnedBuild(_SampleBuild):
     def owning_package(self, path):
         return self.owners.get(path)
 
+    def package_licence(self, pkg):
+        return None
+
+    def linked_libraries(self, rel):
+        return []
+
 
 UNMAPPED_GOLDEN = [
     "unmapped files: 3 (platform linux, Python 3.12.3)",
@@ -958,7 +964,10 @@ DARWIN_FRAMEWORK_FILES = [
     "_internal/Python.framework/Versions/3.12/Python",
     "_internal/libcrypto.3.dylib",
     "_internal/libssl.3.dylib",
-] + [f"_internal/python3.12/lib-dynload/{m}.cpython-312-darwin.so" for m in DARWIN_DYNLOAD]
+] + [
+    f"_internal/python3.12/lib-dynload/{m}.cpython-312-darwin.so"
+    for m in DARWIN_DYNLOAD
+]
 
 
 def test_the_darwin_table_maps_the_wheel_files_of_dry_run_3(tpl):
@@ -983,3 +992,74 @@ def test_the_darwin_table_maps_the_wheel_files_of_dry_run_3(tpl):
 def test_the_darwin_table_has_no_row_for_the_python_framework_yet(tpl):
     rows = tpl.TABLES["darwin"]
     assert [f for f in DARWIN_FRAMEWORK_FILES if tpl.match_row(f, rows)] == []
+
+
+# ------------- evidence for the next rows in the unmapped list (B2d)
+class _EvidenceBuild(_OwnedBuild):
+    def __init__(self, files, sources, owners, licences, linked):
+        super().__init__(files, sources, {}, owners)
+        self.licences, self.linked = licences, linked
+
+    def package_licence(self, pkg):
+        return self.licences.get(pkg)
+
+    def linked_libraries(self, rel):
+        return self.linked.get(rel, [])
+
+
+EVIDENCE_GOLDEN = [
+    "unmapped files: 2 (platform linux, Python 3.12.16)",
+    "UNMAPPED _internal/Python | source: /fw/Python | python package: none | "
+    "system package: none found",
+    "    linked: /usr/lib/libSystem.B.dylib, @rpath/libssl.3.dylib",
+    "UNMAPPED _internal/libmpdec.so.3 | source: /lib64/libmpdec.so.3 | python "
+    "package: none | system package: mpdecimal 2.5.1-3.el9",
+    "    licence of mpdecimal: SAMPLE-LICENCE | licence files: "
+    "/usr/share/licenses/mpdecimal/A.txt, /usr/share/licenses/mpdecimal/B.txt",
+]
+
+
+def test_the_unmapped_list_prints_the_evidence_a_row_needs(tpl):
+    # The system package's own licence field and licence files (rpm), and
+    # what a file links (macOS): what a row is written from in the next round.
+    mpdec = "/lib64/libmpdec.so.3"
+    build = _EvidenceBuild(
+        ["_internal/libmpdec.so.3", "_internal/Python"],
+        {"_internal/libmpdec.so.3": mpdec, "_internal/Python": "/fw/Python"},
+        {mpdec: ("mpdecimal", "2.5.1-3.el9")},
+        {
+            "mpdecimal": (
+                "SAMPLE-LICENCE",
+                [
+                    "/usr/share/licenses/mpdecimal/B.txt",
+                    "/usr/share/licenses/mpdecimal/A.txt",
+                ],
+            )
+        },
+        {"_internal/Python": ["/usr/lib/libSystem.B.dylib", "@rpath/libssl.3.dylib"]},
+    )
+    entries = tpl.unmapped_files(build, ())
+    text = tpl.unmapped_report(entries, "linux", "3.12.16")
+    assert text.splitlines() == EVIDENCE_GOLDEN
+
+
+def test_rpm_licence_files_are_the_paths_rpm_prints(tpl):
+    assert tpl.licence_file_lines(
+        "/usr/share/licenses/x/LICENSE\n/usr/share/licenses/x/COPYING\n"
+    ) == ["/usr/share/licenses/x/COPYING", "/usr/share/licenses/x/LICENSE"]
+    assert tpl.licence_file_lines("(contains no files)\n") == []
+
+
+def test_otool_output_gives_the_linked_libraries(tpl):
+    out = (
+        "/b/_ssl.so (architecture x86_64):\n"
+        "\t@rpath/libssl.3.dylib (compatibility version 3.0.0, current version 3.0.0)\n"
+        "\t/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current "
+        "version 1351.0.0)\n"
+        "/b/_ssl.so (architecture arm64):\n"
+        "\t@rpath/libssl.3.dylib (compatibility version 3.0.0, current version 3.0.0)\n"
+    )
+    assert tpl.otool_libraries(out) == [
+        "/usr/lib/libSystem.B.dylib",
+        "@rpath/libssl.3.dylib",
+    ]
