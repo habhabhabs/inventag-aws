@@ -159,6 +159,9 @@ class Carried:
     # Present only when the bundled file holds this string (the library's
     # symbols): a wheel built without the library gets no such component.
     requires_strings: bytes = b""
+    # Absent when the bundled file holds this string: the name of the library's
+    # own file, which the module then loads instead of carrying a copy.
+    loads_instead: bytes = b""
     notes: Tuple[str, ...] = ()
     urls: Tuple[str, ...] = ()
 
@@ -284,6 +287,9 @@ LINUX_ROWS: Tuple[Row, ...] = (
                 "BSD-2-Clause",
                 ("pkgdoc",),
                 "python:decimal.__libmpdec_version__",
+                # Dry run 3 (AlmaLinux 9) bundled libmpdec.so.3 as a file of its
+                # own; a _decimal that names that file loads it.
+                loads_instead=b"libmpdec.so",
             ),
         ),
     ),
@@ -789,6 +795,8 @@ def collect(build: Build, rows: Sequence[Row]) -> Tuple[List[Component], List[st
             if carried.requires_strings and not build.contains(
                 rel, carried.requires_strings
             ):
+                continue
+            if carried.loads_instead and build.contains(rel, carried.loads_instead):
                 continue
             got = [build.read_text(s, source) for s in carried.text]
             if not carried.text:
