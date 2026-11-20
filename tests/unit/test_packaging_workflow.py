@@ -1608,46 +1608,87 @@ MAN_PAGES = {
 }
 
 
-def _linux_man_run(tmp_path, fmt, page, renderer="missing", present=True):
+def _linux_man_run(
+    tmp_path,
+    fmt,
+    page,
+    renderer="missing",
+    present=True,
+    in_deb=True,
+    exclude=False,
+):
     """Run the Linux "Version, selftest and the man page" step in a temporary tree.
 
-    renderer: "missing" (man and col absent), "stub-fails" (man prints the
-    unminimize text and exits 1, col absent: the images of dry run 8), "good"
-    (man and col work), "no-inventag" (they work but print another page).
+    renderer: "missing" (man and col absent), "stub-fails" (man exits 1, col
+    absent), "unminimize" (the stub of the minimized Ubuntu images: it prints
+    the unminimize text and exits 0, col present), "good" (man and col work),
+    "no-inventag" (they work but print another page).
+    present: the installed page exists. in_deb: the page is in the .deb (deb
+    only). exclude: dpkg is configured with path-exclude=/usr/share/man/*.
     """
     import gzip
+    import io
     import subprocess
+    import tarfile
 
     stubs = tmp_path / "stubs"
     stubs.mkdir(exist_ok=True)
-    for name in ("inventag",):
-        (stubs / name).write_text(
-            '#!/bin/bash\nif [ "$1" = --version ]; then echo "inventag $VERSION"; fi\n',
-            encoding="utf-8",
-        )
-        (stubs / name).chmod(0o755)
-    if renderer == "stub-fails":
-        (stubs / "man").write_text(
-            "#!/bin/bash\necho \"run 'unminimize'\"\nexit 1\n", encoding="utf-8"
-        )
-    elif renderer in ("good", "no-inventag"):
-        text = "INVENTAG(1)" if renderer == "good" else "something else"
-        (stubs / "man").write_text(f"#!/bin/bash\necho '{text}'\n", encoding="utf-8")
+    (stubs / "inventag").write_text(
+        '#!/bin/bash\nif [ "$1" = --version ]; then echo "inventag $VERSION"; fi\n',
+        encoding="utf-8",
+    )
+    (stubs / "inventag").chmod(0o755)
+    man_scripts = {
+        "stub-fails": "echo \"run 'unminimize'\"\nexit 1\n",
+        "unminimize": "echo \"run 'unminimize', ensure man-db is installed\"\n",
+        "good": "echo 'INVENTAG(1)'\n",
+        "no-inventag": "echo 'something else'\n",
+    }
+    if renderer in man_scripts:
+        (stubs / "man").write_text("#!/bin/bash\n" + man_scripts[renderer], "utf-8")
+        (stubs / "man").chmod(0o755)
+    if renderer in ("good", "no-inventag", "unminimize"):
         (stubs / "col").write_text("#!/bin/bash\ncat\n", encoding="utf-8")
         (stubs / "col").chmod(0o755)
-    if (stubs / "man").exists():
-        (stubs / "man").chmod(0o755)
     man1 = tmp_path / "man1"
     man1.mkdir(exist_ok=True)
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir(exist_ok=True)
+    dpkg_etc = tmp_path / "dpkg"
+    (dpkg_etc / "dpkg.cfg.d").mkdir(parents=True, exist_ok=True)
+    if exclude:
+        (dpkg_etc / "dpkg.cfg.d" / "excludes").write_text(
+            "path-exclude=/usr/share/man/*\n", encoding="utf-8"
+        )
     if present:
         if fmt == "tar":
             (man1 / "inventag.1").write_text(page, encoding="utf-8")
         else:
             with gzip.open(man1 / "inventag.1.gz", "wb") as handle:
                 handle.write(page.encode("utf-8"))
+    if fmt == "deb":
+        # The .deb is a stub file; dpkg-deb --fsys-tarfile prints its files as a tar.
+        (artifacts / "inventag_1.3.1_amd64.deb").write_text("x", encoding="utf-8")
+        member = (
+            "./usr/share/man/man1/inventag.1.gz" if in_deb else "./usr/bin/inventag"
+        )
+        buffer = io.BytesIO()
+        with tarfile.open(fileobj=buffer, mode="w") as tar:
+            data = gzip.compress(page.encode("utf-8"))
+            info = tarfile.TarInfo(member)
+            info.size = len(data)
+            tar.addfile(info, io.BytesIO(data))
+        (tmp_path / "fsys.tar").write_bytes(buffer.getvalue())
+        (stubs / "dpkg-deb").write_text(
+            f'#!/bin/bash\ncat "{tmp_path}/fsys.tar"\n', encoding="utf-8"
+        )
+        (stubs / "dpkg-deb").chmod(0o755)
     script = _heredoc(_step("smoke-linux", "man page")["run"], "RUN")
-    script = script.replace("/usr/share/man/man1", str(man1)).replace(
-        "/opt/inventag/share/man/man1", str(man1)
+    script = (
+        script.replace("/usr/share/man/man1", str(man1))
+        .replace("/opt/inventag/share/man/man1", str(man1))
+        .replace("/artifacts", str(artifacts))
+        .replace("/etc/dpkg", str(dpkg_etc))
     )
     return subprocess.run(
         ["bash", "-s"],
@@ -1716,6 +1757,58 @@ def test_the_macos_man_check_reads_the_roff_source_and_needs_no_renderer(tmp_pat
         work = tmp_path / why.replace(" ", "-")
         work.mkdir()
         assert _macos_man_text_run(work, page, "missing").returncode != 0, why
+
+
+# ---- B3h: Ubuntu images (dry run 9): the .deb is the proof for deb ----------
+
+
+def test_the_deb_page_is_proved_from_the_deb_when_the_image_excludes_man_pages(
+    tmp_path,
+):
+    # dpkg path-exclude=/usr/share/man/*: the page is in the .deb, not installed.
+    result = _linux_man_run(tmp_path, "deb", GOOD_PAGE, present=False, exclude=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_a_deb_without_the_page_fails_even_when_the_image_excludes_man_pages(
+    tmp_path,
+):
+    for exclude in (True, False):
+        work = tmp_path / str(exclude)
+        work.mkdir()
+        result = _linux_man_run(
+            work, "deb", GOOD_PAGE, in_deb=False, present=False, exclude=exclude
+        )
+        assert result.returncode != 0, exclude
+
+
+def test_a_page_missing_after_the_install_fails_unless_dpkg_excludes_man_pages(
+    tmp_path,
+):
+    result = _linux_man_run(tmp_path, "deb", GOOD_PAGE, present=False, exclude=False)
+    assert result.returncode != 0
+
+
+def test_a_bad_page_in_the_deb_fails(tmp_path):
+    for why, page in MAN_PAGES.items():
+        if why == "good":
+            continue
+        work = tmp_path / why.replace(" ", "-")
+        work.mkdir()
+        result = _linux_man_run(work, "deb", page, present=False, exclude=True)
+        assert result.returncode != 0, why
+
+
+def test_the_stub_man_of_a_minimized_image_that_exits_0_does_not_fail_the_check(
+    tmp_path,
+):
+    # Dry run 8/9: the minimized Ubuntu man prints the unminimize text and
+    # exits 0; grepping that text for inventag failed the step silently.
+    for fmt in ("deb", "rpm", "tar"):
+        work = tmp_path / fmt
+        work.mkdir()
+        result = _linux_man_run(work, fmt, GOOD_PAGE, renderer="unminimize")
+        assert result.returncode == 0, (fmt, result.stdout, result.stderr)
 
 
 # ---- B3b: the INCLUDE_MACOS switch (architect ruling 4) --------------------
