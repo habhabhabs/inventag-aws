@@ -691,8 +691,12 @@ jobs:
     - name: Scan a simulated AWS with the installed program
       run: |
         export TMPDIR="$RUNNER_TEMP/smoke-shared"
+        # As the runner's own user, not root: the files of the scan are then the
+        # runner's to read and remove (dry run 7: PermissionError on audit.json),
+        # and it is a truer test of a normal user running the package. HOME is
+        # the scan's own directory, which smoke_scan.py creates and passes on.
         python scripts/packaging/smoke_scan.py --keep "$RUNNER_TEMP/smoke-keep" -- \
-          docker exec \
+          docker exec -u "$(id -u):$(id -g)" \
             -e AWS_ENDPOINT_URL -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY \
             -e AWS_DEFAULT_REGION -e AWS_CONFIG_FILE -e AWS_SHARED_CREDENTIALS_FILE \
             -e HOME -e LANG smoke inventag
@@ -771,7 +775,8 @@ jobs:
         BIN="$RUNNER_TEMP/install/inventag"
         test "$(env -i PATH=/usr/bin:/bin "$BIN/inventag" --version)" = "inventag $VERSION"
         env -i PATH=/usr/bin:/bin HOME="$RUNNER_TEMP" "$BIN/inventag" selftest
-        man -l "$BIN/share/man/man1/inventag.1" > "$RUNNER_TEMP/man.txt"
+        # macOS man has no -l (dry run 7); a name with a slash is a file.
+        man "$BIN/share/man/man1/inventag.1" > "$RUNNER_TEMP/man.txt"
         grep -q -i inventag "$RUNNER_TEMP/man.txt"
         bash -n "$BIN/share/completions/inventag.bash"
         zsh -n "$BIN/share/completions/_inventag"
