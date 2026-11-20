@@ -323,16 +323,16 @@ def test_every_build_packages_the_tag_the_plan_checked():
 
 
 def test_the_build_image_is_pinned_by_digest_or_the_job_refuses_to_run():
-    value = str(DATA["env"]["ALMALINUX_8_DIGEST"])
+    value = str(DATA["env"]["ALMALINUX_9_DIGEST"])
     assert value == DIGEST_PLACEHOLDER or re.fullmatch(r"[0-9a-f]{64}", value)
     for name in LINUX_BUILDS:
         text = _run_text(name)
         # The check comes first and refuses anything that is not 64 hex
         # digits; the refusal names the digest the tag has now.
         check = text.index("[0-9a-f]{64}")
-        pinned_pull = text.index('docker pull "almalinux@sha256:${ALMALINUX_8_DIGEST}"')
+        pinned_pull = text.index('docker pull "almalinux@sha256:${ALMALINUX_9_DIGEST}"')
         assert check < pinned_pull
-        assert "almalinux:8" in text[check:pinned_pull]
+        assert "almalinux:9" in text[check:pinned_pull]
         # After the pinned pull no line names the image by tag.
         assert "almalinux:" not in text[pinned_pull:]
         assert ":latest" not in text
@@ -346,8 +346,24 @@ def test_the_build_image_check_names_the_system_python_libc_and_packages():
         assert "python3.12 python3.12-pip" in text
         assert "Py_ENABLE_SHARED" in text
         assert "libpython3.12" in text
-        assert "rpm -q" in text and "glibc" in text and "2.28" in text
+        assert "rpm -q" in text and "glibc" in text and "2.34" in text
+        assert "2.28" not in text
+        assert 'case "$VERSION_ID" in 9|9.*)' in text
         assert "build-image" in text
+
+
+def test_the_build_image_is_almalinux_9_and_no_older_image_is_left():
+    assert "ALMALINUX_8_DIGEST" not in TEXT
+    for name in LINUX_BUILDS:
+        assert "almalinux:8" not in _run_text(name)
+        assert "ALMALINUX_9_DIGEST" in _run_text(name)
+
+
+def test_the_glibc_floor_is_named_once_in_a_comment_and_never_as_2_28():
+    # Architect ruling 2 of package-dryrun-1: the floor is glibc 2.34.
+    comments = _comment_text()
+    assert len(re.findall(r"glibc 2\.34", comments)) == 1
+    assert "2_28" not in TEXT
 
 
 def test_the_linux_builds_use_the_scripts_of_the_repository_and_the_lock():
