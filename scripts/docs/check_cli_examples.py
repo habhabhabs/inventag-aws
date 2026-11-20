@@ -94,6 +94,22 @@ def build_templates_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def build_selftest_parser() -> argparse.ArgumentParser:
+    from inventag.cli.selftest import build_parser
+
+    parser = build_parser()
+    _quiet(parser)
+    return parser
+
+
+def build_completion_parser() -> argparse.ArgumentParser:
+    from inventag.cli.completion import build_parser
+
+    parser = build_parser()
+    _quiet(parser)
+    return parser
+
+
 def is_placeholder(token: str) -> bool:
     return bool(_PLACEHOLDER.search(token))
 
@@ -143,6 +159,12 @@ def check_command(tokens: List[str]) -> List[str]:
     args = tokens[1:]
     if args and args[0] == "templates":
         parser = build_templates_parser()
+        args = args[1:]
+    elif args and args[0] == "selftest":
+        parser = build_selftest_parser()
+        args = args[1:]
+    elif args and args[0] == "completion":
+        parser = build_completion_parser()
         args = args[1:]
     else:
         parser = build_main_parser()
