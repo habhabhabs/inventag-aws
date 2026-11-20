@@ -1650,9 +1650,11 @@ def _written_reports_note(output_dir, since) -> str:
 def _install_sigterm_message(logger, output_dir, since):
     """Say one line when the process is asked to stop (SIGTERM), then end as
     before: the default action, so the exit status (killed by SIGTERM) is the
-    same. The handler takes no lock: it runs on the main thread, which may
-    hold the limiter's or a pool's lock at that moment, so it only sets the
-    stop flags (no new AWS request) and the process ends a moment later.
+    same. The handler takes none of the run's locks: it runs on the main
+    thread, which may hold the limiter's or a pool's lock at that moment, so
+    it only sets the stop flags (no new AWS request) and the process ends a
+    moment later. Its log line takes only reentrant locks (logging's and the
+    redaction lock).
     Ctrl-C is left to Python (KeyboardInterrupt), which stops the scans with
     the locks once the stack has unwound. Returns the handler that was there
     before, to put back; None when none could be set. After its line the

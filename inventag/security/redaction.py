@@ -277,7 +277,9 @@ def _redact_flat_mapping_values(text: str) -> str:
 
 
 _registered_secrets = set()
-_registered_lock = threading.Lock()
+# Reentrant: the SIGTERM handler logs (through redact) on the main thread,
+# which may be inside redact() or register_secret() at that moment.
+_registered_lock = threading.RLock()
 
 # Secrets shorter than this are not registered: replacing very short strings
 # would mangle ordinary log text without protecting anything meaningful.
