@@ -386,3 +386,271 @@ def test_the_smoke_jobs_use_the_artifacts_of_their_build():
         assert len(down) == 1, name
         build = [n for n in JOBS[name]["needs"] if n.startswith("build-")][0]
         assert down[0]["with"]["name"] == build
+
+
+# ---- stage 4: provenance (notices addresses, SBOMs, checksums, attestation) and publish
+
+BUILDS_AND_SMOKES = {
+    "build-linux-x86_64",
+    "build-linux-arm64",
+    "build-macos-arm64",
+    "build-macos-x86_64",
+    "smoke-linux",
+    "smoke-macos-arm64",
+    "smoke-macos-x86_64",
+    "smoke-pipx",
+}
+GNU_PAGE = "https://www.gnu.org/software/libiconv/"
+GNU_TARBALL = "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.18.tar.gz"
+
+
+def _step(job, fragment):
+    found = [s for s in _steps(job) if fragment in s.get("name", "")]
+    assert len(found) == 1, (job, fragment, [s.get("name") for s in _steps(job)])
+    return found[0]
+
+
+def _heredoc(run, tag):
+    return re.search(rf"<<'{tag}'\n(.*?)\n\s*{tag}\n", run, re.S).group(1)
+
+
+def test_provenance_waits_for_every_build_and_every_smoke_test():
+    assert set(JOBS["provenance"]["needs"]) == BUILDS_AND_SMOKES | {"plan"}
+    assert JOBS["provenance"]["runs-on"] == "ubuntu-24.04"
+
+
+def test_provenance_takes_the_files_of_the_builds_and_nothing_else():
+    down = _step("provenance", "Download the files of the builds")
+    assert down["with"]["pattern"] == "build-*"
+    assert down["with"]["merge-multiple"] is True
+
+
+def _libiconv_run(tmp_path, notices, stub_fails=""):
+    """Run the notices-address step with a stub curl; return (exit code, requested URLs)."""
+    import subprocess
+    import tarfile
+
+    release = tmp_path / "release"
+    release.mkdir()
+    for name, text in notices.items():
+        (release / name).write_text(text, encoding="utf-8")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    calls = tmp_path / "calls.log"
+    payload = tmp_path / "libiconv-1.18"
+    payload.mkdir()
+    (payload / "README").write_text("libiconv", encoding="utf-8")
+    sample = tmp_path / "sample.tar.gz"
+    with tarfile.open(sample, "w:gz") as archive:
+        archive.add(payload, arcname="libiconv-1.18")
+    stub = bin_dir / "curl"
+    stub.write_text(
+        "#!/bin/bash\n"
+        'out=""; url=""\n'
+        'while [ $# -gt 0 ]; do case "$1" in -o) out="$2"; shift 2;;'
+        ' --max-time|--retry) shift 2;; -*) shift;; *) url="$1"; shift;; esac; done\n'
+        f'echo "$url" >> "{calls}"\n'
+        f'case "$url" in *"{stub_fails}"*) [ -n "{stub_fails}" ] && exit 22;; esac\n'
+        f'case "$url" in *.tar.gz) cp "{sample}" "$out";; *) echo page > "$out";; esac\n',
+        encoding="utf-8",
+    )
+    stub.chmod(0o755)
+    summary = tmp_path / "summary.md"
+    script = _step("provenance", "libiconv")["run"]
+    result = subprocess.run(
+        ["bash", "-c", script],
+        env={
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "RUNNER_TEMP": str(tmp_path),
+            "GITHUB_STEP_SUMMARY": str(summary),
+        },
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    urls = calls.read_text("utf-8").split() if calls.exists() else []
+    return result, urls
+
+
+GOOD_NOTICE = (
+    "- GNU libiconv, linked into lxml's extension modules 1.18: LGPL-2.1\n"
+    f"    source: {GNU_PAGE}\n"
+    f"    source: {GNU_TARBALL}\n"
+    "    source: https://github.com/lxml/lxml\n"
+)
+
+
+def test_the_provenance_job_requests_both_libiconv_addresses_of_each_notices_file(
+    tmp_path,
+):
+    # Architect review F2: an address in a notices file is a claim that the
+    # source is there; the job fetches both before a release carries them.
+    result, urls = _libiconv_run(
+        tmp_path, {"inventag-1.4.0-linux-x86_64.THIRD-PARTY-LICENSES.txt": GOOD_NOTICE}
+    )
+    assert result.returncode == 0, result.stderr
+    assert GNU_PAGE in urls and GNU_TARBALL in urls
+    assert "https://github.com/lxml/lxml" not in urls
+
+
+def test_the_provenance_job_fails_when_the_versioned_tarball_cannot_be_fetched(
+    tmp_path,
+):
+    result, urls = _libiconv_run(
+        tmp_path,
+        {"a.THIRD-PARTY-LICENSES.txt": GOOD_NOTICE},
+        stub_fails="libiconv-1.18.tar.gz",
+    )
+    assert result.returncode != 0
+    assert GNU_TARBALL in urls
+
+
+def test_the_provenance_job_fails_when_the_gnu_page_cannot_be_fetched(tmp_path):
+    result, _urls = _libiconv_run(
+        tmp_path,
+        {"a.THIRD-PARTY-LICENSES.txt": GOOD_NOTICE},
+        stub_fails="software/libiconv/",
+    )
+    assert result.returncode != 0
+
+
+def test_the_provenance_job_fails_when_a_notices_file_lost_an_address(tmp_path):
+    only_page = f"    source: {GNU_PAGE}\n"
+    result, _urls = _libiconv_run(tmp_path, {"a.THIRD-PARTY-LICENSES.txt": only_page})
+    assert result.returncode != 0
+
+
+def test_the_provenance_job_fails_when_there_is_no_notices_file(tmp_path):
+    result, _urls = _libiconv_run(tmp_path, {})
+    assert result.returncode != 0
+
+
+def test_a_downloaded_tarball_that_is_not_libiconv_fails_the_job(tmp_path):
+    notice = (
+        f"    source: {GNU_PAGE}\n"
+        "    source: https://ftp.gnu.org/pub/gnu/libiconv/libiconv-9.99.tar.gz\n"
+    )
+    # The stub serves a tarball holding libiconv-1.18/: not the 9.99 asked for.
+    result, _urls = _libiconv_run(tmp_path, {"a.THIRD-PARTY-LICENSES.txt": notice})
+    assert result.returncode != 0
+
+
+def test_the_sbom_script_writes_stable_cyclonedx_for_every_artefact(tmp_path):
+    import json
+    import subprocess
+
+    components = [
+        {
+            "name": "boto3",
+            "version": "1.44.6",
+            "licence": "Apache-2.0",
+            "section": "package",
+            "files": [],
+        },
+        {
+            "name": "CPython",
+            "version": "3.12.1",
+            "licence": "PSF-2.0",
+            "section": "runtime",
+            "files": [],
+        },
+        {
+            "name": "GNU libiconv, linked into lxml's extension modules",
+            "version": "1.18",
+            "licence": "LGPL-2.1",
+            "section": "library",
+            "files": ["_internal/lxml/etree.so"],
+        },
+    ]
+    release = tmp_path / "release"
+    release.mkdir()
+    for cpu in ("x86_64", "arm64"):
+        (release / f"inventag-1.4.0-linux-{cpu}.components.json").write_text(
+            json.dumps(components), encoding="utf-8"
+        )
+    for name in (
+        "inventag-1.4.0-linux-x86_64.tar.gz",
+        "inventag-1.4.0-linux-arm64.tar.gz",
+        "inventag_1.4.0_amd64.deb",
+        "inventag_1.4.0_arm64.deb",
+        "inventag-1.4.0-1.x86_64.rpm",
+        "inventag-1.4.0-1.aarch64.rpm",
+    ):
+        (release / name).write_bytes(b"x")
+    script = _heredoc(_step("provenance", "SBOM")["run"], "PY")
+
+    def run():
+        done = subprocess.run(
+            ["python3", "-I", "-", str(release), "1.4.0"],
+            input=script,
+            env={"PATH": "/usr/bin:/bin"},
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        assert done.returncode == 0, done.stderr
+        return {p.name: p.read_bytes() for p in release.glob("*.cdx.json")}
+
+    first = run()
+    assert sorted(first) == sorted(
+        f"{name}.cdx.json"
+        for name in (
+            "inventag-1.4.0-linux-x86_64.tar.gz",
+            "inventag-1.4.0-linux-arm64.tar.gz",
+            "inventag_1.4.0_amd64.deb",
+            "inventag_1.4.0_arm64.deb",
+            "inventag-1.4.0-1.x86_64.rpm",
+            "inventag-1.4.0-1.aarch64.rpm",
+        )
+    )
+    assert run() == first
+    bom = json.loads(first["inventag_1.4.0_arm64.deb.cdx.json"])
+    assert bom["bomFormat"] == "CycloneDX" and bom["specVersion"] == "1.5"
+    assert "timestamp" not in json.dumps(bom) and "serialNumber" not in bom
+    assert bom["metadata"]["component"]["version"] == "1.4.0"
+    names = [c["name"] for c in bom["components"]]
+    assert names == sorted(names, key=str.lower) or names == sorted(names)
+    boto = [c for c in bom["components"] if c["name"] == "boto3"][0]
+    assert boto["purl"] == "pkg:pypi/boto3@1.44.6"
+    assert boto["licenses"] == [{"expression": "Apache-2.0"}]
+
+
+def test_the_checksums_cover_every_file_sorted_and_are_checked_at_once():
+    run = _step("provenance", "checksums")["run"]
+    assert "SHA256SUMS" in run
+    assert "LC_ALL=C" in run and "sort" in run
+    assert "sha256sum -c SHA256SUMS" in run
+    assert "! -name SHA256SUMS" in run
+
+
+def test_the_attestation_is_keyless_and_only_made_for_a_real_release():
+    step = _step("provenance", "attest")
+    assert step["uses"].startswith("actions/attest@")
+    assert step["if"] == "needs.plan.outputs.dry_run == 'false'"
+    assert step["with"]["subject-checksums"].endswith("/release/SHA256SUMS")
+    assert "private-key" not in str(step) and "secret" not in str(step).lower()
+
+
+def test_provenance_keeps_the_release_files_for_the_publish_job():
+    up = _step("provenance", "Keep the release files")
+    assert up["with"]["name"] == "release-files"
+    assert up["with"]["if-no-files-found"] == "error"
+
+
+def test_publish_attaches_to_the_release_only_when_it_is_not_a_dry_run():
+    job = JOBS["publish"]
+    assert job["needs"] == ["plan", "provenance"]
+    assert job["if"] == "needs.plan.outputs.dry_run == 'false'"
+    assert job["permissions"] == {"contents": "write"}
+    assert job["env"]["GH_TOKEN"] == "${{ github.token }}"
+    run = _run_text("publish")
+    assert "gh release upload" in run and "--clobber" in run
+    assert "gh release view" in run
+    assert not [s for s in _steps("publish") if "checkout" in s.get("uses", "")]
+
+
+def test_nothing_but_publish_touches_the_release():
+    for name, step in _all_steps():
+        if name != "publish":
+            assert "gh release" not in step.get("run", ""), name
+            assert "gh api" not in step.get("run", ""), name
