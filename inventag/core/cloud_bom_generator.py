@@ -31,6 +31,7 @@ from datetime import datetime, timezone
 from concurrent.futures import FIRST_COMPLETED, wait
 import threading
 import time
+import weakref
 from pathlib import Path
 from botocore.exceptions import (
     BotoCoreError,
@@ -41,10 +42,11 @@ from botocore.exceptions import (
 
 # Import InvenTag components
 from ..discovery import AWSResourceInventory
+from ..discovery.aws_clients import enable_client_cache
 from ..discovery.coverage import DETAIL_SOURCE, EMPTY, FAILED_OUTCOMES, OK
 from ..discovery.regions import discover_regions
 from .daemon_pool import DaemonThreadPool
-from .limiter import DEFAULT_LIMIT
+from .limiter import DEFAULT_LIMIT, InFlightLimiter
 from .log_context import account_log_context
 from ..compliance import ComprehensiveTagComplianceChecker
 from ..reporting import BOMConverter, BOMDataProcessor, BOMProcessingConfig
@@ -195,6 +197,21 @@ def _expired_listings(context) -> int:
         for entry in _coverage_of(context)
         if str(entry.get("error_code", "")) in _EXPIRED_SESSION_CODES
     )
+
+
+# The limiter of every generator in this process (one per run), so that
+# SIGTERM and Ctrl-C can stop them all (stop_running_scans).
+_RUN_LIMITERS: "weakref.WeakSet" = weakref.WeakSet()
+_RUN_LIMITERS_LOCK = threading.Lock()
+
+
+def stop_running_scans() -> None:
+    """Stop the limiter of every run in this process: every request waiting
+    for a slot ends at once, and no new AWS request starts (SIGTERM, Ctrl-C)."""
+    with _RUN_LIMITERS_LOCK:
+        limiters = list(_RUN_LIMITERS)
+    for limiter in limiters:
+        limiter.stop()
 
 
 class AccountSessionError(Exception):
@@ -429,6 +446,11 @@ class CloudBOMGenerator:
 
         # Processing state
         self._processing_lock = threading.Lock()
+        # At most --concurrency AWS requests in flight for the whole run,
+        # attached to each account's session for its scan (_scan_account).
+        self.limiter = InFlightLimiter(config.concurrency)
+        with _RUN_LIMITERS_LOCK:
+            _RUN_LIMITERS.add(self.limiter)
         self._processing_stats = {
             "total_accounts": 0,
             "successful_accounts": 0,
@@ -1950,6 +1972,7 @@ class CloudBOMGenerator:
         deadline = deadline or self._new_deadline(account_id)
         deadline.start()
         deadline.attach(context.session)
+        self._attach_limiter(context.session, account_id, deadline)
         unbound = _bound_cost_explorer(
             context.session, _cost_explorer_config(deadline.timeout_seconds)
         )
@@ -1970,6 +1993,21 @@ class CloudBOMGenerator:
                 partial_resources=resources,
             )
         return resources
+
+    def _attach_limiter(self, session, account_id: str, deadline) -> None:
+        """Put the run's limiter on an account's session, after the read-only
+        guard (installed on every client) and the account's deadline, then
+        turn the session's client cache on. Clients copy the session's
+        handlers when they are created, so this comes before discovery
+        creates any. The limiter stays on the session after the scan (the
+        analyses use it too); the deadline it waits on ends with the scan."""
+        if getattr(session, "events", None) is None:
+            return
+        account = str(account_id)
+        # A second scan of the account (library use) gets its new deadline.
+        self.limiter.detach(session, account)
+        self.limiter.attach(session, account, deadline)
+        enable_client_cache(session)
 
     def _discover_account_resources(
         self, account_id: str, context: AccountContext
