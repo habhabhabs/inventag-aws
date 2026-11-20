@@ -376,6 +376,9 @@ jobs:
         test "$(inventag --version)" = "inventag $VERSION"
         inventag selftest
         dpkg -r inventag
+        # bash remembers the path of a command that ran before; forget it, or
+        # command -v names a file that the uninstall removed (dry run 6)
+        hash -r
         if command -v inventag; then
           echo "left: inventag is still on the PATH"
           exit 1
@@ -412,6 +415,9 @@ jobs:
         test "$(inventag --version)" = "inventag $VERSION"
         inventag selftest
         dnf remove -y -q inventag
+        # bash remembers the path of a command that ran before; forget it, or
+        # command -v names a file that the uninstall removed (dry run 6)
+        hash -r
         if command -v inventag; then
           echo "left: inventag is still on the PATH"
           exit 1
@@ -669,6 +675,9 @@ jobs:
         if [ -e /opt/inventag ]; then
           echo "left: /opt/inventag"; find /opt/inventag | head -20; status=1
         fi
+        # bash remembers the path of a command that ran before; forget it, or
+        # command -v names a file that the uninstall removed (dry run 6)
+        hash -r
         if command -v inventag; then
           echo "left: inventag is still on the PATH"; status=1
         fi
@@ -778,6 +787,9 @@ jobs:
         test "$(inventag --version)" = "inventag $VERSION"
         inventag selftest
         python -m pipx uninstall inventag-aws
+        # bash remembers the path of a command that ran before; forget it, or
+        # command -v names a file that the uninstall removed (dry run 6)
+        hash -r
         if command -v inventag; then
           echo "left: inventag is still on the PATH"
           exit 1
