@@ -47,6 +47,9 @@
   "code.copy": {
     "message": "复制"
   },
+  "code.scrollHint": {
+    "message": "代码。左右滚动可查看全部内容。"
+  },
   "code.copiedClipboard": {
     "message": "已复制到剪贴板"
   },

@@ -1949,3 +1949,25 @@ html:has(.consent-banner) {
     align-items: center;
   }
 }
+
+/* A code block that scrolls sideways fades at each edge that still has code
+   (src/components/useCodeOverflow.ts sets the attributes; nothing without it). */
+pre[data-scroll-end] {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+}
+pre[data-scroll-start]:not([data-scroll-end]) {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 2.5rem);
+  mask-image: linear-gradient(to right, transparent, #000 2.5rem);
+}
+pre[data-scroll-start][data-scroll-end] {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent);
+}
+@media print, (forced-colors: active) {
+  pre[data-scroll-start],
+  pre[data-scroll-end] {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}

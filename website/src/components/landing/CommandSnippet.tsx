@@ -2,6 +2,7 @@ import React, {useEffect, useRef, useState, type ReactNode} from 'react';
 import {translate} from '@docusaurus/Translate';
 import clsx from 'clsx';
 import {IconCopy, IconDone} from './Icons';
+import useCodeOverflow from '../useCodeOverflow';
 import styles from './landing.module.css';
 
 type Line = {cmd: string; note?: string};
@@ -22,6 +23,8 @@ export default function CommandSnippet({
   const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const timer = useRef<number | undefined>(undefined);
   const codeRef = useRef<HTMLElement>(null);
+  const frameRef = useRef<HTMLElement>(null);
+  useCodeOverflow(frameRef);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const copy = async () => {
@@ -46,7 +49,7 @@ export default function CommandSnippet({
   };
 
   return (
-    <figure className={styles.terminal} aria-labelledby="terminal-title">
+    <figure ref={frameRef} className={styles.terminal} aria-labelledby="terminal-title">
       <div className={styles.terminalBar}>
         <figcaption id="terminal-title" className={styles.terminalTitle}>
           {title}
@@ -71,7 +74,7 @@ export default function CommandSnippet({
               : ''}
         </span>
       </div>
-      <pre className={styles.terminalBody} tabIndex={0}>
+      <pre className={styles.terminalBody}>
         <code ref={codeRef}>
           {lines.map((l) => (
             <span key={l.cmd} className={styles.terminalLine}>

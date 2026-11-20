@@ -257,6 +257,9 @@
   "code.copy": {
     "message": "Copier"
   },
+  "code.scrollHint": {
+    "message": "Code. Faites défiler latéralement pour tout voir."
+  },
   "code.copiedClipboard": {
     "message": "Copié dans le presse-papiers"
   },

@@ -7,8 +7,10 @@
  * Blocks longer than COLLAPSE_AFTER lines (long command output, big config
  * files) start collapsed to PREVIEW_LINES with a "Show all N lines" button.
  * Without JavaScript they render in full (noscript style in docusaurus.config.ts).
+ *
+ * A block is a Tab stop only when it scrolls sideways (useCodeOverflow).
  */
-import React, {useId, useState, type ReactNode} from 'react';
+import React, {useId, useRef, useState, type ReactNode} from 'react';
 import {translate} from '@docusaurus/Translate';
 import clsx from 'clsx';
 import {useCodeBlockContext} from '@docusaurus/theme-common/internal';
@@ -17,6 +19,7 @@ import Title from '@theme/CodeBlock/Title';
 import Content from '@theme/CodeBlock/Content';
 import Buttons from '@theme/CodeBlock/Buttons';
 import type {Props} from '@theme/CodeBlock/Layout';
+import useCodeOverflow from '@site/src/components/useCodeOverflow';
 import styles from './styles.module.css';
 
 const LANGUAGE_LABELS: Record<string, string> = {
@@ -63,6 +66,8 @@ export default function CodeBlockLayout({className}: Props): ReactNode {
   const collapsible = lineCount > COLLAPSE_AFTER;
   const [expanded, setExpanded] = useState(false);
   const contentId = useId();
+  const contentRef = useRef<HTMLDivElement>(null);
+  useCodeOverflow(contentRef);
   return (
     <Container as="div" className={clsx(className, metadata.className)}>
       <div className={styles.header}>
@@ -88,6 +93,7 @@ export default function CodeBlockLayout({className}: Props): ReactNode {
         </div>
       </div>
       <div
+        ref={contentRef}
         id={contentId}
         className={clsx(styles.content, collapsible && !expanded && 'code-collapsed')}
         style={collapsible ? ({'--preview-lines': PREVIEW_LINES} as React.CSSProperties) : undefined}>

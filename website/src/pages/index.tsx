@@ -1,4 +1,4 @@
-import React, {type ReactNode} from 'react';
+import React, {useRef, type ReactNode} from 'react';
 import Head from '@docusaurus/Head';
 import Link from '@docusaurus/Link';
 import Layout from '@theme/Layout';
@@ -7,6 +7,7 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import ThemedImage from '@theme/ThemedImage';
 import CommandSnippet from '@site/src/components/landing/CommandSnippet';
+import useCodeOverflow from '@site/src/components/useCodeOverflow';
 import {
   IconAccounts,
   IconArrow,
@@ -320,6 +321,8 @@ function Cell({icon, title, flag, children, link, linkLabel, className, preview}
 }
 
 function Capabilities(): ReactNode {
+  const bentoRef = useRef<HTMLDivElement>(null);
+  useCodeOverflow(bentoRef);
   return (
     <section className={styles.section} aria-labelledby="capabilities">
       <div className={styles.sectionHead}>
@@ -335,7 +338,7 @@ function Capabilities(): ReactNode {
           </Translate>
         </p>
       </div>
-      <div className={styles.bento}>
+      <div ref={bentoRef} className={styles.bento}>
         <Cell
           className={styles.span7}
           icon={<IconSheet />}
@@ -387,7 +390,7 @@ function Capabilities(): ReactNode {
           link="/docs/examples/accounts-setup"
           linkLabel={translate({id: 'home.c3.link', message: 'Inventory every account in an organization'})}
           preview={
-            <pre className={styles.snippet} tabIndex={0}>
+            <pre className={styles.snippet}>
               <code>{`{
   "accounts": [{
     "account_id": "123456789012",
@@ -412,7 +415,7 @@ function Capabilities(): ReactNode {
           link="/docs/user-guides/configuration-examples"
           linkLabel={translate({id: 'home.c4.link', message: 'Map tags to columns'})}
           preview={
-            <pre className={styles.snippet} tabIndex={0}>
+            <pre className={styles.snippet}>
               <code>{`tag_mappings:
   - tag: "Owner"
     name: "Resource Owner"
@@ -433,7 +436,7 @@ function Capabilities(): ReactNode {
           link="/docs/architecture/state-management"
           linkLabel={translate({id: 'home.c5.link', message: 'How snapshots work'})}
           preview={
-            <pre className={styles.snippet} tabIndex={0}>
+            <pre className={styles.snippet}>
               <code>{`bom_output/
 ├─ multi_account_bom_<timestamp>.xlsx
 └─ state/
