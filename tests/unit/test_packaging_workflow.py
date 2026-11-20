@@ -1158,6 +1158,101 @@ def test_the_arm64_smoke_is_in_the_arm64_job_only_with_no_new_runner_label():
     }
 
 
+# ---- B3d: the uninstall check must not be fooled by bash's command cache ---
+
+
+def _pipx_run_with_stubs(tmp_path, leave="nothing"):
+    """Run the pipx smoke step with a stub python and a stub inventag.
+
+    `leave`: "nothing" (uninstall removes the program), "file" (uninstall
+    leaves it), "second" (uninstall removes it, but another inventag is
+    installed in a later PATH directory).
+    """
+    import subprocess
+
+    pipx_bin = tmp_path / "pipx_bin"
+    other_bin = tmp_path / "other_bin"
+    stubs = tmp_path / "stubs"
+    for directory in (pipx_bin, other_bin, stubs, tmp_path / "home", tmp_path / "dist"):
+        directory.mkdir(exist_ok=True)
+    program = (
+        "#!/bin/bash\n" 'if [ "$1" = --version ]; then echo "inventag $VERSION"; fi\n'
+    )
+    (other_bin / "inventag").write_text(program, encoding="utf-8")
+    (other_bin / "inventag").chmod(0o755)
+    if leave != "second":
+        (other_bin / "inventag").unlink()
+    (stubs / "python").write_text(
+        "#!/bin/bash\n"
+        'case "$*" in\n'
+        f'  "-m pipx install"*) cp "{other_bin}/../prog" "{pipx_bin}/inventag" ;;\n'
+        f'  "-m pipx uninstall"*) [ "{leave}" = file ] || rm -f "{pipx_bin}/inventag" ;;\n'
+        "esac\n",
+        encoding="utf-8",
+    )
+    (stubs / "python").chmod(0o755)
+    (tmp_path / "prog").write_text(program, encoding="utf-8")
+    (tmp_path / "prog").chmod(0o755)
+    run = _step("smoke-pipx", "Build the wheel")["run"]
+    return subprocess.run(
+        ["bash", "-e", "-c", run],
+        env={
+            # the pipx bin directory is on the PATH before the step starts, as
+            # /opt/pipx_bin is on the runner (dry run 6)
+            "PATH": f"{stubs}:{pipx_bin}:{other_bin}:/usr/bin:/bin",
+            "HOME": str(tmp_path / "home"),
+            "RUNNER_TEMP": str(tmp_path),
+            "VERSION": "1.3.1",
+        },
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+
+def test_the_pipx_uninstall_check_passes_when_the_program_is_gone_although_bash_hashed_it(
+    tmp_path,
+):
+    # Dry run 6: `inventag --version` put /opt/pipx_bin/inventag into bash's
+    # command cache; after the uninstall `command -v inventag` still printed
+    # that path and the step failed with "left: inventag is still on the PATH".
+    result = _pipx_run_with_stubs(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "left:" not in result.stdout
+
+
+def test_the_pipx_uninstall_check_still_fails_when_the_program_is_left(tmp_path):
+    result = _pipx_run_with_stubs(tmp_path, leave="file")
+    assert result.returncode != 0
+    assert "left: inventag is still on the PATH" in result.stdout
+
+
+def test_the_pipx_uninstall_check_still_fails_when_a_second_inventag_is_on_the_path(
+    tmp_path,
+):
+    result = _pipx_run_with_stubs(tmp_path, leave="second")
+    assert result.returncode != 0
+    assert "left: inventag is still on the PATH" in result.stdout
+
+
+def test_every_path_check_after_an_uninstall_forgets_bashs_command_cache_first():
+    # `command -v` answers from the cache of a command that ran before, even
+    # when its file is gone. This applies to every uninstall check.
+    checked = 0
+    for job, step in _all_steps():
+        run = step.get("run", "")
+        lines = run.splitlines()
+        for number, line in enumerate(lines):
+            if "command -v inventag" in line:
+                checked += 1
+                assert any(
+                    "hash -r" in earlier
+                    for earlier in lines[max(0, number - 3) : number]
+                ), (job, step.get("name"))
+    # smoke-linux, the two arm64 smokes and pipx
+    assert checked == 4
+
+
 # ---- B3b: the INCLUDE_MACOS switch (architect ruling 4) --------------------
 
 MACOS_JOBS = (
