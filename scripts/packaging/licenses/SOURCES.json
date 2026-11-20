@@ -1,0 +1,68 @@
+{
+  "about": "Where each licence text in this folder comes from (architect-package-dryrun-3.md ruling 1). The texts are stored unchanged; tests/unit/test_packaging_files.py checks every sha256.",
+  "files": {
+    "GPL-3.txt": {
+      "component": "GPL-3 text (libgcc_s.so.1)",
+      "origin": "not recorded when added (commit a574bc7); byte-identical to /usr/share/common-licenses/GPL-3 of the Ubuntu package base-files 13ubuntu10.5 on the build host (sha256 compared 2026-11-20)",
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+      "bytes": 35149
+    },
+    "LGPL-2.1.txt": {
+      "component": "LGPL-2.1 text (GNU libiconv in lxml)",
+      "origin": "not recorded when added (commit a574bc7); byte-identical to /usr/share/common-licenses/LGPL-2.1 of the Ubuntu package base-files 13ubuntu10.5 on the build host (sha256 compared 2026-11-20)",
+      "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
+      "bytes": 26530
+    },
+    "expat-COPYING": {
+      "component": "expat (in CPython's pyexpat, macOS)",
+      "repository": "https://github.com/libexpat/libexpat",
+      "tag": "R_2_10_0",
+      "commit": "a70841d9ffa64ddde29ab824ed6305035ebe4c47",
+      "address": "https://raw.githubusercontent.com/libexpat/libexpat/refs/tags/R_2_10_0/expat/COPYING",
+      "http_status": 200,
+      "sha256": "31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87",
+      "bytes": 1144,
+      "fetched": "2026-11-20T06:58:19Z",
+      "how": "one recorded --net run in the sandbox (architect-package-dryrun-3.md ruling 1); file stored unchanged",
+      "note": "expat's version is read at build time (pyexpat.EXPAT_VERSION); this text is from the newest release tag"
+    },
+    "libffi-LICENSE": {
+      "component": "libffi (in cffi)",
+      "repository": "https://github.com/libffi/libffi",
+      "tag": "v3.8.1",
+      "commit": "de7afe7aa9e8ab7ac36429428a7222caae1e7988",
+      "address": "https://raw.githubusercontent.com/libffi/libffi/refs/tags/v3.8.1/LICENSE",
+      "http_status": 200,
+      "sha256": "17b64dc60f3b6897a60f971e288b973f655c2edcdf08b25f3c3dd5549857881c",
+      "bytes": 1132,
+      "fetched": "2026-11-20T06:58:19Z",
+      "how": "one recorded --net run in the sandbox (architect-package-dryrun-3.md ruling 1); file stored unchanged",
+      "note": "cffi's wheel does not say which libffi it carries: newest release tag; the component's version is not recorded"
+    },
+    "libyaml-License": {
+      "component": "libyaml (in PyYAML)",
+      "repository": "https://github.com/yaml/libyaml",
+      "tag": "0.2.5",
+      "commit": "2c891fc7a770e8ba2fec34fc6b545c672beb37e6",
+      "address": "https://raw.githubusercontent.com/yaml/libyaml/refs/tags/0.2.5/License",
+      "http_status": 200,
+      "sha256": "c40112449f254b9753045925248313e9270efa36d226b22d82d4cc6c43c57f29",
+      "bytes": 1101,
+      "fetched": "2026-11-20T06:58:19Z",
+      "how": "one recorded --net run in the sandbox (architect-package-dryrun-3.md ruling 1); file stored unchanged"
+    },
+    "openssl-LICENSE.txt": {
+      "component": "OpenSSL (in the Python.framework, macOS)",
+      "repository": "https://github.com/openssl/openssl",
+      "tag": "openssl-4.1.0",
+      "commit": "2f4e3a5fec05394068cfa7379890ab552483a8a6",
+      "address": "https://raw.githubusercontent.com/openssl/openssl/refs/tags/openssl-4.1.0/LICENSE.txt",
+      "http_status": 200,
+      "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a",
+      "bytes": 10175,
+      "fetched": "2026-11-20T06:58:19Z",
+      "how": "one recorded --net run in the sandbox (architect-package-dryrun-3.md ruling 1); file stored unchanged",
+      "note": "the framework's OpenSSL version is read at build time (ssl.OPENSSL_VERSION); this text is from the newest release tag"
+    }
+  }
+}
