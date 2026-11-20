@@ -178,7 +178,10 @@ def test_nfpm_has_no_maintainer_script(nfpm):
 # ----------------------------------------------------------------- Docker
 def test_dockerfile_runs_as_non_root_from_the_hash_pinned_lock():
     text = (PACKAGING / "docker" / "Dockerfile").read_text("utf-8")
-    assert re.search(r"^FROM python:3\.13-slim@sha256:[0-9a-f]{64}", text, re.M)
+    # Pinned by digest, given at build time; no default, so no unpinned build.
+    assert re.search(r"^ARG PYTHON_DIGEST$", text, re.M)
+    froms = re.findall(r"^FROM (\S+)", text, re.M)
+    assert froms and all(f == "python:3.13-slim@${PYTHON_DIGEST}" for f in froms)
     assert "--require-hashes" in text and "requirements-lock.txt" in text
     users = re.findall(r"^USER\s+(\S+)", text, re.M)
     assert users and users[-1] not in ("root", "0")
