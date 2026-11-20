@@ -1,9 +1,10 @@
-/* Landing page. Architecture: a framed column with 1px hairlines between
-   sections and between grid cells; no shadows, no gradients. */
+/* Landing page. A framed column with 1px hairlines between sections. Inside a
+   section, objects are separate rounded tiles (the docs card recipe) with 12 px
+   gaps; no shadows, no gradients. Corners: see the tokens in custom.css. */
 
 .page {
   --frame: min(100%, var(--it-grid-max));
-  --pad-x: clamp(1rem, 3vw, 2.5rem);
+  --pad-x: var(--it-gutter); /* the page gutter: text lines up with the navbar and footer */
   background: var(--it-bg);
 }
 .page > * {
@@ -59,7 +60,7 @@
 }
 .outline {
   border: 1px solid var(--it-line-strong);
-  border-radius: 2px;
+  border-radius: var(--it-r-md);
   background: var(--it-bg);
   padding: 0.9rem 1rem 0.8rem;
   font-size: 0.8125rem;
@@ -110,6 +111,7 @@
 .kickerDot {
   width: 4px;
   height: 4px;
+  border-radius: var(--it-r-pill);
   background: var(--it-line-strong);
 }
 .kickerLink {
@@ -176,8 +178,8 @@
 .terminal {
   width: 100%;
   margin: 0;
-  border: 1px solid var(--it-ink);
-  border-radius: var(--it-radius);
+  border: 1px solid var(--it-line); /* a container: hairline, like the docs code blocks */
+  border-radius: var(--it-r-lg);
   background: var(--it-code-bg);
   overflow: hidden;
 }
@@ -186,9 +188,16 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.4rem 0.45rem 0.4rem 1rem;
+  /* one inset on top and right: terminal 14 - 8 = 6 (sm Copy) */
+  padding: var(--it-inset-2) var(--it-inset-2) var(--it-inset-2) 1rem;
   border-bottom: 1px solid var(--it-line);
   background: var(--it-surface);
+}
+@media (pointer: coarse) {
+  /* 44 px Copy takes md: 14 - 4 = 10 */
+  .terminalBar {
+    padding: var(--it-inset-1) var(--it-inset-1) var(--it-inset-1) 1rem;
+  }
 }
 .terminalTitle {
   font-family: var(--it-font-mono);
@@ -204,7 +213,7 @@
   min-height: 32px;
   padding: 0.3rem 0.65rem;
   border: 1px solid var(--it-line-strong);
-  border-radius: 3px;
+  border-radius: var(--it-r-sm);
   background: var(--it-surface);
   color: var(--it-ink);
   font-family: var(--it-font-mono);
@@ -277,8 +286,13 @@
 
 /* ----------------------------------------------------------------- sections */
 .section {
-  padding: clamp(3rem, 7vw, 5.5rem) var(--pad-x);
+  padding: var(--it-space-7) var(--pad-x);
   border-bottom: 1px solid var(--it-line);
+}
+@media (min-width: 997px) {
+  .section {
+    padding-block: var(--it-space-9);
+  }
 }
 .sectionHead {
   max-width: 46rem;
@@ -309,21 +323,22 @@
 .bento {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  border-top: 1px solid var(--it-line);
-  border-left: 1px solid var(--it-line);
+  gap: var(--it-space-3);
 }
+/* A tile is not a link (only its button is), so it has no hover state. */
 .cell {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: clamp(1.25rem, 2.5vw, 2rem);
-  border-right: 1px solid var(--it-line);
-  border-bottom: 1px solid var(--it-line);
+  padding: 1.25rem;
+  border: 1px solid var(--it-line);
+  border-radius: var(--it-r-lg);
   background: var(--it-surface);
-  transition: background-color var(--ifm-transition-slow) ease;
 }
-.cell:hover {
-  background: color-mix(in srgb, var(--it-surface) 55%, var(--it-hover));
+@media (min-width: 997px) {
+  .cell {
+    padding: 1.5rem;
+  }
 }
 .span7 {
   grid-column: span 7;
@@ -354,9 +369,9 @@
   width: 2.5rem;
   height: 2.5rem;
   flex: none;
-  border: 1px solid var(--it-line-strong);
-  border-radius: var(--it-radius);
-  color: var(--it-ink);
+  border-radius: var(--it-r-md);
+  background: var(--it-accent-wash);
+  color: var(--it-accent-ink);
 }
 .flag {
   font-size: 0.75rem;
@@ -389,7 +404,7 @@
   min-height: 40px;
   padding: 0.45rem 0.8rem;
   border: 1px solid var(--it-line-strong);
-  border-radius: var(--it-radius);
+  border-radius: var(--it-r-md);
   background: var(--it-surface);
   font-weight: 600;
   font-size: 0.9375rem;
@@ -444,7 +459,8 @@
   margin-right: 0.35rem;
   padding: 0.05rem 0.35rem;
   border: 1px solid var(--it-line-strong);
-  border-radius: 2px;
+  border-radius: var(--it-r-pill);
+  padding-inline: 0.5rem;
   font-family: var(--it-font-mono);
   font-size: 0.6875rem;
   letter-spacing: 0.06em;
@@ -453,7 +469,7 @@
 }
 .sheet {
   border: 1px solid var(--it-line-strong);
-  border-radius: 2px;
+  border-radius: var(--it-r-lg);
   background: var(--it-bg);
   overflow: hidden;
 }
@@ -524,6 +540,8 @@
   padding: 0;
   list-style: none;
   border: 1px solid var(--it-line);
+  border-radius: var(--it-r-md);
+  overflow: hidden;
   font-family: var(--it-font-mono);
   font-size: 0.8125rem;
   color: var(--it-ink);
@@ -545,7 +563,7 @@
   margin: 1.25rem 0 0;
   padding: 0.8rem 0.9rem;
   border: 1px solid var(--it-line);
-  border-radius: 2px;
+  border-radius: var(--it-r-md);
   background: var(--it-code-bg);
   font-size: 0.75rem;
   line-height: 1.6;
@@ -593,17 +611,22 @@
 .steps {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--it-space-3);
   margin: 0;
   padding: 0;
   list-style: none;
-  border-top: 1px solid var(--it-line);
-  border-left: 1px solid var(--it-line);
 }
 .step {
   margin: 0;
-  padding: 1.5rem clamp(1rem, 2vw, 1.75rem) 1.75rem;
-  border-right: 1px solid var(--it-line);
-  border-bottom: 1px solid var(--it-line);
+  padding: 1.25rem;
+  border: 1px solid var(--it-line);
+  border-radius: var(--it-r-lg);
+  background: var(--it-surface);
+}
+@media (min-width: 997px) {
+  .step {
+    padding: 1.5rem;
+  }
 }
 .stepNo {
   display: block;
@@ -662,8 +685,13 @@
 
 /* --------------------------------------------------------------- closing */
 .closing {
-  padding: clamp(3.5rem, 8vw, 6.5rem) var(--pad-x);
+  padding: var(--it-space-7) var(--pad-x);
   border-bottom: 1px solid var(--it-line);
+}
+@media (min-width: 997px) {
+  .closing {
+    padding-block: var(--it-space-9);
+  }
 }
 .closingInner {
   max-width: 44rem;
@@ -763,6 +791,7 @@
   .copyButton {
     min-height: 44px;
     min-width: 44px;
+    border-radius: var(--it-r-md);
   }
 }
 

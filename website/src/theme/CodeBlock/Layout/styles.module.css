@@ -3,8 +3,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  min-height: 2.5rem;
-  padding: 0 0.4rem 0 var(--ifm-pre-padding);
+  /* one inset on top and right: block 14 - 8 = 6 (sm buttons) */
+  min-height: 2.75rem;
+  padding: 0 var(--it-inset-2) 0 var(--ifm-pre-padding);
   border-bottom: 1px solid var(--it-line);
   background: var(--it-surface);
   font-family: var(--it-font-mono);
@@ -42,7 +43,7 @@
   min-height: 28px;
   padding: 0.25rem 0.55rem;
   border: 1px solid var(--it-line-strong);
-  border-radius: 3px;
+  border-radius: var(--it-r-sm);
   background: var(--it-surface);
   color: var(--it-ink);
   font-family: var(--it-font-mono);
@@ -69,7 +70,7 @@
   min-width: 28px;
   padding: 0.25rem 0.5rem;
   border: 1px solid var(--it-line-strong);
-  border-radius: 3px;
+  border-radius: var(--it-r-sm);
   background: var(--it-surface);
   color: var(--it-ink);
   font-family: var(--it-font-mono);
@@ -89,14 +90,18 @@
   height: 0.95rem;
 }
 @media (pointer: coarse) {
+  /* 44 px buttons take md, at a 4 px inset: 14 - 4 = 10 */
   .expand {
     min-height: 44px;
+    border-radius: var(--it-r-md);
   }
   .header {
-    min-height: 3rem;
+    min-height: calc(2.75rem + 2 * var(--it-inset-1));
+    padding-right: var(--it-inset-1);
   }
   .header .buttons button {
     min-height: 44px;
     min-width: 44px;
+    border-radius: var(--it-r-md);
   }
 }

@@ -108,7 +108,33 @@
   --it-code-bg: #f3f1ec;
   --it-code-line: #f7e4dd; /* highlighted line */
   --it-navbar-bg: rgb(249 248 246 / 0.86);
-  --it-radius: 4px;
+  /* Corners. One scale; a box nested in another takes the outer radius
+     minus the inset (14 - 4 = 10, 18 - 8 = 10, 14 - 8 = 6). A region that
+     touches the edge of the screen or of another region stays square. */
+  --it-r-0: 0;
+  --it-r-xs: 4px; /* text-scale boxes: inline code, kbd */
+  --it-r-sm: 6px; /* controls 24-32 px tall on fine pointers */
+  --it-r-md: 10px; /* controls 36-48 px, rows, icon tiles, nested boxes */
+  --it-r-lg: 14px; /* containers: cards, tiles, code, tables, callouts, menus */
+  --it-r-xl: 18px; /* modal overlay (search) */
+  --it-r-pill: 999px; /* badges, tags, step numbers */
+  --it-inset-1: 4px; /* lg container to md item */
+  --it-inset-2: 8px; /* xl container to md item; code header to sm button */
+  --it-bw: 1px; /* the one border weight */
+  --it-radius: var(--it-r-md); /* older name, kept */
+
+  /* Spacing (4 px grid) and the page gutter shared by navbar, pages and footer */
+  --it-space-1: 0.25rem;
+  --it-space-2: 0.5rem;
+  --it-space-3: 0.75rem;
+  --it-space-4: 1rem;
+  --it-space-5: 1.5rem;
+  --it-space-6: 2rem;
+  --it-space-7: 3rem;
+  --it-space-8: 4rem;
+  --it-space-9: 6rem;
+  --it-gutter: 1rem;
+  --it-type-h1: clamp(2rem, 1.6rem + 1.6vw, 2.75rem);
   --it-grid-max: 1520px;
 
   --it-note: #575652;
@@ -179,7 +205,7 @@
 
   --ifm-code-font-size: 0.875em;
   --ifm-code-background: var(--it-code-bg);
-  --ifm-code-border-radius: 3px;
+  --ifm-code-border-radius: var(--it-r-xs);
   --ifm-code-padding-horizontal: 0.3em;
   --ifm-code-padding-vertical: 0.1em;
   --ifm-pre-background: var(--it-code-bg);
@@ -235,10 +261,10 @@
 
   --ifm-button-border-radius: var(--it-radius);
   --ifm-button-font-weight: 600;
-  --ifm-alert-border-radius: var(--it-radius);
-  --ifm-card-border-radius: var(--it-radius);
-  --ifm-badge-border-radius: 3px;
-  --ifm-pagination-nav-border-radius: 0;
+  --ifm-alert-border-radius: var(--it-r-lg);
+  --ifm-card-border-radius: var(--it-r-lg);
+  --ifm-badge-border-radius: var(--it-r-pill);
+  --ifm-pagination-nav-border-radius: var(--it-r-lg);
   --ifm-pagination-nav-color-hover: var(--it-ink);
   --ifm-scrollbar-size: 8px;
   --ifm-scrollbar-track-background-color: transparent;
@@ -283,6 +309,11 @@
   --ifm-color-primary-lightest: #f5a795;
 
   color-scheme: dark;
+}
+@media (min-width: 997px) {
+  :root {
+    --it-gutter: 1.5rem;
+  }
 }
 
 /* ------------------------------------------------- 3. Base typography */
@@ -353,9 +384,8 @@ kbd {
   font-size: 0.8em;
   background: var(--it-surface);
   color: var(--it-ink);
-  border: 1px solid var(--it-line-strong);
-  border-bottom-width: 2px;
-  border-radius: 3px;
+  border: var(--it-bw) solid var(--it-line-strong);
+  border-radius: var(--it-r-xs);
   box-shadow: none;
   padding: 0.05em 0.4em;
 }
@@ -365,7 +395,7 @@ kbd {
   border-bottom: 1px solid var(--it-line);
   backdrop-filter: saturate(1.4) blur(12px);
   -webkit-backdrop-filter: saturate(1.4) blur(12px);
-  padding-inline: 1rem;
+  padding-inline: var(--it-gutter);
 }
 .navbar__inner {
   max-width: var(--it-grid-max);
@@ -494,6 +524,14 @@ kbd {
   padding: 0.35rem 1.7rem 0.35rem 0.6rem;
   color: var(--it-ink);
 }
+/* every navbar control is 40 px tall on desktop (search, GitHub and theme are) */
+@media (min-width: 997px) {
+  .navbar__item.dropdown > .navbar__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+  }
+}
 .navbar__item.dropdown > .navbar__link::after {
   right: 0.55rem;
   margin-left: 0;
@@ -504,22 +542,26 @@ kbd {
 }
 .dropdown__menu {
   border: 1px solid var(--it-line-strong);
-  border-radius: var(--it-radius);
+  border-radius: var(--it-r-lg);
   box-shadow: none;
-  padding: 0.3rem;
+  padding: var(--it-inset-1);
   min-width: 13rem;
 }
 .dropdown__link {
   font-family: var(--it-font-mono);
   font-size: 0.8125rem;
-  border-radius: 2px;
+  border-radius: var(--it-r-md); /* menu 14 - inset 4 */
   padding: 0.45rem 0.6rem;
+  margin-top: 0;
   color: var(--it-ink);
 }
+.dropdown__menu li + li .dropdown__link {
+  margin-top: 2px;
+}
+/* in a rounded row the fill marks the current item */
 .dropdown__link--active {
   background: var(--it-accent-wash);
   color: var(--it-ink);
-  box-shadow: inset 2px 0 0 var(--it-accent);
 }
 
 /* Mobile drawer */
@@ -548,7 +590,7 @@ kbd {
   color: var(--it-ink-2);
   margin: 0 0 0.5rem;
   padding: 0.75rem;
-  border-radius: 0;
+  border-radius: var(--it-r-md);
 }
 .navbar-sidebar__close {
   width: 2.75rem;
@@ -634,7 +676,7 @@ kbd {
   filter: invert(1);
 }
 .menu__caret {
-  border-radius: 0;
+  border-radius: var(--it-r-md);
 }
 .menu__caret:hover {
   background: var(--it-hover);
@@ -691,8 +733,10 @@ button[class*='expandButton'] {
 }
 .breadcrumbs__link {
   color: var(--it-ink-2);
-  padding: 0.3rem 0;
-  border-radius: 0;
+  /* the press fill is a small chip; the negative margin keeps the text in place */
+  padding: 0.3rem var(--it-space-2);
+  margin-inline: calc(-1 * var(--it-space-2));
+  border-radius: var(--it-r-sm);
   background: transparent !important;
 }
 .breadcrumbs__link:hover {
@@ -705,7 +749,10 @@ button[class*='expandButton'] {
 .breadcrumbs__item:first-child .breadcrumbs__link {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  /* the icon sits on the page gutter, its target extends to the right */
+  justify-content: flex-start;
+  margin-inline: 0;
+  padding-inline: 0;
   min-height: 24px;
   min-width: 24px;
 }
@@ -722,16 +769,16 @@ button[class*='expandButton'] {
   background: transparent;
   color: var(--it-ink-2);
   border: 1px solid var(--it-line);
-  border-radius: 2px;
-  padding: 0.2rem 0.5rem;
+  border-radius: var(--it-r-pill);
+  padding: 0.2rem 0.65rem;
   margin-bottom: 1rem;
 }
 .theme-doc-version-banner {
   background: var(--it-surface);
-  border: 1px solid var(--it-line);
-  border-left: 3px solid var(--it-accent);
+  /* one border weight: the whole frame carries the accent */
+  border: var(--it-bw) solid var(--it-accent);
   color: var(--it-ink);
-  border-radius: 0;
+  border-radius: var(--it-r-lg);
 }
 .theme-doc-version-banner a {
   color: var(--it-accent-ink);
@@ -785,7 +832,7 @@ button[class*='expandButton'] {
 }
 .theme-doc-toc-mobile {
   border: 1px solid var(--it-line-strong);
-  border-radius: var(--it-radius);
+  border-radius: var(--it-r-lg);
   background: var(--it-surface);
 }
 .theme-doc-toc-mobile button {
@@ -796,25 +843,29 @@ button[class*='expandButton'] {
 }
 
 /* Prev / next */
+/* Prev / next: two tiles with a gap. They are controls, so they keep the
+   strong line (3:1 boundary, WCAG 1.4.11). */
 .pagination-nav {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0;
-  border: 1px solid var(--it-line-strong);
+  gap: var(--it-space-3);
+  border: 0;
   margin-top: 3rem;
 }
 .pagination-nav__link {
-  border: 0;
-  border-radius: 0;
+  border: var(--it-bw) solid var(--it-line-strong);
+  border-radius: var(--it-r-lg);
   padding: 1rem 1.25rem;
   background: var(--it-surface);
   transition: background-color var(--ifm-transition-fast) ease;
 }
-.pagination-nav__link:hover {
-  background: var(--it-hover);
+@media (hover: hover) {
+  .pagination-nav__link:hover {
+    border-color: var(--it-ink-2);
+    background: var(--it-hover);
+  }
 }
 .pagination-nav__link--next {
-  border-left: 1px solid var(--it-line-strong);
   grid-column: 2;
 }
 .pagination-nav__sublabel {
@@ -892,9 +943,17 @@ button[class*='expandButton'] {
   --ifm-h4-font-size: 1rem;
   font-size: 1.0625rem;
 }
+/* Page titles (docs, reference, privacy, 404): one size and weight. Infima
+   sets --ifm-h1-font-size on .markdown h1:first-child, so set it here too. */
 .markdown h1:first-child,
-.markdown header h1 {
+.markdown header h1,
+.markdown > h1,
+.it-nf h1 {
+  --ifm-h1-font-size: var(--it-type-h1);
+  font-size: var(--it-type-h1);
   font-weight: 650;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
   margin-bottom: 1.25rem;
 }
 .markdown > h2,
@@ -974,7 +1033,7 @@ pre code,
 
 /* Images in docs */
 .markdown img {
-  border-radius: 0;
+  border-radius: var(--it-r-md);
 }
 [data-theme='light'] img[src$='#gh-dark-mode-only'],
 [data-theme='dark'] img[src$='#gh-light-mode-only'] {
@@ -987,7 +1046,7 @@ pre code,
   max-width: 100%;
   margin-bottom: 1.5rem;
   border: 1px solid var(--it-line);
-  border-radius: var(--it-radius);
+  border-radius: var(--it-r-lg);
   background: var(--it-surface);
 }
 .table-scroll {
@@ -1007,22 +1066,23 @@ pre code,
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
+  width: 24px;
   background: var(--it-surface);
-  color: var(--it-ink-2);
-  font-size: 1.1rem;
+  color: var(--it-ink);
+  font-size: 1.375rem;
   line-height: 1;
   pointer-events: none;
 }
 .table-frame__edge--end {
   right: 0;
   border-left: 1px solid var(--it-line-strong);
-  border-radius: 0 var(--it-radius) var(--it-radius) 0;
+  /* the frame's inner corner: 14 - 1 px border */
+  border-radius: 0 calc(var(--it-r-lg) - var(--it-bw)) calc(var(--it-r-lg) - var(--it-bw)) 0;
 }
 .table-frame__edge--start {
   left: 0;
   border-right: 1px solid var(--it-line-strong);
-  border-radius: var(--it-radius) 0 0 var(--it-radius);
+  border-radius: calc(var(--it-r-lg) - var(--it-bw)) 0 0 calc(var(--it-r-lg) - var(--it-bw));
 }
 /* The row label (first column) stays in view while the rest scrolls */
 .table-frame[data-scrollable] .table-scroll th:first-child,
@@ -1113,7 +1173,7 @@ pre code,
 /* Code blocks: header bar (src/theme/CodeBlock/Layout), hairline frame */
 .theme-code-block {
   border: 1px solid var(--it-line);
-  border-radius: var(--it-radius);
+  border-radius: var(--it-r-lg);
   box-shadow: none;
   margin-bottom: 1.5rem;
   overflow: hidden;
@@ -1145,8 +1205,7 @@ pre code,
   background: var(--it-surface);
   color: var(--it-ink);
   border: 1px solid var(--it-line);
-  border-left: 3px solid var(--ifm-alert-border-color);
-  border-radius: 0 var(--it-radius) var(--it-radius) 0;
+  border-radius: var(--it-r-lg);
   box-shadow: none;
   padding: 1rem 1.25rem;
   font-size: 0.9875rem;
@@ -1190,7 +1249,7 @@ pre code,
 
 /* Generic alerts (non-admonition) */
 .alert {
-  border-radius: var(--it-radius);
+  border-radius: var(--it-r-lg);
   box-shadow: none;
 }
 
@@ -1199,7 +1258,7 @@ pre code,
   --docusaurus-details-decoration-color: var(--it-ink-2);
   background: var(--it-surface);
   border: 1px solid var(--it-line);
-  border-radius: var(--it-radius);
+  border-radius: var(--it-r-lg);
   box-shadow: none;
   color: var(--it-ink);
 }
@@ -1262,7 +1321,7 @@ pre code,
 .badge {
   font-family: var(--it-font-mono);
   font-weight: 500;
-  border-radius: 2px;
+  border-radius: var(--it-r-pill);
 }
 .badge--secondary {
   background: transparent;
@@ -1286,11 +1345,13 @@ pre code,
 /* --------------------------------------------------------------- 7. Footer */
 .footer {
   border-top: 1px solid var(--it-line);
-  padding-inline: 1rem;
+  padding-inline: var(--it-gutter);
   font-size: 0.9375rem;
 }
+/* footer text starts on the page gutter, like the navbar and the pages */
 .footer > .container {
   max-width: var(--it-grid-max);
+  padding-inline: 0;
 }
 .footer__title {
   font-family: var(--it-font-mono);
@@ -1345,15 +1406,11 @@ pre code,
 }
 :focus-visible {
   outline: 2px solid var(--it-accent);
-  outline-offset: 2px;
-  border-radius: 2px;
+  outline-offset: 2px; /* the ring follows the control's own corner */
 }
 .menu__link:focus-visible,
 .table-of-contents__link:focus-visible {
   outline-offset: -2px;
-}
-.button:focus-visible {
-  outline-offset: 3px;
 }
 
 /* hidden off-screen until focused, then a vermilion tab top-left */
@@ -1430,8 +1487,6 @@ pre code,
   }
   .pagination-nav__link--next {
     grid-column: 1;
-    border-left: 0;
-    border-top: 1px solid var(--it-line-strong);
   }
   .theme-code-block {
     margin-inline: 0;
@@ -1512,7 +1567,7 @@ pre code,
   margin-left: auto;
   padding: 1rem 1.1rem 1.1rem;
   border: 1px solid var(--it-ink);
-  border-radius: var(--it-radius);
+  border-radius: var(--it-r-lg);
   background: var(--it-surface);
   color: var(--it-ink);
   font-size: 0.9375rem;
@@ -1744,7 +1799,7 @@ html:has(.consent-banner) {
     align-items: center;
     gap: 0.5rem;
     width: calc(100% - 2rem);
-    margin: 0.75rem 1rem;
+    margin: 0.5rem 1rem;
     min-height: 2.75rem;
     padding: 0 0.875rem;
     border: 1px solid var(--it-ink-2);
@@ -1772,7 +1827,7 @@ html:has(.consent-banner) {
     border-bottom: 0;
   }
   .navbar-sidebar .menu__link {
-    border-radius: 0;
+    border-radius: var(--it-r-md);
     padding: 0.75rem 0.25rem;
     min-height: 3rem;
     font-weight: 500;
@@ -1789,7 +1844,7 @@ html:has(.consent-banner) {
     background: var(--it-accent-wash);
     background-image: none;
     color: var(--it-ink);
-    box-shadow: inset 3px 0 0 var(--it-accent);
+    box-shadow: none; /* in a rounded row the fill marks the current page */
     padding-left: 0.75rem;
     font-weight: 600;
   }
