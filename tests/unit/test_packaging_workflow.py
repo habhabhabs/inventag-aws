@@ -1194,13 +1194,17 @@ def test_provenance_checks_the_files_it_expects_for_each_state_of_the_switch(tmp
 
 
 def test_provenance_fails_when_an_expected_file_is_missing(tmp_path):
-    for drop in (
-        "inventag-1.4.0-darwin-arm64.tar.gz",
-        "inventag_1.4.0_arm64.deb",
-        "inventag-1.4.0-linux-x86_64.THIRD-PARTY-LICENSES.txt",
+    # file dropped: what the error names (the packages are matched by pattern)
+    for drop, named in (
+        ("inventag-1.4.0-darwin-arm64.tar.gz", "inventag-1.4.0-darwin-arm64.tar.gz"),
+        ("inventag_1.4.0_arm64.deb", "inventag_*_arm64.deb"),
+        (
+            "inventag-1.4.0-linux-x86_64.THIRD-PARTY-LICENSES.txt",
+            "inventag-1.4.0-linux-x86_64.THIRD-PARTY-LICENSES.txt",
+        ),
     ):
         work = tmp_path / drop
         work.mkdir()
         result = _expected_files(work, "true", drop=(drop,))
         assert result.returncode != 0, drop
-        assert drop in result.stdout + result.stderr
+        assert named in result.stdout + result.stderr
