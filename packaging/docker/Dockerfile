@@ -24,6 +24,9 @@ RUN python -m venv /opt/inventag \
 FROM python:3.13-slim@${PYTHON_DIGEST}
 COPY --from=build /opt/inventag /opt/inventag
 COPY LICENSE /usr/share/doc/inventag/LICENSE
+# lxml's wheel (installed as pip installs it) links GNU libiconv (LGPL-2.1);
+# its own notices stay in its .dist-info/licenses; the LGPL text is added here.
+COPY scripts/packaging/licenses/LGPL-2.1.txt /usr/share/doc/inventag/LGPL-2.1.txt
 RUN useradd --create-home --uid 10001 --user-group inventag
 ENV PATH=/opt/inventag/bin:$PATH PYTHONDONTWRITEBYTECODE=1
 USER 10001:10001
