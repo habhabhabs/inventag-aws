@@ -383,7 +383,7 @@ def test_a_listing_not_read_gives_one_line_per_unit_and_check(service, policies)
     assert sorted({f["policy"] for f in lines}) == policies
     for policy in policies:
         mine = [f for f in lines if f["policy"] == policy]
-        assert [f["region"] for f in mine] == ["eu-west-1", REGION]
+        assert [f["region"] for f in mine] == [REGION, "eu-west-1"]
         for f in mine:
             assert f["result"] == "not_evaluated"
             assert (f["service"], f["resource"], f["resource_type"]) == (
