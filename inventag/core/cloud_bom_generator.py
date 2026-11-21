@@ -45,6 +45,7 @@ from ..discovery import AWSResourceInventory
 from ..discovery.aws_clients import enable_client_cache, reset_client_cache
 from ..discovery.coverage import DETAIL_SOURCE, EMPTY, FAILED_OUTCOMES, OK
 from ..discovery.regions import discover_regions
+from . import cost_requests
 from .daemon_pool import DaemonThreadPool
 from .limiter import DEFAULT_LIMIT, InFlightLimiter
 from .log_context import account_log_context
@@ -586,6 +587,7 @@ class CloudBOMGenerator:
             self.logger.info("Validating account credentials and establishing contexts")
             account_contexts = self._establish_account_contexts()
             self._checkpoints = self._open_checkpoints(account_contexts)
+            self._announce_cost_requests(account_contexts)
 
             # Step 2: Discover resources across all accounts
             self.logger.info("Starting resource discovery across all accounts")
@@ -619,6 +621,8 @@ class CloudBOMGenerator:
             for note in self._expired_session_notes():
                 self.logger.error(note)
             for note in self._read_nothing_notes():
+                self.logger.warning(note)
+            for note in self._cost_trend_notes():
                 self.logger.warning(note)
 
             # Step 3: Consolidate resources if configured
@@ -1186,6 +1190,28 @@ class CloudBOMGenerator:
             )
         return notes
 
+    def _announce_cost_requests(self, account_contexts) -> None:
+        """Say once, before discovery, how many Cost Explorer requests the run
+        makes at most: AWS charges for each (architect F1 ruling 5)."""
+        count, parts = cost_requests.planned(
+            len(account_contexts),
+            bool(self.config.enable_billing_validation),
+            bool(self.config.bom_processing_config.enable_cost_analysis),
+        )
+        text = cost_requests.announcement(count, parts)
+        if text:
+            self.logger.warning(text)
+
+    def _cost_trend_notes(self) -> List[str]:
+        """A-80: with several accounts, the cost trend reads one bill, with the
+        credentials of the account the report processing uses."""
+        if not self.config.bom_processing_config.enable_cost_analysis:
+            return []
+        if len(self.account_contexts) < 2:
+            return []
+        account = self._run_account()
+        return [cost_requests.trend_note(account)] if account else []
+
     def _billing_timeout_notes(self) -> List[str]:
         """One note per account whose Cost Explorer call did not answer in
         time (A-24): its listings are in the report, its billing data is not."""
@@ -1342,6 +1368,7 @@ class CloudBOMGenerator:
         notes.extend(self._read_nothing_notes())
         notes.extend(self._not_read_notes())
         notes.extend(self._billing_timeout_notes())
+        notes.extend(self._cost_trend_notes())
         notes.extend(self._state_notes)
         notes.extend(self._guard_block_notes())
         notes.extend(permissions_report.notes(self._permissions_denied()))

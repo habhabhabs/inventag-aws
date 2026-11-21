@@ -1151,25 +1151,17 @@ class CostAnalyzer:
         self.logger.info(f"Generated {len(trend_analyses)} cost trend analyses")
         return trend_analyses
 
-    # Cost Explorer requests of analyze_cost_trends: one, whatever the number
-    # of services.
-    COST_EXPLORER_REQUESTS = 1
-
     def _fetch_service_costs(
         self, start_date: str, end_date: str
     ) -> Optional[Dict[str, Any]]:
         """The one Cost Explorer request of the cost trend: the period, by SERVICE.
 
-        Says first how many requests it makes, because AWS charges for each.
         None when the request failed (the failure is logged).
         """
         cost_client = self._get_cost_explorer_client()
         if not cost_client:
             return None
-        self.logger.warning(
-            f"Cost Explorer: {self.COST_EXPLORER_REQUESTS} request(s); "
-            "AWS charges for each."
-        )
+        # The run said the number before discovery (core/cost_requests.py).
         try:
             return cost_client.get_cost_and_usage(
                 TimePeriod={"Start": start_date, "End": end_date},
