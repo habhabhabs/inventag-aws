@@ -1190,10 +1190,12 @@ MATRIX: Dict[str, Dict[str, Any]] = {
                 "Cost Explorer was denied (AccessDeniedException), so billing data is missing",
             ),
             ("report", True),
-            ("lines_with", "Cost Explorer", 1),
+            # F1b: the run's request count line ("Cost Explorer: up to ...")
+            # is not a failure line; one failure line is still the rule.
+            ("lines_with", "Cost Explorer was", 1),
         ),
         issue_keys=("permission_denied:ce",),
-        target=(("lines_with", "Cost Explorer", 1),),
+        target=(("lines_with", "Cost Explorer was", 1),),
         wp="WP-F1b",
     ),
     "E3": dict(
@@ -1210,10 +1212,12 @@ MATRIX: Dict[str, Dict[str, Any]] = {
                 "Cost Explorer was throttled (ThrottlingException), so billing data is missing",
             ),
             ("report", True),
-            ("lines_with", "Cost Explorer", 1),
+            # F1b: the run's request count line ("Cost Explorer: up to ...")
+            # is not a failure line; one failure line is still the rule.
+            ("lines_with", "Cost Explorer was", 1),
         ),
         issue_keys=("throttled:ce",),
-        target=(("lines_with", "Cost Explorer", 1),),
+        target=(("lines_with", "Cost Explorer was", 1),),
         wp="WP-F1b",
     ),
     "F1": dict(

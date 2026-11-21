@@ -35,6 +35,8 @@ def _billing_warnings(outcome):
         for m in found
         if re.search(r"cost explorer|billing", m, re.I)
         and "Permissions:" not in m  # the summary of denied actions has its own tests
+        # F1b: the request count said before discovery (tests/unit/test_cost_requests.py)
+        and not m.startswith("Cost Explorer: up to")
     ]
 
 
