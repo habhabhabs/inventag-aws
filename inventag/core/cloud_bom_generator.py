@@ -2818,7 +2818,7 @@ class CloudBOMGenerator:
         for account_id, rows in sorted(by_account.items()):
             safe = re.sub(r"[^A-Za-z0-9_.-]", "_", account_id)
             scope = dataclasses.replace(bom_data, resources=rows)
-            if self._finops_result is not None:
+            if getattr(self, "_finops_result", None) is not None:
                 # Each account's report shows only that account's findings.
                 scope.generation_metadata = {
                     **bom_data.generation_metadata,
