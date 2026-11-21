@@ -553,6 +553,7 @@ def excel_preview(
     rows: int = 4,
     max_cols: int = 9,
     row_filter=None,
+    header_cell: Optional[str] = None,
 ) -> str:
     from openpyxl import load_workbook
 
@@ -560,9 +561,9 @@ def excel_preview(
     lines = [f"**Sheets:** {', '.join(f'`{s}`' for s in wb.sheetnames)}", ""]
     ws = wb[sheet] if sheet else wb.worksheets[1 if len(wb.worksheets) > 1 else 0]
     header_row = 1
-    if ws.title == "Summary":
+    if ws.title == "Summary" or header_cell:
         for r in range(1, ws.max_row + 1):
-            if ws.cell(r, 1).value in ("Service",):
+            if ws.cell(r, 1).value in (header_cell or "Service",):
                 header_row = r
                 break
         # Show the title lines above the table as text.
@@ -924,6 +925,7 @@ def collect(images: bool) -> Dict[str, str]:
                 "outputs": DOCS / "reference/outputs.md",
                 "adapt": DOCS / "templates/adapt-a-template.md",
                 "network": DOCS / "guides/network-and-security-analysis.md",
+                "finops-checks": DOCS / "guides/finops-checks.md",
             }
             img_dir = ASSETS / "img"
 
@@ -1702,6 +1704,22 @@ def collect(images: bool) -> Dict[str, str]:
                 "analysis-security",
                 excel_preview(
                     r.files["xlsx:multi"], "Security Analysis", rows=1, max_cols=9
+                ),
+            )
+
+            # 14. --finops-checks: the FinOps sheet
+            w = workdir("finops-checks")
+            r = run_cli(
+                "finops-checks", ["--create-excel", "--finops-checks", *regions], w
+            )
+            add(
+                "finops-checks-sheet",
+                excel_preview(
+                    r.files["xlsx:multi"],
+                    "FinOps",
+                    rows=6,
+                    max_cols=11,
+                    header_cell="Check ID",
                 ),
             )
     finally:
