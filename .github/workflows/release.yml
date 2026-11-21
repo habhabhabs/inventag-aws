@@ -722,6 +722,10 @@ jobs:
     with:
       tag: v${{ needs.release.outputs.new_version }}
       dry_run: false
+    # By name, not `inherit`: package.yml gets this one secret, which only its
+    # publish-tap job reads (it pushes the formula to the Homebrew tap).
+    secrets:
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
   # Post-release check (register rows C-09, P-16): on the push of the release
   # job's own bump commit, the Unreleased section of CHANGELOG.md must be empty;

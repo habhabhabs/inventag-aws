@@ -25,8 +25,10 @@ name: Package
 # packaging/ directory. tests/unit/test_packaging_workflow.py fails on any tree
 # that calls this workflow and lacks the files it packages.
 #
-# No secret of the repository is used. Nothing is published outside this
-# repository.
+# One secret is used: HOMEBREW_TAP_TOKEN, in the env of one step of the last
+# job, publish-tap. That job is the only one that writes outside this
+# repository: after a real tag release it pushes the formula to the Homebrew
+# tap (vars.HOMEBREW_TAP_REPO). release.yml passes the secret by name.
 "on":
   workflow_call:
     inputs:
@@ -45,6 +47,10 @@ name: Package
         required: false
         default: true
         type: boolean
+    secrets:
+      HOMEBREW_TAP_TOKEN:
+        description: 'Token that may push to the Homebrew tap. Read by the publish-tap job only.'
+        required: false
   pull_request:
     paths:
     - 'packaging/**'
@@ -96,11 +102,10 @@ env:
   # job that uses it (from checksums.txt of the v2.49.0 release).
   NFPM_VERSION: '2.49.0'
   # Switch for the macOS builds, their smoke tests and the macOS files of the
-  # release. 'true' is the target of v1.4.0. Fallback decided by the architect
-  # (not the default): if macOS is not green after three dry-run rounds, v1.4.0
-  # ships the Linux files only; set this to 'false', and the macOS builds and
-  # the tap move to v1.4.1. A job condition cannot read `env`: the plan job
-  # passes the value on as an output.
+  # release. 'true' since v1.4.0. With 'false' the release has the Linux files
+  # only, and the Homebrew jobs (smoke-homebrew, publish-tap) are skipped. A
+  # job condition cannot read `env`: the plan job passes the value on as an
+  # output.
   INCLUDE_MACOS: 'true'
 
 # One run per tag (or per pull request: both inputs are empty there). A running
@@ -1373,3 +1378,74 @@ jobs:
           exit 1
         fi
         echo "$(wc -l < "$RUNNER_TEMP/want.txt") files are on the release $TAG."
+
+  # Pushes the formula to the Homebrew tap after a real tag release (architect
+  # plan homebrew-publish, section 2). It is the last job and nothing waits for
+  # it: the release, PyPI and the attached files are done before it starts, so
+  # a failure turns only this job red; its last step prints the steps to
+  # publish by hand. It runs only when the attachment and the formula install
+  # (smoke-homebrew) passed, the macOS switch is on and the repository variable
+  # HOMEBREW_TAP_REPO names the tap. The formula is rendered from the
+  # SHA256SUMS of the release itself, after it is compared with this run's.
+  # The script refuses a version lower than the tap's and pushes nothing when
+  # the file is unchanged, so a re-run is safe. The tap's own checks ("Tap
+  # checks") run on the push. Not verified against GitHub: this job, until the
+  # first real release run.
+  publish-tap:
+    name: Publish the Homebrew formula to the tap
+    needs: [plan, publish, smoke-homebrew]
+    if: >-
+      github.event_name != 'pull_request' &&
+      needs.plan.outputs.dry_run == 'false' &&
+      needs.plan.outputs.tag != '' &&
+      needs.plan.outputs.include_macos == 'true' &&
+      vars.HOMEBREW_TAP_REPO != '' &&
+      needs.publish.result == 'success' &&
+      needs.smoke-homebrew.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      TAG: ${{ needs.plan.outputs.tag }}
+      TAP_REPO: ${{ vars.HOMEBREW_TAP_REPO }}
+    steps:
+    - name: Checkout the tag
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: ${{ needs.plan.outputs.ref }}
+        persist-credentials: false
+
+    - name: Download the release files of this run
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: release-files
+        path: ${{ runner.temp }}/run
+
+    - name: Download SHA256SUMS from the release and compare it with this run's
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        mkdir -p "$RUNNER_TEMP/published"
+        gh release download "$TAG" --pattern SHA256SUMS --dir "$RUNNER_TEMP/published"
+        if ! cmp -s "$RUNNER_TEMP/published/SHA256SUMS" "$RUNNER_TEMP/run/SHA256SUMS"; then
+          echo "::error::SHA256SUMS on the release $TAG differs from the file of this run. The formula is not published."
+          exit 1
+        fi
+
+    - name: Render the formula from the checksums of the release
+      run: |
+        set -euo pipefail
+        python3 scripts/packaging/render_formula.py --version "$VERSION" --sums "$RUNNER_TEMP/published/SHA256SUMS" --output "$RUNNER_TEMP/inventag.rb"
+
+    - name: Push the formula to the tap
+      env:
+        HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      run: bash scripts/packaging/publish_tap.sh --formula "$RUNNER_TEMP/inventag.rb" --version "$VERSION" --repo "$TAP_REPO"
+
+    - name: On failure, print the steps to publish by hand
+      if: failure()
+      run: bash scripts/packaging/publish_tap.sh --manual-steps --version "$VERSION" --repo "$TAP_REPO"

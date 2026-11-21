@@ -1546,6 +1546,7 @@ def test_the_arm64_smoke_is_in_the_arm64_job_only_with_no_new_runner_label():
         "attest",
         "smoke-homebrew",
         "publish",
+        "publish-tap",
     }
 
 
@@ -2647,7 +2648,8 @@ def test_the_tap_repository_comes_from_the_variable_through_env_only():
     assert job["env"]["TAG"] == "${{ needs.plan.outputs.tag }}"
     for step in _steps(TAP_JOB):
         assert "${{" not in step.get("run", ""), step.get("name")
-    assert TEXT.count("vars.HOMEBREW_TAP_REPO") == 2  # the condition and env
+    code = "\n".join(ln for ln in TEXT.splitlines() if not ln.lstrip().startswith("#"))
+    assert code.count("vars.HOMEBREW_TAP_REPO") == 2  # the condition and env
 
 
 def test_the_token_is_in_the_env_of_the_push_step_only_and_never_traced():
