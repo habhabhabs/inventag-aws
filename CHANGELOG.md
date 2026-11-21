@@ -19,6 +19,18 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   arm64). Intel Macs are not supported. Not verified against GitHub: the job,
   until the first release run after v1.4.0.
 
+### Fixed
+
+- `--enable-cost-analysis` made one Cost Explorer request for each service
+  that has resources (21 requests on a 21-service account), and AWS charges for
+  each. Every request asked for the same two months, grouped by service. The
+  cost trend now makes one request in each run and reads every service from
+  it; the trend values do not change. Before the request the run shows
+  `Cost Explorer: 1 request(s); AWS charges for each.` Billing validation still
+  makes its own request, because it asks for another period. The `--help` of
+  `--enable-cost-analysis` and the docs say the number. No new IAM action. Not
+  verified against real AWS: the number of billed requests.
+
 ## [v1.4.0] - 2026-11-21
 
 ### Added

@@ -136,9 +136,9 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 [Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。
 
 - `--no-billing-validation` 会停止这些调用，此时报告里没有可供对比的计费数据。
-- `--enable-cost-analysis` 会发出更多 Cost Explorer、Pricing 和 CloudWatch 调用，即使加上 `--no-billing-validation` 也是如此，调用次数取决于你的资源。每个不同的价格查询只发出一次，之后重复使用，因此 Pricing 调用次数随不同资源类型和规格的数量增长，而不是随资源数量增长。
+- `--enable-cost-analysis` 会在每次运行中为成本趋势再发出一次 Cost Explorer 请求，即使加上 `--no-billing-validation` 也是如此，与服务数量无关。发出请求之前，运行会显示 `Cost Explorer: 1 request(s); AWS charges for each.` 它还会发出 Pricing 和 CloudWatch 调用，次数取决于你的资源。每个不同的价格查询只发出一次，之后重复使用，因此 Pricing 调用次数随不同资源类型和规格的数量增长，而不是随资源数量增长。
 
-未针对真实的 AWS 验证：`--enable-cost-analysis` 的成本估算。
+未针对真实的 AWS 验证：`--enable-cost-analysis` 的成本估算，以及计费的请求次数。未在多个账户下验证：每次运行只发出一次成本趋势请求。
 
 InvenTag 会把被限流的调用最多重试 10 次（standard 重试模式）；`AWS_RETRY_MODE` 和 `AWS_MAX_ATTEMPTS` 可以覆盖这一设置。
 

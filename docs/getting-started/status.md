@@ -218,13 +218,17 @@ Explorer request: see the current
 
 - `--no-billing-validation` stops those calls, and the report then has no
   billing data to compare with.
-- `--enable-cost-analysis` makes more Cost Explorer, Pricing and CloudWatch
-  calls, even with `--no-billing-validation`, and the number depends on your
-  resources. Each different price lookup is made once and then reused, so the
+- `--enable-cost-analysis` makes one more Cost Explorer request in each run,
+  for the cost trend, even with `--no-billing-validation` and whatever the
+  number of services. Before it makes the request, the run shows
+  `Cost Explorer: 1 request(s); AWS charges for each.` It also makes Pricing
+  and CloudWatch calls, and their number depends on your resources. Each different price lookup is made once and then reused, so the
   number of Pricing calls grows with the number of different resource types and
   sizes, not with the number of resources.
 
-Not verified against real AWS: the cost estimates of `--enable-cost-analysis`.
+Not verified against real AWS: the cost estimates of `--enable-cost-analysis`,
+and the number of billed requests. Not verified with more than one account:
+one cost trend request in each run.
 
 InvenTag retries a throttled call up to 10 times (standard retry mode);
 `AWS_RETRY_MODE` and `AWS_MAX_ATTEMPTS` override this.

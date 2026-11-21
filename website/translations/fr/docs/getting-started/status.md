@@ -230,13 +230,17 @@ Cost Explorer : consultez les
 
 - `--no-billing-validation` arrête ces appels, et le rapport n’a alors aucune
   donnée de facturation à comparer.
-- `--enable-cost-analysis` fait davantage d’appels à Cost Explorer, Pricing et
-  CloudWatch, même avec `--no-billing-validation`, et leur nombre dépend de vos
-  ressources. Chaque recherche de prix distincte n’est faite qu’une fois puis
+- `--enable-cost-analysis` fait une requête de plus à Cost Explorer à chaque
+  exécution, pour la tendance des coûts, même avec `--no-billing-validation` et
+  quel que soit le nombre de services. Avant cette requête, l’exécution affiche
+  `Cost Explorer: 1 request(s); AWS charges for each.` Il fait aussi des appels
+  à Pricing et CloudWatch, dont le nombre dépend de vos ressources. Chaque recherche de prix distincte n’est faite qu’une fois puis
   réutilisée ; le nombre d’appels à Pricing augmente donc avec le nombre de
   types et de tailles de ressources différents, pas avec le nombre de ressources.
 
-Non vérifié sur un vrai AWS : les estimations de coûts de `--enable-cost-analysis`.
+Non vérifié sur un vrai AWS : les estimations de coûts de `--enable-cost-analysis`
+et le nombre de requêtes facturées. Non vérifié avec plusieurs comptes : une
+seule requête pour la tendance des coûts à chaque exécution.
 
 InvenTag relance un appel limité jusqu’à 10 fois (mode de nouvelle tentative
 standard) ; `AWS_RETRY_MODE` et `AWS_MAX_ATTEMPTS` modifient ce réglage.

@@ -21,7 +21,7 @@ Para la configuración paso a paso, consulta [Configura el acceso de solo lectur
 | `ec2:DescribeRegions` | Lista las regiones habilitadas y comprueba cada región que analizas | La comprobación se ejecuta para cada región, incluso con `--account-regions`. Una región que no la supera se omite con una advertencia. Si la llamada se deniega en todas las regiones, se analizan todas. |
 | `account:ListRegions` | Lista las regiones habilitadas cuando `ec2:DescribeRegions` falla | No se llama cuando `ec2:DescribeRegions` funciona. |
 | `tag:GetResources` | Encuentra recursos etiquetados (API Resource Groups Tagging) | El prefijo de IAM es `tag`, no `resourcegroupstaggingapi`. |
-| `ce:GetCostAndUsage` | Encuentra servicios con gasto | **AWS cobra por solicitud.** Consulta los [precios de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). Una ejecución hace una por cada cuenta. Si se deniega, el descubrimiento continúa sin datos de facturación. `--no-billing-validation` detiene las llamadas, y entonces puedes omitir este permiso. |
+| `ce:GetCostAndUsage` | Encuentra servicios con gasto | **AWS cobra por solicitud.** Consulta los [precios de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). Una ejecución hace una por cada cuenta. `--enable-cost-analysis` añade una más en cada ejecución, para la tendencia de costes. Si se deniega, el descubrimiento continúa sin datos de facturación. `--no-billing-validation` detiene las llamadas, y entonces puedes omitir este permiso. |
 | `List*`, `Describe*`, `Get*` de cada servicio que quieras en el informe | Descubrimiento por servicio | Por ejemplo `s3:ListAllMyBuckets`, `s3:GetBucketTagging`, `lambda:ListFunctions`, `dynamodb:ListTables`. La política administrada de AWS `ReadOnlyAccess` los cubre. |
 
 No verificado contra AWS real: `GetCallerIdentity` no necesita ningún permiso, el prefijo de IAM de la API Tagging es `tag`, y `ReadOnlyAccess` cubre las acciones List, Describe y Get.
@@ -31,7 +31,7 @@ No verificado contra AWS real: `GetCallerIdentity` no necesita ningún permiso, 
 | Función | Permiso adicional |
 |---|---|
 | Analizar otras cuentas mediante un rol | `sts:AssumeRole` sobre esos roles, y una política de confianza en cada cuenta que permita tu identidad |
-| `--enable-cost-analysis` | `pricing:GetProducts` y `cloudwatch:GetMetricStatistics` (ambos están en la política del repositorio) |
+| `--enable-cost-analysis` | `pricing:GetProducts` y `cloudwatch:GetMetricStatistics` (ambos están en la política del repositorio). También hace una solicitud `ce:GetCostAndUsage` en cada ejecución. |
 | `--s3-bucket` | `s3:PutObject` sobre ese bucket (y `kms:GenerateDataKey` sobre la clave si usas `aws:kms`) |
 
 No verificado contra AWS real: estos son los únicos permisos adicionales que necesitan la asunción de roles, el análisis de costes y la carga.
