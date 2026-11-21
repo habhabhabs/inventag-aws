@@ -21,7 +21,12 @@ from tests.regression import scenarios
 from tests.regression.faults import Fault
 from tests.regression.runner import run_in_process
 
-ANNOUNCEMENT = "Cost Explorer: 1 request(s); AWS charges for each."
+# F1b (architect ruling 5): the run says it once, in the generator, before
+# discovery; the analyzer says nothing of its own.
+ANNOUNCEMENT = (
+    "Cost Explorer: up to 1 request(s) in this run "
+    "(billing validation: 0; cost trend: 1). AWS charges for each."
+)
 
 
 def _group(name, amount):
@@ -148,17 +153,12 @@ def test_the_values_per_service_are_those_of_v1_4_0():
     ]
 
 
-def test_the_run_says_how_many_requests_before_the_first():
+def test_the_analyzer_does_not_announce_the_run_does():
     ce = CostExplorer(ANSWER)
     analyzer = _analyzer(ce)
     handler = _logged(analyzer)
-    ce.log = handler.lines
     analyzer.analyze_cost_trends(RESOURCES)
-    ((_, logged_before),) = ce.calls
-    said = [m for _, m in logged_before if m.startswith("Cost Explorer:")]
-    assert said == [ANNOUNCEMENT]
-    # a default run (WARNING and above) shows it
-    assert (logging.WARNING, ANNOUNCEMENT) in logged_before
+    assert not [m for _, m in handler.lines if m.startswith("Cost Explorer:")]
 
 
 def test_a_denied_request_is_one_request_and_one_warning():
@@ -171,11 +171,7 @@ def test_a_denied_request_is_one_request_and_one_warning():
     handler = _logged(analyzer)
     assert analyzer.analyze_cost_trends(RESOURCES) == []
     assert len(ce.calls) == 1
-    warnings = [
-        m
-        for level, m in handler.lines
-        if level >= logging.WARNING and m != ANNOUNCEMENT
-    ]
+    warnings = [m for level, m in handler.lines if level >= logging.WARNING]
     assert warnings == [
         "Cost analysis: access to the cost-explorer API was denied "
         "(AccessDeniedException). Cost and activity data from it will be missing."
@@ -230,7 +226,7 @@ def test_cli_without_billing_validation_makes_one_request(tmp_path, monkeypatch)
     assert len(_services(outcome)) >= 5
     assert counted == 1
     assert sum(1 for c in outcome.calls if c["service"] == "ce") == 1
-    assert ANNOUNCEMENT in outcome.text
+    assert outcome.text.count(ANNOUNCEMENT) == 1
 
 
 def test_cli_with_billing_validation_adds_only_the_billing_request(
@@ -255,5 +251,5 @@ def test_the_help_of_enable_cost_analysis_says_the_number_of_requests():
         if "--enable-cost-analysis" in a.option_strings
     ]
     text = " ".join(action.help.split())
-    assert "one Cost Explorer request (ce:GetCostAndUsage) per run" in text
+    assert "one more Cost Explorer request for the whole run" in text
     assert "AWS charges for each request" in text
