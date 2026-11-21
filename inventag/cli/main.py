@@ -369,7 +369,9 @@ Examples:
         "--enable-cost-analysis",
         action="store_true",
         help="Enable cost analysis and optimization recommendations. "
-        "--no-billing-validation is independent of it: the cost analysis "
+        "The cost trend makes one Cost Explorer request (ce:GetCostAndUsage) "
+        "per run, whatever the number of services; AWS charges for each "
+        "request. --no-billing-validation is independent of it: the cost analysis "
         "still calls Cost Explorer when billing validation is off",
     )
     analysis_group.add_argument(
