@@ -1649,23 +1649,79 @@ def _written_reports_note(output_dir, since) -> str:
     return f"{len(written)} report file(s) already written stay in {output_dir}."
 
 
+def _line_streams(logger):
+    """The file descriptor and formatter of each stream the logger writes
+    WARNING lines to (console, log file), as logging would find them.
+
+    Read once, when the SIGTERM handler is installed: the handler itself
+    calls no method of a stream object. A stream without a file descriptor
+    (a test's StringIO) is left out.
+    """
+    streams = []
+    current = logger
+    while current is not None:
+        for handler in current.handlers:
+            if not isinstance(handler, logging.StreamHandler):
+                continue
+            if handler.level > logging.WARNING:
+                continue
+            stream = getattr(handler, "stream", None)
+            try:
+                fd = stream.fileno()
+            except (AttributeError, OSError, ValueError):
+                continue
+            formatter = handler.formatter or logging.Formatter()
+            # The redacting wrapper takes the redaction lock; the line holds
+            # no secret (a fixed text and the output folder).
+            formatter = getattr(formatter, "inner", formatter)
+            streams.append((fd, formatter))
+        if not current.propagate:
+            break
+        current = current.parent
+    return streams
+
+
+def _say_sigterm_line(logger, streams, text):
+    """Write the SIGTERM line with one os.write per stream: no lock, no
+    buffered write, so a SIGTERM that lands inside a write to standard
+    output cannot hang on that write or lose the line (A-79)."""
+    if not streams:
+        logger.warning(text)  # no stream with a file descriptor: as before
+        return
+    if logger.getEffectiveLevel() > logging.WARNING:
+        return
+    record = logging.LogRecord(
+        logger.name, logging.WARNING, __file__, 0, text, None, None, "handler"
+    )
+    for fd, formatter in streams:
+        try:
+            line = formatter.format(record) + "\n"
+            os.write(fd, line.encode("utf-8", "replace"))
+        except Exception:
+            pass  # the process ends by the signal in a moment anyway
+
+
 def _install_sigterm_message(logger, output_dir, since):
     """Say one line when the process is asked to stop (SIGTERM), then end as
     before: the default action, so the exit status (killed by SIGTERM) is the
     same. The handler takes none of the run's locks: it runs on the main
     thread, which may hold the limiter's or a pool's lock at that moment, so
     it only sets the stop flags (no new AWS request) and the process ends a
-    moment later. Its log line takes only reentrant locks (logging's and the
-    redaction lock).
+    moment later. Its line is one os.write on each log stream's file
+    descriptor, in the stream's own format: no logging lock, no redaction
+    lock, no buffered write (A-79).
     Ctrl-C is left to Python (KeyboardInterrupt), which stops the scans with
     the locks once the stack has unwound. Returns the handler that was there
     before, to put back; None when none could be set. After its line the
     handler puts the default action back and sends SIGTERM again."""
+    streams = _line_streams(logger)
 
     def handler(signum, frame):
         request_stop_of_running_scans()  # lock-free: no new AWS request
-        logger.warning(
-            "Terminated (SIGTERM). " + _written_reports_note(output_dir, since)
+        _say_sigterm_line(
+            logger,
+            streams,
+            "Terminated (SIGTERM). " + _written_reports_note(output_dir, since),
         )
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
         os.kill(os.getpid(), signal.SIGTERM)
