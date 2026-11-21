@@ -9,6 +9,7 @@ token never reaches a git argument or a remote URL.
 """
 
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -226,7 +227,7 @@ def test_the_same_file_again_ends_with_success_and_pushes_nothing(tmp_path, shim
     assert "already published" in result.stdout
     assert tap.head() == before
     _, log = shims
-    assert not [c for c in log.read_text("utf-8").splitlines() if c.startswith("push")]
+    assert not [c for c in log.read_text("utf-8").splitlines() if "push" in c.split()]
 
 
 def test_a_new_formula_of_the_same_version_is_pushed(tmp_path, shims):
@@ -312,7 +313,7 @@ def test_a_second_refused_push_fails_the_run(tmp_path, shims):
     assert result.returncode == 1
     assert "was not pushed" in result.stderr
     _, log = shims
-    pushes = [c for c in log.read_text("utf-8").splitlines() if c.startswith("push")]
+    pushes = [c for c in log.read_text("utf-8").splitlines() if "push" in c.split()]
     assert len(pushes) == 2
 
 
@@ -552,12 +553,19 @@ def test_the_script_never_traces_and_never_echoes_the_token():
     assert "set -x" not in text and "xtrace" not in text
     assert "echo $HOMEBREW_TAP_TOKEN" not in text
     assert 'echo "$HOMEBREW_TAP_TOKEN"' not in text
-    # It reads the token in one place: the askpass answer.
-    assert text.count("$HOMEBREW_TAP_TOKEN") == 1
+    # It reads the token twice: the check that it is set, and the askpass
+    # answer, which is the only place that prints it.
+    assert len(re.findall(r"\$\{?HOMEBREW_TAP_TOKEN", text)) == 2
+    printed = [ln for ln in text.splitlines() if "printf" in ln and "TAP_TOKEN" in ln]
+    assert len(printed) == 1 and "PUBLISH_TAP_ASKPASS" in text.split(printed[0])[0]
 
 
 def test_the_script_makes_no_call_to_gh_or_curl():
+    # The hand procedure (a here-document the script prints) names gh; the
+    # script itself never runs it.
     text = SCRIPT.read_text("utf-8")
+    head, rest = text.split("<<EOF\n", 1)
+    text = head + rest.split("\nEOF\n", 1)[1]
     for word in ("gh ", "curl", "wget"):
         assert word not in text, word
 
