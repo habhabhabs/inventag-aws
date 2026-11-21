@@ -100,9 +100,29 @@ def test_both_triggers_take_a_tag_a_ref_and_a_dry_run_flag_that_defaults_to_true
         assert inputs["dry_run"]["default"] is True
 
 
-def test_the_workflow_reads_no_secret_of_the_repository():
-    assert "secrets." not in TEXT
-    assert "secrets:" not in TEXT
+def test_the_workflow_reads_one_secret_the_tap_token_in_one_step():
+    # B4c (architect plan homebrew-publish, section 2): the only secret is the
+    # tap token, in the env of the one step that pushes to the tap.
+    assert re.findall(r"secrets\.\w+", TEXT) == ["secrets.HOMEBREW_TAP_TOKEN"]
+    holders = [
+        (name, step.get("name"))
+        for name, step in _all_steps()
+        if "secrets." in str(step.get("env", {}))
+    ]
+    assert holders == [("publish-tap", "Push the formula to the tap")]
+    for name, job in JOBS.items():
+        assert "secrets." not in str(job.get("env", {})), name
+        for step in job.get("steps", []):
+            assert "secrets." not in step.get("run", ""), name
+            assert "secrets." not in str(step.get("with", {})), name
+    # A called workflow sees a secret only when the caller passes it.
+    declared = _triggers()["workflow_call"]["secrets"]
+    assert declared == {
+        "HOMEBREW_TAP_TOKEN": {
+            "description": declared["HOMEBREW_TAP_TOKEN"]["description"],
+            "required": False,
+        }
+    }
 
 
 def test_the_default_permission_is_read_only_contents():
@@ -1184,9 +1204,13 @@ def test_publish_attaches_to_the_release_only_when_it_is_not_a_dry_run():
 
 def test_nothing_but_publish_touches_the_release():
     for name, step in _all_steps():
+        run = step.get("run", "")
+        if name == "publish-tap":
+            # It reads the published SHA256SUMS and writes nothing here.
+            run = run.replace("gh release download", "")
         if name != "publish":
-            assert "gh release" not in step.get("run", ""), name
-            assert "gh api" not in step.get("run", ""), name
+            assert "gh release" not in run, name
+            assert "gh api" not in run, name
 
 
 # ---- stage 5: the job of release.yml that calls this workflow --------------
@@ -1238,9 +1262,11 @@ def test_the_package_job_grants_what_the_called_jobs_use_and_no_more():
             assert value == "read" or permissions.get(key) == value
 
 
-def test_the_package_job_passes_no_secret_and_leaves_the_other_jobs_alone():
+def test_the_package_job_passes_the_tap_token_by_name_only_and_leaves_the_other_jobs_alone():
     job = RELEASE_JOBS["package"]
-    assert "secrets" not in job
+    # B4c: by name, not `secrets: inherit`: the called workflow gets this one
+    # secret and no other.
+    assert job["secrets"] == {"HOMEBREW_TAP_TOKEN": "${{ secrets.HOMEBREW_TAP_TOKEN }}"}
     for name in ("check-for-release", "release", "publish-pypi"):
         assert "package" not in str(RELEASE_JOBS[name].get("outputs", {}))
 
@@ -2522,3 +2548,208 @@ def test_a_homebrew_install_that_changed_the_lxml_files_fails_the_job(tmp_path):
     result, _log, _ = _homebrew_run(tmp_path, lxml="changed")
     assert result.returncode != 0
     assert "DIFFERENT _internal/lxml/etree.so" in result.stdout
+
+
+# ---- B4c: publish-tap (architect plan homebrew-publish, sections 2 and 5) ----
+
+TAP_JOB = "publish-tap"
+
+
+def _tap_condition():
+    return " ".join(str(JOBS[TAP_JOB]["if"]).split())
+
+
+def test_publish_tap_runs_only_in_a_real_tag_release_with_macos_and_a_tap():
+    condition = _tap_condition()
+    for clause in (
+        "github.event_name != 'pull_request'",
+        "needs.plan.outputs.dry_run == 'false'",
+        "needs.plan.outputs.tag != ''",
+        "needs.plan.outputs.include_macos == 'true'",
+        "vars.HOMEBREW_TAP_REPO != ''",
+        "needs.publish.result == 'success'",
+        "needs.smoke-homebrew.result == 'success'",
+    ):
+        assert clause in condition, clause
+    # Every clause must hold: no `||`, and no status function that would let
+    # the job run after a failed or skipped need.
+    assert "||" not in condition
+    for word in ("always()", "!cancelled()", "failure()"):
+        assert word not in condition, word
+    assert "pull_request_target" not in TEXT
+
+
+def _tap_runs(
+    event="workflow_dispatch",
+    dry="false",
+    tag="v1.4.1",
+    macos="true",
+    repo="habhabhabs/homebrew-inventag",
+    publish="success",
+    smoke="success",
+):
+    # The job condition, read as the runner reads it for these values.
+    condition = _tap_condition()
+    values = {
+        "github.event_name": event,
+        "needs.plan.outputs.dry_run": dry,
+        "needs.plan.outputs.tag": tag,
+        "needs.plan.outputs.include_macos": macos,
+        "vars.HOMEBREW_TAP_REPO": repo,
+        "needs.publish.result": publish,
+        "needs.smoke-homebrew.result": smoke,
+    }
+    clauses = [c.strip() for c in condition.split("&&")]
+    for clause in clauses:
+        m = re.fullmatch(r"([\w.-]+) (==|!=) '([^']*)'", clause)
+        assert m, clause
+        key, op, want = m.groups()
+        if (values[key] == want) != (op == "=="):
+            return False
+    return True
+
+
+def test_publish_tap_is_skipped_in_a_dry_run_a_pull_request_and_without_a_tap():
+    assert _tap_runs()
+    assert not _tap_runs(event="pull_request")
+    assert not _tap_runs(dry="true")
+    assert not _tap_runs(tag="")
+    assert not _tap_runs(macos="false")
+    assert not _tap_runs(repo="")
+    for result in ("failure", "skipped", "cancelled"):
+        assert not _tap_runs(publish=result)
+        assert not _tap_runs(smoke=result)
+
+
+def test_publish_tap_waits_for_the_attachment_and_the_formula_install():
+    assert JOBS[TAP_JOB]["needs"] == ["plan", "publish", "smoke-homebrew"]
+
+
+def test_no_job_waits_for_publish_tap_so_a_failure_turns_only_it_red():
+    for name, job in JOBS.items():
+        needs = job.get("needs", [])
+        needs = [needs] if isinstance(needs, str) else needs
+        assert TAP_JOB not in needs, name
+    assert list(JOBS)[-1] == TAP_JOB
+
+
+def test_publish_tap_holds_read_only_contents_and_a_named_runner():
+    job = JOBS[TAP_JOB]
+    assert job["permissions"] == {"contents": "read"}
+    assert job["runs-on"] == "ubuntu-24.04"
+    assert isinstance(job.get("timeout-minutes"), int)
+
+
+def test_the_tap_repository_comes_from_the_variable_through_env_only():
+    job = JOBS[TAP_JOB]
+    assert job["env"]["TAP_REPO"] == "${{ vars.HOMEBREW_TAP_REPO }}"
+    assert job["env"]["VERSION"] == "${{ needs.plan.outputs.version }}"
+    assert job["env"]["TAG"] == "${{ needs.plan.outputs.tag }}"
+    for step in _steps(TAP_JOB):
+        assert "${{" not in step.get("run", ""), step.get("name")
+    assert TEXT.count("vars.HOMEBREW_TAP_REPO") == 2  # the condition and env
+
+
+def test_the_token_is_in_the_env_of_the_push_step_only_and_never_traced():
+    steps = _steps(TAP_JOB)
+    push = [s for s in steps if s.get("name") == "Push the formula to the tap"]
+    assert len(push) == 1
+    assert push[0]["env"] == {"HOMEBREW_TAP_TOKEN": "${{ secrets.HOMEBREW_TAP_TOKEN }}"}
+    run = push[0]["run"]
+    assert "set -x" not in run and "xtrace" not in run
+    assert "HOMEBREW_TAP_TOKEN" not in run
+    assert "scripts/packaging/publish_tap.sh" in run
+    for word in (
+        '--formula "$RUNNER_TEMP/inventag.rb"',
+        '--version "$VERSION"',
+        '--repo "$TAP_REPO"',
+    ):
+        assert word in run, word
+    for step in steps:
+        if step is not push[0]:
+            assert "HOMEBREW_TAP_TOKEN" not in str(step), step.get("name")
+
+
+def test_publish_tap_checks_out_the_tag_without_keeping_the_token():
+    checkout = [s for s in _steps(TAP_JOB) if "checkout" in s.get("uses", "")]
+    assert len(checkout) == 1
+    assert checkout[0]["with"] == {
+        "ref": "${{ needs.plan.outputs.ref }}",
+        "persist-credentials": False,
+    }
+
+
+def test_publish_tap_renders_from_the_published_sums_after_comparing_them():
+    steps = _steps(TAP_JOB)
+    down = [s for s in steps if s.get("uses", "").startswith("actions/download-")]
+    assert len(down) == 1 and down[0]["with"]["name"] == "release-files"
+    run = _run_text(TAP_JOB)
+    order = [
+        "gh release download",
+        "cmp -s",
+        "render_formula.py",
+        "publish_tap.sh --formula",
+    ]
+    positions = [run.index(word) for word in order]
+    assert positions == sorted(positions)
+    render = _step(TAP_JOB, "Render")["run"]
+    assert '--sums "$RUNNER_TEMP/published/SHA256SUMS"' in render
+    assert "--archive-dir" not in render
+
+
+def _tap_sums_run(tmp_path, published, ours):
+    import subprocess
+
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    (tmp_path / "run").mkdir()
+    (tmp_path / "run" / "SHA256SUMS").write_text(ours, encoding="utf-8")
+    stubs = tmp_path / "stubs"
+    stubs.mkdir()
+    source = tmp_path / "source-SHA256SUMS"
+    source.write_text(published, encoding="utf-8")
+    (stubs / "gh").write_text(
+        "#!/bin/bash\n"
+        f'echo "gh $*" >> "{tmp_path}/gh.log"\n'
+        'while [ $# -gt 0 ]; do [ "$1" = --dir ] && dir="$2"; shift; done\n'
+        f'cp "{source}" "$dir/SHA256SUMS"\n',
+        encoding="utf-8",
+    )
+    (stubs / "gh").chmod(0o755)
+    result = subprocess.run(
+        ["bash", "-c", _step(TAP_JOB, "SHA256SUMS")["run"]],
+        cwd=ROOT,
+        env={
+            "PATH": f"{stubs}:/usr/bin:/bin",
+            "RUNNER_TEMP": str(tmp_path),
+            "TAG": "v1.4.1",
+        },
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    return result, (tmp_path / "gh.log").read_text("utf-8")
+
+
+def test_the_published_sums_must_equal_the_sums_of_the_run(tmp_path):
+    line = f"{'a' * 64}  inventag-1.4.1-darwin-arm64.tar.gz\n"
+    result, log = _tap_sums_run(tmp_path / "same", line, line)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "gh release download v1.4.1 --pattern SHA256SUMS" in log
+    other = f"{'b' * 64}  inventag-1.4.1-darwin-arm64.tar.gz\n"
+    result, _ = _tap_sums_run(tmp_path / "differ", other, line)
+    assert result.returncode != 0
+    assert "::error::" in result.stdout
+
+
+def test_a_failed_publish_tap_prints_the_hand_procedure():
+    last = _steps(TAP_JOB)[-1]
+    assert last["if"] == "failure()"
+    assert last["run"].strip() == (
+        'bash scripts/packaging/publish_tap.sh --manual-steps --version "$VERSION"'
+        ' --repo "$TAP_REPO"'
+    )
+    assert "env" not in last
+
+
+def test_the_tap_is_not_planned_for_a_later_release_any_more():
+    assert "v1.4.1" not in _comment_text()
