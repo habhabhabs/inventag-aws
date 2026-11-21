@@ -271,6 +271,28 @@ def test_a_tap_formula_without_a_readable_version_is_refused(tmp_path, shims):
     assert tap.head() == before
 
 
+# ---- a failed step inside the write ----------------------------------------
+
+
+def test_a_failed_copy_of_the_formula_pushes_nothing_and_fails(tmp_path, shims):
+    # Architect review of B4d, fix 2: the write runs as `write_formula ||
+    # status=$?`, where bash turns `set -e` off. A failed cp must still stop
+    # the write: no commit that holds only the removal of Formula/.gitkeep.
+    bin_dir, log = shims
+    cp = bin_dir / "cp"
+    cp.write_text(f"#!{REAL_BASH}\necho 'cp: refused' >&2\nexit 1\n", "utf-8")
+    cp.chmod(0o755)
+    tap = Tap(tmp_path)
+    before = tap.head()
+    result = publish(tmp_path, shims, tap)
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert tap.head() == before
+    assert "Formula/.gitkeep" in tap.files()
+    pushes = [c for c in log.read_text("utf-8").splitlines() if "push" in c.split()]
+    assert pushes == []
+    assert "Published" not in result.stdout
+
+
 # ---- main moved during the run ----------------------------------------------
 
 MOVE_MAIN = (
