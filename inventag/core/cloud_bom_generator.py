@@ -50,6 +50,7 @@ from .daemon_pool import DaemonThreadPool
 from .limiter import DEFAULT_LIMIT, InFlightLimiter
 from .log_context import account_log_context
 from ..compliance import ComprehensiveTagComplianceChecker
+from ..finops import checks as finops_checks
 from ..reporting import BOMConverter, BOMDataProcessor, BOMProcessingConfig
 from ..state import StateManager, DeltaDetector, ChangelogGenerator
 from ..security.arn import (
@@ -458,6 +459,8 @@ class MultiAccountConfig:
     enable_changelog_generation: bool = True
     # Cost Explorer lookups during discovery. AWS charges for each request.
     enable_billing_validation: bool = True
+    # --finops-checks: FIN-001 to FIN-006 on the rows the scan has (no AWS call).
+    finops_checks: bool = False
     bom_processing_config: BOMProcessingConfig = field(
         default_factory=BOMProcessingConfig
     )
@@ -503,6 +506,10 @@ class CloudBOMGenerator:
         # Account contexts
         self.account_contexts: Dict[str, AccountContext] = {}
         self.consolidated_resources: List[Dict[str, Any]] = []
+        # --finops-checks: the result for the whole run, and per account for
+        # --per-account-reports (None when the flag is off).
+        self._finops_result: Optional[Dict[str, Any]] = None
+        self._finops_by_account: Dict[str, Dict[str, Any]] = {}
 
         # Processing state
         self._processing_lock = threading.Lock()
@@ -634,6 +641,8 @@ class CloudBOMGenerator:
             else:
                 consolidated_resources = all_resources
 
+            finops = self._run_finops_checks(consolidated_resources)
+
             # Step 4: Process compliance checking if policies provided
             compliance_results = {}
             if compliance_policies:
@@ -714,6 +723,8 @@ class CloudBOMGenerator:
             permissions = self._permissions_denied()
             if permissions:
                 results["permissions_denied"] = permissions
+            if finops is not None:
+                results["finops_checks"] = finops
 
             outcome = (
                 "completed (the state stage had a problem: see the run notes)"
@@ -2622,6 +2633,8 @@ class CloudBOMGenerator:
             permissions = self._permissions_denied()
             if permissions:
                 bom_data.generation_metadata["permissions_denied"] = permissions
+            if self._finops_result is not None:
+                bom_data.generation_metadata["finops_checks"] = self._finops_result
 
             # Add compliance results to BOM data
             if compliance_results:
@@ -2804,14 +2817,45 @@ class CloudBOMGenerator:
         scopes = []
         for account_id, rows in sorted(by_account.items()):
             safe = re.sub(r"[^A-Za-z0-9_.-]", "_", account_id)
-            scopes.append(
-                (
-                    f"{safe}_bom",
-                    account_id,
-                    dataclasses.replace(bom_data, resources=rows),
-                )
-            )
+            scope = dataclasses.replace(bom_data, resources=rows)
+            if self._finops_result is not None:
+                # Each account's report shows only that account's findings.
+                scope.generation_metadata = {
+                    **bom_data.generation_metadata,
+                    "finops_checks": self._finops_by_account.get(account_id)
+                    or self._finops_by_account.get(""),
+                }
+            scopes.append((f"{safe}_bom", account_id, scope))
         return scopes
+
+    def _run_finops_checks(self, resources: List[Dict[str, Any]]) -> Optional[Dict]:
+        """FIN-001 to FIN-006 on the consolidated rows (``--finops-checks``).
+
+        No AWS call: the checks read the rows, the listings not read and the
+        run's start time. None when the flag is off.
+        """
+        if not self.config.finops_checks:
+            return None
+        started = self._processing_stats.get("processing_start_time") or datetime.now(
+            timezone.utc
+        )
+        units = self._units_not_read()
+        self._finops_result = finops_checks.run_checks(resources, units, started)
+        if self.config.generate_per_account_reports:
+            # One result per account for its own report ("" = no rows).
+            by_account: Dict[str, List[Dict[str, Any]]] = {"": []}
+            for row in resources:
+                key = str(row.get("source_account_id") or "unknown")
+                by_account.setdefault(key, []).append(row)
+            self._finops_by_account = {
+                account: finops_checks.run_checks(
+                    rows,
+                    [u for u in units if account and u.get("account") == account],
+                    started,
+                )
+                for account, rows in by_account.items()
+            }
+        return self._finops_result
 
     def _publish_to_google(self, converter, scope_data, label) -> Dict[str, str]:
         """Create the Google Sheet and/or Doc for one report."""

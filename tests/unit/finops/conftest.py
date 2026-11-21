@@ -57,13 +57,14 @@ class Scan:
         return json.loads(files[0].read_text())
 
 
-def run_scan(tmp_path: Path, *extra: str, json_report: bool = False, seed=None):
-    """One in-process CLI run inside moto, with the FinOps estate."""
+def _run_main(out: Path, audit: Path, extra, json_report: bool, ids):
+    """One in-process CLI run in the moto estate that is open now."""
+    import io
+    from contextlib import redirect_stderr, redirect_stdout
+
     from inventag.cli.main import main
     from inventag.core import cloud_bom_generator as cbg
 
-    out = tmp_path / "out"
-    audit = tmp_path / "audit.json"
     argv = [
         "inventag",
         "--account-regions",
@@ -95,15 +96,11 @@ def run_scan(tmp_path: Path, *extra: str, json_report: bool = False, seed=None):
         return captured["results"]
 
     code = 0
-    with pytest.MonkeyPatch.context() as mp, mock_aws():
-        ids = (seed or estate.seed)()
+    buf_out, buf_err = io.StringIO(), io.StringIO()
+    with pytest.MonkeyPatch.context() as mp:
         mp.setattr(cbg.CloudBOMGenerator, "_consolidate_account_resources", consolidate)
         mp.setattr(cbg.CloudBOMGenerator, "generate_comprehensive_bom", generate)
         mp.setattr(sys, "argv", argv)
-        import io
-        from contextlib import redirect_stderr, redirect_stdout
-
-        buf_out, buf_err = io.StringIO(), io.StringIO()
         with (
             restored_process_state(),
             redirect_stdout(buf_out),
@@ -125,15 +122,38 @@ def run_scan(tmp_path: Path, *extra: str, json_report: bool = False, seed=None):
     )
 
 
+def run_scans(tmp_path: Path, *runs, json_report: bool = False) -> List[Scan]:
+    """Seed the estate once, then run the CLI once per argument list."""
+    scans = []
+    with mock_aws():
+        ids = estate.seed()
+        for number, extra in enumerate(runs):
+            where = tmp_path / f"run{number}"
+            where.mkdir(parents=True, exist_ok=True)
+            scans.append(
+                _run_main(where / "out", where / "audit.json", extra, json_report, ids)
+            )
+    return scans
+
+
+def run_scan(tmp_path: Path, *extra: str, json_report: bool = False) -> Scan:
+    """One CLI run in a new moto estate."""
+    return run_scans(tmp_path, list(extra), json_report=json_report)[0]
+
+
 @pytest.fixture(scope="module")
-def finops_scan(tmp_path_factory):
-    """One run with --finops-checks and a JSON report, shared by a module."""
-    return run_scan(
-        tmp_path_factory.mktemp("finops"), "--finops-checks", json_report=True
+def scan_pair(tmp_path_factory):
+    """The same estate scanned with --finops-checks and without it."""
+    return run_scans(
+        tmp_path_factory.mktemp("pair"), ["--finops-checks"], [], json_report=True
     )
 
 
 @pytest.fixture(scope="module")
-def plain_scan(tmp_path_factory):
-    """The same run without the flag."""
-    return run_scan(tmp_path_factory.mktemp("plain"), json_report=True)
+def finops_scan(scan_pair):
+    return scan_pair[0]
+
+
+@pytest.fixture(scope="module")
+def plain_scan(scan_pair):
+    return scan_pair[1]

@@ -9,9 +9,9 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from inventag.cli import main as cli_main
+from inventag.cli.main import create_parser
 from inventag.finops import checks
-from tests.unit.finops.conftest import run_scan
+from tests.unit.finops.conftest import run_scan, run_scans
 
 pytestmark = pytest.mark.e2e
 
@@ -89,13 +89,13 @@ def sheet_cells(scan):
 
 # ------------------------------------------------------------ the flag
 def test_help_names_the_flag_and_says_it_makes_no_aws_call():
-    text = " ".join(cli_main.create_parser().format_help().split())
+    text = " ".join(create_parser().format_help().split())
     assert "--finops-checks" in text
     assert "no further AWS call" in text
 
 
 def test_the_flag_is_off_by_default():
-    args = cli_main.create_parser().parse_args([])
+    args = create_parser().parse_args([])
     assert args.finops_checks is False
 
 
@@ -206,7 +206,7 @@ def test_with_template_the_flag_warns_and_adds_nothing(tmp_path):
 
 
 # ------------------------------------------------------- per-account reports
-def test_per_account_reports_hold_only_their_account():
+def test_per_account_reports_hold_only_their_account(monkeypatch):
     import datetime as dt
 
     from inventag.core.cloud_bom_generator import CloudBOMGenerator, MultiAccountConfig
@@ -220,13 +220,18 @@ def test_per_account_reports_hold_only_their_account():
     units = [dict(unit("s3"), account="222222222222")]
     started = dt.datetime(2026, 11, 21, tzinfo=dt.timezone.utc)
     generator = CloudBOMGenerator.__new__(CloudBOMGenerator)
-    generator.config = MultiAccountConfig(generate_per_account_reports=True)
-    generator._finops_inputs = (rows, units, started)
-    whole = checks.run_checks(rows, units, started)
-    data = BOMData(resources=rows, generation_metadata={"finops_checks": whole})
+    generator.config = MultiAccountConfig(
+        generate_per_account_reports=True, finops_checks=True
+    )
+    generator._processing_stats = {"processing_start_time": started}
+    generator._finops_by_account = {}
+    monkeypatch.setattr(generator, "_units_not_read", lambda: units, raising=False)
 
+    whole = generator._run_finops_checks(rows)
+    data = BOMData(resources=rows, generation_metadata={"finops_checks": whole})
     scopes = generator._report_scopes(data)
 
+    assert whole == checks.run_checks(rows, units, started)
     assert [label for _, label, _ in scopes] == ["111111111111", "222222222222"]
     for _, label, scope in scopes:
         mine = scope.generation_metadata["finops_checks"]
@@ -241,8 +246,11 @@ def test_per_account_reports_hold_only_their_account():
 
 # ------------------------------------------------------- determinism
 def test_the_same_findings_with_concurrency_1_and_64(tmp_path):
-    one = run_scan(tmp_path / "c1", "--finops-checks", "--concurrency", "1")
-    many = run_scan(tmp_path / "c64", "--finops-checks", "--concurrency", "64")
+    one, many = run_scans(
+        tmp_path,
+        ["--finops-checks", "--concurrency", "1"],
+        ["--finops-checks", "--concurrency", "64"],
+    )
     assert one.code == many.code == 0
     assert one.results["finops_checks"] == many.results["finops_checks"]
     assert one.sheet("FinOps") == many.sheet("FinOps")

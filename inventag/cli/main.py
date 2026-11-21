@@ -393,6 +393,16 @@ Examples:
             "(deprecated, use --fallback-display instead)"
         ),
     )
+    analysis_group.add_argument(
+        "--finops-checks",
+        action="store_true",
+        help=(
+            "Run six FinOps checks (FIN-001 to FIN-006) on the resources the "
+            "scan found and add a FinOps sheet to the Excel report. Off by "
+            "default. The checks make no further AWS call, need no further "
+            "permission and do not change the exit code"
+        ),
+    )
 
     # S3 upload options for CI/CD
     s3_group = parser.add_argument_group("S3 Upload Options (CI/CD Integration)")
@@ -1045,6 +1055,7 @@ def create_multi_account_config(args) -> MultiAccountConfig:
         and not args.disable_delta_detection,
         enable_changelog_generation=args.generate_changelog,
         enable_billing_validation=getattr(args, "billing_validation", True),
+        finops_checks=getattr(args, "finops_checks", False),
         bom_processing_config=bom_config,
         output_directory=output_dir,
         credential_validation_timeout=args.credential_timeout,
@@ -1872,6 +1883,13 @@ def _run(args, logger):
         # Create and run BOM generator
         logger.info("Initializing CloudBOMGenerator...")
         if template_run:
+            if config.finops_checks:
+                logger.warning(
+                    "--finops-checks: with --template, the FinOps checks do not "
+                    "run and no FinOps sheet is written. Run without --template "
+                    "to get them."
+                )
+                config.finops_checks = False
             generator = template_run.create_generator(config)
         else:
             generator = CloudBOMGenerator(config)

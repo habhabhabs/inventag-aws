@@ -152,6 +152,8 @@ class BOMConverter:
         # data that carries it (see _analysis_found_by_processor)
         self.analysis_results = None
         self.cost_analysis = {}
+        # The --finops-checks result (None: no FinOps sheet).
+        self.finops_checks: Optional[Dict[str, Any]] = None
         self.service_attributes = {}
         # Lines shown under the summary (for example, accounts that were not
         # scanned). Set by the caller; empty for a normal run.
@@ -569,6 +571,10 @@ class BOMConverter:
                 "sheets for this data. Enable a service_summary section, or "
                 "make sure that the 'services' list matches a service in the report."
             )
+        if self.finops_checks is not None:
+            from .finops_sheet import add_finops_sheet
+
+            add_finops_sheet(wb, self.finops_checks)
 
         self._apply_workbook_branding(wb, template, context)
         return wb
@@ -1589,6 +1595,10 @@ class BOMConverter:
         self.data = resources = mask_resources(resources)
         self.analysis_results = getattr(bom_data, "analysis_results", None)
         self.cost_analysis = getattr(bom_data, "cost_analysis", None) or {}
+        metadata = getattr(bom_data, "generation_metadata", None)
+        self.finops_checks = (
+            metadata.get("finops_checks") if isinstance(metadata, dict) else None
+        )
         self.headers = set()
         for item in resources:
             if isinstance(item, dict):
