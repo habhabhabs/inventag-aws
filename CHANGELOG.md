@@ -8,6 +8,8 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v1.4.0] - 2026-11-21
+
 ### Added
 
 - `--concurrency N` (1 to 256, default 64): the most AWS requests in flight at
@@ -1057,7 +1059,8 @@ One-time setup for PyPI:
 3. In the GitHub repository settings, set the variable `PYPI_PUBLISH` to
    `true`.
 
-[Unreleased]: https://github.com/habhabhabs/inventag-aws/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/habhabhabs/inventag-aws/compare/v1.4.0...HEAD
+[v1.4.0]: https://github.com/habhabhabs/inventag-aws/compare/v1.3.1...v1.4.0
 [v1.3.1]: https://github.com/habhabhabs/inventag-aws/compare/v1.3.0...v1.3.1
 [v1.3.0]: https://github.com/habhabhabs/inventag-aws/compare/v1.2.2...v1.3.0
 [v1.2.2]: https://github.com/habhabhabs/inventag-aws/compare/v1.2.1...v1.2.2
