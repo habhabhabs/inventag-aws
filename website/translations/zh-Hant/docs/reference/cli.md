@@ -104,6 +104,7 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 
 | 引數 | 預設值 | 狀態 | 功能 |
 |---|---|---|---|
+| `--finops-checks` | 關閉 | 可用 | 對掃描找到的資源執行六項 FinOps 檢查（`FIN-001` 到 `FIN-006`），並在 Excel 報告末尾新增一個 `FinOps` 工作表。不再發出任何 AWS 呼叫，不需要額外的權限，也不改變結束代碼。使用 `--template` 時不新增任何內容。見 [FinOps 檢查](../guides/finops-checks.md)。 |
 | `--enable-network-analysis` | 關 | 可用 | 找到 VPC 時，在 Excel 報告中新增 `Network Analysis` 工作表。與 `--template` 一起使用時不新增任何內容。見[網路與安全分析](../guides/network-and-security-analysis.md)。 |
 | `--enable-security-analysis` | 關 | 可用 | 找到安全組時，在 Excel 報告中新增 `Security Analysis` 工作表。與 `--template` 一起使用時不新增任何內容。 |
 | `--enable-cost-analysis` | 關 | 可用 | 在預設工作簿中新增 Cost Analysis 工作表（以及四個 `forgotten_analysis.*` 欄）。會呼叫 Cost Explorer、Pricing 和 CloudWatch；`--no-billing-validation` 與它相互獨立，不會停止這些呼叫。 一次執行中的 Cost Explorer 請求：啟用帳單驗證時（預設）每個帳戶最多一次，使用 `--enable-cost-analysis` 時整個執行最多再多一次。單帳戶執行同時使用兩者時最多發出 2 次；使用 `--no-billing-validation` 時最多發出 1 次。被限流的請求會重試，總共最多 10 次嘗試，每次重試都是一次新的請求。AWS 對每次請求收費。需要 `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`。費用是根據 AWS Pricing API 得出的估算值，不是你的帳單。 |

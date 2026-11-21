@@ -45,6 +45,9 @@ list is provisional until the project has a raw copy of the AWS policy. Not
 verified against real AWS: that the list is what `ReadOnlyAccess` allows today.
 See [Run with only ReadOnlyAccess](../guides/read-only-access.md#run-with-only-readonlyaccess).
 
+`--finops-checks` needs no further permission: the checks read the rows the
+scan already has and make no AWS call.
+
 ## When an action is refused
 
 When a run is not allowed to use an IAM action, the run notes have one

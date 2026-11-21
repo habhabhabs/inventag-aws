@@ -48,6 +48,7 @@ InvenTag 写入的其他位置只有你指定的文件（`--log-file`、`--audit
   `sources` 列（所有这些 API，用 `+` 连接）和 `detail_level` 列（来自服务自身 API 的行为 `full`，其他为 `identity`）。
 - **Network Analysis** 和 **Security Analysis** 工作表，仅在使用 `--enable-network-analysis` 或 `--enable-security-analysis` 时出现。
 - **Cost Analysis** 工作表，仅在使用 `--enable-cost-analysis` 时出现：根据 AWS Pricing API 估算的每月费用，不是你的账单。
+- **FinOps** 工作表，位于最后，仅在使用 `--finops-checks` 时出现：见 [FinOps 工作表和 `finops_checks` 键](#finops-sheet-and-the-finops_checks-key)。
 
 常用于存放机密的字段（例如 Lambda 环境变量、CloudFormation 堆栈输出、Glue 触发器参数、连接字符串和签名 URL）的值，在每份报告、快照和日志中都显示为 `***REDACTED***`。
 字段名称会保留。参见[功能状态](../getting-started/status.md#what-inventag-finds-and-what-it-does-not)。
@@ -65,6 +66,12 @@ InvenTag 写入的其他位置只有你指定的文件（`--log-file`、`--audit
 行按服务、类型、名称和 ID 排序。
 
 每种版式的预览由真实文件制作，见[内置模板](../templates/catalogue.md)。
+
+## FinOps 工作表和 `finops_checks` 键 {#finops-sheet-and-the-finops_checks-key}
+
+使用 `--finops-checks` 时，默认工作簿以一个 `FinOps` 工作表结束。第一行是一条说明，然后是列出的结果，列为 `Check ID`、`Check`、`Result`、`Reason`、`Account`、`Region`、`Service`、`Resource Type`、`Resource ID`、`Name` 和 `Observed`，按检查 ID、账户、区域和资源 ID 排序。随后是一张表，列出每项检查的计数（`Fail`、`Not evaluated`、`Pass`）。使用 `--template` 时不写 `FinOps` 工作表。
+
+命令行不为这些结果写 JSON 文件。在 Python 中，`CloudBOMGenerator.generate_multi_account_bom()` 的结果带有 `finops_checks` 键，用 `json` 输出格式写出的 JSON 报告的 `metadata` 中也有这个键。不使用该参数时没有这个键。字段见 [FinOps 检查](../guides/finops-checks.md#the-finops_checks-result)。
 
 ## Word 报告 {#word-report}
 

@@ -62,6 +62,8 @@ Le classeur par défaut a une colonne `raw_data.*` pour chaque champ de l’API,
   `--enable-network-analysis` ou `--enable-security-analysis`.
 - Une feuille **Cost Analysis**, uniquement avec `--enable-cost-analysis` : coûts
   mensuels estimés à partir de l’API AWS Pricing, pas votre facture.
+- Une feuille **FinOps**, la dernière, uniquement avec `--finops-checks` : voir
+  [Feuille FinOps et clé `finops_checks`](#finops-sheet-and-the-finops_checks-key).
 
 Les valeurs des champs qui contiennent souvent des secrets, comme les variables
 d’environnement Lambda, les sorties de piles CloudFormation, les arguments des
@@ -86,6 +88,22 @@ nom et ID.
 
 Des aperçus de chaque mise en page, réalisés à partir de vrais fichiers, se trouvent dans
 [Modèles intégrés](../templates/catalogue.md).
+
+## Feuille FinOps et clé `finops_checks` {#finops-sheet-and-the-finops_checks-key}
+
+Avec `--finops-checks`, le classeur par défaut se termine par une feuille
+`FinOps`. Sa première ligne est une note ; viennent ensuite les résultats
+listés, avec les colonnes `Check ID`, `Check`, `Result`, `Reason`, `Account`,
+`Region`, `Service`, `Resource Type`, `Resource ID`, `Name` et `Observed`,
+triés par identifiant de contrôle, compte, région et identifiant de ressource.
+Un tableau des nombres par contrôle (`Fail`, `Not evaluated`, `Pass`) suit.
+Avec `--template`, aucune feuille `FinOps` n’est écrite.
+
+La ligne de commande n’écrit aucun fichier JSON pour ces résultats. En Python,
+le résultat de `CloudBOMGenerator.generate_multi_account_bom()` a la clé
+`finops_checks`, tout comme le `metadata` d’un rapport JSON écrit avec le
+format de sortie `json`. Sans l’option, la clé est absente. Les champs sont
+décrits dans [Contrôles FinOps](../guides/finops-checks.md#the-finops_checks-result).
 
 ## Rapport Word {#word-report}
 

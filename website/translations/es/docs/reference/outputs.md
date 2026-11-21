@@ -62,6 +62,8 @@ El libro predeterminado tiene una columna `raw_data.*` por cada campo de la API,
   `--enable-network-analysis` o `--enable-security-analysis`.
 - Hoja **Cost Analysis**, solo con `--enable-cost-analysis`: costes mensuales
   estimados a partir de la API AWS Pricing, no tu factura.
+- Hoja **FinOps**, la última, solo con `--finops-checks`: consulta
+  [Hoja FinOps y la clave `finops_checks`](#finops-sheet-and-the-finops_checks-key).
 
 Los valores de los campos que suelen contener secretos, como las variables de
 entorno de Lambda, las salidas de pilas de CloudFormation, los argumentos de
@@ -86,6 +88,22 @@ nombre e ID.
 
 Las vistas previas de cada diseño, hechas a partir de archivos reales, están en
 [Plantillas integradas](../templates/catalogue.md).
+
+## Hoja FinOps y la clave `finops_checks` {#finops-sheet-and-the-finops_checks-key}
+
+Con `--finops-checks`, el libro predeterminado termina con una hoja `FinOps`.
+Su primera línea es una nota; después vienen los resultados listados con las
+columnas `Check ID`, `Check`, `Result`, `Reason`, `Account`, `Region`,
+`Service`, `Resource Type`, `Resource ID`, `Name` y `Observed`, ordenados por
+ID de comprobación, cuenta, región e ID de recurso. Le sigue una tabla con los
+recuentos de cada comprobación (`Fail`, `Not evaluated`, `Pass`). Con
+`--template` no se escribe ninguna hoja `FinOps`.
+
+La línea de comandos no escribe ningún archivo JSON con estos resultados. En
+Python, el resultado de `CloudBOMGenerator.generate_multi_account_bom()` tiene
+la clave `finops_checks`, y también la tiene el `metadata` de un informe JSON
+escrito con el formato de salida `json`. Sin la opción, la clave no está. Los
+campos se describen en [Comprobaciones FinOps](../guides/finops-checks.md#the-finops_checks-result).
 
 ## Informe de Word {#word-report}
 

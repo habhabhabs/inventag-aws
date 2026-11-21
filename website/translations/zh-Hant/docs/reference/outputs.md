@@ -48,6 +48,7 @@ InvenTag 寫入的其他位置只有你指定的檔案（`--log-file`、`--audit
   `sources` 欄（所有這些 API，用 `+` 連線）和 `detail_level` 欄（來自服務自身 API 的行為 `full`，其他為 `identity`）。
 - **Network Analysis** 和 **Security Analysis** 工作表，僅在使用 `--enable-network-analysis` 或 `--enable-security-analysis` 時出現。
 - **Cost Analysis** 工作表，僅在使用 `--enable-cost-analysis` 時出現：根據 AWS Pricing API 估算的每月費用，不是你的帳單。
+- **FinOps** 工作表，位於最後，僅在使用 `--finops-checks` 時出現：見 [FinOps 工作表和 `finops_checks` 鍵](#finops-sheet-and-the-finops_checks-key)。
 
 常用於存放機密的欄位（例如 Lambda 環境變數、CloudFormation 堆疊輸出、Glue 觸發器引數、連線字串和簽名 URL）的值，在每份報告、快照和日誌中都顯示為 `***REDACTED***`。
 欄位名稱會保留。參見[功能狀態](../getting-started/status.md#what-inventag-finds-and-what-it-does-not)。
@@ -65,6 +66,12 @@ InvenTag 寫入的其他位置只有你指定的檔案（`--log-file`、`--audit
 列按服務、型別、名稱和 ID 排序。
 
 每種版面配置的預覽由真實檔案製作，見[內建範本](../templates/catalogue.md)。
+
+## FinOps 工作表和 `finops_checks` 鍵 {#finops-sheet-and-the-finops_checks-key}
+
+使用 `--finops-checks` 時，預設工作簿以一個 `FinOps` 工作表結束。第一行是一條說明，然後是列出的結果，列為 `Check ID`、`Check`、`Result`、`Reason`、`Account`、`Region`、`Service`、`Resource Type`、`Resource ID`、`Name` 和 `Observed`，按檢查 ID、帳戶、區域和資源 ID 排序。隨後是一張表，列出每項檢查的計數（`Fail`、`Not evaluated`、`Pass`）。使用 `--template` 時不寫 `FinOps` 工作表。
+
+命令列不為這些結果寫 JSON 檔案。在 Python 中，`CloudBOMGenerator.generate_multi_account_bom()` 的結果帶有 `finops_checks` 鍵，用 `json` 輸出格式寫出的 JSON 報告的 `metadata` 中也有這個鍵。不使用該引數時沒有這個鍵。欄位見 [FinOps 檢查](../guides/finops-checks.md#the-finops_checks-result)。
 
 ## Word 報告 {#word-report}
 

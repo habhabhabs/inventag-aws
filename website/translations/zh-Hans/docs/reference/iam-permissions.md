@@ -39,6 +39,8 @@ sidebar_position: 3
 
 按项目用来测试的暂定列表，AWS 托管策略 `ReadOnlyAccess` 包含仓库策略中的每个操作，但不包含 `sts:AssumeRole`、`s3:PutObject` 和 `kms:GenerateDataKey`。在项目拿到 AWS 策略的原始副本之前，这份列表是暂定的。未针对真实的 AWS 验证：该列表与 `ReadOnlyAccess` 当前允许的内容一致。见[仅使用 ReadOnlyAccess 运行](../guides/read-only-access.md#run-with-only-readonlyaccess)。
 
+`--finops-checks` 不需要额外的权限：这些检查读取扫描已有的行，不发出任何 AWS 调用。
+
 ## 某个操作被拒绝时 {#when-an-action-is-refused}
 
 当运行无权使用某个 IAM 操作时，运行备注中每个账户有一行 `Permissions:`。这一行列出每个操作，并说明报告因此缺少什么。`--audit-output` 文件在键 `permissions_denied` 中有同样的列表。没有被拒绝任何操作的运行，不会输出或写入任何新内容。字段和示例见[仅使用 ReadOnlyAccess 运行](../guides/read-only-access.md#the-permissions-line-and-permissions_denied)。

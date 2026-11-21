@@ -62,6 +62,8 @@ The default workbook has a `raw_data.*` column for every API field, so its sheet
   `--enable-network-analysis` or `--enable-security-analysis`.
 - **Cost Analysis** sheet, only with `--enable-cost-analysis`: estimated
   monthly costs from the AWS Pricing API, not your invoice.
+- **FinOps** sheet, the last sheet, only with `--finops-checks`: see
+  [FinOps sheet and the `finops_checks` key](#finops-sheet-and-the-finops_checks-key).
 
 Values of fields that often hold secrets, such as Lambda environment
 variables, CloudFormation stack outputs, Glue trigger arguments, connection
@@ -85,6 +87,22 @@ name and ID.
 
 Previews of each layout, made from real files, are in
 [Built-in templates](../templates/catalogue.md).
+
+## FinOps sheet and the `finops_checks` key
+
+With `--finops-checks`, the default workbook ends with a `FinOps` sheet. Its
+first line is a note, then come the listed results with the columns
+`Check ID`, `Check`, `Result`, `Reason`, `Account`, `Region`, `Service`,
+`Resource Type`, `Resource ID`, `Name` and `Observed`, sorted by check ID,
+account, region and resource ID. A table of the counts per check (`Fail`,
+`Not evaluated`, `Pass`) follows. With `--template`, no `FinOps` sheet is
+written.
+
+The command line writes no JSON file for these results. In Python, the result
+of `CloudBOMGenerator.generate_multi_account_bom()` has the key
+`finops_checks`, and so has the `metadata` of a JSON report written with the
+`json` output format. Without the flag, the key is not there. The fields are
+listed in [FinOps checks](../guides/finops-checks.md#the-finops_checks-result).
 
 ## Word report
 

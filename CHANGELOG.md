@@ -5,8 +5,29 @@ commit as the change. Put new entries in the "Unreleased" section.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 The version numbers follow [Semantic Versioning](https://semver.org/).
+A patch release may add an opt-in flag and additive output when a run without
+the flag is unchanged; the changelog lists it under Added.
 
 ## [Unreleased]
+
+### Added
+
+- `--finops-checks` (off by default): six fixed FinOps checks on the resources
+  the scan found. `FIN-001` EBS volume with state `available`; `FIN-002`
+  Elastic IP with no association; `FIN-003` EBS snapshot that started more than
+  90 days before the run; `FIN-004` EC2 instance in the `stopped` state;
+  `FIN-005` load balancer that no target group names, or classic load balancer
+  with no instance; `FIN-006` a missing key of the built-in
+  `finops-cost-allocation` tag policy. Results are `fail`, `not_evaluated`
+  (with a reason: `identity_only`, `field_missing`, `tags_not_read`,
+  `units_not_read`) and `pass`; a gap in the data is never a pass. The Excel
+  report gets a last sheet `FinOps`; the result of
+  `CloudBOMGenerator.generate_multi_account_bom()` and the metadata of a JSON
+  report get the additive key `finops_checks`. The checks make no AWS call,
+  need no new IAM action and never change the exit code. A run without the
+  flag is unchanged. With `--template`, the checks do not run and a warning
+  says so. Not verified against real AWS: that the listings carry the fields
+  each check needs on every account type.
 
 ## [v1.4.1] - 2026-11-24
 

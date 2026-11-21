@@ -40,6 +40,9 @@ Non vérifié sur un vrai AWS : ce sont les seules autorisations supplémentaire
 
 D’après la liste provisoire avec laquelle le projet fait ses tests, la politique gérée AWS `ReadOnlyAccess` inclut toutes les actions de la politique du dépôt, mais elle n’inclut pas `sts:AssumeRole`, `s3:PutObject` ni `kms:GenerateDataKey`. La liste reste provisoire tant que le projet n’a pas une copie brute de la politique AWS. Non vérifié sur un vrai AWS : que la liste soit ce que `ReadOnlyAccess` autorise aujourd’hui. Voir [Exécuter avec ReadOnlyAccess seul](../guides/read-only-access.md#run-with-only-readonlyaccess).
 
+`--finops-checks` n’exige aucune autre permission : les contrôles lisent les
+lignes que l’analyse a déjà et ne font aucun appel AWS.
+
 ## Quand une action est refusée {#when-an-action-is-refused}
 
 Quand une exécution n’a pas le droit d’utiliser une action IAM, les notes d’exécution ont une ligne `Permissions:` par compte. La ligne nomme chaque action et dit ce qui manque au rapport. Le fichier de `--audit-output` a la même liste dans la clé `permissions_denied`. Une exécution à laquelle rien n’est refusé n’affiche ni n’écrit rien de nouveau. Les champs et un exemple sont dans [Exécuter avec ReadOnlyAccess seul](../guides/read-only-access.md#the-permissions-line-and-permissions_denied).
