@@ -13,7 +13,6 @@ import datetime as dt
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from ..discovery.arn_utils import parse_arn
-from ..templating.columns import normalize_tags
 from ..templating.tag_policy import _in_scope, evaluate
 
 SCHEMA_VERSION = 1
