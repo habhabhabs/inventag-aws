@@ -20,17 +20,19 @@ sidebar_position: 3
 | `ec2:DescribeRegions` | 列出已启用的区域，并检查你扫描的每个区域 | 即使使用 `--account-regions`，每个区域都会进行检查。检查失败的区域会被跳过并给出警告。如果该调用在每个区域都被拒绝，则扫描所有区域。 |
 | `account:ListRegions` | 在 `ec2:DescribeRegions` 失败时列出已启用的区域 | `ec2:DescribeRegions` 正常时不会调用。 |
 | `tag:GetResources` | 找出带标签的资源（Resource Groups Tagging API） | IAM 前缀是 `tag`，而不是 `resourcegroupstaggingapi`。 |
-| `ce:GetCostAndUsage` | 找出有支出的服务 | **AWS 按请求收费。** 详见[Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。 每次运行为每个账户发出一次。`--enable-cost-analysis` 在每次运行中为成本趋势再发出一次。如果被拒绝，发现过程会在没有账单数据的情况下继续。`--no-billing-validation` 会停止这些调用，此后你可以不授予这项权限。 |
+| `ce:GetCostAndUsage` | 找出有支出的服务 | **AWS 按请求收费。** 详见[Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。 一次运行中的 Cost Explorer 请求：启用账单验证时（默认）每个账户一次，使用 `--enable-cost-analysis` 时整个运行再多一次。单账户运行同时使用两者时发出 2 次；使用 `--no-billing-validation` 时发出 1 次。AWS 对每次请求收费。如果被拒绝，发现过程会在没有账单数据的情况下继续。`--no-billing-validation` 会停止这些调用，此后你可以不授予这项权限。 |
 | 你想放入报告的每个服务的 `List*`、`Describe*`、`Get*` | 按服务发现 | 例如 `s3:ListAllMyBuckets`、`s3:GetBucketTagging`、`lambda:ListFunctions`、`dynamodb:ListTables`。AWS 托管的 `ReadOnlyAccess` 策略涵盖了这些。 |
 
 未针对真实的 AWS 验证：`GetCallerIdentity` 不需要权限，Tagging API 的 IAM 前缀是 `tag`，并且 `ReadOnlyAccess` 涵盖 List、Describe 和 Get 操作。
+
+未针对真实的 AWS 验证：AWS 计费的请求次数。
 
 ## 某些功能需要什么 {#what-some-features-need}
 
 | 功能 | 额外权限 |
 |---|---|
 | 通过角色扫描其他账户 | 对这些角色的 `sts:AssumeRole`，以及每个账户中允许你的身份的信任策略 |
-| `--enable-cost-analysis` | `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`（两者都在仓库的策略中）。它还会在每次运行中发出一次 `ce:GetCostAndUsage` 请求。 |
+| `--enable-cost-analysis` | `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`（两者都在仓库的策略中）。它还会为整个运行再发出一次 `ce:GetCostAndUsage` 请求。 |
 | `--s3-bucket` | 对该存储桶的 `s3:PutObject`（如果使用 `aws:kms`，还需要对该密钥的 `kms:GenerateDataKey`） |
 
 未针对真实的 AWS 验证：这些是担任角色、成本分析和上传所需的仅有的额外权限。

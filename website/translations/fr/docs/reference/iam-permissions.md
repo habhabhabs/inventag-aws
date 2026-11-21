@@ -21,17 +21,19 @@ Pour une configuration pas à pas, voir [Configurer un accès en lecture seule](
 | `ec2:DescribeRegions` | Liste les régions activées et vérifie chaque région que vous analysez | La vérification s’exécute pour chaque région, même avec `--account-regions`. Une région qui échoue à cette vérification est ignorée avec un avertissement. Si l’appel est refusé dans toutes les régions, toutes les régions sont analysées. |
 | `account:ListRegions` | Liste les régions activées quand `ec2:DescribeRegions` échoue | N’est pas appelé quand `ec2:DescribeRegions` fonctionne. |
 | `tag:GetResources` | Trouve les ressources étiquetées (API Resource Groups Tagging) | Le préfixe IAM est `tag`, et non `resourcegroupstaggingapi`. |
-| `ce:GetCostAndUsage` | Repère les services qui génèrent des dépenses | **AWS facture chaque requête.** Voir les [tarifs de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). Une exécution en fait une par compte. `--enable-cost-analysis` en ajoute une à chaque exécution, pour la tendance des coûts. En cas de refus, la découverte continue sans données de facturation. `--no-billing-validation` arrête ces appels, et vous pouvez alors omettre cette autorisation. |
+| `ce:GetCostAndUsage` | Repère les services qui génèrent des dépenses | **AWS facture chaque requête.** Voir les [tarifs de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). Requêtes Cost Explorer d’une exécution : une par compte quand la validation de facturation est active (par défaut), et une de plus pour toute l’exécution avec `--enable-cost-analysis`. Une exécution sur un seul compte avec les deux en fait 2 ; avec `--no-billing-validation`, elle en fait 1. AWS facture chaque requête. En cas de refus, la découverte continue sans données de facturation. `--no-billing-validation` arrête ces appels, et vous pouvez alors omettre cette autorisation. |
 | `List*`, `Describe*`, `Get*` pour chaque service que vous voulez dans le rapport | Découverte par service | Par exemple `s3:ListAllMyBuckets`, `s3:GetBucketTagging`, `lambda:ListFunctions`, `dynamodb:ListTables`. La politique gérée AWS `ReadOnlyAccess` les couvre. |
 
 Non vérifié sur un vrai AWS : `GetCallerIdentity` ne nécessite aucune autorisation, le préfixe IAM de l’API Tagging est `tag`, et `ReadOnlyAccess` couvre les actions List, Describe et Get.
+
+Non vérifié sur un vrai AWS : le nombre de requêtes qu’AWS facture.
 
 ## Ce dont certaines fonctionnalités ont besoin {#what-some-features-need}
 
 | Fonctionnalité | Autorisation supplémentaire |
 |---|---|
 | Analyse d’autres comptes via un rôle | `sts:AssumeRole` sur ces rôles, et une politique d’approbation dans chaque compte qui autorise votre identité |
-| `--enable-cost-analysis` | `pricing:GetProducts` et `cloudwatch:GetMetricStatistics` (les deux figurent dans la politique du dépôt). Il fait aussi une requête `ce:GetCostAndUsage` à chaque exécution. |
+| `--enable-cost-analysis` | `pricing:GetProducts` et `cloudwatch:GetMetricStatistics` (les deux figurent dans la politique du dépôt). Il fait aussi une requête `ce:GetCostAndUsage` de plus pour toute l’exécution. |
 | `--s3-bucket` | `s3:PutObject` sur ce bucket (et `kms:GenerateDataKey` sur la clé si vous utilisez `aws:kms`) |
 
 Non vérifié sur un vrai AWS : ce sont les seules autorisations supplémentaires dont ont besoin l’assomption de rôle, l’analyse des coûts et le téléversement.

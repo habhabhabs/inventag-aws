@@ -24,12 +24,21 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 - `--enable-cost-analysis` made one Cost Explorer request for each service
   that has resources (21 requests on a 21-service account), and AWS charges for
   each. Every request asked for the same two months, grouped by service. The
-  cost trend now makes one request in each run and reads every service from
-  it; the trend values do not change. Before the request the run shows
-  `Cost Explorer: 1 request(s); AWS charges for each.` Billing validation still
-  makes its own request, because it asks for another period. The `--help` of
-  `--enable-cost-analysis` and the docs say the number. No new IAM action. Not
-  verified against real AWS: the number of billed requests.
+  cost trend now makes one request for the whole run and reads every service
+  from it; the trend values do not change. Cost Explorer requests in one run:
+  one for each account when billing validation is on (the default), and one
+  more for the whole run with `--enable-cost-analysis`. A single-account run
+  with both makes 2; with `--no-billing-validation` it makes 1. AWS charges for
+  each request. Before discovery the run says the number once, as a warning:
+  `Cost Explorer: up to N request(s) in this run (billing validation: A; cost
+  trend: B). AWS charges for each.` The `--help` of `--enable-cost-analysis`
+  and the docs say the number. No new IAM action. Not verified against real
+  AWS: the number of billed requests.
+- A run with several accounts and `--enable-cost-analysis` now says whose bill
+  the cost trend read, as a warning and a run note: "Cost trend: read once,
+  with the credentials of account <id>. Its figures are that account's Cost
+  Explorer view, not each account's own." Reading each account's own bill is
+  planned for v1.5.0.
 
 ## [v1.4.0] - 2026-11-21
 

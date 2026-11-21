@@ -112,10 +112,12 @@ Non vérifié sur un vrai Google : ce que les options Google de ce tableau crée
 |---|---|---|---|
 | `--enable-network-analysis` | désactivé | Fonctionne | Ajoute une feuille `Network Analysis` au rapport Excel lorsque des VPC sont trouvés. N’ajoute rien avec `--template`. Voir [Analyse du réseau et de la sécurité](../guides/network-and-security-analysis.md). |
 | `--enable-security-analysis` | désactivé | Fonctionne | Ajoute une feuille `Security Analysis` au rapport Excel lorsque des groupes de sécurité sont trouvés. N’ajoute rien avec `--template`. |
-| `--enable-cost-analysis` | désactivé | Fonctionne | Ajoute une feuille Cost Analysis (et les quatre colonnes `forgotten_analysis.*`) au classeur par défaut. Effectue des appels supplémentaires à Cost Explorer, Pricing et CloudWatch ; `--no-billing-validation` en est indépendant et ne les arrête pas. Nécessite `pricing:GetProducts` et `cloudwatch:GetMetricStatistics`. Les coûts sont des estimations de l’API AWS Pricing, pas votre facture. |
+| `--enable-cost-analysis` | désactivé | Fonctionne | Ajoute une feuille Cost Analysis (et les quatre colonnes `forgotten_analysis.*`) au classeur par défaut. Effectue des appels à Cost Explorer, Pricing et CloudWatch ; `--no-billing-validation` en est indépendant et ne les arrête pas. Requêtes Cost Explorer d’une exécution : une par compte quand la validation de facturation est active (par défaut), et une de plus pour toute l’exécution avec `--enable-cost-analysis`. Une exécution sur un seul compte avec les deux en fait 2 ; avec `--no-billing-validation`, elle en fait 1. AWS facture chaque requête. Nécessite `pricing:GetProducts` et `cloudwatch:GetMetricStatistics`. Les coûts sont des estimations de l’API AWS Pricing, pas votre facture. |
 | `--billing-validation`, `--no-billing-validation` | activé | Fonctionne | Utilise Cost Explorer pendant la découverte pour repérer les services qui génèrent des dépenses. AWS facture chaque requête Cost Explorer. Voir les [tarifs de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). `--no-billing-validation` arrête ces appels ; `--enable-cost-analysis` en est indépendant et appelle toujours Cost Explorer. |
 
 Non vérifié sur un vrai AWS : `--enable-cost-analysis` nécessite uniquement ces deux autorisations supplémentaires, et les estimations correspondent aux prix AWS.
+
+Non vérifié sur un vrai AWS : le nombre de requêtes qu’AWS facture.
 
 ## Fichiers de configuration {#configuration-files}
 

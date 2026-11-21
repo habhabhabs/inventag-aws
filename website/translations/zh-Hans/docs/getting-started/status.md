@@ -135,10 +135,16 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 请参阅最新的
 [Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。
 
-- `--no-billing-validation` 会停止这些调用，此时报告里没有可供对比的计费数据。
-- `--enable-cost-analysis` 会在每次运行中为成本趋势再发出一次 Cost Explorer 请求，即使加上 `--no-billing-validation` 也是如此，与服务数量无关。发出请求之前，运行会显示 `Cost Explorer: 1 request(s); AWS charges for each.` 它还会发出 Pricing 和 CloudWatch 调用，次数取决于你的资源。每个不同的价格查询只发出一次，之后重复使用，因此 Pricing 调用次数随不同资源类型和规格的数量增长，而不是随资源数量增长。
+一次运行中的 Cost Explorer 请求：启用账单验证时（默认）每个账户一次，使用 `--enable-cost-analysis` 时整个运行再多一次。单账户运行同时使用两者时发出 2 次；使用 `--no-billing-validation` 时发出 1 次。AWS 对每次请求收费。 发现开始之前，运行会显示这个次数，例如 `Cost Explorer: up to 2 request(s) in this run (billing validation: 1; cost trend: 1). AWS charges for each.`
 
-未针对真实的 AWS 验证：`--enable-cost-analysis` 的成本估算，以及计费的请求次数。未在多个账户下验证：每次运行只发出一次成本趋势请求。
+- `--no-billing-validation` 会停止这些调用，此时报告里没有可供对比的计费数据。
+- `--enable-cost-analysis` 也会调用 Cost Explorer，即使加上 `--no-billing-validation` 也是如此。它还会发出 Pricing 和 CloudWatch 调用，次数取决于你的资源。每个不同的价格查询只发出一次，之后重复使用，因此 Pricing 调用次数随不同资源类型和规格的数量增长，而不是随资源数量增长。
+- 有多个账户时，成本趋势只读取一份账单，使用第一个账户的凭证，运行说明会写：`Cost trend: read once, with the credentials of account <id>. Its figures are that account's Cost Explorer view, not each account's own.` 计划在 v1.5.0 修复。
+- 成本趋势按服务名称的片段在账单中查找服务：S3、SQS 和 SNS 没有趋势，EC2 的数字可能包含账单名称中含有“EC2”的其他服务。一个服务的数字会平均分摊到它的各个资源上；它不是某个资源的成本。计划在 v1.5.0 修复。
+
+未针对真实的 AWS 验证：`--enable-cost-analysis` 的成本估算。
+
+未针对真实的 AWS 验证：AWS 计费的请求次数。
 
 InvenTag 会把被限流的调用最多重试 10 次（standard 重试模式）；`AWS_RETRY_MODE` 和 `AWS_MAX_ATTEMPTS` 可以覆盖这一设置。
 

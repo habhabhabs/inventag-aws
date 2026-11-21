@@ -106,10 +106,12 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 |---|---|---|---|
 | `--enable-network-analysis` | 关 | 可用 | 找到 VPC 时，在 Excel 报告中添加 `Network Analysis` 工作表。与 `--template` 一起使用时不添加任何内容。见[网络与安全分析](../guides/network-and-security-analysis.md)。 |
 | `--enable-security-analysis` | 关 | 可用 | 找到安全组时，在 Excel 报告中添加 `Security Analysis` 工作表。与 `--template` 一起使用时不添加任何内容。 |
-| `--enable-cost-analysis` | 关 | 可用 | 在默认工作簿中添加 Cost Analysis 工作表（以及四个 `forgotten_analysis.*` 列）。会额外调用 Cost Explorer、Pricing 和 CloudWatch；`--no-billing-validation` 与它相互独立，不会停止这些调用。需要 `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`。费用是根据 AWS Pricing API 得出的估算值，不是你的账单。 |
+| `--enable-cost-analysis` | 关 | 可用 | 在默认工作簿中添加 Cost Analysis 工作表（以及四个 `forgotten_analysis.*` 列）。会调用 Cost Explorer、Pricing 和 CloudWatch；`--no-billing-validation` 与它相互独立，不会停止这些调用。 一次运行中的 Cost Explorer 请求：启用账单验证时（默认）每个账户一次，使用 `--enable-cost-analysis` 时整个运行再多一次。单账户运行同时使用两者时发出 2 次；使用 `--no-billing-validation` 时发出 1 次。AWS 对每次请求收费。需要 `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`。费用是根据 AWS Pricing API 得出的估算值，不是你的账单。 |
 | `--billing-validation`, `--no-billing-validation` | 开 | 可用 | 在发现阶段使用 Cost Explorer 找出有支出的服务。AWS 对每次 Cost Explorer 请求收费。详见[Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。`--no-billing-validation` 会停止这些调用；`--enable-cost-analysis` 与它相互独立，仍会调用 Cost Explorer。 |
 
 未针对真实的 AWS 验证：`--enable-cost-analysis` 只需要这两项额外权限，并且估算值与 AWS 价格一致。
+
+未针对真实的 AWS 验证：AWS 计费的请求次数。
 
 ## 配置文件 {#configuration-files}
 

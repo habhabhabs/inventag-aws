@@ -228,19 +228,17 @@ facturado. AWS cobra cada solicitud a Cost
 Explorer: consulta los
 [precios actuales de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 
+Solicitudes a Cost Explorer en una ejecución: una por cada cuenta cuando la validación de facturación está activada (el valor predeterminado), y una más para toda la ejecución con `--enable-cost-analysis`. Una ejecución de una sola cuenta con ambas hace 2; con `--no-billing-validation` hace 1. AWS cobra cada solicitud. Antes del descubrimiento, la ejecución muestra el número, por ejemplo `Cost Explorer: up to 2 request(s) in this run (billing validation: 1; cost trend: 1). AWS charges for each.`
+
 - `--no-billing-validation` detiene esas llamadas, y el informe entonces no
   tiene datos de facturación con los que comparar.
-- `--enable-cost-analysis` hace una solicitud más a Cost Explorer en cada
-  ejecución, para la tendencia de costes, incluso con `--no-billing-validation`
-  y sea cual sea el número de servicios. Antes de hacerla, la ejecución muestra
-  `Cost Explorer: 1 request(s); AWS charges for each.` También hace llamadas a
-  Pricing y CloudWatch, y su número depende de tus recursos. Cada consulta de precio distinta se hace una vez y luego se
-  reutiliza, así que el número de llamadas a Pricing crece con el número de
-  tipos y tamaños de recursos distintos, no con el número de recursos.
+- `--enable-cost-analysis` también llama a Cost Explorer, incluso con `--no-billing-validation`. También hace llamadas a Pricing y CloudWatch, y su número depende de tus recursos. Cada consulta de precio distinta se hace una vez y luego se reutiliza, así que el número de llamadas a Pricing crece con el número de tipos y tamaños de recursos distintos, no con el número de recursos.
+- Con varias cuentas, la tendencia de costes lee una sola factura, con las credenciales de la primera cuenta, y las notas de la ejecución dicen: `Cost trend: read once, with the credentials of account <id>. Its figures are that account's Cost Explorer view, not each account's own.` Hay una corrección prevista para v1.5.0.
+- La tendencia de costes busca un servicio en la factura por un fragmento de su nombre: S3, SQS y SNS no tienen tendencia, y la cifra de EC2 puede incluir otros servicios cuyo nombre de facturación contiene 'EC2'. La cifra de un servicio se reparte a partes iguales entre sus recursos; no es el coste de un recurso. Hay una corrección prevista para v1.5.0.
 
-No verificado contra AWS real: las estimaciones de costes de `--enable-cost-analysis`
-y el número de solicitudes facturadas. No verificado con más de una cuenta:
-una solicitud para la tendencia de costes en cada ejecución.
+No verificado contra AWS real: las estimaciones de costes de `--enable-cost-analysis`.
+
+No verificado contra AWS real: el número de solicitudes que AWS factura.
 
 InvenTag reintenta una llamada limitada hasta 10 veces (modo de reintento
 standard); `AWS_RETRY_MODE` y `AWS_MAX_ATTEMPTS` cambian este ajuste.

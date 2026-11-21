@@ -216,19 +216,17 @@ AWS charges for each Cost
 Explorer request: see the current
 [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 
+Cost Explorer requests in one run: one for each account when billing validation is on (the default), and one more for the whole run with `--enable-cost-analysis`. A single-account run with both makes 2; with `--no-billing-validation` it makes 1. AWS charges for each request. Before discovery the run shows the number, for example `Cost Explorer: up to 2 request(s) in this run (billing validation: 1; cost trend: 1). AWS charges for each.`
+
 - `--no-billing-validation` stops those calls, and the report then has no
   billing data to compare with.
-- `--enable-cost-analysis` makes one more Cost Explorer request in each run,
-  for the cost trend, even with `--no-billing-validation` and whatever the
-  number of services. Before it makes the request, the run shows
-  `Cost Explorer: 1 request(s); AWS charges for each.` It also makes Pricing
-  and CloudWatch calls, and their number depends on your resources. Each different price lookup is made once and then reused, so the
-  number of Pricing calls grows with the number of different resource types and
-  sizes, not with the number of resources.
+- `--enable-cost-analysis` also calls Cost Explorer, even with `--no-billing-validation`. It also makes Pricing and CloudWatch calls, and their number depends on your resources. Each different price lookup is made once and then reused, so the number of Pricing calls grows with the number of different resource types and sizes, not with the number of resources.
+- With several accounts, the cost trend reads one bill, with the credentials of the first account, and the run notes say: `Cost trend: read once, with the credentials of account <id>. Its figures are that account's Cost Explorer view, not each account's own.` A fix is planned for v1.5.0.
+- The cost trend finds a service in the bill by a fragment of its name: S3, SQS and SNS get no trend, and the EC2 figure can include other services whose billing name contains 'EC2'. A service's figure is divided evenly across its resources; it is not a resource's cost. A fix is planned for v1.5.0.
 
-Not verified against real AWS: the cost estimates of `--enable-cost-analysis`,
-and the number of billed requests. Not verified with more than one account:
-one cost trend request in each run.
+Not verified against real AWS: the cost estimates of `--enable-cost-analysis`.
+
+Not verified against real AWS: the number of requests AWS bills.
 
 InvenTag retries a throttled call up to 10 times (standard retry mode);
 `AWS_RETRY_MODE` and `AWS_MAX_ATTEMPTS` override this.

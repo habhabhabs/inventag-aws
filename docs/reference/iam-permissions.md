@@ -21,17 +21,19 @@ For step-by-step setup, see [Set up read-only access](../guides/read-only-access
 | `ec2:DescribeRegions` | Lists enabled regions, and checks each region you scan | The check runs for every region, even with `--account-regions`. A region that fails it is skipped with a warning. If the call is denied in every region, all regions are scanned. |
 | `account:ListRegions` | Lists enabled regions when `ec2:DescribeRegions` fails | Not called when `ec2:DescribeRegions` works. |
 | `tag:GetResources` | Finds tagged resources (Resource Groups Tagging API) | The IAM prefix is `tag`, not `resourcegroupstaggingapi`. |
-| `ce:GetCostAndUsage` | Finds services with spend | **AWS charges per request.** See [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). A run makes one for each account. `--enable-cost-analysis` adds one more in each run, for the cost trend. If denied, discovery continues without billing data. `--no-billing-validation` stops the calls, and then you can leave this permission out. |
+| `ce:GetCostAndUsage` | Finds services with spend | **AWS charges per request.** See [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). Cost Explorer requests in one run: one for each account when billing validation is on (the default), and one more for the whole run with `--enable-cost-analysis`. A single-account run with both makes 2; with `--no-billing-validation` it makes 1. AWS charges for each request. If denied, discovery continues without billing data. `--no-billing-validation` stops the calls, and then you can leave this permission out. |
 | `List*`, `Describe*`, `Get*` for each service you want in the report | Per-service discovery | For example `s3:ListAllMyBuckets`, `s3:GetBucketTagging`, `lambda:ListFunctions`, `dynamodb:ListTables`. The AWS managed `ReadOnlyAccess` policy covers these. |
 
 Not verified against real AWS: `GetCallerIdentity` needs no permission, the IAM prefix of the Tagging API is `tag`, and `ReadOnlyAccess` covers the List, Describe and Get actions.
+
+Not verified against real AWS: the number of requests AWS bills.
 
 ## What some features need
 
 | Feature | Extra permission |
 |---|---|
 | Scanning other accounts through a role | `sts:AssumeRole` on those roles, and a trust policy in each account that allows your identity |
-| `--enable-cost-analysis` | `pricing:GetProducts`, and `cloudwatch:GetMetricStatistics` (both are in the repository policy). It also makes one `ce:GetCostAndUsage` request in each run. |
+| `--enable-cost-analysis` | `pricing:GetProducts`, and `cloudwatch:GetMetricStatistics` (both are in the repository policy). It also makes one more `ce:GetCostAndUsage` request for the whole run. |
 | `--s3-bucket` | `s3:PutObject` on that bucket (and `kms:GenerateDataKey` on the key if you use `aws:kms`) |
 
 Not verified against real AWS: these are the only extra permissions that role assumption, cost analysis and the upload need.
