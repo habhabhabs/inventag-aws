@@ -150,11 +150,16 @@ write_formula() {
       return 10
     fi
   fi
-  mkdir -p "$clone/Formula"
-  cp "$formula" "$dest"
-  tapgit -C "$clone" rm -q --ignore-unmatch Formula/.gitkeep
-  tapgit -C "$clone" add Formula/inventag.rb
-  tapgit -C "$clone" commit -q -m "inventag $version"
+  # The caller runs this as `write_formula || status=$?`, which turns set -e
+  # off in here: every step is checked, and the first failure stops the write.
+  if ! { mkdir -p "$clone/Formula" &&
+    cp "$formula" "$dest" &&
+    cmp -s "$formula" "$dest" &&
+    tapgit -C "$clone" rm -q --ignore-unmatch Formula/.gitkeep &&
+    tapgit -C "$clone" add Formula/inventag.rb &&
+    tapgit -C "$clone" commit -q -m "inventag $version"; }; then
+    die "could not write and commit Formula/inventag.rb in the clone of $repo; nothing was pushed" 1
+  fi
 }
 
 if ! tapgit clone -q --no-tags --single-branch --branch main "$url" "$clone" 2>"$work/clone.err"; then
