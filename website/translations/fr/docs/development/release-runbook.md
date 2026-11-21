@@ -44,6 +44,12 @@ Non vérifié sur un runner GitHub Actions : les règles ci-dessous ; les tests 
 | R16 | PyPI reçoit une version seulement si le tag `vX.Y.Z` désigne le commit extrait et que sa release GitHub existe. Sans eux, une exécution de push ne publie rien et une exécution manuelle échoue. | `tests/unit/test_release_runbook.py::test_publish_guard_passes_with_the_tag_and_the_release`, `tests/unit/test_release_runbook.py::test_publish_guard_on_a_push_without_the_tag_publishes_nothing`, `tests/unit/test_release_runbook.py::test_publish_guard_on_a_manual_run_without_the_release_fails` |
 | R17 | Au push du commit d’incrément, le job « Changelog rolled » échoue quand `[Unreleased]` n’est pas vide. Il ne touche ni au tag, ni à la release, ni à PyPI. | `tests/unit/test_roll_changelog.py::test_check_fails_on_notes_left_under_unreleased`, `tests/unit/test_roll_changelog.py::test_release_workflow_runs_the_check_on_the_bump_commit_push_only` |
 | R18 | Après chaque release, le job de versionnement de la documentation commite le libellé traduit de la version courante de la documentation (`current.json`), qui nomme ainsi la version publiée. | `tests/unit/test_release_runbook.py::test_docs_versioning_commits_the_current_json_labels`, `tests/unit/test_release_runbook.py::test_committed_current_labels_name_a_released_version` |
+| R19 | Après une exécution de release qui a joint ses fichiers, le dernier job du workflow Package, `publish-tap`, écrit la formule Homebrew dans le tap que nomme la variable du dépôt `HOMEBREW_TAP_REPO`. Il ne s’exécute que si l’envoi des fichiers et l’installation de la formule (`smoke-homebrew`) ont réussi. Il est ignoré lors d’un essai à blanc, sur une pull request, quand `HOMEBREW_TAP_REPO` est vide et quand macOS est désactivé. Aucun job ne l’attend : son échec laisse la release, PyPI et les fichiers joints tels quels. | `tests/unit/test_packaging_workflow.py::test_publish_tap_is_skipped_in_a_dry_run_a_pull_request_and_without_a_tap`, `tests/unit/test_packaging_workflow.py::test_no_job_waits_for_publish_tap_so_a_failure_turns_only_it_red` |
+| R20 | La formule est générée à partir du fichier `SHA256SUMS` de la release GitHub, et seulement quand ce fichier est identique à celui de l’exécution. | `tests/unit/test_packaging_workflow.py::test_the_published_sums_must_equal_the_sums_of_the_run` |
+| R21 | Le tap reçoit un commit `inventag X.Y.Z` sur `main`, par `Alex <alex.ng@ollion.com>`, sans trailer. Le même fichier une seconde fois ne pousse rien et finit en vert : relancer est donc sans risque. Une version inférieure à celle du tap est refusée. | `tests/unit/test_publish_tap.py::test_the_commit_is_alex_with_the_subject_only_and_no_trailer`, `tests/unit/test_publish_tap.py::test_the_same_file_again_ends_with_success_and_pushes_nothing`, `tests/unit/test_publish_tap.py::test_a_version_lower_than_the_taps_is_refused` |
+| R22 | Un push refusé parce que `main` du tap a avancé est refait une fois sur le nouveau `main`, avec de nouveau la vérification de version. Un second refus fait échouer le job. | `tests/unit/test_publish_tap.py::test_a_push_refused_because_main_moved_is_tried_once_more_on_the_new_main`, `tests/unit/test_publish_tap.py::test_a_second_refused_push_fails_the_run` |
+| R23 | Le secret `HOMEBREW_TAP_TOKEN` est dans l’env de la seule étape de push. git ne le reçoit que comme réponse de `GIT_ASKPASS`, jamais dans une URL ni dans un argument. | `tests/unit/test_packaging_workflow.py::test_the_token_is_in_the_env_of_the_push_step_only_and_never_traced`, `tests/unit/test_publish_tap.py::test_the_token_never_reaches_a_git_argument_the_output_or_the_tap` |
+| R24 | Quand `publish-tap` échoue, sa dernière étape affiche les commandes pour publier la formule à la main, avec la version déjà remplie. | `tests/unit/test_publish_tap.py::test_the_hand_procedure_is_printed_with_the_version_filled_in` |
 
 ## Avant de pousser {#before-you-push}
 
@@ -99,6 +105,33 @@ que v1.2.2 a été terminée le 19 novembre 2026.
 
 Non vérifié sur GitHub : les étapes de la page des releases et d’une exécution manuelle ; ce sont les étapes utilisées pour v1.2.2.
 
+## Le tap Homebrew {#the-homebrew-tap}
+
+Le tap est `habhabhabs/homebrew-inventag`. Le workflow Package le met à jour
+après chaque release (R19 à R24). Homebrew installe InvenTag sur les Mac Apple
+silicon et sur Linux (x86_64 et arm64). Les Mac Intel ne sont pas pris en charge.
+
+1. Ouvrez le journal du job `publish-tap`. Sa dernière ligne nomme le commit du
+   tap. « already published » signifie que le tap avait déjà le même fichier.
+2. Dans le tap, regardez « Tap checks » pour ce commit. Les deux jobs doivent
+   être verts.
+3. Un « Tap checks » rouge : annulez ce commit dans le tap, puis corrigez la
+   formule dans ce dépôt :
+
+   ```bash
+   git clone https://github.com/habhabhabs/homebrew-inventag.git tap && cd tap
+   git revert --no-edit <sha>
+   git push
+   ```
+
+4. `publish-tap` a échoué : la release, PyPI et les fichiers joints sont faits.
+   Exécutez les commandes que sa dernière étape a affichées, ou relancez le job (R21).
+5. `packaging/homebrew-tap/` contient le `README.md` et
+   `.github/workflows/ci.yml` du tap. Une modification là est copiée dans le tap à la main.
+
+Non vérifié sur GitHub : le job `publish-tap`. La première release après v1.4.0
+est sa première exécution. v1.4.0 a été mise dans le tap à la main.
+
 ## Après chaque release {#after-every-release}
 
 - `CHANGELOG.md` sur `main` : `[Unreleased]` est vide et la nouvelle version a
@@ -107,3 +140,4 @@ Non vérifié sur GitHub : les étapes de la page des releases et d’une exécu
   versionnement de la documentation sont verts.
 - La page d’état en ligne décrit la version publiée.
 - Les notes des relecteurs sont relues une fois de plus face aux notes de release.
+- Le job `publish-tap` de l’exécution Package est vert, et « Tap checks » du tap est vert pour le commit que nomme le job (R19).

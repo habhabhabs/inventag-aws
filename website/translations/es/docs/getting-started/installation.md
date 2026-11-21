@@ -31,7 +31,7 @@ InvenTag, actualizarlo y quitarlo, y confirmar que InvenTag llega a tu cuenta de
 | [Archivo independiente](#install-the-standalone-archive) (`.tar.gz`) | El equipo no tiene Python, o quieres una copia que no necesite gestor de paquetes. | Nada | Linux x86_64 y arm64 (glibc 2.34 o posterior). macOS arm64 (Apple silicon). |
 | [Paquete `.deb`](#install-the-deb-package) | Debian, Ubuntu y sistemas que usan `dpkg`. | Nada | Linux x86_64 y arm64 (glibc 2.34 o posterior) |
 | [Paquete `.rpm`](#install-the-rpm-package) | Fedora, la familia RHEL y Amazon Linux. | Nada | Linux x86_64 y arm64 (glibc 2.34 o posterior) |
-| [Homebrew](#install-with-homebrew) | macOS o Linux con Homebrew. Aún no está publicado. | Homebrew | Consulta la sección |
+| [Homebrew](#install-with-homebrew) | macOS o Linux con Homebrew. | Homebrew | macOS arm64 (Apple silicon). Linux x86_64 y arm64. No los Mac con Intel. |
 | [pip en un entorno virtual](#install-with-pip-in-a-virtual-environment) | Quieres InvenTag dentro de un entorno de proyecto. | Python 3.11 o posterior | Cualquier sistema con Python |
 | [Desde el código fuente](#install-from-source) | Quieres el código más reciente sin publicar, o modificas InvenTag. | Python 3.11 o posterior y Git | Cualquier sistema con Python |
 
@@ -42,8 +42,9 @@ InvenTag, actualizarlo y quitarlo, y confirmar que InvenTag llega a tu cuenta de
   En un sistema más antiguo, por ejemplo RHEL, AlmaLinux y Rocky Linux 8,
   Debian 11, Ubuntu 20.04 o Amazon Linux 2, usa pipx si el sistema tiene
   Python 3.11 o posterior.
-- No hay ejecutable para los Mac con Intel: una biblioteca que InvenTag necesita
-  (cryptography, desde la versión 50) no publica una compilación ya hecha para ellos.
+- Los Mac con Intel no son compatibles, y no hay prevista ninguna compilación para
+  ellos. Una biblioteca que InvenTag necesita (cryptography, desde la versión 50)
+  no publica una compilación ya hecha para ellos.
 - El ejecutable de macOS es solo para Apple silicon (arm64). El registro de
   compilación indica que sus archivos necesitan macOS 11.0 o posterior.
 - Alpine y otros sistemas que usan musl no son compatibles con el ejecutable.
@@ -181,7 +182,7 @@ tar -xzf inventag-%INVENTAG_VERSION%-darwin-arm64.tar.gz -C "$HOME/inventag-inst
 Apple no ha notarizado el ejecutable de macOS. macOS puede bloquear un archivo
 que descargó un navegador.
 
-No verificado contra macOS fuera de un runner de GitHub: la instalación con Homebrew y el comportamiento de Gatekeeper.
+No verificado contra macOS fuera de un runner de GitHub: el comportamiento de Gatekeeper con un archivo que descargó un navegador.
 
 - **Actualizar:** quita el directorio antiguo y descomprime el archivo nuevo en el
   mismo lugar.
@@ -262,31 +263,46 @@ No verificado contra las herramientas man de cada sistema: que `man inventag` mu
 
 ## Instalar con Homebrew {#install-with-homebrew}
 
-El propietario del proyecto crea el tap de Homebrew. El tap aún no está
-publicado, así que el comando siguiente no funciona hoy:
+Homebrew instala InvenTag en los Mac con Apple silicon y en Linux (x86_64 y
+arm64). En un Mac con Intel se detiene con un mensaje; usa `pipx`, que allí
+necesita un conjunto de herramientas de Rust.
 
 ```bash title="Terminal"
 brew install habhabhabs/inventag/inventag
+inventag --version
+inventag selftest
 ```
 
-La fórmula está escrita. Está en el repositorio, en
-`packaging/homebrew-tap/Formula/inventag.rb`, y
-`scripts/packaging/render_formula.py` la completa con el `SHA256SUMS` de una
-versión. Instala el ejecutable desde el archivo de la versión, la página de manual
-y los archivos de autocompletado para bash, zsh y fish. Es para macOS arm64 y las
-dos CPU de Linux. No es para los Mac con Intel: en uno, la instalación se detiene
-con un mensaje.
+El tap es el repositorio `habhabhabs/homebrew-inventag`. Su fórmula instala el
+ejecutable desde el archivo de la versión, la página de manual y los archivos de
+autocompletado para bash, zsh y fish. La fórmula se escribe a partir de
+`packaging/homebrew-tap/Formula/inventag.rb` con
+`scripts/packaging/render_formula.py` y el `SHA256SUMS` de la versión. Después de
+cada versión, el flujo de publicación escribe la nueva fórmula en el tap.
+
+En un Mac, Homebrew necesita las Command Line Tools al día. Si rechaza la
+instalación porque están desactualizadas, actualízalas en Actualización de
+software, o ejecuta `sudo rm -rf /Library/Developer/CommandLineTools` y después
+`sudo xcode-select --install`.
 
 - **Actualizar:** `brew upgrade inventag`.
 - **Desinstalar:** `brew uninstall inventag`.
 
-No verificado contra Homebrew: la fórmula. `brew install`, `brew audit`,
-`brew style` y `brew test` no se han ejecutado con ella. Los comandos de
-actualizar y desinstalar no se han ejecutado.
+Comprobado en un Mac con Apple silicon y macOS 27, para v1.4.0:
+`brew install habhabhabs/inventag/inventag` funcionó, `inventag --version`
+mostró 1.4.0 e `inventag selftest` pasó sus 8 comprobaciones.
+
+No verificado contra un Mac distinto de ese: la instalación con Homebrew y el comportamiento de Gatekeeper.
+
+No verificado contra Linux fuera de un runner de GitHub: la instalación con Homebrew.
+
+No verificado contra Homebrew: `brew upgrade inventag`. Aún no se ha hecho ninguna actualización.
+`brew uninstall inventag` solo se ha ejecutado en un runner de GitHub.
 
 No verificado contra un Mac con Intel: el mensaje que muestra la instalación allí.
 
-No verificado contra macOS fuera de un runner de GitHub: la instalación con Homebrew y el comportamiento de Gatekeeper.
+No verificado contra GitHub: que el flujo de publicación actualice el tap. La
+primera versión después de v1.4.0 es la primera ejecución de ese paso.
 
 ## Instalar con pip en un entorno virtual {#install-with-pip-in-a-virtual-environment}
 
@@ -412,8 +428,8 @@ más `.cdx.json`. Consulta [Lista de materiales de software](../security/sbom.md
 
 InvenTag usa la licencia MIT. Los archivos del ejecutable, el
 `.deb` y el `.rpm` incluyen GNU libiconv, una biblioteca bajo la Licencia Pública
-General Reducida de GNU (LGPL) versión 2.1. La fórmula de Homebrew (aún no
-publicada) instala el mismo archivo, así que también la incluye. El código de
+General Reducida de GNU (LGPL) versión 2.1. La fórmula de Homebrew
+instala el mismo archivo, así que también la incluye. El código de
 libiconv está dentro de los módulos de extensión de lxml. InvenTag necesita lxml
 para escribir archivos de Word. El proyecto lxml crea esos módulos y enlaza
 libiconv en ellos. En el archivo, el `.deb` y el `.rpm`, InvenTag incluye los
@@ -448,7 +464,7 @@ No verificado contra tu propia compilación de lxml: que un módulo que compiles
 
 No verificado contra una instalación con Homebrew: que Homebrew deje sin cambios los archivos de lxml.
 
-No verificado contra macOS fuera de un runner de GitHub: la instalación con Homebrew y el comportamiento de Gatekeeper.
+No verificado contra un Mac distinto del único Mac con Apple silicon que se comprobó: la instalación con Homebrew y el comportamiento de Gatekeeper.
 
 Esta página no es asesoramiento legal.
 

@@ -8,6 +8,17 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Packaging: after a release, the package workflow writes the new Homebrew
+  formula to the tap `habhabhabs/homebrew-inventag` (job `publish-tap`). It
+  runs only after the files are attached to the release and the formula
+  install check passed. A failure there leaves the release, PyPI and the
+  attached files as they are, and the job prints the steps to publish by hand.
+  Homebrew installs InvenTag on Apple Silicon Macs and on Linux (x86_64 and
+  arm64). Intel Macs are not supported. Not verified against GitHub: the job,
+  until the first release run after v1.4.0.
+
 ## [v1.4.0] - 2026-11-21
 
 ### Added

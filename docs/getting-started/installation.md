@@ -33,7 +33,7 @@ account.
 | [Standalone archive](#install-the-standalone-archive) (`.tar.gz`) | The machine has no Python, or you want a copy that needs no package manager. | Nothing | Linux x86_64 and arm64 (glibc 2.34 or later). macOS arm64 (Apple silicon). |
 | [`.deb` package](#install-the-deb-package) | Debian, Ubuntu and systems that use `dpkg`. | Nothing | Linux x86_64 and arm64 (glibc 2.34 or later) |
 | [`.rpm` package](#install-the-rpm-package) | Fedora, the RHEL family and Amazon Linux. | Nothing | Linux x86_64 and arm64 (glibc 2.34 or later) |
-| [Homebrew](#install-with-homebrew) | macOS or Linux with Homebrew. Not published yet. | Homebrew | See the section |
+| [Homebrew](#install-with-homebrew) | macOS or Linux with Homebrew. | Homebrew | macOS arm64 (Apple silicon). Linux x86_64 and arm64. Not Intel Macs. |
 | [pip in a virtual environment](#install-with-pip-in-a-virtual-environment) | You want InvenTag inside a project environment. | Python 3.11 or later | Any system with Python |
 | [From source](#install-from-source) | You want the newest unreleased code, or you change InvenTag. | Python 3.11 or later and Git | Any system with Python |
 
@@ -43,8 +43,9 @@ account.
   The Linux systems in the table below meet this. On an older system, for example RHEL, AlmaLinux and Rocky Linux 8,
   Debian 11, Ubuntu 20.04 or Amazon Linux 2, use pipx if the system has Python
   3.11 or later.
-- There is no executable for Intel Macs: a library InvenTag needs
-  (cryptography, from version 50) publishes no ready-made build for them.
+- Intel Macs are not supported, and no build for them is planned. A library
+  InvenTag needs (cryptography, from version 50) publishes no ready-made build
+  for them.
 - The macOS executable is for Apple silicon (arm64) only. The build record
   states that its files need macOS 11.0 or later.
 - Alpine and other systems that use musl are not supported by the executable.
@@ -189,8 +190,8 @@ tar -xzf inventag-%INVENTAG_VERSION%-darwin-arm64.tar.gz -C "$HOME/inventag-inst
 The macOS executable is not notarized by Apple. macOS can block a file that a
 browser downloaded.
 
-Not verified against macOS outside a GitHub runner: the Homebrew install and
-Gatekeeper's behavior.
+Not verified against macOS outside a GitHub runner: Gatekeeper's behavior for
+an archive that a browser downloaded.
 
 - **Upgrade:** remove the old directory, then unpack the new archive in the same
   place.
@@ -274,31 +275,47 @@ the page. The test read the page file and checked its header and name line.
 
 ## Install with Homebrew
 
-The project owner creates the Homebrew tap. The tap is not published yet, so
-the command below does not work today:
+Homebrew installs InvenTag on Apple silicon Macs and on Linux (x86_64 and
+arm64). On an Intel Mac it stops with a message; use `pipx`, which needs a
+Rust toolchain there.
 
 ```bash title="Terminal"
 brew install habhabhabs/inventag/inventag
+inventag --version
+inventag selftest
 ```
 
-The formula is written. It is in the repository, in
-`packaging/homebrew-tap/Formula/inventag.rb`, and
-`scripts/packaging/render_formula.py` fills it in from the `SHA256SUMS` of a
-release. It installs the executable from the release archive, the man page and
-the completion files for bash, zsh and fish. It is for macOS arm64 and the two
-Linux CPUs. It is not for Intel Macs: on one, the install stops with a message.
+The tap is the repository `habhabhabs/homebrew-inventag`. Its formula installs
+the executable from the release archive, the man page and the completion files
+for bash, zsh and fish. The formula is written from
+`packaging/homebrew-tap/Formula/inventag.rb` by
+`scripts/packaging/render_formula.py`, with the `SHA256SUMS` of the release.
+After each release, the release workflow writes the new formula to the tap.
+
+On a Mac, Homebrew needs current Command Line Tools. If it refuses the install
+because they are out of date, update them in Software Update, or run
+`sudo rm -rf /Library/Developer/CommandLineTools` and then
+`sudo xcode-select --install`.
 
 - **Upgrade:** `brew upgrade inventag`.
 - **Uninstall:** `brew uninstall inventag`.
 
-Not verified against Homebrew: the formula. `brew install`, `brew audit`,
-`brew style` and `brew test` have not run on it. The upgrade and uninstall
-commands have not run.
+Checked on one Apple silicon Mac with macOS 27, for v1.4.0:
+`brew install habhabhabs/inventag/inventag` worked, `inventag --version`
+printed 1.4.0 and `inventag selftest` passed its 8 checks.
+
+Not verified against a Mac other than that one: the Homebrew install and
+Gatekeeper's behavior.
+
+Not verified against Linux outside a GitHub runner: the Homebrew install.
+
+Not verified against Homebrew: `brew upgrade inventag`. No upgrade has run yet.
+`brew uninstall inventag` has run only on a GitHub runner.
 
 Not verified against an Intel Mac: the message that the install shows there.
 
-Not verified against macOS outside a GitHub runner: the Homebrew install and
-Gatekeeper's behavior.
+Not verified against GitHub: that the release workflow updates the tap. The
+first release after v1.4.0 is the first run of that step.
 
 ## Install with pip in a virtual environment
 
@@ -426,7 +443,7 @@ Each `.tar.gz`, `.deb` and `.rpm` also has an SBOM, named like the file with
 
 InvenTag is under the MIT license. The executable archives, the `.deb` and the
 `.rpm` carry GNU libiconv, a library under the GNU Lesser General Public
-License (LGPL) version 2.1. The Homebrew formula (not published yet) installs
+License (LGPL) version 2.1. The Homebrew formula installs
 the same archive, so it carries it too. The libiconv code is inside the
 extension modules of lxml. InvenTag needs lxml to write Word files. The lxml
 project builds those modules and links libiconv into them. In the archive, the
@@ -462,8 +479,8 @@ place of the bundled one.
 Not verified against a Homebrew install: that Homebrew leaves the lxml files
 unchanged.
 
-Not verified against macOS outside a GitHub runner: the Homebrew install and
-Gatekeeper's behavior.
+Not verified against a Mac other than the one Apple silicon Mac that was
+checked: the Homebrew install and Gatekeeper's behavior.
 
 This page is not legal advice.
 

@@ -91,7 +91,7 @@ other projects. The notices file lists them with their license texts.
 
 The executable archives, the `.deb` and the `.rpm` carry GNU libiconv, a
 library under the GNU Lesser General Public License (LGPL) version 2.1. The
-Homebrew formula (not published yet) installs the same archive, so it carries
+Homebrew formula installs the same archive, so it carries
 it too. The libiconv code is inside the extension modules of lxml. InvenTag
 needs lxml to write Word files. The lxml project builds those modules and links
 libiconv into them. In the archive, the `.deb` and the `.rpm`, InvenTag carries

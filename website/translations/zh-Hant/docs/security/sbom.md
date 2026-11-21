@@ -72,7 +72,7 @@ gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb \
 InvenTag 使用 MIT 授權。打包建置還攜帶其他專案的檔案。宣告檔案列出了它們和它們的授權文字。
 
 可執行檔案壓縮包、`.deb` 和 `.rpm` 包含 GNU libiconv，這是一個使用 GNU 寬通用公共授權（LGPL）2.1 版的庫。
-Homebrew formula（尚未發佈）安裝同一個壓縮包，所以它也包含 libiconv。libiconv 的程式碼位於 lxml 的擴充套件模組內部。
+Homebrew formula 安裝同一個壓縮包，所以它也包含 libiconv。libiconv 的程式碼位於 lxml 的擴充套件模組內部。
 InvenTag 需要 lxml 來寫 Word 檔案。lxml 專案建置這些模組，並把 libiconv 連結進去。
 在壓縮包、`.deb` 和 `.rpm` 中，InvenTag 原樣攜帶 lxml 的檔案：建置時會把每個檔案與鎖定檔案所指定的 wheel 中的檔案逐位元組比較。
 

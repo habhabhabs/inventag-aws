@@ -27,7 +27,7 @@ sidebar_position: 2
 | [独立压缩包](#install-the-standalone-archive)（`.tar.gz`） | 机器上没有 Python，或者你想要一份不依赖包管理器的副本。 | 无 | Linux x86_64 和 arm64（glibc 2.34 或更高版本）。macOS arm64（Apple 芯片）。 |
 | [`.deb` 软件包](#install-the-deb-package) | Debian、Ubuntu 以及使用 `dpkg` 的系统。 | 无 | Linux x86_64 和 arm64（glibc 2.34 或更高版本） |
 | [`.rpm` 软件包](#install-the-rpm-package) | Fedora、RHEL 系列和 Amazon Linux。 | 无 | Linux x86_64 和 arm64（glibc 2.34 或更高版本） |
-| [Homebrew](#install-with-homebrew) | 装有 Homebrew 的 macOS 或 Linux。尚未发布。 | Homebrew | 见该节 |
+| [Homebrew](#install-with-homebrew) | 装有 Homebrew 的 macOS 或 Linux。 | Homebrew | macOS arm64（Apple silicon）。Linux x86_64 和 arm64。不支持 Intel 版 Mac。 |
 | [虚拟环境中的 pip](#install-with-pip-in-a-virtual-environment) | 你想把 InvenTag 装进项目环境。 | Python 3.11 或更高版本 | 任何有 Python 的系统 |
 | [从源码安装](#install-from-source) | 你想用最新的未发布代码，或者要修改 InvenTag。 | Python 3.11 或更高版本和 Git | 任何有 Python 的系统 |
 
@@ -37,7 +37,7 @@ sidebar_position: 2
   下表中的 Linux 系统都满足这个要求。
   在更旧的系统上，例如 RHEL、AlmaLinux 和 Rocky Linux 8、Debian 11、Ubuntu 20.04 或
   Amazon Linux 2，如果系统有 Python 3.11 或更高版本，请使用 pipx。
-- 没有适用于 Intel 版 Mac 的可执行文件：InvenTag 所需的一个库（cryptography，从第 50 版起）没有为它们发布现成的构建。
+- 不支持 Intel 版 Mac，也没有为它们制作构建的计划。InvenTag 所需的一个库（cryptography，从第 50 版起）没有为它们发布现成的构建。
 - macOS 可执行文件只适用于 Apple 芯片（arm64）。构建记录显示，它的文件需要 macOS 11.0 或更高版本。
 - 可执行文件不支持 Alpine 和其他使用 musl 的系统。请使用 pipx。
 - Windows 没有打包构建。
@@ -154,7 +154,7 @@ tar -xzf inventag-%INVENTAG_VERSION%-darwin-arm64.tar.gz -C "$HOME/inventag-inst
 
 macOS 可执行文件没有经过 Apple 公证。macOS 可能会拦截浏览器下载的文件。
 
-未针对 GitHub Runner 之外的 macOS 验证：Homebrew 安装和 Gatekeeper 的行为。
+未针对 GitHub Runner 之外的 macOS 验证：Gatekeeper 对浏览器下载的压缩包的行为。
 
 - **升级：** 删除旧目录，再把新压缩包解压到同一位置。
 - **卸载（Linux）：** `sudo rm -rf /opt/inventag` 和 `sudo rm /usr/local/bin/inventag`。
@@ -218,26 +218,41 @@ inventag selftest
 
 ## 用 Homebrew 安装 {#install-with-homebrew}
 
-Homebrew tap 由项目所有者创建。这个 tap 尚未发布，所以下面的命令今天还不能用：
+Homebrew 可以在 Apple silicon 版 Mac 和 Linux（x86_64 和 arm64）上安装 InvenTag。
+在 Intel 版 Mac 上，它会停下并给出一条提示；请改用 `pipx`，在那里它需要 Rust 工具链。
 
 ```bash title="Terminal"
 brew install habhabhabs/inventag/inventag
+inventag --version
+inventag selftest
 ```
 
-这个 formula 已经写好。它在仓库中，路径是 `packaging/homebrew-tap/Formula/inventag.rb`，
-`scripts/packaging/render_formula.py` 会用某个发布版本的 `SHA256SUMS` 填写它。
-它从发布压缩包安装可执行文件、手册页，以及 bash、zsh 和 fish 的补全文件。
-它面向 macOS arm64 和两种 Linux CPU，不面向 Intel 版 Mac：在 Intel 版 Mac 上，安装会停下并给出一条提示。
+这个 tap 是仓库 `habhabhabs/homebrew-inventag`。它的 formula 从发布压缩包安装可执行文件、手册页，
+以及 bash、zsh 和 fish 的补全文件。formula 由 `scripts/packaging/render_formula.py`
+根据 `packaging/homebrew-tap/Formula/inventag.rb` 和该版本的 `SHA256SUMS` 写成。
+每次发布之后，发布工作流会把新的 formula 写入这个 tap。
+
+在 Mac 上，Homebrew 需要最新的 Command Line Tools。如果 Homebrew 因为它们过旧而拒绝安装，
+请在“软件更新”中更新它们，或者运行 `sudo rm -rf /Library/Developer/CommandLineTools`，
+然后运行 `sudo xcode-select --install`。
 
 - **升级：** `brew upgrade inventag`。
 - **卸载：** `brew uninstall inventag`。
 
-未针对 Homebrew 验证：这个 formula。`brew install`、`brew audit`、`brew style` 和 `brew test` 都没有对它运行过。
-升级命令和卸载命令也没有运行过。
+已在一台装有 macOS 27 的 Apple silicon Mac 上针对 v1.4.0 检查：
+`brew install habhabhabs/inventag/inventag` 成功，`inventag --version` 输出 1.4.0，
+`inventag selftest` 通过了全部 8 项检查。
+
+未针对那一台以外的 Mac 验证：Homebrew 安装和 Gatekeeper 的行为。
+
+未针对 GitHub Runner 之外的 Linux 验证：Homebrew 安装。
+
+未针对 Homebrew 验证：`brew upgrade inventag`。目前还没有进行过升级。
+`brew uninstall inventag` 只在 GitHub Runner 上运行过。
 
 未针对 Intel 版 Mac 验证：那里的安装所显示的提示。
 
-未针对 GitHub Runner 之外的 macOS 验证：Homebrew 安装和 Gatekeeper 的行为。
+未针对 GitHub 验证：发布工作流会更新这个 tap。v1.4.0 之后的第一次发布是这一步的第一次运行。
 
 ## 在虚拟环境中用 pip 安装 {#install-with-pip-in-a-virtual-environment}
 
@@ -348,7 +363,7 @@ gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb \
 ## 打包构建中的许可证 {#licenses-in-packaged-builds}
 
 InvenTag 使用 MIT 许可证。可执行文件压缩包、`.deb` 和 `.rpm` 包含 GNU libiconv，
-这是一个使用 GNU 宽通用公共许可证（LGPL）2.1 版的库。Homebrew formula（尚未发布）安装同一个压缩包，所以它也包含 libiconv。
+这是一个使用 GNU 宽通用公共许可证（LGPL）2.1 版的库。Homebrew formula 安装同一个压缩包，所以它也包含 libiconv。
 libiconv 的代码位于 lxml 的扩展模块内部。InvenTag 需要 lxml 来写 Word 文件。lxml 项目构建这些模块，并把 libiconv 链接进去。
 在压缩包、`.deb` 和 `.rpm` 中，InvenTag 原样携带 lxml 的文件，不做任何修改。
 
@@ -374,7 +389,7 @@ libiconv 的代码位于 lxml 的扩展模块内部。InvenTag 需要 lxml 来�
 
 未针对 Homebrew 安装验证：Homebrew 不会改动 lxml 的文件。
 
-未针对 GitHub Runner 之外的 macOS 验证：Homebrew 安装和 Gatekeeper 的行为。
+未针对已检查的那一台 Apple silicon Mac 以外的 Mac 验证：Homebrew 安装和 Gatekeeper 的行为。
 
 本页不构成法律意见。
 

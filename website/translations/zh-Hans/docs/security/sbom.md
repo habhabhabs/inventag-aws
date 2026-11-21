@@ -72,7 +72,7 @@ gh attestation verify inventag_%INVENTAG_VERSION%_amd64.deb \
 InvenTag 使用 MIT 许可证。打包构建还携带其他项目的文件。声明文件列出了它们和它们的许可证文本。
 
 可执行文件压缩包、`.deb` 和 `.rpm` 包含 GNU libiconv，这是一个使用 GNU 宽通用公共许可证（LGPL）2.1 版的库。
-Homebrew formula（尚未发布）安装同一个压缩包，所以它也包含 libiconv。libiconv 的代码位于 lxml 的扩展模块内部。
+Homebrew formula 安装同一个压缩包，所以它也包含 libiconv。libiconv 的代码位于 lxml 的扩展模块内部。
 InvenTag 需要 lxml 来写 Word 文件。lxml 项目构建这些模块，并把 libiconv 链接进去。
 在压缩包、`.deb` 和 `.rpm` 中，InvenTag 原样携带 lxml 的文件：构建时会把每个文件与锁定文件所指定的 wheel 中的文件逐字节比较。
 

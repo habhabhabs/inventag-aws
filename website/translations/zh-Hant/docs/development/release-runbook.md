@@ -38,6 +38,12 @@ sidebar_position: 3
 | R16 | 只有當標籤 `vX.Y.Z` 指向檢出的提交且對應的 GitHub 發佈存在時，PyPI 才會收到該版本。缺少它們時，推送觸發的執行不發佈任何內容，手動執行則失敗。 | `tests/unit/test_release_runbook.py::test_publish_guard_passes_with_the_tag_and_the_release`, `tests/unit/test_release_runbook.py::test_publish_guard_on_a_push_without_the_tag_publishes_nothing`, `tests/unit/test_release_runbook.py::test_publish_guard_on_a_manual_run_without_the_release_fails` |
 | R17 | 推送版本遞增提交時，如果 `[Unreleased]` 不為空，任務「Changelog rolled」會失敗。它不會改動標籤、發佈或 PyPI。 | `tests/unit/test_roll_changelog.py::test_check_fails_on_notes_left_under_unreleased`, `tests/unit/test_roll_changelog.py::test_release_workflow_runs_the_check_on_the_bump_commit_push_only` |
 | R18 | 每次發佈後，文件版本任務會提交目前文件版本的翻譯標籤（`current.json`），因此它寫的是已發佈的版本。 | `tests/unit/test_release_runbook.py::test_docs_versioning_commits_the_current_json_labels`, `tests/unit/test_release_runbook.py::test_committed_current_labels_name_a_released_version` |
+| R19 | 在一次附加了檔案的發佈執行之後，Package 工作流的最後一個任務 `publish-tap` 會把 Homebrew formula 寫入儲存庫變數 `HOMEBREW_TAP_REPO` 指定的 tap。只有在檔案附加和 formula 安裝（`smoke-homebrew`）都透過時它才執行。在試執行、提取要求中，`HOMEBREW_TAP_REPO` 為空時，以及關閉 macOS 時，它會被跳過。沒有任務等待它，所以它失敗時，發佈、PyPI 和已附加的檔案保持不變。 | `tests/unit/test_packaging_workflow.py::test_publish_tap_is_skipped_in_a_dry_run_a_pull_request_and_without_a_tap`, `tests/unit/test_packaging_workflow.py::test_no_job_waits_for_publish_tap_so_a_failure_turns_only_it_red` |
+| R20 | formula 根據 GitHub 發佈上的 `SHA256SUMS` 檔案生成，並且只在該檔案與本次執行的檔案相同時生成。 | `tests/unit/test_packaging_workflow.py::test_the_published_sums_must_equal_the_sums_of_the_run` |
+| R21 | tap 在 `main` 上得到一個提交 `inventag X.Y.Z`，作者是 `Alex <alex.ng@ollion.com>`，沒有 trailer。再次寫入同一個檔案時不推送任何內容，並以綠色結束，所以重新執行是安全的。比 tap 中更低的版本會被拒絕。 | `tests/unit/test_publish_tap.py::test_the_commit_is_alex_with_the_subject_only_and_no_trailer`, `tests/unit/test_publish_tap.py::test_the_same_file_again_ends_with_success_and_pushes_nothing`, `tests/unit/test_publish_tap.py::test_a_version_lower_than_the_taps_is_refused` |
+| R22 | 如果因為 tap 的 `main` 已前進而推送被拒絕，會在新的 `main` 上再做一次，並再次檢查版本。第二次被拒絕時任務失敗。 | `tests/unit/test_publish_tap.py::test_a_push_refused_because_main_moved_is_tried_once_more_on_the_new_main`, `tests/unit/test_publish_tap.py::test_a_second_refused_push_fails_the_run` |
+| R23 | 金鑰 `HOMEBREW_TAP_TOKEN` 只在唯一的推送步驟的 env 中。git 只透過 `GIT_ASKPASS` 的回答得到它，從不出現在 URL 或引數中。 | `tests/unit/test_packaging_workflow.py::test_the_token_is_in_the_env_of_the_push_step_only_and_never_traced`, `tests/unit/test_publish_tap.py::test_the_token_never_reaches_a_git_argument_the_output_or_the_tap` |
+| R24 | `publish-tap` 失敗時，它的最後一步會輸出手動發佈 formula 的命令，其中已填好版本號。 | `tests/unit/test_publish_tap.py::test_the_hand_procedure_is_printed_with_the_version_filled_in` |
 
 ## 推送之前 {#before-you-push}
 
@@ -76,9 +82,33 @@ sidebar_position: 3
 
 未針對 GitHub 驗證：發佈頁面和手動執行的步驟；它們是完成 v1.2.2 時使用的步驟。
 
+## Homebrew tap {#the-homebrew-tap}
+
+這個 tap 是 `habhabhabs/homebrew-inventag`。Package 工作流在每次發佈之後更新它（R19 到 R24）。
+Homebrew 可以在 Apple silicon 版 Mac 和 Linux（x86_64 和 arm64）上安裝 InvenTag。不支援 Intel 版 Mac。
+
+1. 開啟任務 `publish-tap` 的日誌。最後一行指出 tap 中的提交。
+   「already published」表示 tap 中已經是同一個檔案。
+2. 在 tap 中檢視這個提交的「Tap checks」。兩個任務都必須是綠色。
+3. 如果「Tap checks」為紅色：在 tap 中撤銷這個提交，然後在本儲存庫中修正 formula：
+
+   ```bash
+   git clone https://github.com/habhabhabs/homebrew-inventag.git tap && cd tap
+   git revert --no-edit <sha>
+   git push
+   ```
+
+4. `publish-tap` 失敗：發佈、PyPI 和已附加的檔案都已完成。
+   執行它最後一步輸出的命令，或者重新執行這個任務（R21）。
+5. `packaging/homebrew-tap/` 存放 tap 的 `README.md` 和 `.github/workflows/ci.yml`。
+   那裡的修改需要手動複製到 tap。
+
+未針對 GitHub 驗證：任務 `publish-tap`。v1.4.0 之後的第一次發佈是它的第一次執行。v1.4.0 是手動放進 tap 的。
+
 ## 每次發佈之後 {#after-every-release}
 
 - `main` 上的 `CHANGELOG.md`：`[Unreleased]` 為空，新版本有自己的標題（任務「Changelog rolled」為綠色，R17）。
 - 版本遞增提交的文件部署和文件版本執行均為綠色。
 - 線上狀態頁面描述的是已發佈的版本。
 - 撰寫發行說明時，再讀一遍審閱者的記錄。
+- Package 執行中的任務 `publish-tap` 為綠色，並且 tap 中該任務指出的提交的「Tap checks」為綠色（R19）。

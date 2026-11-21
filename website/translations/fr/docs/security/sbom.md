@@ -90,7 +90,7 @@ licences.
 
 Les archives de l’exécutable, le `.deb` et le `.rpm` embarquent GNU libiconv, une
 bibliothèque sous la licence publique générale limitée de GNU (LGPL) version 2.1.
-La formule Homebrew (pas encore publiée) installe la même archive, donc elle
+La formule Homebrew installe la même archive, donc elle
 l’embarque aussi. Le code de libiconv se trouve dans les modules d’extension de
 lxml. InvenTag a besoin de lxml pour écrire des fichiers Word. Le projet lxml
 construit ces modules et y lie libiconv. Dans l’archive, le `.deb` et le `.rpm`,
