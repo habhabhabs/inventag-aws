@@ -146,6 +146,8 @@ def test_three_accounts_say_4_and_name_the_trend_account(tmp_path, monkeypatch):
     assert outcome.code == 0
     assert _lines(outcome) == [line(4, 3, 1)]
     assert order[0] == "line"
+    # billing validation once for each account, the cost trend once
+    assert order.count("request") == 4
     # one WARNING line on the console (the run notes do not repeat it)
     assert outcome.text.count(TREND_NOTE) == 1
     # and the report's run notes say it
