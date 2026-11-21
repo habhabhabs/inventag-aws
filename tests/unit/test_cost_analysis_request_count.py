@@ -241,3 +241,19 @@ def test_cli_with_billing_validation_adds_only_the_billing_request(
     outcome, counted = _cli(tmp_path, monkeypatch, billing=True)
     assert outcome.code == 0
     assert counted == 2
+
+
+# --- the help text ----------------------------------------------------------
+
+
+def test_the_help_of_enable_cost_analysis_says_the_number_of_requests():
+    from inventag.cli.main import create_parser
+
+    (action,) = [
+        a
+        for a in create_parser()._actions
+        if "--enable-cost-analysis" in a.option_strings
+    ]
+    text = " ".join(action.help.split())
+    assert "one Cost Explorer request (ce:GetCostAndUsage) per run" in text
+    assert "AWS charges for each request" in text
