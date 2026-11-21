@@ -1121,10 +1121,19 @@ class CostAnalyzer:
                 service = resource.get("service", "Unknown")
                 resources_by_service[service].append(resource)
 
+            if not resources_by_service:
+                return trend_analyses
+
+            # One request for every service: each one asked for the same
+            # period and grouping, and AWS charges for each request.
+            response = self._fetch_service_costs(start_date, end_date)
+            if response is None:
+                return trend_analyses
+
             for service, service_resources in resources_by_service.items():
                 try:
                     trend_analysis = self._analyze_service_cost_trend(
-                        service, service_resources, start_date, end_date
+                        service, service_resources, response
                     )
                     if trend_analysis:
                         trend_analyses.extend(trend_analysis)
@@ -1142,27 +1151,46 @@ class CostAnalyzer:
         self.logger.info(f"Generated {len(trend_analyses)} cost trend analyses")
         return trend_analyses
 
-    def _analyze_service_cost_trend(
-        self,
-        service: str,
-        resources: List[Dict[str, Any]],
-        start_date: str,
-        end_date: str,
-    ) -> List[CostTrendAnalysis]:
-        """Analyze cost trend for a specific service."""
-        try:
-            # Get cost and usage data from Cost Explorer
-            cost_client = self._get_cost_explorer_client()
-            if not cost_client:
-                return []
+    # Cost Explorer requests of analyze_cost_trends: one, whatever the number
+    # of services.
+    COST_EXPLORER_REQUESTS = 1
 
-            response = cost_client.get_cost_and_usage(
+    def _fetch_service_costs(
+        self, start_date: str, end_date: str
+    ) -> Optional[Dict[str, Any]]:
+        """The one Cost Explorer request of the cost trend: the period, by SERVICE.
+
+        Says first how many requests it makes, because AWS charges for each.
+        None when the request failed (the failure is logged).
+        """
+        cost_client = self._get_cost_explorer_client()
+        if not cost_client:
+            return None
+        self.logger.warning(
+            f"Cost Explorer: {self.COST_EXPLORER_REQUESTS} request(s); "
+            "AWS charges for each."
+        )
+        try:
+            return cost_client.get_cost_and_usage(
                 TimePeriod={"Start": start_date, "End": end_date},
                 Granularity="MONTHLY",
                 Metrics=["BlendedCost"],
                 GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
             )
+        except Exception as e:
+            self._log_aws_failure(
+                "cost-explorer", "Service cost trend analysis failed", e
+            )
+            return None
 
+    def _analyze_service_cost_trend(
+        self,
+        service: str,
+        resources: List[Dict[str, Any]],
+        response: Dict[str, Any],
+    ) -> List[CostTrendAnalysis]:
+        """Analyze cost trend for a specific service, from the one answer."""
+        try:
             # Find cost data for this service
             service_costs = []
             for result in response.get("ResultsByTime", []):
@@ -1223,9 +1251,7 @@ class CostAnalyzer:
                 return trend_analyses
 
         except Exception as e:
-            self._log_aws_failure(
-                "cost-explorer", f"Service cost trend analysis failed for {service}", e
-            )
+            self.logger.debug(f"Service cost trend analysis failed for {service}: {e}")
 
         return []
 
