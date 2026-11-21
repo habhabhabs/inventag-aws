@@ -229,5 +229,15 @@ def test_a_denied_cost_explorer_still_tells_one_story(
         )
         == 0
     )
-    lines = [m for m in logged(caplog) if m.startswith("Cost Explorer")]
+    # F1b: the request count said before discovery is not a failure line
+    lines = [
+        m
+        for m in logged(caplog)
+        if m.startswith("Cost Explorer") and not m.startswith("Cost Explorer: up to")
+    ]
     assert len(lines) == 1 and "denied" in lines[0], lines
+    counts = [m for m in logged(caplog) if m.startswith("Cost Explorer: up to")]
+    assert counts == [
+        "Cost Explorer: up to 1 request(s) in this run "
+        "(billing validation: 1; cost trend: 0). AWS charges for each."
+    ], counts
