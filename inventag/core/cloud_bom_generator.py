@@ -2836,9 +2836,8 @@ class CloudBOMGenerator:
         """
         if not self.config.finops_checks:
             return None
-        started = self._processing_stats.get("processing_start_time") or datetime.now(
-            timezone.utc
-        )
+        # Never the clock: without a start time FIN-003 is not evaluated.
+        started = self._processing_stats.get("processing_start_time")
         units = self._units_not_read()
         self._finops_result = finops_checks.run_checks(resources, units, started)
         if self.config.generate_per_account_reports:

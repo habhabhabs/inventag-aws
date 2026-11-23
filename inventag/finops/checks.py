@@ -191,6 +191,8 @@ def _address(raw, _row, _ctx):
 
 
 def _snapshot(raw, _row, ctx):
+    if ctx["run_started"] is None:
+        return NOT_EVALUATED, FIELD_MISSING, "the run has no start time"
     started = parse_time(raw.get("StartTime"))
     if started is None:
         return _missing("StartTime")
@@ -327,18 +329,25 @@ def _sort_key(finding: Dict[str, str]) -> tuple:
 def run_checks(
     rows: Iterable[Dict[str, Any]],
     units_not_read: Iterable[Dict[str, Any]],
-    run_started: dt.datetime,
+    run_started: Optional[dt.datetime],
     policy=None,
 ) -> Dict[str, Any]:
-    """Run FIN-001 to FIN-006. ``run_started`` must carry a time zone."""
-    if not isinstance(run_started, dt.datetime) or run_started.tzinfo is None:
+    """Run FIN-001 to FIN-006. ``run_started`` must carry a time zone; with
+    None, FIN-003 is ``not_evaluated`` (the clock is never read)."""
+    if run_started is not None and (
+        not isinstance(run_started, dt.datetime) or run_started.tzinfo is None
+    ):
         raise ValueError("run_started must be a datetime with a time zone")
     rows = [r for r in rows if isinstance(r, dict)]
     units = sorted(
         (u for u in units_not_read if isinstance(u, dict)),
         key=lambda u: tuple(_text(u.get(k)) for k in ("account", "region", "service")),
     )
-    ctx = _context(rows, units, run_started.astimezone(dt.timezone.utc))
+    ctx = _context(
+        rows,
+        units,
+        run_started.astimezone(dt.timezone.utc) if run_started else None,
+    )
     findings: List[Dict[str, str]] = []
     passed = {policy_id: 0 for policy_id in CHECKS}
 
