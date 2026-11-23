@@ -20,7 +20,7 @@ the flag is unchanged; the changelog lists it under Added.
   with no instance; `FIN-006` a missing key of the built-in
   `finops-cost-allocation` tag policy. Results are `fail`, `not_evaluated`
   (with a reason: `identity_only`, `field_missing`, `tags_not_read`,
-  `units_not_read`) and `pass`; a gap in the data is never a pass. The Excel
+  `listing_not_read`) and `pass`; a gap in the data is never a pass. The Excel
   report gets a last sheet `FinOps`; the result of
   `CloudBOMGenerator.generate_multi_account_bom()` and the metadata of a JSON
   report get the additive key `finops_checks`. The checks make no AWS call,

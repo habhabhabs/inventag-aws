@@ -64,7 +64,7 @@ A gap in the data is never a pass. The reasons are:
 | `identity_only` | The resource is known only from the Resource Groups Tagging API, so the field the check reads is not on its row. |
 | `field_missing` | The field the check reads is not on the row. |
 | `tags_not_read` | `FIN-006` only: a key is missing and the Tagging API listing of that region failed in this run. For a global resource, any failed Tagging API listing of the account counts. |
-| `units_not_read` | A listing the check needs failed in this run. The sheet has one line for each listing and region. |
+| `listing_not_read` | A listing the check needs failed in this run. The sheet has one line for each listing and region. |
 
 ## The FinOps sheet
 

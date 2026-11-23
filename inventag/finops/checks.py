@@ -37,7 +37,7 @@ PASS = "pass"
 IDENTITY_ONLY = "identity_only"
 FIELD_MISSING = "field_missing"
 TAGS_NOT_READ = "tags_not_read"
-UNITS_NOT_READ = "units_not_read"
+LISTING_NOT_READ = "listing_not_read"
 
 # The discovery services whose listings give the rows of each check.
 _LISTINGS = {
@@ -158,7 +158,7 @@ def _unit_finding(policy: str, unit: Dict[str, Any]) -> Dict[str, str]:
     return {
         "policy": policy,
         "result": NOT_EVALUATED,
-        "reason": UNITS_NOT_READ,
+        "reason": LISTING_NOT_READ,
         "account": _text(unit.get("account")),
         "region": region,
         "service": service,
@@ -210,7 +210,7 @@ def _instance(raw, _row, _ctx):
 def _lb_v2(raw, row, ctx):
     place = (_account(row), _text(row.get("region")))
     if place in ctx["failed_elbv2"]:
-        return NOT_EVALUATED, UNITS_NOT_READ, "elbv2 listing not read in this region"
+        return NOT_EVALUATED, LISTING_NOT_READ, "elbv2 listing not read in this region"
     arn = raw.get("LoadBalancerArn")
     if not arn:
         return _missing("LoadBalancerArn")

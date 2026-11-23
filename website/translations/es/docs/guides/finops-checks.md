@@ -66,7 +66,7 @@ Un hueco en los datos nunca es un pass. Los motivos son:
 | `identity_only` | El recurso solo se conoce por la API Resource Groups Tagging, así que el campo que lee la comprobación no está en su fila. |
 | `field_missing` | El campo que lee la comprobación no está en la fila. |
 | `tags_not_read` | Solo `FIN-006`: falta una clave y el listado de la API Tagging de esa región falló en esta ejecución. Para un recurso global cuenta cualquier listado fallido de la API Tagging de la cuenta. |
-| `units_not_read` | Un listado que la comprobación necesita falló en esta ejecución. La hoja tiene una línea por cada listado y región. |
+| `listing_not_read` | Un listado que la comprobación necesita falló en esta ejecución. La hoja tiene una línea por cada listado y región. |
 
 ## La hoja FinOps {#the-finops-sheet}
 

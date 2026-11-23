@@ -70,7 +70,7 @@ Une lacune dans les données n’est jamais un pass. Les raisons sont :
 | `identity_only` | La ressource n’est connue que par l’API Resource Groups Tagging, donc le champ que lit le contrôle n’est pas sur sa ligne. |
 | `field_missing` | Le champ que lit le contrôle n’est pas sur la ligne. |
 | `tags_not_read` | `FIN-006` uniquement : une clé manque et la liste de l’API Tagging de cette région a échoué pendant cette exécution. Pour une ressource globale, tout échec d’une liste de l’API Tagging du compte compte. |
-| `units_not_read` | Une liste dont le contrôle a besoin a échoué pendant cette exécution. La feuille a une ligne par liste et par région. |
+| `listing_not_read` | Une liste dont le contrôle a besoin a échoué pendant cette exécution. La feuille a une ligne par liste et par région. |
 
 ## La feuille FinOps {#the-finops-sheet}
 

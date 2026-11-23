@@ -53,7 +53,7 @@ inventag --create-excel --finops-checks
 | `identity_only` | 該資源只透過 Resource Groups Tagging API 得知，所以檢查讀取的欄位不在它的行上。 |
 | `field_missing` | 檢查讀取的欄位不在該行上。 |
 | `tags_not_read` | 僅 `FIN-006`：缺少某個鍵，並且該區域的 Tagging API 列表在本次執行中失敗。對於全域性資源，該帳戶任何一次失敗的 Tagging API 列表都算。 |
-| `units_not_read` | 檢查需要的某個列表在本次執行中失敗。工作表中每個列表和區域各有一列。 |
+| `listing_not_read` | 檢查需要的某個列表在本次執行中失敗。工作表中每個列表和區域各有一列。 |
 
 ## FinOps 工作表 {#the-finops-sheet}
 
