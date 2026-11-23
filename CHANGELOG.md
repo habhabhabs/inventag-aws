@@ -39,6 +39,10 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   with the credentials of account <id>. Its figures are that account's Cost
   Explorer view, not each account's own." Reading each account's own bill is
   planned for v1.5.0.
+- A SIGTERM that arrived while the process wrote to standard output could lose
+  its "Terminated (SIGTERM)" line, or wait on that write. The line is now one
+  write on each log stream's file descriptor, in the same format, so it is
+  printed and the process ends by the signal with the same status.
 
 ## [v1.4.0] - 2026-11-21
 
@@ -113,9 +117,6 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 - SIGTERM could hang the process when the main thread held a lock that the
   signal handler needed. The handler now takes none of the run's locks: it stops
   new AWS requests, prints its line and ends by the signal.
-- Known limit: a SIGTERM that arrives while the process writes to standard
-  output can lose its SIGTERM line. The process still ends by the signal with
-  the same status. A fix is planned for v1.4.1.
 
 ### Library notes
 
