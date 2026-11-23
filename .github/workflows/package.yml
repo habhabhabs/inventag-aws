@@ -1377,6 +1377,18 @@ jobs:
           echo "::error::Not on the release after the upload: $missing"
           exit 1
         fi
+        # B6 fix 7: a file from an earlier run with other names would sit
+        # beside the new SHA256SUMS. Only this upload and release.yml's two
+        # source archives belong on the release.
+        { cat "$RUNNER_TEMP/want.txt"; printf 'inventag-aws-%s.tar.gz\ninventag-aws-%s.zip\n' "${TAG#v}" "${TAG#v}"; } \
+          | sort > "$RUNNER_TEMP/allowed.txt"
+        extra=$(comm -23 "$RUNNER_TEMP/have.txt" "$RUNNER_TEMP/allowed.txt")
+        if [ -n "$extra" ]; then
+          for name in $extra; do
+            echo "::error::On the release but not in this upload: $name. Delete it (gh release delete-asset $TAG $name) and run the job again."
+          done
+          exit 1
+        fi
         echo "$(wc -l < "$RUNNER_TEMP/want.txt") files are on the release $TAG."
 
   # Pushes the formula to the Homebrew tap after a real tag release (architect
