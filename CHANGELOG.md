@@ -43,6 +43,12 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   its "Terminated (SIGTERM)" line, or wait on that write. The line is now one
   write on each log stream's file descriptor, in the same format, so it is
   printed and the process ends by the signal with the same status.
+- Packaging: a re-run of the release upload checked only for missing files, so
+  a file of an earlier run with another name stayed beside the new
+  `SHA256SUMS`. The upload now also fails on a file that is neither in this
+  upload nor one of the two source archives, and names the command that
+  deletes it. Not verified against GitHub: the check, until the first release
+  run after v1.4.0.
 
 ## [v1.4.0] - 2026-11-21
 
