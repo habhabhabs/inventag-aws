@@ -291,3 +291,25 @@ def test_byte_equal_output_under_three_hash_seeds(finops_scan):
         assert proc.returncode == 0, proc.stderr
         digests.add(proc.stdout.strip())
     assert len(digests) == 1
+
+
+def test_the_generator_never_reads_the_clock_for_the_checks(monkeypatch):
+    from inventag.core import cloud_bom_generator as cbg
+    from tests.unit.finops.test_checks_rules import snapshot
+
+    class NoClock:
+        @staticmethod
+        def now(*a, **k):
+            raise AssertionError("the FinOps checks read the clock")
+
+    generator = cbg.CloudBOMGenerator.__new__(cbg.CloudBOMGenerator)
+    generator.config = cbg.MultiAccountConfig(finops_checks=True)
+    generator._processing_stats = {"processing_start_time": None}
+    generator._finops_by_account = {}
+    monkeypatch.setattr(generator, "_units_not_read", lambda: [], raising=False)
+    monkeypatch.setattr(cbg, "datetime", NoClock)
+
+    result = generator._run_finops_checks([snapshot("snap-1", "2000-01-01T00:00:00")])
+
+    (finding,) = result["findings"]
+    assert (finding["policy"], finding["reason"]) == ("FIN-003", "field_missing")

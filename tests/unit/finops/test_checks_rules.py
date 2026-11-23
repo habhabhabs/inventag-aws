@@ -498,3 +498,15 @@ def test_the_reason_for_an_unread_listing_is_listing_not_read():
     reasons = {f["reason"] for f in result["findings"]}
     assert reasons == {"listing_not_read"}
     assert "units_not_read" not in repr(result)
+
+
+def test_without_a_run_start_time_fin_003_is_not_evaluated_and_others_run():
+    rows = [snapshot("snap-1", RUN - dt.timedelta(days=400)), volume("vol-1")]
+    result = checks.run_checks(rows, [], None)
+    (snap,) = of(result, "FIN-003")
+    assert (snap["result"], snap["reason"], snap["message"]) == (
+        "not_evaluated",
+        "field_missing",
+        "the run has no start time",
+    )
+    assert [f["result"] for f in of(result, "FIN-001")] == ["fail"]
