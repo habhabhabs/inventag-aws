@@ -1243,7 +1243,10 @@ class CostAnalyzer:
                 return trend_analyses
 
         except Exception as e:
+            # Not an AWS failure (the one request already answered): a figure
+            # that could not be read. One warning per error type (D4).
             self.logger.debug(f"Service cost trend analysis failed for {service}: {e}")
+            self._warn_once("the cost trend", e, "those services have no trend.")
 
         return []
 
