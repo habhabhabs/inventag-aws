@@ -329,7 +329,7 @@ def test_fin_005_v2_in_a_region_whose_elbv2_listing_failed_is_not_evaluated():
     rows = [lb_v2("a", "arn:a")]
     found = of(run(rows, [unit("elbv2")]), "FIN-005")
     by_reason = sorted((f["resource"], f["reason"]) for f in found)
-    assert by_reason == [("", "units_not_read"), ("a", "units_not_read")]
+    assert by_reason == [("", "listing_not_read"), ("a", "listing_not_read")]
 
 
 # ----------------------------------------------------------- identity_only
@@ -366,7 +366,7 @@ def test_an_identity_row_of_another_kind_is_in_no_resource_check():
     assert counts(result, "FIN-006") == (0, 0, 1)
 
 
-# ---------------------------------------------------------- units_not_read
+# ---------------------------------------------------------- listing_not_read
 @pytest.mark.parametrize(
     "service, policies",
     [
@@ -379,7 +379,7 @@ def test_an_identity_row_of_another_kind_is_in_no_resource_check():
 )
 def test_a_listing_not_read_gives_one_line_per_unit_and_check(service, policies):
     result = run([], [unit(service), unit(service, region="eu-west-1")])
-    lines = [f for f in result["findings"] if f["reason"] == "units_not_read"]
+    lines = [f for f in result["findings"] if f["reason"] == "listing_not_read"]
     assert sorted({f["policy"] for f in lines}) == policies
     for policy in policies:
         mine = [f for f in lines if f["policy"] == policy]
@@ -491,3 +491,10 @@ def test_the_output_has_no_value_from_raw_data_beyond_the_stated_facts():
     row["raw_data"]["Description"] = raw_secret
     text = repr(run([row]))
     assert raw_secret not in text
+
+
+def test_the_reason_for_an_unread_listing_is_listing_not_read():
+    result = run([lb_v2("a", "arn:a")], [unit("elbv2")])
+    reasons = {f["reason"] for f in result["findings"]}
+    assert reasons == {"listing_not_read"}
+    assert "units_not_read" not in repr(result)

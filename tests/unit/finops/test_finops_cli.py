@@ -66,7 +66,7 @@ SCHEMA = {
                             "identity_only",
                             "field_missing",
                             "tags_not_read",
-                            "units_not_read",
+                            "listing_not_read",
                         ]
                     },
                     "account": {"type": "string"},

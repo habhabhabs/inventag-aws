@@ -72,7 +72,7 @@ def test_no_banned_word_in_any_finding_or_the_sheet():
         "identity_only",
         "field_missing",
         "tags_not_read",
-        "units_not_read",
+        "listing_not_read",
     }
     wb = Workbook()
     finops_sheet.add_finops_sheet(wb, result)
