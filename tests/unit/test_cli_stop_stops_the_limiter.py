@@ -6,6 +6,7 @@ has unwound). SEC1: SIGTERM only asks for the stop, without a lock
 
 import importlib
 import logging
+import os
 import signal
 import sys
 
@@ -20,9 +21,8 @@ def _generator(tmp_path):
     )
 
 
-def test_sigterm_stops_the_limiter_then_ends_as_before(tmp_path, monkeypatch):
-    generator = _generator(tmp_path)
-    killed, handlers, order = [], [], []
+def _sigterm(tmp_path, monkeypatch, logger, generator):
+    killed, handlers = [], []
     monkeypatch.setattr(cli_main.os, "kill", lambda pid, sig: killed.append(sig))
     real_signal = signal.signal
 
@@ -36,18 +36,63 @@ def test_sigterm_stops_the_limiter_then_ends_as_before(tmp_path, monkeypatch):
         raise AssertionError("the SIGTERM handler called stop_running_scans")
 
     monkeypatch.setattr(cli_main, "stop_running_scans", takes_locks)
+    cli_main._install_sigterm_message(logger, str(tmp_path / "out"), 0.0)
+    installed = handlers[0][1]
+    installed(signal.SIGTERM, None)
+    monkeypatch.setattr(cli_main.signal, "signal", real_signal)
+    return killed, handlers
+
+
+def test_sigterm_stops_the_limiter_then_ends_as_before(tmp_path, monkeypatch):
+    # A-79: the line is one os.write on the log stream's file descriptor.
+    # The logger has its own stream (not pytest's root handlers).
+    generator = _generator(tmp_path)
+    order = []
+    stream = open(os.devnull, "w")
+    handler = logging.StreamHandler(stream)
     logger = logging.getLogger("test-sigterm")
+    monkeypatch.setattr(logger, "handlers", [handler])
+    monkeypatch.setattr(logger, "propagate", False)
+    monkeypatch.setattr(logger, "level", logging.WARNING)
+
+    def not_through_logging(text):
+        raise AssertionError("the SIGTERM line went through logging")
+
+    monkeypatch.setattr(logger, "warning", not_through_logging)
+    real_write = os.write
+
+    def write(fd, data):
+        if fd == stream.fileno():
+            order.append(("write", generator.limiter.stopped, data))
+            return len(data)
+        return real_write(fd, data)
+
+    monkeypatch.setattr(cli_main.os, "write", write)
+    try:
+        killed, handlers = _sigterm(tmp_path, monkeypatch, logger, generator)
+    finally:
+        monkeypatch.setattr(cli_main.os, "write", real_write)
+        stream.close()
+
+    assert generator.limiter.stopped
+    assert order == [("write", True, b"Terminated (SIGTERM). No report was written.\n")]
+    assert killed == [signal.SIGTERM]
+    assert handlers[-1] == (signal.SIGTERM, signal.SIG_DFL)
+
+
+def test_sigterm_without_a_log_stream_logs_the_line_as_before(tmp_path, monkeypatch):
+    generator = _generator(tmp_path)
+    order = []
+    logger = logging.getLogger("test-sigterm-no-stream")
+    monkeypatch.setattr(logger, "handlers", [])
+    monkeypatch.setattr(logger, "propagate", False)
     monkeypatch.setattr(
         logger,
         "warning",
         lambda text: order.append(("warning", generator.limiter.stopped, text)),
     )
-    cli_main._install_sigterm_message(logger, str(tmp_path / "out"), 0.0)
-    installed = handlers[0][1]
-    installed(signal.SIGTERM, None)
-    monkeypatch.setattr(cli_main.signal, "signal", real_signal)
+    killed, handlers = _sigterm(tmp_path, monkeypatch, logger, generator)
 
-    assert generator.limiter.stopped
     assert order == [("warning", True, "Terminated (SIGTERM). No report was written.")]
     assert killed == [signal.SIGTERM]
     assert handlers[-1] == (signal.SIGTERM, signal.SIG_DFL)
