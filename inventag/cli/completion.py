@@ -1,8 +1,8 @@
 """``inventag completion bash|zsh|fish``: print a shell completion script.
 
 The scripts are generated from the argparse parsers of the command (the flags
-of ``inventag``, and the words ``templates``, ``selftest`` and ``completion``
-with their own parsers), so they follow the command when a flag is added. The
+of ``inventag``, and the words ``templates``, ``policy``, ``selftest`` and
+``completion`` with their own parsers), so they follow the command when a flag is added. The
 generator is this module; it needs no package beyond the standard library and
 makes no call: it only reads the parsers and prints text.
 
@@ -170,6 +170,7 @@ def build_model(
 
 
 def real_model() -> Command:
+    from ..policy.cli import build_parser as policy_parser
     from ..templating.cli import build_parser as templates_parser
     from . import selftest
     from .main import create_parser
@@ -178,6 +179,7 @@ def real_model() -> Command:
         create_parser(),
         {
             "templates": templates_parser(),
+            "policy": policy_parser(),
             "selftest": selftest.build_parser(),
             "completion": build_parser(),
         },
