@@ -445,3 +445,11 @@ def test_multi_account_config_keeps_the_v142_positional_order():
 
     names = [f.name for f in dataclasses.fields(MultiAccountConfig)]
     assert names[-3:] == ["finops_checks", "finops_cost_allocation", "cost_in_snapshot"]
+
+
+def test_with_both_finops_flags_the_costs_sheet_comes_after_the_finops_sheet(
+    tmp_path, stubbed_ce
+):
+    s = scan(tmp_path, "--finops-checks", "--finops-cost-allocation")
+    assert s.code == 0, s.text
+    assert s.sheet_names()[-2:] == ["FinOps", "FinOps costs"]
