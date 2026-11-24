@@ -184,7 +184,6 @@ is easy to miss. A default run prints one warning that names the cause, and
 
 ```text title="Output (simulated AWS error response)"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
-inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Cost Explorer: up to 1 request(s) in this run (billing validation: 1; cost trend: 0). AWS charges for each.
 Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
 inventag - WARNING - Notes about this run:
 inventag - WARNING -   - Permissions: 1 action(s) were not allowed for account 123456789012: ce:GetCostAndUsage. Effect: billing checks are skipped. All of them are in the AWS managed policy ReadOnlyAccess.
@@ -297,7 +296,6 @@ be turned off.
 ```text title="Output (simulated AWS error response)"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
 inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Region ap-east-1 test failed: An error occurred (AuthFailure) when calling the DescribeRegions operation: AWS was not able to validate the provided access credentials
-inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Cost Explorer: up to 1 request(s) in this run (billing validation: 1; cost trend: 0). AWS charges for each.
 Data exported to bom_output/multi_account_bom_20261112_090000.xlsx
 inventag - WARNING - Notes about this run:
 inventag - WARNING -   - Regions skipped in account 123456789012 because the region check (ec2:DescribeRegions) was denied or failed there: ap-east-1.
