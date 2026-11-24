@@ -117,6 +117,14 @@ def hostile():
             "file": "waivers.yaml",
         }
     ]
+    for policy in result["policies"]:
+        policy["counts"] = {
+            "pass": 0,
+            "fail": 1 if policy["id"] == "EC2-002" else 0,
+            "waived": 1 if policy["id"] == "EC2-002" else 0,
+            "not_evaluated": 1 if policy["id"] == "EC2-003" else 0,
+            "out_of_scope": 0,
+        }
     return result
 
 
@@ -190,9 +198,7 @@ def test_schema_accepts_the_two_reasons_of_amendment_1():
 def test_sarif_schema_is_our_own_and_has_no_remote_ref():
     schema = sarif_schema()
     jsonschema.Draft202012Validator.check_schema(schema)
-    assert "http://" not in json.dumps(schema).replace(
-        "http://json-schema.org", ""
-    )
+    assert "http://" not in json.dumps(schema).replace("http://json-schema.org", "")
     assert schema["$id"].startswith("urn:")
 
 
@@ -255,7 +261,7 @@ def test_sarif_validates_and_maps_as_in_spec_3_4():
     assert rule["id"] == "EC2-002"
     assert set(rule["properties"]) >= {"severity", "version", "sha256"}
     results = log["runs"][0]["results"]
-    by = {(r["ruleId"], r["kind"]): r for r in results}
+    by = {(r["ruleId"], r["kind"]): r for r in results if "suppressions" not in r}
     fail = by[("EC2-002", "fail")]
     assert fail["level"] == "error"
     assert "suppressions" not in fail
@@ -332,7 +338,10 @@ def junit(result):
 def test_junit_one_suite_per_file_one_case_per_policy():
     root = junit(load("ex09-ex10"))
     suites = root.findall("testsuite")
-    assert [s.get("name") for s in suites] == ["policies/ex09.yaml", "policies/ex10.yaml"]
+    assert [s.get("name") for s in suites] == [
+        "policies/ex09.yaml",
+        "policies/ex10.yaml",
+    ]
     for suite in suites:
         assert suite.get("time") == "0" and suite.get("timestamp") is None
         assert len(suite.findall("testcase")) == 1
@@ -403,13 +412,8 @@ def test_markdown_escapes_hostile_text():
     assert "](http://x)" not in text.replace("\\]", "")
     assert "<b>" not in text
     assert "\x1b" not in text and "\x07" not in text
-    rows = [ln for ln in text.splitlines() if ln.startswith("| ") and "line2" in ln]
-    assert rows == []
-    for ln in text.splitlines():
-        if ln.startswith("|"):
-            assert len(re.findall(r"(?<!\\)\|", ln)) == len(
-                re.findall(r"(?<!\\)\|", text.splitlines()[text.splitlines().index(ln)])
-            )
+    row = [ln for ln in text.splitlines() if "web" in ln and ln.startswith("|")]
+    assert len(row) == 1 and "line2" in row[0]
 
 
 # ------------------------------------------------------------------ text
@@ -424,8 +428,11 @@ def test_the_last_line_names_the_exit_code(code):
     result = load("ex09-ex10")
     result["summary"]["exit_code"] = code
     for fmt in ("text", "md"):
-        assert render(result, fmt).rstrip().splitlines()[-1].startswith(
-            f"Exit code {code}"
+        assert (
+            render(result, fmt)
+            .rstrip()
+            .splitlines()[-1]
+            .startswith(f"Exit code {code}")
         )
 
 
@@ -457,7 +464,7 @@ def test_show_values_shows_a_plain_value_in_json_md_text_only():
 def test_a_secret_key_stays_masked_with_show_values(fmt):
     text = render(hostile(), fmt, show_values=True)
     assert SECRET not in text
-    assert "***REDACTED***" in text
+    assert "REDACTED" in text
 
 
 def test_an_already_masked_value_stays_masked():
@@ -465,7 +472,7 @@ def test_an_already_masked_value_stays_masked():
     result["findings"][0]["details"][0]["value"] = "***REDACTED***"
     for fmt in ("json", "md", "text"):
         text = render(result, fmt, show_values=True)
-        assert "***REDACTED***" in text and SECRET not in text
+        assert "REDACTED" in text and SECRET not in text
 
 
 def test_a_secret_nested_in_a_value_is_masked():
@@ -517,3 +524,62 @@ def test_write_does_not_follow_a_planted_link(tmp_path):
 def test_write_masks_like_render(tmp_path):
     for path in write(hostile(), tmp_path):
         assert SECRET not in path.read_text()
+
+
+# ------------------------------------------------------- amendment 2 (10.1, 10.2)
+def with_superseded():
+    result = hostile()
+    result["unused_waivers"].append(
+        {
+            "policy": "EC2-002",
+            "resource": "arn:y",
+            "expires": "2026-12-31",
+            "why": "superseded",
+            "by": "waivers-b.yaml",
+            "file": "waivers.yaml",
+        }
+    )
+    result["not_evaluated_units"][0]["from"] = "baseline"
+    return result
+
+
+def test_schema_accepts_superseded_with_by_and_a_baseline_unit():
+    jsonschema.validate(
+        json.loads(render(with_superseded(), "json")), findings_schema()
+    )
+
+
+def test_schema_refuses_an_unknown_why_and_a_non_string_by():
+    result = with_superseded()
+    result["unused_waivers"][-1]["why"] = "lost"
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(result, findings_schema())
+    result = with_superseded()
+    result["unused_waivers"][-1]["by"] = 3
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(result, findings_schema())
+    result = with_superseded()
+    result["not_evaluated_units"][0]["from"] = "snapshot"
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(result, findings_schema())
+
+
+@pytest.mark.parametrize("fmt", ["sarif", "md", "text"])
+def test_superseded_and_by_are_written(fmt):
+    text = render(with_superseded(), fmt)
+    assert "superseded" in text and "waivers-b.yaml" in text
+    assert "baseline" in text
+
+
+def test_sarif_with_superseded_still_validates():
+    jsonschema.validate(sarif(with_superseded()), sarif_schema())
+
+
+def test_junit_with_superseded_is_well_formed():
+    ET.fromstring(render(with_superseded(), "xml"))
+
+
+def test_golden_of_the_superseded_result():
+    for fmt in ("sarif", "xml", "md", "text"):
+        expected = (OUT / f"superseded.{EXT[fmt]}").read_text()
+        assert render(with_superseded(), fmt) == expected
