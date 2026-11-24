@@ -1,0 +1,1202 @@
+{
+ "default": {
+  "console": [
+   "WARNING:   - No account specification method provided. Using default AWS credentials.",
+   "WARNING: No output formats specified. Defaulting to Excel format.",
+   "Data exported to OUT/multi_account_bom_STAMP.xlsx"
+  ],
+  "exit_code": 0,
+  "files": {
+   "multi_account_bom_STAMP.xlsx": {
+    "EC2": {
+     "head": [
+      [
+       "service",
+       "type",
+       "id",
+       "name",
+       "arn",
+       "account_id",
+       "source_account_id",
+       "source_account_name",
+       "region",
+       "discovery_timestamp",
+       "consolidation_timestamp",
+       "total_accounts_in_consolidation",
+       "billing_validated",
+       "detail_level",
+       "discovered_at",
+       "discovered_via",
+       "monthly_spend",
+       "priority",
+       "raw_data.AmiLaunchIndex",
+       "raw_data.Architecture",
+       "raw_data.Attachments",
+       "raw_data.AvailabilityZone",
+       "raw_data.BlockDeviceMappings",
+       "raw_data.ClientToken",
+       "raw_data.CreateTime",
+       "raw_data.EbsOptimized",
+       "raw_data.Encrypted",
+       "raw_data.Hypervisor",
+       "raw_data.ImageId",
+       "raw_data.InstanceId",
+       "raw_data.InstanceType",
+       "raw_data.KernelId",
+       "raw_data.LaunchTime",
+       "raw_data.MetadataOptions.HttpEndpoint",
+       "raw_data.MetadataOptions.HttpProtocolIpv6",
+       "raw_data.MetadataOptions.HttpPutResponseHopLimit",
+       "raw_data.MetadataOptions.HttpTokens",
+       "raw_data.MetadataOptions.State",
+       "raw_data.Monitoring.State",
+       "raw_data.NetworkInterfaces",
+       "raw_data.OwnerId",
+       "raw_data.Placement.AvailabilityZone",
+       "raw_data.Placement.GroupName",
+       "raw_data.Placement.Tenancy",
+       "raw_data.PrivateDnsName",
+       "raw_data.PrivateIpAddress",
+       "raw_data.ProductCodes",
+       "raw_data.Progress",
+       "raw_data.PublicDnsName",
+       "raw_data.PublicIpAddress",
+       "raw_data.RootDeviceName",
+       "raw_data.RootDeviceType",
+       "raw_data.SecurityGroups",
+       "raw_data.Size",
+       "raw_data.SnapshotId",
+       "raw_data.SourceDestCheck",
+       "raw_data.SriovNetSupport",
+       "raw_data.StartTime",
+       "raw_data.State",
+       "raw_data.State.Code",
+       "raw_data.State.Name",
+       "raw_data.StateReason.Code",
+       "raw_data.StateReason.Message",
+       "raw_data.StateTransitionReason",
+       "raw_data.StorageTier",
+       "raw_data.SubnetId",
+       "raw_data.VirtualizationType",
+       "raw_data.VolumeId",
+       "raw_data.VolumeSize",
+       "raw_data.VolumeType",
+       "raw_data.VpcId",
+       "resource_id",
+       "resource_name",
+       "resource_type",
+       "source",
+       "sources",
+       "raw_data.MetadataOptions.InstanceMetadataTags",
+       "raw_data.Tags",
+       "tagged",
+       "tags.CostCenter",
+       "tags.Environment",
+       "tags.Name",
+       "tags.Owner",
+       "tags.Project"
+      ]
+     ],
+     "rows": 7,
+     "sha256": "a7a6bf94695bfb7d3179143ae80d0dd5d153d0d68fa2c6fb26db6569d550f31e"
+    },
+    "ELB": {
+     "head": [
+      [
+       "service",
+       "type",
+       "id",
+       "arn",
+       "account_id",
+       "source_account_id",
+       "source_account_name",
+       "region",
+       "discovery_timestamp",
+       "consolidation_timestamp",
+       "total_accounts_in_consolidation",
+       "billing_validated",
+       "detail_level",
+       "discovered_at",
+       "discovered_via",
+       "monthly_spend",
+       "priority",
+       "raw_data.AvailabilityZones",
+       "raw_data.BackendServerDescriptions",
+       "raw_data.CanonicalHostedZoneName",
+       "raw_data.CreatedTime",
+       "raw_data.DNSName",
+       "raw_data.Instances",
+       "raw_data.ListenerDescriptions",
+       "raw_data.LoadBalancerName",
+       "raw_data.Policies.AppCookieStickinessPolicies",
+       "raw_data.Policies.LBCookieStickinessPolicies",
+       "raw_data.Policies.OtherPolicies",
+       "raw_data.Scheme",
+       "raw_data.SecurityGroups",
+       "raw_data.SourceSecurityGroup.GroupName",
+       "raw_data.SourceSecurityGroup.OwnerAlias",
+       "raw_data.Subnets",
+       "raw_data.VPCId",
+       "resource_id",
+       "resource_name",
+       "resource_type",
+       "source",
+       "sources",
+       "tagged"
+      ]
+     ],
+     "rows": 2,
+     "sha256": "c9f375a4711ed08642aef7e56336f61b3796b17c96858791c12b6f0ef8aaff0e"
+    },
+    "ELBV2": {
+     "head": [
+      [
+       "service",
+       "type",
+       "id",
+       "arn",
+       "account_id",
+       "source_account_id",
+       "source_account_name",
+       "region",
+       "discovery_timestamp",
+       "consolidation_timestamp",
+       "total_accounts_in_consolidation",
+       "billing_validated",
+       "detail_level",
+       "discovered_at",
+       "discovered_via",
+       "monthly_spend",
+       "priority",
+       "raw_data.AvailabilityZones",
+       "raw_data.CanonicalHostedZoneId",
+       "raw_data.CreatedTime",
+       "raw_data.DNSName",
+       "raw_data.HealthCheckEnabled",
+       "raw_data.HealthCheckIntervalSeconds",
+       "raw_data.HealthCheckPath",
+       "raw_data.HealthCheckPort",
+       "raw_data.HealthCheckProtocol",
+       "raw_data.HealthCheckTimeoutSeconds",
+       "raw_data.HealthyThresholdCount",
+       "raw_data.IpAddressType",
+       "raw_data.LoadBalancerArn",
+       "raw_data.LoadBalancerArns",
+       "raw_data.LoadBalancerName",
+       "raw_data.Matcher.HttpCode",
+       "raw_data.Port",
+       "raw_data.Protocol",
+       "raw_data.ProtocolVersion",
+       "raw_data.SecurityGroups",
+       "raw_data.State.Code",
+       "raw_data.TargetGroupArn",
+       "raw_data.TargetGroupName",
+       "raw_data.TargetType",
+       "raw_data.Type",
+       "raw_data.UnhealthyThresholdCount",
+       "raw_data.VpcId",
+       "resource_id",
+       "resource_name",
+       "resource_type",
+       "source",
+       "sources",
+       "tagged"
+      ]
+     ],
+     "rows": 3,
+     "sha256": "12e660e910ad9d3d5da652d31b14a42f00899738ebbc4e9637cd109d5effd4b9"
+    },
+    "Summary": {
+     "head": [
+      [
+       "Service",
+       "Resource Count",
+       "Percentage"
+      ]
+     ],
+     "rows": 5,
+     "sha256": "432a73a4f1adc622233491fc8d779ca73562c1339ab3845d2d3ccb648e8513ed"
+    },
+    "VPC": {
+     "head": [
+      [
+       "service",
+       "type",
+       "id",
+       "arn",
+       "account_id",
+       "source_account_id",
+       "source_account_name",
+       "region",
+       "discovery_timestamp",
+       "consolidation_timestamp",
+       "total_accounts_in_consolidation",
+       "billing_validated",
+       "detail_level",
+       "discovered_at",
+       "discovered_via",
+       "monthly_spend",
+       "priority",
+       "raw_data.AllocationId",
+       "raw_data.AssignIpv6AddressOnCreation",
+       "raw_data.AssociationId",
+       "raw_data.Associations",
+       "raw_data.AvailabilityZone",
+       "raw_data.AvailabilityZoneId",
+       "raw_data.AvailableIpAddressCount",
+       "raw_data.CidrBlock",
+       "raw_data.CidrBlockAssociationSet",
+       "raw_data.DefaultForAz",
+       "raw_data.Description",
+       "raw_data.DhcpOptionsId",
+       "raw_data.Domain",
+       "raw_data.Entries",
+       "raw_data.GroupId",
+       "raw_data.GroupName",
+       "raw_data.InstanceId",
+       "raw_data.InstanceTenancy",
+       "raw_data.IpPermissions",
+       "raw_data.IpPermissionsEgress",
+       "raw_data.Ipv6CidrBlockAssociationSet",
+       "raw_data.Ipv6Native",
+       "raw_data.IsDefault",
+       "raw_data.MapPublicIpOnLaunch",
+       "raw_data.NetworkAclId",
+       "raw_data.NetworkInterfaceId",
+       "raw_data.NetworkInterfaceOwnerId",
+       "raw_data.OwnerId",
+       "raw_data.PrivateDnsNameOptionsOnLaunch.EnableResourceNameDnsAAAARecord",
+       "raw_data.PrivateDnsNameOptionsOnLaunch.EnableResourceNameDnsARecord",
+       "raw_data.PrivateDnsNameOptionsOnLaunch.HostnameType",
+       "raw_data.PrivateIpAddress",
+       "raw_data.PublicIp",
+       "raw_data.RouteTableId",
+       "raw_data.Routes",
+       "raw_data.SecurityGroupArn",
+       "raw_data.State",
+       "raw_data.SubnetArn",
+       "raw_data.SubnetId",
+       "raw_data.VpcId",
+       "resource_id",
+       "resource_name",
+       "resource_type",
+       "source",
+       "sources",
+       "raw_data.Tags",
+       "tagged"
+      ]
+     ],
+     "rows": 20,
+     "sha256": "9d9d03144e3d9e709b4b04214e32921ce1fa554bbbd8d587f3924761bd737285"
+    }
+   },
+   "state/metadata.json": "present",
+   "state/state_STAMP.json": "present"
+  }
+ },
+ "finops-checks": {
+  "console": [
+   "WARNING:   - No account specification method provided. Using default AWS credentials.",
+   "WARNING: No output formats specified. Defaulting to Excel format.",
+   "Data exported to OUT/multi_account_bom_STAMP.xlsx"
+  ],
+  "exit_code": 0,
+  "files": {
+   "multi_account_bom_STAMP.xlsx": {
+    "EC2": {
+     "head": [
+      [
+       "service",
+       "type",
+       "id",
+       "name",
+       "arn",
+       "account_id",
+       "source_account_id",
+       "source_account_name",
+       "region",
+       "discovery_timestamp",
+       "consolidation_timestamp",
+       "total_accounts_in_consolidation",
+       "billing_validated",
+       "detail_level",
+       "discovered_at",
+       "discovered_via",
+       "monthly_spend",
+       "priority",
+       "raw_data.AmiLaunchIndex",
+       "raw_data.Architecture",
+       "raw_data.Attachments",
+       "raw_data.AvailabilityZone",
+       "raw_data.BlockDeviceMappings",
+       "raw_data.ClientToken",
+       "raw_data.CreateTime",
+       "raw_data.EbsOptimized",
+       "raw_data.Encrypted",
+       "raw_data.Hypervisor",
+       "raw_data.ImageId",
+       "raw_data.InstanceId",
+       "raw_data.InstanceType",
+       "raw_data.KernelId",
+       "raw_data.LaunchTime",
+       "raw_data.MetadataOptions.HttpEndpoint",
+       "raw_data.MetadataOptions.HttpProtocolIpv6",
+       "raw_data.MetadataOptions.HttpPutResponseHopLimit",
+       "raw_data.MetadataOptions.HttpTokens",
+       "raw_data.MetadataOptions.State",
+       "raw_data.Monitoring.State",
+       "raw_data.NetworkInterfaces",
+       "raw_data.OwnerId",
+       "raw_data.Placement.AvailabilityZone",
+       "raw_data.Placement.GroupName",
+       "raw_data.Placement.Tenancy",
+       "raw_data.PrivateDnsName",
+       "raw_data.PrivateIpAddress",
+       "raw_data.ProductCodes",
+       "raw_data.Progress",
+       "raw_data.PublicDnsName",
+       "raw_data.PublicIpAddress",
+       "raw_data.RootDeviceName",
+       "raw_data.RootDeviceType",
+       "raw_data.SecurityGroups",
+       "raw_data.Size",
+       "raw_data.SnapshotId",
+       "raw_data.SourceDestCheck",
+       "raw_data.SriovNetSupport",
+       "raw_data.StartTime",
+       "raw_data.State",
+       "raw_data.State.Code",
+       "raw_data.State.Name",
+       "raw_data.StateReason.Code",
+       "raw_data.StateReason.Message",
+       "raw_data.StateTransitionReason",
+       "raw_data.StorageTier",
+       "raw_data.SubnetId",
+       "raw_data.VirtualizationType",
+       "raw_data.VolumeId",
+       "raw_data.VolumeSize",
+       "raw_data.VolumeType",
+       "raw_data.VpcId",
+       "resource_id",
+       "resource_name",
+       "resource_type",
+       "source",
+       "sources",
+       "raw_data.MetadataOptions.InstanceMetadataTags",
+       "raw_data.Tags",
+       "tagged",
+       "tags.CostCenter",
+       "tags.Environment",
+       "tags.Name",
+       "tags.Owner",
+       "tags.Project"
+      ]
+     ],
+     "rows": 7,
+     "sha256": "a7a6bf94695bfb7d3179143ae80d0dd5d153d0d68fa2c6fb26db6569d550f31e"
+    },
+    "ELB": {
+     "head": [
+      [
+       "service",
+       "type",
+       "id",
+       "arn",
+       "account_id",
+       "source_account_id",
+       "source_account_name",
+       "region",
+       "discovery_timestamp",
+       "consolidation_timestamp",
+       "total_accounts_in_consolidation",
+       "billing_validated",
+       "detail_level",
+       "discovered_at",
+       "discovered_via",
+       "monthly_spend",
+       "priority",
+       "raw_data.AvailabilityZones",
+       "raw_data.BackendServerDescriptions",
+       "raw_data.CanonicalHostedZoneName",
+       "raw_data.CreatedTime",
+       "raw_data.DNSName",
+       "raw_data.Instances",
+       "raw_data.ListenerDescriptions",
+       "raw_data.LoadBalancerName",
+       "raw_data.Policies.AppCookieStickinessPolicies",
+       "raw_data.Policies.LBCookieStickinessPolicies",
+       "raw_data.Policies.OtherPolicies",
+       "raw_data.Scheme",
+       "raw_data.SecurityGroups",
+       "raw_data.SourceSecurityGroup.GroupName",
+       "raw_data.SourceSecurityGroup.OwnerAlias",
+       "raw_data.Subnets",
+       "raw_data.VPCId",
+       "resource_id",
+       "resource_name",
+       "resource_type",
+       "source",
+       "sources",
+       "tagged"
+      ]
+     ],
+     "rows": 2,
+     "sha256": "c9f375a4711ed08642aef7e56336f61b3796b17c96858791c12b6f0ef8aaff0e"
+    },
+    "ELBV2": {
+     "head": [
+      [
+       "service",
+       "type",
+       "id",
+       "arn",
+       "account_id",
+       "source_account_id",
+       "source_account_name",
+       "region",
+       "discovery_timestamp",
+       "consolidation_timestamp",
+       "total_accounts_in_consolidation",
+       "billing_validated",
+       "detail_level",
+       "discovered_at",
+       "discovered_via",
+       "monthly_spend",
+       "priority",
+       "raw_data.AvailabilityZones",
+       "raw_data.CanonicalHostedZoneId",
+       "raw_data.CreatedTime",
+       "raw_data.DNSName",
+       "raw_data.HealthCheckEnabled",
+       "raw_data.HealthCheckIntervalSeconds",
+       "raw_data.HealthCheckPath",
+       "raw_data.HealthCheckPort",
+       "raw_data.HealthCheckProtocol",
+       "raw_data.HealthCheckTimeoutSeconds",
+       "raw_data.HealthyThresholdCount",
+       "raw_data.IpAddressType",
+       "raw_data.LoadBalancerArn",
+       "raw_data.LoadBalancerArns",
+       "raw_data.LoadBalancerName",
+       "raw_data.Matcher.HttpCode",
+       "raw_data.Port",
+       "raw_data.Protocol",
+       "raw_data.ProtocolVersion",
+       "raw_data.SecurityGroups",
+       "raw_data.State.Code",
+       "raw_data.TargetGroupArn",
+       "raw_data.TargetGroupName",
+       "raw_data.TargetType",
+       "raw_data.Type",
+       "raw_data.UnhealthyThresholdCount",
+       "raw_data.VpcId",
+       "resource_id",
+       "resource_name",
+       "resource_type",
+       "source",
+       "sources",
+       "tagged"
+      ]
+     ],
+     "rows": 3,
+     "sha256": "12e660e910ad9d3d5da652d31b14a42f00899738ebbc4e9637cd109d5effd4b9"
+    },
+    "FinOps": {
+     "head": [
+      [
+       "These are observations from the inventory. A resource listed here may be intended.",
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null
+      ]
+     ],
+     "rows": 41,
+     "sha256": "51135a59b7dd33fca375761f678f5a2a694740fb42547742f19f01c89761fa95"
+    },
+    "Summary": {
+     "head": [
+      [
+       "Service",
+       "Resource Count",
+       "Percentage"
+      ]
+     ],
+     "rows": 5,
+     "sha256": "432a73a4f1adc622233491fc8d779ca73562c1339ab3845d2d3ccb648e8513ed"
+    },
+    "VPC": {
+     "head": [
+      [
+       "service",
+       "type",
+       "id",
+       "arn",
+       "account_id",
+       "source_account_id",
+       "source_account_name",
+       "region",
+       "discovery_timestamp",
+       "consolidation_timestamp",
+       "total_accounts_in_consolidation",
+       "billing_validated",
+       "detail_level",
+       "discovered_at",
+       "discovered_via",
+       "monthly_spend",
+       "priority",
+       "raw_data.AllocationId",
+       "raw_data.AssignIpv6AddressOnCreation",
+       "raw_data.AssociationId",
+       "raw_data.Associations",
+       "raw_data.AvailabilityZone",
+       "raw_data.AvailabilityZoneId",
+       "raw_data.AvailableIpAddressCount",
+       "raw_data.CidrBlock",
+       "raw_data.CidrBlockAssociationSet",
+       "raw_data.DefaultForAz",
+       "raw_data.Description",
+       "raw_data.DhcpOptionsId",
+       "raw_data.Domain",
+       "raw_data.Entries",
+       "raw_data.GroupId",
+       "raw_data.GroupName",
+       "raw_data.InstanceId",
+       "raw_data.InstanceTenancy",
+       "raw_data.IpPermissions",
+       "raw_data.IpPermissionsEgress",
+       "raw_data.Ipv6CidrBlockAssociationSet",
+       "raw_data.Ipv6Native",
+       "raw_data.IsDefault",
+       "raw_data.MapPublicIpOnLaunch",
+       "raw_data.NetworkAclId",
+       "raw_data.NetworkInterfaceId",
+       "raw_data.NetworkInterfaceOwnerId",
+       "raw_data.OwnerId",
+       "raw_data.PrivateDnsNameOptionsOnLaunch.EnableResourceNameDnsAAAARecord",
+       "raw_data.PrivateDnsNameOptionsOnLaunch.EnableResourceNameDnsARecord",
+       "raw_data.PrivateDnsNameOptionsOnLaunch.HostnameType",
+       "raw_data.PrivateIpAddress",
+       "raw_data.PublicIp",
+       "raw_data.RouteTableId",
+       "raw_data.Routes",
+       "raw_data.SecurityGroupArn",
+       "raw_data.State",
+       "raw_data.SubnetArn",
+       "raw_data.SubnetId",
+       "raw_data.VpcId",
+       "resource_id",
+       "resource_name",
+       "resource_type",
+       "source",
+       "sources",
+       "raw_data.Tags",
+       "tagged"
+      ]
+     ],
+     "rows": 20,
+     "sha256": "9d9d03144e3d9e709b4b04214e32921ce1fa554bbbd8d587f3924761bd737285"
+    }
+   },
+   "state/metadata.json": "present",
+   "state/state_STAMP.json": "present"
+  }
+ },
+ "tag-policy-template": {
+  "console": [
+   "WARNING:   - No account specification method provided. Using default AWS credentials.",
+   "WARNING: No output formats specified. Defaulting to Excel format.",
+   "Wrote OUT/tag_compliance_STAMP.json",
+   "Wrote OUT/multi_account_bom_STAMP.xlsx",
+   "Tag policy 'finops-cost-ID': 4 of 32 resources compliant (12.5%), 28 non-ID, 0 out of scope."
+  ],
+  "exit_code": 0,
+  "files": {
+   "multi_account_bom_STAMP.xlsx": {
+    "EC2": {
+     "head": [
+      [
+       "Account",
+       "Region",
+       "Service",
+       "Type",
+       "Name",
+       "ID",
+       "ARN",
+       "Tag: CostCenter",
+       "Tag: Environment",
+       "Tag: Name",
+       "Tag: Owner",
+       "Tag: Project"
+      ]
+     ],
+     "rows": 7,
+     "sha256": "3cb2476f4670b0c026997e97243658b7dbc4875499a60865d520fbf2da166c79"
+    },
+    "ELB": {
+     "head": [
+      [
+       "Account",
+       "Region",
+       "Service",
+       "Type",
+       "Name",
+       "ID",
+       "ARN"
+      ]
+     ],
+     "rows": 2,
+     "sha256": "2895ee7f0c6b9a1b10628d80c377cd3256a77f5f6d81881c4ef38e47f8502026"
+    },
+    "ELBV2": {
+     "head": [
+      [
+       "Account",
+       "Region",
+       "Service",
+       "Type",
+       "Name",
+       "ID",
+       "ARN"
+      ]
+     ],
+     "rows": 3,
+     "sha256": "b16255a2375016998ebd5aab5cccd8c29e9faa9f6778d7258662815dba46fe3b"
+    },
+    "Summary": {
+     "head": [
+      [
+       "AWS Resource Inventory",
+       null,
+       null
+      ]
+     ],
+     "rows": 15,
+     "sha256": "8811af434b038d0e2117a6ac4bfdb3669ff1be09d26fe86790063aa94999ce3b"
+    },
+    "Tag Compliance": {
+     "head": [
+      [
+       "Account",
+       "Region",
+       "Service",
+       "Type",
+       "Resource",
+       "ARN",
+       "Status",
+       "Missing tags",
+       "Problems"
+      ]
+     ],
+     "rows": 38,
+     "sha256": "626e04e553da953bc76034152e21dd60c92d1b86ede2072db2a588492f1a16b2"
+    },
+    "VPC": {
+     "head": [
+      [
+       "Account",
+       "Region",
+       "Service",
+       "Type",
+       "Name",
+       "ID",
+       "ARN"
+      ]
+     ],
+     "rows": 20,
+     "sha256": "a196de99413d2469d332bbe291bd87d933ed61c8ec1da1443faeb5542ecd0a87"
+    }
+   },
+   "state/metadata.json": "present",
+   "state/state_STAMP.json": "present",
+   "tag_compliance_STAMP.json": {
+    "keys": [
+     "description",
+     "non_compliant_resources",
+     "policy",
+     "summary"
+    ],
+    "sha256": "6ff02119ae80de6d3afba3f328173d7393d1102509bdf32a743831ea745b1965"
+   }
+  }
+ },
+ "template": {
+  "console": [
+   "WARNING:   - No account specification method provided. Using default AWS credentials.",
+   "WARNING: No output formats specified. Defaulting to Excel format.",
+   "Wrote OUT/multi_account_bom_STAMP.xlsx"
+  ],
+  "exit_code": 0,
+  "files": {
+   "multi_account_bom_STAMP.xlsx": {
+    "EC2": {
+     "head": [
+      [
+       "Account",
+       "Region",
+       "Service",
+       "Type",
+       "Name",
+       "ID",
+       "ARN",
+       "Tag: CostCenter",
+       "Tag: Environment",
+       "Tag: Name",
+       "Tag: Owner",
+       "Tag: Project"
+      ]
+     ],
+     "rows": 7,
+     "sha256": "3cb2476f4670b0c026997e97243658b7dbc4875499a60865d520fbf2da166c79"
+    },
+    "ELB": {
+     "head": [
+      [
+       "Account",
+       "Region",
+       "Service",
+       "Type",
+       "Name",
+       "ID",
+       "ARN"
+      ]
+     ],
+     "rows": 2,
+     "sha256": "2895ee7f0c6b9a1b10628d80c377cd3256a77f5f6d81881c4ef38e47f8502026"
+    },
+    "ELBV2": {
+     "head": [
+      [
+       "Account",
+       "Region",
+       "Service",
+       "Type",
+       "Name",
+       "ID",
+       "ARN"
+      ]
+     ],
+     "rows": 3,
+     "sha256": "b16255a2375016998ebd5aab5cccd8c29e9faa9f6778d7258662815dba46fe3b"
+    },
+    "Summary": {
+     "head": [
+      [
+       "AWS Resource Inventory",
+       null,
+       null
+      ]
+     ],
+     "rows": 9,
+     "sha256": "f8b6784c18d87f38cd6f956a876fcad912f06ffe8c1c1ad319f03461892d77d4"
+    },
+    "VPC": {
+     "head": [
+      [
+       "Account",
+       "Region",
+       "Service",
+       "Type",
+       "Name",
+       "ID",
+       "ARN"
+      ]
+     ],
+     "rows": 20,
+     "sha256": "a196de99413d2469d332bbe291bd87d933ed61c8ec1da1443faeb5542ecd0a87"
+    }
+   },
+   "state/metadata.json": "present",
+   "state/state_STAMP.json": "present"
+  }
+ },
+ "word-and-excel": {
+  "console": [
+   "WARNING:   - No account specification method provided. Using default AWS credentials.",
+   "Word document saved: OUT/multi_account_bom_STAMP.docx",
+   "Data exported to OUT/multi_account_bom_STAMP.xlsx"
+  ],
+  "exit_code": 0,
+  "files": {
+   "multi_account_bom_STAMP.docx": {
+    "paragraphs": [
+     "AWS Resource Inventory - BOM Report",
+     "Generated on: TIME",
+     "Executive Summary",
+     "Total Resources: 32",
+     "Services Covered: 4",
+     "AWS Regions: 1",
+     "Service Summary",
+     "Detailed Resource Inventory",
+     "EC2 Resources (7)",
+     "ELB Resources (2)",
+     "ELBV2 Resources (3)",
+     "VPC Resources (20)",
+     "Report Information",
+     "This report was generated using InvenTag - AWS Resource Inventory Tool",
+     "For more information, visit: https://github.com/habhabhabs/inventag-aws"
+    ],
+    "tables": [
+     {
+      "head": [
+       [
+        "Service",
+        "Resource Count",
+        "Percentage"
+       ]
+      ],
+      "rows": 4,
+      "sha256": "4c789dd49dc9e54959cd457a3d960f0735fe1b66d695d905744896234877d5ac"
+     },
+     {
+      "head": [
+       [
+        "Name",
+        "Id",
+        "Type",
+        "Region",
+        "Tags",
+        "Service"
+       ]
+      ],
+      "rows": 7,
+      "sha256": "486ea7a54f0209e008a62827bcc9e5941833d3cf58729e182a28ee993ded1e2a"
+     },
+     {
+      "head": [
+       [
+        "Id",
+        "Type",
+        "Region",
+        "Tags",
+        "Service",
+        "Source Account Name"
+       ]
+      ],
+      "rows": 2,
+      "sha256": "211006a2c09c5dbf99caab874781eab7508fad6c29e2866da9791e92f7019497"
+     },
+     {
+      "head": [
+       [
+        "Id",
+        "Type",
+        "Region",
+        "Tags",
+        "Service",
+        "Source Account Name"
+       ]
+      ],
+      "rows": 3,
+      "sha256": "9227d178d03a49b8742e8f5b84b44c1380081da7c93b8314f9ae2c04956cc6cc"
+     },
+     {
+      "head": [
+       [
+        "Id",
+        "Type",
+        "Region",
+        "Tags",
+        "Service",
+        "Source Account Name"
+       ]
+      ],
+      "rows": 20,
+      "sha256": "a0177087c1a791154deb1bfb95e79bbf576edf5a5c47c781d06b00911ec74275"
+     }
+    ]
+   },
+   "multi_account_bom_STAMP.xlsx": {
+    "EC2": {
+     "head": [
+      [
+       "service",
+       "type",
+       "id",
+       "name",
+       "arn",
+       "account_id",
+       "source_account_id",
+       "source_account_name",
+       "region",
+       "discovery_timestamp",
+       "consolidation_timestamp",
+       "total_accounts_in_consolidation",
+       "billing_validated",
+       "detail_level",
+       "discovered_at",
+       "discovered_via",
+       "monthly_spend",
+       "priority",
+       "raw_data.AmiLaunchIndex",
+       "raw_data.Architecture",
+       "raw_data.Attachments",
+       "raw_data.AvailabilityZone",
+       "raw_data.BlockDeviceMappings",
+       "raw_data.ClientToken",
+       "raw_data.CreateTime",
+       "raw_data.EbsOptimized",
+       "raw_data.Encrypted",
+       "raw_data.Hypervisor",
+       "raw_data.ImageId",
+       "raw_data.InstanceId",
+       "raw_data.InstanceType",
+       "raw_data.KernelId",
+       "raw_data.LaunchTime",
+       "raw_data.MetadataOptions.HttpEndpoint",
+       "raw_data.MetadataOptions.HttpProtocolIpv6",
+       "raw_data.MetadataOptions.HttpPutResponseHopLimit",
+       "raw_data.MetadataOptions.HttpTokens",
+       "raw_data.MetadataOptions.State",
+       "raw_data.Monitoring.State",
+       "raw_data.NetworkInterfaces",
+       "raw_data.OwnerId",
+       "raw_data.Placement.AvailabilityZone",
+       "raw_data.Placement.GroupName",
+       "raw_data.Placement.Tenancy",
+       "raw_data.PrivateDnsName",
+       "raw_data.PrivateIpAddress",
+       "raw_data.ProductCodes",
+       "raw_data.Progress",
+       "raw_data.PublicDnsName",
+       "raw_data.PublicIpAddress",
+       "raw_data.RootDeviceName",
+       "raw_data.RootDeviceType",
+       "raw_data.SecurityGroups",
+       "raw_data.Size",
+       "raw_data.SnapshotId",
+       "raw_data.SourceDestCheck",
+       "raw_data.SriovNetSupport",
+       "raw_data.StartTime",
+       "raw_data.State",
+       "raw_data.State.Code",
+       "raw_data.State.Name",
+       "raw_data.StateReason.Code",
+       "raw_data.StateReason.Message",
+       "raw_data.StateTransitionReason",
+       "raw_data.StorageTier",
+       "raw_data.SubnetId",
+       "raw_data.VirtualizationType",
+       "raw_data.VolumeId",
+       "raw_data.VolumeSize",
+       "raw_data.VolumeType",
+       "raw_data.VpcId",
+       "resource_id",
+       "resource_name",
+       "resource_type",
+       "source",
+       "sources",
+       "raw_data.MetadataOptions.InstanceMetadataTags",
+       "raw_data.Tags",
+       "tagged",
+       "tags.CostCenter",
+       "tags.Environment",
+       "tags.Name",
+       "tags.Owner",
+       "tags.Project"
+      ]
+     ],
+     "rows": 7,
+     "sha256": "a7a6bf94695bfb7d3179143ae80d0dd5d153d0d68fa2c6fb26db6569d550f31e"
+    },
+    "ELB": {
+     "head": [
+      [
+       "service",
+       "type",
+       "id",
+       "arn",
+       "account_id",
+       "source_account_id",
+       "source_account_name",
+       "region",
+       "discovery_timestamp",
+       "consolidation_timestamp",
+       "total_accounts_in_consolidation",
+       "billing_validated",
+       "detail_level",
+       "discovered_at",
+       "discovered_via",
+       "monthly_spend",
+       "priority",
+       "raw_data.AvailabilityZones",
+       "raw_data.BackendServerDescriptions",
+       "raw_data.CanonicalHostedZoneName",
+       "raw_data.CreatedTime",
+       "raw_data.DNSName",
+       "raw_data.Instances",
+       "raw_data.ListenerDescriptions",
+       "raw_data.LoadBalancerName",
+       "raw_data.Policies.AppCookieStickinessPolicies",
+       "raw_data.Policies.LBCookieStickinessPolicies",
+       "raw_data.Policies.OtherPolicies",
+       "raw_data.Scheme",
+       "raw_data.SecurityGroups",
+       "raw_data.SourceSecurityGroup.GroupName",
+       "raw_data.SourceSecurityGroup.OwnerAlias",
+       "raw_data.Subnets",
+       "raw_data.VPCId",
+       "resource_id",
+       "resource_name",
+       "resource_type",
+       "source",
+       "sources",
+       "tagged"
+      ]
+     ],
+     "rows": 2,
+     "sha256": "c9f375a4711ed08642aef7e56336f61b3796b17c96858791c12b6f0ef8aaff0e"
+    },
+    "ELBV2": {
+     "head": [
+      [
+       "service",
+       "type",
+       "id",
+       "arn",
+       "account_id",
+       "source_account_id",
+       "source_account_name",
+       "region",
+       "discovery_timestamp",
+       "consolidation_timestamp",
+       "total_accounts_in_consolidation",
+       "billing_validated",
+       "detail_level",
+       "discovered_at",
+       "discovered_via",
+       "monthly_spend",
+       "priority",
+       "raw_data.AvailabilityZones",
+       "raw_data.CanonicalHostedZoneId",
+       "raw_data.CreatedTime",
+       "raw_data.DNSName",
+       "raw_data.HealthCheckEnabled",
+       "raw_data.HealthCheckIntervalSeconds",
+       "raw_data.HealthCheckPath",
+       "raw_data.HealthCheckPort",
+       "raw_data.HealthCheckProtocol",
+       "raw_data.HealthCheckTimeoutSeconds",
+       "raw_data.HealthyThresholdCount",
+       "raw_data.IpAddressType",
+       "raw_data.LoadBalancerArn",
+       "raw_data.LoadBalancerArns",
+       "raw_data.LoadBalancerName",
+       "raw_data.Matcher.HttpCode",
+       "raw_data.Port",
+       "raw_data.Protocol",
+       "raw_data.ProtocolVersion",
+       "raw_data.SecurityGroups",
+       "raw_data.State.Code",
+       "raw_data.TargetGroupArn",
+       "raw_data.TargetGroupName",
+       "raw_data.TargetType",
+       "raw_data.Type",
+       "raw_data.UnhealthyThresholdCount",
+       "raw_data.VpcId",
+       "resource_id",
+       "resource_name",
+       "resource_type",
+       "source",
+       "sources",
+       "tagged"
+      ]
+     ],
+     "rows": 3,
+     "sha256": "12e660e910ad9d3d5da652d31b14a42f00899738ebbc4e9637cd109d5effd4b9"
+    },
+    "Summary": {
+     "head": [
+      [
+       "Service",
+       "Resource Count",
+       "Percentage"
+      ]
+     ],
+     "rows": 5,
+     "sha256": "432a73a4f1adc622233491fc8d779ca73562c1339ab3845d2d3ccb648e8513ed"
+    },
+    "VPC": {
+     "head": [
+      [
+       "service",
+       "type",
+       "id",
+       "arn",
+       "account_id",
+       "source_account_id",
+       "source_account_name",
+       "region",
+       "discovery_timestamp",
+       "consolidation_timestamp",
+       "total_accounts_in_consolidation",
+       "billing_validated",
+       "detail_level",
+       "discovered_at",
+       "discovered_via",
+       "monthly_spend",
+       "priority",
+       "raw_data.AllocationId",
+       "raw_data.AssignIpv6AddressOnCreation",
+       "raw_data.AssociationId",
+       "raw_data.Associations",
+       "raw_data.AvailabilityZone",
+       "raw_data.AvailabilityZoneId",
+       "raw_data.AvailableIpAddressCount",
+       "raw_data.CidrBlock",
+       "raw_data.CidrBlockAssociationSet",
+       "raw_data.DefaultForAz",
+       "raw_data.Description",
+       "raw_data.DhcpOptionsId",
+       "raw_data.Domain",
+       "raw_data.Entries",
+       "raw_data.GroupId",
+       "raw_data.GroupName",
+       "raw_data.InstanceId",
+       "raw_data.InstanceTenancy",
+       "raw_data.IpPermissions",
+       "raw_data.IpPermissionsEgress",
+       "raw_data.Ipv6CidrBlockAssociationSet",
+       "raw_data.Ipv6Native",
+       "raw_data.IsDefault",
+       "raw_data.MapPublicIpOnLaunch",
+       "raw_data.NetworkAclId",
+       "raw_data.NetworkInterfaceId",
+       "raw_data.NetworkInterfaceOwnerId",
+       "raw_data.OwnerId",
+       "raw_data.PrivateDnsNameOptionsOnLaunch.EnableResourceNameDnsAAAARecord",
+       "raw_data.PrivateDnsNameOptionsOnLaunch.EnableResourceNameDnsARecord",
+       "raw_data.PrivateDnsNameOptionsOnLaunch.HostnameType",
+       "raw_data.PrivateIpAddress",
+       "raw_data.PublicIp",
+       "raw_data.RouteTableId",
+       "raw_data.Routes",
+       "raw_data.SecurityGroupArn",
+       "raw_data.State",
+       "raw_data.SubnetArn",
+       "raw_data.SubnetId",
+       "raw_data.VpcId",
+       "resource_id",
+       "resource_name",
+       "resource_type",
+       "source",
+       "sources",
+       "raw_data.Tags",
+       "tagged"
+      ]
+     ],
+     "rows": 20,
+     "sha256": "9d9d03144e3d9e709b4b04214e32921ce1fa554bbbd8d587f3924761bd737285"
+    }
+   },
+   "state/metadata.json": "present",
+   "state/state_STAMP.json": "present"
+  }
+ }
+}
