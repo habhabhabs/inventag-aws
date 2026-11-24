@@ -255,6 +255,18 @@ DENIED_OPERATIONS: FrozenSet[Tuple[str, str]] = frozenset(
         ("partnercentral-marketing", "GetCampaignAssetExportTask"),
         ("partnercentral-selling", "GetCustomerAccountBulkJobReportUrl"),
         ("partnercentral-selling", "GetOpportunityBulkJobReportUrl"),
+        # v1.5.0 (P9b): each call opens a session or mints a signed or embed URL.
+        ("glue", "GetDashboardUrl"),
+        ("gameliftstreams", "GetStreamUrl"),
+        ("gameliftstreams", "ListStreamUrls"),
+        ("quicksight", "GetDashboardEmbedUrl"),
+        ("quicksight", "GetSessionEmbedUrl"),
+        # v1.5.0 (P9b): customer content (recordings, stored memory, patient text).
+        ("polly", "GetVoice"),
+        ("opensearchmemory", "GetMemory"),
+        ("opensearchmemory", "SearchMemories"),
+        ("opensearchmemory", "SearchEvents"),
+        ("connecthealth", "GetMedicalCodingJob"),
         # v1.5.0 (A-75): botocore 1.35.0 only (the service is gone from newer
         # releases); both return credentials.
         ("finspace-data", "GetProgrammaticAccessCredentials"),

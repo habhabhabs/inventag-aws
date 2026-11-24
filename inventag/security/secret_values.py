@@ -151,6 +151,13 @@ SECRET_VALUE_KEYS = frozenset(
         # the guard) and eventbridgev2 event sources (AWS: never returned).
         "issuedtoken",
         "secretvalue",
+        # v1.5.0 (P9b): URLs that can carry a signature or a state value. Whole
+        # names only; the bare name ``Url`` is not masked (it would hide
+        # harmless fields such as queue URLs).
+        "importmanifesturl",
+        "s3objecturl",
+        "authorizationurl",
+        "oauthauthorizationurl",
     }
 )
 # Normalised names that END like this are secret too (DbPassword, api_key...).
