@@ -50,7 +50,7 @@ sidebar_position: 1
 - **它的文件是私有的。** 报告、快照和日志创建时只有你的用户可读。
 
   未针对 Windows 验证：文件只有你的用户可读。
-- **它的日志会隐藏机密。** 会话令牌、密钥、请求签名以及上面提到的被遮盖的值都会被隐藏，即使使用 `--debug` 也是如此。已知有一个例外：使用 `--debug` 时，AWS 以列表形式返回、且字段名会被遮盖的机密，可能出现在日志文件中。见[功能状态](../getting-started/status.md#security-notes)。
+- **它的日志会隐藏机密。** 会话令牌、密钥、请求签名以及上面提到的被遮盖的值都会被隐藏，即使使用 `--debug` 或 `-vv` 也是如此。已知有一个例外：使用 `--debug` 或 `-vv` 时，AWS 以列表形式返回、且字段名会被遮盖的机密，可能出现在日志文件中。见[功能状态](../getting-started/status.md#security-notes)。
 
 你可以用 `--audit-output audit.json` 检查一次运行做了什么，用 `--validate-operations`
 检查防护允许什么：

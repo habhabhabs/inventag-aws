@@ -333,7 +333,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 
 Sin `--verbose`, una ejecución imprime advertencias, errores y los archivos escritos. Con
 una plantilla, cada archivo se imprime como `Wrote <path>`, seguido de un resumen de una línea de la
-política de etiquetas cuando hay una activa. Sin plantilla, el informe predeterminado se imprime como `Data exported to <path>`. Con `--policy`, el resumen de las políticas se imprime siempre; la línea `Policy findings: <path>` se registra con nivel INFO y solo se muestra con `--verbose`.
+política de etiquetas cuando hay una activa. Sin plantilla, el informe predeterminado se imprime como `Data exported to <path>`. Con `--policy`, el resumen de las políticas se imprime siempre; la línea `Policy findings: <path>` se registra con nivel INFO y solo se muestra con `--verbose`. Sin ninguna opción, `inventag` imprime la página de ayuda y termina con el código 2.
 
 ## Códigos de salida {#exit-codes}
 

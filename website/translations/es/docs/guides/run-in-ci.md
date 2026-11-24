@@ -66,7 +66,7 @@ jobs:
           role-to-assume: arn:aws:iam::123456789012:role/InvenTagGitHubReadOnly
           aws-region: us-east-1
       - name: Run InvenTag
-        run: inventag --template nightly --fail-on-account-error --fail-if-empty
+        run: inventag -vv --template nightly --fail-on-account-error --fail-if-empty
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()          # keep the reports even when the tag check fails
         with:
@@ -235,7 +235,7 @@ inventory:
     - pip install "inventag-aws==%INVENTAG_VERSION%"   # pin a release
     - export AWS_WEB_IDENTITY_TOKEN_FILE="$(mktemp)"
     - printf '%s' "$GITLAB_OIDC_TOKEN" > "$AWS_WEB_IDENTITY_TOKEN_FILE"
-    - inventag --template nightly --fail-on-account-error --fail-if-empty
+    - inventag -vv --template nightly --fail-on-account-error --fail-if-empty
   artifacts:
     when: always                              # keep the reports even when the tag check fails
     paths:
@@ -339,8 +339,7 @@ Se escriben informes con los códigos 3, 4 y 5. Con el código 6, una ejecución
 
 ## Mantenlo seguro {#keep-it-safe}
 
-- Evita `--debug` en CI. Los secretos se enmascaran en los registros de
-  depuración, pero los registros son largos y aun así describen tus cuentas.
+- Para las ejecuciones de CI/CD, usa `-vv`. La salida de depuración contiene los cuerpos de las solicitudes y respuestas del SDK de AWS, y se conoce un fallo del enmascaramiento: puede aparecer un secreto que AWS devuelve como lista bajo el nombre de un campo enmascarado. Los registros de CI a menudo se conservan y se comparten, así que restringe quién puede leer el registro del trabajo.
 - Para conservar los informes en S3 en lugar de (o además de) como artefactos,
   añade `--s3-bucket` y concede `s3:PutObject` en ese bucket. Consulta
   [Subir informes a S3 de forma programada](../examples/scheduled-s3-upload.md).

@@ -68,6 +68,17 @@ the flag is unchanged; the changelog lists it under Added.
 - The Cost Explorer count line is a warning on every run that calls Cost
   Explorer, default runs included (it was a warning only with
   `--enable-cost-analysis`).
+- `inventag` with no option now prints the help page and exits with code 2.
+  It starts no scan and makes no AWS call. Before, it scanned with your
+  current credentials and wrote an Excel report. Add `--create-excel` to get
+  that run: `inventag --create-excel`.
+- `-vv` (or `--verbose` twice) now gives debug output, the same as `--debug`.
+  Before, `-vv` equalled `-v`. `-v`, `--verbose`, `-d` and `--debug` are
+  unchanged.
+- The meaning of exit code 2 now includes a run with no option.
+- The CI/CD guide and its example workflows now use `-vv` (debug output) for
+  CI/CD runs. Debug output holds the AWS SDK's request and response bodies,
+  and one masking gap is known; restrict who can read the job log.
 
 ### Removed
 

@@ -16,8 +16,18 @@ Cuando un error de AWS no se puede producir sin conexión, como un token caducad
 respuesta de error exacta de AWS y registramos cómo la notificó InvenTag.
 Esos bloques se marcan como «simulated AWS error response».
 
-Añade `--verbose` para ver cada paso, o `--debug` para ver cada llamada a AWS. Los registros de
+Añade `--verbose` para ver cada paso, o `--debug` (o `-vv`) para ver cada llamada a AWS. Los registros de
 depuración enmascaran los secretos, pero trátalos como información sensible.
+
+## No se inició ningún escaneo {#no-scan-started}
+
+### `inventag` solo imprime la página de ayuda {#inventag-alone-prints-the-help-page}
+
+```text title="Output"
+inventag: error: no option was given, so no scan was started. For the scan that a bare 'inventag' ran before v1.5.0, run: inventag --create-excel
+```
+
+Desde v1.5.0, `inventag` sin ninguna opción imprime la página de ayuda y termina con el código de salida 2. Añade una opción. Para el escaneo que `inventag` ejecutaba antes, ejecuta `inventag --create-excel`.
 
 ## Credenciales {#credentials}
 

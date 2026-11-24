@@ -195,7 +195,7 @@ org-inventory:
     - export AWS_WEB_IDENTITY_TOKEN_FILE="$(mktemp)"
     - printf '%s' "$GITLAB_OIDC_TOKEN" > "$AWS_WEB_IDENTITY_TOKEN_FILE"
     - |
-      inventag --accounts-file accounts.yaml --cross-account-role InvenTagReadOnly \
+      inventag -vv --accounts-file accounts.yaml --cross-account-role InvenTagReadOnly \
         --create-excel --resume --resume-max-age-hours 12 \
         --fail-on-account-error --fail-if-empty
   artifacts:

@@ -16,8 +16,18 @@ Lorsqu’une erreur AWS ne peut pas être produite hors ligne, comme un jeton ex
 simulé la réponse d’erreur exacte d’AWS et enregistré la façon dont InvenTag l’a signalée.
 Ces blocs sont marqués « simulated AWS error response ».
 
-Ajoutez `--verbose` pour voir chaque étape, ou `--debug` pour voir chaque appel AWS. Les journaux de débogage
+Ajoutez `--verbose` pour voir chaque étape, ou `--debug` (ou `-vv`) pour voir chaque appel AWS. Les journaux de débogage
 masquent les secrets, mais considérez-les comme sensibles.
+
+## Aucune analyse lancée {#no-scan-started}
+
+### `inventag` seul affiche la page d’aide {#inventag-alone-prints-the-help-page}
+
+```text title="Output"
+inventag: error: no option was given, so no scan was started. For the scan that a bare 'inventag' ran before v1.5.0, run: inventag --create-excel
+```
+
+Depuis v1.5.0, `inventag` sans aucune option affiche la page d’aide et se termine avec le code de sortie 2. Ajoutez une option. Pour l’analyse que `inventag` lançait avant, exécutez `inventag --create-excel`.
 
 ## Identifiants {#credentials}
 

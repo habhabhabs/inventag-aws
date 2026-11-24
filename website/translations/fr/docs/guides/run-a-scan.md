@@ -206,9 +206,12 @@ Les options que vous tapez l’emportent toujours sur le modèle.
 |---|---|
 | (aucune) | Les avertissements, les erreurs et l’endroit où les fichiers ont été écrits. Les erreurs d’autorisation AWS pour des appels isolés ne sont pas affichées. |
 | `--verbose` ou `-v` | Chaque étape de l’exécution |
+| `-vv` | Sortie de débogage, comme `--debug` |
 | `--log-file run.log` | Écrit aussi un journal détaillé dans un fichier |
-| `--debug` ou `-d` | Chaque requête AWS. Les secrets sont masqués, mais considérez le journal comme sensible. |
+| `--debug` ou `-d` | Chaque requête AWS. Les secrets sont masqués, mais considérez le journal comme sensible. Comme `-vv`. |
 | `--audit-output audit.json` | Une liste JSON de chaque opération AWS appelée par l’exécution |
+
+Pour les exécutions CI/CD, utilisez `-vv`. La sortie de débogage contient les corps des requêtes et des réponses du SDK AWS, et une lacune du masquage est connue : un secret qu’AWS renvoie sous forme de liste sous le nom d’un champ masqué peut apparaître. Les journaux de CI sont souvent conservés et partagés, donc limitez qui peut lire le journal du job.
 
 ## Valider les fichiers de configuration sans analyser {#validate-configuration-files-without-scanning}
 

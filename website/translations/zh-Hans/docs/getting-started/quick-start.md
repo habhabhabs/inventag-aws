@@ -36,7 +36,7 @@ InvenTag 扫描这组凭证所属的账户。
 inventag --create-excel --create-word --account-regions us-east-1
 ```
 
-- `--create-excel` 和 `--create-word` 用来选择要写出的文件。两者都不指定时，只生成 Excel。
+- `--create-excel` 和 `--create-word` 用来选择要写出的文件。两者都不指定时，只生成 Excel。完全不带选项的 `inventag` 会打印帮助页面并以退出码 2 结束。
 - `--account-regions` 把扫描限制在你列出的区域内，用逗号分隔。不指定时，
   InvenTag 会扫描账户中启用的所有区域，耗时更长。无论你列出哪些区域，
   IAM、S3 存储桶列表、CloudFront 和 Route 53 都只会从 `us-east-1` 读取一次。

@@ -14,7 +14,17 @@ sidebar_position: 8
 对于离线无法产生的 AWS 错误，例如令牌过期，我们模拟了确切的 AWS 错误响应，并记录了 InvenTag 如何报告它。
 这些代码块标注为“simulated AWS error response”。
 
-加上 `--verbose` 可以看到每一步，加上 `--debug` 可以看到每个 AWS 调用。调试日志会遮蔽密钥，但仍应把它当作敏感信息对待。
+加上 `--verbose` 可以看到每一步，加上 `--debug`（或 `-vv`）可以看到每个 AWS 调用。调试日志会遮蔽密钥，但仍应把它当作敏感信息对待。
+
+## 没有开始扫描 {#no-scan-started}
+
+### 单独的 `inventag` 只打印帮助页面 {#inventag-alone-prints-the-help-page}
+
+```text title="Output"
+inventag: error: no option was given, so no scan was started. For the scan that a bare 'inventag' ran before v1.5.0, run: inventag --create-excel
+```
+
+从 v1.5.0 起，不带任何选项的 `inventag` 会打印帮助页面并以退出码 2 结束。请加上一个选项。要运行 v1.5.0 之前 `inventag` 所运行的扫描，请运行 `inventag --create-excel`。
 
 ## 凭证 {#credentials}
 

@@ -193,9 +193,12 @@ inventag --template my-scan
 |---|---|
 | （无） | 警告、错误，以及文件写到了哪里。单个调用的 AWS 权限错误不会显示。 |
 | `--verbose` 或 `-v` | 运行的每一步 |
+| `-vv` | 调试输出，与 `--debug` 相同 |
 | `--log-file run.log` | 同时把详细日志写入文件 |
-| `--debug` 或 `-d` | 每一个 AWS 请求。机密会被遮蔽，但仍应把日志视为敏感信息。 |
+| `--debug` 或 `-d` | 每一个 AWS 请求。机密会被遮蔽，但仍应把日志视为敏感信息。与 `-vv` 相同。 |
 | `--audit-output audit.json` | 一份 JSON 列表，列出本次运行调用过的每个 AWS 操作 |
+
+在 CI/CD 运行中，请使用 `-vv`。调试输出包含 AWS SDK 的请求和响应正文，并且已知有一处遮蔽缺口：AWS 以列表形式返回、且字段名会被遮盖的机密可能会出现。CI 日志常被保留和共享，因此请限制谁可以读取作业日志。
 
 ## 不扫描，只验证配置文件 {#validate-configuration-files-without-scanning}
 

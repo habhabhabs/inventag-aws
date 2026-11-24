@@ -175,7 +175,7 @@ inventory-to-s3:
     # --s3-kms-key-id works only together with --s3-encryption aws:kms.
     # Without KMS, delete that line: uploads then use AES256.
     - |
-      inventag --template standard-bom --create-excel --account-regions us-east-1 \
+      inventag -vv --template standard-bom --create-excel --account-regions us-east-1 \
         --s3-bucket "$INVENTAG_REPORTS_BUCKET" --s3-key-prefix bom-reports/ \
         --s3-encryption aws:kms --s3-kms-key-id "$INVENTAG_KMS_KEY_ID" \
         --audit-output bom_output/audit.json \

@@ -179,7 +179,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   archivo de informe y termina con el código 0.
 - **Acceso denegado o limitado en Cost Explorer:** la ejecución continúa sin datos de
   facturación y muestra una advertencia que nombra la causa. El texto del error de AWS
-  solo se muestra con `--debug`.
+  solo se muestra con `--debug` o `-vv`.
 - **Con `--account-processing-timeout` por debajo de 1200 segundos,** cada llamada a
   Cost Explorer espera como máximo una cuadragésima parte del límite, y al menos 5 segundos,
   para conectar y para leer, con dos intentos. Si no responde a tiempo, la cuenta
@@ -305,7 +305,7 @@ standard); `AWS_RETRY_MODE` y `AWS_MAX_ATTEMPTS` cambian este ajuste.
 - **Los registros de depuración se ocultan** de forma predeterminada: los tokens
   de sesión, las claves, las firmas y los valores secretos indicados arriba se
   enmascaran. Aun así, trata los registros de depuración como confidenciales. Con
-  `--debug`, un secreto que AWS devuelve como lista bajo el nombre de un campo
+  `--debug` o `-vv`, un secreto que AWS devuelve como lista bajo el nombre de un campo
   enmascarado puede aparecer en el archivo de registro.
 - **La protección de solo lectura conoce las operaciones por su nombre.** Una
   operación que añade un SDK de AWS más nuevo se permite cuando su nombre empieza

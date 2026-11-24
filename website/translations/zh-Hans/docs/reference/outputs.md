@@ -287,7 +287,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ## 终端输出 {#terminal-output}
 
 不使用 `--verbose` 时，运行会打印警告、错误和已写出的文件。
-使用模板时，每个文件会打印为 `Wrote <path>`，如果启用了标签策略，随后还有一行标签策略摘要。不使用模板时，默认报告会打印为 `Data exported to <path>`。使用 `--policy` 时，总是会打印策略摘要；`Policy findings: <path>` 这一行以 INFO 级别记录，只在使用 `--verbose` 时显示。
+使用模板时，每个文件会打印为 `Wrote <path>`，如果启用了标签策略，随后还有一行标签策略摘要。不使用模板时，默认报告会打印为 `Data exported to <path>`。使用 `--policy` 时，总是会打印策略摘要；`Policy findings: <path>` 这一行以 INFO 级别记录，只在使用 `--verbose` 时显示。完全不带选项时，`inventag` 会打印帮助页面并以退出码 2 结束。
 
 ## 退出码 {#exit-codes}
 

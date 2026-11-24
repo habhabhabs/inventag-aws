@@ -44,6 +44,10 @@ Not verified against Windows or macOS: the `inventag` command works the same as 
 
 `templates`, `selftest`, `completion` and `policy` must be the first word after the program name.
 
+## Run without options
+
+`inventag` with no option prints the help page (the same text as `inventag --help`) and one error line, and exits with code 2. It starts no scan and makes no AWS call. Add `--create-excel`: `inventag --create-excel` runs the scan that `inventag` ran before v1.5.0.
+
 ## Templates
 
 | Flag | Default | Status | What it does |
@@ -215,10 +219,12 @@ report that lists no resources, and a run without it writes no file.
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--verbose`, `-v` | off | Works | Show each step. |
-| `--debug`, `-d` | off | Works | Show the AWS requests. Secrets are masked. |
-| `--log-file FILE` | none | Works | Also write a detailed log to this file. |
+| `--verbose`, `-v` | off | Works | Show each step (INFO). Give it twice (`-vv`) for debug output, the same as `--debug`. |
+| `--debug`, `-d` | off | Works | Show debug output and every AWS request, the same as `-vv`. Secrets are masked; treat the output as sensitive. |
+| `--log-file FILE` | none | Works | Also write the log to this file: the same lines as the terminal, with the function and line number. Add `-v` or `-vv` for more. |
 | `--disable-account-logging` | off | Works | Don't prefix log lines with the account. |
+
+For CI/CD runs, use `-vv`. Debug output holds the AWS SDK's request and response bodies, and one masking gap is known: a secret that AWS returns as a list under a masked field name can appear. CI logs are often kept and shared, so restrict who can read the job log.
 
 ## Credentials
 
@@ -325,7 +331,7 @@ See [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
 |---|---|
 | 0 | Success. Also 0 when some accounts failed but others worked, and when no resources were found, unless you pass `--fail-on-account-error` or `--fail-if-empty`. See [Feature status](../getting-started/status.md#when-a-run-goes-wrong). |
 | 1 | An error: invalid arguments, configuration or template, a number out of range (for example `--max-concurrent-accounts 0`), failed credentials, every account failed (could not be scanned or ran out of time), a failed S3 upload, or a report format that could not be written |
-| 2 | Invalid command line: unknown, badly formed or conflicting options, a `--concurrency` value outside 1 to 256, flags that are not implemented, bad Google options, a layout file flag without the report it needs, or a role name without `--accounts-file` |
+| 2 | Invalid command line: unknown, badly formed or conflicting options, a `--concurrency` value outside 1 to 256, flags that are not implemented, bad Google options, a layout file flag without the report it needs, or a role name without `--accounts-file`, or no option at all (a bare `inventag` prints the help page) |
 | 3 | Reports written, but a config template with `fail_on_tag_violations: true` found tag policy violations |
 | 4 | Reports written, but `--risk-threshold` found a security group rule at or above that level |
 | 5 | Reports written, but an account could not be scanned or ran out of time, and you passed `--fail-on-account-error` |

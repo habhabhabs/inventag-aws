@@ -179,7 +179,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   rapport et le code 0.
 - **Accès refusé ou limité à Cost Explorer :** l’exécution continue sans données de
   facturation et affiche un avertissement qui nomme la cause. Le texte de l’erreur AWS
-  ne s’affiche qu’avec `--debug`.
+  ne s’affiche qu’avec `--debug` ou `-vv`.
 - **Avec `--account-processing-timeout` inférieur à 1200 secondes,** chaque appel à
   Cost Explorer attend au plus un quarantième de la limite, et au moins 5 secondes,
   pour se connecter et pour lire, avec deux tentatives. S’il ne répond pas à temps, le compte est
@@ -304,7 +304,7 @@ standard) ; `AWS_RETRY_MODE` et `AWS_MAX_ATTEMPTS` modifient ce réglage.
   [Configurer un accès en lecture seule](../guides/read-only-access.md).
 - **Les journaux de débogage sont caviardés** par défaut : jetons de session,
   clés, signatures et les valeurs secrètes listées plus haut sont masqués. Traitez
-  quand même les journaux de débogage comme sensibles. Avec `--debug`, un secret
+  quand même les journaux de débogage comme sensibles. Avec `--debug` ou `-vv`, un secret
   qu’AWS renvoie sous forme de liste sous le nom d’un champ masqué peut apparaître
   dans le fichier journal.
 - **La protection en lecture seule connaît les opérations par leur nom.** Une

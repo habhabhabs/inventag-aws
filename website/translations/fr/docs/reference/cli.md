@@ -45,6 +45,10 @@ Non vérifié sur Windows ni sur macOS : la commande `inventag` fonctionne de la
 
 `templates`, `selftest`, `completion` et `policy` doivent être le premier mot après le nom du programme.
 
+## Exécuter sans option {#run-without-options}
+
+`inventag` sans aucune option affiche la page d’aide (le même texte que `inventag --help`) et une ligne d’erreur, et se termine avec le code de sortie 2. Il ne lance aucune analyse et ne fait aucun appel AWS. Ajoutez `--create-excel` : `inventag --create-excel` lance l’analyse que `inventag` lançait avant v1.5.0.
+
 ## Modèles {#templates}
 
 | Option | Par défaut | État | Ce qu’elle fait |
@@ -216,10 +220,12 @@ et une exécution sans elle n’écrit aucun fichier.
 
 | Option | Par défaut | État | Ce qu’elle fait |
 |---|---|---|---|
-| `--verbose`, `-v` | désactivé | Fonctionne | Affiche chaque étape. |
-| `--debug`, `-d` | désactivé | Fonctionne | Affiche les requêtes AWS. Les secrets sont masqués. |
-| `--log-file FILE` | aucun | Fonctionne | Écrit aussi un journal détaillé dans ce fichier. |
+| `--verbose`, `-v` | désactivé | Fonctionne | Affiche chaque étape (INFO). Donnez-la deux fois (`-vv`) pour la sortie de débogage, comme `--debug`. |
+| `--debug`, `-d` | désactivé | Fonctionne | Affiche la sortie de débogage et chaque requête AWS, comme `-vv`. Les secrets sont masqués ; considérez la sortie comme sensible. |
+| `--log-file FILE` | aucun | Fonctionne | Écrit aussi le journal dans ce fichier : les mêmes lignes que le terminal, avec la fonction et le numéro de ligne. Ajoutez `-v` ou `-vv` pour en voir plus. |
 | `--disable-account-logging` | désactivé | Fonctionne | Ne préfixe pas les lignes du journal avec le compte. |
+
+Pour les exécutions CI/CD, utilisez `-vv`. La sortie de débogage contient les corps des requêtes et des réponses du SDK AWS, et une lacune du masquage est connue : un secret qu’AWS renvoie sous forme de liste sous le nom d’un champ masqué peut apparaître. Les journaux de CI sont souvent conservés et partagés, donc limitez qui peut lire le journal du job.
 
 ## Identifiants {#credentials}
 
@@ -318,7 +324,7 @@ Voir [Téléverser des rapports vers S3 selon un calendrier](../examples/schedul
 |---|---|
 | 0 | Succès. Vaut aussi 0 lorsque certains comptes ont échoué mais que d’autres ont fonctionné, et lorsqu’aucune ressource n’a été trouvée, sauf si vous passez `--fail-on-account-error` ou `--fail-if-empty`. Voir [État des fonctionnalités](../getting-started/status.md#when-a-run-goes-wrong). |
 | 1 | Une erreur : arguments, configuration ou modèle non valides, un nombre hors limites (par exemple `--max-concurrent-accounts 0`), échec des identifiants, échec de tous les comptes (impossible à analyser ou temps imparti dépassé), échec d’un téléversement S3, ou format de rapport impossible à écrire |
-| 2 | Ligne de commande non valide : options inconnues, mal formées ou incompatibles, valeur de `--concurrency` hors de 1 à 256, options non implémentées, options Google incorrectes, option de fichier de mise en page sans le rapport dont elle a besoin, ou nom de rôle sans `--accounts-file` |
+| 2 | Ligne de commande non valide : options inconnues, mal formées ou incompatibles, valeur de `--concurrency` hors de 1 à 256, options non implémentées, options Google incorrectes, option de fichier de mise en page sans le rapport dont elle a besoin, ou nom de rôle sans `--accounts-file`, ou aucune option (un `inventag` sans option affiche la page d’aide) |
 | 3 | Rapports écrits, mais un modèle de configuration avec `fail_on_tag_violations: true` a trouvé des violations de la politique d’étiquetage |
 | 4 | Rapports écrits, mais `--risk-threshold` a trouvé une règle de groupe de sécurité égale ou supérieure à ce niveau |
 | 5 | Rapports écrits, mais un compte n’a pas pu être analysé ou a dépassé le temps imparti, et vous avez passé `--fail-on-account-error` |

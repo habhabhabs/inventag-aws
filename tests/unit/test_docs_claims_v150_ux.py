@@ -172,7 +172,8 @@ def test_the_example_workflows_use_vv(rel, lang):
 
 def test_the_changelog_has_the_three_changed_lines_and_the_ci_line():
     text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    unreleased = text[text.index("## [Unreleased]") : text.index("\n## [", 20)]
+    start = text.index("## [Unreleased]")
+    unreleased = text[start : text.index("\n## [", start + 1)]
     changed = unreleased[unreleased.index("### Changed") :]
     flat_changed = " ".join(changed.split())
     for line in (

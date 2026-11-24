@@ -64,7 +64,7 @@ jobs:
           role-to-assume: arn:aws:iam::123456789012:role/InvenTagGitHubReadOnly
           aws-region: us-east-1
       - name: Run InvenTag
-        run: inventag --template nightly --fail-on-account-error --fail-if-empty
+        run: inventag -vv --template nightly --fail-on-account-error --fail-if-empty
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()          # keep the reports even when the tag check fails
         with:
@@ -235,7 +235,7 @@ inventory:
     - pip install "inventag-aws==%INVENTAG_VERSION%"   # pin a release
     - export AWS_WEB_IDENTITY_TOKEN_FILE="$(mktemp)"
     - printf '%s' "$GITLAB_OIDC_TOKEN" > "$AWS_WEB_IDENTITY_TOKEN_FILE"
-    - inventag --template nightly --fail-on-account-error --fail-if-empty
+    - inventag -vv --template nightly --fail-on-account-error --fail-if-empty
   artifacts:
     when: always                              # keep the reports even when the tag check fails
     paths:
@@ -344,8 +344,7 @@ a report that lists no resources, and a run without it writes no file.
 
 ## Keep it safe
 
-- Avoid `--debug` in CI. Secrets are masked in debug logs, but the logs are
-  long and still describe your accounts.
+- For CI/CD runs, use `-vv`. Debug output holds the AWS SDK's request and response bodies, and one masking gap is known: a secret that AWS returns as a list under a masked field name can appear. CI logs are often kept and shared, so restrict who can read the job log.
 - To keep reports in S3 instead of (or as well as) artifacts, add
   `--s3-bucket` and grant `s3:PutObject` on that bucket. See
   [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).

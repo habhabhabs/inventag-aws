@@ -264,9 +264,12 @@ Flags you type still win over the template.
 |---|---|
 | (none) | Warnings, errors and where the files were written. AWS permission errors for single calls are not shown. |
 | `--verbose` or `-v` | Each step of the run |
+| `-vv` | Debug output, the same as `--debug` |
 | `--log-file run.log` | Writes a detailed log to a file as well |
-| `--debug` or `-d` | Every AWS request. Secrets are masked, but treat the log as sensitive. |
+| `--debug` or `-d` | Every AWS request. Secrets are masked, but treat the log as sensitive. The same as `-vv`. |
 | `--audit-output audit.json` | A JSON list of every AWS operation the run called |
+
+For CI/CD runs, use `-vv`. Debug output holds the AWS SDK's request and response bodies, and one masking gap is known: a secret that AWS returns as a list under a masked field name can appear. CI logs are often kept and shared, so restrict who can read the job log.
 
 ## Validate configuration files without scanning
 

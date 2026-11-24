@@ -45,6 +45,10 @@ No verificado contra Windows ni macOS: el comando `inventag` funciona igual que 
 
 `templates`, `selftest`, `completion` y `policy` deben ser la primera palabra después del nombre del programa.
 
+## Ejecutar sin opciones {#run-without-options}
+
+`inventag` sin ninguna opción imprime la página de ayuda (el mismo texto que `inventag --help`) y una línea de error, y termina con el código de salida 2. No inicia ningún escaneo ni hace ninguna llamada a AWS. Añade `--create-excel`: `inventag --create-excel` ejecuta el escaneo que `inventag` ejecutaba antes de v1.5.0.
+
 ## Plantillas {#templates}
 
 | Opción | Predeterminado | Estado | Qué hace |
@@ -216,10 +220,12 @@ ejecución sin ella no escribe ningún archivo.
 
 | Opción | Predeterminado | Estado | Qué hace |
 |---|---|---|---|
-| `--verbose`, `-v` | desactivado | Funciona | Muestra cada paso. |
-| `--debug`, `-d` | desactivado | Funciona | Muestra las solicitudes a AWS. Los secretos se enmascaran. |
-| `--log-file FILE` | ninguno | Funciona | Escribe además un registro detallado en este archivo. |
+| `--verbose`, `-v` | desactivado | Funciona | Muestra cada paso (INFO). Dalo dos veces (`-vv`) para la salida de depuración, igual que `--debug`. |
+| `--debug`, `-d` | desactivado | Funciona | Muestra la salida de depuración y cada solicitud a AWS, igual que `-vv`. Los secretos se enmascaran; trata la salida como sensible. |
+| `--log-file FILE` | ninguno | Funciona | Escribe además el registro en este archivo: las mismas líneas que el terminal, con la función y el número de línea. Añade `-v` o `-vv` para ver más. |
 | `--disable-account-logging` | desactivado | Funciona | No antepone la cuenta a las líneas del registro. |
+
+Para las ejecuciones de CI/CD, usa `-vv`. La salida de depuración contiene los cuerpos de las solicitudes y respuestas del SDK de AWS, y se conoce un fallo del enmascaramiento: puede aparecer un secreto que AWS devuelve como lista bajo el nombre de un campo enmascarado. Los registros de CI a menudo se conservan y se comparten, así que restringe quién puede leer el registro del trabajo.
 
 ## Credenciales {#credentials}
 
@@ -318,7 +324,7 @@ Consulta [Subir informes a S3 de forma programada](../examples/scheduled-s3-uplo
 |---|---|
 | 0 | Correcto. También es 0 cuando algunas cuentas fallaron pero otras funcionaron, y cuando no se encontraron recursos, salvo que pases `--fail-on-account-error` o `--fail-if-empty`. Consulta [Estado de las funciones](../getting-started/status.md#when-a-run-goes-wrong). |
 | 1 | Un error: argumentos, configuración o plantilla no válidos, un número fuera de rango (por ejemplo `--max-concurrent-accounts 0`), credenciales fallidas, todas las cuentas fallaron (no se pudieron analizar o se quedaron sin tiempo), una carga a S3 fallida o un formato de informe que no se pudo escribir |
-| 2 | Línea de comandos no válida: opciones desconocidas, mal formadas o incompatibles entre sí, un valor de `--concurrency` fuera de 1 a 256, opciones no implementadas, opciones de Google incorrectas, una opción de archivo de diseño sin el informe que necesita o un nombre de rol sin `--accounts-file` |
+| 2 | Línea de comandos no válida: opciones desconocidas, mal formadas o incompatibles entre sí, un valor de `--concurrency` fuera de 1 a 256, opciones no implementadas, opciones de Google incorrectas, una opción de archivo de diseño sin el informe que necesita o un nombre de rol sin `--accounts-file`, o ninguna opción (un `inventag` sin opciones imprime la página de ayuda) |
 | 3 | Informes escritos, pero una plantilla de configuración con `fail_on_tag_violations: true` encontró infracciones de la política de etiquetas |
 | 4 | Informes escritos, pero `--risk-threshold` encontró una regla de un grupo de seguridad en ese nivel o por encima |
 | 5 | Informes escritos, pero una cuenta no se pudo analizar o se quedó sin tiempo, y pasaste `--fail-on-account-error` |

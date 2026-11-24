@@ -75,8 +75,8 @@ maintainer for a private channel.
 
   Not verified against Windows: files readable by your user only.
 - **Its logs hide secrets.** Session tokens, keys, request signatures and the
-  masked values above are hidden, even with `--debug`. One exception is known:
-  with `--debug`, a secret that AWS returns as a list under a masked field name
+  masked values above are hidden, even with `--debug` or `-vv`. One exception is known:
+  with `--debug` or `-vv`, a secret that AWS returns as a list under a masked field name
   can appear in the log file. See
   [Feature status](../getting-started/status.md#security-notes).
 

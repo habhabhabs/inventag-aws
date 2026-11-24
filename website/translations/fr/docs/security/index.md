@@ -77,8 +77,8 @@ mainteneur un canal privé.
 
   Non vérifié sur Windows : fichiers lisibles uniquement par votre utilisateur.
 - **Ses journaux masquent les secrets.** Les jetons de session, les clés, les signatures de requête et les
-  valeurs masquées ci-dessus sont cachés, même avec `--debug`. Une exception est
-  connue : avec `--debug`, un secret qu’AWS renvoie sous forme de liste sous le nom
+  valeurs masquées ci-dessus sont cachés, même avec `--debug` ou `-vv`. Une exception est
+  connue : avec `--debug` ou `-vv`, un secret qu’AWS renvoie sous forme de liste sous le nom
   d’un champ masqué peut apparaître dans le fichier journal. Voir
   [État des fonctionnalités](../getting-started/status.md#security-notes).
 

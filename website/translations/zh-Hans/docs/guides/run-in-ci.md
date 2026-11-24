@@ -61,7 +61,7 @@ jobs:
           role-to-assume: arn:aws:iam::123456789012:role/InvenTagGitHubReadOnly
           aws-region: us-east-1
       - name: Run InvenTag
-        run: inventag --template nightly --fail-on-account-error --fail-if-empty
+        run: inventag -vv --template nightly --fail-on-account-error --fail-if-empty
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()          # keep the reports even when the tag check fails
         with:
@@ -229,7 +229,7 @@ inventory:
     - pip install "inventag-aws==%INVENTAG_VERSION%"   # pin a release
     - export AWS_WEB_IDENTITY_TOKEN_FILE="$(mktemp)"
     - printf '%s' "$GITLAB_OIDC_TOKEN" > "$AWS_WEB_IDENTITY_TOKEN_FILE"
-    - inventag --template nightly --fail-on-account-error --fail-if-empty
+    - inventag -vv --template nightly --fail-on-account-error --fail-if-empty
   artifacts:
     when: always                              # keep the reports even when the tag check fails
     paths:
@@ -331,7 +331,7 @@ echo $?
 
 ## 保持安全 {#keep-it-safe}
 
-- 在 CI 中避免使用 `--debug`。调试日志中的机密会被遮蔽，但日志很长，仍然会描述你的账户。
+- 在 CI/CD 运行中，请使用 `-vv`。调试输出包含 AWS SDK 的请求和响应正文，并且已知有一处遮蔽缺口：AWS 以列表形式返回、且字段名会被遮盖的机密可能会出现。CI 日志常被保留和共享，因此请限制谁可以读取作业日志。
 - 如果想把报告保存在 S3 中（代替构件，或与构件并用），请添加 `--s3-bucket`，
   并授予对该存储桶的 `s3:PutObject` 权限。参见
   [定时把报告上传到 S3](../examples/scheduled-s3-upload.md)。

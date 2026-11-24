@@ -40,7 +40,7 @@ inventag --create-excel --create-word --account-regions us-east-1
 ```
 
 - `--create-excel` and `--create-word` choose the files to write. Without
-  either, you get Excel only.
+  either, you get Excel only. `inventag` with no option at all prints the help page and exits with code 2.
 - `--account-regions` limits the scan to the regions you list, separated by
   commas. Without it, InvenTag scans every region enabled in the account,
   which takes longer. IAM, the S3 bucket list, CloudFront and Route 53 are

@@ -211,9 +211,12 @@ Las opciones que escribes siguen teniendo prioridad sobre la plantilla.
 |---|---|
 | (ninguna) | Advertencias, errores y dónde se escribieron los archivos. No se muestran los errores de permisos de AWS en llamadas individuales. |
 | `--verbose` o `-v` | Cada paso de la ejecución |
+| `-vv` | Salida de depuración, igual que `--debug` |
 | `--log-file run.log` | Escribe además un registro detallado en un archivo |
-| `--debug` o `-d` | Cada solicitud a AWS. Los secretos se enmascaran, pero trata el registro como sensible. |
+| `--debug` o `-d` | Cada solicitud a AWS. Los secretos se enmascaran, pero trata el registro como sensible. Igual que `-vv`. |
 | `--audit-output audit.json` | Una lista JSON de cada operación de AWS que llamó la ejecución |
+
+Para las ejecuciones de CI/CD, usa `-vv`. La salida de depuración contiene los cuerpos de las solicitudes y respuestas del SDK de AWS, y se conoce un fallo del enmascaramiento: puede aparecer un secreto que AWS devuelve como lista bajo el nombre de un campo enmascarado. Los registros de CI a menudo se conservan y se comparten, así que restringe quién puede leer el registro del trabajo.
 
 ## Valida los archivos de configuración sin analizar {#validate-configuration-files-without-scanning}
 

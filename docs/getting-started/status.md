@@ -172,7 +172,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
   file and exit code 0.
 - **Cost Explorer access denied or throttled:** the run carries on without
   billing data and prints one warning that names the cause. The AWS error
-  text shows only with `--debug`.
+  text shows only with `--debug` or `-vv`.
 - **With `--account-processing-timeout` under 1200 seconds,** each Cost Explorer
   call waits at most a fortieth of the limit, and at least 5 seconds, to
   connect and to read, with two attempts. If it does not answer in time, the
@@ -291,7 +291,7 @@ InvenTag retries a throttled call up to 10 times (standard retry mode);
   safety net. See [Set up read-only access](../guides/read-only-access.md).
 - **Debug logs are redacted** by default: session tokens, keys, signatures and
   the secret values listed above are masked. Still treat debug logs as
-  sensitive. With `--debug`, a secret that AWS returns as a list under a masked
+  sensitive. With `--debug` or `-vv`, a secret that AWS returns as a list under a masked
   field name can appear in the log file.
 - **The read-only guard knows operations by name.** An operation that a newer
   AWS SDK adds is allowed when its name starts like a read, until an InvenTag

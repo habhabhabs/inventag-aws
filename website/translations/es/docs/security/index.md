@@ -77,7 +77,7 @@ persona mantenedora un canal privado.
   No verificado contra Windows: archivos legibles solo por tu usuario.
 - **Sus registros ocultan los secretos.** Los tokens de sesión, las claves, las
   firmas de solicitud y los valores ocultos indicados arriba se enmascaran,
-  incluso con `--debug`. Se conoce una excepción: con `--debug`, un secreto que AWS
+  incluso con `--debug` o `-vv`. Se conoce una excepción: con `--debug` o `-vv`, un secreto que AWS
   devuelve como lista bajo el nombre de un campo enmascarado puede aparecer en el
   archivo de registro. Consulta
   [Estado de las funciones](../getting-started/status.md#security-notes).

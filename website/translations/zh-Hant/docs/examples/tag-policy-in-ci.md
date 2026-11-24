@@ -124,7 +124,7 @@ tag-policy:
     - printf '%s' "$GITLAB_OIDC_TOKEN" > "$AWS_WEB_IDENTITY_TOKEN_FILE"
     # Exit code 3 (tag policy violations) fails this job.
     # Exit code 5 (an account could not be scanned) and 6 (no resources found) fail it too.
-    - inventag --template ci-pipeline --fail-on-account-error --fail-if-empty
+    - inventag -vv --template ci-pipeline --fail-on-account-error --fail-if-empty
   artifacts:
     when: always                              # keep the reports when the job fails
     paths:
@@ -148,7 +148,7 @@ security-groups:
     - pip install "inventag-aws==%INVENTAG_VERSION%"
     - export AWS_WEB_IDENTITY_TOKEN_FILE="$(mktemp)"
     - printf '%s' "$GITLAB_OIDC_TOKEN" > "$AWS_WEB_IDENTITY_TOKEN_FILE"
-    - inventag --create-excel --enable-security-analysis --risk-threshold HIGH --fail-on-account-error --fail-if-empty
+    - inventag -vv --create-excel --enable-security-analysis --risk-threshold HIGH --fail-on-account-error --fail-if-empty
   artifacts:
     when: always
     paths:

@@ -287,7 +287,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ## 終端輸出 {#terminal-output}
 
 不使用 `--verbose` 時，執行會列印警告、錯誤和已寫出的檔案。
-使用範本時，每個檔案會列印為 `Wrote <path>`，如果啟用了標籤策略，隨後還有一行標籤策略摘要。不使用範本時，預設報告會列印為 `Data exported to <path>`。使用 `--policy` 時，一律會列印策略摘要；`Policy findings: <path>` 這一行以 INFO 層級記錄，只在使用 `--verbose` 時顯示。
+使用範本時，每個檔案會列印為 `Wrote <path>`，如果啟用了標籤策略，隨後還有一行標籤策略摘要。不使用範本時，預設報告會列印為 `Data exported to <path>`。使用 `--policy` 時，一律會列印策略摘要；`Policy findings: <path>` 這一行以 INFO 層級記錄，只在使用 `--verbose` 時顯示。完全不帶選項時，`inventag` 會列印說明頁面並以結束代碼 2 結束。
 
 ## 結束代碼 {#exit-codes}
 

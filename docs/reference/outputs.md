@@ -407,7 +407,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 
 Without `--verbose`, a run prints warnings, errors and the files written. With
 a template, each file is printed as `Wrote <path>`, followed by a one-line tag
-policy summary when a policy is active. Without a template, the default report is printed as `Data exported to <path>`. With `--policy`, the policy summary is always printed; the line `Policy findings: <path>` is logged at INFO level and shows only with `--verbose`.
+policy summary when a policy is active. Without a template, the default report is printed as `Data exported to <path>`. With `--policy`, the policy summary is always printed; the line `Policy findings: <path>` is logged at INFO level and shows only with `--verbose`. With no option at all, `inventag` prints the help page and exits with code 2.
 
 ## Exit codes
 

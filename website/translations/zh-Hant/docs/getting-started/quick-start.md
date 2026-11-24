@@ -36,7 +36,7 @@ InvenTag 掃描這組憑證所屬的帳戶。
 inventag --create-excel --create-word --account-regions us-east-1
 ```
 
-- `--create-excel` 和 `--create-word` 用來選擇要寫出的檔案。兩者都不指定時，只生成 Excel。
+- `--create-excel` 和 `--create-word` 用來選擇要寫出的檔案。兩者都不指定時，只生成 Excel。完全不帶選項的 `inventag` 會列印說明頁面並以結束代碼 2 結束。
 - `--account-regions` 把掃描限制在你列出的區域內，用逗號分隔。不指定時，
   InvenTag 會掃描帳戶中啟用的所有區域，耗時更長。無論你列出哪些區域，
   IAM、S3 儲存貯體列表、CloudFront 和 Route 53 都只會從 `us-east-1` 讀取一次。

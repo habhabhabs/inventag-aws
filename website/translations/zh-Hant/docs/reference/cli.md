@@ -39,6 +39,10 @@ inventag policy lock [PATH] [--check]
 
 `templates`、`selftest`、`completion` 和 `policy` 必須是程式名之後的第一個詞。
 
+## 不帶選項執行 {#run-without-options}
+
+不帶任何選項的 `inventag` 會列印說明頁面（與 `inventag --help` 相同的文字）和一行錯誤訊息，並以結束代碼 2 結束。它不會開始掃描，也不會發出任何 AWS 呼叫。請加上 `--create-excel`：`inventag --create-excel` 會執行 v1.5.0 之前 `inventag` 所執行的掃描。
+
 ## 範本 {#templates}
 
 | 引數 | 預設值 | 狀態 | 功能 |
@@ -207,10 +211,12 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 
 | 引數 | 預設值 | 狀態 | 功能 |
 |---|---|---|---|
-| `--verbose`, `-v` | 關 | 可用 | 顯示每一步。 |
-| `--debug`, `-d` | 關 | 可用 | 顯示 AWS 請求。金鑰會被遮蔽。 |
-| `--log-file FILE` | 無 | 可用 | 同時把詳細日誌寫入該檔案。 |
+| `--verbose`, `-v` | 關 | 可用 | 顯示每一步（INFO）。給兩次（`-vv`）可得到除錯輸出，與 `--debug` 相同。 |
+| `--debug`, `-d` | 關 | 可用 | 顯示除錯輸出和每一個 AWS 請求，與 `-vv` 相同。金鑰會被遮蔽；仍應把輸出視為敏感資訊。 |
+| `--log-file FILE` | 無 | 可用 | 同時把日誌寫入該檔案：與終端機相同的行，另帶函式名稱和行號。加上 `-v` 或 `-vv` 可看到更多。 |
 | `--disable-account-logging` | 關 | 可用 | 不在日誌行前加帳戶字首。 |
+
+在 CI/CD 執行中，請使用 `-vv`。除錯輸出包含 AWS SDK 的請求和回應本文，並且已知有一處遮蔽缺口：AWS 以列表形式返回、且欄位名會被遮蓋的機密可能會出現。CI 日誌常被保留和共享，因此請限制誰可以讀取作業日誌。
 
 ## 憑證 {#credentials}
 
@@ -308,7 +314,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 |---|---|
 | 0 | 成功。部分帳戶失敗但其他帳戶正常，以及沒有找到任何資源時，也是 0，除非你傳入 `--fail-on-account-error` 或 `--fail-if-empty`。見[功能狀態](../getting-started/status.md#when-a-run-goes-wrong)。 |
 | 1 | 出錯：引數、設定或範本無效，數值超出範圍（例如 `--max-concurrent-accounts 0`），憑證失敗，所有帳戶都失敗（無法掃描或超出時限），S3 上傳失敗，或某種報告格式無法寫出 |
-| 2 | 命令列無效：未知、格式錯誤或相互衝突的選項，超出 1 到 256 的 `--concurrency` 值，尚未實現的引數，Google 選項有誤，版面配置檔案引數缺少它所需的報告，或給了角色名稱但沒有 `--accounts-file` |
+| 2 | 命令列無效：未知、格式錯誤或相互衝突的選項，超出 1 到 256 的 `--concurrency` 值，尚未實現的引數，Google 選項有誤，版面配置檔案引數缺少它所需的報告，或給了角色名稱但沒有 `--accounts-file`，或完全沒有選項（單獨的 `inventag` 會列印說明頁面） |
 | 3 | 報告已寫出，但帶有 `fail_on_tag_violations: true` 的設定範本發現了標籤策略違規 |
 | 4 | 報告已寫出，但 `--risk-threshold` 發現有安全組規則達到或超過該級別 |
 | 5 | 報告已寫出，但有帳戶無法掃描或超出時限，並且你傳入了 `--fail-on-account-error` |

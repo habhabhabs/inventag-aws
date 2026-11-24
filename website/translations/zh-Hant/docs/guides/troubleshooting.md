@@ -14,7 +14,17 @@ sidebar_position: 8
 對於離線無法產生的 AWS 錯誤，例如權杖過期，我們模擬了確切的 AWS 錯誤回應，並記錄了 InvenTag 如何報告它。
 這些程式碼塊標註為「simulated AWS error response」。
 
-加上 `--verbose` 可以看到每一步，加上 `--debug` 可以看到每個 AWS 呼叫。除錯日誌會遮蔽金鑰，但仍應把它當作敏感資訊對待。
+加上 `--verbose` 可以看到每一步，加上 `--debug`（或 `-vv`）可以看到每個 AWS 呼叫。除錯日誌會遮蔽金鑰，但仍應把它當作敏感資訊對待。
+
+## 沒有開始掃描 {#no-scan-started}
+
+### 單獨的 `inventag` 只列印說明頁面 {#inventag-alone-prints-the-help-page}
+
+```text title="Output"
+inventag: error: no option was given, so no scan was started. For the scan that a bare 'inventag' ran before v1.5.0, run: inventag --create-excel
+```
+
+從 v1.5.0 起，不帶任何選項的 `inventag` 會列印說明頁面並以結束代碼 2 結束。請加上一個選項。要執行 v1.5.0 之前 `inventag` 所執行的掃描，請執行 `inventag --create-excel`。
 
 ## 憑證 {#credentials}
 

@@ -64,7 +64,7 @@ jobs:
           role-to-assume: arn:aws:iam::123456789012:role/InvenTagGitHubReadOnly
           aws-region: us-east-1
       - name: Run InvenTag
-        run: inventag --template nightly --fail-on-account-error --fail-if-empty
+        run: inventag -vv --template nightly --fail-on-account-error --fail-if-empty
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()          # keep the reports even when the tag check fails
         with:
@@ -233,7 +233,7 @@ inventory:
     - pip install "inventag-aws==%INVENTAG_VERSION%"   # pin a release
     - export AWS_WEB_IDENTITY_TOKEN_FILE="$(mktemp)"
     - printf '%s' "$GITLAB_OIDC_TOKEN" > "$AWS_WEB_IDENTITY_TOKEN_FILE"
-    - inventag --template nightly --fail-on-account-error --fail-if-empty
+    - inventag -vv --template nightly --fail-on-account-error --fail-if-empty
   artifacts:
     when: always                              # keep the reports even when the tag check fails
     paths:
@@ -336,8 +336,7 @@ Des rapports sont écrits pour les codes 3, 4 et 5. Avec le code 6, une exécuti
 
 ## Rester prudent {#keep-it-safe}
 
-- Évitez `--debug` en CI. Les secrets sont masqués dans les journaux de débogage, mais ces journaux sont
-  longs et décrivent tout de même vos comptes.
+- Pour les exécutions CI/CD, utilisez `-vv`. La sortie de débogage contient les corps des requêtes et des réponses du SDK AWS, et une lacune du masquage est connue : un secret qu’AWS renvoie sous forme de liste sous le nom d’un champ masqué peut apparaître. Les journaux de CI sont souvent conservés et partagés, donc limitez qui peut lire le journal du job.
 - Pour conserver les rapports dans S3 plutôt que (ou en plus) des artefacts, ajoutez
   `--s3-bucket` et accordez `s3:PutObject` sur ce bucket. Voir
   [Téléverser les rapports vers S3 selon un calendrier](../examples/scheduled-s3-upload.md).

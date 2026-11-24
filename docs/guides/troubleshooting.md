@@ -16,8 +16,18 @@ Where an AWS error can't be produced offline, such as an expired token, we
 simulated the exact AWS error response and recorded how InvenTag reported it.
 Those blocks are marked "simulated AWS error response".
 
-Add `--verbose` to see each step, or `--debug` to see every AWS call. Debug
+Add `--verbose` to see each step, or `--debug` (or `-vv`) to see every AWS call. Debug
 logs mask secrets, but treat them as sensitive.
+
+## No scan started
+
+### `inventag` alone prints the help page
+
+```text title="Output"
+inventag: error: no option was given, so no scan was started. For the scan that a bare 'inventag' ran before v1.5.0, run: inventag --create-excel
+```
+
+Since v1.5.0, `inventag` with no option prints the help page and exits with code 2. Add an option. For the scan that `inventag` ran before, run `inventag --create-excel`.
 
 ## Credentials
 

@@ -333,7 +333,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 
 Sans `--verbose`, une exécution affiche les avertissements, les erreurs et les fichiers écrits. Avec
 un modèle, chaque fichier est affiché sous la forme `Wrote <path>`, suivi d’un résumé d’une ligne de la
-politique d’étiquetage lorsqu’une politique est active. Sans modèle, le rapport par défaut est affiché sous la forme `Data exported to <path>`. Avec `--policy`, le résumé des politiques est toujours affiché ; la ligne `Policy findings: <path>` est journalisée au niveau INFO et n’apparaît qu’avec `--verbose`.
+politique d’étiquetage lorsqu’une politique est active. Sans modèle, le rapport par défaut est affiché sous la forme `Data exported to <path>`. Avec `--policy`, le résumé des politiques est toujours affiché ; la ligne `Policy findings: <path>` est journalisée au niveau INFO et n’apparaît qu’avec `--verbose`. Sans aucune option, `inventag` affiche la page d’aide et se termine avec le code 2.
 
 ## Codes de sortie {#exit-codes}
 
