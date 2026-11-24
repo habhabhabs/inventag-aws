@@ -114,7 +114,7 @@ InvenTag 寫入的其他位置只有你指定的檔案（`--log-file`、`--audit
 | `.xml` | JUnit XML，每個策略一個測試案例 | `junit` |
 | `.md` | Markdown 表格，每個策略最多 50 列 | `markdown` |
 
-掃描預設寫出 `.json`，除非 `--policy-format` 另有指定。`inventag policy check` 把文字列印到螢幕，除非 `--format` 指定了檔案格式，否則不寫檔案；以結束代碼 1 或 2 結束時不寫任何內容。
+掃描預設寫出 `.json`，除非 `--policy-format` 另有指定。`inventag policy check` 把文字列印到螢幕，除非 `--format` 指定了檔案格式，否則不寫檔案；以結束代碼 1 或 2 結束時不寫任何內容。在 Linux 和 macOS 上，這些檔案只有其擁有者可以讀寫（模式 0600），無論來自掃描還是 `inventag policy check`；InvenTag 為它們新建的資料夾為模式 0700，既有的資料夾保持原有模式。
 
 JSON 檔案有這些頂層鍵：`schema_version`、`inventag_version`、`now`、`snapshot`、`baseline`、`policies`、`summary`、`findings`、`not_evaluated_units`、`not_evaluated_policies` 和 `unused_waivers`。鍵已排序，檔案以換行字元結尾。其中沒有主機名稱、使用者名稱、絕對路徑或時鐘時間，所以相同的快照和策略得到相同的位元組。InvenTag 隨附了它的 JSON Schema（`inventag/policy/outputs/schemas/policy-findings-1.json`）；其 `$id` 是名稱 `urn:inventag:schema:policy-findings:1`，不是網址。
 
@@ -287,7 +287,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ## 終端輸出 {#terminal-output}
 
 不使用 `--verbose` 時，執行會列印警告、錯誤和已寫出的檔案。
-使用範本時，每個檔案會列印為 `Wrote <path>`，如果啟用了標籤策略，隨後還有一行標籤策略摘要。不使用範本時，預設報告會列印為 `Data exported to <path>`。
+使用範本時，每個檔案會列印為 `Wrote <path>`，如果啟用了標籤策略，隨後還有一行標籤策略摘要。不使用範本時，預設報告會列印為 `Data exported to <path>`。使用 `--policy` 時，一律會列印策略摘要；`Policy findings: <path>` 這一行以 INFO 層級記錄，只在使用 `--verbose` 時顯示。
 
 ## 結束代碼 {#exit-codes}
 

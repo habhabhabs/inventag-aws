@@ -156,7 +156,7 @@ Non vérifié sur un vrai AWS : les factures qu’un compte réel renvoie, y com
 | `.xml` | JUnit XML, un cas de test par politique | `junit` |
 | `.md` | Tableaux Markdown, 50 lignes au plus par politique | `markdown` |
 
-Une analyse écrit `.json` sauf si `--policy-format` dit autre chose. `inventag policy check` affiche du texte à l’écran et n’écrit aucun fichier sauf si `--format` en nomme un ; il n’écrit rien quand il se termine avec le code 1 ou 2.
+Une analyse écrit `.json` sauf si `--policy-format` dit autre chose. `inventag policy check` affiche du texte à l’écran et n’écrit aucun fichier sauf si `--format` en nomme un ; il n’écrit rien quand il se termine avec le code 1 ou 2. Sous Linux et macOS, seul leur propriétaire peut lire et écrire les fichiers (mode 0600), qu’ils viennent d’une analyse ou de `inventag policy check` ; un dossier qu’InvenTag crée pour eux a le mode 0700, et un dossier existant garde son mode.
 
 Le fichier JSON a ces clés de premier niveau : `schema_version`, `inventag_version`, `now`, `snapshot`, `baseline`, `policies`, `summary`, `findings`, `not_evaluated_units`, `not_evaluated_policies` et `unused_waivers`. Les clés sont triées et le fichier se termine par un saut de ligne. Il ne contient ni nom d’hôte, ni nom d’utilisateur, ni chemin absolu, ni heure d’horloge : le même instantané et les mêmes politiques donnent les mêmes octets. Un JSON Schema pour ce fichier est fourni avec InvenTag (`inventag/policy/outputs/schemas/policy-findings-1.json`) ; son `$id` est le nom `urn:inventag:schema:policy-findings:1`, pas une adresse web.
 
@@ -333,7 +333,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 
 Sans `--verbose`, une exécution affiche les avertissements, les erreurs et les fichiers écrits. Avec
 un modèle, chaque fichier est affiché sous la forme `Wrote <path>`, suivi d’un résumé d’une ligne de la
-politique d’étiquetage lorsqu’une politique est active. Sans modèle, le rapport par défaut est affiché sous la forme `Data exported to <path>`.
+politique d’étiquetage lorsqu’une politique est active. Sans modèle, le rapport par défaut est affiché sous la forme `Data exported to <path>`. Avec `--policy`, le résumé des politiques est toujours affiché ; la ligne `Policy findings: <path>` est journalisée au niveau INFO et n’apparaît qu’avec `--verbose`.
 
 ## Codes de sortie {#exit-codes}
 

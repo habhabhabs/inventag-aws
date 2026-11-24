@@ -156,7 +156,7 @@ No verificado contra AWS real: las facturas que devuelve una cuenta real, inclui
 | `.xml` | JUnit XML, un caso de prueba por cada política | `junit` |
 | `.md` | Tablas Markdown, como máximo 50 filas por política | `markdown` |
 
-Un escaneo escribe `.json` salvo que `--policy-format` diga otra cosa. `inventag policy check` imprime texto en pantalla y no escribe ningún archivo salvo que `--format` nombre uno; no escribe nada cuando termina con el código 1 o 2.
+Un escaneo escribe `.json` salvo que `--policy-format` diga otra cosa. `inventag policy check` imprime texto en pantalla y no escribe ningún archivo salvo que `--format` nombre uno; no escribe nada cuando termina con el código 1 o 2. En Linux y macOS solo su propietario puede leer y escribir los archivos (modo 0600), tanto de un escaneo como de `inventag policy check`; una carpeta que InvenTag crea para ellos tiene el modo 0700, y una carpeta existente conserva su modo.
 
 El archivo JSON tiene estas claves de primer nivel: `schema_version`, `inventag_version`, `now`, `snapshot`, `baseline`, `policies`, `summary`, `findings`, `not_evaluated_units`, `not_evaluated_policies` y `unused_waivers`. Las claves van ordenadas y el archivo termina con un salto de línea. No contiene nombre de host, nombre de usuario, ruta absoluta ni hora del reloj, así que la misma instantánea y las mismas políticas dan los mismos bytes. Con InvenTag se empaqueta un JSON Schema para él (`inventag/policy/outputs/schemas/policy-findings-1.json`); su `$id` es el nombre `urn:inventag:schema:policy-findings:1`, no una dirección web.
 
@@ -333,7 +333,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 
 Sin `--verbose`, una ejecución imprime advertencias, errores y los archivos escritos. Con
 una plantilla, cada archivo se imprime como `Wrote <path>`, seguido de un resumen de una línea de la
-política de etiquetas cuando hay una activa. Sin plantilla, el informe predeterminado se imprime como `Data exported to <path>`.
+política de etiquetas cuando hay una activa. Sin plantilla, el informe predeterminado se imprime como `Data exported to <path>`. Con `--policy`, el resumen de las políticas se imprime siempre; la línea `Policy findings: <path>` se registra con nivel INFO y solo se muestra con `--verbose`.
 
 ## Códigos de salida {#exit-codes}
 

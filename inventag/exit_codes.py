@@ -22,8 +22,9 @@ Code  Meaning
 ====  =========================================================================
 
 5 and 6 take precedence over 3 and 4, because the data behind 3 and 4 is
-incomplete. Reports are written in all cases from 3 to 8. On a scan, 8 and 7
-come only when none of 5, 6, 3 and 4 applies.
+incomplete. Reports are written in all cases from 3 to 8. On a scan, 7 comes
+only when none of 5, 6, 3 and 4 applies. A scan never exits with 8: it has no
+option for it; only ``inventag policy check`` gives 8.
 """
 
 EXIT_OK = 0

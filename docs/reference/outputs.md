@@ -188,7 +188,7 @@ of `--output-directory` for `inventag policy check`):
 
 A scan writes `.json` unless `--policy-format` says otherwise.
 `inventag policy check` prints text to the screen and writes no file unless
-`--format` names one; it writes nothing when it exits with code 1 or 2.
+`--format` names one; it writes nothing when it exits with code 1 or 2. On Linux and macOS the files are readable and writable by their owner only (mode 0600), from a scan and from `inventag policy check`; a folder InvenTag creates for them is mode 0700, and an existing folder keeps its mode.
 
 The JSON file has these top-level keys: `schema_version`, `inventag_version`,
 `now`, `snapshot`, `baseline`, `policies`, `summary`, `findings`,
@@ -407,7 +407,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 
 Without `--verbose`, a run prints warnings, errors and the files written. With
 a template, each file is printed as `Wrote <path>`, followed by a one-line tag
-policy summary when a policy is active. Without a template, the default report is printed as `Data exported to <path>`.
+policy summary when a policy is active. Without a template, the default report is printed as `Data exported to <path>`. With `--policy`, the policy summary is always printed; the line `Policy findings: <path>` is logged at INFO level and shows only with `--verbose`.
 
 ## Exit codes
 

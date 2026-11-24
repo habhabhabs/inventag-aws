@@ -427,6 +427,9 @@ are written to `--output-directory` (default: the current folder):
   time of the run. The same snapshot, policies and `--now` give the same bytes.
 - The files are written for exit codes 0, 7 and 8. Nothing is written for
   exit codes 1 and 2.
+- On Linux and macOS the files are readable and writable by their owner only
+  (mode 0600), as the files of a scan; a folder InvenTag creates for them is
+  mode 0700. An existing folder keeps its mode.
 - The JSON file follows a schema that ships in the package:
   `inventag/policy/outputs/schemas/policy-findings-1.json`. Its `$id` is the
   URN `urn:inventag:schema:policy-findings:1`, not a web address.
@@ -487,13 +490,15 @@ inventag --create-excel --policy .inventag/policies --policy-fail-on high
 `--policy PATH` (repeatable), `--policy-waivers FILE`, `--policy-fail-on
 SEVERITY` and `--policy-format LIST` check the policies against the snapshot
 of the run, after the scan. A summary goes to the screen and
-`policy_findings_<timestamp>.json` to the output directory. See
+`policy_findings_<timestamp>.json` to the output directory. The summary is
+always printed. The line `Policy findings: <path>` is logged at INFO level, so
+it shows only with `--verbose`. See
 [the CLI reference](../reference/cli.md#policies).
 
 - Exit codes 5, 6, 3 and 4 keep their order and come first. Code 7 follows
   only when none of them applies.
-- There is no option on a scan for exit code 8. Only `inventag policy check`
-  gives it.
+- A scan never exits with code 8: there is no option on a scan for it. Only
+  `inventag policy check` gives it.
 - `--policy` works together with `--template`.
 - An invalid policy stops the scan with exit code 1 before any AWS call.
 

@@ -2,8 +2,8 @@
 
 ``inventag policy lock`` writes it (``write``); ``lock --check`` and
 ``--locked`` compare the folder with it (``verify``, ``require_unchanged``). A
-file that changed, was added or is missing is a problem. Waiver files are not
-in the lock: they expire and change by design. The hash is of the file bytes,
+file that changed, was added or is missing is a problem. Waivers files under
+the folder are in the lock too (spec 10.3); a ``tests/`` folder is not. The hash is of the file bytes,
 as ``Policy.sha256`` in the result file.
 """
 

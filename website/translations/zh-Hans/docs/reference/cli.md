@@ -113,7 +113,7 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 |---|---|---|---|
 | `--finops-cost-allocation` | 关闭 | 可用 | 用每个账户自己的凭证，从 Cost Explorer 读取该账户上个月的支出：按服务、按关联账户，以及按内置 `finops-cost-allocation` 策略中每个已激活的成本分配标签键。在末尾添加一个 `FinOps costs` 工作表。每个账户最多 7 个 Cost Explorer 请求；SDK 的重试会增加请求，AWS 对每个请求收费。需要 `ce:ListCostAllocationTags`。使用 `--template` 时不添加任何内容。见 [FinOps 检查](../guides/finops-checks.md#cost-allocation-from-cost-explorer)。 |
 | `--no-cost-in-snapshot` | 关闭 | 可用 | 与 `--finops-cost-allocation` 一起使用：不把成本数字写入状态快照；工作表照常写出。单独使用时只显示一条警告，没有作用。 |
-| `--finops-checks` | 关闭 | 可用 | 对扫描找到的资源运行六项 FinOps 检查（`FIN-001` 到 `FIN-006`），并在 Excel 报告末尾添加一个 `FinOps` 工作表。不再发出任何 AWS 调用，不需要额外的权限，其检查结果也不改变退出码。使用 `--template` 时不添加工作表：检查在本次运行的状态快照上进行，发现项写入 `policy_findings_<timestamp>.json`；同时使用 `--disable-state-management` 时，会有一条警告说明没有写入任何 FinOps 发现项。见 [FinOps 检查](../guides/finops-checks.md)。 |
+| `--finops-checks` | 关闭 | 可用 | 对扫描找到的资源运行六项 FinOps 检查（`FIN-001` 到 `FIN-006`），并在 Excel 报告末尾添加一个 `FinOps` 工作表。不再发出任何 AWS 调用，不需要额外的权限，其检查结果也不改变退出码，只有一个例外：同时使用 `--template`、`--policy` 和 `--policy-fail-on SEVERITY` 时，FinOps 检查与你的策略一起检查，因此严重级别达到或高于该级别的失败 `FIN-` 发现项会得到退出码 7。使用 `--template` 时不添加工作表：检查在本次运行的状态快照上进行，发现项写入 `policy_findings_<timestamp>.json`；同时使用 `--disable-state-management` 时，会有一条警告说明没有写入任何 FinOps 发现项。见 [FinOps 检查](../guides/finops-checks.md)。 |
 | `--enable-network-analysis` | 关 | 可用 | 找到 VPC 时，在 Excel 报告中添加 `Network Analysis` 工作表。与 `--template` 一起使用时不添加任何内容。见[网络与安全分析](../guides/network-and-security-analysis.md)。 |
 | `--enable-security-analysis` | 关 | 可用 | 找到安全组时，在 Excel 报告中添加 `Security Analysis` 工作表。与 `--template` 一起使用时不添加任何内容。 |
 | `--enable-cost-analysis` | 关 | 可用 | 在默认工作簿中添加 Cost Analysis 工作表（以及四个 `forgotten_analysis.*` 列）。会调用 Cost Explorer、Pricing 和 CloudWatch；`--no-billing-validation` 与它相互独立，不会停止这些调用。 一次运行中的 Cost Explorer 请求：账单验证（默认开启）每个账户最多一次，成本趋势每个账户最多 2 次，每次都使用该账户自己的凭证读取。单账户运行同时使用两者时最多发出 3 次；使用 `--no-billing-validation` 时最多发出 2 次。被限流的请求会重试，总共最多 10 次尝试，每次重试都是一次新的请求。AWS 对每次请求收费。运行会在发现开始前以警告形式说明最多的请求数。需要 `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`。费用是根据 AWS Pricing API 得出的估算值，不是你的账单；成本趋势表显示 Cost Explorer 的已计费金额，每个账户和服务一行。见[输出文件](./outputs.md#cost-analysis-sheet)和 [FinOps 检查](../guides/finops-checks.md#the-cost-trend-of---enable-cost-analysis)。 |
@@ -129,7 +129,7 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 
 | 参数 | 默认值 | 状态 | 作用 |
 |---|---|---|---|
-| `--policy PATH` | 无 | 可用 | 策略文件、策略集或文件夹；可重复指定。扫描之后，对本次运行的状态快照检查这些策略，打印文字摘要，并把 `policy_findings_<timestamp>.json` 写入输出目录。也可与 `--template` 一起使用：检查在状态快照上进行，使用模板的运行同样会写出状态快照。无效的策略会在任何 AWS 调用之前以退出码 1 停止运行。与 `--disable-state-management` 一起使用时，运行以退出码 2 停止。 |
+| `--policy PATH` | 无 | 可用 | 策略文件、策略集或文件夹；可重复指定。扫描之后，对本次运行的状态快照检查这些策略，打印文字摘要，并把 `policy_findings_<timestamp>.json` 写入输出目录。摘要总是会打印；`Policy findings: <path>` 这一行以 INFO 级别记录，因此只在使用 `--verbose` 时显示。也可与 `--template` 一起使用：检查在状态快照上进行，使用模板的运行同样会写出状态快照。无效的策略会在任何 AWS 调用之前以退出码 1 停止运行。与 `--disable-state-management` 一起使用时，运行以退出码 2 停止。 |
 | `--policy-waivers FILE` | 无 | 可用 | `--policy` 使用的豁免文件。没有 `--policy`：退出码 2。 |
 | `--policy-fail-on SEVERITY` | 无 | 可用 | `info`、`low`、`medium`、`high` 或 `critical`。当有发现项在该严重程度或更高程度失败时，退出码为 7。退出码 5、6、3 和 4 优先。没有 `--policy`：退出码 2。扫描没有对应退出码 8 的参数。 |
 | `--policy-format LIST` | `json` | 可用 | 要写出的文件，用逗号分隔：`json`、`sarif`、`junit`、`markdown`。未知格式：退出码 2。没有 `--policy`：退出码 2。见[策略发现项](./outputs.md#policy-findings)。 |
