@@ -161,6 +161,11 @@ Otra página de una respuesta (`NextPageToken`) es una solicitud más. Sale de
 las mismas 7, como máximo 3 por agrupación. Una tabla que necesita más páginas
 se marca como "incomplete".
 
+Después de que se deniega o se limita una solicitud `GetCostAndUsage`,
+InvenTag no hace más solicitudes a Cost Explorer para esa cuenta: las tablas
+aún no leídas reciben el mismo estado, y la nota de la ejecución dice que no
+se hizo ninguna solicitud más.
+
 Antes del descubrimiento, la ejecución muestra una línea de aviso con el máximo
 de solicitudes, por ejemplo: `Cost Explorer: up to 7 request(s) in this run
 (billing validation: 0; cost trend: 0; cost allocation: 7). AWS charges for
@@ -192,6 +197,8 @@ por cuenta, agrupación y valor, con las columnas `Account`, `Grouping`,
   "not read: access denied". Las notas de la ejecución también la nombran, y
   una solicitud denegada tiene una línea `Permissions:`. El resultado del
   escaneo y el código de salida son los mismos que sin la opción.
+- Una tabla que se leyó pero no contiene gasto tiene una fila con el estado
+  "no spend returned".
 
 Con `--per-account-reports`, el informe de cada cuenta contiene solo las tablas
 de esa cuenta. Con `--template` no se hace ninguna solicitud: InvenTag muestra

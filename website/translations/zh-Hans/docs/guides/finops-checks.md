@@ -117,6 +117,8 @@ inventag --create-excel --finops-cost-allocation
 
 应答的后续页面（`NextPageToken`）也是一个请求。它从同样的 7 个中扣除，每个分组最多 3 页。需要更多页面的表格标记为 "incomplete"。
 
+`GetCostAndUsage` 请求被拒绝或被限流之后，InvenTag 不再为该账户发出任何 Cost Explorer 请求：尚未读取的表格得到相同的状态，运行说明会写明没有再发出请求。
+
 在发现开始之前，运行会显示一行警告，给出最多的请求数，例如：`Cost Explorer: up to 7 request(s) in this run (billing validation: 0; cost trend: 0; cost allocation: 7). AWS charges for each.` 只读防护的审计（`--audit-output`）统计到的该功能请求数从不超过这一行所说的数。
 
 SDK 会重试被限流的请求，每次重试都是一个新请求。AWS 对每个 Cost Explorer 请求收费：见 [Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。未针对真实的 AWS 验证：AWS 对这些请求（包括重试和 `ListCostAllocationTags`）如何收费。
@@ -129,6 +131,7 @@ SDK 会重试被限流的请求，每次重试都是一个新请求。AWS 对每
 - 指标是 `UnblendedCost`。金额是 AWS 返回的文本；InvenTag 不对其求和、拆分或取整。
 - 在按标签的分组中，值 `(no value)` 表示没有该标签键的支出。
 - 无法读取的表格有一行显示其状态，例如 "not read: access denied"。运行说明中也会写出它，被拒绝的请求会有一行 `Permissions:`。扫描结果和退出码与不使用该参数时相同。
+- 已读取但没有支出的表格有一行，状态为 "no spend returned"。
 
 使用 `--per-account-reports` 时，每个账户的报告只包含该账户的表格。使用 `--template` 时不发出任何请求：InvenTag 显示一条警告，不写 `FinOps costs` 工作表。
 

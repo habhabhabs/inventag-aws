@@ -165,6 +165,11 @@ Une page supplémentaire d’une réponse (`NextPageToken`) est une requête de
 plus. Elle est prise sur les mêmes 7, au plus 3 par regroupement. Un tableau
 qui demande plus de pages est marqué « incomplete ».
 
+Après une requête `GetCostAndUsage` refusée ou limitée, InvenTag ne fait plus
+aucune requête Cost Explorer pour ce compte : les tableaux pas encore lus
+reçoivent le même état, et la note de l’exécution dit qu’aucune autre requête
+n’a été faite.
+
 Avant la découverte, l’exécution affiche une ligne d’avertissement avec le
 nombre maximal de requêtes, par exemple : `Cost Explorer: up to 7 request(s) in
 this run (billing validation: 0; cost trend: 0; cost allocation: 7). AWS
@@ -196,6 +201,8 @@ colonnes `Account`, `Grouping`, `Value`, `Amount`, `Currency`, `Metric`,
   « not read: access denied ». Les notes de l’exécution le nomment aussi, et
   une requête refusée donne une ligne `Permissions:`. Le résultat de l’analyse
   et le code de sortie restent ceux qu’ils seraient sans l’option.
+- Un tableau lu mais sans dépense a une ligne avec l’état
+  « no spend returned ».
 
 Avec `--per-account-reports`, le rapport de chaque compte ne contient que les
 tableaux de ce compte. Avec `--template`, aucune requête n’est faite : InvenTag

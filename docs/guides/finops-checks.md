@@ -157,6 +157,10 @@ A further page of an answer (`NextPageToken`) is one more request. It comes out
 of the same 7, at most 3 for each grouping. A table that needs more pages than
 that is marked "incomplete".
 
+After a `GetCostAndUsage` request is denied or throttled, InvenTag makes no
+further Cost Explorer request for that account: the tables not yet read get
+the same status, and the run note says that no further request was made.
+
 Before discovery, the run prints one warning line with the most requests, for
 example: `Cost Explorer: up to 7 request(s) in this run (billing validation: 0;
 cost trend: 0; cost allocation: 7). AWS charges for each.` The read-only
@@ -186,6 +190,8 @@ account, grouping and value, with the columns `Account`, `Grouping`, `Value`,
   "not read: access denied". The run notes name it too, and a denied request
   gets a `Permissions:` line. The scan's result and the exit code stay as they
   would be without the flag.
+- A table that was read but holds no spend has one row with the status
+  "no spend returned".
 
 With `--per-account-reports`, each account's report holds only that account's
 tables. With `--template`, no request is made: InvenTag prints a warning and
