@@ -341,7 +341,7 @@ def test_check_locked_passes_when_the_lock_is_current(tmp_path, monkeypatch):
 def test_check_waivers_are_passed_to_the_engine(tmp_path, monkeypatch):
     calls = []
 
-    def apply(findings, waivers, now):
+    def apply(findings, waivers, now, known_policies):
         calls.append((len(waivers), now.date().isoformat()))
         return findings, []
 

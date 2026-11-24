@@ -1,12 +1,8 @@
 """The worked examples of v15-policy-spec.md (section 7 and 9.5), run through the
-loader and the engine on the fixtures in ``golden/``.
-
-Examples 16 to 20 need waivers and the baseline (package P2); they are marked
-``xfail(strict=True)`` until P2's modules exist, so a pass is noticed."""
+loader and the engine on the fixtures in ``golden/``."""
 
 import copy
 import datetime as dt
-import importlib.util
 import json
 from pathlib import Path
 
@@ -49,13 +45,6 @@ U1 = {
     "reason": "listing_not_read",
     "outcome": "throttled",
 }
-
-needs_p2 = pytest.mark.xfail(
-    importlib.util.find_spec("inventag.policy.waivers") is None
-    or importlib.util.find_spec("inventag.policy.baseline") is None,
-    reason="waivers and baseline are package P2 (inventag/policy/waivers.py, baseline.py)",
-    strict=True,
-)
 
 
 def snapshot(name="s1.json"):
@@ -273,7 +262,6 @@ def test_15_regex_case():
 
 
 # ----------------------------------------------------------------- 16 to 20
-@needs_p2
 def test_16_a_valid_waiver():
     r = run("ex01.yaml", waivers=["w16.yaml"])
     assert table(r) == {"R5": "waived", "R6": "pass"}
@@ -281,7 +269,6 @@ def test_16_a_valid_waiver():
     assert code(r, "high") == 0
 
 
-@needs_p2
 @pytest.mark.parametrize(
     "file, now, expected, exit_code",
     [
@@ -296,7 +283,6 @@ def test_17_expiry_and_the_day_border(file, now, expected, exit_code):
     assert code(r, "high") == exit_code
 
 
-@needs_p2
 def test_18_a_glob_waiver_that_matches_nothing():
     r = run("ex02.yaml", waivers=["w18.yaml"])
     assert table(r) == {"R3": "fail", "R9": "pass"}
@@ -304,7 +290,6 @@ def test_18_a_glob_waiver_that_matches_nothing():
     assert [code(r, x) for x in ("critical", "high", "medium", None)] == [0, 7, 7, 0]
 
 
-@needs_p2
 def test_19_baseline_added_and_removed():
     r = run("ex19.yaml", baseline=snapshot("s0.json"))
     assert table(r) == {
@@ -321,7 +306,6 @@ def test_19_baseline_added_and_removed():
     assert code(r, "medium", nev=True) == 8
 
 
-@needs_p2
 def test_20_baseline_modified_no_baseline_and_8_over_7():
     r = run("ex20.yaml", baseline=snapshot("s0.json"))
     assert table(r) == {"R5": "fail", "R6": "pass"}
@@ -515,22 +499,23 @@ def test_the_engine_does_not_change_its_input():
 
 
 # ----------------------------------------------------------------- 25 to 27
-@needs_p2
 def test_25_a_superseded_waiver():
     r = run("ex01.yaml", waivers=["w25.yaml"])
     assert table(r) == {"R5": "waived", "R6": "pass"}
     (finding,) = [f for f in r["findings"] if f["result"] == "waived"]
     assert finding["waiver"]["expires"] == "2027-01-31"
     (unused,) = r["unused_waivers"]
+    # `by` is written like every `file` of the result (spec 3.3, 10.1): the
+    # path the loader gives, here relative to the waivers file's own folder
     assert (unused["why"], unused["by"], unused["expires"]) == (
         "superseded",
-        "waivers/w25.yaml",
+        finding["waiver"]["file"],
         "2026-12-31",
     )
+    assert unused["by"] == unused["file"] == "w25.yaml"
     assert code(r, "high") == 0
 
 
-@needs_p2
 def test_26_added_in_a_unit_the_baseline_did_not_read():
     base = snapshot("s0.json")
     base["metadata"]["tags"]["units_not_read"] = [
@@ -570,7 +555,6 @@ def test_26_added_in_a_unit_the_baseline_did_not_read():
     assert code(r, "medium", nev=True) == 8
 
 
-@needs_p2
 def test_27_a_false_baseline_entry_beside_an_unknown_entry():
     r = run("ex27.yaml", baseline=snapshot("s0.json"))
     found = table(r)
