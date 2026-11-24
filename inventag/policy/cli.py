@@ -31,6 +31,7 @@ import contextlib
 import datetime as dt
 import hashlib
 import importlib
+import inspect
 import json
 import sys
 from pathlib import Path
@@ -45,7 +46,7 @@ DEFAULT_FOLDER = ".inventag/policies"
 FORMATS = ("text", "json", "sarif", "junit", "markdown")
 EXTENSIONS = {"json": "json", "sarif": "sarif", "junit": "xml", "markdown": "md"}
 TRIM = 12  # hex digits of a digest in ``list``
-DEFAULT_FORMATS = "text,json"
+DEFAULT_FORMATS = "text"
 
 EPILOG = f"""\
 Exit codes of 'check': 0 evaluated; 1 a file is not valid or cannot be read;
@@ -376,6 +377,14 @@ def build_parser() -> argparse.ArgumentParser:
             help=f"Policy files or folders (default: {DEFAULT_FOLDER})",
         )
 
+    def set_option(p):
+        p.add_argument(
+            "--set",
+            metavar="NAME",
+            help="Only the policies of this set: a set in the given paths, "
+            "else a shipped set",
+        )
+
     def now_option(p):
         p.add_argument(
             "--now",
@@ -391,7 +400,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("list", help="List policies: id, severity, version, digest")
     policies_option(p)
-    p.add_argument("--set", metavar="NAME", help="Only the policies of this set")
+    set_option(p)
+    p.add_argument(
+        "--shipped",
+        action="store_true",
+        help="List the policy sets shipped with InvenTag",
+    )
 
     p = sub.add_parser(
         "schema", help="Describe the fields of the files, or print a JSON Schema"
@@ -419,6 +433,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--snapshot", required=True, metavar="FILE", help="State file")
     policies_option(p)
+    set_option(p)
     p.add_argument("--waivers", metavar="FILE", help="A waivers file")
     p.add_argument(
         "--baseline", metavar="FILE", help="An older state file, for baseline checks"
@@ -464,6 +479,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("policy", metavar="POLICY", help="Policy id or name")
     p.add_argument("--snapshot", required=True, metavar="FILE", help="State file")
     policies_option(p)
+    set_option(p)
+    p.add_argument(
+        "--baseline", metavar="FILE", help="An older state file, for baseline checks"
+    )
     p.add_argument("--resource", metavar="ARN", help="Only this resource")
     now_option(p)
     p.add_argument(
@@ -537,6 +556,57 @@ def _load(args, hint: str = "give --policies PATH") -> loader.Loaded:
         return loader.load(_policy_paths(args, hint))
     except PolicyError as error:
         raise CliError(EXIT_ERROR, *_issue_lines(error)) from None
+
+
+def _shipped():
+    """The shipped-sets module (P5), or None when this build has none."""
+    try:
+        return importlib.import_module("inventag.policy.builtin")
+    except ModuleNotFoundError as error:
+        if error.name != "inventag.policy.builtin":
+            raise
+        return None
+
+
+def _shipped_names() -> Tuple[str, ...]:
+    module = _shipped()
+    return tuple(module.SET_NAMES) if module else ()
+
+
+def _select(args, err: TextIO) -> List[model.Policy]:
+    """The policies to use: all loaded ones, or those of ``--set``.
+
+    A set is looked up in the given paths first, then among the shipped sets;
+    a local set with a shipped set's name wins and one note says so (spec 11.7).
+    """
+    wanted = getattr(args, "set", None)
+    folder = Path(DEFAULT_FOLDER)
+    if not args.policies and not folder.is_dir() and wanted:
+        loaded = None
+    else:
+        loaded = _load(args)
+    if not wanted:
+        return list(loaded.policies)
+    local = {s.name for s in loaded.sets} if loaded else set()
+    shipped = _shipped_names()
+    if wanted in local:
+        if wanted in shipped:
+            err.write(
+                f"note: the policy set '{wanted}' in your files hides the "
+                "shipped set of the same name.\n"
+            )
+        ids = {p.id for p in _set_members(loaded, wanted)}
+        return [p for p in loaded.policies if p.id in ids]
+    if wanted in shipped:
+        try:
+            return list(_shipped().load_set(wanted))
+        except PolicyError as error:
+            raise CliError(EXIT_ERROR, *_issue_lines(error)) from None
+    raise CliError(
+        EXIT_ERROR,
+        f"no policy set named '{wanted}'; run 'inventag policy list' and "
+        "'inventag policy list --shipped' to see the sets.",
+    )
 
 
 def _read_snapshot(option: str, path: str) -> Tuple[Dict[str, Any], str]:
@@ -665,17 +735,26 @@ def _set_members(
 
 
 def _cmd_list(args, out: TextIO, err: TextIO) -> int:
-    loaded = _load(args)
-    policies = list(loaded.policies)
-    if args.set:
-        if args.set not in {s.name for s in loaded.sets}:
+    if args.shipped:
+        if args.set:
+            raise CliError(
+                EXIT_USAGE, "--shipped cannot be used with --set; use one of them."
+            )
+        module = _shipped()
+        if module is None:
             raise CliError(
                 EXIT_ERROR,
-                f"no policy set named '{args.set}'; run 'inventag policy list' "
-                "to see the policies and sets that are loaded.",
+                "the shipped sets (inventag.policy.builtin) are not installed "
+                "in this build.",
             )
-        ids = {p.id for p in _set_members(loaded, args.set)}
-        policies = [p for p in policies if p.id in ids]
+        names = sorted(module.SET_NAMES)
+        counts = [str(len(module.load_set(n))) for n in names]
+        width = max(len(n) for n in names + ["NAME"])
+        out.write(f"{'NAME':<{width}}  POLICIES\n")
+        for name, count in zip(names, counts):
+            out.write(f"{name:<{width}}  {count}\n")
+        return EXIT_OK
+    policies = _select(args, err)
     rows = [
         (p.id, p.severity, str(p.version), p.sha256[:TRIM], p.file)
         for p in sorted(policies, key=lambda p: p.id)
@@ -761,7 +840,7 @@ def _cmd_check(args, out: TextIO, err: TextIO) -> int:
         problems = lock.check(Path(args.policies[0]))
         if problems:
             raise CliError(EXIT_ERROR, *_lock_lines(problems))
-    loaded = _load(args)
+    policies = _select(args, err)
     waivers: List[model.Waiver] = []
     if args.waivers:
         try:
@@ -775,7 +854,7 @@ def _cmd_check(args, out: TextIO, err: TextIO) -> int:
     try:
         result = engine.evaluate(
             snapshot,
-            loaded.policies,
+            policies,
             waivers,
             baseline,
             now,
@@ -801,6 +880,11 @@ def _cmd_check(args, out: TextIO, err: TextIO) -> int:
                 "are not installed in this build.",
             )
             texts[fmt] = writers.render(fmt, result)
+    if args.show_values and {"sarif", "junit"} & set(formats):
+        err.write(
+            "note: --show-values does not apply to sarif and junit; those "
+            "files never carry a value.\n"
+        )
     stamp = _stamp(snapshot, now)
     folder = Path(args.output_directory)
     written: List[Path] = []
@@ -825,10 +909,42 @@ def _cmd_check(args, out: TextIO, err: TextIO) -> int:
     return int(result["summary"]["exit_code"])
 
 
+def _trace_lines(trace: Any, depth: int = 0) -> List[str]:
+    """The lines of an engine trace (spec 11.5): kind, key, verdict, reason."""
+    nodes = trace if isinstance(trace, list) else [trace]
+    lines: List[str] = []
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        label = f"{node.get('part')} {node.get('kind')}"
+        if node.get("key"):
+            label += f" {node['key']}"
+        text = f"{label}: {node.get('verdict')}"
+        if node.get("reason"):
+            text += f" ({node['reason']})"
+        lines.append("  " * depth + text)
+        lines.extend(_trace_lines(node.get("children") or [], depth + 1))
+    return lines
+
+
+def _evaluate_with_trace(*args, resource: Optional[str], **kwargs):
+    """``engine.evaluate`` with ``trace=True`` (spec 11.5, engine order P1c).
+
+    Until the engine has the argument the call runs without it and the
+    findings carry no ``trace``.
+    """
+    accepted = inspect.signature(engine.evaluate).parameters
+    if "trace" in accepted:
+        kwargs["trace"] = True
+        if resource and "trace_resource" in accepted:
+            kwargs["trace_resource"] = resource
+    return engine.evaluate(*args, **kwargs)
+
+
 def _cmd_explain(args, out: TextIO, err: TextIO) -> int:
     now = _now(args)
-    loaded = _load(args)
-    found = [p for p in loaded.policies if args.policy in (p.id, p.name)]
+    policies = _select(args, err)
+    found = [p for p in policies if args.policy in (p.id, p.name)]
     if not found:
         raise CliError(
             EXIT_ERROR,
@@ -837,13 +953,17 @@ def _cmd_explain(args, out: TextIO, err: TextIO) -> int:
         )
     policy = found[0]
     snapshot, sha = _read_snapshot("--snapshot", args.snapshot)
+    baseline = None
+    if args.baseline:
+        baseline, _ = _read_snapshot("--baseline", args.baseline)
     try:
-        result = engine.evaluate(
+        result = _evaluate_with_trace(
             snapshot,
             [policy],
             (),
-            None,
+            baseline,
             now,
+            resource=args.resource,
             include_pass=True,
             show_values=args.show_values,
             snapshot_file=Path(args.snapshot).name,
@@ -865,8 +985,8 @@ def _cmd_explain(args, out: TextIO, err: TextIO) -> int:
     )
     if result["not_evaluated_policies"]:
         out.write(
-            "This policy needs a baseline; 'explain' does not take one, so no "
-            "row was evaluated.\n"
+            "This policy needs a baseline; pass --baseline FILE. No row was "
+            "evaluated.\n"
         )
     for finding in findings:
         out.write(f"{finding['result']}  {finding['resource']}\n")
@@ -880,12 +1000,17 @@ def _cmd_explain(args, out: TextIO, err: TextIO) -> int:
             out.write(line + "\n")
         if finding.get("reason"):
             out.write(f"      reason: {finding['reason']}\n")
+        if finding.get("trace"):
+            out.write("      trace:\n")
+            for line in _trace_lines(finding["trace"]):
+                out.write(f"        {line}\n")
     if not result["not_evaluated_policies"]:
-        selected = len(result["findings"])
-        counts = result["summary"]["by_result"]
-        out.write(
-            f"Rows: {selected} selected, {counts['out_of_scope']} not selected.\n"
-        )
+        selected = sum(1 for f in findings if f["result"] != "out_of_scope")
+        if args.resource:
+            skipped = len(findings) - selected
+        else:
+            skipped = result["summary"]["by_result"]["out_of_scope"]
+        out.write(f"Rows: {selected} selected, {skipped} not selected.\n")
     return EXIT_OK
 
 

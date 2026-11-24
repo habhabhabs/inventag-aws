@@ -8,9 +8,11 @@ scan.
 
 Every row of ``resources`` must be named in ``expect``: a selected row with its
 result, any other row with ``out_of_scope``. A missing or an extra expectation
-fails the fixture. ``expect_units`` (optional) lists the units that the policy
-must report as not read; the spec names the field without its shape, so an
-entry is ``{account, service, region}`` and the set must be equal.
+fails the fixture. An ``expect`` entry may carry ``reason`` (only with
+``result: not_evaluated``); it must equal the finding's reason. ``expect_units``
+entries are ``{account, service, region}`` with an optional ``from: baseline``
+(spec 11.6); the set must equal the result's unit lines, and a fixture that sets
+``units_not_read`` must give it.
 """
 
 from __future__ import annotations
@@ -73,8 +75,8 @@ class Fixture:
     rows: List[Dict[str, Any]]
     baseline_rows: Optional[List[Dict[str, Any]]]
     waivers: List[model.Waiver]
-    expect: List[Tuple[str, str]]
-    expect_units: Optional[List[Tuple[str, str, str]]]
+    expect: List[Tuple[str, str, Optional[str]]]
+    expect_units: Optional[List[Tuple[str, str, str, str]]]
 
 
 def _fixture_files(directory: Path) -> List[Path]:
@@ -159,18 +161,28 @@ def _parse(
     units = spec.get("units_not_read")
     units_ok = units is None or _list_of_mappings(v, units, ("spec", "units_not_read"))
 
-    expect: List[Tuple[str, str]] = []
+    expect: List[Tuple[str, str, Optional[str]]] = []
     entries = spec.get("expect")
     if entries is not None and not isinstance(entries, list):
         v.add(("spec", "expect"), "must be a list")
     for i, entry in enumerate(entries or []):
         path = ("spec", "expect", i)
-        if not v.fields(entry, path, ["resource", "result"], ["resource", "result"]):
+        keys = ["resource", "result", "reason"]
+        if not v.fields(entry, path, keys, ["resource", "result"]):
             continue
-        if entry.get("result") is not None and entry["result"] not in EXPECTED_RESULTS:
+        result = entry.get("result")
+        reason = entry.get("reason")
+        if result is not None and result not in EXPECTED_RESULTS:
             v.add(path + ("result",), f"must be one of {', '.join(EXPECTED_RESULTS)}")
-        elif isinstance(entry.get("resource"), str) and entry.get("result"):
-            expect.append((entry["resource"], entry["result"]))
+            continue
+        if reason is not None:
+            if result != "not_evaluated":
+                v.add(path + ("reason",), "only allowed with result: not_evaluated")
+                continue
+            if not v.text(reason, path + ("reason",)):
+                continue
+        if isinstance(entry.get("resource"), str) and result:
+            expect.append((entry["resource"], result, reason))
         elif entry.get("resource") is not None:
             v.add(path + ("resource",), "must be text")
 
@@ -183,8 +195,15 @@ def _parse(
         for i, entry in enumerate(listed if isinstance(listed, list) else []):
             path = ("spec", "expect_units", i)
             keys = ["account", "service", "region"]
-            if v.fields(entry, path, keys, keys):
-                expect_units.append(tuple(str(entry.get(k, "")) for k in keys))
+            if not v.fields(entry, path, keys + ["from"], keys):
+                continue
+            origin = entry.get("from")
+            if origin is not None and origin != "baseline":
+                v.add(path + ("from",), "must be baseline")
+                continue
+            expect_units.append(
+                tuple(str(entry.get(k, "")) for k in keys) + (origin or "",)
+            )
 
     waivers: List[model.Waiver] = []
     if spec.get("waivers") is not None and now is not None:
@@ -255,17 +274,23 @@ def run_fixture(fixture: Fixture) -> FixtureResult:
         inventag_version="fixture",
     )
     got: Dict[str, str] = {}
+    got_reason: Dict[str, Optional[str]] = {}
     for finding in result["findings"]:
-        got.setdefault(finding["resource"], finding["result"])
+        if finding["resource"] not in got:
+            got[finding["resource"]] = finding["result"]
+            got_reason[finding["resource"]] = finding.get("reason")
     for row in fixture.rows:
         got.setdefault(model.resource(row), "out_of_scope")
 
     problems: List[str] = []
     wanted: Dict[str, str] = {}
-    for resource, expected in fixture.expect:
+    wanted_reason: Dict[str, Optional[str]] = {}
+    for resource, expected, reason in fixture.expect:
         if resource in wanted:
             problems.append(f"{resource}: listed twice in expect")
-        wanted.setdefault(resource, expected)
+        else:
+            wanted[resource] = expected
+            wanted_reason[resource] = reason
     for resource in sorted(set(got) | set(wanted)):
         if resource not in wanted:
             problems.append(
@@ -280,21 +305,36 @@ def run_fixture(fixture: Fixture) -> FixtureResult:
             problems.append(
                 f"{resource}: expected {wanted[resource]}, got {got[resource]}"
             )
+        elif wanted_reason[resource] is not None and wanted_reason[
+            resource
+        ] != got_reason.get(resource):
+            problems.append(
+                f"{resource}: expected reason {wanted_reason[resource]}, got "
+                f"{got_reason.get(resource)}"
+            )
+    if fixture.units and fixture.expect_units is None:
+        problems.append(
+            "this fixture has unread listings: say which unit lines you expect"
+        )
     if fixture.expect_units is not None:
         listed = set(fixture.expect_units)
         reported = {
-            (u["account"], u["service"], u["region"])
+            (u["account"], u["service"], u["region"], u.get("from", ""))
             for u in result["not_evaluated_units"]
         }
+
+        def name(unit):
+            text = "unit {}/{}/{}".format(*unit[:3])
+            return text + (" from baseline" if unit[3] else "")
+
         for unit in sorted(listed - reported):
             problems.append(
-                "unit {}/{}/{}: expected not read, but the policy reports no "
-                "such unit".format(*unit)
+                f"{name(unit)}: expected not read, but the policy reports no "
+                "such unit"
             )
         for unit in sorted(reported - listed):
             problems.append(
-                "unit {}/{}/{}: reported not read, but expect_units does not "
-                "list it".format(*unit)
+                f"{name(unit)}: reported not read, but expect_units does not " "list it"
             )
     return FixtureResult(fixture.name, problems)
 
