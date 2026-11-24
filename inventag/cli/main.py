@@ -1740,7 +1740,7 @@ def _install_sigterm_message(logger, output_dir, since):
     def handler(signum, frame):
         # The default action first, before anything that can block (the
         # folder read, the write of the line on a stalled pipe): a second
-        # SIGTERM then ends the process at once, as in v1.4.0 (R1).
+        # SIGTERM then ends the process at once (R1).
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
         request_stop_of_running_scans()  # lock-free: no new AWS request
         _say_sigterm_line(
