@@ -200,12 +200,47 @@ def test_the_flag_does_not_change_the_exit_code_when_checks_fail(finops_scan):
     assert finops_scan.code == 0
 
 
-def test_with_template_the_flag_warns_and_adds_nothing(tmp_path):
+def test_with_template_the_checks_run_and_write_the_findings_file(tmp_path):
+    # v1.5.0 plan decision 5: the finops-checks set runs on the saved
+    # snapshot and writes policy_findings_<ts>.json; the v1.4.2 warning is gone
     scan = run_scan(tmp_path, "--finops-checks", "--template", "standard-bom")
     assert scan.code == 0, scan.text
-    assert "--finops-checks: with --template" in scan.text
+    assert "--finops-checks: with --template" not in scan.text
+    # the sheet stays for non-template workbooks
     assert "FinOps" not in scan.sheet_names()
     assert "finops_checks" not in scan.results
+    (path,) = sorted(scan.out.glob("policy_findings_*.json"))
+    result = json.loads(path.read_text())
+    ids = [p["id"] for p in result["policies"]]
+    assert ids == ["FIN-001", "FIN-002", "FIN-003", "FIN-004", "FIN-005", "FIN-006"]
+    assert any(f["result"] == "fail" for f in result["findings"])
+    # findings never change the exit code without --policy-fail-on
+    assert result["summary"]["exit_code"] == 0
+    assert "Exit code 0: findings are reported; no threshold was set." in scan.text
+
+
+def test_with_template_and_no_snapshot_the_checks_say_why_they_did_not_run(
+    tmp_path,
+):
+    scan = run_scan(
+        tmp_path,
+        "--finops-checks",
+        "--template",
+        "standard-bom",
+        "--disable-state-management",
+    )
+    assert scan.code == 0, scan.text
+    assert (
+        "--finops-checks: with --template the checks run on the state snapshot, "
+        "and --disable-state-management turns it off; no FinOps findings were "
+        "written." in " ".join(scan.text.split())
+    )
+    assert list(scan.out.glob("policy_findings_*")) == []
+
+
+def test_without_template_no_findings_file_is_written(finops_scan):
+    # the v1.4.3 output: the FinOps sheet, no policy_findings file
+    assert list(finops_scan.out.glob("policy_findings_*")) == []
 
 
 # ------------------------------------------------------- per-account reports
