@@ -235,6 +235,8 @@ def load(paths: Sequence[Path], root: Optional[Path] = None) -> Loaded:
     policies: List[model.Policy] = []
     sets: Dict[str, Tuple[model.PolicySet, Document]] = {}
     for doc in docs:
+        if isinstance(doc.data, dict) and doc.data.get("kind") == "waivers":
+            continue  # waivers are loaded with --waivers
         kind, found = validate_document(doc.data, doc.file, doc.line_of, None)
         if found:
             issues.extend(found)

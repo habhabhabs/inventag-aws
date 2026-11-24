@@ -58,4 +58,4 @@ spec:
   - {resource: 'arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/classic-a', result: fail}
   - {resource: 'arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/classic-b', result: pass}
   expect_units:
-  - {account: '111111111111', service: elbv2, region: us-east-1, reason: listing_not_read, outcome: throttled}
+  - {account: '111111111111', service: elbv2, region: us-east-1}

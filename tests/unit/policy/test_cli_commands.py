@@ -319,7 +319,7 @@ def test_check_locked_refuses_a_changed_file_exit_1(tmp_path, monkeypatch):
         seen.append(root.name)
         return ["ex01.yaml: changed since policy.lock was written"]
 
-    stub(monkeypatch, "lock", check=check)
+    stub(monkeypatch, "lock", verify=check)
     args = check_args(tmp_path, "ex01.yaml", extra=["--format", "json", "--locked"])
     code, out, err = run(args)
     assert code == 1
@@ -332,7 +332,7 @@ def test_check_locked_refuses_a_changed_file_exit_1(tmp_path, monkeypatch):
 
 
 def test_check_locked_passes_when_the_lock_is_current(tmp_path, monkeypatch):
-    stub(monkeypatch, "lock", check=lambda root: [])
+    stub(monkeypatch, "lock", verify=lambda root: [])
     args = check_args(tmp_path, "ex01.yaml", extra=["--format", "json", "--locked"])
     code, out, err = run(args)
     assert code == 0, err
@@ -564,7 +564,7 @@ def test_lock_writes_through_the_lock_module(tmp_path, monkeypatch):
 
 def test_lock_check_current_exits_0(tmp_path, monkeypatch):
     folder = policies_dir(tmp_path, "ex01.yaml")
-    stub(monkeypatch, "lock", check=lambda root: [])
+    stub(monkeypatch, "lock", verify=lambda root: [])
     code, out, err = run(["lock", "--check", folder])
     assert code == 0, err
     assert out == "policy.lock is current.\n"
@@ -575,7 +575,7 @@ def test_lock_check_changed_exits_1(tmp_path, monkeypatch):
     stub(
         monkeypatch,
         "lock",
-        check=lambda root: ["ex01.yaml: changed since policy.lock was written"],
+        verify=lambda root: ["ex01.yaml: changed since policy.lock was written"],
     )
     code, out, err = run(["lock", "--check", folder])
     assert code == 1

@@ -45,4 +45,4 @@ spec:
     reason: identity_only}
   - {resource: 'arn:aws:elasticfilesystem:us-east-1:111111111111:file-system/fs-b', result: fail}
   expect_units:
-  - {account: '111111111111', service: efs, region: us-east-1, reason: listing_not_read, outcome: denied}
+  - {account: '111111111111', service: efs, region: us-east-1}

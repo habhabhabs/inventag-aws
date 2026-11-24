@@ -43,4 +43,4 @@ spec:
   - {resource: 'arn:aws:ec2:us-east-1:111111111111:volume/vol-d', result: not_evaluated, reason: identity_only}
   - {resource: 'arn:aws:ec2:us-east-1:111111111111:volume/vol-a', result: fail}
   expect_units:
-  - {account: '111111111111', service: ec2, region: us-east-1, reason: listing_not_read, outcome: throttled}
+  - {account: '111111111111', service: ec2, region: us-east-1}

@@ -43,4 +43,4 @@ spec:
   - {resource: 'arn:aws:rds:us-east-1:111111111111:db:db-d', result: not_evaluated, reason: identity_only}
   - {resource: 'arn:aws:rds:us-east-1:111111111111:db:db-b', result: fail}
   expect_units:
-  - {account: '111111111111', service: rds, region: us-east-1, reason: listing_not_read, outcome: denied}
+  - {account: '111111111111', service: rds, region: us-east-1}

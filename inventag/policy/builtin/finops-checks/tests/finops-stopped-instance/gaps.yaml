@@ -44,4 +44,4 @@ spec:
   - {resource: 'arn:aws:ec2:us-east-1:111111111111:instance/i-5', result: not_evaluated, reason: identity_only}
   - {resource: 'arn:aws:ec2:us-east-1:111111111111:instance/i-1', result: fail}
   expect_units:
-  - {account: '111111111111', service: ec2, region: us-east-1, reason: listing_not_read, outcome: denied}
+  - {account: '111111111111', service: ec2, region: us-east-1}

@@ -17,7 +17,7 @@ looked up by name (a missing module is an exit code 1 with a clear text):
 
 * ``inventag.policy.waivers.apply`` (P2), through the engine;
 * ``inventag.policy.baseline.evaluate_policy`` (P2), through the engine;
-* ``inventag.policy.lock.write(root) -> Path`` and ``check(root) -> [problem]``
+* ``inventag.policy.lock.write(root) -> Path`` and ``verify(root) -> [problem]``
   (P2);
 * ``inventag.policy.outputs.render(result, fmt, show_values=, fail_on=,
   thresholds=) -> str`` for ``text``, ``sarif``, ``junit`` (P3's ``xml``)
@@ -39,6 +39,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, TextIO, Tuple
 
 from ..exit_codes import EXIT_ERROR, EXIT_OK, EXIT_USAGE
+from ..security import safe_output
 from ..templating.errors import TemplateIssue
 from . import engine, loader, model, testing
 from .schema import PolicyError, parse_date
@@ -852,7 +853,14 @@ def _cmd_check(args, out: TextIO, err: TextIO) -> int:
         )
     if args.locked:
         lock = _lock_module("--locked")
-        problems = lock.check(Path(args.policies[0]))
+        root = Path(args.policies[0])
+        try:
+            problems = lock.verify(root)
+            if not problems and args.waivers:
+                # spec 10.3: the waivers file must be in the folder and the lock
+                lock.require_listed(root, [Path(args.waivers)])
+        except PolicyError as error:
+            raise CliError(EXIT_ERROR, *_issue_lines(error)) from None
         if problems:
             raise CliError(EXIT_ERROR, *_lock_lines(problems))
     policies = _select(args, err)
@@ -914,8 +922,12 @@ def _cmd_check(args, out: TextIO, err: TextIO) -> int:
             continue
         target = folder / f"policy_findings_{stamp}.{EXTENSIONS[fmt]}"
         try:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(texts[fmt], encoding="utf-8")
+            # owner-only, as the scan's findings files (lead decision 4)
+            safe_output.ensure_private_dir(folder)
+            with safe_output.open_private(
+                target, "w", encoding="utf-8", newline="\n"
+            ) as handle:
+                handle.write(texts[fmt])
         except OSError as error:
             raise CliError(
                 EXIT_ERROR,
@@ -1044,7 +1056,10 @@ def _cmd_lock(args, out: TextIO, err: TextIO) -> int:
         )
     lock = _lock_module("policy lock")
     if args.check:
-        problems = lock.check(folder)
+        try:
+            problems = lock.verify(folder)
+        except PolicyError as error:
+            raise CliError(EXIT_ERROR, *_issue_lines(error)) from None
         if problems:
             raise CliError(EXIT_ERROR, *_lock_lines(problems))
         out.write("policy.lock is current.\n")

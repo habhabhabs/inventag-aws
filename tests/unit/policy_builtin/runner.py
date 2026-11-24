@@ -63,8 +63,13 @@ def run_fixture(set_dir: Path, path: Path) -> List[str]:
                 f"got {got.get(resource)}"
             )
     if "expect_units" in spec:
+        # spec 11.6: a unit line is {account, service, region} and "from"
         units = [
-            {k: v for k, v in u.items() if k != "policy"}
+            {
+                k: v
+                for k, v in u.items()
+                if k in ("account", "service", "region", "from")
+            }
             for u in result["not_evaluated_units"]
         ]
         if units != spec["expect_units"]:
