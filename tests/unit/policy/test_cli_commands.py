@@ -98,8 +98,8 @@ def test_list_unknown_set_is_exit_1(tmp_path):
     code, out, err = run(["list", "--policies", folder, "--set", "nope"])
     assert code == 1
     assert err == (
-        "error: no policy set named 'nope'; run 'inventag policy list' to see "
-        "the policies and sets that are loaded.\n"
+        "error: no policy set named 'nope'; run 'inventag policy list' and "
+        "'inventag policy list --shipped' to see the sets.\n"
     )
 
 
@@ -341,7 +341,7 @@ def test_check_locked_passes_when_the_lock_is_current(tmp_path, monkeypatch):
 def test_check_waivers_are_passed_to_the_engine(tmp_path, monkeypatch):
     calls = []
 
-    def apply(findings, waivers, now, known_policies):
+    def apply(findings, waivers, now, known_policies=()):
         calls.append((len(waivers), now.date().isoformat()))
         return findings, []
 

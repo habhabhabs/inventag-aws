@@ -175,7 +175,7 @@ def test_expect_units_that_differ_fail_exit_1(tmp_path):
 
 
 def test_waivers_in_a_fixture_reach_the_waiver_module(tmp_path, monkeypatch):
-    def apply(findings, waivers, now, known_policies):
+    def apply(findings, waivers, now, known_policies=()):
         assert [w.policy for w in waivers] == ["RDS-001"]
         out = []
         for f in findings:
