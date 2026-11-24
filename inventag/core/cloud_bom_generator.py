@@ -1192,15 +1192,21 @@ class CloudBOMGenerator:
 
     def _announce_cost_requests(self, account_contexts) -> None:
         """Say once, before discovery, how many Cost Explorer requests the run
-        makes at most: AWS charges for each (architect F1 ruling 5)."""
+        makes at most: AWS charges for each (architect F1 ruling 5). A warning
+        only with --enable-cost-analysis; otherwise INFO, so a default run's
+        console is what v1.4.0 printed (architect v1.4.1 ruling)."""
+        cost_analysis = bool(self.config.bom_processing_config.enable_cost_analysis)
         count, parts = cost_requests.planned(
             len(account_contexts),
             bool(self.config.enable_billing_validation),
-            bool(self.config.bom_processing_config.enable_cost_analysis),
+            cost_analysis,
         )
         text = cost_requests.announcement(count, parts)
         if text:
-            self.logger.warning(text)
+            if cost_analysis:
+                self.logger.warning(text)
+            else:
+                self.logger.info(text)
 
     def _cost_trend_notes(self) -> List[str]:
         """A-80: with several accounts, the cost trend reads one bill, with the
