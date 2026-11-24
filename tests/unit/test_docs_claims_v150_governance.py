@@ -124,8 +124,9 @@ def policy_text(check, severity="low", pid="TT-001", resource=None, require=None
         spec["resource"] = resource
     if require:
         spec["require"] = require
-    return yaml.safe_dump(
-        {"format_version": 1, "kind": "policy", "name": pid.lower(), "spec": spec}
+    return json.dumps(
+        {"format_version": 1, "kind": "policy", "name": pid.lower(), "spec": spec},
+        indent=1,
     )
 
 
@@ -185,9 +186,9 @@ def test_a_policy_with_an_action_field_is_refused(tmp_path):
         code, out, err = run(["validate", folder])
         assert code == 1
         assert "InvenTag never changes resources; a policy has no actions." in err
-    assert "InvenTag never changes resources; a policy has no actions." in text_of(
-        GUIDE
-    ).replace("\n", " ")
+    assert "InvenTag never changes resources; a policy has no actions." in " ".join(
+        text_of(GUIDE).split()
+    )
 
 
 def test_validate_output_is_the_guides(ws):
@@ -367,9 +368,19 @@ def test_the_order_of_reasons_when_several_apply(tmp_path):
 
 def test_a_unit_not_read_is_listed_under_units_not_read(ws):
     code, out, err = run(
-        ["check", "--snapshot", "s1.json", "--policies", "drift.yaml", "--now", NOW]
+        [
+            "check",
+            "--snapshot",
+            "s1.json",
+            "--baseline",
+            "s0.json",
+            "--policies",
+            "drift.yaml",
+            "--now",
+            NOW,
+        ]
     )
-    assert "Units not read:" in out
+    assert "Units not read:\n  DRF-001 111111111111 lambda eu-west-1: throttled" in out
 
 
 # ---------------------------------------------------------------- guide: waivers
@@ -632,7 +643,7 @@ def test_a_cycle_of_include_is_an_error_and_a_policy_reached_twice_runs_once(tmp
         "format_version: 1\nkind: policy-set\nname: b\nspec: {include: [a]}\n"
     )
     code, out, err = run(["validate", tmp_path])
-    assert code == 1 and "cycle" in err.lower()
+    assert code == 1 and "include each other" in err
     twice = tmp_path / "twice"
     twice.mkdir()
     (twice / "p.yaml").write_text(
@@ -802,7 +813,8 @@ def test_the_packaged_schema_and_its_urn_id():
 
 
 def test_a_findings_file_validates_against_the_packaged_schema(ws):
-    jsonschema = pytest.importorskip("jsonschema")  # pragma: no cover
+    import jsonschema
+
     out_dir = ws / "o"
     run(
         [
@@ -873,10 +885,13 @@ def test_show_values_adds_the_value_to_text_and_json_and_never_to_sarif_or_junit
     )
     assert code == 0
     assert "(value: false)" in out
-    assert (
-        out.rstrip("\n").splitlines()[-4:-1]
-        == output_blocks(text_of(GUIDE))[-1].splitlines()[-3:]
+    shown = (
+        "  FAIL arn:aws:rds:eu-west-1:111111111111:db:db-orders\n"
+        "    RDS-001: condition not met: raw_data.StorageEncrypted\n"
+        "    - condition not met: raw_data.StorageEncrypted (value: false)"
     )
+    assert shown in out
+    assert shown in "\n".join(output_blocks(text_of(GUIDE)))
     detail = json.loads(next(out_dir.glob("*.json")).read_text())["findings"][0][
         "details"
     ][0]
@@ -928,6 +943,7 @@ def test_sarif_levels_and_junit_outcomes(tmp_path):
                 [{"type": "value", "key": "raw_data.Nope", "value": "x"}],
                 severity=severity,
                 pid=f"SV-00{n}",
+                resource={"resource_types": ["Instance"]},
             )
         )
     (folder / "ne.yaml").write_text(
@@ -1044,12 +1060,9 @@ def test_the_exit_sentences_are_the_ones_the_guide_lists(
             last = next(out_dir.glob("*.md")).read_text().rstrip("\n").splitlines()[-1]
         assert last == sentence
     guide = text_of(GUIDE)
-    generic = sentence.replace("critical", "S").replace("high", "S")
-    if (
-        "joined" not in generic
-        and "Exit code 0: nothing failed at severity S or higher. Exit" not in generic
-    ):
-        assert generic in guide
+    generic = re.sub(r"severity (critical|high)", "severity S", sentence)
+    for part in re.split(r"(?<=\.) ", generic):
+        assert part in guide, part
 
 
 def test_exit_8_wins_over_7_and_waived_and_pass_never_change_the_code(ws):
@@ -1095,9 +1108,10 @@ def test_a_unit_not_read_alone_gives_exit_8(ws):
 
 
 def test_a_scan_has_no_option_for_exit_8():
-    from inventag.cli import main as cli_main
-
+    import importlib
     import sys
+
+    cli_main = importlib.import_module("inventag.cli.main")
 
     old = sys.argv
     sys.argv = ["inventag", "--policy", "x", "--policy-fail-on-not-evaluated"]
@@ -1194,7 +1208,7 @@ def test_the_region_and_tag_sets_keep_their_starting_point_comment():
     ):
         files = list((builtin.BUILTIN_DIR / set_name).glob("*-0*.yaml"))
         assert files and all(fixed in f.read_text() for f in files)
-        assert fixed in text_of(SETS)
+        assert fixed in " ".join(text_of(SETS).split())
 
 
 def test_the_region_policy_lists_the_three_regions_and_allows_global():
@@ -1268,11 +1282,14 @@ def test_the_sets_page_says_which_three_sets_are_not_verified():
 
 
 # ------------------------------------------------------------ finops promise
-def test_the_golden_file_of_the_promise_holds_308_cases():
+def test_the_golden_file_of_the_promise_holds_304_cases():
     from tests.unit.finops import golden_cases
 
-    assert len(golden_cases.cases()) == 308
-    assert "holds 308 cases" in " ".join(text_of(GUIDE).split())
+    golden = json.loads(
+        (ROOT / "tests/unit/finops/golden/checks-v143.json").read_text()
+    )
+    assert len(golden_cases.cases()) == len(golden) == 304
+    assert "holds 304 cases" in " ".join(text_of(GUIDE).split())
 
 
 def test_policy_check_can_differ_from_the_sheet(tmp_path):
@@ -1768,3 +1785,456 @@ def test_the_policy_schema_command_prints_the_fields_and_one_field(tmp_path):
 def test_the_reference_page_says_it_is_written_by_hand():
     assert "there is no generator for it" in " ".join(text_of(FILES).split())
     assert not list((ROOT / "inventag").rglob("*policy*reference*.py"))
+
+
+# ------------------------------------------------- more claims of the pages
+def test_policy_commands_need_no_network_and_no_credentials(ws, monkeypatch):
+    import socket
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("a network call was made")
+
+    monkeypatch.setattr(socket.socket, "connect", refuse)
+    monkeypatch.setattr(socket, "create_connection", refuse)
+    for name in (
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_PROFILE",
+        "AWS_SESSION_TOKEN",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    code, out, err = run(
+        ["check", "--snapshot", "s1.json", "--now", NOW, "--fail-on", "high"]
+    )
+    assert code == 7, err
+
+
+def test_now_is_a_date_and_a_time_is_refused_with_exit_2(ws):
+    code, out, err = run(
+        ["check", "--snapshot", "s1.json", "--now", "2026-11-20T00:00:00"]
+    )
+    assert code == 2 and "write YYYY-MM-DD" in err
+    guide = " ".join(text_of(GUIDE).split())
+    assert "`--now YYYY-MM-DD` sets the date of the run" in guide
+
+
+def test_the_default_date_is_today_in_utc(ws, monkeypatch):
+    today = dt.datetime.now(dt.timezone.utc).date().isoformat()
+    code, out, err = run(["check", "--snapshot", "s1.json"])
+    assert code == 0, err
+    assert f"now: {today}" in out
+
+
+def test_a_fixture_with_units_not_read_must_give_expect_units(ws):
+    folder = ws / ".inventag" / "policies" / "tests" / "rds-storage-encrypted"
+    text = (folder / "basic.yaml").read_text()
+    unit = "{account: '111111111111', service: rds, region: eu-west-1, source: service-api, outcome: denied}"
+    (folder / "basic.yaml").write_text(
+        text.replace("  resources:\n", f"  units_not_read: [{unit}]\n  resources:\n", 1)
+    )
+    code, out, err = run(["test", ".inventag/policies"])
+    assert code == 1
+    (folder / "basic.yaml").write_text(
+        text.replace("  resources:\n", f"  units_not_read: [{unit}]\n  resources:\n", 1)
+        + "  expect_units:\n    - {account: '111111111111', service: rds, region: eu-west-1}\n"
+    )
+    code, out, err = run(["test", ".inventag/policies"])
+    assert code == 0, out + err
+
+
+def test_explain_accepts_set(ws):
+    code, out, err = run(
+        [
+            "explain",
+            "NAME-001",
+            "--snapshot",
+            "s1.json",
+            "--set",
+            "naming",
+            "--now",
+            NOW,
+        ]
+    )
+    assert code == 0, err
+
+
+def test_listings_decide_which_failed_listings_become_units_not_read(tmp_path):
+    unit = {
+        "account": ACCOUNT,
+        "service": "ec2",
+        "region": "us-east-1",
+        "source": "service-api",
+        "outcome": "denied",
+    }
+    rows = [row({"A": 1}, service="RDS", resource_type="DBInstance")]
+
+    def units(resource):
+        path = tmp_path / "p.yaml"
+        path.write_text(
+            policy_text(
+                [{"type": "value", "key": "raw_data.A", "value": 1}],
+                pid="AB-001",
+                resource=resource,
+            )
+        )
+        loaded = loader.load([path])
+        return engine.evaluate(snapshot(rows, [unit]), loaded.policies, now=NOW)[
+            "not_evaluated_units"
+        ]
+
+    assert units({"services": ["RDS"]}) == []
+    assert [
+        u["service"] for u in units({"services": ["RDS"], "listings": ["ec2"]})
+    ] == ["ec2"]
+
+
+def test_the_header_and_document_rules(tmp_path):
+    good = policy_text([{"type": "value", "key": "a", "value": 1}], pid="AB-001")
+    two = yaml.safe_dump_all(
+        [
+            json.loads(good),
+            {
+                **json.loads(good),
+                "name": "other",
+                "spec": {**json.loads(good)["spec"], "id": "AB-002"},
+            },
+        ]
+    )
+    (tmp_path / "p.yaml").write_text(two)
+    code, out, err = run(["list", "--policies", tmp_path])
+    assert (
+        code == 0 and "AB-001" in out and "AB-002" in out
+    )  # several documents in one file
+    for text, problem in (
+        (
+            good.replace('"name": "ab-001"', '"name": "Bad_Name"'),
+            "must use lower-case letters, digits and hyphens",
+        ),
+        (good.replace('"format_version": 1', '"format_version": 2'), "must be 1"),
+        (
+            good.replace('"kind": "policy"', '"kind": "other"'),
+            "must be one of policy, policy-set, waivers",
+        ),
+        (
+            good.replace('"name": "ab-001",', '"name": "ab-001", "colour": 1,'),
+            "unknown field 'colour'",
+        ),
+        (good.replace('"name": "ab-001",', ""), "name: is required"),
+    ):
+        (tmp_path / "p.yaml").write_text(text)
+        (tmp_path / "q.yaml").unlink(missing_ok=True)
+        code, out, err = run(["validate", tmp_path / "p.yaml"])
+        assert code == 1 and problem in err, (problem, err)
+    (tmp_path / "p.yaml").write_text(
+        "format_version: 1\nkind: policy\nname: a\nname: b\nspec: {}\n"
+    )
+    code, out, err = run(["validate", tmp_path / "p.yaml"])
+    assert code == 1 and "duplicate" in err.lower()
+    long_name = "a" * 64
+    (tmp_path / "p.yaml").write_text(good.replace("ab-001", long_name))
+    assert run(["validate", tmp_path / "p.yaml"])[0] == 1
+    (tmp_path / "p.yaml").write_text(good.replace("ab-001", "a" * 63))
+    assert run(["validate", tmp_path / "p.yaml"])[0] == 0
+
+
+def test_a_bad_key_a_bad_pattern_and_a_resource_filter_type_are_refused_at_load(
+    tmp_path,
+):
+    for entry, problem in (
+        ({"type": "value", "key": "raw_data[", "value": 1}, "not a valid key"),
+        (
+            {"type": "value", "key": "a", "op": "regex", "value": "("},
+            "not a valid regular expression",
+        ),
+        ({"type": "value", "key": "a", "op": "in", "value": "x"}, "'in' needs a list"),
+        (
+            {"type": "value", "key": "a", "op": "near", "value": 1},
+            "unknown operator 'near'",
+        ),
+        (
+            {"type": "value", "key": "a", "value_type": "word", "value": 1},
+            "unknown value_type 'word'",
+        ),
+        ({"type": "name-pattern", "pattern": "("}, "not a valid regular expression"),
+        ({"type": "value", "key": "a" * 201, "value": 1}, "at most 200 characters"),
+    ):
+        (tmp_path / "p.yaml").write_text(policy_text([entry], pid="AB-001"))
+        code, out, err = run(["validate", tmp_path])
+        assert code == 1 and problem in err, (entry, err)
+    (tmp_path / "p.yaml").write_text(
+        policy_text(
+            [{"type": "value", "key": "a", "value": 1}],
+            pid="AB-001",
+            resource={"filters": [{"type": "required-tags", "keys": [{"key": "A"}]}]},
+        )
+    )
+    code, out, err = run(["validate", tmp_path])
+    assert code == 1 and "filters take only type: value" in err
+
+
+def test_message_placeholders_references_version_and_enabled(tmp_path):
+    spec = {
+        "id": "AB-001",
+        "severity": "low",
+        "version": 3,
+        "message": "{name} in {region} ({policy}) is bad",
+        "references": ["text", "https://example.test/x"],
+        "resource": {"services": ["EC2"]},
+        "check": [{"type": "value", "key": "raw_data.A", "value": 2}],
+    }
+    snap = tmp_path / "s.json"
+    snap.write_text(json.dumps(snapshot([row({"A": 1})])))
+    folder = tmp_path / "p"
+    folder.mkdir()
+    (folder / "a.yaml").write_text(
+        json.dumps({"format_version": 1, "kind": "policy", "name": "a", "spec": spec})
+    )
+    (folder / "b.yaml").write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "kind": "policy",
+                "name": "b",
+                "spec": {**spec, "id": "AB-002", "enabled": False},
+            }
+        )
+    )
+    out_dir = tmp_path / "o"
+    code, out, err = run(
+        [
+            "check",
+            "--snapshot",
+            snap,
+            "--policies",
+            folder,
+            "--now",
+            NOW,
+            "--format",
+            "json,sarif",
+            "--output-directory",
+            out_dir,
+        ]
+    )
+    assert code == 0, err
+    data = json.loads(next(out_dir.glob("*.json")).read_text())
+    assert [f["message"] for f in data["findings"]] == [
+        "i-1 in us-east-1 (AB-001) is bad"
+    ]
+    by = {p["id"]: p for p in data["policies"]}
+    assert by["AB-001"]["version"] == 3
+    assert set(by["AB-002"]["counts"].values()) == {0}  # listed, all counts 0
+    sarif = json.loads(next(out_dir.glob("*.sarif")).read_text())
+    rule = sarif["runs"][0]["tool"]["driver"]["rules"][0]
+    assert rule["helpUri"] == "https://example.test/x"  # the first URL
+    assert rule["properties"]["version"] == 3
+
+
+def test_a_placeholder_that_does_not_exist_is_refused(tmp_path):
+    (tmp_path / "p.yaml").write_text(
+        policy_text([{"type": "value", "key": "a", "value": 1}], pid="AB-001").replace(
+            '"check"', '"message": "{nope}", "check"'
+        )
+    )
+    code, out, err = run(["validate", tmp_path])
+    assert code == 1 and "unknown placeholder" in err
+
+
+def test_the_row_fields_the_reference_lists_are_on_the_rows_of_a_snapshot(tmp_path):
+    fields = (
+        "service resource_type resource_id resource_name arn region account_id "
+        "source_account_id tags raw_data detail_level sources"
+    ).split()
+    page = text_of(FILES)
+    for name in fields:
+        assert f"`{name}`" in page, name
+    golden = json.loads((GOLDEN / "s1.json").read_text())
+    for r in golden["resources"]:
+        assert {
+            "service",
+            "resource_type",
+            "resource_id",
+            "arn",
+            "region",
+            "tags",
+            "detail_level",
+            "source_account_id",
+        } <= set(r)
+
+
+@pytest.mark.e2e
+def test_a_scan_writes_the_snapshot_the_policy_command_reads(tmp_path):
+    from tests.unit.finops.conftest import run_scan
+
+    folder = tmp_path / "pol"
+    folder.mkdir()
+    (folder / "stopped.yaml").write_text(
+        policy_text(
+            [
+                {
+                    "type": "value",
+                    "key": "raw_data.State.Name",
+                    "op": "ne",
+                    "value": "stopped",
+                }
+            ],
+            severity="high",
+            pid="EC2-101",
+            resource={"services": ["EC2"], "resource_types": ["Instance"]},
+        )
+    )
+    scan = run_scan(tmp_path, "--policy", str(folder), "--policy-fail-on", "high")
+    assert scan.code == 7, scan.text
+    states = sorted((scan.out / "state").glob("state_*.json"))
+    assert len(states) == 1
+    snap = json.loads(states[0].read_text())
+    for r in snap["resources"]:
+        assert {
+            "service",
+            "resource_type",
+            "resource_id",
+            "arn",
+            "region",
+            "tags",
+            "raw_data",
+            "detail_level",
+            "sources",
+        } <= set(r) or r.get("detail_level") == "identity"
+        assert "account_id" in r or "source_account_id" in r
+    on_scan = json.loads(next(scan.out.glob("policy_findings_*.json")).read_text())
+    out_dir = tmp_path / "again"
+    code, out, err = run(
+        [
+            "check",
+            "--snapshot",
+            states[0],
+            "--policies",
+            folder,
+            "--now",
+            on_scan["now"],
+            "--format",
+            "json",
+            "--output-directory",
+            out_dir,
+        ]
+    )
+    assert code == 0, err
+    again = json.loads(next(out_dir.glob("*.json")).read_text())
+    assert [f["resource"] for f in again["findings"]] == [
+        f["resource"] for f in on_scan["findings"]
+    ]
+
+
+def test_a_waiver_matches_the_arn_or_the_service_type_id_and_a_glob_with_an_account(ws):
+    rows = [
+        row({"A": 1}, arn="", resource_id="i-9"),
+        row(
+            {"A": 1},
+            resource_id="i-8",
+            arn="arn:aws:ec2:us-east-1:111111111111:instance/i-8",
+        ),
+    ]
+    snap = ws / "own.json"
+    snap.write_text(json.dumps(snapshot(rows)))
+    (ws / "pol").mkdir()
+    (ws / "pol" / "p.yaml").write_text(
+        policy_text(
+            [{"type": "value", "key": "raw_data.A", "value": 2}],
+            severity="high",
+            pid="AB-001",
+        )
+    )
+    spec = {
+        "format_version": 1,
+        "kind": "waivers",
+        "name": "w",
+        "spec": {
+            "waivers": [
+                {
+                    "policy": "AB-001",
+                    "resource": "EC2/Instance/i-9",
+                    "reason": "a long enough reason",
+                    "approved_by": "x",
+                    "expires": "2026-12-31",
+                },
+                {
+                    "policy": "AB-001",
+                    "resource": "arn:aws:ec2:us-east-1:*:instance/i-?",
+                    "account": ACCOUNT,
+                    "reason": "a long enough reason",
+                    "approved_by": "x",
+                    "expires": "2026-12-31",
+                },
+            ]
+        },
+    }
+    (ws / "w.yaml").write_text(json.dumps(spec))
+    out_dir = ws / "o"
+    code, out, err = run(
+        [
+            "check",
+            "--snapshot",
+            snap,
+            "--policies",
+            ws / "pol",
+            "--waivers",
+            ws / "w.yaml",
+            "--now",
+            NOW,
+            "--fail-on",
+            "high",
+            "--format",
+            "json",
+            "--output-directory",
+            out_dir,
+        ]
+    )
+    data = json.loads(next(out_dir.glob("*.json")).read_text())
+    assert code == 0, err
+    assert data["summary"]["by_result"]["waived"] == 2
+    assert data["unused_waivers"] == []
+
+
+def slug(heading):
+    heading = re.sub(r"[`*]", "", heading)
+    return re.sub(r"\s", "-", re.sub(r"[^\w\s-]", "", heading.lower()).strip())
+
+
+@pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)
+def test_every_relative_link_of_the_pages_resolves_to_a_page_and_a_heading(page):
+    for target in re.findall(r"\]\(([^)\s]+)\)", text_of(page)):
+        if target.startswith(("http://", "https://", "#")):
+            continue
+        path, _, anchor = target.partition("#")
+        found = (page.parent / path).resolve()
+        assert found.is_file(), target
+        if anchor:
+            headings = re.findall(r"^#{1,6} (.*?)\s*$", text_of(found), re.M)
+            assert anchor in {slug(h) for h in headings}, target
+
+
+def test_every_command_in_the_bash_blocks_parses_with_the_real_parser():
+    """The ci-examples checker (scripts/docs) does not know ``inventag policy``
+    yet, so the commands of these pages are parsed here with the real parsers."""
+    import importlib
+    import shlex
+
+    main_parser = importlib.import_module("inventag.cli.main").create_parser()
+    count = 0
+    for page in PAGES:
+        for info, body in fences(text_of(page)):
+            if info != "bash":
+                continue
+            for line in body.splitlines():
+                tokens = shlex.split(line)
+                assert tokens[0] == "inventag", line
+                if tokens[1] == "policy":
+                    parser = cli.build_parser()
+                    args = tokens[2:]
+                else:
+                    parser, args = main_parser, tokens[1:]
+                try:
+                    parser.parse_args(args)
+                except SystemExit as stop:  # pragma: no cover
+                    raise AssertionError(f"{line}: exit {stop.code}") from None
+                count += 1
+    assert count == 12
