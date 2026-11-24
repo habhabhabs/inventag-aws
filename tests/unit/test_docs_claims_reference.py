@@ -6,6 +6,7 @@ A test whose docstring says FALSE asserts what the code really does, so the
 page can be corrected (or the code fixed) later without losing the evidence.
 """
 
+import argparse
 import importlib
 import json
 import logging
@@ -122,7 +123,9 @@ def test_cli_page_defaults_equal_parser():
         if default == "none":
             ok = value in (None, [])
         elif default == "off":
-            ok = value is False
+            # a count option (-v, -vv) is off at 0
+            counted = isinstance(action, argparse._CountAction)
+            ok = value is False or (counted and value == 0)
         elif default == "on":
             ok = value is True
         else:
