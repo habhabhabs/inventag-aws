@@ -1,0 +1,411 @@
+{
+  "$defs": {
+    "counts": {
+      "additionalProperties": false,
+      "properties": {
+        "fail": {
+          "type": "integer"
+        },
+        "not_evaluated": {
+          "type": "integer"
+        },
+        "out_of_scope": {
+          "type": "integer"
+        },
+        "pass": {
+          "type": "integer"
+        },
+        "waived": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "pass",
+        "fail",
+        "waived",
+        "not_evaluated",
+        "out_of_scope"
+      ],
+      "type": "object"
+    },
+    "finding": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "details": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "from": {
+          "const": "baseline"
+        },
+        "message": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "policy": {
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "identity_only",
+            "listing_not_read",
+            "field_missing",
+            "tags_not_read",
+            "not_comparable",
+            "not_convertible",
+            "value_too_long"
+          ]
+        },
+        "region": {
+          "type": "string"
+        },
+        "resource": {
+          "type": "string"
+        },
+        "resource_type": {
+          "type": "string"
+        },
+        "result": {
+          "enum": [
+            "pass",
+            "fail",
+            "waived",
+            "not_evaluated"
+          ]
+        },
+        "service": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "waiver": {
+          "additionalProperties": false,
+          "properties": {
+            "approved_by": {
+              "type": "string"
+            },
+            "expires": {
+              "format": "date",
+              "pattern": "^\\d{4}-\\d\\d-\\d\\d$",
+              "type": "string"
+            },
+            "file": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "reason",
+            "approved_by",
+            "expires",
+            "file"
+          ],
+          "type": "object"
+        },
+        "waiver_expired": {
+          "format": "date",
+          "pattern": "^\\d{4}-\\d\\d-\\d\\d$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy",
+        "result",
+        "severity",
+        "account",
+        "region",
+        "service",
+        "resource_type",
+        "resource",
+        "message"
+      ],
+      "type": "object"
+    },
+    "policy": {
+      "additionalProperties": false,
+      "properties": {
+        "counts": {
+          "$ref": "#/$defs/counts"
+        },
+        "description": {
+          "type": "string"
+        },
+        "file": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "references": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "severity_overridden_by": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "severity",
+        "version",
+        "file",
+        "sha256",
+        "counts"
+      ],
+      "type": "object"
+    },
+    "snapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "inventag_version": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "file",
+        "sha256",
+        "timestamp"
+      ],
+      "type": "object"
+    },
+    "unit": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "from": {
+          "const": "baseline"
+        },
+        "outcome": {
+          "type": "string"
+        },
+        "policy": {
+          "type": "string"
+        },
+        "reason": {
+          "const": "listing_not_read"
+        },
+        "region": {
+          "type": "string"
+        },
+        "service": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy",
+        "account",
+        "service",
+        "region",
+        "reason",
+        "outcome"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "urn:inventag:schema:policy-findings:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "baseline": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/snapshot"
+        }
+      ]
+    },
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/finding"
+      },
+      "type": "array"
+    },
+    "inventag_version": {
+      "type": "string"
+    },
+    "not_evaluated_policies": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "policy": {
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "no_baseline"
+            ]
+          }
+        },
+        "required": [
+          "policy",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "not_evaluated_units": {
+      "items": {
+        "$ref": "#/$defs/unit"
+      },
+      "type": "array"
+    },
+    "now": {
+      "format": "date",
+      "pattern": "^\\d{4}-\\d\\d-\\d\\d$",
+      "type": "string"
+    },
+    "policies": {
+      "items": {
+        "$ref": "#/$defs/policy"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1.0"
+    },
+    "snapshot": {
+      "$ref": "#/$defs/snapshot"
+    },
+    "summary": {
+      "additionalProperties": false,
+      "properties": {
+        "by_result": {
+          "$ref": "#/$defs/counts"
+        },
+        "exit_code": {
+          "enum": [
+            0,
+            7,
+            8
+          ]
+        },
+        "fail_by_severity": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "type": "object"
+        },
+        "rows": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "rows",
+        "by_result",
+        "fail_by_severity",
+        "exit_code"
+      ],
+      "type": "object"
+    },
+    "unused_waivers": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "account": {
+            "type": "string"
+          },
+          "by": {
+            "type": "string"
+          },
+          "expires": {
+            "format": "date",
+            "pattern": "^\\d{4}-\\d\\d-\\d\\d$",
+            "type": "string"
+          },
+          "file": {
+            "type": "string"
+          },
+          "policy": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "string"
+          },
+          "why": {
+            "enum": [
+              "no match",
+              "expired",
+              "unknown policy",
+              "superseded"
+            ]
+          }
+        },
+        "required": [
+          "policy",
+          "resource",
+          "expires",
+          "why",
+          "file"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "inventag_version",
+    "now",
+    "snapshot",
+    "baseline",
+    "policies",
+    "summary",
+    "findings",
+    "not_evaluated_units",
+    "not_evaluated_policies",
+    "unused_waivers"
+  ],
+  "title": "InvenTag policy findings, schema 1.0",
+  "type": "object"
+}

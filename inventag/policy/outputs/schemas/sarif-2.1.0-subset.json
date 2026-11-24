@@ -1,0 +1,378 @@
+{
+  "$defs": {
+    "driver": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "const": "InvenTag"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/rule"
+          },
+          "type": "array"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "rules"
+      ],
+      "type": "object"
+    },
+    "result": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "review"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "level": {
+                "const": "none"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "fail"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "level": {
+                "enum": [
+                  "error",
+                  "warning",
+                  "note"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "fail",
+            "review"
+          ]
+        },
+        "level": {
+          "enum": [
+            "error",
+            "warning",
+            "note",
+            "none"
+          ]
+        },
+        "locations": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "logicalLocations": {
+                "items": {
+                  "properties": {
+                    "fullyQualifiedName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fullyQualifiedName"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "physicalLocation": {
+                "additionalProperties": false,
+                "properties": {
+                  "artifactLocation": {
+                    "properties": {
+                      "uri": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "uri"
+                    ],
+                    "type": "object"
+                  },
+                  "region": {
+                    "properties": {
+                      "startLine": {
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "startLine"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "artifactLocation",
+                  "region"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "physicalLocation",
+              "logicalLocations"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "message": {
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "type": "object"
+        },
+        "partialFingerprints": {
+          "properties": {
+            "inventag/v1": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "inventag/v1"
+          ],
+          "type": "object"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "ruleId": {
+          "type": "string"
+        },
+        "ruleIndex": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "suppressions": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "justification": {
+                "type": "string"
+              },
+              "kind": {
+                "const": "external"
+              }
+            },
+            "required": [
+              "kind",
+              "justification"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "ruleId",
+        "kind",
+        "level",
+        "message",
+        "locations",
+        "partialFingerprints"
+      ],
+      "type": "object"
+    },
+    "rule": {
+      "additionalProperties": false,
+      "properties": {
+        "fullDescription": {
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "type": "object"
+        },
+        "helpUri": {
+          "pattern": "^https?://",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "properties": {
+          "properties": {
+            "severity": {
+              "enum": [
+                "info",
+                "low",
+                "medium",
+                "high",
+                "critical"
+              ]
+            },
+            "sha256": {
+              "type": "string"
+            },
+            "version": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "severity",
+            "version",
+            "sha256"
+          ],
+          "type": "object"
+        },
+        "shortDescription": {
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "shortDescription",
+        "properties"
+      ],
+      "type": "object"
+    },
+    "run": {
+      "additionalProperties": false,
+      "properties": {
+        "invocations": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "executionSuccessful": {
+                "type": "boolean"
+              },
+              "toolExecutionNotifications": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "level": {
+                      "enum": [
+                        "none",
+                        "note",
+                        "warning",
+                        "error"
+                      ]
+                    },
+                    "message": {
+                      "properties": {
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "text"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "level",
+                    "message"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "executionSuccessful"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "results": {
+          "items": {
+            "$ref": "#/$defs/result"
+          },
+          "type": "array"
+        },
+        "tool": {
+          "additionalProperties": false,
+          "properties": {
+            "driver": {
+              "$ref": "#/$defs/driver"
+            }
+          },
+          "required": [
+            "driver"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "tool",
+        "results"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "urn:inventag:schema:sarif-2.1.0-subset:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "runs": {
+      "items": {
+        "$ref": "#/$defs/run"
+      },
+      "maxItems": 1,
+      "minItems": 1,
+      "type": "array"
+    },
+    "version": {
+      "const": "2.1.0"
+    }
+  },
+  "required": [
+    "$schema",
+    "version",
+    "runs"
+  ],
+  "title": "The part of SARIF 2.1.0 that InvenTag writes (our own schema, not the OASIS one)",
+  "type": "object"
+}
