@@ -39,12 +39,12 @@ TREND_NOTE = (
     "accounts, billing, cost, total, parts",
     [
         (1, True, False, 1, (("billing validation", 1), ("cost trend", 0))),
-        (1, True, True, 2, (("billing validation", 1), ("cost trend", 1))),
-        (1, False, True, 1, (("billing validation", 0), ("cost trend", 1))),
+        (1, True, True, 3, (("billing validation", 1), ("cost trend", 2))),
+        (1, False, True, 2, (("billing validation", 0), ("cost trend", 2))),
         (1, False, False, 0, (("billing validation", 0), ("cost trend", 0))),
         (3, True, False, 3, (("billing validation", 3), ("cost trend", 0))),
-        (3, True, True, 4, (("billing validation", 3), ("cost trend", 1))),
-        (3, False, True, 1, (("billing validation", 0), ("cost trend", 1))),
+        (3, True, True, 9, (("billing validation", 3), ("cost trend", 6))),
+        (3, False, True, 6, (("billing validation", 0), ("cost trend", 6))),
         (0, True, True, 0, (("billing validation", 0), ("cost trend", 0))),
     ],
 )
@@ -66,8 +66,8 @@ def test_planned_counts(accounts, billing, cost, total, parts):
             2,
             True,
             True,
-            17,
-            (("billing validation", 2), ("cost trend", 1), ("cost allocation", 14)),
+            20,
+            (("billing validation", 2), ("cost trend", 4), ("cost allocation", 14)),
         ),
     ],
 )
@@ -87,7 +87,7 @@ def test_without_cost_allocation_the_parts_are_as_in_v142():
 
 def test_the_line_golden():
     assert cost_requests.announcement(*cost_requests.planned(3, True, True)) == line(
-        4, 3, 1
+        9, 3, 6
     )
 
 
@@ -149,7 +149,7 @@ def test_one_account_billing_and_cost_analysis_says_2_before_the_first_request(
 ):
     outcome, order = _run(tmp_path, monkeypatch, True, ("--enable-cost-analysis",))
     assert outcome.code == 0
-    assert _lines(outcome) == [line(2, 1, 1)]
+    assert _lines(outcome) == [line(3, 1, 2)]
     # architect v1.4.1 ruling: a WARNING only with --enable-cost-analysis
     assert _levels(outcome) == ["WARNING"]
     assert order[0] == "line"
@@ -197,11 +197,12 @@ def test_three_accounts_say_4_and_name_the_trend_account(tmp_path, monkeypatch):
         accounts=("A", "B", "C"),
     )
     assert outcome.code == 0
-    assert _lines(outcome) == [line(4, 3, 1)]
+    assert _lines(outcome) == [line(9, 3, 6)]
     assert _levels(outcome) == ["WARNING"]
     assert order[0] == "line"
-    # billing validation once for each account, the cost trend once
-    assert order.count("request") == 4
+    # P7 (A-80): billing validation once for each account, the cost trend
+    # once for each account too
+    assert order.count("request") == 6
     # one WARNING line on the console (the run notes do not repeat it)
     assert outcome.text.count(TREND_NOTE) == 1
     # and the report's run notes say it

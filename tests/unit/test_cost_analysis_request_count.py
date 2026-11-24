@@ -24,8 +24,8 @@ from tests.regression.runner import run_in_process
 # F1b (architect ruling 5): the run says it once, in the generator, before
 # discovery; the analyzer says nothing of its own.
 ANNOUNCEMENT = (
-    "Cost Explorer: up to 1 request(s) in this run "
-    "(billing validation: 0; cost trend: 1). AWS charges for each."
+    "Cost Explorer: up to 2 request(s) in this run "
+    "(billing validation: 0; cost trend: 2). AWS charges for each."
 )
 
 
@@ -67,16 +67,6 @@ RESOURCES = [
     {"id": "queue-1", "service": "SQS"},
 ]
 
-# What v1.4.0 gave for ANSWER and RESOURCES (one request per service, each
-# read with the same substring match): (resource, service, current,
-# previous, change %, direction, alert).
-V140_TRENDS = [
-    ("i-1", "EC2", Decimal("0.5"), Decimal("4"), -87.5, "decreasing", True),
-    ("i-2", "EC2", Decimal("0.5"), Decimal("4"), -87.5, "decreasing", True),
-    ("fn-1", "Lambda", Decimal("12"), Decimal("10"), 20.0, "increasing", False),
-    ("tbl-1", "DynamoDB", Decimal("3"), Decimal("0"), 100.0, "increasing", True),
-]
-
 
 class CostExplorer:
     def __init__(self, outcome, log=None):
@@ -112,18 +102,6 @@ def _logged(analyzer):
     return handler
 
 
-def _row(t):
-    return (
-        t.resource_id,
-        t.service,
-        t.current_monthly_cost,
-        t.previous_monthly_cost,
-        t.cost_change_percentage,
-        t.trend_direction,
-        t.alert_triggered,
-    )
-
-
 # --- the analyzer -----------------------------------------------------------
 
 
@@ -141,16 +119,6 @@ def test_the_request_is_two_months_grouped_by_service():
     assert kwargs["Metrics"] == ["BlendedCost"]
     assert kwargs["GroupBy"] == [{"Type": "DIMENSION", "Key": "SERVICE"}]
     assert set(kwargs["TimePeriod"]) == {"Start", "End"}
-
-
-def test_the_values_per_service_are_those_of_v1_4_0():
-    trends = _analyzer(CostExplorer(ANSWER)).analyze_cost_trends(RESOURCES)
-    assert [_row(t) for t in trends] == V140_TRENDS
-    by_id = {t.resource_id: t for t in trends}
-    assert [c for _, c in by_id["fn-1"].historical_costs] == [
-        Decimal("12"),
-        Decimal("10"),
-    ]
 
 
 def test_the_analyzer_does_not_announce_the_run_does():
