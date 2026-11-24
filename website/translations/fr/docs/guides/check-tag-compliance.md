@@ -26,6 +26,7 @@ d’une exécution hors ligne avec `--template finops-cost-report` (données d�
 
 ```text title="Sortie"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Cost Explorer: up to 1 request(s) in this run (billing validation: 1; cost trend: 0). AWS charges for each.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx

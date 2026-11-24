@@ -272,7 +272,7 @@ Con `--s3-bucket acme-inventory-reports --s3-key-prefix bom-reports/`, cada ejec
 coloca sus archivos en una carpeta con el nombre de la ejecución:
 
 ```text title="Objects in s3://acme-inventory-reports"
-bom-reports/20261112_090000/multi_account_bom_20261112_090000.xlsx
+bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ```
 
 ## Salida del terminal {#terminal-output}

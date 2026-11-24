@@ -60,13 +60,14 @@ De una ejecución sin conexión contra AWS simulado (datos de ejemplo):
 
 ```text title="Salida"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Cost Explorer: up to 1 request(s) in this run (billing validation: 1; cost trend: 0). AWS charges for each.
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```
 
 Lo que llegó al bucket:
 
 ```text title="Objects in s3://acme-inventory-reports"
-bom-reports/20261112_090000/multi_account_bom_20261112_090000.xlsx
+bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ```
 
 El archivo de auditoría (extracto):
