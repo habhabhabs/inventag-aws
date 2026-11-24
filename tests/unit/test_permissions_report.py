@@ -509,8 +509,9 @@ def test_the_result_is_plain_json_with_the_six_keys_and_no_error_text():
         assert forbidden not in text
 
 
-def test_the_kinds_are_the_planned_nine():
+def test_the_kinds_are_the_planned_nine_and_cost_allocation():
     assert set(pr.KINDS) == {
+        "allocation",  # v1.4.3, --finops-cost-allocation
         "listing",
         "detail",
         "tagging",
@@ -708,3 +709,23 @@ def test_the_cost_analyzer_hands_over_what_aws_refused_as_a_list_not_as_log_text
     ]
     # the existing warning is unchanged (once per API)
     assert caplog.text.count("access to the pricing API was denied") == 1
+
+
+def test_a_denied_cost_allocation_request_names_its_own_account():
+    found = pr.build(
+        allocation_denials=[
+            ("222222222222", "ce", "ListCostAllocationTags"),
+            ("222222222222", "ce", "GetCostAndUsage"),
+        ],
+        run_account="111111111111",
+    )
+    assert [(e["account"], e["action"], e["kind"]) for e in found] == [
+        ("222222222222", "ce:GetCostAndUsage", "allocation"),
+        ("222222222222", "ce:ListCostAllocationTags", "allocation"),
+    ]
+    (line,) = pr.notes(found)
+    assert line.startswith(
+        "Permissions: 2 action(s) were not allowed for account 222222222222: "
+        "ce:GetCostAndUsage, ce:ListCostAllocationTags. Effect: cost allocation "
+        "figures are missing."
+    )
