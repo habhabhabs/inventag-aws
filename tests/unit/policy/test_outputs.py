@@ -583,3 +583,54 @@ def test_golden_of_the_superseded_result():
     for fmt in ("sarif", "xml", "md", "text"):
         expected = (OUT / f"superseded.{EXT[fmt]}").read_text()
         assert render(with_superseded(), fmt) == expected
+
+
+# ------------------------------------------------- amendment 3 (11.2): policies[].line
+def with_lines():
+    """The result as the engine will give it once policies[] carries `line`
+    (P1c); faked here until then."""
+    result = load("ex09-ex10")
+    for policy, line in zip(result["policies"], (4, 9)):
+        policy["line"] = line
+    return result
+
+
+def start_lines(log):
+    return {
+        r["ruleId"]: r["locations"][0]["physicalLocation"]["region"]["startLine"]
+        for r in log["runs"][0]["results"]
+    }
+
+
+def test_sarif_reads_the_line_from_the_result():
+    assert start_lines(sarif(with_lines())) == {"EC2-002": 4, "EC2-003": 9}
+
+
+def test_policy_lines_argument_overrides_the_result():
+    log = json.loads(render(with_lines(), "sarif", policy_lines={"EC2-002": 7}))
+    assert start_lines(log) == {"EC2-002": 7, "EC2-003": 9}
+
+
+def test_a_missing_or_bad_line_gives_one():
+    result = with_lines()
+    del result["policies"][0]["line"]
+    result["policies"][1]["line"] = 0
+    assert start_lines(sarif(result)) == {"EC2-002": 1, "EC2-003": 1}
+
+
+def test_findings_schema_accepts_line_and_refuses_zero():
+    jsonschema.validate(with_lines(), findings_schema())
+    bad = with_lines()
+    bad["policies"][0]["line"] = 0
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(bad, findings_schema())
+
+
+def test_json_shows_line():
+    out = json.loads(render(with_lines(), "json"))
+    assert [p["line"] for p in out["policies"]] == [4, 9]
+
+
+def test_golden_sarif_with_lines():
+    expected = (OUT / "lines.sarif").read_text()
+    assert render(with_lines(), "sarif") == expected
