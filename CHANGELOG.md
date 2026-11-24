@@ -19,6 +19,17 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   arm64). Intel Macs are not supported. Not verified against GitHub: the job,
   until the first release run after v1.4.0.
 
+### Changed
+
+- With `--enable-cost-analysis`, the run says once, before discovery, how many
+  Cost Explorer requests it will make at most (`Cost Explorer: up to N request(s)
+  ...`), as a warning. Without that flag the line is at info level
+  (`--verbose`).
+- With `--enable-cost-analysis`, a Cost Explorer figure that cannot be read is
+  now one warning per error type (`Cost analysis: the cost trend failed for
+  some resources (<error>); those services have no trend.`). v1.4.0 logged it
+  at debug level only.
+
 ### Fixed
 
 - `--enable-cost-analysis` made one Cost Explorer request for each service
@@ -30,12 +41,10 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   and at most one more for the whole run with `--enable-cost-analysis`. A
   single-account run with both makes at most 2; with `--no-billing-validation`
   it makes at most 1. A throttled request is retried, up to 10 attempts in all,
-  and each retry is one more request. AWS charges for each request. Before
-  discovery the run says that number once, without retries, as a warning:
-  `Cost Explorer: up to N request(s) in this run (billing validation: A; cost
-  trend: B). AWS charges for each.` The `--help` of `--enable-cost-analysis`
-  and the docs say the number. No new IAM action. Not verified against real
-  AWS: the number of billed requests, and whether AWS bills a retry.
+  and each retry is one more request. AWS charges for each request. The
+  `--help` of `--enable-cost-analysis` and the docs say the number. No new IAM
+  action. Not verified against real AWS: the number of billed requests, and
+  whether AWS bills a retry.
 - A run with several accounts and `--enable-cost-analysis` now says whose bill
   the cost trend read, as a warning and a run note: "Cost trend: read once,
   with the credentials of account <id>. Its figures are that account's Cost

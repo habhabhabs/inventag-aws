@@ -135,7 +135,7 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 请参阅最新的
 [Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。
 
-一次运行中的 Cost Explorer 请求：启用账单验证时（默认）每个账户最多一次，使用 `--enable-cost-analysis` 时整个运行最多再多一次。单账户运行同时使用两者时最多发出 2 次；使用 `--no-billing-validation` 时最多发出 1 次。被限流的请求会重试，总共最多 10 次尝试，每次重试都是一次新的请求。AWS 对每次请求收费。 发现开始之前，运行会显示这个次数（不含重试），例如 `Cost Explorer: up to 2 request(s) in this run (billing validation: 1; cost trend: 1). AWS charges for each.`
+一次运行中的 Cost Explorer 请求：启用账单验证时（默认）每个账户最多一次，使用 `--enable-cost-analysis` 时整个运行最多再多一次。单账户运行同时使用两者时最多发出 2 次；使用 `--no-billing-validation` 时最多发出 1 次。被限流的请求会重试，总共最多 10 次尝试，每次重试都是一次新的请求。AWS 对每次请求收费。 发现开始之前，运行会给出这个次数（不含重试）：使用 `--enable-cost-analysis` 时作为警告，否则为 info 级别（加 `--verbose` 时显示）。例如 `Cost Explorer: up to 2 request(s) in this run (billing validation: 1; cost trend: 1). AWS charges for each.`
 
 - `--no-billing-validation` 会停止这些调用，此时报告里没有可供对比的计费数据。
 - `--enable-cost-analysis` 也会调用 Cost Explorer，即使加上 `--no-billing-validation` 也是如此。它还会发出 Pricing 和 CloudWatch 调用，次数取决于你的资源。每个不同的价格查询只发出一次，之后重复使用，因此 Pricing 调用次数随不同资源类型和规格的数量增长，而不是随资源数量增长。

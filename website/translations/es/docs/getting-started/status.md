@@ -228,7 +228,7 @@ facturado. AWS cobra cada solicitud a Cost
 Explorer: consulta los
 [precios actuales de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 
-Solicitudes a Cost Explorer en una ejecución: como máximo una por cada cuenta cuando la validación de facturación está activada (el valor predeterminado), y como máximo una más para toda la ejecución con `--enable-cost-analysis`. Una ejecución de una sola cuenta con ambas hace como máximo 2; con `--no-billing-validation` hace como máximo 1. Una solicitud limitada (throttled) se reintenta, hasta 10 intentos en total, y cada reintento es una solicitud más. AWS cobra cada solicitud. Antes del descubrimiento, la ejecución muestra ese número, sin los reintentos, por ejemplo `Cost Explorer: up to 2 request(s) in this run (billing validation: 1; cost trend: 1). AWS charges for each.`
+Solicitudes a Cost Explorer en una ejecución: como máximo una por cada cuenta cuando la validación de facturación está activada (el valor predeterminado), y como máximo una más para toda la ejecución con `--enable-cost-analysis`. Una ejecución de una sola cuenta con ambas hace como máximo 2; con `--no-billing-validation` hace como máximo 1. Una solicitud limitada (throttled) se reintenta, hasta 10 intentos en total, y cada reintento es una solicitud más. AWS cobra cada solicitud. Antes del descubrimiento, la ejecución indica ese número, sin los reintentos: como advertencia con `--enable-cost-analysis`, si no en nivel info (visible con `--verbose`). Por ejemplo `Cost Explorer: up to 2 request(s) in this run (billing validation: 1; cost trend: 1). AWS charges for each.`
 
 - `--no-billing-validation` detiene esas llamadas, y el informe entonces no
   tiene datos de facturación con los que comparar.
