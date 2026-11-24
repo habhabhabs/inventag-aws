@@ -125,3 +125,8 @@ def test_the_loaded_objects_are_frozen_dataclasses():
         "expires",
         "file",
     }
+
+
+def test_the_words_of_an_unused_waiver():
+    # spec 2.5, 3.3 and amendment 2 (10.1)
+    assert model.UNUSED_WHY == ("no match", "expired", "unknown policy", "superseded")

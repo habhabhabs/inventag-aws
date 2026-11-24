@@ -512,3 +512,105 @@ def test_the_engine_does_not_change_its_input():
     before = copy.deepcopy(data)
     run("ex05.yaml", "ex09.yaml", snap=data)
     assert data == before
+
+
+# ----------------------------------------------------------------- 25 to 27
+@needs_p2
+def test_25_a_superseded_waiver():
+    r = run("ex01.yaml", waivers=["w25.yaml"])
+    assert table(r) == {"R5": "waived", "R6": "pass"}
+    (finding,) = [f for f in r["findings"] if f["result"] == "waived"]
+    assert finding["waiver"]["expires"] == "2027-01-31"
+    (unused,) = r["unused_waivers"]
+    assert (unused["why"], unused["by"], unused["expires"]) == (
+        "superseded",
+        "waivers/w25.yaml",
+        "2026-12-31",
+    )
+    assert code(r, "high") == 0
+
+
+@needs_p2
+def test_26_added_in_a_unit_the_baseline_did_not_read():
+    base = snapshot("s0.json")
+    base["metadata"]["tags"]["units_not_read"] = [
+        {
+            "account": B,
+            "service": "ec2",
+            "region": "ap-southeast-1",
+            "source": "service-api",
+            "outcome": "denied",
+        }
+    ]
+    r = run("ex19.yaml", baseline=base)
+    assert table(r) == {
+        "R2": "fail",
+        "R4": "fail",
+        "R9": ("not_evaluated", "listing_not_read"),
+        "R11 (baseline)": "fail",
+        "R1": "pass",
+        "R3": "pass",
+        "R7": "pass",
+    }
+    assert units(r) == sorted(
+        [
+            U1,
+            {
+                "account": B,
+                "service": "ec2",
+                "region": "ap-southeast-1",
+                "reason": "listing_not_read",
+                "outcome": "denied",
+                "from": "baseline",
+            },
+        ],
+        key=lambda u: (u["account"], u["service"], u["region"]),
+    )
+    assert code(r, "medium") == 7
+    assert code(r, "medium", nev=True) == 8
+
+
+@needs_p2
+def test_27_a_false_baseline_entry_beside_an_unknown_entry():
+    r = run("ex27.yaml", baseline=snapshot("s0.json"))
+    found = table(r)
+    assert found["R9"] == "fail"
+    assert found["R4"] == "fail"
+    assert found["R3"] == "pass"
+    assert [d["check"] for d in details(r, "R9")] == [0]
+    assert [d["check"] for d in details(r, "R4")] == [0, 1]
+    assert code(r, "low") == 7
+
+
+# ----------------------------------------------------------------- P1b
+def test_the_engine_passes_every_enabled_policy_to_the_waivers(tmp_path, monkeypatch):
+    import sys
+    import types
+
+    calls = []
+    fake = types.ModuleType("inventag.policy.waivers")
+
+    def apply(findings, waivers, now, known_policies):
+        calls.append(sorted(known_policies))
+        return findings, []
+
+    fake.apply = apply
+    monkeypatch.setitem(sys.modules, "inventag.policy.waivers", fake)
+    disabled = tmp_path / "off.yaml"
+    disabled.write_text(
+        "format_version: 1\nkind: policy\nname: off\nspec:\n  id: OFF-001\n"
+        "  severity: low\n  enabled: false\n"
+        "  check: [{type: value, key: raw_data.X, value: 1}]\n"
+    )
+    loaded = loader.load(
+        [
+            GOLDEN / "policies" / "ex01.yaml",
+            GOLDEN / "policies" / "ex03.yaml",
+            disabled,
+        ],
+        root=GOLDEN,
+    )
+    waivers = loader.load_waivers([GOLDEN / "waivers" / "w16.yaml"], NOW)
+    # SQS-001 (ex03) has no fail; it is known all the same
+    engine.evaluate(snapshot(), loaded.policies, waivers=waivers, now=NOW)
+    assert calls == [["RDS-001", "SQS-001"]]

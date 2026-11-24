@@ -1,0 +1,15 @@
+format_version: 1
+kind: waivers
+name: w25
+spec:
+  waivers:
+    - policy: RDS-001
+      resource: "arn:aws:rds:eu-west-1:111111111111:db:db-orders"
+      reason: "Migration to an encrypted instance. Ticket OPS-123."
+      approved_by: platform-lead
+      expires: 2026-12-31
+    - policy: RDS-001
+      resource: "arn:aws:rds:eu-west-1:111111111111:db:db-orders"
+      reason: "Migration moved to January. Ticket OPS-124."
+      approved_by: platform-lead
+      expires: 2027-01-31

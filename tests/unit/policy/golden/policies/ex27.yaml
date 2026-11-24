@@ -1,0 +1,10 @@
+format_version: 1
+kind: policy
+name: drf-003
+spec:
+  id: DRF-003
+  severity: low
+  resource: {services: [EC2]}
+  check:
+    - {type: baseline, change: [added]}
+    - {"tag:Owner": present}

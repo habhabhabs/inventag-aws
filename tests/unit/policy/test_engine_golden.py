@@ -99,7 +99,25 @@ FINDINGS_SCHEMA = {
                 },
             },
         },
-        "unused_waivers": {"type": "array"},
+        "unused_waivers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["policy", "resource", "expires", "why", "file"],
+                "properties": {
+                    "policy": {"type": "string"},
+                    "resource": {"type": "string"},
+                    "account": {"type": "string"},
+                    "expires": {"type": "string"},
+                    "why": {
+                        "enum": ["no match", "expired", "unknown policy", "superseded"]
+                    },
+                    "by": {"type": "string"},
+                    "file": {"type": "string"},
+                },
+            },
+        },
     },
     "$defs": {
         "snapshot": {
@@ -200,6 +218,7 @@ FINDINGS_SCHEMA = {
                 "region": {"type": "string"},
                 "reason": {"const": "listing_not_read"},
                 "outcome": {"type": "string"},
+                "from": {"const": "baseline"},
             },
         },
     },
@@ -226,3 +245,10 @@ def test_no_absolute_path_in_a_golden_file():
     for path in GOLDEN.glob("result-*.json"):
         text = path.read_text()
         assert not re.search(r'"/(home|tmp|Users)/', text), path
+
+
+def test_the_schema_s_waiver_words_are_the_model_s():
+    from inventag.policy import model
+
+    items = FINDINGS_SCHEMA["properties"]["unused_waivers"]["items"]
+    assert tuple(items["properties"]["why"]["enum"]) == model.UNUSED_WHY

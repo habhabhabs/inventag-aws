@@ -369,3 +369,16 @@ def test_no_environment_expansion(tmp_path, monkeypatch):
 def test_the_error_names_file_and_line(tmp_path):
     text = refused([policy(tmp_path, pid="rds-1")])
     assert text.startswith("p.yaml:5: spec.id: ")
+
+
+@pytest.mark.parametrize("group", ["and", "or", "not"])
+def test_v20_a_nested_baseline_entry(tmp_path, group):
+    check = f"check: [{{{group}: [{{type: baseline, change: [added]}}]}}]"
+    text = refused([policy(tmp_path, check=check)])
+    assert "a baseline check must be a top-level entry of check" in text
+
+
+def test_a_top_level_baseline_entry_loads(tmp_path):
+    check = "check: [{type: baseline, change: [added]}, {'tag:Owner': present}]"
+    (p,) = loader.load([policy(tmp_path, check=check)], root=tmp_path).policies
+    assert p.check[0]["type"] == "baseline"
