@@ -1,7 +1,6 @@
 """Whole result files (golden) and the result's shape against spec 3.3 with the
 reasons of amendment 1 (9.1)."""
 
-import copy
 import datetime as dt
 import json
 import re
