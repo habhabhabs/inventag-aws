@@ -69,7 +69,7 @@ Non vérifié sur AWS : ce que la politique gérée `ReadOnlyAccess` autorise au
 
 ## Option 2 : la politique plus restreinte du dépôt {#option-2-the-narrower-policy-in-the-repository}
 
-`config/defaults/iam-policy-read-only.json` liste 122 actions de lecture précises,
+`config/defaults/iam-policy-read-only.json` liste 123 actions de lecture précises,
 dont `tag:GetResources`, `ce:GetCostAndUsage` et `pricing:GetProducts`, et `apigateway:GET` pour les métadonnées d’API seulement (pas les clés d’API).
 Elle est générée à partir de la même liste que celle utilisée par le code ; elle correspond donc à ce
 qu’InvenTag appelle. Elle inclut les actions des services qu’InvenTag liste avec ses propres appels,
@@ -101,7 +101,7 @@ La liste de politique de cette section est PROVISOIRE. Le projet teste InvenTag 
 
 ### Ce qui fonctionne {#what-works}
 
-D’après la liste provisoire, `ReadOnlyAccess` inclut les 122 actions de lecture de `config/defaults/iam-policy-read-only.json` et `apigateway:GET`. Parmi elles figurent `tag:GetResources`, `ce:GetCostAndUsage` et `ec2:DescribeRegions`. Les trois ajouts de l’option 1 sont donc une précaution, pas un besoin.
+D’après la liste provisoire, `ReadOnlyAccess` inclut les 123 actions de lecture de `config/defaults/iam-policy-read-only.json` et `apigateway:GET`. Parmi elles figurent `tag:GetResources`, `ce:GetCostAndUsage` et `ec2:DescribeRegions`. Les trois ajouts de l’option 1 sont donc une précaution, pas un besoin.
 
 Dans les tests, une analyse d’un compte avec seulement ces actions se termine avec le code 0. AWS ne refuse aucun appel. Le journal n’a pas l’avertissement `No permission for`, et chaque ressource créée par le test est dans le rapport. C’est vrai avec `--create-excel --create-word`, et aussi quand vous ajoutez `--enable-network-analysis`, `--enable-security-analysis`, `--enable-cost-analysis` et la validation de la facturation.
 

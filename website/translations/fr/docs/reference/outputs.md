@@ -105,6 +105,17 @@ le résultat de `CloudBOMGenerator.generate_multi_account_bom()` a la clé
 format de sortie `json`. Sans l’option, la clé est absente. Les champs sont
 décrits dans [Contrôles FinOps](../guides/finops-checks.md#the-finops_checks-result).
 
+## Feuille FinOps costs et clé `finops_costs` {#finops-costs-sheet-and-the-finops_costs-key}
+
+Avec `--finops-cost-allocation`, le classeur par défaut se termine par une
+feuille `FinOps costs` (après la feuille `FinOps` quand les deux options sont
+actives) : une note, puis une ligne par compte, regroupement et valeur, avec
+les colonnes `Account`, `Grouping`, `Value`, `Amount`, `Currency`, `Metric`,
+`Period start`, `Period end` et `Status`. Le résultat de
+`CloudBOMGenerator.generate_multi_account_bom()` et le `metadata` d’un rapport
+JSON ont la clé `finops_costs` ; l’instantané a `metadata.tags.cost_allocation`
+(tableaux seulement, sauf avec `--no-cost-in-snapshot`). Voir
+[Contrôles FinOps](../guides/finops-checks.md#cost-allocation-from-cost-explorer).
 ## Rapport Word {#word-report}
 
 **Sans modèle :** un titre, une synthèse, un tableau des services, et

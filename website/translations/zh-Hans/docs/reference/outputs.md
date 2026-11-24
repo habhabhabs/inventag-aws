@@ -73,6 +73,9 @@ InvenTag 写入的其他位置只有你指定的文件（`--log-file`、`--audit
 
 命令行不为这些结果写 JSON 文件。在 Python 中，`CloudBOMGenerator.generate_multi_account_bom()` 的结果带有 `finops_checks` 键，用 `json` 输出格式写出的 JSON 报告的 `metadata` 中也有这个键。不使用该参数时没有这个键。字段见 [FinOps 检查](../guides/finops-checks.md#the-finops_checks-result)。
 
+## FinOps costs 工作表和 `finops_costs` 键 {#finops-costs-sheet-and-the-finops_costs-key}
+
+使用 `--finops-cost-allocation` 时，默认工作簿以一个 `FinOps costs` 工作表结束（两个参数都使用时，位于 `FinOps` 工作表之后）：一条说明，然后每个账户、分组和值各占一行，列为 `Account`、`Grouping`、`Value`、`Amount`、`Currency`、`Metric`、`Period start`、`Period end` 和 `Status`。`CloudBOMGenerator.generate_multi_account_bom()` 的结果和 JSON 报告的 `metadata` 带有 `finops_costs` 键；快照带有 `metadata.tags.cost_allocation`（只有表格，除非使用 `--no-cost-in-snapshot`）。见 [FinOps 检查](../guides/finops-checks.md#cost-allocation-from-cost-explorer)。
 ## Word 报告 {#word-report}
 
 **不使用模板时：** 一个标题、一份执行摘要、一张服务表，以及每个服务最多 50 个资源，共六列：Name、Id、Type、Region、Tags 和 Service。如果该服务的资源都没有名称，则这六列是 Id、Type、Region、Tags、Service 和 Source Account Name。

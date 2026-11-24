@@ -1,6 +1,6 @@
 ---
 title: FinOps 检查
-description: 对扫描找到的资源运行六项固定的 FinOps 检查（未挂载的卷、未关联的地址、旧快照、已停止的实例、没有目标的负载均衡器、缺少的成本分配标签），不再发出任何 AWS 调用。
+description: 对扫描找到的资源运行六项固定的 FinOps 检查，不再发出任何 AWS 调用；并可选择从 Cost Explorer 读取上个月按服务、关联账户和成本分配标签划分的支出。
 sidebar_position: 10
 ---
 
@@ -93,6 +93,60 @@ inventag --create-excel --finops-checks
 - `findings`：列出的结果，包括 `policy`、`result`、`reason`、`account`、`region`、`service`、`resource_type`、`resource`、`name` 和 `message`（即 `Observed` 的文字）。
 
 不使用该参数时没有这个键。
+
+## 从 Cost Explorer 读取成本分配 {#cost-allocation-from-cost-explorer}
+
+`--finops-cost-allocation` 是第二个参数，默认关闭，与 `--finops-checks` 和 `--enable-cost-analysis` 相互独立。它用每个账户自己的凭证，从 Cost Explorer 读取该账户上个月的支出，并在 Excel 报告末尾添加一个名为 `FinOps costs` 的工作表。
+
+```bash
+inventag --create-excel --finops-cost-allocation
+```
+
+### 请求 {#requests}
+
+对每个账户，按以下顺序：
+
+| 请求 | 数量 |
+|---|---|
+| 针对 `CostCenter`、`Owner`、`Project` 和 `Environment`（内置标签策略 `finops-cost-allocation` 的键）的 `ListCostAllocationTags` | 1 |
+| 按服务分组的 `GetCostAndUsage` | 1 |
+| 按关联账户分组的 `GetCostAndUsage` | 1 |
+| 按这些键中每个已作为成本分配标签激活的键分组的 `GetCostAndUsage` | 0 到 4 |
+
+即每个账户最多 7 个请求。`ListCostAllocationTags` 显示为未激活或未列出的键不会被查询；它的表格显示 "not active as a cost allocation tag" 或 "not found as a cost allocation tag"。如果 `ListCostAllocationTags` 本身失败，四个键都会被查询。
+
+应答的后续页面（`NextPageToken`）也是一个请求。它从同样的 7 个中扣除，每个分组最多 3 页。需要更多页面的表格标记为 "incomplete"。
+
+在发现开始之前，运行会显示一行警告，给出最多的请求数，例如：`Cost Explorer: up to 7 request(s) in this run (billing validation: 0; cost trend: 0; cost allocation: 7). AWS charges for each.` 只读防护的审计（`--audit-output`）统计到的该功能请求数从不超过这一行所说的数。
+
+SDK 会重试被限流的请求，每次重试都是一个新请求。AWS 对每个 Cost Explorer 请求收费：见 [Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。未针对真实的 AWS 验证：AWS 对这些请求（包括重试和 `ListCostAllocationTags`）如何收费。
+
+### FinOps costs 工作表 {#the-finops-costs-sheet}
+
+工作表以一条说明开头：金额是 Cost Explorer 为每个账户返回的数值，用该账户自己的凭证读取，属于上一个完整的月份，并不是单个资源的成本。然后每个账户、分组和值各占一行，列为 `Account`、`Grouping`、`Value`、`Amount`、`Currency`、`Metric`、`Period start`、`Period end` 和 `Status`。
+
+- 时间段是运行开始所在月份的前一个自然月。`Period end` 是运行所在月份的第一天。
+- 指标是 `UnblendedCost`。金额是 AWS 返回的文本；InvenTag 不对其求和、拆分或取整。
+- 在按标签的分组中，值 `(no value)` 表示没有该标签键的支出。
+- 无法读取的表格有一行显示其状态，例如 "not read: access denied"。运行说明中也会写出它，被拒绝的请求会有一行 `Permissions:`。扫描结果和退出码与不使用该参数时相同。
+
+使用 `--per-account-reports` 时，每个账户的报告只包含该账户的表格。使用 `--template` 时不发出任何请求：InvenTag 显示一条警告，不写 `FinOps costs` 工作表。
+
+### `finops_costs` 键、快照和变更报告 {#the-finops_costs-key-the-snapshot-and-the-change-report}
+
+- 在 Python 中，`CloudBOMGenerator.generate_multi_account_bom()` 的结果和 JSON 报告的 `metadata` 带有 `finops_costs` 键：`schema_version`、`metric`，以及每个账户的时间段、请求数、每个标签键的状态和表格。
+- 状态快照带有 `metadata.tags.cost_allocation`：只有表格（按服务、关联账户和标签值的合计；没有资源 ID）。快照仍然只有所有者可读（模式 0600）。`--no-cost-in-snapshot` 不把这些数字写入快照；工作表照常写出。不使用 `--finops-cost-allocation` 时，该参数不改变任何内容，并会显示一条警告说明这一点。
+- 当本次运行读取了成本分配时，变更报告会有一个 "Cost, previous run to this run" 区块。两个快照的月份不同时，它把上一次运行和本次运行的每个值并排列出。否则用一行说明为什么没有比较：上一个快照没有这些数字、两次运行读取的是同一个月，或者使用了 `--no-cost-in-snapshot`。
+
+### 需要什么，以及未验证的内容 {#what-it-needs-and-what-is-not-verified}
+
+该参数需要 `ce:GetCostAndUsage` 和 `ce:ListCostAllocationTags`。两者都在仓库策略中（见 [IAM 权限](../reference/iam-permissions.md)）。
+
+未针对真实的 AWS 验证：
+
+- 标签键只有在付费（payer）账户中被激活为成本分配标签之后，才会显示支出。
+- 组织中的成员账户看到的可能比付费账户少，并且 `ListCostAllocationTags` 可能无法从成员账户应答。
+- 应答的形式与测试使用的一致。测试使用的应答与 Cost Explorer 应答的形式相同，并已对照 botocore 服务模型检查。
 
 ## 检查看不到的内容 {#what-the-checks-cannot-see}
 

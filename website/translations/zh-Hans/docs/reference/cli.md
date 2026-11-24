@@ -104,6 +104,8 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 
 | 参数 | 默认值 | 状态 | 功能 |
 |---|---|---|---|
+| `--finops-cost-allocation` | 关闭 | 可用 | 用每个账户自己的凭证，从 Cost Explorer 读取该账户上个月的支出：按服务、按关联账户，以及按内置 `finops-cost-allocation` 策略中每个已激活的成本分配标签键。在末尾添加一个 `FinOps costs` 工作表。每个账户最多 7 个 Cost Explorer 请求；SDK 的重试会增加请求，AWS 对每个请求收费。需要 `ce:ListCostAllocationTags`。使用 `--template` 时不添加任何内容。见 [FinOps 检查](../guides/finops-checks.md#cost-allocation-from-cost-explorer)。 |
+| `--no-cost-in-snapshot` | 关闭 | 可用 | 与 `--finops-cost-allocation` 一起使用：不把成本数字写入状态快照；工作表照常写出。单独使用时只显示一条警告，没有作用。 |
 | `--finops-checks` | 关闭 | 可用 | 对扫描找到的资源运行六项 FinOps 检查（`FIN-001` 到 `FIN-006`），并在 Excel 报告末尾添加一个 `FinOps` 工作表。不再发出任何 AWS 调用，不需要额外的权限，其检查结果也不改变退出码。使用 `--template` 时不添加任何内容。见 [FinOps 检查](../guides/finops-checks.md)。 |
 | `--enable-network-analysis` | 关 | 可用 | 找到 VPC 时，在 Excel 报告中添加 `Network Analysis` 工作表。与 `--template` 一起使用时不添加任何内容。见[网络与安全分析](../guides/network-and-security-analysis.md)。 |
 | `--enable-security-analysis` | 关 | 可用 | 找到安全组时，在 Excel 报告中添加 `Security Analysis` 工作表。与 `--template` 一起使用时不添加任何内容。 |

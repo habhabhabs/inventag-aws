@@ -109,6 +109,8 @@ Not verified against real Google: what the Google flags in this table create, sh
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
+| `--finops-cost-allocation` | off | Works | Reads last month's spend from Cost Explorer for each account, with its own credentials: by service, by linked account and by each active cost allocation tag key of the built-in `finops-cost-allocation` policy. Adds a `FinOps costs` sheet as the last sheet. At most 7 Cost Explorer requests per account; the SDK's retries add more, and AWS charges for each. Needs `ce:ListCostAllocationTags`. Adds nothing with `--template`. See [FinOps checks](../guides/finops-checks.md#cost-allocation-from-cost-explorer). |
+| `--no-cost-in-snapshot` | off | Works | With `--finops-cost-allocation`: keeps the cost figures out of the state snapshot; the sheet is still written. Without it, a warning and no effect. |
 | `--finops-checks` | off | Works | Runs six FinOps checks (`FIN-001` to `FIN-006`) on the resources the scan found and adds a `FinOps` sheet as the last sheet of the Excel report. Makes no further AWS call, needs no further permission, and its findings do not change the exit code. Adds nothing with `--template`. See [FinOps checks](../guides/finops-checks.md). |
 | `--enable-network-analysis` | off | Works | Adds a `Network Analysis` sheet to the Excel report when VPCs are found. Adds nothing with `--template`. See [Network and security analysis](../guides/network-and-security-analysis.md). |
 | `--enable-security-analysis` | off | Works | Adds a `Security Analysis` sheet to the Excel report when security groups are found. Adds nothing with `--template`. |

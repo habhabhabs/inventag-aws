@@ -1,6 +1,6 @@
 ---
 title: FinOps checks
-description: Six fixed FinOps checks on the resources a scan finds (unattached volumes, unassociated addresses, old snapshots, stopped instances, load balancers with no target, missing cost allocation tags), with no further AWS call.
+description: Six fixed FinOps checks on the resources a scan finds, with no further AWS call, and an opt-in read of last month's spend by service, linked account and cost allocation tag from Cost Explorer.
 sidebar_position: 10
 ---
 
@@ -125,6 +125,103 @@ the same key in its `metadata`. The key holds:
   `message` (the `Observed` text).
 
 Without the flag, the key is not there.
+
+## Cost allocation from Cost Explorer
+
+`--finops-cost-allocation` is a second flag, off by default and independent of
+`--finops-checks` and `--enable-cost-analysis`. It reads last month's spend
+from Cost Explorer for each account, with that account's own credentials, and
+adds a sheet named `FinOps costs` as the last sheet of the Excel report.
+
+```bash
+inventag --create-excel --finops-cost-allocation
+```
+
+### Requests
+
+For each account, in this order:
+
+| Request | How many |
+|---|---|
+| `ListCostAllocationTags` for `CostCenter`, `Owner`, `Project` and `Environment` (the keys of the built-in `finops-cost-allocation` tag policy) | 1 |
+| `GetCostAndUsage` grouped by service | 1 |
+| `GetCostAndUsage` grouped by linked account | 1 |
+| `GetCostAndUsage` grouped by each of those keys that is active as a cost allocation tag | 0 to 4 |
+
+That is at most 7 requests for each account. A key that `ListCostAllocationTags`
+shows as not active, or does not list, is not queried; its table says "not
+active as a cost allocation tag" or "not found as a cost allocation tag". If
+`ListCostAllocationTags` itself fails, all four keys are queried.
+
+A further page of an answer (`NextPageToken`) is one more request. It comes out
+of the same 7, at most 3 for each grouping. A table that needs more pages than
+that is marked "incomplete".
+
+Before discovery, the run prints one warning line with the most requests, for
+example: `Cost Explorer: up to 7 request(s) in this run (billing validation: 0;
+cost trend: 0; cost allocation: 7). AWS charges for each.` The read-only
+guard's audit (`--audit-output`) never counts more requests of the feature than
+that line says.
+
+The SDK retries a throttled request, and each retry is one more request. AWS
+charges for each Cost Explorer request: see
+[Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
+Not verified against real AWS: what AWS bills for these requests, retries and
+`ListCostAllocationTags` included.
+
+### The FinOps costs sheet
+
+The sheet starts with a note: the amounts are as Cost Explorer returns them,
+for each account, read with that account's own credentials, for the last full
+month, and they are not costs of single resources. Then one row for each
+account, grouping and value, with the columns `Account`, `Grouping`, `Value`,
+`Amount`, `Currency`, `Metric`, `Period start`, `Period end` and `Status`.
+
+- The period is the calendar month before the month in which the run started.
+  `Period end` is the first day of the run's month.
+- The metric is `UnblendedCost`. The amounts are the text AWS returns; InvenTag
+  does not add, divide or round them.
+- In a tag grouping, the value `(no value)` is the spend without that tag key.
+- A table that could not be read has one row with its status, for example
+  "not read: access denied". The run notes name it too, and a denied request
+  gets a `Permissions:` line. The scan's result and the exit code stay as they
+  would be without the flag.
+
+With `--per-account-reports`, each account's report holds only that account's
+tables. With `--template`, no request is made: InvenTag prints a warning and
+writes no `FinOps costs` sheet.
+
+### The `finops_costs` key, the snapshot and the change report
+
+- In Python, the result of `CloudBOMGenerator.generate_multi_account_bom()` and
+  the `metadata` of a JSON report have the key `finops_costs`: `schema_version`,
+  `metric` and, for each account, the period, the request count, the status of
+  each tag key and the tables.
+- The state snapshot gets `metadata.tags.cost_allocation`: the tables only
+  (totals by service, linked account and tag value; no resource IDs). The
+  snapshot stays readable by its owner only (mode 0600).
+  `--no-cost-in-snapshot` leaves the figures out of the snapshot; the sheet is
+  still written. Without `--finops-cost-allocation` that flag changes nothing
+  and a warning says so.
+- The change report gets a block "Cost, previous run to this run" when this run
+  read cost allocation. It shows each value of the previous run and of this run
+  side by side when the two snapshots hold different months. Otherwise one line
+  says why there is no comparison: the previous snapshot has no figures, both
+  runs read the same month, or `--no-cost-in-snapshot` was given.
+
+### What it needs and what is not verified
+
+The flag needs `ce:GetCostAndUsage` and `ce:ListCostAllocationTags`. Both are
+in the repository policy (see [IAM permissions](../reference/iam-permissions.md)).
+
+Not verified against real AWS:
+
+- Tag keys show spend only after they are activated as cost allocation tags in
+  the billing (payer) account.
+- A member account of an organization may see less than the payer account, and
+  `ListCostAllocationTags` may not answer from a member account.
+- That the answers have the shape the tests use. The tests use answers shaped
+  like Cost Explorer's, checked against the botocore service model.
 
 ## What the checks cannot see
 

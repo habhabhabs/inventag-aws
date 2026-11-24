@@ -1,6 +1,6 @@
 ---
 title: Comprobaciones FinOps
-description: Seis comprobaciones FinOps fijas sobre los recursos que encuentra un escaneo (volúmenes sin conectar, direcciones sin asociar, instantáneas antiguas, instancias detenidas, balanceadores de carga sin destino, etiquetas de asignación de costes que faltan), sin ninguna llamada adicional a AWS.
+description: Seis comprobaciones FinOps fijas sobre los recursos que encuentra un escaneo, sin ninguna llamada adicional a AWS, y una lectura opcional del gasto del mes pasado por servicio, cuenta vinculada y etiqueta de asignación de costes desde Cost Explorer.
 sidebar_position: 10
 ---
 
@@ -127,6 +127,111 @@ clave `finops_checks`, y un informe JSON escrito con el formato de salida
   `message` (el texto de `Observed`).
 
 Sin la opción, la clave no está.
+
+## Asignación de costes desde Cost Explorer {#cost-allocation-from-cost-explorer}
+
+`--finops-cost-allocation` es una segunda opción, desactivada de forma
+predeterminada e independiente de `--finops-checks` y de
+`--enable-cost-analysis`. Lee el gasto del mes pasado desde Cost Explorer para
+cada cuenta, con las credenciales propias de esa cuenta, y añade una hoja
+llamada `FinOps costs` como última hoja del informe de Excel.
+
+```bash
+inventag --create-excel --finops-cost-allocation
+```
+
+### Solicitudes {#requests}
+
+Para cada cuenta, en este orden:
+
+| Solicitud | Cuántas |
+|---|---|
+| `ListCostAllocationTags` para `CostCenter`, `Owner`, `Project` y `Environment` (las claves de la política de etiquetas integrada `finops-cost-allocation`) | 1 |
+| `GetCostAndUsage` agrupado por servicio | 1 |
+| `GetCostAndUsage` agrupado por cuenta vinculada | 1 |
+| `GetCostAndUsage` agrupado por cada una de esas claves que está activa como etiqueta de asignación de costes | 0 a 4 |
+
+Eso son como máximo 7 solicitudes por cuenta. Una clave que
+`ListCostAllocationTags` muestra como no activa, o que no lista, no se
+consulta; su tabla dice "not active as a cost allocation tag" o "not found as
+a cost allocation tag". Si falla el propio `ListCostAllocationTags`, se
+consultan las cuatro claves.
+
+Otra página de una respuesta (`NextPageToken`) es una solicitud más. Sale de
+las mismas 7, como máximo 3 por agrupación. Una tabla que necesita más páginas
+se marca como "incomplete".
+
+Antes del descubrimiento, la ejecución muestra una línea de aviso con el máximo
+de solicitudes, por ejemplo: `Cost Explorer: up to 7 request(s) in this run
+(billing validation: 0; cost trend: 0; cost allocation: 7). AWS charges for
+each.` La auditoría de la protección de solo lectura (`--audit-output`) nunca
+cuenta más solicitudes de la opción de las que dice esa línea.
+
+El SDK reintenta una solicitud limitada, y cada reintento es una solicitud más.
+AWS cobra cada solicitud a Cost Explorer: consulta los
+[precios de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
+No verificado contra AWS real: lo que AWS cobra por estas solicitudes, incluidos
+los reintentos y `ListCostAllocationTags`.
+
+### La hoja FinOps costs {#the-finops-costs-sheet}
+
+La hoja empieza con una nota: los importes son los que devuelve Cost Explorer,
+para cada cuenta, leídos con las credenciales propias de esa cuenta, para el
+último mes completo, y no son costes de recursos sueltos. Después hay una fila
+por cuenta, agrupación y valor, con las columnas `Account`, `Grouping`,
+`Value`, `Amount`, `Currency`, `Metric`, `Period start`, `Period end` y
+`Status`.
+
+- El periodo es el mes natural anterior al mes en que empezó la ejecución.
+  `Period end` es el primer día del mes de la ejecución.
+- La métrica es `UnblendedCost`. Los importes son el texto que devuelve AWS;
+  InvenTag no los suma, divide ni redondea.
+- En una agrupación por etiqueta, el valor `(no value)` es el gasto sin esa
+  clave de etiqueta.
+- Una tabla que no se pudo leer tiene una fila con su estado, por ejemplo
+  "not read: access denied". Las notas de la ejecución también la nombran, y
+  una solicitud denegada tiene una línea `Permissions:`. El resultado del
+  escaneo y el código de salida son los mismos que sin la opción.
+
+Con `--per-account-reports`, el informe de cada cuenta contiene solo las tablas
+de esa cuenta. Con `--template` no se hace ninguna solicitud: InvenTag muestra
+un aviso y no escribe ninguna hoja `FinOps costs`.
+
+### La clave `finops_costs`, la instantánea y el informe de cambios {#the-finops_costs-key-the-snapshot-and-the-change-report}
+
+- En Python, el resultado de `CloudBOMGenerator.generate_multi_account_bom()` y
+  el `metadata` de un informe JSON tienen la clave `finops_costs`:
+  `schema_version`, `metric` y, para cada cuenta, el periodo, el número de
+  solicitudes, el estado de cada clave de etiqueta y las tablas.
+- La instantánea de estado recibe `metadata.tags.cost_allocation`: solo las
+  tablas (totales por servicio, cuenta vinculada y valor de etiqueta; sin IDs
+  de recursos). La instantánea sigue siendo legible solo por su propietario
+  (modo 0600). `--no-cost-in-snapshot` deja las cifras fuera de la
+  instantánea; la hoja se sigue escribiendo. Sin `--finops-cost-allocation`,
+  esa opción no cambia nada y un aviso lo dice.
+- El informe de cambios recibe un bloque "Cost, previous run to this run"
+  cuando esta ejecución leyó la asignación de costes. Muestra cada valor de la
+  ejecución anterior y de esta, uno al lado del otro, cuando las dos
+  instantáneas tienen meses distintos. Si no, una línea dice por qué no hay
+  comparación: la instantánea anterior no tiene cifras, las dos ejecuciones
+  leyeron el mismo mes, o se usó `--no-cost-in-snapshot`.
+
+### Qué necesita y qué no está verificado {#what-it-needs-and-what-is-not-verified}
+
+La opción necesita `ce:GetCostAndUsage` y `ce:ListCostAllocationTags`. Las dos
+están en la política del repositorio (consulta
+[Permisos de IAM](../reference/iam-permissions.md)).
+
+No verificado contra AWS real:
+
+- Las claves de etiqueta muestran gasto solo después de activarlas como
+  etiquetas de asignación de costes en la cuenta de facturación (pagadora).
+- Una cuenta miembro de una organización puede ver menos que la cuenta
+  pagadora, y `ListCostAllocationTags` puede no responder desde una cuenta
+  miembro.
+- Que las respuestas tengan la forma que usan las pruebas. Las pruebas usan
+  respuestas con la forma de las de Cost Explorer, comprobadas contra el
+  modelo de servicio de botocore.
 
 ## Lo que las comprobaciones no pueden ver {#what-the-checks-cannot-see}
 

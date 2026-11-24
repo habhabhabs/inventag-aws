@@ -10,6 +10,38 @@ the flag is unchanged; the changelog lists it under Added.
 
 ## [Unreleased]
 
+### Added
+
+- `--finops-cost-allocation` (off by default): for each account, with that
+  account's own credentials, InvenTag reads last month's spend from Cost
+  Explorer (metric `UnblendedCost`) by service, by linked account and by each
+  key of the built-in `finops-cost-allocation` tag policy that
+  `ListCostAllocationTags` shows as active. At most 7 Cost Explorer requests
+  per account: 1 `ListCostAllocationTags`, 1 `GetCostAndUsage` by service, 1
+  by linked account and 1 per active key (at most 4); a further page of an
+  answer counts in the same 7 (at most 3 per grouping), and a table that needs
+  more is marked incomplete. The SDK's retries of a throttled request add
+  requests, and AWS charges for each. The run's one warning line before
+  discovery names the most requests (`cost allocation: N`). The Excel report
+  gets a last sheet `FinOps costs` with the amounts as AWS returns them, never
+  per resource; spend without a tag key is the row `(no value)`. The result of
+  `CloudBOMGenerator.generate_multi_account_bom()` and the metadata of a JSON
+  report get the additive key `finops_costs`; the state snapshot gets the
+  additive key `metadata.tags.cost_allocation` (tables only, no resource IDs;
+  the snapshot stays 0600). `--no-cost-in-snapshot` leaves the figures out of
+  the snapshot. The change report gets a block "Cost, previous run to this
+  run", or one line that says why there is no comparison. A denied or failed
+  request gives a run note and, when denied, a `Permissions:` line; the exit
+  code does not change. With `--template`, no request is made and a warning
+  says so. New IAM action: `ce:ListCostAllocationTags` (in `READ_ONLY_ACTIONS`
+  and `config/defaults/iam-policy-read-only.json`; the policy now has 123 read
+  actions). `MultiAccountConfig` gets the fields `finops_cost_allocation` and
+  `cost_in_snapshot` at its end. Without the flag, the console text, the Excel
+  sheets and the snapshot are as in v1.4.2 (compared on one mocked estate).
+  Not verified against real AWS: what AWS bills; that tag keys are active as
+  cost allocation tags only after activation in the billing account; what a
+  member account sees compared with the payer account.
+
 ## [v1.4.2] - 2026-11-24
 
 ### Added

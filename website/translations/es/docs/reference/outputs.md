@@ -105,6 +105,17 @@ la clave `finops_checks`, y también la tiene el `metadata` de un informe JSON
 escrito con el formato de salida `json`. Sin la opción, la clave no está. Los
 campos se describen en [Comprobaciones FinOps](../guides/finops-checks.md#the-finops_checks-result).
 
+## Hoja FinOps costs y la clave `finops_costs` {#finops-costs-sheet-and-the-finops_costs-key}
+
+Con `--finops-cost-allocation`, el libro predeterminado termina con una hoja
+`FinOps costs` (después de la hoja `FinOps` cuando las dos opciones están
+activas): una nota y después una fila por cuenta, agrupación y valor, con las
+columnas `Account`, `Grouping`, `Value`, `Amount`, `Currency`, `Metric`,
+`Period start`, `Period end` y `Status`. El resultado de
+`CloudBOMGenerator.generate_multi_account_bom()` y el `metadata` de un informe
+JSON tienen la clave `finops_costs`; la instantánea tiene
+`metadata.tags.cost_allocation` (solo tablas, salvo con `--no-cost-in-snapshot`).
+Consulta [Comprobaciones FinOps](../guides/finops-checks.md#cost-allocation-from-cost-explorer).
 ## Informe de Word {#word-report}
 
 **Sin plantilla:** un título, un resumen ejecutivo, una tabla de servicios y

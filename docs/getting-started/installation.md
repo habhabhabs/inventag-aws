@@ -561,7 +561,7 @@ What you will notice after `pip install --upgrade inventag-aws`:
   `detail_level` columns. See [Output files](../reference/outputs.md).
 - **More services and more API calls.** InvenTag lists 22 more services,
   which adds sheets, rows and calls. The repository policy has 17 new read
-  actions (and no longer lists `cloudtrail:LookupEvents`); without them, each denied listing is a warning, and those resources are found through the Tagging API as before, when they are tagged. The first change report after the upgrade shows the resources of the newly listed services as added, although they existed before. See
+  actions (and no longer lists `cloudtrail:LookupEvents`; from v1.4.3 it also has `ce:ListCostAllocationTags`, used only by `--finops-cost-allocation`); without them, each denied listing is a warning, and those resources are found through the Tagging API as before, when they are tagged. The first change report after the upgrade shows the resources of the newly listed services as added, although they existed before. See
   [IAM permissions](../reference/iam-permissions.md).
 - **Stricter files.** An empty settings file, a key written twice or a
   `--bom-config` value of the wrong type stops the run with exit code 1.

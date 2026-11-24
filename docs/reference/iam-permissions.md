@@ -34,6 +34,7 @@ Not verified against real AWS: the number of requests AWS bills, and whether AWS
 |---|---|
 | Scanning other accounts through a role | `sts:AssumeRole` on those roles, and a trust policy in each account that allows your identity |
 | `--enable-cost-analysis` | `pricing:GetProducts`, and `cloudwatch:GetMetricStatistics` (both are in the repository policy). It also makes at most one more `ce:GetCostAndUsage` request for the whole run. |
+| `--finops-cost-allocation` | `ce:ListCostAllocationTags` (in the repository policy) and `ce:GetCostAndUsage`. At most 7 Cost Explorer requests per account, each with that account's own credentials. |
 | `--s3-bucket` | `s3:PutObject` on that bucket (and `kms:GenerateDataKey` on the key if you use `aws:kms`) |
 
 Not verified against real AWS: these are the only extra permissions that role assumption, cost analysis and the upload need.
@@ -69,7 +70,7 @@ AWS when called from your own Python code (the CLI does not call them); see
 ## The policy in the repository
 
 `config/defaults/iam-policy-read-only.json` is generated from an explicit list
-of 122 read actions in the code (`inventag/security/iam_policy.py`), so it
+of 123 read actions in the code (`inventag/security/iam_policy.py`), so it
 matches what InvenTag calls. It includes `tag:GetResources`,
 `ce:GetCostAndUsage`, `pricing:GetProducts` and
 `lambda:GetFunctionConfiguration`. A second statement allows `apigateway:GET`

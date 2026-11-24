@@ -541,7 +541,7 @@ Ce que vous remarquerez après `pip install --upgrade inventag-aws` :
   `sources` et `detail_level`. Voir [Fichiers de sortie](../reference/outputs.md).
 - **Plus de services et plus d’appels d’API.** InvenTag liste 22 services de
   plus, ce qui ajoute des feuilles, des lignes et des appels. La politique du
-  dépôt compte 17 nouvelles actions de lecture (et ne liste plus `cloudtrail:LookupEvents`) ; sans elles, chaque listage refusé est un
+  dépôt compte 17 nouvelles actions de lecture (et ne liste plus `cloudtrail:LookupEvents` ; depuis v1.4.3, elle a aussi `ce:ListCostAllocationTags`, utilisée seulement par `--finops-cost-allocation`) ; sans elles, chaque listage refusé est un
   avertissement, et ces ressources sont trouvées par l’API Tagging comme avant, si elles sont étiquetées. Le premier rapport de changements après la mise à jour affiche les ressources des services nouvellement listés comme ajoutées, alors qu’elles existaient déjà. Voir [Permissions IAM](../reference/iam-permissions.md).
 - **Des fichiers vérifiés plus strictement.** Un fichier de réglages vide, une
   clé écrite deux fois ou une valeur `--bom-config` du mauvais type arrêtent

@@ -104,6 +104,18 @@ of `CloudBOMGenerator.generate_multi_account_bom()` has the key
 `json` output format. Without the flag, the key is not there. The fields are
 listed in [FinOps checks](../guides/finops-checks.md#the-finops_checks-result).
 
+## FinOps costs sheet and the `finops_costs` key
+
+With `--finops-cost-allocation`, the default workbook ends with a
+`FinOps costs` sheet (after the `FinOps` sheet when both flags are on): a
+note, then one row for each account, grouping and value, with the columns
+`Account`, `Grouping`, `Value`, `Amount`, `Currency`, `Metric`, `Period start`,
+`Period end` and `Status`. The result of
+`CloudBOMGenerator.generate_multi_account_bom()` and the `metadata` of a JSON
+report have the key `finops_costs`; the snapshot has
+`metadata.tags.cost_allocation` (tables only, unless `--no-cost-in-snapshot`).
+See [FinOps checks](../guides/finops-checks.md#cost-allocation-from-cost-explorer).
+
 ## Word report
 
 **Without a template:** a title, an executive summary, a service table, and

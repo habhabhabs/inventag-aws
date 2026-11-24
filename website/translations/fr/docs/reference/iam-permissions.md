@@ -34,6 +34,7 @@ Non vérifié sur un vrai AWS : le nombre de requêtes qu’AWS facture, et si A
 |---|---|
 | Analyse d’autres comptes via un rôle | `sts:AssumeRole` sur ces rôles, et une politique d’approbation dans chaque compte qui autorise votre identité |
 | `--enable-cost-analysis` | `pricing:GetProducts` et `cloudwatch:GetMetricStatistics` (les deux figurent dans la politique du dépôt). Il fait aussi au plus une requête `ce:GetCostAndUsage` de plus pour toute l’exécution. |
+| `--finops-cost-allocation` | `ce:ListCostAllocationTags` (dans la politique du dépôt) et `ce:GetCostAndUsage`. Au plus 7 requêtes Cost Explorer par compte, chacune avec les identifiants propres à ce compte. |
 | `--s3-bucket` | `s3:PutObject` sur ce bucket (et `kms:GenerateDataKey` sur la clé si vous utilisez `aws:kms`) |
 
 Non vérifié sur un vrai AWS : ce sont les seules autorisations supplémentaires dont ont besoin l’assomption de rôle, l’analyse des coûts et le téléversement.
@@ -59,7 +60,7 @@ AWS lorsqu’elles sont appelées depuis votre propre code Python (la CLI ne les
 ## La politique du dépôt {#the-policy-in-the-repository}
 
 `config/defaults/iam-policy-read-only.json` est générée à partir d’une liste explicite
-de 122 actions de lecture dans le code (`inventag/security/iam_policy.py`), si bien qu’elle
+de 123 actions de lecture dans le code (`inventag/security/iam_policy.py`), si bien qu’elle
 correspond à ce qu’InvenTag appelle. Elle inclut `tag:GetResources`,
 `ce:GetCostAndUsage`, `pricing:GetProducts` et
 `lambda:GetFunctionConfiguration`. Une seconde instruction n’autorise `apigateway:GET`

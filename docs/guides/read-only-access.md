@@ -70,7 +70,7 @@ Not verified against AWS: what the managed policy `ReadOnlyAccess` allows today,
 
 ## Option 2: the narrower policy in the repository
 
-`config/defaults/iam-policy-read-only.json` lists 122 specific read actions,
+`config/defaults/iam-policy-read-only.json` lists 123 specific read actions,
 including `tag:GetResources`, `ce:GetCostAndUsage` and `pricing:GetProducts`,
 and `apigateway:GET` for API metadata only (not API keys). It is generated
 from the same list the code uses, so it matches what InvenTag calls. It
@@ -113,7 +113,7 @@ scan with only `ReadOnlyAccess` attached.
 
 ### What works
 
-By the provisional list, `ReadOnlyAccess` includes every one of the 122 read
+By the provisional list, `ReadOnlyAccess` includes every one of the 123 read
 actions in `config/defaults/iam-policy-read-only.json`, and `apigateway:GET`.
 These include `tag:GetResources`, `ce:GetCostAndUsage` and
 `ec2:DescribeRegions`, so the three extras of option 1 are a safeguard and not

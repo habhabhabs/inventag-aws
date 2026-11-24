@@ -65,7 +65,7 @@ InvenTag 還會呼叫 `account:ListRegions`，但僅在 `ec2:DescribeRegions` �
 
 ## 方案 2：儲存庫中範圍更窄的策略 {#option-2-the-narrower-policy-in-the-repository}
 
-`config/defaults/iam-policy-read-only.json` 列出了 122 個具體的讀取操作，
+`config/defaults/iam-policy-read-only.json` 列出了 123 個具體的讀取操作，
 包括 `tag:GetResources`、`ce:GetCostAndUsage` 和 `pricing:GetProducts`，
 另有隻用於 API 後設資料（不含 API 金鑰）的 `apigateway:GET`。它由程式碼所用的同一份清單生成，因此與 InvenTag 實際發出的呼叫一致。
 它包含 InvenTag 用自己的呼叫列舉的各項服務所需的操作，以及
@@ -95,7 +95,7 @@ No permission for sqs (list_queues in us-east-1: AccessDenied). Resources of sqs
 
 ### 哪些可用 {#what-works}
 
-按這份暫定列表，`ReadOnlyAccess` 包含 `config/defaults/iam-policy-read-only.json` 中全部 122 個讀取操作，以及 `apigateway:GET`。其中有 `tag:GetResources`、`ce:GetCostAndUsage` 和 `ec2:DescribeRegions`，所以方案 1 的三項額外權限是一種保險，不是必需。
+按這份暫定列表，`ReadOnlyAccess` 包含 `config/defaults/iam-policy-read-only.json` 中全部 123 個讀取操作，以及 `apigateway:GET`。其中有 `tag:GetResources`、`ce:GetCostAndUsage` 和 `ec2:DescribeRegions`，所以方案 1 的三項額外權限是一種保險，不是必需。
 
 在測試中，只用這些操作掃描一個帳戶時，執行以結束代碼 0 結束。AWS 不拒絕任何呼叫。日誌裡沒有 `No permission for` 警告，測試建立的每個資源都在報告中。使用 `--create-excel --create-word` 時如此，再加上 `--enable-network-analysis`、`--enable-security-analysis`、`--enable-cost-analysis` 和帳單驗證時也是如此。
 

@@ -25,6 +25,7 @@ sidebar_position: 5
 | `--enable-cost-analysis` | 增加一個 Cost Analysis 工作表和四個 `forgotten_analysis.*` 欄，其中的估算值來自 AWS Pricing API，不是你的帳單，並且會額外發出 Cost Explorer、Pricing 和 CloudWatch 呼叫（參見[費用](#costs)）。 |
 | `--compliance-standard` | 以結束代碼 2 停止，因為像 SOC 2 這樣的標準無法從資源清單中檢查；請改用標籤策略範本。 |
 | `--create-google-docs`、`--create-google-sheets` | 只針對模擬的 Google 客戶端驗證過。參見 [Google Sheets 和 Docs](../guides/google-sheets-and-docs.md#what-is-not-verified)。 |
+| `--finops-cost-allocation` | 使用與 AWS 應答形式相同的 Cost Explorer 應答測試過，沒有針對真實的 AWS 測試。標籤鍵只有在付費帳戶中被啟用為成本分配標籤之後才會顯示支出，成員帳戶看到的可能比付費帳戶少（未驗證）。參見 [成本分配](../guides/finops-checks.md#cost-allocation-from-cost-explorer)。 |
 | `--finops-checks` | `FIN-004` 列出已停止的例項，不論它已停止多久，因為例項列表中沒有可靠的停止時間。`FIN-005` 不讀取目標的健康狀態，所以目標全部不健康的負載均衡器結果為 pass。使用 `--template` 時，這些檢查不執行。在命令列中，結果只在 Excel 工作表中，沒有 JSON 檔案。參見 [FinOps 檢查](../guides/finops-checks.md#what-the-checks-cannot-see)。 |
 | `--enable-production-safety`、`--security-validation`、`--enforce-read-only` | 保留下來，讓舊命令仍能執行。唯讀防護始終開啟。 |
 | `--disable-production-safety` | 以結束代碼 2 停止，因為唯讀防護無法關閉。 |

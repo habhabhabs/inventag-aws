@@ -33,6 +33,7 @@ sidebar_position: 3
 |---|---|
 | 通过角色扫描其他账户 | 对这些角色的 `sts:AssumeRole`，以及每个账户中允许你的身份的信任策略 |
 | `--enable-cost-analysis` | `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`（两者都在仓库的策略中）。它还会为整个运行最多再发出一次 `ce:GetCostAndUsage` 请求。 |
+| `--finops-cost-allocation` | `ce:ListCostAllocationTags`（在仓库策略中）和 `ce:GetCostAndUsage`。每个账户最多 7 个 Cost Explorer 请求，每个请求都使用该账户自己的凭证。 |
 | `--s3-bucket` | 对该存储桶的 `s3:PutObject`（如果使用 `aws:kms`，还需要对该密钥的 `kms:GenerateDataKey`） |
 
 未针对真实的 AWS 验证：这些是担任角色、成本分析和上传所需的仅有的额外权限。
@@ -53,7 +54,7 @@ sidebar_position: 3
 
 ## 仓库中的策略 {#the-policy-in-the-repository}
 
-`config/defaults/iam-policy-read-only.json` 由代码中明确列出的 122 个读取操作
+`config/defaults/iam-policy-read-only.json` 由代码中明确列出的 123 个读取操作
 （`inventag/security/iam_policy.py`）生成，因此它与 InvenTag 的调用一致。
 它包含 `tag:GetResources`、`ce:GetCostAndUsage`、`pricing:GetProducts` 和
 `lambda:GetFunctionConfiguration`。第二条语句只允许对 `/restapis`、`/domainnames` 和
