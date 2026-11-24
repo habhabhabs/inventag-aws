@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import datetime as dt
 from fnmatch import fnmatchcase
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Sequence, Tuple
 
 from . import model
 
@@ -44,24 +44,23 @@ def apply(
     findings: Sequence[Dict[str, Any]],
     waivers: Sequence[model.Waiver],
     now: dt.datetime,
-    known_policies: Optional[Iterable[str]] = None,
+    known_policies: Iterable[str],
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """``(findings, unused_waivers)`` (spec 2.5).
 
     A waiver is valid through the end of its ``expires`` day in UTC. Of several
     waivers that match a failing finding the one with the latest ``expires``
     is used (ties: first in ``waivers``); if that one is expired the finding
-    stays ``fail`` and carries ``waiver_expired``. ``known_policies`` are the
-    ids of the loaded policies; without it only the policies that have a
-    finding count as known (a waiver for any other is ``unknown policy``).
+    stays ``fail`` and carries ``waiver_expired``. ``known_policies`` (required)
+    are the ids of every loaded, enabled policy: a waiver for any other is
+    ``unknown policy``. A valid waiver that matches a failing row but lost to
+    a later-expiring one everywhere is ``superseded``, with ``by`` the file of
+    the waiver that was used (spec 10.1).
     """
     today = now.astimezone(dt.timezone.utc).date()
-    known = (
-        {f["policy"] for f in findings}
-        if known_policies is None
-        else set(known_policies)
-    )
+    known = set(known_policies)
     used = set()
+    lost: Dict[int, str] = {}  # waiver index -> file of the waiver that won
     out: List[Dict[str, Any]] = []
     for finding in findings:
         finding = dict(finding)
@@ -78,6 +77,9 @@ def apply(
                         "file": best.file,
                     }
                     used.add(index)
+                    for i, other in matching:
+                        if i != index and other.expires >= today:
+                            lost.setdefault(i, best.file)
                 else:
                     finding["waiver_expired"] = best.expires.isoformat()
         out.append(finding)
@@ -89,6 +91,11 @@ def apply(
             why = "unknown policy"
         elif waiver.expires < today:
             why = "expired"
+        elif index in lost:
+            entry = _unused(waiver, "superseded")
+            entry["by"] = lost[index]
+            unused.append(entry)
+            continue
         else:
             why = "no match"
         unused.append(_unused(waiver, why))
