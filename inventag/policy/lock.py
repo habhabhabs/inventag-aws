@@ -1,4 +1,4 @@
-"""``policy.lock``: the sha256 of every policy and policy-set file of a folder.
+"""``policy.lock``: the sha256 of every policy, policy-set and waivers file of a folder.
 
 ``inventag policy lock`` writes it (``write``); ``lock --check`` and
 ``--locked`` compare the folder with it (``verify``, ``require_unchanged``). A
@@ -23,6 +23,7 @@ from .schema import PolicyError
 LOCK_NAME = "policy.lock"
 FORMAT_VERSION = 1
 _NEXT = "run 'inventag policy lock' to record the files as they are now"
+_NEXT_OUTSIDE = "move it into the policy directory, then run 'inventag policy lock'"
 _HEX = re.compile(r"[0-9a-f]{64}")
 
 
@@ -128,3 +129,25 @@ def require_unchanged(root) -> None:
         raise PolicyError(
             [TemplateIssue(f"{i.message}; {_NEXT}", i.source) for i in issues]
         )
+
+
+def require_listed(root, files) -> None:
+    """``--locked`` and ``--waivers``: each file must be inside ``root`` and
+    listed in ``policy.lock``; otherwise raise :class:`PolicyError`."""
+    root = Path(root).resolve()
+    locked = read(root)
+    issues = []
+    for path in files:
+        try:
+            name = Path(path).resolve().relative_to(root).as_posix()
+        except ValueError:
+            issues.append(
+                TemplateIssue(
+                    f"outside the policy directory; {_NEXT_OUTSIDE}", str(path)
+                )
+            )
+            continue
+        if name not in locked:
+            issues.append(TemplateIssue(f"not listed in policy.lock; {_NEXT}", name))
+    if issues:
+        raise PolicyError(issues)
