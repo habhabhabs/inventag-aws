@@ -598,7 +598,7 @@ def test_the_engine_passes_every_enabled_policy_to_the_waivers(tmp_path, monkeyp
     monkeypatch.setitem(sys.modules, "inventag.policy.waivers", fake)
     disabled = tmp_path / "off.yaml"
     disabled.write_text(
-        "format_version: 1\nkind: policy\nname: off\nspec:\n  id: OFF-001\n"
+        "format_version: 1\nkind: policy\nname: off-policy\nspec:\n  id: OFF-001\n"
         "  severity: low\n  enabled: false\n"
         "  check: [{type: value, key: raw_data.X, value: 1}]\n"
     )
