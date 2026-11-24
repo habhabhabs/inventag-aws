@@ -148,15 +148,17 @@ def test_exit_codes_zero_to_six_in_page_order():
         exit_codes.EXIT_RISK_THRESHOLD,
         exit_codes.EXIT_ACCOUNT_FAILED,
         exit_codes.EXIT_NO_RESOURCES,
-    ] == [0, 1, 2, 3, 4, 5, 6]
+        exit_codes.EXIT_POLICY_FAIL,
+        exit_codes.EXIT_POLICY_NOT_EVALUATED,
+    ] == [0, 1, 2, 3, 4, 5, 6, 7, 8]
     table = {
         int(cells[0]): cells[1]
         for _n, cells in table_rows((DOCS / "cli.md").read_text())
         if len(cells) == 2 and cells[0].isdigit()
     }
-    assert sorted(table) == [0, 1, 2, 3, 4, 5, 6]
+    assert sorted(table) == [0, 1, 2, 3, 4, 5, 6, 7, 8]
     glossary = (DOCS / "glossary.md").read_text()
-    positions = [glossary.index(f"`{n}` for") for n in range(1, 7) if n != 2]
+    positions = [glossary.index(f"`{n}` for") for n in range(1, 9) if n != 2]
     assert positions == sorted(positions)
     assert "5 comes first, then 6, then 3, then 4" in glossary
 
