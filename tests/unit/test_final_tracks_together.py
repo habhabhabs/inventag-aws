@@ -236,8 +236,7 @@ def test_a_denied_cost_explorer_still_tells_one_story(
         if m.startswith("Cost Explorer") and not m.startswith("Cost Explorer: up to")
     ]
     assert len(lines) == 1 and "denied" in lines[0], lines
-    counts = [m for m in logged(caplog) if m.startswith("Cost Explorer: up to")]
-    assert counts == [
-        "Cost Explorer: up to 1 request(s) in this run "
-        "(billing validation: 1; cost trend: 0). AWS charges for each."
-    ], counts
+    # architect v1.4.1 ruling: without --enable-cost-analysis the count line
+    # is INFO, so a default run shows no such warning (the INFO line with
+    # --verbose is tested in test_cost_requests.py)
+    assert not [m for m in logged(caplog) if m.startswith("Cost Explorer: up to")]
