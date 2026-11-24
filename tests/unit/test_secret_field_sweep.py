@@ -112,15 +112,10 @@ ALLOWED = {
 # Documented secrets that InvenTag never reads, proven by
 # tests/unit/test_unmasked_secret_fields_never_read.py. Each name: one operation
 # that returns it, and what the botocore documentation says.
-# Two names come from botocore 1.44.7 (not in 1.44.2, so their model test skips
-# there): issuedtoken and secretvalue. The never-read proof does not cover them;
-# they wait for the architect's ruling and register row A-76.
 KNOWN_UNMASKED = {
     "authkey": "directconnect:DescribeVirtualInterfaces: the authentication key for BGP",
     "secret": "codebuild:BatchGetProjects: the secret token of the repository webhook",
     "accesskey": "datasync:DescribeLocationObjectStorage: the access key to authenticate with object storage",
-    "issuedtoken": "cognito-idp:GetDerivedToken: the token Cognito issued for a token exchange (A-76)",
-    "secretvalue": "eventbridgev2:DescribeEventSource: the token a webhook provider sends (AWS: never returned)",
 }
 
 

@@ -12,6 +12,7 @@ InvenTag calls none of them.
 """
 
 import boto3
+import botocore.session
 import pytest
 
 from inventag.security.read_only_guard import (
@@ -32,6 +33,13 @@ PAYMENT = [
         {"KeyMaterialType": "TR34_KEY_BLOCK", "SigningKeyAlgorithm": "RSA_2048"},
     ),
 ]
+HAS_GET_CONNECTION = "GetConnection" in (
+    botocore.session.get_session().get_service_model("datazone").operation_names
+)
+needs_get_connection = pytest.mark.skipif(
+    not HAS_GET_CONNECTION,
+    reason="the installed botocore has no datazone:GetConnection (added after 1.35.0)",
+)
 CONNECTION = {"domainIdentifier": "dzd_abc123", "identifier": "conn123"}
 
 
@@ -73,6 +81,7 @@ def test_payment_cryptography_key_exchange_is_refused_by_name(
     assert check_client_call(_client("payment-cryptography"), method)[0] is False
 
 
+@needs_get_connection
 def test_datazone_get_connection_with_secret_is_never_sent():
     client = _client("datazone")
     with pytest.raises(ReadOnlyViolationError) as raised:
@@ -80,6 +89,7 @@ def test_datazone_get_connection_with_secret_is_never_sent():
     assert "withSecret" in raised.value.reason
 
 
+@needs_get_connection
 @pytest.mark.parametrize("extra", [{}, {"withSecret": False}])
 def test_datazone_get_connection_without_secret_is_sent(extra):
     client = _client("datazone")
@@ -90,6 +100,7 @@ def test_datazone_get_connection_without_secret_is_sent(extra):
     assert check_client_call(client, "get_connection")[0] is True
 
 
+@needs_get_connection
 def test_datazone_presigned_get_connection_with_secret_is_refused():
     client = _client("datazone")
     with pytest.raises(ReadOnlyViolationError):
@@ -128,6 +139,8 @@ def test_every_parameter_rule_applies_to_a_presigned_url():
     }
     assert set(examples) == set(DENIED_PARAMETERS)
     for (service, operation), params in examples.items():
+        if operation == "GetConnection" and not HAS_GET_CONNECTION:
+            continue  # the rule stays in the table; the call needs the method
         client = _client(service)
         method = {v: k for k, v in client.meta.method_to_api_mapping.items()}[operation]
         with pytest.raises(ReadOnlyViolationError):

@@ -49,6 +49,28 @@ REFUSED = [
     ),
 ]
 
+
+def _missing_from_botocore(service, operation):
+    return operation not in (
+        botocore.session.get_session().get_service_model(service).operation_names
+    )
+
+
+def _present_only(rows):
+    """The rows, each skipped where the installed botocore lacks the operation
+    (added after the floor, 1.35.0). The guard test by name still runs."""
+    return [
+        pytest.param(
+            *row,
+            marks=pytest.mark.skipif(
+                _missing_from_botocore(row[0], row[1]),
+                reason="the installed botocore lacks this operation (added after 1.35.0)",
+            ),
+        )
+        for row in rows
+    ]
+
+
 # Smallest valid input of each operation (botocore validates before the guard).
 PARAMS = {
     "GetWebIdentityToken": {"Audience": ["a"], "SigningAlgorithm": "RS256"},
@@ -84,7 +106,7 @@ def test_the_guard_refuses_it(service, operation, method):
     assert "secrets" in reason
 
 
-@pytest.mark.parametrize("service,operation,method", REFUSED)
+@pytest.mark.parametrize("service,operation,method", _present_only(REFUSED))
 def test_the_name_check_for_dynamic_callers_refuses_it(service, operation, method):
     assert check_client_call(_client(service), method)[0] is False
 
@@ -97,7 +119,7 @@ def _refuse_send(request, **_):
     raise Sent(request.url)
 
 
-@pytest.mark.parametrize("service,operation,method", REFUSED)
+@pytest.mark.parametrize("service,operation,method", _present_only(REFUSED))
 def test_a_guarded_client_never_sends_it(service, operation, method):
     client = _client(service)
     ReadOnlyGuard().attach_client(client)

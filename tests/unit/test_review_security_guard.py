@@ -298,6 +298,17 @@ ADDED_AFTER_BOTOCORE_FLOOR = frozenset(
 )
 
 
+# Deny-listed operations that a newer botocore no longer has (the service was
+# removed), so the check above skips them there. At the floor they exist, and
+# the test below checks the spelling against that model. Register A-75.
+REMOVED_AFTER_BOTOCORE_FLOOR = frozenset(
+    {
+        ("finspace-data", "GetProgrammaticAccessCredentials"),
+        ("finspace-data", "GetExternalDataViewAccessDetails"),
+    }
+)
+
+
 def denied_operations_missing_from_botocore(operations):
     """Names in ``operations`` that the installed botocore lacks and that are not
     a known newer operation. Services the installed botocore lacks are skipped."""
@@ -334,3 +345,13 @@ def test_a_typo_in_the_deny_list_is_found():
 
 def test_the_newer_operation_list_only_names_operations_of_the_deny_list():
     assert ADDED_AFTER_BOTOCORE_FLOOR <= set(rog.DENIED_OPERATIONS)
+
+
+def test_the_removed_operation_list_is_denied_and_spelled_as_the_model_has_it():
+    assert REMOVED_AFTER_BOTOCORE_FLOOR <= set(rog.DENIED_OPERATIONS)
+    session = botocore.session.get_session()
+    if "finspace-data" not in session.get_available_services():
+        pytest.skip("botocore removed finspace-data; checked at the floor (1.35.0)")
+    names = session.get_service_model("finspace-data").operation_names
+    for service, operation in REMOVED_AFTER_BOTOCORE_FLOOR:
+        assert operation in names, operation
