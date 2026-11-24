@@ -140,11 +140,17 @@ def _tag_compliance(doc, spec, compliance: Optional[ComplianceReport]) -> None:
     if compliance.policy_description:
         intro += f" {compliance.policy_description}"
     doc.add_paragraph(intro)
-    doc.add_paragraph(
+    summary = (
         f"{compliance.compliant} of {compliance.checked} resources checked meet the "
         f"policy ({compliance.percent_compliant:.1f}%). "
         f"{compliance.out_of_scope} resources were out of scope."
     )
+    if compliance.uses_filters:
+        summary += (
+            f" {len(compliance.not_evaluated)} resources were not evaluated: the "
+            "scope's filters could not decide whether they are in scope."
+        )
+    doc.add_paragraph(summary)
     doc.add_heading("Required tags", level=2)
     missing = compliance.missing_by_key()
     invalid = compliance.invalid_by_key()

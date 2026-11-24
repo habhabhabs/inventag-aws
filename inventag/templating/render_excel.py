@@ -139,6 +139,10 @@ def _summary_sheet(
             _write(ws, row, 1, label)
             _write(ws, row, 2, value)
             row += 1
+        if compliance.uses_filters:
+            _write(ws, row, 1, "Not evaluated (scope filters could not decide)")
+            _write(ws, row, 2, len(compliance.not_evaluated))
+            row += 1
     if run_notes:
         # What the reader must know (for example, accounts that were not
         # scanned): the same lines the default report shows.
