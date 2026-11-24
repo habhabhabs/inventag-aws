@@ -43,7 +43,6 @@ inventag --create-excel --enable-network-analysis --enable-security-analysis
 
 ```text title="输出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
-inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Cost Explorer: up to 1 request(s) in this run (billing validation: 1; cost trend: 0). AWS charges for each.
 Performing network analysis...
 Network analysis completed for 7 VPC resources
 Performing security analysis...

@@ -74,7 +74,6 @@ OK    ~/acme-infra/.inventag/templates/our-org.yaml (config 'our-org')
 运行结果如下，三个虚构账户中各有一个示例存储桶：
 
 ```text title="输出"
-inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Cost Explorer: up to 3 request(s) in this run (billing validation: 3; cost trend: 0). AWS charges for each.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
