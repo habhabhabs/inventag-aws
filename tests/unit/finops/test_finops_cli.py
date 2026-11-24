@@ -318,13 +318,15 @@ def test_the_generator_never_reads_the_clock_for_the_checks(monkeypatch):
 
 def console(scan):
     """The run's console text without what changes from run to run: time
-    stamps, the run's folder, the report's time stamp and spinner frames."""
+    stamps, the run's folder, the report's time stamp, spinner frames and
+    blank lines."""
     text = scan.stdout + "\n---\n" + scan.stderr
     text = text.replace(str(scan.out.parent), "<run>")
     text = re.sub(r"\d{4}-\d\d-\d\d \d\d:\d\d:\d\d,\d+", "<time>", text)
     text = re.sub(r"_\d{8}_\d{6}\.", "_<stamp>.", text)
-    text = re.sub(r"(🔍 [^\n]*?[⣾⣽⣻⢿⡿⣟⣯⣷] )+ *", "<spinner>", text)
-    return text
+    # Spinner frames and blank lines depend on timing: left out.
+    text = re.sub(r"🔍 [^\n]*?[⣾⣽⣻⢿⡿⣟⣯⣷] *", "", text)
+    return "\n".join(line.strip() for line in text.splitlines() if line.strip())
 
 
 def test_the_flag_adds_no_console_line_to_a_run(finops_scan, plain_scan):
@@ -334,3 +336,75 @@ def test_the_flag_adds_no_console_line_to_a_run(finops_scan, plain_scan):
     assert "Data exported to <run>/out/multi_account_bom_<stamp>.xlsx" in console(
         plain_scan
     )
+
+
+# The fields of MultiAccountConfig in v1.4.1, in order (positional callers).
+V141_FIELDS = [
+    "accounts",
+    "cross_account_role_name",
+    "parallel_account_processing",
+    "max_concurrent_accounts",
+    "concurrency",
+    "account_processing_timeout",
+    "consolidate_accounts",
+    "generate_per_account_reports",
+    "enable_state_management",
+    "enable_delta_detection",
+    "enable_changelog_generation",
+    "enable_billing_validation",
+    "bom_processing_config",
+    "output_directory",
+    "credential_validation_timeout",
+    "hide_fallback_resources",
+    "fallback_display_mode",
+    "word_template",
+    "excel_template",
+    "google_options",
+    "resume",
+    "resume_max_age_hours",
+    "state_retention_days",
+    "state_max_snapshots",
+]
+
+
+def test_multi_account_config_keeps_the_v141_positional_order():
+    import dataclasses
+
+    from inventag.core.cloud_bom_generator import MultiAccountConfig
+    from inventag.reporting import BOMProcessingConfig
+
+    names = [f.name for f in dataclasses.fields(MultiAccountConfig)]
+    assert names[: len(V141_FIELDS)] == V141_FIELDS
+    assert names[len(V141_FIELDS) :] == ["finops_checks"]
+
+    bom = BOMProcessingConfig()
+    values = [
+        [],
+        "Role",
+        False,
+        2,
+        8,
+        60,
+        True,
+        False,
+        True,
+        True,
+        True,
+        False,
+        bom,
+        "out",
+        10,
+        False,
+        "never",
+        None,
+        None,
+        None,
+        False,
+        1.0,
+        7,
+        9,
+    ]
+    config = MultiAccountConfig(*values)
+    for name, value in zip(V141_FIELDS, values):
+        assert getattr(config, name) == value, name
+    assert config.finops_checks is False
