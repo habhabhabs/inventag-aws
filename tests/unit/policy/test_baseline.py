@@ -41,7 +41,7 @@ def base(change, **extra):
 
 def policy(check, services=("S3", "EC2", "LAMBDA", "RDS"), **extra):
     return {
-        "id": "DRF-9",
+        "id": "DRF-009",
         "severity": "medium",
         "resource": {"services": list(services)},
         "check": check,
