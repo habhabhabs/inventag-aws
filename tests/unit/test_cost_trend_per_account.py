@@ -32,8 +32,11 @@ NOW = dt.datetime(2026, 11, 24, 9, 30, tzinfo=dt.timezone.utc)
 SEPT, OCT = "2026-09-01", "2026-10-01"
 
 
-def _group(name, amount):
-    return {"Keys": [name], "Metrics": {"BlendedCost": {"Amount": str(amount)}}}
+def _group(name, amount, unit="USD"):
+    return {
+        "Keys": [name],
+        "Metrics": {"BlendedCost": {"Amount": str(amount), "Unit": unit}},
+    }
 
 
 def _period(start, end, groups):
@@ -244,7 +247,7 @@ def test_pages_stop_at_the_stated_count_with_one_warning(monkeypatch):
     warnings = [m for level, m in log.lines if level >= logging.WARNING]
     assert warnings == [
         "Cost analysis: the cost trend of account 111111111111 has more than 2 "
-        "page(s); the services on later pages have no trend."
+        "page(s); the services on later pages have no trend in this report."
     ]
 
 
@@ -330,6 +333,7 @@ def test_the_processor_hands_over_the_account_sessions(monkeypatch):
         previous_month="2026-09",
         resource_count=2,
         billing_names=("Amazon Elastic Compute Cloud - Compute",),
+        unit="USD",
     )
 
     def analyze(resources, account_sessions=None, now=None):
@@ -355,6 +359,7 @@ def test_the_processor_hands_over_the_account_sessions(monkeypatch):
             "cost_change_percentage": 20.0,
             "trend_direction": "increasing",
             "alert_triggered": False,
+            "unit": "USD",
         }
     ]
 
@@ -376,6 +381,7 @@ def test_the_cost_sheet_shows_the_trend_per_account_and_service():
                 "cost_change_percentage": 20.0,
                 "trend_direction": "increasing",
                 "alert_triggered": False,
+                "unit": "USD",
             }
         ],
     }
@@ -383,11 +389,11 @@ def test_the_cost_sheet_shows_the_trend_per_account_and_service():
     converter._create_cost_analysis_sheet(wb)
     rows = [list(r) for r in wb["Cost Analysis"].iter_rows(values_only=True)]
     title = [
-        "Billed cost by account and service, last two full months (USD, Cost "
+        "Billed cost by account and service, last two full months (Cost "
         "Explorer; a service total, not a resource's cost)"
     ]
     at = [r[:1] for r in rows].index(title)
-    assert rows[at + 1][:8] == [
+    assert rows[at + 1][:10] == [
         "Account",
         "Service",
         "Resources",
@@ -396,8 +402,10 @@ def test_the_cost_sheet_shows_the_trend_per_account_and_service():
         "Later month",
         "Billed (USD)",
         "Change %",
+        "Direction",
+        "Billing names counted",
     ]
-    assert rows[at + 2][:9] == [
+    assert rows[at + 2][:10] == [
         "111111111111",
         "EC2",
         2,
@@ -407,6 +415,7 @@ def test_the_cost_sheet_shows_the_trend_per_account_and_service():
         120.0,
         20.0,
         "increasing",
+        "Amazon Elastic Compute Cloud - Compute",
     ]
 
 
@@ -456,3 +465,115 @@ def test_cli_two_accounts_one_trend_request_each(tmp_path, monkeypatch):
 
 def test_the_stated_page_count_is_the_analyzers():
     assert cost_requests.TREND_PAGES_PER_ACCOUNT == cost_module.TREND_PAGES_PER_ACCOUNT
+
+
+# --- P7b (architect rulings): unit, library path, the billing table ----------
+
+
+def _trend_entry(account, service, unit, names=("n",)):
+    return {
+        "account_id": account,
+        "service": service,
+        "billing_names": list(names),
+        "resource_count": 1,
+        "previous_month": "2026-09",
+        "current_month": "2026-10",
+        "previous_monthly_cost": 1.0,
+        "current_monthly_cost": 2.0,
+        "cost_change_percentage": 100.0,
+        "trend_direction": "increasing",
+        "alert_triggered": True,
+        "unit": unit,
+    }
+
+
+def _sheet_rows(trends):
+    converter = BOMConverter()
+    converter.cost_analysis = {"summary": {}, "cost_trends": trends}
+    wb = Workbook()
+    converter._create_cost_analysis_sheet(wb)
+    rows = [list(r) for r in wb["Cost Analysis"].iter_rows(values_only=True)]
+    at = [r[1:2] for r in rows].index(["Service"])
+    return rows[at], rows[at + 1 :]
+
+
+def test_the_unit_comes_from_the_answer(monkeypatch):
+    eur = bill(
+        {"Amazon Simple Storage Service": 3}, {"Amazon Simple Storage Service": 4}
+    )
+    for period in eur["ResultsByTime"]:
+        for group in period["Groups"]:
+            group["Metrics"]["BlendedCost"]["Unit"] = "EUR"
+    analyzer, _, sessions, _, _ = _two_accounts(monkeypatch, a=eur)
+    s3 = _by_key(
+        analyzer.analyze_cost_trends(ROWS, account_sessions=sessions, now=NOW)
+    )[("111111111111", "S3")]
+    assert s3.unit == "EUR"
+    heading, body = _sheet_rows([_trend_entry("111111111111", "S3", "EUR")])
+    assert heading[4] == heading[6] == "Billed (EUR)"
+    assert body[0][4] == 1.0
+
+
+def test_units_that_disagree_are_shown_in_each_cell():
+    heading, body = _sheet_rows(
+        [
+            _trend_entry("111111111111", "S3", "EUR"),
+            _trend_entry("222222222222", "S3", "USD"),
+        ]
+    )
+    assert heading[4] == heading[6] == "Billed (unit as returned)"
+    assert [r[4] for r in body[:2]] == ["1.0 EUR", "1.0 USD"]
+
+
+def test_a_service_whose_groups_disagree_on_the_unit_has_no_single_unit(monkeypatch):
+    mixed = bill(
+        {"Amazon Simple Storage Service": 3}, {"Amazon Simple Storage Service": 4}
+    )
+    mixed["ResultsByTime"][1]["Groups"][0]["Metrics"]["BlendedCost"]["Unit"] = "EUR"
+    analyzer, _, sessions, _, _ = _two_accounts(monkeypatch, a=mixed)
+    s3 = _by_key(
+        analyzer.analyze_cost_trends(ROWS, account_sessions=sessions, now=NOW)
+    )[("111111111111", "S3")]
+    assert s3.unit == ""
+    heading, body = _sheet_rows([_trend_entry("111111111111", "S3", "")])
+    assert heading[4] == "Billed (unit as returned)"
+    assert body[0][4] == "1.0 (units differ)"
+
+
+def test_the_library_path_with_several_accounts_warns_once(monkeypatch):
+    ce = CostExplorer(BILL_A)
+    analyzer, log = _setup(monkeypatch, {})
+    analyzer.cost_explorer_client = ce
+    analyzer.analyze_cost_trends(ROWS, now=NOW)
+    warnings = [m for level, m in log.lines if level >= logging.WARNING]
+    assert warnings == [
+        "Cost trend: read once, with one session, for 2 accounts; pass "
+        "account_sessions to read each account's own bill."
+    ]
+
+
+def test_an_account_without_a_session_is_named_in_a_warning(monkeypatch):
+    analyzer, log, sessions, _, _ = _two_accounts(monkeypatch)
+    del sessions["222222222222"]
+    analyzer.analyze_cost_trends(ROWS, account_sessions=sessions, now=NOW)
+    warnings = [m for level, m in log.lines if level >= logging.WARNING]
+    assert warnings == [
+        "Cost analysis: account 222222222222 has no session, so its cost trend "
+        "is not read."
+    ]
+
+
+def test_the_billing_table_is_a_staticmethod():
+    from inventag.discovery.comprehensive_discovery import ComprehensiveAWSDiscovery
+
+    raw = ComprehensiveAWSDiscovery.__dict__["_normalize_billing_service_name"]
+    assert isinstance(raw, staticmethod)
+    assert (
+        ComprehensiveAWSDiscovery._normalize_billing_service_name(
+            "Amazon Simple Storage Service"
+        )
+        == "s3"
+    )
+    assert cost_module._billing_key("Amazon EC2 Container Registry (ECR)") == (
+        "ec2containerregistryecr"
+    )
