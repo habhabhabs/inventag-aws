@@ -103,3 +103,20 @@ def test_shipped_docs_have_no_findings():
         problems += [(str(page), *f) for f in helper.check_markdown(text)]
         problems += [(str(page), *f) for f in helper.check_json_blocks(text)]
     assert problems == []
+
+
+def test_policy_commands_are_checked_against_the_policy_parser():
+    assert _check("inventag policy validate .inventag/policies/") == []
+    assert _check("inventag policy lock --check") == []
+    assert (
+        _check(
+            "inventag policy check --snapshot state.json --locked "
+            "--fail-on high --format sarif,junit"
+        )
+        == []
+    )
+    assert _check("inventag policy test .inventag/policies/") == []
+    problems = _check("inventag policy check --snapshot s.json --no-such-flag")
+    assert problems and "--no-such-flag" in problems[0]
+    problems = _check("inventag policy frobnicate")
+    assert problems and "invalid choice" in problems[0]
