@@ -1,0 +1,152 @@
+{
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "toolExecutionNotifications": [
+            {
+              "level": "note",
+              "message": {
+                "text": "TAG-002: lambda in eu-west-1 of account 111111111111 was not read (throttled)"
+              }
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "snapshotSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "results": [
+        {
+          "kind": "fail",
+          "level": "warning",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "arn:aws:ec2:us-east-1:111111111111:instance/i-0bbb"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "policies/ex05.yaml"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "TAG-002: missing tag: Owner; missing tag: Environment"
+          },
+          "partialFingerprints": {
+            "inventag/v1": "e00b53347aae9f1180ec8d76abd3c840ec7ae0b61989c3e8b4b0439852c13278"
+          },
+          "properties": {
+            "account": "111111111111",
+            "region": "us-east-1",
+            "resource_type": "Instance",
+            "service": "EC2"
+          },
+          "ruleId": "TAG-002",
+          "ruleIndex": 0
+        },
+        {
+          "kind": "fail",
+          "level": "warning",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "arn:aws:lambda:us-east-1:111111111111:function:fn-report"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "policies/ex05.yaml"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "TAG-002: missing tag: Environment"
+          },
+          "partialFingerprints": {
+            "inventag/v1": "cbf78e55ed9c7860f2be24d7ed64bfbb21adc25fd5eac0efafb3194f6fccce9d"
+          },
+          "properties": {
+            "account": "111111111111",
+            "region": "us-east-1",
+            "resource_type": "Function",
+            "service": "LAMBDA"
+          },
+          "ruleId": "TAG-002",
+          "ruleIndex": 0
+        },
+        {
+          "kind": "review",
+          "level": "none",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "arn:aws:ec2:ap-southeast-1:222222222222:instance/i-0ccc"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "policies/ex05.yaml"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "TAG-002: not evaluated (tags_not_read)"
+          },
+          "partialFingerprints": {
+            "inventag/v1": "6d669ac4d0dd123aa13efccb7a3c449cec8bc3b5a793e8bc186238e2901d231f"
+          },
+          "properties": {
+            "account": "222222222222",
+            "reason": "tags_not_read",
+            "region": "ap-southeast-1",
+            "resource_type": "Instance",
+            "service": "EC2"
+          },
+          "ruleId": "TAG-002",
+          "ruleIndex": 0
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "InvenTag",
+          "rules": [
+            {
+              "id": "TAG-002",
+              "name": "tag-002",
+              "properties": {
+                "severity": "medium",
+                "sha256": "320d1178e3097eb2e2a741f1d4cdfb6b0501388be743485596ca7a205156988e",
+                "version": 1
+              },
+              "shortDescription": {
+                "text": "tag-002"
+              }
+            }
+          ],
+          "version": "1.5.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

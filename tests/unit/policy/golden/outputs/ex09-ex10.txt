@@ -1,0 +1,21 @@
+InvenTag policy findings
+Snapshot: s1.json  now: 2026-11-20
+Rows: 10  fail: 2  waived: 0  not evaluated: 1  pass: 3
+
+EC2-002 [low] fail=1 waived=0 not_evaluated=0 pass=2 out_of_scope=7
+EC2-003 [low] fail=1 waived=0 not_evaluated=1 pass=1 out_of_scope=7
+
+EC2-002 (policies/ex09.yaml)
+  FAIL arn:aws:ec2:us-east-1:111111111111:instance/i-0bbb
+    EC2-002: condition not met: raw_data.InstanceType
+    - condition not met: raw_data.InstanceType
+
+EC2-003 (policies/ex10.yaml)
+  FAIL arn:aws:ec2:us-east-1:111111111111:instance/i-0bbb
+    EC2-003: condition not met: raw_data.InstanceType; condition not met: tag:Owner
+    - condition not met: raw_data.InstanceType
+    - condition not met: tag:Owner
+  NOT EVALUATED arn:aws:ec2:ap-southeast-1:222222222222:instance/i-0ccc
+    EC2-003: not evaluated (tags_not_read)
+
+Exit code 8: something was not evaluated and --fail-on-not-evaluated is set.

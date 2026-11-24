@@ -1,0 +1,176 @@
+{
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "toolExecutionNotifications": [
+            {
+              "level": "note",
+              "message": {
+                "text": "EC2-002: EC2 in eu-west-1 of account 111111111111 was not read (access_denied)"
+              }
+            },
+            {
+              "level": "note",
+              "message": {
+                "text": "EC2-002: unused waiver for arn:x (no match)"
+              }
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "snapshotSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "results": [
+        {
+          "kind": "fail",
+          "level": "error",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "arn:aws:ec2:us-east-1:111111111111:instance/web]\u001b[31m(http://x)|<b>\u0007]]>&\"'\nline2"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "policies/ex09.yaml"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "EC2-002: condition not met: raw_data.Password"
+          },
+          "partialFingerprints": {
+            "inventag/v1": "a0bd3bc3e23a78373ead19d3eee49ccb023fe84519a0323cea275876403a8475"
+          },
+          "properties": {
+            "account": "111111111111",
+            "region": "us-east-1",
+            "resource_type": "Instance",
+            "service": "EC2"
+          },
+          "ruleId": "EC2-002",
+          "ruleIndex": 0
+        },
+        {
+          "kind": "fail",
+          "level": "error",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "arn:aws:ec2:us-east-1:111111111111:instance/i-0w"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "policies/ex09.yaml"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "EC2-002: condition not met: tag:Owner"
+          },
+          "partialFingerprints": {
+            "inventag/v1": "b4e856b59fa53ae163292ab61b61de4f5adc1f2b5b15db7c9c553d24ce93978d"
+          },
+          "properties": {
+            "account": "111111111111",
+            "region": "us-east-1",
+            "resource_type": "Instance",
+            "service": "EC2"
+          },
+          "ruleId": "EC2-002",
+          "ruleIndex": 0,
+          "suppressions": [
+            {
+              "justification": "legacy",
+              "kind": "external"
+            }
+          ]
+        },
+        {
+          "kind": "review",
+          "level": "none",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "arn:aws:ec2:us-east-1:111111111111:instance/i-0n"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "policies/ex10.yaml"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "EC2-003: not evaluated (tags_not_read)"
+          },
+          "partialFingerprints": {
+            "inventag/v1": "e1d4360c5ca357e4f0721751e00264d3afefe86c65ba2c2fc2add264a1ebf70b"
+          },
+          "properties": {
+            "account": "111111111111",
+            "reason": "tags_not_read",
+            "region": "us-east-1",
+            "resource_type": "Instance",
+            "service": "EC2"
+          },
+          "ruleId": "EC2-003",
+          "ruleIndex": 1
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "InvenTag",
+          "rules": [
+            {
+              "id": "EC2-002",
+              "name": "ec2-002",
+              "properties": {
+                "severity": "low",
+                "sha256": "0d074c1519bb6a222de223acf06558ca1af93e7b5087b59c99049775e8d064b4",
+                "version": 1
+              },
+              "shortDescription": {
+                "text": "ec2-002"
+              }
+            },
+            {
+              "id": "EC2-003",
+              "name": "ec2-003",
+              "properties": {
+                "severity": "low",
+                "sha256": "a8ca8c09495119bf82ef68a6ceca870c4359fce08c9de77e0207071f4c7e6cfa",
+                "version": 1
+              },
+              "shortDescription": {
+                "text": "ec2-003"
+              }
+            }
+          ],
+          "version": "1.5.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

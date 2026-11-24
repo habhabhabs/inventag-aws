@@ -1,0 +1,27 @@
+InvenTag policy findings
+Snapshot: s1.json  now: 2026-11-20
+Rows: 10  fail: 2  waived: 0  not evaluated: 1  pass: 3
+
+EC2-002 [low] fail=1 waived=1 not_evaluated=0 pass=0 out_of_scope=0
+EC2-003 [low] fail=0 waived=0 not_evaluated=1 pass=0 out_of_scope=0
+
+EC2-002 (policies/ex09.yaml)
+  FAIL arn:aws:ec2:us-east-1:111111111111:instance/web][31m(http://x)|<b>]]>&"' line2
+    EC2-002: condition not met: raw_data.Password
+    - condition not met: raw_data.Password
+    - condition not met: raw_data.InstanceType
+  WAIVED arn:aws:ec2:us-east-1:111111111111:instance/i-0w
+    EC2-002: condition not met: tag:Owner
+    waiver: legacy (approved by a@b.c, expires 2027-01-01)
+
+EC2-003 (policies/ex10.yaml)
+  NOT EVALUATED arn:aws:ec2:us-east-1:111111111111:instance/i-0n
+    EC2-003: not evaluated (tags_not_read)
+
+Units not read:
+  EC2-002 111111111111 EC2 eu-west-1: access_denied
+
+Unused waivers:
+  EC2-002 arn:x expires 2027-01-01: no match (waivers.yaml)
+
+Exit code 8: something was not evaluated and --fail-on-not-evaluated is set.

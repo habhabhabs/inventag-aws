@@ -1,0 +1,15 @@
+InvenTag policy findings
+Snapshot: s2.json  now: 2026-11-20
+Rows: 5  fail: 2  waived: 0  not evaluated: 0  pass: 2
+
+FIN-005 [low] fail=2 waived=0 not_evaluated=0 pass=2 out_of_scope=1
+
+FIN-005 (policies/fin-005.yaml)
+  FAIL arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/old/2
+    FIN-005: no related row names it
+    - no related row names it
+  FAIL arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/classic-a
+    FIN-005: condition not met: raw_data.Instances
+    - condition not met: raw_data.Instances
+
+Exit code 7: at least one fail has the --fail-on severity or a higher one.

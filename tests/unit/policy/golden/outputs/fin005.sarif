@@ -1,0 +1,106 @@
+{
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "properties": {
+        "snapshotSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "results": [
+        {
+          "kind": "fail",
+          "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/old/2"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "policies/fin-005.yaml"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "FIN-005: no related row names it"
+          },
+          "partialFingerprints": {
+            "inventag/v1": "d274e5570c2b58bbf79a596a2411651a4b8d04d83228195dedcb608de4a9c67e"
+          },
+          "properties": {
+            "account": "111111111111",
+            "region": "us-east-1",
+            "resource_type": "LoadBalancerV2",
+            "service": "ELBV2"
+          },
+          "ruleId": "FIN-005",
+          "ruleIndex": 0
+        },
+        {
+          "kind": "fail",
+          "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/classic-a"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "policies/fin-005.yaml"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "FIN-005: condition not met: raw_data.Instances"
+          },
+          "partialFingerprints": {
+            "inventag/v1": "47eb87558615824222b791b8d2a0dc79522a69e90957b13f5c6a647891e46329"
+          },
+          "properties": {
+            "account": "111111111111",
+            "region": "us-east-1",
+            "resource_type": "LoadBalancer",
+            "service": "ELB"
+          },
+          "ruleId": "FIN-005",
+          "ruleIndex": 0
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "InvenTag",
+          "rules": [
+            {
+              "fullDescription": {
+                "text": "Load balancer with no target group or instance"
+              },
+              "id": "FIN-005",
+              "name": "fin-005",
+              "properties": {
+                "severity": "low",
+                "sha256": "4b752d9f3c7b3b7fe0d750e4c7812c29aa78c973412ae44b1804283f1fe78fb7",
+                "version": 1
+              },
+              "shortDescription": {
+                "text": "fin-005"
+              }
+            }
+          ],
+          "version": "1.5.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

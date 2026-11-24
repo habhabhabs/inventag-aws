@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="InvenTag" tests="1" failures="1" errors="0" skipped="0" time="0">
+  <testsuite name="policies/ex05.yaml" tests="1" failures="1" errors="0" skipped="0" time="0">
+    <testcase classname="policies/ex05.yaml" name="TAG-002" time="0">
+      <failure message="2 failing resources" type="medium">TAG-002: 2 failing resources
+arn:aws:ec2:us-east-1:111111111111:instance/i-0bbb
+arn:aws:lambda:us-east-1:111111111111:function:fn-report</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

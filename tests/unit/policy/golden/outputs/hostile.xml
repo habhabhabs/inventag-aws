@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="InvenTag" tests="2" failures="1" errors="0" skipped="1" time="0">
+  <testsuite name="policies/ex09.yaml" tests="1" failures="1" errors="0" skipped="0" time="0">
+    <testcase classname="policies/ex09.yaml" name="EC2-002" time="0">
+      <failure message="1 failing resource" type="low">EC2-002: 1 failing resource
+arn:aws:ec2:us-east-1:111111111111:instance/web][31m(http://x)|&lt;b&gt;]]&gt;&amp;"' line2</failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="policies/ex10.yaml" tests="1" failures="0" errors="0" skipped="1" time="0">
+    <testcase classname="policies/ex10.yaml" name="EC2-003" time="0">
+      <skipped message="1 not evaluated"/>
+    </testcase>
+  </testsuite>
+</testsuites>
