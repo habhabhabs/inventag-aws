@@ -208,7 +208,7 @@ def test_baseline_resources_reach_the_baseline_module(tmp_path, monkeypatch):
     path.mkdir()
     (path / "b.yaml").write_text(
         "format_version: 1\nkind: policy\nname: rds-001\n"
-        "spec: {id: RDS-001, severity: low, check: [{type: baseline, change: removed}]}\n"
+        "spec: {id: RDS-001, severity: low, check: [{type: baseline, change: [removed]}]}\n"
     )
     fixture = path / "tests" / "rds-001" / "base.yaml"
     fixture.parent.mkdir(parents=True)
@@ -228,9 +228,9 @@ def test_an_unknown_field_in_a_fixture_exits_1_and_names_it(tmp_path):
     code, out, err = run(["test", folder])
     assert code == 1
     assert err == (
-        "error: tests/rds-001/basic.yaml:6: spec.colour: unknown field; "
-        "use one of policy, now, units_not_read, resources, baseline_resources, "
-        "waivers, expect, expect_units.\n"
+        "error: tests/rds-001/basic.yaml:7: spec.colour: unknown field 'colour' "
+        "Allowed here: baseline_resources, expect, expect_units, now, policy, "
+        "resources, units_not_read, waivers\n"
     )
 
 

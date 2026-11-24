@@ -384,7 +384,7 @@ def test_check_baseline_file_goes_to_the_engine(tmp_path, monkeypatch):
     (tmp_path / "policies").mkdir()
     (tmp_path / "policies" / "b.yaml").write_text(
         "format_version: 1\nkind: policy\nname: b\n"
-        "spec: {id: BAS-001, severity: low, check: [{type: baseline, change: removed}]}\n"
+        "spec: {id: BAS-001, severity: low, check: [{type: baseline, change: [removed]}]}\n"
     )
     base = snapshot_file(tmp_path, "s0.json")
     args = check_args(tmp_path, extra=["--format", "json", "--baseline", base])
@@ -448,7 +448,7 @@ def test_check_show_values_reaches_the_engine(tmp_path):
         for f in json.loads(written.read_text())["findings"]
         if f.get("details")
     ]
-    assert any("found" in d for group in details for d in group)
+    assert any("value" in d for group in details for d in group)
 
 
 def test_check_makes_no_aws_call_and_reads_no_environment(tmp_path, monkeypatch):
@@ -539,10 +539,10 @@ def test_explain_shows_no_found_value_without_show_values(tmp_path):
     ]
     code, out, err = run(args)
     assert code == 0, err
-    assert "found" not in out
+    assert "(value:" not in out
     code, shown, err = run(args + ["--show-values"])
     assert code == 0, err
-    assert "found" in shown
+    assert "(value: false)" in shown
 
 
 # -------------------------------------------------------------------- lock
