@@ -158,6 +158,7 @@ FINDINGS_SCHEMA = {
                 "description": {"type": "string"},
                 "severity": {"enum": ["info", "low", "medium", "high", "critical"]},
                 "severity_overridden_by": {"type": "string"},
+                "line": {"type": "integer", "minimum": 1},
                 "version": {"type": "integer"},
                 "file": {"type": "string"},
                 "sha256": {"type": "string"},

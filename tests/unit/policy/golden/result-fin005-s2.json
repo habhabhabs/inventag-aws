@@ -57,6 +57,7 @@
       "description": "Load balancer with no target group or instance",
       "file": "policies/fin-005.yaml",
       "id": "FIN-005",
+      "line": 6,
       "name": "fin-005",
       "severity": "low",
       "sha256": "4b752d9f3c7b3b7fe0d750e4c7812c29aa78c973412ae44b1804283f1fe78fb7",

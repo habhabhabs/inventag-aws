@@ -85,6 +85,7 @@
       },
       "file": "policies/ex05.yaml",
       "id": "TAG-002",
+      "line": 4,
       "name": "tag-002",
       "severity": "medium",
       "sha256": "320d1178e3097eb2e2a741f1d4cdfb6b0501388be743485596ca7a205156988e",
