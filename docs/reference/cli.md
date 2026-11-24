@@ -111,7 +111,7 @@ Not verified against real Google: what the Google flags in this table create, sh
 |---|---|---|---|
 | `--finops-cost-allocation` | off | Works | Reads last month's spend from Cost Explorer for each account, with its own credentials: by service, by linked account and by each active cost allocation tag key of the built-in `finops-cost-allocation` policy. Adds a `FinOps costs` sheet as the last sheet. At most 7 Cost Explorer requests per account; the SDK's retries add more, and AWS charges for each. Needs `ce:ListCostAllocationTags`. Adds nothing with `--template`. See [FinOps checks](../guides/finops-checks.md#cost-allocation-from-cost-explorer). |
 | `--no-cost-in-snapshot` | off | Works | With `--finops-cost-allocation`: keeps the cost figures out of the state snapshot; the sheet is still written. Without it, a warning and no effect. |
-| `--finops-checks` | off | Works | Runs six FinOps checks (`FIN-001` to `FIN-006`) on the resources the scan found and adds a `FinOps` sheet as the last sheet of the Excel report. Makes no further AWS call, needs no further permission, and its findings do not change the exit code. Adds nothing with `--template`. See [FinOps checks](../guides/finops-checks.md). |
+| `--finops-checks` | off | Works | Runs six FinOps checks (`FIN-001` to `FIN-006`) on the resources the scan found and adds a `FinOps` sheet as the last sheet of the Excel report. Makes no further AWS call, needs no further permission, and its findings do not change the exit code. With `--template` no sheet is added: the checks run on the run's state snapshot and their findings are written to `policy_findings_<timestamp>.json`; with `--disable-state-management` as well, a warning says that no FinOps findings were written. See [FinOps checks](../guides/finops-checks.md). |
 | `--enable-network-analysis` | off | Works | Adds a `Network Analysis` sheet to the Excel report when VPCs are found. Adds nothing with `--template`. See [Network and security analysis](../guides/network-and-security-analysis.md). |
 | `--enable-security-analysis` | off | Works | Adds a `Security Analysis` sheet to the Excel report when security groups are found. Adds nothing with `--template`. |
 | `--enable-cost-analysis` | off | Works | Adds a Cost Analysis sheet (and the four `forgotten_analysis.*` columns) to the default workbook. Makes Cost Explorer, Pricing and CloudWatch calls; `--no-billing-validation` is independent of it and does not stop them. Cost Explorer requests in one run: at most one for each account when billing validation is on (the default), and at most one more for the whole run with `--enable-cost-analysis`. A single-account run with both makes at most 2; with `--no-billing-validation` it makes at most 1. A throttled request is retried, up to 10 attempts in all, and each retry is one more request. AWS charges for each request. Needs `pricing:GetProducts` and `cloudwatch:GetMetricStatistics`. The costs are estimates from the AWS Pricing API, not your invoice. |
@@ -120,6 +120,17 @@ Not verified against real Google: what the Google flags in this table create, sh
 Not verified against real AWS: `--enable-cost-analysis` needs only these two extra permissions, and the estimates match AWS prices.
 
 Not verified against real AWS: the number of requests AWS bills, and whether AWS bills a retry.
+
+## Policies
+
+Checks policy files against the state snapshot of the run, after the scan. The `inventag policy` command checks a saved snapshot without a scan; see `inventag policy --help`.
+
+| Flag | Default | Status | What it does |
+|---|---|---|---|
+| `--policy PATH` | none | Works | Policy file or folder; repeatable. After the scan, the policies are checked against the run's state snapshot, a text summary is printed, and `policy_findings_<timestamp>.json` is written to the output directory. An invalid policy stops the run with exit code 1 before any AWS call. With `--disable-state-management` the run stops with exit code 2. |
+| `--policy-waivers FILE` | none | Works | Waivers file for `--policy`. Without `--policy`: exit code 2. |
+| `--policy-fail-on SEVERITY` | none | Works | `info`, `low`, `medium`, `high` or `critical`. Exit code 7 when a finding fails at that severity or higher. Exit codes 5, 6, 3 and 4 come first. Without `--policy`: exit code 2. |
+| `--policy-format LIST` | `json` | Works | Files to write, comma-separated: `json`, `sarif`, `junit`, `markdown`. An unknown format: exit code 2. Without `--policy`: exit code 2. |
 
 ## Configuration files
 

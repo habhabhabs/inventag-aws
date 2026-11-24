@@ -39,6 +39,7 @@ RUNTIME_PACKAGES = (
     "certifi",
     "idna",
     "lxml.etree",
+    "jmespath",
 )
 
 # Operations the read-only guard must allow and must refuse.
