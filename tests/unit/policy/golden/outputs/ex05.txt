@@ -18,4 +18,4 @@ TAG-002 (policies/ex05.yaml)
 Units not read:
   TAG-002 111111111111 lambda eu-west-1: throttled
 
-Exit code 7: at least one fail has the --fail-on severity or a higher one.
+Exit code 7: at least one finding failed at severity medium or higher.

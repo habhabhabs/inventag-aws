@@ -12,4 +12,4 @@ FIN-005 (policies/fin-005.yaml)
     FIN-005: condition not met: raw_data.Instances
     - condition not met: raw_data.Instances
 
-Exit code 7: at least one fail has the --fail-on severity or a higher one.
+Exit code 7: at least one finding failed at severity low or higher.

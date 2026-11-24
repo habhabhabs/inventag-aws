@@ -36,4 +36,4 @@ File policies/ex10.yaml: fail 0, waived 0, not evaluated 1, pass 0, out of scope
 | EC2-002 | arn:x | 2027-01-01 | no match | waivers.yaml |
 | EC2-002 | arn:y | 2026-12-31 | superseded by waivers-b.yaml | waivers.yaml |
 
-Exit code 8: something was not evaluated and --fail-on-not-evaluated is set.
+Exit code 8: some checks could not be evaluated.

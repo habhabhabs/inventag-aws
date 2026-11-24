@@ -89,7 +89,7 @@ def out_args(tmp_path, *extra, policy_files=("ex01.yaml",)):
 
 
 def test_check_default_is_text_on_stdout_and_no_file(tmp_path, monkeypatch):
-    stub(monkeypatch, "outputs", render=lambda fmt, result: f"<{fmt}>\n")
+    stub(monkeypatch, "outputs", render=lambda result, fmt, **kw: f"<{fmt}>\n")
     folder = policies_dir(tmp_path, "ex01.yaml")
     code, out, err = run(out_args(tmp_path, "--policies", folder))
     assert code == 0, err
@@ -100,7 +100,7 @@ def test_check_default_is_text_on_stdout_and_no_file(tmp_path, monkeypatch):
 
 
 def test_check_json_is_written_only_when_named(tmp_path, monkeypatch):
-    stub(monkeypatch, "outputs", render=lambda fmt, result: f"<{fmt}>\n")
+    stub(monkeypatch, "outputs", render=lambda result, fmt, **kw: f"<{fmt}>\n")
     folder = policies_dir(tmp_path, "ex01.yaml")
     code, out, err = run(out_args(tmp_path, "--policies", folder, "--format", "json"))
     assert code == 0, err
@@ -111,7 +111,7 @@ def test_check_json_is_written_only_when_named(tmp_path, monkeypatch):
 
 
 def test_show_values_with_sarif_or_junit_says_so_once(tmp_path, monkeypatch):
-    stub(monkeypatch, "outputs", render=lambda fmt, result: "x\n")
+    stub(monkeypatch, "outputs", render=lambda result, fmt, **kw: "x\n")
     folder = policies_dir(tmp_path, "ex01.yaml")
     args = out_args(
         tmp_path, "--policies", folder, "--format", "sarif,junit", "--show-values"

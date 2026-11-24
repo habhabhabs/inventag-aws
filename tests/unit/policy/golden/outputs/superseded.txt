@@ -25,4 +25,4 @@ Unused waivers:
   EC2-002 arn:x expires 2027-01-01: no match (waivers.yaml)
   EC2-002 arn:y expires 2026-12-31: superseded by waivers-b.yaml (waivers.yaml)
 
-Exit code 8: something was not evaluated and --fail-on-not-evaluated is set.
+Exit code 8: some checks could not be evaluated.

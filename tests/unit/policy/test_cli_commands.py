@@ -398,7 +398,8 @@ def test_check_baseline_file_goes_to_the_engine(tmp_path, monkeypatch):
 def test_check_other_formats_go_through_the_output_writers(tmp_path, monkeypatch):
     rendered = []
 
-    def render(fmt, result):
+    def render(result, fmt, **gates):
+        # P3's writer names: text, sarif, xml (JUnit), md (Markdown)
         rendered.append(fmt)
         return f"<{fmt} {result['summary']['rows']}>\n"
 
@@ -408,7 +409,7 @@ def test_check_other_formats_go_through_the_output_writers(tmp_path, monkeypatch
     )
     code, out, err = run(args)
     assert code == 0, err
-    assert sorted(rendered) == ["junit", "markdown", "sarif", "text"]
+    assert sorted(rendered) == ["md", "sarif", "text", "xml"]
     assert out == "<text 10>\n"
     folder = tmp_path / "out"
     assert sorted(p.name for p in folder.iterdir()) == [
@@ -417,9 +418,7 @@ def test_check_other_formats_go_through_the_output_writers(tmp_path, monkeypatch
         "policy_findings_20261120_000000.sarif",
         "policy_findings_20261120_000000.xml",
     ]
-    assert (
-        folder / "policy_findings_20261120_000000.xml"
-    ).read_text() == "<junit 10>\n"
+    assert (folder / "policy_findings_20261120_000000.xml").read_text() == "<xml 10>\n"
     assert err.count("Wrote ") == 4
 
 
@@ -620,3 +619,48 @@ def test_help_is_exit_0():
     assert code == 0
     for word in ("validate", "list", "schema", "test", "check", "explain", "lock"):
         assert word in out
+
+
+# ------------------------------- integration: the real writers (spec 11.3)
+@pytest.mark.parametrize(
+    "extra, code, sentence",
+    [
+        ([], 0, "Exit code 0: findings are reported; no threshold was set."),
+        (
+            ["--fail-on", "critical"],
+            0,
+            "Exit code 0: nothing failed at severity critical or higher.",
+        ),
+        (
+            ["--fail-on", "info"],
+            7,
+            "Exit code 7: at least one finding failed at severity info or higher.",
+        ),
+    ],
+)
+def test_check_text_ends_with_the_exit_sentence(tmp_path, extra, code, sentence):
+    args = check_args(tmp_path, "ex01.yaml", extra=["--format", "text", *extra])
+    got, out, err = run(args)
+    assert got == code, err
+    assert out.rstrip("\n").splitlines()[-1] == sentence
+
+
+def test_check_writes_every_format_with_the_real_writers(tmp_path):
+    args = check_args(
+        tmp_path,
+        "ex01.yaml",
+        extra=["--format", "json,sarif,junit,markdown", "--fail-on", "info"],
+    )
+    code, out, err = run(args)
+    assert code == 7, err
+    folder = tmp_path / "out"
+    assert sorted(p.name for p in folder.iterdir()) == [
+        "policy_findings_20261120_000000.json",
+        "policy_findings_20261120_000000.md",
+        "policy_findings_20261120_000000.sarif",
+        "policy_findings_20261120_000000.xml",
+    ]
+    md = (folder / "policy_findings_20261120_000000.md").read_text()
+    assert md.rstrip("\n").splitlines()[-1].startswith("Exit code 7: ")
+    sarif = json.loads((folder / "policy_findings_20261120_000000.sarif").read_text())
+    assert sarif["version"] == "2.1.0"

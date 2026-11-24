@@ -34,6 +34,17 @@ EXT = {"json": "json", "sarif": "sarif", "xml": "xml", "md": "md", "text": "txt"
 SECRET = "hunter2-SECRET-VALUE"
 
 
+# spec 11.3: the thresholds each golden result was made with (P6 and the
+# check command pass them; without them the exit sentence is left out)
+GATES = {
+    "ex05": {"fail_on": "medium", "thresholds": ["fail_on"]},
+    "ex09-ex10": {"thresholds": ["fail_on_not_evaluated"]},
+    "fin005": {"fail_on": "low", "thresholds": ["fail_on"]},
+    "hostile": {"thresholds": ["fail_on_not_evaluated"]},
+    "superseded": {"thresholds": ["fail_on_not_evaluated"]},
+}
+
+
 def load(name):
     return json.loads((GOLDEN / RESULTS[name]).read_text())
 
@@ -222,13 +233,13 @@ def test_json_is_byte_stable_and_does_not_change_its_input():
 @pytest.mark.parametrize("name", sorted(RESULTS))
 def test_golden_output(name, fmt):
     expected = (OUT / f"{name}.{EXT[fmt]}").read_text()
-    assert render(load(name), fmt) == expected
+    assert render(load(name), fmt, **GATES[name]) == expected
 
 
 @pytest.mark.parametrize("fmt", ["sarif", "xml", "md", "text"])
 def test_golden_of_the_hostile_result(fmt):
     expected = (OUT / f"hostile.{EXT[fmt]}").read_text()
-    assert render(hostile(), fmt) == expected
+    assert render(hostile(), fmt, **GATES["hostile"]) == expected
 
 
 @pytest.mark.parametrize("fmt", ["json", "sarif", "xml", "md", "text"])
@@ -393,7 +404,7 @@ def test_junit_has_no_values_even_with_show_values():
 
 # ------------------------------------------------------------------ Markdown
 def test_markdown_has_tables_and_the_exit_sentence():
-    text = render(load("ex09-ex10"), "md")
+    text = render(load("ex09-ex10"), "md", **GATES["ex09-ex10"])
     assert text.startswith("# ")
     assert "| Resource |" in text
     assert text.rstrip().splitlines()[-1].startswith("Exit code 8")
@@ -421,9 +432,11 @@ def test_markdown_escapes_hostile_text():
 
 # ------------------------------------------------------------------ text
 def test_text_has_policy_lines_groups_and_last_sentence():
-    lines = render(load("ex09-ex10"), "text").splitlines()
+    gates = GATES["ex09-ex10"]
+    lines = render(load("ex09-ex10"), "text", **gates).splitlines()
     assert any(ln.startswith("EC2-002") for ln in lines)
-    assert lines[-1] == render(load("ex09-ex10"), "md").rstrip().splitlines()[-1]
+    md = render(load("ex09-ex10"), "md", **gates)
+    assert lines[-1] == md.rstrip().splitlines()[-1]
 
 
 @pytest.mark.parametrize("code", [0, 7, 8])
@@ -432,7 +445,7 @@ def test_the_last_line_names_the_exit_code(code):
     result["summary"]["exit_code"] = code
     for fmt in ("text", "md"):
         assert (
-            render(result, fmt)
+            render(result, fmt, fail_on="high", thresholds=["fail_on"])
             .rstrip()
             .splitlines()[-1]
             .startswith(f"Exit code {code}")
@@ -585,7 +598,7 @@ def test_junit_with_superseded_is_well_formed():
 def test_golden_of_the_superseded_result():
     for fmt in ("sarif", "xml", "md", "text"):
         expected = (OUT / f"superseded.{EXT[fmt]}").read_text()
-        assert render(with_superseded(), fmt) == expected
+        assert render(with_superseded(), fmt, **GATES["superseded"]) == expected
 
 
 # ------------------------------------------------- amendment 3 (11.2): policies[].line

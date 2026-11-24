@@ -24,4 +24,4 @@ Units not read:
 Unused waivers:
   EC2-002 arn:x expires 2027-01-01: no match (waivers.yaml)
 
-Exit code 8: something was not evaluated and --fail-on-not-evaluated is set.
+Exit code 8: some checks could not be evaluated.

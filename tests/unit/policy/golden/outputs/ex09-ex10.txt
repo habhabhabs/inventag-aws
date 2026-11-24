@@ -18,4 +18,4 @@ EC2-003 (policies/ex10.yaml)
   NOT EVALUATED arn:aws:ec2:ap-southeast-1:222222222222:instance/i-0ccc
     EC2-003: not evaluated (tags_not_read)
 
-Exit code 8: something was not evaluated and --fail-on-not-evaluated is set.
+Exit code 8: some checks could not be evaluated.
