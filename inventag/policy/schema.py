@@ -211,6 +211,11 @@ class Validator:
             self.entries(items, path + (group,), filters_only, depth + 1)
             return
         kind = entry.get("type", "value")
+        if kind == "baseline" and depth > 0:
+            self.add(
+                path + ("type",), "a baseline check must be a top-level entry of check"
+            )
+            return
         if filters_only and kind != "value":
             self.add(path + ("type",), "filters take only type: value")
             return

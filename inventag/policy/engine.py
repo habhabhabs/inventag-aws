@@ -386,7 +386,10 @@ def evaluate(
     findings.sort(key=_sort_key)
     unused: List[Dict[str, Any]] = []
     if waivers:
-        findings, unused = _package("waivers").apply(findings, list(waivers), now)
+        known = sorted(p.id for p in policies if p.enabled)
+        findings, unused = _package("waivers").apply(
+            findings, list(waivers), now, known_policies=known
+        )
         counts_by_policy: Dict[str, Dict[str, int]] = {}
         for f in findings:
             counts_by_policy.setdefault(f["policy"], {"fail": 0, "waived": 0})

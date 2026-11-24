@@ -6,8 +6,10 @@ baseline and the outputs read the result the engine returns.
 
 Interfaces other packages provide (the engine calls them when present):
 
-* ``inventag.policy.waivers.apply(findings, waivers, now) -> (findings,
-  unused)``: spec 2.5. ``findings`` are the engine's finding dicts (sorted);
+* ``inventag.policy.waivers.apply(findings, waivers, now, known_policies)
+  -> (findings, unused)``: spec 2.5 and 10.1. ``known_policies`` are the ids
+  of every loaded, enabled policy (a waiver for another id is "unknown
+  policy"). ``findings`` are the engine's finding dicts (sorted);
   ``waivers`` a list of :class:`Waiver`; ``now`` an aware ``datetime``. It
   returns the findings with ``fail`` turned into ``waived`` (with ``waiver``)
   or carrying ``waiver_expired``, and the ``unused_waivers`` entries.
@@ -40,6 +42,8 @@ REASONS: Tuple[str, ...] = (
     "value_too_long",
 )
 UNIT_REASON = "listing_not_read"
+# Why a waiver changed no finding (spec 2.5, 3.3; "superseded": amendment 2).
+UNUSED_WHY: Tuple[str, ...] = ("no match", "expired", "unknown policy", "superseded")
 CHECK_TYPES: Tuple[str, ...] = (
     "value",
     "required-tags",
