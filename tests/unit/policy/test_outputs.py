@@ -314,9 +314,12 @@ def test_sarif_location_and_fingerprint():
 
 
 def test_sarif_line_defaults_to_one_and_a_sarif_line_is_never_below_one():
-    first = sarif(load("ex09-ex10"))["runs"][0]["results"][0]
+    result = load("ex09-ex10")
+    for policy in result["policies"]:  # the engine's line (P1c) taken away
+        policy.pop("line", None)
+    first = sarif(result)["runs"][0]["results"][0]
     assert first["locations"][0]["physicalLocation"]["region"]["startLine"] == 1
-    log = json.loads(render(load("ex09-ex10"), "sarif", policy_lines={"EC2-002": 0}))
+    log = json.loads(render(result, "sarif", policy_lines={"EC2-002": 0}))
     assert (
         log["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["region"][
             "startLine"

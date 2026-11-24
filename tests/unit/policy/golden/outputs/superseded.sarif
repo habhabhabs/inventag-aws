@@ -46,7 +46,7 @@
                   "uri": "policies/ex09.yaml"
                 },
                 "region": {
-                  "startLine": 1
+                  "startLine": 4
                 }
               }
             }
@@ -81,7 +81,7 @@
                   "uri": "policies/ex09.yaml"
                 },
                 "region": {
-                  "startLine": 1
+                  "startLine": 4
                 }
               }
             }
@@ -122,7 +122,7 @@
                   "uri": "policies/ex10.yaml"
                 },
                 "region": {
-                  "startLine": 1
+                  "startLine": 4
                 }
               }
             }
