@@ -96,7 +96,9 @@ def test_17_new_read_actions_since_v1_1_4():
     }
     new = set(_policy()[0]["Action"])
     assert "cloudtrail:LookupEvents" in old
-    assert len(new - old) == 17
+    # v1.4.3 adds one more, for --finops-cost-allocation only (the page says so)
+    assert len(new - old) == 18
+    assert len(new - old - {"ce:ListCostAllocationTags"}) == 17
 
 
 def test_python_versions_agree_between_pyproject_ci_and_docs():

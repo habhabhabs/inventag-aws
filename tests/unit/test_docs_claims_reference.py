@@ -105,6 +105,7 @@ TEXT_DEFAULTS = {
     "--enable-delta-detection",  # row covers the pair; see below
     "--disable-delta-detection",
     "--disable-state-management",
+    "--no-cost-in-snapshot",  # store_false: "off" means not given (figures kept)
 }
 
 
