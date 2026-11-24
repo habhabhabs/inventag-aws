@@ -4,14 +4,20 @@ not shipped (call ``seed()`` inside ``mock_aws()``)."""
 
 import boto3
 
-SERVICES = "ec2,vpc,s3,rds,efs,sqs,sns,dynamodb"
+from tests.unit.finops import estate as finops_estate
+
+SERVICES = "ec2,vpc,elb,elbv2,s3,rds,efs,sqs,sns,dynamodb"
 REGION = "us-east-1"
 
 
 def seed():
+    finops_estate.seed()
     ec2 = boto3.client("ec2", region_name=REGION)
-    ec2.create_volume(AvailabilityZone=REGION + "a", Size=1, Encrypted=True)
-    ec2.create_volume(AvailabilityZone=REGION + "a", Size=1, Encrypted=False)
+    for encrypted in (True, False):
+        volume = ec2.create_volume(
+            AvailabilityZone=REGION + "a", Size=1, Encrypted=encrypted
+        )["VolumeId"]
+        ec2.create_snapshot(VolumeId=volume)
     vpc = ec2.create_vpc(CidrBlock="10.0.0.0/16")["Vpc"]["VpcId"]
     open_group = ec2.create_security_group(
         GroupName="open", Description="open", VpcId=vpc

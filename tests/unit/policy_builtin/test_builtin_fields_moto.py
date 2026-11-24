@@ -6,7 +6,7 @@ selects. Fields that the scan does not produce are listed here as not shipped.
 """
 
 import copy
-import re
+import json
 
 import pytest
 from moto import mock_aws
@@ -40,28 +40,34 @@ def estate_rows(tmp_path_factory):
 
 
 def keys_read(policy):
-    """Every key text of a policy: require, value entries, related."""
-    found = set(policy.require)
+    """``{(key, rows block or None)}``: every raw_data key a policy reads, with
+    the block that selects the rows it is read on (None: the policy's own)."""
+    found = {(k, None) for k in policy.require}
 
     def walk(entries):
         for entry in entries:
             if not isinstance(entry, dict):
                 continue
-            for field in ("key", "my_key", "their_key", "field"):
+            for field in ("key", "my_key", "field"):
                 if isinstance(entry.get(field), str):
-                    found.add(entry[field])
-            found.update(k for k in entry.get("keys") or [] if isinstance(k, str))
+                    found.add((entry[field], None))
+            if isinstance(entry.get("their_key"), str):
+                found.add(
+                    (entry["their_key"], json.dumps(entry["rows"], sort_keys=True))
+                )
+            found.update(
+                (k, None) for k in entry.get("keys") or [] if isinstance(k, str)
+            )
             for group in ("and", "or", "not"):
                 if group in entry:
                     walk(entry[group])
 
     walk(policy.check)
     walk(policy.resource.get("filters") or [])
-    return {k for k in found if k.startswith("raw_data")}
+    return {(k, b) for k, b in found if k.startswith("raw_data")}
 
 
-def selected(rows, policy):
-    block = policy.resource
+def selected(rows, block):
     return [r for r in rows if engine._plain(r, block)]
 
 
@@ -72,12 +78,14 @@ def all_policies():
 def test_every_raw_data_key_of_every_shipped_policy_is_on_a_scanned_row(estate_rows):
     problems = []
     for policy in all_policies():
-        rows = selected(estate_rows, policy)
-        if not rows:
+        if not selected(estate_rows, policy.resource):
             problems.append(f"{policy.id}: the scan has no row it selects")
             continue
-        for key in sorted(keys_read(policy)):
-            compiled = filters.compile_key(re.sub(r"\s*\|\|.*$", "", key))
+        for key, block in sorted(keys_read(policy), key=str):
+            rows = selected(
+                estate_rows, json.loads(block) if block else policy.resource
+            )
+            compiled = filters.compile_key(key)
             if not any(compiled.get(r) is not None for r in rows):
                 problems.append(f"{policy.id}: {key} is on no scanned row")
     assert problems == []
@@ -99,7 +107,7 @@ def test_the_fields_that_are_not_shipped_are_not_on_the_scanned_rows(estate_rows
 def test_no_shipped_policy_reads_a_field_of_the_not_shipped_list():
     listed = {key for _, key in NOT_ON_THE_ROW}
     for policy in all_policies():
-        assert not (keys_read(policy) & listed), policy.id
+        assert not ({k for k, _ in keys_read(policy)} & listed), policy.id
 
 
 def test_the_scanned_rows_give_each_encryption_and_exposure_policy_a_fail_and_a_pass(
