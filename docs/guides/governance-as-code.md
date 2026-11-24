@@ -309,8 +309,9 @@ code.
   in `unused_waivers` with the reason `no match`, `expired`, `unknown policy`
   or `superseded`.
 
-Not verified against a run: a waivers file inside the folder given to
-`--policies`. Keep the waivers file in its own folder, as above.
+A waivers file may sit inside the folder given to `--policies`: `list`,
+`check` and `explain` skip it when they load policies. Its waivers apply only
+when you name the file with `--waivers`.
 
 ## Compare with an older snapshot
 
@@ -398,12 +399,16 @@ writes `.inventag/policies/policy.lock`: a JSON file that lists the SHA-256 of
 every policy, policy-set and waivers file in the folder. A `tests/` folder is
 left out.
 
-Not verified against a run: `inventag policy lock --check`, and `inventag
-policy check --locked`. The intended behaviour is that `lock --check` exits
-with code 1 when a listed file changed, is missing, or an unlisted file of
-these kinds exists, and that `--locked` refuses to evaluate in the same
-cases. In the build this page was checked on, both stop with a Python error
-(`AttributeError`), so do not rely on them.
+```bash
+inventag policy lock --check .inventag/policies
+```
+
+exits with code 1 when a listed file changed, is missing, or an unlisted file
+of these kinds exists, and names each file. When the lock is current it prints
+`policy.lock is current.` and exits with code 0. `inventag policy check
+--locked` refuses to evaluate in the same cases (exit code 1). With
+`--locked`, a `--waivers` file must be inside the policy folder and listed in
+`policy.lock`. A missing or invalid `policy.lock` is an error (exit code 1).
 
 ## Output files
 

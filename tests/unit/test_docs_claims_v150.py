@@ -293,12 +293,7 @@ def test_policy_check_needs_no_credentials_and_opens_no_connection(
     assert code == 0, err
 
 
-# ---------------------------------------- known gap: policy.lock is not wired
-@pytest.mark.xfail(
-    strict=True,
-    reason="cli.py calls lock.check, the lock module has verify (integration gap, "
-    "reported by P8b); remove this mark when the commands use the lock module",
-)
+# --------------------------------- policy.lock: lock --check and --locked
 def test_lock_check_and_locked_work_on_a_real_policy_folder(tmp_path):
     from .policy.cli_helpers import policies_dir, run, snapshot_file
 

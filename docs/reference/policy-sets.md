@@ -121,8 +121,5 @@ author left them out.
 
 ## Run the fixtures of a set
 
-`inventag policy test DIR` runs the fixtures under `DIR/tests/`. Not verified
-against a run for the shipped sets `finops-checks`, `encryption-at-rest` and
-`public-exposure`: in the build this page was checked on, `inventag policy
-test` refuses the fixtures of these three sets with `unknown field 'reason'`
-(exit code 1). The fixtures of the other three sets pass.
+`inventag policy test DIR` runs the fixtures under `DIR/tests/`. The fixtures
+of all six shipped sets pass.

@@ -516,11 +516,6 @@ def test_the_waiver_with_the_latest_expiry_wins_and_the_other_is_superseded(ws):
     assert [u["why"] for u in data["unused_waivers"]] == ["superseded"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="a waivers file inside the policy folder is refused by policy check "
-    "(loader.load validates it as a policy file with no date)",
-)
 def test_a_waivers_file_inside_the_policy_folder_is_not_a_problem(ws):
     shutil_target = ws / ".inventag" / "policies" / "waivers.yaml"
     shutil_target.write_text((ws / "waivers" / "waivers.yaml").read_text())
@@ -528,12 +523,10 @@ def test_a_waivers_file_inside_the_policy_folder_is_not_a_problem(ws):
     assert code == 0, err
 
 
-def test_the_guide_says_the_waivers_in_the_folder_case_is_not_verified():
+def test_the_guide_says_a_waivers_file_in_the_folder_is_skipped():
     guide = " ".join(text_of(GUIDE).split())
-    assert (
-        "Not verified against a run: a waivers file inside the folder given to `--policies`."
-        in guide
-    )
+    assert "A waivers file may sit inside the folder given to `--policies`" in guide
+    assert "Its waivers apply only when you name the file with `--waivers`." in guide
 
 
 # ---------------------------------------------------------------- guide: baseline
@@ -667,10 +660,6 @@ def test_lock_writes_a_json_file_that_leaves_out_tests(ws):
     assert re.fullmatch(r"[0-9a-f]{64}", data["files"]["rds-encrypted.yaml"])
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="policy lock --check calls inventag.policy.lock.check, which does not exist",
-)
 def test_lock_check_exits_1_when_a_listed_file_changed(ws):
     run(["lock", ".inventag/policies"])
     assert run(["lock", "--check", ".inventag/policies"])[0] == 0
@@ -679,10 +668,6 @@ def test_lock_check_exits_1_when_a_listed_file_changed(ws):
     assert run(["lock", "--check", ".inventag/policies"])[0] == 1
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="policy check --locked calls inventag.policy.lock.check, which does not exist",
-)
 def test_locked_check_refuses_a_changed_file(ws):
     run(["lock", ".inventag/policies"])
     with open(ws / ".inventag/policies/rds-encrypted.yaml", "a") as handle:
@@ -702,9 +687,17 @@ def test_locked_check_refuses_a_changed_file(ws):
     assert code == 1
 
 
-def test_the_guide_says_lock_check_and_locked_are_not_verified():
+def test_the_guide_says_what_lock_check_and_locked_do(ws):
     guide = " ".join(text_of(GUIDE).split())
-    assert "Not verified against a run: `inventag policy lock --check`" in guide
+    assert "Not verified against a run: `inventag policy lock --check`" not in guide
+    assert "AttributeError" not in guide
+    run(["lock", ".inventag/policies"])
+    code, out, err = run(["lock", "--check", ".inventag/policies"])
+    assert (code, out) == (0, "policy.lock is current.\n"), err
+    assert "it prints `policy.lock is current.` and exits with code 0" in guide
+    assert "A missing or invalid `policy.lock` is an error (exit code 1)." in guide
+    (ws / ".inventag/policies/policy.lock").unlink()
+    assert run(["lock", "--check", ".inventag/policies"])[0] == 1
 
 
 # ---------------------------------------------------------------- guide: outputs
@@ -1255,19 +1248,9 @@ def test_the_not_shipped_keys_named_on_the_page_are_not_read_by_a_shipped_policy
         "tagging-standard",
         "region-allowlist",
         "naming",
-        pytest.param(
-            "finops-checks",
-            marks=pytest.mark.xfail(
-                strict=True,
-                reason="fixtures use expect_units fields (reason, outcome) that the validator refuses",
-            ),
-        ),
-        pytest.param(
-            "encryption-at-rest", marks=pytest.mark.xfail(strict=True, reason="same")
-        ),
-        pytest.param(
-            "public-exposure", marks=pytest.mark.xfail(strict=True, reason="same")
-        ),
+        "finops-checks",
+        "encryption-at-rest",
+        "public-exposure",
     ],
 )
 def test_inventag_policy_test_runs_the_fixtures_of_the_shipped_sets(set_name):
@@ -1275,10 +1258,10 @@ def test_inventag_policy_test_runs_the_fixtures_of_the_shipped_sets(set_name):
     assert code == 0, err + out
 
 
-def test_the_sets_page_says_which_three_sets_are_not_verified():
+def test_the_sets_page_says_the_fixtures_of_all_six_sets_pass():
     page = " ".join(text_of(SETS).split())
-    assert "`finops-checks`, `encryption-at-rest` and `public-exposure`" in page
-    assert "unknown field 'reason'" in page
+    assert "The fixtures of all six shipped sets pass." in page
+    assert "unknown field 'reason'" not in page
 
 
 # ------------------------------------------------------------ finops promise
@@ -2213,8 +2196,8 @@ def test_every_relative_link_of_the_pages_resolves_to_a_page_and_a_heading(page)
 
 
 def test_every_command_in_the_bash_blocks_parses_with_the_real_parser():
-    """The ci-examples checker (scripts/docs) does not know ``inventag policy``
-    yet, so the commands of these pages are parsed here with the real parsers."""
+    """The commands of these pages parse with the real parsers (the ci-examples
+    checker in scripts/docs checks them too)."""
     import importlib
     import shlex
 
@@ -2237,4 +2220,4 @@ def test_every_command_in_the_bash_blocks_parses_with_the_real_parser():
                 except SystemExit as stop:  # pragma: no cover
                     raise AssertionError(f"{line}: exit {stop.code}") from None
                 count += 1
-    assert count == 12
+    assert count == 13
