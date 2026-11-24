@@ -1,0 +1,8 @@
+format_version: 1
+kind: policy-set
+name: naming
+description: "Naming of instances and security groups."
+spec:
+  policies:
+    - name-instance-name-tag
+    - name-security-group-not-wizard

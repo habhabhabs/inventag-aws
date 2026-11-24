@@ -1,0 +1,11 @@
+format_version: 1
+kind: policy
+name: name-security-group-not-wizard
+description: "Security groups are not left with a launch-wizard name"
+spec:
+  id: NAME-002
+  severity: low
+  version: 1
+  resource: {services: [VPC], resource_types: [SecurityGroup]}
+  check:
+    - {type: name-pattern, field: raw_data.GroupName, pattern: "(?!launch-wizard-).*"}

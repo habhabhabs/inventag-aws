@@ -1,0 +1,17 @@
+# A starting point: copy the set and change the keys and values to your own conventions.
+format_version: 1
+kind: policy
+name: tag-owner-present
+description: "Every taggable resource has an Owner tag"
+spec:
+  id: TAG-001
+  severity: low
+  version: 1
+  resource:
+    exclude_resource_types: [Alias]
+    filters:
+      - {type: value, key: source, op: ne, value: billing}
+  check:
+    - type: required-tags
+      keys:
+        - {key: Owner}

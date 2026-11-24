@@ -1,0 +1,13 @@
+# Reads only a field a moto scan shows on the row; see the tests of the set.
+format_version: 1
+kind: policy
+name: enc-rds-storage-encrypted
+description: "RDS instance storage is encrypted"
+spec:
+  id: ENC-003
+  severity: high
+  version: 1
+  resource: {services: [RDS], resource_types: [DBInstance], listings: [rds]}
+  require: [raw_data.StorageEncrypted]
+  check:
+    - {type: value, key: raw_data.StorageEncrypted, value: true}

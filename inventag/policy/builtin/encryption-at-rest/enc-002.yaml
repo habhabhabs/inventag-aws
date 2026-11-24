@@ -1,0 +1,13 @@
+# Reads only a field a moto scan shows on the row; see the tests of the set.
+format_version: 1
+kind: policy
+name: enc-snapshot-encrypted
+description: "EBS snapshots are encrypted"
+spec:
+  id: ENC-002
+  severity: medium
+  version: 1
+  resource: {services: [EC2], resource_types: [Snapshot], listings: [ec2]}
+  require: [raw_data.Encrypted]
+  check:
+    - {type: value, key: raw_data.Encrypted, value: true}

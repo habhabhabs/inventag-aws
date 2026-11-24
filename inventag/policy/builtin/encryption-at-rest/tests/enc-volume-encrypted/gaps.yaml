@@ -1,0 +1,46 @@
+format_version: 1
+kind: policy-test
+name: enc-volume-encrypted-gaps
+spec:
+  policy: enc-volume-encrypted
+  now: '2026-11-20'
+  units_not_read:
+  - {account: '111111111111', service: ec2, region: us-east-1, source: service-api, outcome: denied}
+  - {account: '111111111111', service: s3, region: us-east-1, source: service-api, outcome: throttled}
+  resources:
+  - service: EC2
+    resource_type: Volume
+    resource_id: vol-c
+    resource_name: vol-c
+    arn: arn:aws:ec2:us-east-1:111111111111:volume/vol-c
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {}
+  - service: EC2
+    resource_type: Volume
+    resource_id: vol-d
+    resource_name: vol-d
+    arn: arn:aws:ec2:us-east-1:111111111111:volume/vol-d
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: identity
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {arn: 'arn:aws:ec2:us-east-1:111111111111:volume/vol-d'}
+  - service: EC2
+    resource_type: Volume
+    resource_id: vol-b
+    resource_name: vol-b
+    arn: arn:aws:ec2:us-east-1:111111111111:volume/vol-b
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {Encrypted: false}
+  expect:
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:volume/vol-c', result: not_evaluated, reason: field_missing}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:volume/vol-d', result: not_evaluated, reason: identity_only}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:volume/vol-b', result: fail}
+  expect_units:
+  - {account: '111111111111', service: ec2, region: us-east-1, reason: listing_not_read, outcome: denied}

@@ -1,0 +1,7 @@
+format_version: 1
+kind: policy-set
+name: region-allowlist
+description: "Resources only in the listed regions (global services are allowed)."
+spec:
+  policies:
+    - region-allowed

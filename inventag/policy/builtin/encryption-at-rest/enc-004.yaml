@@ -1,0 +1,13 @@
+# Reads only a field a moto scan shows on the row; see the tests of the set.
+format_version: 1
+kind: policy
+name: enc-efs-encrypted
+description: "EFS file systems are encrypted"
+spec:
+  id: ENC-004
+  severity: medium
+  version: 1
+  resource: {services: [ELASTICFILESYSTEM], resource_types: [FileSystem], listings: [efs]}
+  require: [raw_data.Encrypted]
+  check:
+    - {type: value, key: raw_data.Encrypted, value: true}

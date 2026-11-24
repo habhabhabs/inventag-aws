@@ -1,0 +1,45 @@
+format_version: 1
+kind: policy-test
+name: rds-not-public-gaps
+spec:
+  policy: pub-rds-not-public
+  now: '2026-11-20'
+  units_not_read:
+  - {account: '111111111111', service: rds, region: us-east-1, source: service-api, outcome: denied}
+  resources:
+  - service: RDS
+    resource_type: DBInstance
+    resource_id: db-c
+    resource_name: db-c
+    arn: arn:aws:rds:us-east-1:111111111111:db:db-c
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {}
+  - service: RDS
+    resource_type: DBInstance
+    resource_id: db-d
+    resource_name: db-d
+    arn: arn:aws:rds:us-east-1:111111111111:db:db-d
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: identity
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {arn: 'arn:aws:rds:us-east-1:111111111111:db:db-d'}
+  - service: RDS
+    resource_type: DBInstance
+    resource_id: db-b
+    resource_name: db-b
+    arn: arn:aws:rds:us-east-1:111111111111:db:db-b
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {PubliclyAccessible: true}
+  expect:
+  - {resource: 'arn:aws:rds:us-east-1:111111111111:db:db-c', result: not_evaluated, reason: field_missing}
+  - {resource: 'arn:aws:rds:us-east-1:111111111111:db:db-d', result: not_evaluated, reason: identity_only}
+  - {resource: 'arn:aws:rds:us-east-1:111111111111:db:db-b', result: fail}
+  expect_units:
+  - {account: '111111111111', service: rds, region: us-east-1, reason: listing_not_read, outcome: denied}

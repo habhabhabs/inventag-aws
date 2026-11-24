@@ -1,0 +1,8 @@
+format_version: 1
+kind: policy-set
+name: tagging-standard
+description: "Owner and Environment tags on every taggable resource."
+spec:
+  policies:
+    - tag-owner-present
+    - tag-environment-allowed

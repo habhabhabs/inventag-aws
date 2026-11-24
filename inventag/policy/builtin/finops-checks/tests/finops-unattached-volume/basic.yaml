@@ -1,0 +1,41 @@
+format_version: 1
+kind: policy-test
+name: unattached-volume-basic
+spec:
+  policy: finops-unattached-volume
+  now: '2026-11-20'
+  resources:
+  - service: EC2
+    resource_type: Volume
+    resource_id: vol-a
+    resource_name: vol-a
+    arn: arn:aws:ec2:us-east-1:111111111111:volume/vol-a
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {State: available}
+  - service: EC2
+    resource_type: Volume
+    resource_id: vol-b
+    resource_name: vol-b
+    arn: arn:aws:ec2:us-east-1:111111111111:volume/vol-b
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {State: in-use}
+  - service: EC2
+    resource_type: Snapshot
+    resource_id: snap-a
+    resource_name: snap-a
+    arn: arn:aws:ec2:us-east-1:111111111111:snapshot/snap-a
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {State: available}
+  expect:
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:volume/vol-a', result: fail}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:volume/vol-b', result: pass}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:snapshot/snap-a', result: out_of_scope}

@@ -1,0 +1,9 @@
+# Not shipped: S3 public access, snapshot sharing. A scan does not put those fields on the row.
+format_version: 1
+kind: policy-set
+name: public-exposure
+description: "Resources reachable from the internet, for the fields a scan shows: RDS PubliclyAccessible and security group inbound rules."
+spec:
+  policies:
+    - pub-rds-not-public
+    - pub-security-group-not-open

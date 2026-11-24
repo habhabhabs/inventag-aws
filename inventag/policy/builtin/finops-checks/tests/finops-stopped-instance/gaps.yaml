@@ -1,0 +1,47 @@
+format_version: 1
+kind: policy-test
+name: stopped-instance-gaps
+spec:
+  policy: finops-stopped-instance
+  now: '2026-11-20'
+  units_not_read:
+  - {account: '111111111111', service: ec2, region: us-east-1, source: service-api, outcome: denied}
+  resources:
+  - service: EC2
+    resource_type: Instance
+    resource_id: i-4
+    resource_name: i-4
+    arn: arn:aws:ec2:us-east-1:111111111111:instance/i-4
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data:
+      State: {}
+  - service: EC2
+    resource_type: Instance
+    resource_id: i-5
+    resource_name: i-5
+    arn: arn:aws:ec2:us-east-1:111111111111:instance/i-5
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: identity
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {arn: 'arn:aws:ec2:us-east-1:111111111111:instance/i-5'}
+  - service: EC2
+    resource_type: Instance
+    resource_id: i-1
+    resource_name: i-1
+    arn: arn:aws:ec2:us-east-1:111111111111:instance/i-1
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data:
+      State: {Name: stopped}
+  expect:
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:instance/i-4', result: not_evaluated, reason: field_missing}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:instance/i-5', result: not_evaluated, reason: identity_only}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:instance/i-1', result: fail}
+  expect_units:
+  - {account: '111111111111', service: ec2, region: us-east-1, reason: listing_not_read, outcome: denied}

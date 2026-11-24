@@ -1,0 +1,12 @@
+format_version: 1
+kind: policy-set
+name: finops-checks
+description: "The six FinOps checks of --finops-checks (FIN-001 to FIN-006): cost leaks and missing cost allocation tags."
+spec:
+  policies:
+    - finops-unattached-volume
+    - finops-unassociated-address
+    - finops-old-snapshot
+    - finops-stopped-instance
+    - finops-idle-load-balancer
+    - finops-missing-allocation-tags

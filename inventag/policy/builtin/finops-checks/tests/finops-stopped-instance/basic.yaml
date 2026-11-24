@@ -1,0 +1,55 @@
+format_version: 1
+kind: policy-test
+name: stopped-instance-basic
+spec:
+  policy: finops-stopped-instance
+  now: '2026-11-20'
+  resources:
+  - service: EC2
+    resource_type: Instance
+    resource_id: i-1
+    resource_name: i-1
+    arn: arn:aws:ec2:us-east-1:111111111111:instance/i-1
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data:
+      State: {Name: stopped}
+  - service: EC2
+    resource_type: Instance
+    resource_id: i-2
+    resource_name: i-2
+    arn: arn:aws:ec2:us-east-1:111111111111:instance/i-2
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data:
+      State: {Name: running}
+  - service: EC2
+    resource_type: Instance
+    resource_id: i-3
+    resource_name: i-3
+    arn: arn:aws:ec2:us-east-1:111111111111:instance/i-3
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data:
+      State: {Name: terminated}
+  - service: EC2
+    resource_type: Volume
+    resource_id: vol-a
+    resource_name: vol-a
+    arn: arn:aws:ec2:us-east-1:111111111111:volume/vol-a
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {State: available}
+  expect:
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:instance/i-1', result: fail}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:instance/i-2', result: pass}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:instance/i-3', result: pass}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:volume/vol-a', result: out_of_scope}

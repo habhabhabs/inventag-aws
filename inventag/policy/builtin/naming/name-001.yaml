@@ -1,0 +1,11 @@
+format_version: 1
+kind: policy
+name: name-instance-name-tag
+description: "EC2 instances have a lower-case Name tag"
+spec:
+  id: NAME-001
+  severity: low
+  version: 1
+  resource: {services: [EC2], resource_types: [Instance]}
+  check:
+    - {type: name-pattern, field: tags.Name, pattern: "[a-z][a-z0-9-]*"}

@@ -1,0 +1,41 @@
+format_version: 1
+kind: policy-test
+name: enc-rds-storage-encrypted-basic
+spec:
+  policy: enc-rds-storage-encrypted
+  now: '2026-11-20'
+  resources:
+  - service: RDS
+    resource_type: DBInstance
+    resource_id: db-a
+    resource_name: db-a
+    arn: arn:aws:rds:us-east-1:111111111111:db:db-a
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {StorageEncrypted: true}
+  - service: RDS
+    resource_type: DBInstance
+    resource_id: db-b
+    resource_name: db-b
+    arn: arn:aws:rds:us-east-1:111111111111:db:db-b
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {StorageEncrypted: false}
+  - service: SQS
+    resource_type: Queue
+    resource_id: q
+    resource_name: q
+    arn: arn:aws:sqs:us-east-1:111111111111:q
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {url: u}
+  expect:
+  - {resource: 'arn:aws:rds:us-east-1:111111111111:db:db-a', result: pass}
+  - {resource: 'arn:aws:rds:us-east-1:111111111111:db:db-b', result: fail}
+  - {resource: 'arn:aws:sqs:us-east-1:111111111111:q', result: out_of_scope}

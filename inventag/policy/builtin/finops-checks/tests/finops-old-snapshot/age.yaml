@@ -1,0 +1,52 @@
+format_version: 1
+kind: policy-test
+name: old-snapshot-age
+spec:
+  policy: finops-old-snapshot
+  now: '2026-11-20'
+  resources:
+  - service: EC2
+    resource_type: Snapshot
+    resource_id: snap-a
+    resource_name: snap-a
+    arn: arn:aws:ec2:us-east-1:111111111111:snapshot/snap-a
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {StartTime: '2026-08-22T00:00:00+00:00'}
+  - service: EC2
+    resource_type: Snapshot
+    resource_id: snap-b
+    resource_name: snap-b
+    arn: arn:aws:ec2:us-east-1:111111111111:snapshot/snap-b
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {StartTime: '2026-08-21T23:00:00+00:00'}
+  - service: EC2
+    resource_type: Snapshot
+    resource_id: snap-e
+    resource_name: snap-e
+    arn: arn:aws:ec2:us-east-1:111111111111:snapshot/snap-e
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {StartTime: '2026-11-01T00:00:00Z'}
+  - service: EC2
+    resource_type: Volume
+    resource_id: vol-a
+    resource_name: vol-a
+    arn: arn:aws:ec2:us-east-1:111111111111:volume/vol-a
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {State: available}
+  expect:
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:snapshot/snap-a', result: pass}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:snapshot/snap-b', result: fail}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:snapshot/snap-e', result: pass}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:volume/vol-a', result: out_of_scope}

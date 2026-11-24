@@ -1,0 +1,48 @@
+format_version: 1
+kind: policy-test
+name: enc-efs-encrypted-gaps
+spec:
+  policy: enc-efs-encrypted
+  now: '2026-11-20'
+  units_not_read:
+  - {account: '111111111111', service: efs, region: us-east-1, source: service-api, outcome: denied}
+  - {account: '111111111111', service: s3, region: us-east-1, source: service-api, outcome: throttled}
+  resources:
+  - service: ELASTICFILESYSTEM
+    resource_type: FileSystem
+    resource_id: fs-c
+    resource_name: fs-c
+    arn: arn:aws:elasticfilesystem:us-east-1:111111111111:file-system/fs-c
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {}
+  - service: ELASTICFILESYSTEM
+    resource_type: FileSystem
+    resource_id: fs-d
+    resource_name: fs-d
+    arn: arn:aws:elasticfilesystem:us-east-1:111111111111:file-system/fs-d
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: identity
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {arn: 'arn:aws:elasticfilesystem:us-east-1:111111111111:file-system/fs-d'}
+  - service: ELASTICFILESYSTEM
+    resource_type: FileSystem
+    resource_id: fs-b
+    resource_name: fs-b
+    arn: arn:aws:elasticfilesystem:us-east-1:111111111111:file-system/fs-b
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {Encrypted: false}
+  expect:
+  - {resource: 'arn:aws:elasticfilesystem:us-east-1:111111111111:file-system/fs-c', result: not_evaluated,
+    reason: field_missing}
+  - {resource: 'arn:aws:elasticfilesystem:us-east-1:111111111111:file-system/fs-d', result: not_evaluated,
+    reason: identity_only}
+  - {resource: 'arn:aws:elasticfilesystem:us-east-1:111111111111:file-system/fs-b', result: fail}
+  expect_units:
+  - {account: '111111111111', service: efs, region: us-east-1, reason: listing_not_read, outcome: denied}

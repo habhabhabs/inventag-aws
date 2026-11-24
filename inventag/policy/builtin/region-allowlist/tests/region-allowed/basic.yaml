@@ -1,0 +1,51 @@
+format_version: 1
+kind: policy-test
+name: region-allowed-basic
+spec:
+  policy: region-allowed
+  now: '2026-11-20'
+  resources:
+  - service: S3
+    resource_type: Bucket
+    resource_id: b-east
+    resource_name: b-east
+    arn: arn:aws:s3:::b-east
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {Name: b}
+  - service: S3
+    resource_type: Bucket
+    resource_id: b-sa
+    resource_name: b-sa
+    arn: arn:aws:s3:::b-sa
+    region: sa-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {Name: b}
+  - service: IAM
+    resource_type: Role
+    resource_id: role
+    resource_name: role
+    arn: arn:aws:iam::111111111111:role/r
+    region: global
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+  - service: Billing
+    resource_type: Service
+    resource_id: svc
+    resource_name: svc
+    arn: arn:aws:billing:::svc
+    region: eu-central-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {}
+    source: billing
+  expect:
+  - {resource: 'arn:aws:s3:::b-east', result: pass}
+  - {resource: 'arn:aws:s3:::b-sa', result: fail}
+  - {resource: 'arn:aws:iam::111111111111:role/r', result: pass}
+  - {resource: 'arn:aws:billing:::svc', result: out_of_scope}

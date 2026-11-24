@@ -1,0 +1,45 @@
+format_version: 1
+kind: policy-test
+name: missing-allocation-tags-not-read
+spec:
+  policy: finops-missing-allocation-tags
+  now: '2026-11-20'
+  units_not_read:
+  - {account: '111111111111', service: resourcegroupstaggingapi, region: us-east-1, source: tagging-api,
+    outcome: denied}
+  resources:
+  - service: S3
+    resource_type: Bucket
+    resource_id: b-unread
+    resource_name: b-unread
+    arn: arn:aws:s3:::b-unread
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {}
+    raw_data: {Name: b}
+  - service: S3
+    resource_type: Bucket
+    resource_id: b-eu
+    resource_name: b-eu
+    arn: arn:aws:s3:::b-eu
+    region: eu-west-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {}
+    raw_data: {Name: b}
+  - service: S3
+    resource_type: Bucket
+    resource_id: b-full
+    resource_name: b-full
+    arn: arn:aws:s3:::b-full
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {Name: b}
+  expect:
+  - {resource: 'arn:aws:s3:::b-unread', result: not_evaluated, reason: tags_not_read}
+  - {resource: 'arn:aws:s3:::b-eu', result: fail}
+  - {resource: 'arn:aws:s3:::b-full', result: not_evaluated, reason: tags_not_read}
+  expect_units: []

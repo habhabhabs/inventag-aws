@@ -1,0 +1,14 @@
+# Reads only a field a moto scan shows on the row; see the tests of the set.
+format_version: 1
+kind: policy
+name: pub-security-group-not-open
+description: "Security groups have no inbound rule open to the whole internet (any port)"
+spec:
+  id: PUB-002
+  severity: high
+  version: 1
+  resource: {services: [VPC], resource_types: [SecurityGroup], listings: [vpc]}
+  require: [raw_data.IpPermissions]
+  check:
+    - {type: value, key: "raw_data.IpPermissions[].IpRanges[?CidrIp=='0.0.0.0/0'][]", value_type: size, value: 0}
+    - {type: value, key: "raw_data.IpPermissions[].Ipv6Ranges[?CidrIpv6=='::/0'][]", value_type: size, value: 0}

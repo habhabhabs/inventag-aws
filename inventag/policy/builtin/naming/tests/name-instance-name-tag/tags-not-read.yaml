@@ -1,0 +1,59 @@
+format_version: 1
+kind: policy-test
+name: instance-name-tag-not-read
+spec:
+  policy: name-instance-name-tag
+  now: '2026-11-20'
+  units_not_read:
+  - {account: '111111111111', service: resourcegroupstaggingapi, region: us-east-1, source: tagging-api,
+    outcome: denied}
+  resources:
+  - service: EC2
+    resource_type: Instance
+    resource_id: i-1
+    resource_name: i-1
+    arn: arn:aws:ec2:us-east-1:111111111111:instance/i-1
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {Name: web-1}
+    raw_data:
+      State: {Name: running}
+  - service: EC2
+    resource_type: Instance
+    resource_id: i-2
+    resource_name: i-2
+    arn: arn:aws:ec2:us-east-1:111111111111:instance/i-2
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {Name: Web_1}
+    raw_data:
+      State: {Name: running}
+  - service: EC2
+    resource_type: Instance
+    resource_id: i-3
+    resource_name: i-3
+    arn: arn:aws:ec2:us-east-1:111111111111:instance/i-3
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {}
+    raw_data:
+      State: {Name: running}
+  - service: EC2
+    resource_type: Volume
+    resource_id: vol-1
+    resource_name: vol-1
+    arn: arn:aws:ec2:us-east-1:111111111111:volume/vol-1
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {Name: X_}
+    raw_data: {State: in-use}
+  expect:
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:instance/i-1', result: not_evaluated, reason: tags_not_read}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:instance/i-2', result: not_evaluated, reason: tags_not_read}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:instance/i-3', result: not_evaluated, reason: tags_not_read}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:volume/vol-1', result: out_of_scope}
+  expect_units: []

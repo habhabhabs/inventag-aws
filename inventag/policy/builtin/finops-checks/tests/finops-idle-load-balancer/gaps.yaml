@@ -1,0 +1,92 @@
+format_version: 1
+kind: policy-test
+name: idle-load-balancer-gaps
+spec:
+  policy: finops-idle-load-balancer
+  now: '2026-11-20'
+  resources:
+  - service: ELBV2
+    resource_type: LoadBalancerV2
+    resource_id: web
+    resource_name: web
+    arn: arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/web/1
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {LoadBalancerArn: 'arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/web/1'}
+  - service: ELBV2
+    resource_type: LoadBalancerV2
+    resource_id: old
+    resource_name: old
+    arn: arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/old/1
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {LoadBalancerArn: 'arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/old/1'}
+  - service: ELBV2
+    resource_type: TargetGroup
+    resource_id: tg-web
+    resource_name: tg-web
+    arn: arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/tg-web/9
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {}
+  - service: ELBV2
+    resource_type: LoadBalancerV2
+    resource_id: bare
+    resource_name: bare
+    arn: arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/bare/1
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {}
+  - service: ELB
+    resource_type: LoadBalancer
+    resource_id: classic-c
+    resource_name: classic-c
+    arn: arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/classic-c
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {}
+  - service: ELBV2
+    resource_type: LoadBalancerV2
+    resource_id: id
+    resource_name: id
+    arn: arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/id/1
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: identity
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {arn: 'arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/id/1'}
+  - service: ELB
+    resource_type: LoadBalancer
+    resource_id: classic-b
+    resource_name: classic-b
+    arn: arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/classic-b
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data:
+      Instances:
+      - {InstanceId: i-0aaa}
+  expect:
+  - {resource: 'arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/web/1', result: not_evaluated,
+    reason: field_missing}
+  - {resource: 'arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/old/1', result: not_evaluated,
+    reason: field_missing}
+  - {resource: 'arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/tg-web/9', result: out_of_scope}
+  - {resource: 'arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/bare/1', result: not_evaluated,
+    reason: field_missing}
+  - {resource: 'arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/classic-c', result: not_evaluated,
+    reason: field_missing}
+  - {resource: 'arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/id/1', result: not_evaluated,
+    reason: identity_only}
+  - {resource: 'arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/classic-b', result: pass}

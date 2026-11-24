@@ -1,0 +1,12 @@
+format_version: 1
+kind: policy
+name: finops-stopped-instance
+description: "EC2 instance in the stopped state"
+spec:
+  id: FIN-004
+  severity: low
+  version: 1
+  resource: {services: [EC2], resource_types: [Instance], listings: [ec2]}
+  require: [raw_data.State.Name]
+  check:
+    - {type: value, key: raw_data.State.Name, op: ne, value: stopped}

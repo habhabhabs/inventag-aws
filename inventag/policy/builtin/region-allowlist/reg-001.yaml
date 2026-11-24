@@ -1,0 +1,14 @@
+# A starting point: copy the set and list the regions your organisation uses.
+format_version: 1
+kind: policy
+name: region-allowed
+description: "Resources are in an agreed region"
+spec:
+  id: REG-001
+  severity: medium
+  version: 1
+  resource:
+    filters:
+      - {type: value, key: source, op: ne, value: billing}
+  check:
+    - {type: allowed-regions, regions: [ap-southeast-1, eu-west-1, us-east-1], allow_global: true}

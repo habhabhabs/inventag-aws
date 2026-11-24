@@ -1,0 +1,64 @@
+format_version: 1
+kind: policy-test
+name: security-group-wizard-basic
+spec:
+  policy: name-security-group-not-wizard
+  now: '2026-11-20'
+  resources:
+  - service: VPC
+    resource_type: SecurityGroup
+    resource_id: sg-1
+    resource_name: web
+    arn: arn:aws:ec2:us-east-1:111111111111:security-group/sg-1
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {GroupId: sg-1, GroupName: web}
+  - service: VPC
+    resource_type: SecurityGroup
+    resource_id: sg-2
+    resource_name: launch-wizard-1
+    arn: arn:aws:ec2:us-east-1:111111111111:security-group/sg-2
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {GroupId: sg-2, GroupName: launch-wizard-1}
+  - service: VPC
+    resource_type: SecurityGroup
+    resource_id: sg-3
+    resource_name: launch-wizardry
+    arn: arn:aws:ec2:us-east-1:111111111111:security-group/sg-3
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {GroupId: sg-3, GroupName: launch-wizardry}
+  - service: VPC
+    resource_type: SecurityGroup
+    resource_id: sg-4
+    resource_name: sg-4
+    arn: arn:aws:ec2:us-east-1:111111111111:security-group/sg-4
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: identity
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {arn: 'arn:aws:ec2:us-east-1:111111111111:security-group/sg-4'}
+  - service: EC2
+    resource_type: Instance
+    resource_id: i-1
+    resource_name: i-1
+    arn: arn:aws:ec2:us-east-1:111111111111:instance/i-1
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {Name: web-1}
+    raw_data:
+      State: {Name: running}
+  expect:
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:security-group/sg-1', result: pass}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:security-group/sg-2', result: fail}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:security-group/sg-3', result: pass}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:security-group/sg-4', result: not_evaluated, reason: identity_only}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:instance/i-1', result: out_of_scope}

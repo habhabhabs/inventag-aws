@@ -1,0 +1,55 @@
+format_version: 1
+kind: policy-test
+name: security-group-not-open-gaps
+spec:
+  policy: pub-security-group-not-open
+  now: '2026-11-20'
+  units_not_read:
+  - {account: '111111111111', service: vpc, region: us-east-1, source: service-api, outcome: throttled}
+  resources:
+  - service: VPC
+    resource_type: SecurityGroup
+    resource_id: sg-gap
+    resource_name: sg-gap
+    arn: arn:aws:ec2:us-east-1:111111111111:security-group/sg-gap
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {GroupId: sg-gap}
+  - service: VPC
+    resource_type: SecurityGroup
+    resource_id: sg-id
+    resource_name: sg-id
+    arn: arn:aws:ec2:us-east-1:111111111111:security-group/sg-id
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: identity
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {arn: 'arn:aws:ec2:us-east-1:111111111111:security-group/sg-id'}
+  - service: VPC
+    resource_type: SecurityGroup
+    resource_id: sg-v4
+    resource_name: sg-v4
+    arn: arn:aws:ec2:us-east-1:111111111111:security-group/sg-v4
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data:
+      GroupId: sg-v4
+      GroupName: sg-v4
+      IpPermissions:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        IpRanges:
+        - {CidrIp: 10.0.0.0/8}
+        - {CidrIp: 0.0.0.0/0}
+        Ipv6Ranges: []
+  expect:
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:security-group/sg-gap', result: not_evaluated, reason: field_missing}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:security-group/sg-id', result: not_evaluated, reason: identity_only}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:security-group/sg-v4', result: fail}
+  expect_units:
+  - {account: '111111111111', service: vpc, region: us-east-1, reason: listing_not_read, outcome: throttled}

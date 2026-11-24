@@ -1,0 +1,12 @@
+format_version: 1
+kind: policy
+name: finops-unattached-volume
+description: "EBS volume with no attachment"
+spec:
+  id: FIN-001
+  severity: low
+  version: 1
+  resource: {services: [EC2], resource_types: [Volume], listings: [ec2]}
+  require: [raw_data.State]
+  check:
+    - {type: value, key: raw_data.State, op: ne, value: available}

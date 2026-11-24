@@ -1,0 +1,41 @@
+format_version: 1
+kind: policy-test
+name: enc-efs-encrypted-basic
+spec:
+  policy: enc-efs-encrypted
+  now: '2026-11-20'
+  resources:
+  - service: ELASTICFILESYSTEM
+    resource_type: FileSystem
+    resource_id: fs-a
+    resource_name: fs-a
+    arn: arn:aws:elasticfilesystem:us-east-1:111111111111:file-system/fs-a
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {Encrypted: true}
+  - service: ELASTICFILESYSTEM
+    resource_type: FileSystem
+    resource_id: fs-b
+    resource_name: fs-b
+    arn: arn:aws:elasticfilesystem:us-east-1:111111111111:file-system/fs-b
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {Encrypted: false}
+  - service: SQS
+    resource_type: Queue
+    resource_id: q
+    resource_name: q
+    arn: arn:aws:sqs:us-east-1:111111111111:q
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {url: u}
+  expect:
+  - {resource: 'arn:aws:elasticfilesystem:us-east-1:111111111111:file-system/fs-a', result: pass}
+  - {resource: 'arn:aws:elasticfilesystem:us-east-1:111111111111:file-system/fs-b', result: fail}
+  - {resource: 'arn:aws:sqs:us-east-1:111111111111:q', result: out_of_scope}

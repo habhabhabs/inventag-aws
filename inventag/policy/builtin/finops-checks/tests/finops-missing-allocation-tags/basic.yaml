@@ -1,0 +1,73 @@
+format_version: 1
+kind: policy-test
+name: missing-allocation-tags-basic
+spec:
+  policy: finops-missing-allocation-tags
+  now: '2026-11-20'
+  resources:
+  - service: S3
+    resource_type: Bucket
+    resource_id: b-full
+    resource_name: b-full
+    arn: arn:aws:s3:::b-full
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {Name: b}
+  - service: S3
+    resource_type: Bucket
+    resource_id: b-none
+    resource_name: b-none
+    arn: arn:aws:s3:::b-none
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {}
+    raw_data: {Name: b}
+  - service: S3
+    resource_type: Bucket
+    resource_id: b-wrong
+    resource_name: b-wrong
+    arn: arn:aws:s3:::b-wrong
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: bad, Owner: o, Project: p, Environment: nonsense}
+    raw_data: {Name: b}
+  - service: S3
+    resource_type: Bucket
+    resource_id: b-partial
+    resource_name: b-partial
+    arn: arn:aws:s3:::b-partial
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {Owner: o, Project: p}
+    raw_data: {Name: b}
+  - service: Billing
+    resource_type: Service
+    resource_id: svc
+    resource_name: svc
+    arn: arn:aws:billing:::svc
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {}
+    source: billing
+  - service: KMS
+    resource_type: Alias
+    resource_id: alias/x
+    resource_name: alias/x
+    arn: arn:aws:kms:us-east-1:111111111111:alias/x
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {}
+  expect:
+  - {resource: 'arn:aws:s3:::b-full', result: pass}
+  - {resource: 'arn:aws:s3:::b-none', result: fail}
+  - {resource: 'arn:aws:s3:::b-wrong', result: pass}
+  - {resource: 'arn:aws:s3:::b-partial', result: fail}
+  - {resource: 'arn:aws:billing:::svc', result: out_of_scope}
+  - {resource: 'arn:aws:kms:us-east-1:111111111111:alias/x', result: out_of_scope}

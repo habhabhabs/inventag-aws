@@ -1,0 +1,41 @@
+format_version: 1
+kind: policy-test
+name: enc-snapshot-encrypted-basic
+spec:
+  policy: enc-snapshot-encrypted
+  now: '2026-11-20'
+  resources:
+  - service: EC2
+    resource_type: Snapshot
+    resource_id: snap-a
+    resource_name: snap-a
+    arn: arn:aws:ec2:us-east-1:111111111111:snapshot/snap-a
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {Encrypted: true}
+  - service: EC2
+    resource_type: Snapshot
+    resource_id: snap-b
+    resource_name: snap-b
+    arn: arn:aws:ec2:us-east-1:111111111111:snapshot/snap-b
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {Encrypted: false}
+  - service: SQS
+    resource_type: Queue
+    resource_id: q
+    resource_name: q
+    arn: arn:aws:sqs:us-east-1:111111111111:q
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {url: u}
+  expect:
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:snapshot/snap-a', result: pass}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:snapshot/snap-b', result: fail}
+  - {resource: 'arn:aws:sqs:us-east-1:111111111111:q', result: out_of_scope}

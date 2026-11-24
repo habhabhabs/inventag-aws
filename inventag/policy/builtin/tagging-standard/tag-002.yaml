@@ -1,0 +1,17 @@
+# A starting point: copy the set and change the keys and values to your own conventions.
+format_version: 1
+kind: policy
+name: tag-environment-allowed
+description: "Every taggable resource has an Environment tag with an agreed value"
+spec:
+  id: TAG-002
+  severity: low
+  version: 1
+  resource:
+    exclude_resource_types: [Alias]
+    filters:
+      - {type: value, key: source, op: ne, value: billing}
+  check:
+    - type: required-tags
+      keys:
+        - {key: Environment, allowed_values: [prod, staging, dev, test, sandbox]}

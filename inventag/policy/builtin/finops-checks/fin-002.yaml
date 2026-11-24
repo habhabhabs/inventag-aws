@@ -1,0 +1,14 @@
+format_version: 1
+kind: policy
+name: finops-unassociated-address
+description: "Elastic IP with no association"
+spec:
+  id: FIN-002
+  severity: low
+  version: 1
+  resource: {services: [VPC], resource_types: [ElasticIP], listings: [vpc]}
+  require: [raw_data.PublicIp]
+  check:
+    # An empty AssociationId counts as absent, as in v1.4.2.
+    - {type: value, key: raw_data.AssociationId, value: not-null}
+    - {type: value, key: raw_data.AssociationId, op: ne, value: ""}

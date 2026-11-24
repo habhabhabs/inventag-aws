@@ -1,0 +1,52 @@
+format_version: 1
+kind: policy-test
+name: unassociated-address-basic
+spec:
+  policy: finops-unassociated-address
+  now: '2026-11-20'
+  resources:
+  - service: VPC
+    resource_type: ElasticIP
+    resource_id: eipalloc-1
+    resource_name: eipalloc-1
+    arn: arn:aws:ec2:us-east-1:111111111111:elastic-ip/eipalloc-1
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {PublicIp: 203.0.113.5, AssociationId: eipassoc-1}
+  - service: VPC
+    resource_type: ElasticIP
+    resource_id: eipalloc-2
+    resource_name: eipalloc-2
+    arn: arn:aws:ec2:us-east-1:111111111111:elastic-ip/eipalloc-2
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {PublicIp: 203.0.113.5}
+  - service: VPC
+    resource_type: ElasticIP
+    resource_id: eipalloc-3
+    resource_name: eipalloc-3
+    arn: arn:aws:ec2:us-east-1:111111111111:elastic-ip/eipalloc-3
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {PublicIp: 203.0.113.5, AssociationId: ''}
+  - service: EC2
+    resource_type: Snapshot
+    resource_id: snap-a
+    resource_name: snap-a
+    arn: arn:aws:ec2:us-east-1:111111111111:snapshot/snap-a
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {State: available}
+  expect:
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:elastic-ip/eipalloc-1', result: pass}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:elastic-ip/eipalloc-2', result: fail}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:elastic-ip/eipalloc-3', result: fail}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:snapshot/snap-a', result: out_of_scope}

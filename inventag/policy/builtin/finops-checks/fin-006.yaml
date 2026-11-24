@@ -1,0 +1,16 @@
+# The keys come from the built-in tag policy finops-cost-allocation (never a
+# copy of it in a template folder). Only a missing key fails; a value outside
+# the allowed values is the tag policy's business, as in v1.4.2.
+format_version: 1
+kind: policy
+name: finops-missing-allocation-tags
+description: Cost allocation tag key missing
+spec:
+  id: FIN-006
+  severity: low
+  version: 1
+  resource:
+    filters:
+      - {type: value, key: source, op: ne, value: billing}
+  check:
+    - {type: required-tags, policy: finops-cost-allocation, use_scope: true, missing_only: true}

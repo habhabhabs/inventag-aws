@@ -1,0 +1,42 @@
+format_version: 1
+kind: policy-test
+name: rds-not-public-basic
+spec:
+  policy: pub-rds-not-public
+  now: '2026-11-20'
+  resources:
+  - service: RDS
+    resource_type: DBInstance
+    resource_id: db-a
+    resource_name: db-a
+    arn: arn:aws:rds:us-east-1:111111111111:db:db-a
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {PubliclyAccessible: false}
+  - service: RDS
+    resource_type: DBInstance
+    resource_id: db-b
+    resource_name: db-b
+    arn: arn:aws:rds:us-east-1:111111111111:db:db-b
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {PubliclyAccessible: true}
+  - service: EC2
+    resource_type: Instance
+    resource_id: i-1
+    resource_name: i-1
+    arn: arn:aws:ec2:us-east-1:111111111111:instance/i-1
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {Name: web-1}
+    raw_data:
+      State: {Name: running}
+  expect:
+  - {resource: 'arn:aws:rds:us-east-1:111111111111:db:db-a', result: pass}
+  - {resource: 'arn:aws:rds:us-east-1:111111111111:db:db-b', result: fail}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:instance/i-1', result: out_of_scope}

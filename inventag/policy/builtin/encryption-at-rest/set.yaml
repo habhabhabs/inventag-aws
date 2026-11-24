@@ -1,0 +1,11 @@
+# Not shipped: S3, SQS, SNS and DynamoDB encryption. A scan does not put those fields on the row.
+format_version: 1
+kind: policy-set
+name: encryption-at-rest
+description: "Encryption at rest for the resources whose scan row shows it: EBS volumes and snapshots, RDS instances, EFS file systems."
+spec:
+  policies:
+    - enc-volume-encrypted
+    - enc-snapshot-encrypted
+    - enc-rds-storage-encrypted
+    - enc-efs-encrypted

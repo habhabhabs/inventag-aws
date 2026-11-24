@@ -1,0 +1,46 @@
+format_version: 1
+kind: policy-test
+name: unassociated-address-gaps
+spec:
+  policy: finops-unassociated-address
+  now: '2026-11-20'
+  units_not_read:
+  - {account: '111111111111', service: vpc, region: us-east-1, source: service-api, outcome: denied}
+  - {account: '111111111111', service: ec2, region: us-east-1, source: service-api, outcome: throttled}
+  resources:
+  - service: VPC
+    resource_type: ElasticIP
+    resource_id: eipalloc-4
+    resource_name: eipalloc-4
+    arn: arn:aws:ec2:us-east-1:111111111111:elastic-ip/eipalloc-4
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {AssociationId: eipassoc-4}
+  - service: VPC
+    resource_type: ElasticIP
+    resource_id: eipalloc-5
+    resource_name: eipalloc-5
+    arn: arn:aws:ec2:us-east-1:111111111111:elastic-ip/eipalloc-5
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: identity
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {arn: 'arn:aws:ec2:us-east-1:111111111111:elastic-ip/eipalloc-5'}
+  - service: VPC
+    resource_type: ElasticIP
+    resource_id: eipalloc-2
+    resource_name: eipalloc-2
+    arn: arn:aws:ec2:us-east-1:111111111111:elastic-ip/eipalloc-2
+    region: us-east-1
+    source_account_id: '111111111111'
+    detail_level: full
+    tags: {CostCenter: CC-1234, Owner: team, Project: p, Environment: prod}
+    raw_data: {PublicIp: 203.0.113.5}
+  expect:
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:elastic-ip/eipalloc-4', result: not_evaluated, reason: field_missing}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:elastic-ip/eipalloc-5', result: not_evaluated, reason: identity_only}
+  - {resource: 'arn:aws:ec2:us-east-1:111111111111:elastic-ip/eipalloc-2', result: fail}
+  expect_units:
+  - {account: '111111111111', service: vpc, region: us-east-1, reason: listing_not_read, outcome: denied}
