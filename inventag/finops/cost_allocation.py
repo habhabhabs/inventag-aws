@@ -203,10 +203,17 @@ def read_account(
             params["NextPageToken"] = token
         return client.get_cost_and_usage(**params)
 
+    # After a denied or throttled GetCostAndUsage, no further request is made
+    # for this account: each would be denied too, or retried by the SDK.
+    stop: Optional[Tuple[str, str]] = None
+
     # 2 to 4. First pages, in a fixed order.
     pending: List[Tuple[str, Dict[str, str], Optional[str], str]] = []
     collected: Dict[str, List[Dict]] = {}
     for name, group_by, tag_key in groupings:
+        if stop is not None:
+            tables[name] = _table([], *stop)
+            continue
         if not budget.take():
             tables[name] = _table([], NOT_QUERIED)
             continue
@@ -218,6 +225,8 @@ def read_account(
                 {"operation": "GetCostAndUsage", "status": status, "code": code}
             )
             tables[name] = _table([], status, code)
+            if status in (DENIED, THROTTLED):
+                stop = (status, code)
             continue
         collected[name] = _rows(_groups(answer), tag_key)
         token = answer.get("NextPageToken")
@@ -231,6 +240,9 @@ def read_account(
         pages = 0
         status, code = READ, ""
         while token:
+            if stop is not None:
+                status = INCOMPLETE
+                break
             if pages >= MAX_PAGES_PER_GROUPING or not budget.take():
                 status = INCOMPLETE
                 break
@@ -247,6 +259,8 @@ def read_account(
                     }
                 )
                 status = INCOMPLETE  # the first pages are kept
+                if failed_status in (DENIED, THROTTLED):
+                    stop = (failed_status, code)
                 break
             collected[name].extend(_rows(_groups(answer), tag_key))
             token = answer.get("NextPageToken")
@@ -261,6 +275,7 @@ def read_account(
         "tag_keys": [{"key": k, "status": key_status[k]} for k in keys],
         "tables": {name: tables[name] for name in order},
         "failed": failed,
+        **({"stopped_after": stop[0]} if stop else {}),
     }
 
 
@@ -346,11 +361,17 @@ def run_notes(costs: Dict[str, Any]) -> List[str]:
             if t["status"] in (DENIED, THROTTLED, ERROR, INCOMPLETE, NOT_QUERIED)
         ]
         if missing:
-            notes.append(
+            note = (
                 f"Cost allocation in account {account['account']}: "
                 + "; ".join(missing)
                 + "."
             )
+            if account.get("stopped_after"):
+                note += (
+                    " No further Cost Explorer request was made for this account "
+                    f"after a request was {account['stopped_after']}."
+                )
+            notes.append(note)
     return notes
 
 
