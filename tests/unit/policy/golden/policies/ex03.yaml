@@ -1,0 +1,6 @@
+format_version: 1
+kind: policy
+name: sqs-001
+spec: {id: SQS-001, severity: medium,
+       resource: {services: [SQS]},
+       check: [{type: value, key: raw_data.KmsMasterKeyId, value: present}]}

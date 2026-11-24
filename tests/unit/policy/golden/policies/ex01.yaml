@@ -1,0 +1,6 @@
+format_version: 1
+kind: policy
+name: rds-001
+spec: {id: RDS-001, severity: high,
+       resource: {services: [RDS], resource_types: [DBInstance]},
+       check: [{type: value, key: raw_data.StorageEncrypted, value: true}]}

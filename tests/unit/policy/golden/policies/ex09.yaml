@@ -1,0 +1,7 @@
+format_version: 1
+kind: policy
+name: ec2-002
+spec: {id: EC2-002, severity: low,
+       resource: {services: [EC2]},
+       check: [{or: [{type: value, key: raw_data.InstanceType, op: in, value: [t3.micro, t3.small]},
+                     {"tag:Exception": present}]}]}

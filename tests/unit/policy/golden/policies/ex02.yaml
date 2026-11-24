@@ -1,0 +1,7 @@
+format_version: 1
+kind: policy
+name: ec2-001
+spec: {id: EC2-001, severity: high,
+       resource: {services: [EC2], resource_types: [Instance],
+                  filters: [{type: value, key: raw_data.State.Name, value: running}]},
+       check: [{type: value, key: raw_data.PublicIpAddress, value: absent}]}

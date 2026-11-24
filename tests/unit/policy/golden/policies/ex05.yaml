@@ -1,0 +1,7 @@
+format_version: 1
+kind: policy
+name: tag-002
+spec: {id: TAG-002, severity: medium,
+       resource: {services: [EC2, RDS, S3, LAMBDA]},
+       check: [{type: required-tags, keys: [{key: Owner},
+                                             {key: Environment, allowed_values: [prod, staging, dev]}]}]}

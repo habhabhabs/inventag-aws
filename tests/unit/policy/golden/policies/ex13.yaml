@@ -1,0 +1,6 @@
+format_version: 1
+kind: policy
+name: rds-002
+spec: {id: RDS-002, severity: low,
+       resource: {services: [RDS]},
+       check: [{type: value, key: raw_data.AllocatedStorage, value_type: integer, op: ge, value: 50}]}

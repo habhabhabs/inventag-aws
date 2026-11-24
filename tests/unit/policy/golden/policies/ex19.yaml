@@ -1,0 +1,6 @@
+format_version: 1
+kind: policy
+name: drf-001
+spec: {id: DRF-001, severity: medium,
+       resource: {services: [S3, EC2, LAMBDA]},
+       check: [{type: baseline, change: [added, removed]}]}

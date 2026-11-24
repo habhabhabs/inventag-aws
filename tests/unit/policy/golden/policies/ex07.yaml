@@ -1,0 +1,6 @@
+format_version: 1
+kind: policy
+name: reg-001
+spec: {id: REG-001, severity: high,
+       resource: {services: [EC2, VPC]},
+       check: [{type: allowed-regions, regions: [us-east-1, eu-west-1]}]}

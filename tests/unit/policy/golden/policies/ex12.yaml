@@ -1,0 +1,6 @@
+format_version: 1
+kind: policy
+name: lmb-001
+spec: {id: LMB-001, severity: high,
+       resource: {services: [LAMBDA], regions: [us-east-1]},
+       check: [{type: value, key: raw_data.Environment.Variables.API_KEY, value: absent}]}

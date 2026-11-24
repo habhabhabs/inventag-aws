@@ -1,0 +1,11 @@
+format_version: 1
+kind: policy
+name: fin-003
+description: EBS snapshot older than 90 days
+spec:
+  id: FIN-003
+  severity: low
+  resource: {services: [EC2], resource_types: [Snapshot], listings: [ec2]}
+  require: [raw_data.StartTime]
+  check:
+    - {type: value, key: raw_data.StartTime, value_type: age, op: le, value: 90}

@@ -1,0 +1,233 @@
+{
+  "metadata": {
+    "tags": {
+      "inventag_version": "1.5.0",
+      "units_not_read": [
+        {
+          "account": "111111111111",
+          "outcome": "throttled",
+          "region": "eu-west-1",
+          "service": "lambda",
+          "source": "service-api"
+        },
+        {
+          "account": "222222222222",
+          "outcome": "denied",
+          "region": "ap-southeast-1",
+          "service": "resourcegroupstaggingapi",
+          "source": "tagging-api"
+        }
+      ]
+    },
+    "timestamp": "2026-11-20T00:00:00+00:00"
+  },
+  "resources": [
+    {
+      "arn": "arn:aws:s3:::logs-prod",
+      "detail_level": "full",
+      "raw_data": {
+        "CreationDate": "2026-01-10T00:00:00+00:00",
+        "Name": "logs-prod"
+      },
+      "region": "us-east-1",
+      "resource_id": "logs-prod",
+      "resource_name": "logs-prod",
+      "resource_type": "Bucket",
+      "service": "S3",
+      "source_account_id": "111111111111",
+      "tags": {
+        "Environment": "prod",
+        "Owner": "platform"
+      }
+    },
+    {
+      "arn": "arn:aws:s3:::public-site-assets",
+      "detail_level": "full",
+      "raw_data": {
+        "CreationDate": "2026-11-01T00:00:00+00:00",
+        "Name": "public-site-assets"
+      },
+      "region": "eu-west-1",
+      "resource_id": "public-site-assets",
+      "resource_name": "public-site-assets",
+      "resource_type": "Bucket",
+      "service": "S3",
+      "source_account_id": "111111111111",
+      "tags": {
+        "Environment": "prod",
+        "Owner": "web"
+      }
+    },
+    {
+      "arn": "arn:aws:ec2:us-east-1:111111111111:instance/i-0aaa",
+      "detail_level": "full",
+      "raw_data": {
+        "InstanceId": "i-0aaa",
+        "InstanceType": "t3.micro",
+        "LaunchTime": "2026-09-01T00:00:00+00:00",
+        "PublicIpAddress": "203.0.113.10",
+        "State": {
+          "Name": "running"
+        }
+      },
+      "region": "us-east-1",
+      "resource_id": "i-0aaa",
+      "resource_name": "web-1",
+      "resource_type": "Instance",
+      "service": "EC2",
+      "source_account_id": "111111111111",
+      "tags": {
+        "Environment": "Prod",
+        "Name": "web-1",
+        "Owner": "platform"
+      }
+    },
+    {
+      "arn": "arn:aws:ec2:us-east-1:111111111111:instance/i-0bbb",
+      "detail_level": "full",
+      "raw_data": {
+        "InstanceId": "i-0bbb",
+        "InstanceType": "m5.large",
+        "LaunchTime": "2026-11-15T00:00:00+00:00",
+        "State": {
+          "Name": "stopped"
+        }
+      },
+      "region": "us-east-1",
+      "resource_id": "i-0bbb",
+      "resource_name": null,
+      "resource_type": "Instance",
+      "service": "EC2",
+      "source_account_id": "111111111111",
+      "tags": {}
+    },
+    {
+      "arn": "arn:aws:rds:eu-west-1:111111111111:db:db-orders",
+      "detail_level": "full",
+      "raw_data": {
+        "AllocatedStorage": 100,
+        "DBInstanceIdentifier": "db-orders",
+        "Engine": "postgres",
+        "PubliclyAccessible": false,
+        "StorageEncrypted": false
+      },
+      "region": "eu-west-1",
+      "resource_id": "db-orders",
+      "resource_name": "db-orders",
+      "resource_type": "DBInstance",
+      "service": "RDS",
+      "source_account_id": "111111111111",
+      "tags": {
+        "CostCenter": "CC-1234",
+        "Environment": "prod",
+        "Owner": "data"
+      }
+    },
+    {
+      "arn": "arn:aws:rds:eu-west-1:111111111111:db:db-audit",
+      "detail_level": "full",
+      "raw_data": {
+        "AllocatedStorage": 20,
+        "DBInstanceIdentifier": "db-audit",
+        "Engine": "postgres",
+        "PubliclyAccessible": true,
+        "StorageEncrypted": true
+      },
+      "region": "eu-west-1",
+      "resource_id": "db-audit",
+      "resource_name": "db-audit",
+      "resource_type": "DBInstance",
+      "service": "RDS",
+      "source_account_id": "111111111111",
+      "tags": {
+        "CostCenter": "1234",
+        "Environment": "prod",
+        "Owner": "data"
+      }
+    },
+    {
+      "arn": "arn:aws:lambda:us-east-1:111111111111:function:fn-report",
+      "detail_level": "full",
+      "raw_data": {
+        "Environment": {
+          "Variables": {
+            "API_KEY": "***REDACTED***"
+          }
+        },
+        "FunctionName": "fn-report",
+        "MemorySize": 128,
+        "Runtime": "python3.9"
+      },
+      "region": "us-east-1",
+      "resource_id": "fn-report",
+      "resource_name": "fn-report",
+      "resource_type": "Function",
+      "service": "LAMBDA",
+      "source_account_id": "111111111111",
+      "tags": {
+        "Owner": "platform"
+      }
+    },
+    {
+      "arn": "arn:aws:sqs:us-east-1:111111111111:orders-dlq",
+      "detail_level": "identity",
+      "region": "us-east-1",
+      "resource_id": "orders-dlq",
+      "resource_name": null,
+      "resource_type": "Queue",
+      "service": "SQS",
+      "source_account_id": "111111111111",
+      "tags": {
+        "Owner": "platform"
+      }
+    },
+    {
+      "arn": "arn:aws:ec2:ap-southeast-1:222222222222:instance/i-0ccc",
+      "detail_level": "full",
+      "raw_data": {
+        "InstanceId": "i-0ccc",
+        "InstanceType": "t3.small",
+        "LaunchTime": "2026-10-01T00:00:00+00:00",
+        "State": {
+          "Name": "running"
+        }
+      },
+      "region": "ap-southeast-1",
+      "resource_id": "i-0ccc",
+      "resource_name": null,
+      "resource_type": "Instance",
+      "service": "EC2",
+      "source_account_id": "222222222222",
+      "tags": {}
+    },
+    {
+      "arn": "arn:aws:ec2:ap-southeast-3:222222222222:security-group/sg-0ddd",
+      "detail_level": "full",
+      "raw_data": {
+        "GroupId": "sg-0ddd",
+        "GroupName": "launch-wizard-1",
+        "IpPermissions": [
+          {
+            "FromPort": 22,
+            "IpProtocol": "tcp",
+            "IpRanges": [
+              {
+                "CidrIp": "0.0.0.0/0"
+              }
+            ],
+            "ToPort": 22
+          }
+        ]
+      },
+      "region": "ap-southeast-3",
+      "resource_id": "sg-0ddd",
+      "resource_name": "launch-wizard-1",
+      "resource_type": "SecurityGroup",
+      "service": "VPC",
+      "source_account_id": "222222222222",
+      "tags": {
+        "Owner": "net"
+      }
+    }
+  ]
+}

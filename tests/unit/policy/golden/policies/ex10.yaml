@@ -1,0 +1,7 @@
+format_version: 1
+kind: policy
+name: ec2-003
+spec: {id: EC2-003, severity: low,
+       resource: {services: [EC2]},
+       check: [{type: value, key: raw_data.InstanceType, op: in, value: [t3.micro, t3.small]},
+               {"tag:Owner": present}]}

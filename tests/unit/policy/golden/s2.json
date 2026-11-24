@@ -1,0 +1,87 @@
+{
+  "metadata": {
+    "tags": {
+      "inventag_version": "1.5.0",
+      "units_not_read": []
+    },
+    "timestamp": "2026-11-20T00:00:00+00:00"
+  },
+  "resources": [
+    {
+      "arn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/web/1",
+      "detail_level": "full",
+      "raw_data": {
+        "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/web/1"
+      },
+      "region": "us-east-1",
+      "resource_id": "web",
+      "resource_name": "web",
+      "resource_type": "LoadBalancerV2",
+      "service": "ELBV2",
+      "source_account_id": "111111111111",
+      "tags": {}
+    },
+    {
+      "arn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/old/2",
+      "detail_level": "full",
+      "raw_data": {
+        "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/old/2"
+      },
+      "region": "us-east-1",
+      "resource_id": "old",
+      "resource_name": "old",
+      "resource_type": "LoadBalancerV2",
+      "service": "ELBV2",
+      "source_account_id": "111111111111",
+      "tags": {}
+    },
+    {
+      "arn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/classic-a",
+      "detail_level": "full",
+      "raw_data": {
+        "Instances": []
+      },
+      "region": "us-east-1",
+      "resource_id": "classic-a",
+      "resource_name": "classic-a",
+      "resource_type": "LoadBalancer",
+      "service": "ELB",
+      "source_account_id": "111111111111",
+      "tags": {}
+    },
+    {
+      "arn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/classic-b",
+      "detail_level": "full",
+      "raw_data": {
+        "Instances": [
+          {
+            "InstanceId": "i-0aaa"
+          }
+        ]
+      },
+      "region": "us-east-1",
+      "resource_id": "classic-b",
+      "resource_name": "classic-b",
+      "resource_type": "LoadBalancer",
+      "service": "ELB",
+      "source_account_id": "111111111111",
+      "tags": {}
+    },
+    {
+      "arn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/tg-web/9",
+      "detail_level": "full",
+      "raw_data": {
+        "LoadBalancerArns": [
+          "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/web/1"
+        ]
+      },
+      "region": "us-east-1",
+      "resource_id": "tg-web",
+      "resource_name": "tg-web",
+      "resource_type": "TargetGroup",
+      "service": "ELBV2",
+      "source_account_id": "111111111111",
+      "tags": {}
+    }
+  ]
+}

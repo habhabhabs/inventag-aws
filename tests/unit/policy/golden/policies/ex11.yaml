@@ -1,0 +1,6 @@
+format_version: 1
+kind: policy
+name: ec2-004
+spec: {id: EC2-004, severity: info,
+       resource: {services: [EC2]},
+       check: [{type: value, key: raw_data.LaunchTime, value_type: age, op: lt, value: 60}]}

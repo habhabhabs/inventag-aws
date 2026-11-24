@@ -1,0 +1,6 @@
+format_version: 1
+kind: policy
+name: s3-001
+spec: {id: S3-001, severity: low,
+       resource: {services: [S3]},
+       check: [{type: value, key: resource_name, op: regex, value: 'LOGS-'}]}

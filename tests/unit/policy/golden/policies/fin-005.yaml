@@ -1,0 +1,26 @@
+format_version: 1
+kind: policy
+name: fin-005
+description: Load balancer with no target group or instance
+spec:
+  id: FIN-005
+  severity: low
+  resource:
+    services: [ELBV2, ELB]
+    resource_types: [LoadBalancerV2, LoadBalancer]
+    listings: [elb, elbv2]
+  check:
+    - or:
+        - and:
+            - {type: value, key: resource_type, value: LoadBalancerV2}
+            - {type: require, keys: [raw_data.LoadBalancerArn]}
+            - type: related
+              rows: {services: [ELBV2], resource_types: [TargetGroup]}
+              their_key: raw_data.LoadBalancerArns
+              my_key: raw_data.LoadBalancerArn
+              listing: elbv2
+              expect: any
+        - and:
+            - {type: value, key: resource_type, value: LoadBalancer}
+            - {type: require, keys: [raw_data.Instances]}
+            - {type: value, key: raw_data.Instances, value_type: size, op: gt, value: 0}

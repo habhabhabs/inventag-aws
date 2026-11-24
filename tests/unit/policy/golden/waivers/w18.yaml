@@ -1,0 +1,7 @@
+format_version: 1
+kind: waivers
+name: w18
+spec: {waivers: [{policy: EC2-001, account: "111111111111",
+                  resource: "arn:aws:ec2:us-east-1:*:instance/i-0zzz*",
+                  reason: "Bastion hosts keep a public address.", approved_by: security-lead,
+                  expires: 2027-01-31}]}

@@ -1,0 +1,6 @@
+format_version: 1
+kind: policy
+name: tag-003
+spec: {id: TAG-003, severity: low,
+       resource: {services: [RDS]},
+       check: [{type: required-tags, keys: [{key: CostCenter, pattern: 'CC-\d{4}'}]}]}
