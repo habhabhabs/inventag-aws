@@ -1,6 +1,7 @@
 """`--finops-checks` through the CLI: opt-in, additive, no AWS call, no exit code."""
 
 import json
+import re
 import os
 import subprocess
 import sys
@@ -313,3 +314,23 @@ def test_the_generator_never_reads_the_clock_for_the_checks(monkeypatch):
 
     (finding,) = result["findings"]
     assert (finding["policy"], finding["reason"]) == ("FIN-003", "field_missing")
+
+
+def console(scan):
+    """The run's console text without what changes from run to run: time
+    stamps, the run's folder, the report's time stamp and spinner frames."""
+    text = scan.stdout + "\n---\n" + scan.stderr
+    text = text.replace(str(scan.out.parent), "<run>")
+    text = re.sub(r"\d{4}-\d\d-\d\d \d\d:\d\d:\d\d,\d+", "<time>", text)
+    text = re.sub(r"_\d{8}_\d{6}\.", "_<stamp>.", text)
+    text = re.sub(r"(🔍 [^\n]*?[⣾⣽⣻⢿⡿⣟⣯⣷] )+ *", "<spinner>", text)
+    return text
+
+
+def test_the_flag_adds_no_console_line_to_a_run(finops_scan, plain_scan):
+    # The default run's text is the release's text: the flag's code adds no
+    # line to it, so with and without the flag the console is the same.
+    assert console(finops_scan) == console(plain_scan)
+    assert "Data exported to <run>/out/multi_account_bom_<stamp>.xlsx" in console(
+        plain_scan
+    )
