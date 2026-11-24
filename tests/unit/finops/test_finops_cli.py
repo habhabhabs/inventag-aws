@@ -93,6 +93,8 @@ def test_help_names_the_flag_and_says_it_makes_no_aws_call():
     text = " ".join(create_parser().format_help().split())
     assert "--finops-checks" in text
     assert "no further AWS call" in text
+    assert "their findings do not change the exit code" in text
+    assert "permission and do not change the exit code" not in text
 
 
 def test_the_flag_is_off_by_default():

@@ -399,8 +399,8 @@ Examples:
         help=(
             "Run six FinOps checks (FIN-001 to FIN-006) on the resources the "
             "scan found and add a FinOps sheet to the Excel report. Off by "
-            "default. The checks make no further AWS call, need no further "
-            "permission and do not change the exit code"
+            "default. The checks make no further AWS call and need no further "
+            "permission, and their findings do not change the exit code"
         ),
     )
 
