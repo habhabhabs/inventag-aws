@@ -134,17 +134,40 @@ def evaluate_policy(
                         )
         return failures
 
+    # Selection that is unknown stays not_evaluated (spec 3.1, step 2): the
+    # same policy with no check shows which rows those are.
+    probe, _, _ = evaluate_rows(replace(policy, check=(), require=()), snap, ctx)
+    selection_unknown = {f["resource"] for f in probe if f["result"] == "not_evaluated"}
+    bsnap = engine._Snapshot(baseline)
+
+    def not_read(row) -> bool:
+        """The row's unit was not read by the baseline (spec 10.2)."""
+        account, service = model.account(row), str(row.get("service") or "")
+        region = str(row.get("region") or "")
+        return any(bsnap.unit_unread(account, service, r) for r in {region, "global"})
+
     result: List[Dict[str, Any]] = []
     for finding in findings:
         rows = by_resource.get(finding["resource"], [])
         failures = verdict(rows[0]) if rows else []
-        if failures and finding["result"] in ("pass", "fail"):
-            policy_failures = list(finding.get("details") or []) + failures
-            policy_failures.sort(key=lambda d: d["check"])
-            finding = engine._finding(policy, rows[0], "fail", failures=policy_failures)
+        unknown = None
+        if failures and not_read(rows[0]):
+            failures, unknown = [], model.UNIT_REASON
+        if (failures or unknown) and finding["resource"] not in selection_unknown:
+            # Kleene's and over the whole check list: false wins over unknown.
+            details = list(finding.get("details") or []) + failures
+            details.sort(key=lambda d: d["check"])
+            if finding["result"] == "fail" or failures:
+                finding = engine._finding(policy, rows[0], "fail", failures=details)
+            else:
+                reason = filters.first_reason([finding.get("reason"), unknown])
+                finding = engine._finding(policy, rows[0], "not_evaluated", reason)
         result.append(finding)
 
     result.extend(_removed(policy, snapshot, ctx, snap, report, old_map, wanted))
+    if any("added" in e["change"] or "modified" in e["change"] for _, e in wanted):
+        for line in engine._unit_lines(policy, bsnap):
+            lines.append(dict(line, **{"from": "baseline"}))
     counts = dict(counts)
     for name in ("pass", "fail", "not_evaluated"):
         counts[name] = sum(1 for f in result if f["result"] == name)
