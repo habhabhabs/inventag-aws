@@ -118,7 +118,10 @@ def test_glob_is_case_sensitive():
 
 def test_an_exact_resource_is_compared_exactly_and_waiver_policy_must_match():
     found, unused = waivers.apply(
-        [finding()], [waiver(resource=ARN + "x"), waiver(policy="RDS-002")], NOW
+        [finding()],
+        [waiver(resource=ARN + "x"), waiver(policy="RDS-002")],
+        NOW,
+        known_policies={"RDS-001", "RDS-002"},
     )
     assert found[0]["result"] == "fail"
     assert [u["why"] for u in unused] == ["no match", "no match"]
@@ -162,7 +165,7 @@ def test_unknown_policy_is_named_when_the_loaded_ids_are_given():
 
 
 def test_unused_entry_has_exactly_the_schema_fields():
-    _, unused = waivers.apply([], [waiver()], NOW)
+    _, unused = waivers.apply([], [waiver()], NOW, known_policies={"RDS-001"})
     assert unused == [
         {
             "policy": "RDS-001",
