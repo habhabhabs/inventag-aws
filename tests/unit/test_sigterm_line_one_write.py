@@ -237,7 +237,7 @@ def test_a_second_sigterm_ends_a_process_whose_stdout_is_stalled(tmp_path):
         assert child.poll() is None  # the first SIGTERM waits on the reader
         child.send_signal(signal.SIGTERM)
         try:
-            child.wait(timeout=3)
+            child.wait(timeout=5)  # architect: -15 within 5 s
         except subprocess.TimeoutExpired:
             pytest.fail("a second SIGTERM did not end the process (stdout stalled)")
         assert child.returncode == -signal.SIGTERM

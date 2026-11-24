@@ -121,3 +121,53 @@ def test_ctrl_c_stops_the_limiter_with_todays_message_and_exit_1(
     assert code == 1
     assert generator.limiter.stopped
     assert "Stopped by the user (Ctrl-C). No report was written." in caplog.text
+
+
+def test_sigterm_restores_the_default_action_before_anything_that_can_block(
+    tmp_path, monkeypatch
+):
+    # Security re-check v1.4.1 R1 and the architect's ruling: the default
+    # action comes back first, so a second SIGTERM ends the process even while
+    # the folder read or the write of the line blocks.
+    events = []
+    installed = []
+    stream = open(os.devnull, "w")
+    logger = logging.getLogger("test-sigterm-order")
+    monkeypatch.setattr(logger, "handlers", [logging.StreamHandler(stream)])
+    monkeypatch.setattr(logger, "propagate", False)
+    monkeypatch.setattr(logger, "level", logging.WARNING)
+
+    def fake_signal(signum, handler):
+        if not installed:
+            installed.append(handler)
+        else:
+            events.append(("signal", handler))
+        return signal.SIG_DFL
+
+    def note(output_dir, since):
+        events.append("note")
+        return "No report was written."
+
+    real_write = os.write
+
+    def write(fd, data):
+        if fd == stream.fileno():
+            events.append("write")
+            return len(data)
+        return real_write(fd, data)
+
+    monkeypatch.setattr(cli_main.signal, "signal", fake_signal)
+    monkeypatch.setattr(cli_main, "_written_reports_note", note)
+    monkeypatch.setattr(
+        cli_main, "request_stop_of_running_scans", lambda: events.append("stop")
+    )
+    monkeypatch.setattr(cli_main.os, "kill", lambda pid, sig: events.append("kill"))
+    monkeypatch.setattr(cli_main.os, "write", write)
+    try:
+        cli_main._install_sigterm_message(logger, str(tmp_path / "out"), 0.0)
+        installed[0](signal.SIGTERM, None)
+    finally:
+        monkeypatch.setattr(cli_main.os, "write", real_write)
+        stream.close()
+
+    assert events == [("signal", signal.SIG_DFL), "stop", "note", "write", "kill"]
