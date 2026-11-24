@@ -9370,6 +9370,589 @@
    }
   ]
  },
+ "labels: lb v2 and group in lower case": {
+  "schema_version": 1,
+  "summary": [
+   {
+    "policy": "FIN-001",
+    "check": "EBS volume with no attachment",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-002",
+    "check": "Elastic IP with no association",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-003",
+    "check": "EBS snapshot older than 90 days",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-004",
+    "check": "EC2 instance in the stopped state",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-005",
+    "check": "Load balancer with no target group or instance",
+    "fail": 1,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-006",
+    "check": "Cost allocation tag key missing",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 2
+   }
+  ],
+  "findings": [
+   {
+    "policy": "FIN-005",
+    "result": "fail",
+    "reason": "",
+    "account": "111111111111",
+    "region": "us-east-1",
+    "service": "elbv2",
+    "resource_type": "loadbalancerv2",
+    "resource": "web",
+    "name": "web",
+    "message": "no target group names it"
+   }
+  ]
+ },
+ "labels: classic in upper case": {
+  "schema_version": 1,
+  "summary": [
+   {
+    "policy": "FIN-001",
+    "check": "EBS volume with no attachment",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-002",
+    "check": "Elastic IP with no association",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-003",
+    "check": "EBS snapshot older than 90 days",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-004",
+    "check": "EC2 instance in the stopped state",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-005",
+    "check": "Load balancer with no target group or instance",
+    "fail": 1,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-006",
+    "check": "Cost allocation tag key missing",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 1
+   }
+  ],
+  "findings": [
+   {
+    "policy": "FIN-005",
+    "result": "fail",
+    "reason": "",
+    "account": "111111111111",
+    "region": "us-east-1",
+    "service": "elb",
+    "resource_type": "LOADBALANCER",
+    "resource": "c",
+    "name": "c",
+    "message": "lists no instance"
+   }
+  ]
+ },
+ "labels: identity row labelled for another service": {
+  "schema_version": 1,
+  "summary": [
+   {
+    "policy": "FIN-001",
+    "check": "EBS volume with no attachment",
+    "fail": 0,
+    "not_evaluated": 1,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-002",
+    "check": "Elastic IP with no association",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-003",
+    "check": "EBS snapshot older than 90 days",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-004",
+    "check": "EC2 instance in the stopped state",
+    "fail": 0,
+    "not_evaluated": 1,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-005",
+    "check": "Load balancer with no target group or instance",
+    "fail": 0,
+    "not_evaluated": 2,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-006",
+    "check": "Cost allocation tag key missing",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 4
+   }
+  ],
+  "findings": [
+   {
+    "policy": "FIN-001",
+    "result": "not_evaluated",
+    "reason": "identity_only",
+    "account": "111111111111",
+    "region": "us-east-1",
+    "service": "S3",
+    "resource_type": "Bucket",
+    "resource": "x",
+    "name": "",
+    "message": "known by identity only (Tagging API)"
+   },
+   {
+    "policy": "FIN-004",
+    "result": "not_evaluated",
+    "reason": "identity_only",
+    "account": "111111111111",
+    "region": "us-east-1",
+    "service": "SQS",
+    "resource_type": "Queue",
+    "resource": "w",
+    "name": "",
+    "message": "known by identity only (Tagging API)"
+   },
+   {
+    "policy": "FIN-005",
+    "result": "not_evaluated",
+    "reason": "identity_only",
+    "account": "111111111111",
+    "region": "us-east-1",
+    "service": "S3",
+    "resource_type": "Bucket",
+    "resource": "y",
+    "name": "",
+    "message": "known by identity only (Tagging API)"
+   },
+   {
+    "policy": "FIN-005",
+    "result": "not_evaluated",
+    "reason": "identity_only",
+    "account": "111111111111",
+    "region": "us-east-1",
+    "service": "S3",
+    "resource_type": "Bucket",
+    "resource": "z",
+    "name": "",
+    "message": "known by identity only (Tagging API)"
+   }
+  ]
+ },
+ "labels: identity row labelled for another kind": {
+  "schema_version": 1,
+  "summary": [
+   {
+    "policy": "FIN-001",
+    "check": "EBS volume with no attachment",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-002",
+    "check": "Elastic IP with no association",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-003",
+    "check": "EBS snapshot older than 90 days",
+    "fail": 0,
+    "not_evaluated": 1,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-004",
+    "check": "EC2 instance in the stopped state",
+    "fail": 0,
+    "not_evaluated": 1,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-005",
+    "check": "Load balancer with no target group or instance",
+    "fail": 0,
+    "not_evaluated": 2,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-006",
+    "check": "Cost allocation tag key missing",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 4
+   }
+  ],
+  "findings": [
+   {
+    "policy": "FIN-003",
+    "result": "not_evaluated",
+    "reason": "identity_only",
+    "account": "111111111111",
+    "region": "us-east-1",
+    "service": "EC2",
+    "resource_type": "Instance",
+    "resource": "y",
+    "name": "",
+    "message": "known by identity only (Tagging API)"
+   },
+   {
+    "policy": "FIN-004",
+    "result": "not_evaluated",
+    "reason": "identity_only",
+    "account": "111111111111",
+    "region": "us-east-1",
+    "service": "EC2",
+    "resource_type": "Volume",
+    "resource": "x",
+    "name": "",
+    "message": "known by identity only (Tagging API)"
+   },
+   {
+    "policy": "FIN-005",
+    "result": "not_evaluated",
+    "reason": "identity_only",
+    "account": "111111111111",
+    "region": "us-east-1",
+    "service": "ELBV2",
+    "resource_type": "LoadBalancerV2",
+    "resource": "w",
+    "name": "",
+    "message": "known by identity only (Tagging API)"
+   },
+   {
+    "policy": "FIN-005",
+    "result": "not_evaluated",
+    "reason": "identity_only",
+    "account": "111111111111",
+    "region": "us-east-1",
+    "service": "ELB",
+    "resource_type": "LoadBalancer",
+    "resource": "z",
+    "name": "",
+    "message": "known by identity only (Tagging API)"
+   }
+  ]
+ },
+ "labels: identity row with an arn of no kind": {
+  "schema_version": 1,
+  "summary": [
+   {
+    "policy": "FIN-001",
+    "check": "EBS volume with no attachment",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-002",
+    "check": "Elastic IP with no association",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-003",
+    "check": "EBS snapshot older than 90 days",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-004",
+    "check": "EC2 instance in the stopped state",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-005",
+    "check": "Load balancer with no target group or instance",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-006",
+    "check": "Cost allocation tag key missing",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 5
+   }
+  ],
+  "findings": []
+ },
+ "labels: full row whose arn is of another kind": {
+  "schema_version": 1,
+  "summary": [
+   {
+    "policy": "FIN-001",
+    "check": "EBS volume with no attachment",
+    "fail": 1,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-002",
+    "check": "Elastic IP with no association",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-003",
+    "check": "EBS snapshot older than 90 days",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-004",
+    "check": "EC2 instance in the stopped state",
+    "fail": 1,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-005",
+    "check": "Load balancer with no target group or instance",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-006",
+    "check": "Cost allocation tag key missing",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 2
+   }
+  ],
+  "findings": [
+   {
+    "policy": "FIN-001",
+    "result": "fail",
+    "reason": "",
+    "account": "111111111111",
+    "region": "us-east-1",
+    "service": "EC2",
+    "resource_type": "Volume",
+    "resource": "vol-1",
+    "name": "",
+    "message": "no attachment"
+   },
+   {
+    "policy": "FIN-004",
+    "result": "fail",
+    "reason": "",
+    "account": "111111111111",
+    "region": "us-east-1",
+    "service": "EC2",
+    "resource_type": "Instance",
+    "resource": "i-1",
+    "name": "",
+    "message": "state stopped"
+   }
+  ]
+ },
+ "labels: identity group in lower case beside a load balancer": {
+  "schema_version": 1,
+  "summary": [
+   {
+    "policy": "FIN-001",
+    "check": "EBS volume with no attachment",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-002",
+    "check": "Elastic IP with no association",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-003",
+    "check": "EBS snapshot older than 90 days",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-004",
+    "check": "EC2 instance in the stopped state",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-005",
+    "check": "Load balancer with no target group or instance",
+    "fail": 1,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-006",
+    "check": "Cost allocation tag key missing",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 2
+   }
+  ],
+  "findings": [
+   {
+    "policy": "FIN-005",
+    "result": "fail",
+    "reason": "",
+    "account": "111111111111",
+    "region": "us-east-1",
+    "service": "ELBV2",
+    "resource_type": "LoadBalancerV2",
+    "resource": "web",
+    "name": "web",
+    "message": "no target group names it"
+   }
+  ]
+ },
+ "labels: other partition and other account arns": {
+  "schema_version": 1,
+  "summary": [
+   {
+    "policy": "FIN-001",
+    "check": "EBS volume with no attachment",
+    "fail": 0,
+    "not_evaluated": 1,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-002",
+    "check": "Elastic IP with no association",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-003",
+    "check": "EBS snapshot older than 90 days",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-004",
+    "check": "EC2 instance in the stopped state",
+    "fail": 0,
+    "not_evaluated": 1,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-005",
+    "check": "Load balancer with no target group or instance",
+    "fail": 0,
+    "not_evaluated": 1,
+    "pass": 0
+   },
+   {
+    "policy": "FIN-006",
+    "check": "Cost allocation tag key missing",
+    "fail": 0,
+    "not_evaluated": 0,
+    "pass": 3
+   }
+  ],
+  "findings": [
+   {
+    "policy": "FIN-001",
+    "result": "not_evaluated",
+    "reason": "identity_only",
+    "account": "111111111111",
+    "region": "us-east-1",
+    "service": "EC2",
+    "resource_type": "Volume",
+    "resource": "x",
+    "name": "",
+    "message": "known by identity only (Tagging API)"
+   },
+   {
+    "policy": "FIN-004",
+    "result": "not_evaluated",
+    "reason": "identity_only",
+    "account": "111111111111",
+    "region": "us-east-1",
+    "service": "EC2",
+    "resource_type": "Instance",
+    "resource": "y",
+    "name": "",
+    "message": "known by identity only (Tagging API)"
+   },
+   {
+    "policy": "FIN-005",
+    "result": "not_evaluated",
+    "reason": "identity_only",
+    "account": "111111111111",
+    "region": "us-east-1",
+    "service": "ELBV2",
+    "resource_type": "LoadBalancerV2",
+    "resource": "z",
+    "name": "",
+    "message": "known by identity only (Tagging API)"
+   }
+  ]
+ },
  "run_started none": {
   "schema_version": 1,
   "summary": [

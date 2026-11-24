@@ -728,6 +728,101 @@ def _named() -> Dict[str, Tuple[list, list, Optional[dt.datetime]]]:
         [unit("wafv2-cloudfront", "us-east-1"), unit("efs"), unit("cognito")],
         T0,
     )
+    # labels and ARNs that do not agree
+    c["labels: lb v2 and group in lower case"] = (
+        [
+            {**v2("web"), "service": "elbv2", "resource_type": "loadbalancerv2"},
+            {**group("tg", [LB2B]), "service": "ELBV2", "resource_type": "TARGETGROUP"},
+        ],
+        [],
+        T0,
+    )
+    c["labels: classic in upper case"] = (
+        [{**classic("c", []), "service": "elb", "resource_type": "LOADBALANCER"}],
+        [],
+        T0,
+    )
+    c["labels: identity row labelled for another service"] = (
+        [
+            identity("S3", "Bucket", "x", arn("ec2", "us-east-1", A, "volume/vol-9")),
+            identity("S3", "Bucket", "y", LB2),
+            identity("S3", "Bucket", "z", LBC),
+            identity("SQS", "Queue", "w", arn("ec2", "us-east-1", A, "instance/i-9")),
+        ],
+        [],
+        T0,
+    )
+    c["labels: identity row labelled for another kind"] = (
+        [
+            identity("EC2", "Volume", "x", arn("ec2", "us-east-1", A, "instance/i-9")),
+            identity(
+                "EC2", "Instance", "y", arn("ec2", "us-east-1", A, "snapshot/s-9")
+            ),
+            identity("ELB", "LoadBalancer", "z", LB2),
+            identity("ELBV2", "LoadBalancerV2", "w", LBC),
+        ],
+        [],
+        T0,
+    )
+    c["labels: identity row with an arn of no kind"] = (
+        [
+            identity("EC2", "Volume", "x", "not-an-arn"),
+            identity("EC2", "Instance", "y", ""),
+            identity("EC2", "Snapshot", "z", arn("ec2", "us-east-1", A, "image/ami-1")),
+            identity("VPC", "ElasticIP", "w", arn("ec2", "us-east-1", A, "volume2/v")),
+            identity(
+                "ELBV2",
+                "TargetGroup",
+                "t",
+                arn("elasticloadbalancing", "us-east-1", A, "targetgroup/tg/9"),
+            ),
+        ],
+        [],
+        T0,
+    )
+    c["labels: full row whose arn is of another kind"] = (
+        [
+            volume(
+                "vol-1",
+                "available",
+                resource_arn=arn("ec2", "us-east-1", A, "instance/i-1"),
+            ),
+            instance("i-1", {"Name": "stopped"}, resource_arn=LB2),
+        ],
+        [],
+        T0,
+    )
+    c["labels: identity group in lower case beside a load balancer"] = (
+        [
+            v2("web"),
+            {
+                **identity(
+                    "elbv2",
+                    "targetgroup",
+                    "tg",
+                    arn("elasticloadbalancing", "us-east-1", A, "targetgroup/tg/9"),
+                ),
+            },
+        ],
+        [],
+        T0,
+    )
+    c["labels: other partition and other account arns"] = (
+        [
+            identity(
+                "EC2", "Volume", "x", "arn:aws-cn:ec2:cn-north-1:333333333333:volume/v"
+            ),
+            identity("EC2", "Instance", "y", "arn:aws:ec2:::instance/i-1"),
+            identity(
+                "ELBV2",
+                "LoadBalancerV2",
+                "z",
+                "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/n/1",
+            ),
+        ],
+        [],
+        T0,
+    )
     # bad run_started
     c["run_started none"] = ([volume("v", "available")], [], None)
     return c
