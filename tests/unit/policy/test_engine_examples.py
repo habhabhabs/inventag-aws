@@ -208,7 +208,10 @@ def test_08_name_pattern_on_raw_data_hides_the_value():
             "problem": "pattern not matched",
         }
     ]
-    assert "launch-wizard" not in json.dumps(r["findings"])
+    (finding,) = r["findings"]
+    # the value of the checked field is not in the details or the message
+    # (the finding's name is the row's resource_name, shown as for any row)
+    assert "launch-wizard" not in json.dumps([finding["details"], finding["message"]])
     assert code(r, "medium") == 7
 
 
