@@ -1,10 +1,33 @@
 """Six fixed FinOps checks (FIN-001 to FIN-006) on the rows of a scan.
 
-Pure: rows, the listings not read (``units_not_read``) and the run's start
-time in; sorted findings out. No AWS call, no clock, no file write, and the
-rows are not changed. The result words follow the v1.5.0 policy spec:
-``fail`` and ``not_evaluated`` are listed, ``pass`` is counted. A gap in the
-data is ``not_evaluated`` with a reason, never a pass.
+Since v1.5.0 the checks are the policy set ``finops-checks``
+(``inventag/policy/builtin/finops-checks``) and this module is its caller:
+it hands the rows to the policy engine and writes the engine's result in the
+shape of v1.4.x, byte for byte (the sheet and the ``finops_checks`` key did not
+change). Pure: rows, the listings not read (``units_not_read``) and the run's
+start time in; sorted findings out. No AWS call, no clock, no file write, and
+the rows are not changed.
+
+What is done here and not by the engine (each point has a case in
+``tests/unit/finops/golden/checks-v143.json``, made by the v1.4.3 code):
+
+* The engine is given copies of the rows. A copy gets a canonical label when
+  v1.4.x recognised the row (by label, or by ARN for a row known by identity
+  only) and a neutral label when it did not; a field v1.4.x read as "not on the
+  row" (an empty string, a wrong type, a date it could not parse) is left out of
+  the copy; a target group known by identity only is hidden from the related
+  rows (v1.4.x ignored it). The copy's name is the row's number, which is how
+  a finding finds its row again.
+* The words of the sheet: ``Observed`` texts and the ``not_evaluated`` messages.
+* FIN-006 and the Tagging API: v1.4.x decided "tags not read" after it had found
+  a missing key, and counted a global row as unread when any Tagging API
+  listing of its account failed. The engine is given no ``tagging-api`` unit,
+  and the rule is applied here to the failed rows.
+* The engine is given only the ``elbv2`` listing units: it reads "elb" and
+  "elbv2" as one service, v1.4.x did not.
+* The unit lines, one per unread listing, from the units as given (FIN-006 has
+  one per unit of any source).
+* Without a start time FIN-003 is ``not_evaluated`` (the clock is never read).
 """
 
 from __future__ import annotations
@@ -13,13 +36,14 @@ import datetime as dt
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from ..discovery.arn_utils import parse_arn
-from ..templating.tag_policy import _in_scope, evaluate
 
 SCHEMA_VERSION = 1
-# FIN-003: a snapshot that started more than this many days before the run.
+# FIN-003: a snapshot that started more than this many days before the run
+# (the number is in the policy file finops-checks/fin-003.yaml).
 SNAPSHOT_AGE_DAYS = 90
 GLOBAL_REGION = "global"
 POLICY_NAME = "finops-cost-allocation"
+SET_NAME = "finops-checks"
 
 CHECKS: Dict[str, str] = {
     "FIN-001": "EBS volume with no attachment",
@@ -58,6 +82,16 @@ _ROW_KINDS = {
     ("elb", "loadbalancer"): "lb_classic",
     ("elbv2", "targetgroup"): "target_group",
 }
+# The labels the policy files select (the engine compares them exactly).
+_LABELS = {
+    "volume": ("EC2", "Volume"),
+    "address": ("VPC", "ElasticIP"),
+    "snapshot": ("EC2", "Snapshot"),
+    "instance": ("EC2", "Instance"),
+    "lb_v2": ("ELBV2", "LoadBalancerV2"),
+    "lb_classic": ("ELB", "LoadBalancer"),
+    "target_group": ("ELBV2", "TargetGroup"),
+}
 _KIND_CHECK = {
     "volume": "FIN-001",
     "address": "FIN-002",
@@ -66,6 +100,16 @@ _KIND_CHECK = {
     "lb_v2": "FIN-005",
     "lb_classic": "FIN-005",
 }
+# "<field> is not on the row" of a not_evaluated row, per kind.
+_FIELD = {
+    "volume": "State",
+    "address": "PublicIp",
+    "snapshot": "StartTime",
+    "instance": "State",
+    "lb_v2": "LoadBalancerArn",
+    "lb_classic": "Instances",
+}
+_NEUTRAL = "(not checked)"
 
 _policy_cache: List[Any] = []
 
@@ -127,17 +171,87 @@ def _identity_kind(row: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+def _labels(row: Dict[str, Any]) -> Tuple[str, str]:
+    return (
+        _text(row.get("service")).lower(),
+        _text(row.get("resource_type")).lower(),
+    )
+
+
 def _kind(row: Dict[str, Any]) -> Tuple[Optional[str], bool]:
     """(kind, known by identity only) of a row."""
     if _text(row.get("detail_level")) == "identity":
         return _identity_kind(row), True
-    key = (
-        _text(row.get("service")).lower(),
-        _text(row.get("resource_type")).lower(),
-    )
-    return _ROW_KINDS.get(key), False
+    return _ROW_KINDS.get(_labels(row)), False
 
 
+# ------------------------------------------------------- rows for the engine
+def _usable(raw: Dict[str, Any], kind: str) -> Dict[str, Any]:
+    """A copy of ``raw_data`` without the fields v1.4.x read as not on the row."""
+    raw = dict(raw)
+
+    def drop_unless(key: str, good: bool) -> None:
+        if not good:
+            raw.pop(key, None)
+
+    if kind == "volume":
+        drop_unless("State", bool(raw.get("State")))
+    elif kind == "address":
+        drop_unless("PublicIp", bool(raw.get("PublicIp")))
+        drop_unless("AssociationId", bool(raw.get("AssociationId")))
+    elif kind == "snapshot":
+        started = parse_time(raw.get("StartTime"))
+        if started is None:
+            raw.pop("StartTime", None)
+        else:
+            raw["StartTime"] = started.isoformat()
+    elif kind == "instance":
+        state = raw.get("State")
+        drop_unless("State", isinstance(state, dict) and bool(state.get("Name")))
+    elif kind == "lb_v2":
+        drop_unless("LoadBalancerArn", bool(raw.get("LoadBalancerArn")))
+    elif kind == "lb_classic":
+        drop_unless("Instances", isinstance(raw.get("Instances"), list))
+    elif kind == "target_group":
+        drop_unless("LoadBalancerArns", isinstance(raw.get("LoadBalancerArns"), list))
+    return raw
+
+
+def _engine_row(number: int, row: Dict[str, Any]) -> Dict[str, Any]:
+    """The copy of ``row`` the engine evaluates (see the module docstring)."""
+    copy = dict(row)
+    copy["resource_name"] = str(number)  # the finding's name: which row it is
+    kind, identity = _kind(row)
+    if kind is not None:
+        copy["service"], copy["resource_type"] = _LABELS[kind]
+        if not identity:
+            raw = row.get("raw_data")
+            copy["raw_data"] = _usable(raw if isinstance(raw, dict) else {}, kind)
+    elif _labels(row) in _ROW_KINDS:
+        # recognised by label but not by what it is: v1.4.x did not check it
+        # (an identity-only row with an unreadable ARN, or a target group known
+        # by identity only, which names no load balancer).
+        copy["resource_type"] = _NEUTRAL
+    return copy
+
+
+def _engine_snapshot(rows: List[Dict[str, Any]], units: List[Dict[str, Any]]):
+    # Only the elbv2 listing changes a verdict (FIN-005's related rows). The
+    # engine reads "elb" and "elbv2" as one service (``canonical_service``),
+    # v1.4.x did not, so an "elb" unit is not given to it; the unit lines of
+    # the sheet are written below, not by the engine.
+    shown = [
+        u
+        for u in units
+        if u.get("source") == "service-api" and u.get("service") == "elbv2"
+    ]
+    return {
+        "metadata": {"tags": {"units_not_read": shown}},
+        "resources": [_engine_row(i, row) for i, row in enumerate(rows)],
+    }
+
+
+# ------------------------------------------------------------ the sheet's words
 def _finding(policy, result, reason, row, message) -> Dict[str, str]:
     return {
         "policy": policy,
@@ -171,147 +285,76 @@ def _unit_finding(policy: str, unit: Dict[str, Any]) -> Dict[str, str]:
     }
 
 
-def _missing(field: str) -> Tuple[str, str, str]:
-    return NOT_EVALUATED, FIELD_MISSING, f"{field} is not on the row"
+def _missing_message(kind: str, copy: Dict[str, Any]) -> str:
+    if kind == "lb_v2" and (copy.get("raw_data") or {}).get("LoadBalancerArn"):
+        return "LoadBalancerArns is not on a target group row"
+    return f"{_FIELD[kind]} is not on the row"
 
 
-def _volume(raw, _row, _ctx):
-    state = raw.get("State")
-    if not state:
-        return _missing("State")
-    return (FAIL, "", "no attachment") if state == "available" else None
-
-
-def _address(raw, _row, _ctx):
-    # A listed address always has PublicIp; AssociationId is absent (or empty)
-    # when the address is not associated, so its absence is the fact itself.
-    if not raw.get("PublicIp"):
-        return _missing("PublicIp")
-    return None if raw.get("AssociationId") else (FAIL, "", "no association")
-
-
-def _snapshot(raw, _row, ctx):
-    if ctx["run_started"] is None:
-        return NOT_EVALUATED, FIELD_MISSING, "the run has no start time"
-    started = parse_time(raw.get("StartTime"))
-    if started is None:
-        return _missing("StartTime")
-    if ctx["run_started"] - started > dt.timedelta(days=SNAPSHOT_AGE_DAYS):
-        return FAIL, "", f"started {started:%Y-%m-%d}"
-    return None
-
-
-def _instance(raw, _row, _ctx):
-    state = raw.get("State")
-    name = state.get("Name") if isinstance(state, dict) else None
-    if not name:
-        return _missing("State")
-    return (FAIL, "", "state stopped") if name == "stopped" else None
-
-
-def _lb_v2(raw, row, ctx):
-    place = (_account(row), _text(row.get("region")))
-    if place in ctx["failed_elbv2"]:
-        return NOT_EVALUATED, LISTING_NOT_READ, "elbv2 listing not read in this region"
-    arn = raw.get("LoadBalancerArn")
-    if not arn:
-        return _missing("LoadBalancerArn")
-    if arn in ctx["named"].get(place, set()):
-        return None
-    if place in ctx["groups_without_list"]:
-        return (
-            NOT_EVALUATED,
-            FIELD_MISSING,
-            "LoadBalancerArns is not on a target group row",
-        )
-    return FAIL, "", "no target group names it"
-
-
-def _lb_classic(raw, _row, _ctx):
-    if "Instances" not in raw or not isinstance(raw.get("Instances"), list):
-        return _missing("Instances")
-    return None if raw["Instances"] else (FAIL, "", "lists no instance")
-
-
-_JUDGES = {
-    "volume": _volume,
-    "address": _address,
-    "snapshot": _snapshot,
-    "instance": _instance,
-    "lb_v2": _lb_v2,
-    "lb_classic": _lb_classic,
-}
-
-
-def _context(rows: List[Dict[str, Any]], units, run_started) -> Dict[str, Any]:
-    named: Dict[tuple, set] = {}
-    groups_without_list = set()
-    for row in rows:
-        kind, identity = _kind(row)
-        if kind != "target_group" or identity:
-            continue
-        place = (_account(row), _text(row.get("region")))
-        arns = (row.get("raw_data") or {}).get("LoadBalancerArns")
-        if not isinstance(arns, list):
-            groups_without_list.add(place)
-            continue
-        named.setdefault(place, set()).update(_text(a) for a in arns)
-    failed_elbv2 = {
-        (_text(u.get("account")), _text(u.get("region")))
-        for u in units
-        if u.get("source") == "service-api" and u.get("service") == "elbv2"
-    }
-    tags_failed = {
-        (_text(u.get("account")), _text(u.get("region")))
-        for u in units
-        if u.get("source") == "tagging-api"
-    }
+def _observed(fail: Dict[str, Any], kind: Optional[str], row) -> str:
+    policy = fail["policy"]
+    if policy == "FIN-006":
+        keys = [
+            d["key"]
+            for d in fail.get("details", [])
+            if d.get("problem") == "missing tag"
+        ]
+        return "missing: " + ", ".join(keys)
+    if policy == "FIN-003":
+        started = parse_time((row.get("raw_data") or {}).get("StartTime"))
+        return f"started {started:%Y-%m-%d}"
     return {
-        "run_started": run_started,
-        "named": named,
-        "groups_without_list": groups_without_list,
-        "failed_elbv2": failed_elbv2,
-        "tags_failed": tags_failed,
-    }
+        "volume": "no attachment",
+        "address": "no association",
+        "instance": "state stopped",
+        "lb_v2": "no target group names it",
+        "lb_classic": "lists no instance",
+    }[kind or ""]
 
 
-def _tags_read(row: Dict[str, Any], ctx) -> bool:
+def _tags_read(row: Dict[str, Any], tags_failed) -> bool:
     account, region = _account(row), _text(row.get("region"))
     if region == GLOBAL_REGION:
-        return not any(a == account for a, _ in ctx["tags_failed"])
-    return (account, region) not in ctx["tags_failed"]
+        return not any(a == account for a, _ in tags_failed)
+    return (account, region) not in tags_failed
 
 
-def _allocation_findings(rows, ctx, policy) -> Tuple[List[Dict[str, str]], int]:
-    """FIN-006 through the tag-policy check of ``inventag templates``."""
-    taggable = [
-        row
-        for row in rows
-        if _text(row.get("source")) != "billing"
-        and _in_scope(row, policy.spec.get("scope") or {})
-    ]
-    report = evaluate(taggable, policy)
-    found, passed = [], 0
-    for result in report.findings:
-        if not result.missing:
-            passed += 1
-            continue
-        row = result.resource
-        if not _tags_read(row, ctx):
-            found.append(
-                _finding(
-                    "FIN-006",
-                    NOT_EVALUATED,
-                    TAGS_NOT_READ,
-                    row,
-                    f"tags of {_text(row.get('region'))} not read in this run",
-                )
-            )
-            continue
-        found.append(
-            _finding("FIN-006", FAIL, "", row, "missing: " + ", ".join(result.missing))
+def _row_finding(found, row, copy, kind, ctx) -> Optional[Dict[str, str]]:
+    """The v1.4.x finding of one engine finding (None for a pass)."""
+    policy, result, reason = found["policy"], found["result"], found.get("reason", "")
+    if policy == "FIN-003" and reason != IDENTITY_ONLY and ctx["run_started"] is None:
+        return _finding(
+            policy,
+            NOT_EVALUATED,
+            FIELD_MISSING,
+            row,
+            "the run has no start time",
         )
-    return found, passed
+    if result == PASS:
+        return None
+    if result == FAIL:
+        if policy == "FIN-006" and not _tags_read(row, ctx["tags_failed"]):
+            return _finding(
+                policy,
+                NOT_EVALUATED,
+                TAGS_NOT_READ,
+                row,
+                f"tags of {_text(row.get('region'))} not read in this run",
+            )
+        return _finding(policy, FAIL, "", row, _observed(found, kind, row))
+    if reason == IDENTITY_ONLY:
+        message = "known by identity only (Tagging API)"
+    elif reason == LISTING_NOT_READ:
+        message = "elbv2 listing not read in this region"
+    else:
+        reason = FIELD_MISSING
+        place = (_account(row), _text(row.get("region")))
+        if kind == "lb_v2" and place in ctx["failed_elbv2"]:
+            # v1.4.x asked first whether the listing was read
+            reason, message = LISTING_NOT_READ, "elbv2 listing not read in this region"
+        else:
+            message = _missing_message(kind, copy)
+    return _finding(policy, NOT_EVALUATED, reason, row, message)
 
 
 def _sort_key(finding: Dict[str, str]) -> tuple:
@@ -333,7 +376,12 @@ def run_checks(
     policy=None,
 ) -> Dict[str, Any]:
     """Run FIN-001 to FIN-006. ``run_started`` must carry a time zone; with
-    None, FIN-003 is ``not_evaluated`` (the clock is never read)."""
+    None, FIN-003 is ``not_evaluated`` (the clock is never read).
+
+    ``policy`` is accepted for callers of v1.4.x and ignored: the keys of
+    FIN-006 are those of the built-in tag policy ``finops-cost-allocation``."""
+    from ..policy import builtin, engine
+
     if run_started is not None and (
         not isinstance(run_started, dt.datetime) or run_started.tzinfo is None
     ):
@@ -343,36 +391,38 @@ def run_checks(
         (u for u in units_not_read if isinstance(u, dict)),
         key=lambda u: tuple(_text(u.get(k)) for k in ("account", "region", "service")),
     )
-    ctx = _context(
-        rows,
-        units,
-        run_started.astimezone(dt.timezone.utc) if run_started else None,
+    ctx = {
+        "run_started": run_started,
+        "failed_elbv2": {
+            (_text(u.get("account")), _text(u.get("region")))
+            for u in units
+            if u.get("source") == "service-api" and u.get("service") == "elbv2"
+        },
+        "tags_failed": {
+            (_text(u.get("account")), _text(u.get("region")))
+            for u in units
+            if u.get("source") == "tagging-api"
+        },
+    }
+    snapshot = _engine_snapshot(rows, units)
+    result = engine.evaluate(
+        snapshot,
+        builtin.load_set(SET_NAME),
+        now=run_started or dt.datetime(1970, 1, 1, tzinfo=dt.timezone.utc),
+        include_pass=True,
+        inventag_version="",
     )
     findings: List[Dict[str, str]] = []
     passed = {policy_id: 0 for policy_id in CHECKS}
-
-    for row in rows:
-        kind, identity = _kind(row)
-        policy_id = _KIND_CHECK.get(kind or "")
-        if policy_id is None:
-            continue
-        if identity:
-            findings.append(
-                _finding(
-                    policy_id,
-                    NOT_EVALUATED,
-                    IDENTITY_ONLY,
-                    row,
-                    "known by identity only (Tagging API)",
-                )
-            )
-            continue
-        raw = row.get("raw_data")
-        verdict = _JUDGES[kind](raw if isinstance(raw, dict) else {}, row, ctx)
-        if verdict is None:
-            passed[policy_id] += 1
+    for found in result["findings"]:
+        number = int(found["name"])
+        row, copy = rows[number], snapshot["resources"][number]
+        kind = _kind(row)[0]
+        mine = _row_finding(found, row, copy, kind, ctx)
+        if mine is None:
+            passed[found["policy"]] += 1
         else:
-            findings.append(_finding(policy_id, *verdict[:2], row, verdict[2]))
+            findings.append(mine)
 
     for unit in units:
         if unit.get("source") == "service-api":
@@ -380,11 +430,6 @@ def run_checks(
                 if unit.get("service") in services:
                     findings.append(_unit_finding(policy_id, unit))
         findings.append(_unit_finding("FIN-006", unit))
-
-    allocation, passed["FIN-006"] = _allocation_findings(
-        rows, ctx, policy or builtin_policy()
-    )
-    findings.extend(allocation)
     findings.sort(key=_sort_key)
 
     summary = []
