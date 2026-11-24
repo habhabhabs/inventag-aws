@@ -347,6 +347,20 @@ TAG_POLICY_SPEC: Dict[str, Field] = {
                 item=Field("string", "Resource type."),
                 default=[],
             ),
+            "filters": Field(
+                "list",
+                "Only check the resources these entries select, written as the "
+                "`filters` of a policy (`type: value` entries, with `and`, `or` "
+                "and `not`). A resource they leave out is out of scope. A "
+                "resource they cannot decide (for example a tag filter where the "
+                "tags were not read) is counted as not evaluated and is not "
+                "checked. Empty means no filter.",
+                item=Field("mapping", "One filter entry."),
+                default=[],
+                example=[
+                    {"key": "raw_data.State.Name", "op": "eq", "value": "running"}
+                ],
+            ),
         },
     ),
 }
@@ -746,6 +760,26 @@ def validate_fields(
     return validator.issues
 
 
+def _check_scope_filters(entries: List[Any], v: _Validator) -> None:
+    """``scope.filters``: the policy language's filter rules (v1.5.0)."""
+    # imported here: inventag.policy imports this module
+    from ..policy import model as policy_model
+    from ..policy.schema import Validator
+
+    class _Here(Validator):
+        def add(self, path, message: str) -> None:
+            v.add(path, message)
+
+    checker = _Here("", lambda path: None)
+    path = ("spec", "scope", "filters")
+    limit = policy_model.LIMITS.entries_per_group
+    if len(entries) > limit:
+        v.add(path, f"must have at most {limit} entries")
+    for index, entry in enumerate(entries):
+        if isinstance(entry, dict):  # a non-mapping is reported by its Field
+            checker.entry(entry, path + (index,), filters_only=True, depth=0)
+
+
 def _semantic_checks(kind: str, spec: Dict[str, Any], v: _Validator) -> None:
     if kind == "tag-policy":
         tags = spec.get("required_tags") or []
@@ -768,6 +802,9 @@ def _semantic_checks(kind: str, spec: Dict[str, Any], v: _Validator) -> None:
                     ("spec", "required_tags", index),
                     "use either allowed_values or pattern, not both",
                 )
+        scope = spec.get("scope")
+        if isinstance(scope, dict) and isinstance(scope.get("filters"), list):
+            _check_scope_filters(scope["filters"], v)
     if kind == "config":
         if spec.get("fail_on_tag_violations") and not spec.get("tag_policy"):
             v.add(("spec", "fail_on_tag_violations"), "needs spec.tag_policy to be set")

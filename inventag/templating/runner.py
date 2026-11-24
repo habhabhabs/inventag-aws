@@ -143,11 +143,17 @@ class TemplateRun:
         if self.compliance is None:
             return 0
         c = self.compliance
-        print(
+        line = (
             f"Tag policy '{c.policy_name}': {c.compliant} of {c.checked} resources "
             f"compliant ({c.percent_compliant:.1f}%), {c.non_compliant} non-compliant, "
-            f"{c.out_of_scope} out of scope."
+            f"{c.out_of_scope} out of scope"
         )
+        if c.uses_filters:
+            line += (
+                f", {len(c.not_evaluated)} not evaluated (the scope's filters "
+                "could not decide)"
+            )
+        print(line + ".")
         if c.non_compliant and self.fail_on_violations:
             print(
                 "Tag policy violations found and fail_on_tag_violations is true "
@@ -473,7 +479,12 @@ class TemplatedCloudBOMGenerator(CloudBOMGenerator):
             written: List[Tuple[str, str, Any]] = []  # (label, path, renderer)
 
             if run.policy is not None:
-                run.compliance = evaluate(processed, run.policy)
+                run.compliance = evaluate(
+                    processed,
+                    run.policy,
+                    now=now,
+                    units_not_read=self._units_not_read(),
+                )
                 path = self.output_dir / f"tag_compliance_{stamp}.json"
                 try:
                     _write_json_atomically(str(path), run.compliance.to_dict())

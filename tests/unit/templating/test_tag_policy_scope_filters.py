@@ -152,7 +152,7 @@ def test_the_console_line_without_filters_is_unchanged(user_dir, registry, capsy
             "{type: required-tags, keys: [{key: Owner}]}",
             "filters take only type: value",
         ),
-        ("{key: 'raw_data.[', op: eq, value: x}", "raw_data.["),
+        ("{key: 'raw_data.[', op: eq, value: x}", "not a valid key"),
         ("just-text", "must be a mapping"),
     ],
 )
@@ -161,7 +161,7 @@ def test_bad_filters_are_refused_with_their_path(user_dir, registry, entry, mess
         policy(user_dir, registry, f"    filters:\n      - {entry}\n")
     text = str(error.value)
     assert message in text
-    assert "spec.scope.filters.0" in text
+    assert "spec.scope.filters[0]" in text
 
 
 def test_filters_must_be_a_list(user_dir, registry):

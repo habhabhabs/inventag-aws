@@ -120,6 +120,7 @@ the validator accepts.
 | `spec.scope.services` | list of text | `[]` | Only check these services (as shown in the report, for example `EC2`, `S3`). Empty means all services. |
 | `spec.scope.resource_types` | list of text | `[]` | Only check these resource types (for example `Bucket`, `Instance`). Empty means all types. |
 | `spec.scope.exclude_resource_types` | list of text | `[]` | Never check these resource types, for example types that cannot carry tags. |
+| `spec.scope.filters` | list of mapping | `[]` | Only check the resources these entries select, written as the `filters` of a policy (`type: value` entries, with `and`, `or` and `not`). A resource they leave out is out of scope. A resource they cannot decide (for example a tag filter where the tags were not read) is counted as not evaluated and is not checked. Empty means no filter. |
 
 ### Config templates (`kind: config`)
 

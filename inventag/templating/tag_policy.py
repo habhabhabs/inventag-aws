@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from .columns import normalize_tags, resource_sort_key
 
@@ -33,6 +34,11 @@ class ComplianceReport:
     rules: List[Dict[str, Any]]
     findings: List[TagFinding]
     out_of_scope: int
+    # v1.5.0 scope.filters: (row, reason) of each row the filters could not
+    # decide; counted, never checked. ``uses_filters`` keeps the v1.4.3 shape
+    # of a policy without filters.
+    not_evaluated: List[Tuple[Dict[str, Any], str]] = field(default_factory=list)
+    uses_filters: bool = False
 
     @property
     def checked(self) -> int:
@@ -72,6 +78,26 @@ class ComplianceReport:
         return counts
 
     def to_dict(self) -> Dict[str, Any]:
+        data = self._to_dict()
+        if self.uses_filters:
+            data["summary"]["not_evaluated"] = len(self.not_evaluated)
+            data["not_evaluated_resources"] = [
+                {
+                    "account": r.get("source_account_id") or r.get("account_id"),
+                    "service": r.get("service"),
+                    "resource_type": r.get("resource_type"),
+                    "resource_id": r.get("resource_id") or r.get("id"),
+                    "arn": r.get("arn"),
+                    "region": r.get("region"),
+                    "reason": reason,
+                }
+                for r, reason in sorted(
+                    self.not_evaluated, key=lambda e: resource_sort_key(e[0])
+                )
+            ]
+        return data
+
+    def _to_dict(self) -> Dict[str, Any]:
         return {
             "policy": self.policy_name,
             "description": self.policy_description,
@@ -143,17 +169,73 @@ def check_value(rule: Dict[str, Any], value: str) -> Optional[str]:
     return None
 
 
-def evaluate(resources: List[Dict[str, Any]], policy) -> ComplianceReport:
-    """Check ``resources`` against a resolved tag-policy template."""
+class _ScopeFilters:
+    """``scope.filters``: the policy language's filters (``type: value``)."""
+
+    def __init__(self, entries, resources, now, units_not_read):
+        # imported here: inventag.policy imports this module
+        from ..policy import engine, filters
+
+        self.filters = filters
+        self.nodes = [filters.compile_entry(e) for e in entries]
+        snap = engine._Snapshot(
+            {
+                "resources": resources,
+                "metadata": {"tags": {"units_not_read": units_not_read}},
+            }
+        )
+        self.ctx = filters.Context(
+            now=now or dt.datetime.now(dt.timezone.utc),
+            tags_unknown=snap.tags_unknown,
+            unit_unread=snap.unit_unread,
+            related_rows=snap.related_rows,
+        )
+
+    def decide(self, resource: Dict[str, Any]) -> Tuple[Optional[bool], str]:
+        """True (in scope), False (out of scope) or None with the reason."""
+        found = self.filters.evaluate_all(self.nodes, resource, self.ctx)
+        if found.value is self.filters.TRUE:
+            return True, ""
+        if found.value is self.filters.FALSE:
+            return False, ""
+        return None, found.reason or "not_comparable"
+
+
+def evaluate(
+    resources: List[Dict[str, Any]],
+    policy,
+    now: Optional[dt.datetime] = None,
+    units_not_read: Any = None,
+) -> ComplianceReport:
+    """Check ``resources`` against a resolved tag-policy template.
+
+    ``now`` and ``units_not_read`` (the snapshot's ``metadata.tags`` list of
+    listings this run did not read) are used only by ``scope.filters``: an
+    age is counted from ``now``, and a tag filter on a row whose tags were not
+    read cannot be decided.
+    """
     spec = policy.spec
     rules = spec["required_tags"]
     scope = spec.get("scope") or {}
+    entries = scope.get("filters") or []
+    chooser = (
+        _ScopeFilters(entries, resources, now, units_not_read) if entries else None
+    )
     findings: List[TagFinding] = []
+    not_evaluated: List[Tuple[Dict[str, Any], str]] = []
     out_of_scope = 0
     for resource in resources:
         if not _in_scope(resource, scope):
             out_of_scope += 1
             continue
+        if chooser is not None:
+            chosen, reason = chooser.decide(resource)
+            if chosen is False:
+                out_of_scope += 1
+                continue
+            if chosen is None:
+                not_evaluated.append((resource, reason))
+                continue
         tags = normalize_tags(resource.get("tags"))
         lowered = {k.lower(): k for k in tags}
         finding = TagFinding(resource)
@@ -177,4 +259,6 @@ def evaluate(resources: List[Dict[str, Any]], policy) -> ComplianceReport:
         rules=rules,
         findings=findings,
         out_of_scope=out_of_scope,
+        not_evaluated=not_evaluated,
+        uses_filters=bool(entries),
     )
