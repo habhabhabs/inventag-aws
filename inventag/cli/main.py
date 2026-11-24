@@ -150,6 +150,22 @@ def _load_scan_policies(args):
     return loaded, waivers
 
 
+def _with_finops_set(loaded_policies):
+    """Plan decision 5: --finops-checks with --template adds the shipped
+    finops-checks set to the policies checked on the snapshot."""
+    from types import SimpleNamespace
+
+    from ..policy import builtin
+
+    finops = list(builtin.load_set("finops-checks"))
+    if loaded_policies is None:
+        return SimpleNamespace(policies=finops), []
+    loaded, waivers = loaded_policies
+    have = {p.id for p in loaded.policies}
+    merged = list(loaded.policies) + [p for p in finops if p.id not in have]
+    return SimpleNamespace(policies=merged), waivers
+
+
 def _run_scan_policies(args, results: Dict[str, Any], logger) -> int:
     """--policy: check the run's state snapshot; write the files; the code (0, 7)."""
     import hashlib
@@ -159,8 +175,9 @@ def _run_scan_policies(args, results: Dict[str, Any], logger) -> int:
     loaded, waivers = args.loaded_policies
     state = results.get("state_management") or {}
     if not state.get("state_saved") or not state.get("state_id"):
+        flag = "--policy" if getattr(args, "policy", None) else "--finops-checks"
         logger.error(
-            "--policy: the state snapshot of this run was not saved, so the "
+            f"{flag}: the state snapshot of this run was not saved, so the "
             "policies were not checked; see the notes above."
         )
         return EXIT_ERROR
@@ -512,7 +529,9 @@ Examples:
             "Run six FinOps checks (FIN-001 to FIN-006) on the resources the "
             "scan found and add a FinOps sheet to the Excel report. Off by "
             "default. The checks make no further AWS call and need no further "
-            "permission, and their findings do not change the exit code"
+            "permission, and their findings do not change the exit code. With "
+            "--template, no sheet is added: the findings are written to "
+            "policy_findings_<timestamp>.json"
         ),
     )
     analysis_group.add_argument(
@@ -2075,12 +2094,18 @@ def _run(args, logger):
         logger.info("Initializing CloudBOMGenerator...")
         if template_run:
             if config.finops_checks:
-                logger.warning(
-                    "--finops-checks: with --template, the FinOps checks do not "
-                    "run and no FinOps sheet is written. Run without --template "
-                    "to get them."
-                )
+                # plan decision 5: the finops-checks set runs on the saved
+                # snapshot and writes the findings file; the FinOps sheet
+                # stays for non-template workbooks
                 config.finops_checks = False
+                if args.disable_state_management:
+                    logger.warning(
+                        "--finops-checks: with --template the checks run on the "
+                        "state snapshot, and --disable-state-management turns "
+                        "it off; no FinOps findings were written."
+                    )
+                else:
+                    args.loaded_policies = _with_finops_set(args.loaded_policies)
             if config.finops_cost_allocation:
                 logger.warning(
                     "--finops-cost-allocation: with --template, no Cost Explorer "
