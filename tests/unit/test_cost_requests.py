@@ -95,6 +95,14 @@ def _run(tmp_path, monkeypatch, billing, args=(), accounts=()):
     return outcome, order
 
 
+def _levels(outcome):
+    return [
+        text[: text.index(PREFIX)].rstrip(" -").rsplit(" - ", 1)[-1]
+        for text in outcome.text.splitlines()
+        if PREFIX in text
+    ]
+
+
 def _lines(outcome):
     return [
         text[text.index(PREFIX) :]
@@ -109,15 +117,27 @@ def test_one_account_billing_and_cost_analysis_says_2_before_the_first_request(
     outcome, order = _run(tmp_path, monkeypatch, True, ("--enable-cost-analysis",))
     assert outcome.code == 0
     assert _lines(outcome) == [line(2, 1, 1)]
+    # architect v1.4.1 ruling: a WARNING only with --enable-cost-analysis
+    assert _levels(outcome) == ["WARNING"]
     assert order[0] == "line"
     assert order.count("line") == 1
     assert order.count("request") == 2
 
 
-def test_one_account_billing_only_says_1(tmp_path, monkeypatch):
+def test_a_default_run_shows_no_count_line_as_in_v1_4_0(tmp_path, monkeypatch):
+    # architect v1.4.1 ruling: without --enable-cost-analysis the line is INFO,
+    # so the default console is what v1.4.0 printed
     outcome, order = _run(tmp_path, monkeypatch, True)
     assert outcome.code == 0
+    assert _lines(outcome) == []
+    assert order[0] == "line"
+
+
+def test_one_account_billing_only_says_1_at_info_with_verbose(tmp_path, monkeypatch):
+    outcome, order = _run(tmp_path, monkeypatch, True, ("--verbose",))
+    assert outcome.code == 0
     assert _lines(outcome) == [line(1, 1, 0)]
+    assert _levels(outcome) == ["INFO"]
     assert order[0] == "line"
 
 
@@ -145,6 +165,7 @@ def test_three_accounts_say_4_and_name_the_trend_account(tmp_path, monkeypatch):
     )
     assert outcome.code == 0
     assert _lines(outcome) == [line(4, 3, 1)]
+    assert _levels(outcome) == ["WARNING"]
     assert order[0] == "line"
     # billing validation once for each account, the cost trend once
     assert order.count("request") == 4

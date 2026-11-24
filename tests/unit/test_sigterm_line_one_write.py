@@ -11,7 +11,9 @@ Each row starts a real child process with the CLI's logging setup and a
 sys.stdout whose write is stuck when SIGTERM arrives.
 """
 
+import logging
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -68,13 +70,18 @@ class StuckStdout:
         return False
 
 
-sys.stdout = StuckStdout()
+if mode != "logfile":
+    sys.stdout = StuckStdout()
 from inventag.cli.logging_setup import setup_logging
 
 cli_main = importlib.import_module("inventag.cli.main")
-logger = setup_logging(account_specific=True)
+log_file = os.path.join(sys.argv[2], "run.log") if mode == "logfile" else None
+logger = setup_logging(account_specific=True, log_file=log_file)
 out = os.path.join(sys.argv[2], "out")
 cli_main._install_sigterm_message(logger, out, 0.0)
+if mode == "logfile":
+    os.write(2, b"ready\n")
+    time.sleep(30)
 logger.warning("stuck-here")
 os.write(2, b"not reached\n")
 """
@@ -128,3 +135,62 @@ def test_sigterm_during_a_stdout_write_still_says_its_line(mode, tmp_path):
     assert len(lines) == 2, out
     assert lines[1].endswith(LINE_END), out
     assert "Logging error" not in err, err
+    # security review v1.4.1 finding 4: the line holds only its fixed parts
+    assert re.fullmatch(
+        r"\d{4}-\d\d-\d\d \d\d:\d\d:\d\d,\d{3}" + re.escape(LINE_END), lines[1]
+    ), lines[1]
+
+
+def test_the_log_file_line_names_the_handler_and_its_line(tmp_path):
+    # behaviour review v1.4.1 finding 2: v1.4.0 wrote "handler:<line>", not 0
+    code, out, err, _ = _run("logfile", tmp_path)
+    assert code == -signal.SIGTERM, err
+    text = (tmp_path / "run.log").read_text("utf-8")
+    found = re.findall(
+        r"WARNING - handler:(\d+) - Terminated \(SIGTERM\)\. No report was written\.",
+        text,
+    )
+    assert len(found) == 1, text
+    assert int(found[0]) > 0
+
+
+class _Writes:
+    def __init__(self, sizes):
+        self.sizes = list(sizes)
+        self.data = b""
+        self.calls = 0
+
+    def __call__(self, fd, data):
+        self.calls += 1
+        n = min(len(data), self.sizes.pop(0) if self.sizes else len(data))
+        self.data += data[:n]
+        return n
+
+
+def _say(monkeypatch, writes):
+    import importlib
+
+    cli_main = importlib.import_module("inventag.cli.main")
+    monkeypatch.setattr(cli_main.os, "write", writes)
+    logger = logging.getLogger("test-sigterm-short-write")
+    monkeypatch.setattr(logger, "level", logging.WARNING)
+    cli_main._say_sigterm_line(
+        logger,
+        [(99, logging.Formatter("%(message)s"))],
+        "Terminated (SIGTERM). No report was written.",
+    )
+
+
+def test_a_short_first_write_still_gives_the_whole_line(monkeypatch):
+    # security review v1.4.1 finding 3 (architect: at most 3 writes)
+    writes = _Writes([5])
+    _say(monkeypatch, writes)
+    assert writes.data == b"Terminated (SIGTERM). No report was written.\n"
+    assert writes.calls == 2
+
+
+def test_the_line_takes_at_most_three_writes(monkeypatch):
+    writes = _Writes([1, 1, 1, 1, 1])
+    _say(monkeypatch, writes)
+    assert writes.calls == 3
+    assert writes.data == b"Ter"
