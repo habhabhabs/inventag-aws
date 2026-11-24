@@ -107,8 +107,13 @@ A sample, made by the docs generator from a mocked AWS account:
 With `--per-account-reports`, the report of each account lists only that
 account's results.
 
-With `--template`, the checks do not run: InvenTag prints a warning and
-writes no `FinOps` sheet.
+With `--template`, no `FinOps` sheet is written. The checks run on the
+run's state snapshot, as the shipped `finops-checks` policy set, and their
+findings are written to `policy_findings_<timestamp>.json` in the output
+directory, with a text summary on the console. Without `--policy-fail-on`
+they do not change the exit code. With
+`--disable-state-management` as well, there is no snapshot: a warning says
+that no FinOps findings were written.
 
 ## The `finops_checks` result
 
