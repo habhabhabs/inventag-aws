@@ -31,3 +31,14 @@ def test_the_guide_says_what_a_payer_accounts_tables_can_hold():
             "沒有掃描",
         )
         assert any(w in part for w in words), docs
+
+
+def test_the_guide_names_every_status_the_sheet_can_show():
+    from inventag.finops import cost_allocation as ca
+
+    statuses = [ca.status_text(s) for s in ca._STATUS_TEXT] + ["no spend returned"]
+    for docs in PAGES:
+        text = (docs / "guides" / "finops-checks.md").read_text(encoding="utf-8")
+        for status in ("no spend returned", "not active as a cost allocation tag"):
+            assert status in text, (docs, status)
+    assert "no spend returned" in statuses

@@ -21,6 +21,7 @@ LOCALES = ("es", "fr", "zh-Hans", "zh-Hant")
 def sources():
     yield from sorted((REPO / "inventag" / "finops").glob("*.py"))
     yield REPO / "inventag" / "reporting" / "finops_sheet.py"
+    yield REPO / "inventag" / "reporting" / "finops_costs_sheet.py"
 
 
 def docs_pages():

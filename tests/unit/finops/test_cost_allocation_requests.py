@@ -161,31 +161,77 @@ def test_a_denied_tag_list_queries_every_key_and_stays_within_7():
     ]
 
 
-def test_a_denied_and_a_throttled_grouping_are_noted_and_the_rest_is_read():
+@pytest.mark.parametrize(
+    "code, status, text",
+    [
+        ("AccessDeniedException", "denied", "not read: access denied"),
+        ("ThrottlingException", "throttled", "not read: throttled"),
+    ],
+)
+def test_after_a_denied_or_throttled_request_no_further_request_is_made(
+    code, status, text
+):
     c = cs.client()
     stub = Stubber(c)
     stub.add_response(
         "list_cost_allocation_tags", cs.tag_list(active=["Owner"]), {"TagKeys": cs.KEYS}
     )
-    stub.add_client_error(
-        "get_cost_and_usage", "AccessDeniedException", http_status_code=400
+    stub.add_client_error("get_cost_and_usage", code, http_status_code=400)
+    with stub:
+        found = read(c)
+        calls(stub)  # nothing else was asked: the stub had no more answers
+    assert found["requests"] == 2
+    tables = found["tables"]
+    for name in ("service", "linked_account", "tag:Owner"):
+        assert tables[name]["status"] == status, name
+    assert tables["tag:CostCenter"]["status"] == "not_found"
+    assert found["stopped_after"] == status
+    notes = ca.run_notes(ca.result([found]))
+    assert notes == [
+        "Cost allocation in account 111122223333: "
+        f"Service ({text}); Linked account ({text}); Tag Owner ({text}). "
+        f"No further Cost Explorer request was made for this account after a "
+        f"request was {status}."
+    ]
+
+
+def test_a_later_grouping_that_fails_keeps_the_tables_read_before():
+    c = cs.client()
+    stub = Stubber(c)
+    stub.add_response(
+        "list_cost_allocation_tags", cs.tag_list(active=["Owner"]), {"TagKeys": cs.KEYS}
     )
+    cs.expect_usage(stub, "DIMENSION", "SERVICE", cs.usage(cs.SERVICES))
     stub.add_client_error(
         "get_cost_and_usage", "ThrottlingException", http_status_code=400
     )
-    cs.expect_usage(stub, "TAG", "Owner", cs.usage(cs.tag_groups("Owner")))
     with stub:
         found = read(c)
         calls(stub)
-    tables = found["tables"]
-    assert tables["service"]["status"] == "denied"
-    assert tables["linked_account"]["status"] == "throttled"
-    assert tables["tag:Owner"]["status"] == "read"
-    notes = ca.run_notes(ca.result([found]))
-    assert notes == [
-        "Cost allocation in account 111122223333: Service (not read: access "
-        "denied); Linked account (not read: throttled)."
-    ]
+    assert found["requests"] == 3
+    assert found["tables"]["service"]["status"] == "read"
+    assert found["tables"]["linked_account"]["status"] == "throttled"
+    assert found["tables"]["tag:Owner"]["status"] == "throttled"
+
+
+def test_a_failed_page_stops_the_other_pages():
+    c = cs.client()
+    stub = Stubber(c)
+    stub.add_response("list_cost_allocation_tags", cs.tag_list(), {"TagKeys": cs.KEYS})
+    cs.expect_usage(stub, "DIMENSION", "SERVICE", cs.usage(cs.SERVICES[:1], token="s2"))
+    cs.expect_usage(
+        stub, "DIMENSION", "LINKED_ACCOUNT", cs.usage(cs.ACCOUNTS, token="l2")
+    )
+    stub.add_client_error(
+        "get_cost_and_usage", "AccessDeniedException", http_status_code=400
+    )
+    with stub:
+        found = read(c)
+        calls(stub)
+    assert found["requests"] == 4
+    assert found["tables"]["service"]["status"] == "incomplete"
+    assert found["tables"]["linked_account"]["status"] == "incomplete"
+    assert found["stopped_after"] == "denied"
 
 
 # ------------------------------------------------------------ pages
