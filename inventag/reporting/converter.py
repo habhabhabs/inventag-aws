@@ -154,6 +154,8 @@ class BOMConverter:
         self.cost_analysis = {}
         # The --finops-checks result (None: no FinOps sheet).
         self.finops_checks: Optional[Dict[str, Any]] = None
+        # The --finops-cost-allocation tables (None: no FinOps costs sheet).
+        self.finops_costs: Optional[Dict[str, Any]] = None
         self.service_attributes = {}
         # Lines shown under the summary (for example, accounts that were not
         # scanned). Set by the caller; empty for a normal run.
@@ -575,6 +577,10 @@ class BOMConverter:
             from .finops_sheet import add_finops_sheet
 
             add_finops_sheet(wb, self.finops_checks)
+        if self.finops_costs is not None:
+            from .finops_costs_sheet import add_finops_costs_sheet
+
+            add_finops_costs_sheet(wb, self.finops_costs)
 
         self._apply_workbook_branding(wb, template, context)
         return wb
@@ -1598,6 +1604,9 @@ class BOMConverter:
         metadata = getattr(bom_data, "generation_metadata", None)
         self.finops_checks = (
             metadata.get("finops_checks") if isinstance(metadata, dict) else None
+        )
+        self.finops_costs = (
+            metadata.get("finops_costs") if isinstance(metadata, dict) else None
         )
         self.headers = set()
         for item in resources:

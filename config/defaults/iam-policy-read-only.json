@@ -12,6 +12,7 @@
         "autoscaling:DescribeAutoScalingGroups",
         "backup:ListBackupVaults",
         "ce:GetCostAndUsage",
+        "ce:ListCostAllocationTags",
         "cloudformation:DescribeStacks",
         "cloudformation:ListChangeSets",
         "cloudformation:ListStackSets",

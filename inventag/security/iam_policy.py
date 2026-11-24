@@ -33,6 +33,8 @@ from typing import Dict, List, Optional, Tuple
 READ_ONLY_ACTIONS: Dict[str, Tuple[str, str]] = {
     "acm:ListCertificates": ("acm", "ListCertificates"),
     "ce:GetCostAndUsage": ("ce", "GetCostAndUsage"),
+    # --finops-cost-allocation only: which tag keys are cost allocation tags.
+    "ce:ListCostAllocationTags": ("ce", "ListCostAllocationTags"),
     "cloudformation:DescribeStacks": ("cloudformation", "DescribeStacks"),
     "cloudformation:ListStacks": ("cloudformation", "ListStacks"),
     "cloudformation:ListStackSets": ("cloudformation", "ListStackSets"),

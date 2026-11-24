@@ -19,6 +19,8 @@ Inputs, all optional:
   over; ``analysis_denials``: ``(service, operation, error class, region)``.
 * ``run_account``: the account whose session the steps of the whole run use (cost and
   network analysis).
+* ``allocation_denials``: ``(account, service, operation)`` of each Cost Explorer request
+  of ``--finops-cost-allocation`` that was denied (each account's own session).
 
 Nothing of AWS's own error text is read or kept: only the error code decides, and the
 code is not written into the result. An operation with no known IAM action is listed by
@@ -45,6 +47,7 @@ KINDS = (
     "analysis",
     "upload",
     "optional",
+    "allocation",
 )
 
 # A run-time listing of a billed service that nothing else listed: tried, not permitted,
@@ -83,6 +86,7 @@ _EFFECT = {
     "analysis": "some analysis data is missing",
     "upload": "the reports were not uploaded",
     "optional": "listings of billed services that nothing else listed were not tried",
+    "allocation": "cost allocation figures are missing",
 }
 
 _UNKNOWN = "IAM action not known to InvenTag"
@@ -132,6 +136,7 @@ def build(
     analysis_denials: Iterable[Sequence[str]] = (),
     *,
     run_account: str = "",
+    allocation_denials: Iterable[Sequence[str]] = (),
 ) -> List[Entry]:
     """The calls this run was not allowed to make, one entry per account, call and kind.
 
@@ -190,6 +195,9 @@ def build(
     for service, operation, error_class, region in analysis_denials:
         if error_class in DENIED_CODES:
             add(run_account, service, operation, "analysis", [region])
+    # --finops-cost-allocation: (account, service, operation), each account's own.
+    for account, service, operation in allocation_denials:
+        add(account, service, operation, "allocation")
     return sorted(found.values(), key=_sort_key)
 
 

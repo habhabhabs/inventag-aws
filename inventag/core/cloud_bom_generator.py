@@ -51,6 +51,7 @@ from .limiter import DEFAULT_LIMIT, InFlightLimiter
 from .log_context import account_log_context
 from ..compliance import ComprehensiveTagComplianceChecker
 from ..finops import checks as finops_checks
+from ..finops import cost_allocation
 from ..reporting import BOMConverter, BOMDataProcessor, BOMProcessingConfig
 from ..state import StateManager, DeltaDetector, ChangelogGenerator
 from ..security.arn import (
@@ -483,6 +484,11 @@ class MultiAccountConfig:
     # --finops-checks: FIN-001 to FIN-006 on the rows the scan has (no AWS
     # call). Last, so callers that pass the fields by position still work.
     finops_checks: bool = False
+    # --finops-cost-allocation: at most 7 Cost Explorer requests per account,
+    # each with that account's own session; --no-cost-in-snapshot clears
+    # cost_in_snapshot (the sheet is still written).
+    finops_cost_allocation: bool = False
+    cost_in_snapshot: bool = True
 
 
 class CloudBOMGenerator:
@@ -511,6 +517,8 @@ class CloudBOMGenerator:
         # --per-account-reports (None when the flag is off).
         self._finops_result: Optional[Dict[str, Any]] = None
         self._finops_by_account: Dict[str, Dict[str, Any]] = {}
+        # --finops-cost-allocation: every account's tables (None when off).
+        self._finops_costs: Optional[Dict[str, Any]] = None
 
         # Processing state
         self._processing_lock = threading.Lock()
@@ -643,6 +651,8 @@ class CloudBOMGenerator:
                 consolidated_resources = all_resources
 
             finops = self._run_finops_checks(consolidated_resources)
+            if self.config.finops_cost_allocation:
+                self._finops_costs = self._read_cost_allocation()
 
             # Step 4: Process compliance checking if policies provided
             compliance_results = {}
@@ -726,6 +736,8 @@ class CloudBOMGenerator:
                 results["permissions_denied"] = permissions
             if finops is not None:
                 results["finops_checks"] = finops
+            if self._finops_costs is not None:
+                results["finops_costs"] = self._finops_costs
 
             outcome = (
                 "completed (the state stage had a problem: see the run notes)"
@@ -1208,14 +1220,16 @@ class CloudBOMGenerator:
         only with --enable-cost-analysis; otherwise INFO, so a default run's
         console is what v1.4.0 printed (architect v1.4.1 ruling)."""
         cost_analysis = bool(self.config.bom_processing_config.enable_cost_analysis)
+        allocation = bool(getattr(self.config, "finops_cost_allocation", False))
         count, parts = cost_requests.planned(
             len(account_contexts),
             bool(self.config.enable_billing_validation),
             cost_analysis,
+            cost_allocation=allocation,
         )
         text = cost_requests.announcement(count, parts)
         if text:
-            if cost_analysis:
+            if cost_analysis or allocation:
                 self.logger.warning(text)
             else:
                 self.logger.info(text)
@@ -1333,6 +1347,11 @@ class CloudBOMGenerator:
             cost_denials=self._cost_denials,
             analysis_denials=self._analysis_denials,
             run_account=self._run_account(),
+            allocation_denials=(
+                cost_allocation.denials(self._finops_costs)
+                if getattr(self, "_finops_costs", None) is not None
+                else ()
+            ),
         )
 
     def _add_upload_permissions(self, results: Dict[str, Any], errors) -> None:
@@ -1387,6 +1406,9 @@ class CloudBOMGenerator:
         notes.extend(self._not_read_notes())
         notes.extend(self._billing_timeout_notes())
         notes.extend(self._cost_trend_notes())
+        costs = getattr(self, "_finops_costs", None)
+        if costs is not None:
+            notes.extend(cost_allocation.run_notes(costs))
         notes.extend(self._state_notes)
         notes.extend(self._guard_block_notes())
         notes.extend(permissions_report.notes(self._permissions_denied()))
@@ -2636,6 +2658,8 @@ class CloudBOMGenerator:
                 bom_data.generation_metadata["permissions_denied"] = permissions
             if self._finops_result is not None:
                 bom_data.generation_metadata["finops_checks"] = self._finops_result
+            if self._finops_costs is not None:
+                bom_data.generation_metadata["finops_costs"] = self._finops_costs
 
             # Add compliance results to BOM data
             if compliance_results:
@@ -2826,8 +2850,47 @@ class CloudBOMGenerator:
                     "finops_checks": self._finops_by_account.get(account_id)
                     or self._finops_by_account.get(""),
                 }
+            costs = getattr(self, "_finops_costs", None)
+            if costs is not None:
+                # Each account's report shows only that account's tables.
+                scope.generation_metadata = {
+                    **scope.generation_metadata,
+                    "finops_costs": cost_allocation.for_account(costs, account_id),
+                }
             scopes.append((f"{safe}_bom", account_id, scope))
         return scopes
+
+    def _read_cost_allocation(self) -> Dict[str, Any]:
+        """``--finops-cost-allocation``: each scanned account's tables, read
+        with that account's own session (never the first account's, A-80),
+        in account order. A failure is kept as that account's tables; the
+        run goes on."""
+        started = self._processing_stats.get("processing_start_time")
+        failed = {str(item["account_id"]) for item in self._failed_accounts()}
+        accounts = []
+        for account_id in sorted(self.account_contexts, key=str):
+            ctx = self.account_contexts[account_id]
+            if str(account_id) in failed or getattr(ctx, "session", None) is None:
+                continue
+            try:
+                accounts.append(
+                    cost_allocation.read_for_session(
+                        ctx.session,
+                        str(account_id),
+                        list(getattr(ctx, "accessible_regions", None) or []),
+                        started,
+                    )
+                )
+            except Exception as error:  # the scan's result is kept
+                self.logger.warning(
+                    f"Cost allocation could not be read in account {account_id} "
+                    f"({type(error).__name__}). Run with --debug for the detail."
+                )
+                self.logger.debug("Cost allocation failure", exc_info=error)
+                accounts.append(
+                    cost_allocation.failed_account(str(account_id), started, error)
+                )
+        return cost_allocation.result(accounts)
 
     def _run_finops_checks(self, resources: List[Dict[str, Any]]) -> Optional[Dict]:
         """FIN-001 to FIN-006 on the consolidated rows (``--finops-checks``).
@@ -2944,6 +3007,12 @@ class CloudBOMGenerator:
             details = self._details_not_read()
             if details:
                 snapshot_tags["details_not_read"] = details
+            # --finops-cost-allocation (additive key): the tables only, no
+            # resource IDs; left out with --no-cost-in-snapshot.
+            if self._finops_costs is not None and self.config.cost_in_snapshot:
+                snapshot_tags["cost_allocation"] = cost_allocation.snapshot_totals(
+                    self._finops_costs
+                )
 
             state_id = state_manager.save_state(
                 resources=resources,
@@ -3027,8 +3096,16 @@ class CloudBOMGenerator:
                             )
 
                             # Write changelog to file: whole or not at all (A-14)
-                            def write_changelog(temp_path, changelog=changelog):
+                            cost_lines = self._cost_change_lines(
+                                state_manager, previous_state_id, snapshot_tags
+                            )
+
+                            def write_changelog(
+                                temp_path, changelog=changelog, cost_lines=cost_lines
+                            ):
                                 text = changelog.to_markdown()
+                                if cost_lines:
+                                    text = text + "\n" + "\n".join(cost_lines)
                                 with open(temp_path, "w") as f:
                                     f.write(text)
 
@@ -3054,6 +3131,23 @@ class CloudBOMGenerator:
         except Exception as e:
             self.logger.error(f"State artifact generation failed: {e}")
             return {"state_saved": False, "error": str(e)}
+
+    def _cost_change_lines(self, state_manager, previous_state_id, tags) -> List[str]:
+        """The cost block of the change report (only with --finops-cost-allocation)."""
+        if self._finops_costs is None:
+            return []
+        previous = None
+        try:
+            snapshot = state_manager.load_state(previous_state_id)
+            previous_tags = getattr(snapshot.metadata, "tags", None) or {}
+            previous = previous_tags.get("cost_allocation")
+        except Exception:  # silent-ok: the block then says the previous has none
+            previous = None
+        return cost_allocation.change_lines(
+            previous,
+            tags.get("cost_allocation"),
+            opted_out=not self.config.cost_in_snapshot,
+        )
 
     @classmethod
     def from_credentials_file(

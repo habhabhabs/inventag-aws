@@ -403,6 +403,31 @@ Examples:
             "permission, and their findings do not change the exit code"
         ),
     )
+    analysis_group.add_argument(
+        "--finops-cost-allocation",
+        action="store_true",
+        help=(
+            "Read the last full month's spend from Cost Explorer for each "
+            "account, with that account's own credentials: by service, by "
+            "linked account and by each key of the built-in "
+            "finops-cost-allocation tag policy that is active as a cost "
+            "allocation tag. Adds a FinOps costs sheet to the Excel report. "
+            "Off by default. Makes at most 7 Cost Explorer requests per account "
+            "(AWS charges for each; the SDK's retries of a throttled request "
+            "add more) and needs ce:ListCostAllocationTags. The amounts are "
+            "never shown per resource"
+        ),
+    )
+    analysis_group.add_argument(
+        "--no-cost-in-snapshot",
+        dest="cost_in_snapshot",
+        action="store_false",
+        default=True,
+        help=(
+            "With --finops-cost-allocation: keep the cost figures out of the "
+            "state snapshot. The FinOps costs sheet is still written"
+        ),
+    )
 
     # S3 upload options for CI/CD
     s3_group = parser.add_argument_group("S3 Upload Options (CI/CD Integration)")
@@ -1056,6 +1081,8 @@ def create_multi_account_config(args) -> MultiAccountConfig:
         enable_changelog_generation=args.generate_changelog,
         enable_billing_validation=getattr(args, "billing_validation", True),
         finops_checks=getattr(args, "finops_checks", False),
+        finops_cost_allocation=getattr(args, "finops_cost_allocation", False),
+        cost_in_snapshot=getattr(args, "cost_in_snapshot", True),
         bom_processing_config=bom_config,
         output_directory=output_dir,
         credential_validation_timeout=args.credential_timeout,
@@ -1070,6 +1097,11 @@ def create_multi_account_config(args) -> MultiAccountConfig:
         state_retention_days=args.state_retention_days,
         state_max_snapshots=args.state_max_snapshots,
     )
+
+    if not config.cost_in_snapshot and not config.finops_cost_allocation:
+        logger.warning(
+            "--no-cost-in-snapshot has no effect without --finops-cost-allocation."
+        )
 
     return config
 
@@ -1890,6 +1922,13 @@ def _run(args, logger):
                     "to get them."
                 )
                 config.finops_checks = False
+            if config.finops_cost_allocation:
+                logger.warning(
+                    "--finops-cost-allocation: with --template, no Cost Explorer "
+                    "request is made and no FinOps costs sheet is written. Run "
+                    "without --template to get them."
+                )
+                config.finops_cost_allocation = False
             generator = template_run.create_generator(config)
         else:
             generator = CloudBOMGenerator(config)
