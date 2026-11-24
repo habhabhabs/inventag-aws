@@ -168,3 +168,46 @@ def test_filters_must_be_a_list(user_dir, registry):
     with pytest.raises(TemplateError) as error:
         policy(user_dir, registry, "    filters: {key: a, op: eq, value: b}\n")
     assert "spec.scope.filters" in str(error.value)
+
+
+def _rendered(tmp_path, registry, compliance):
+    from docx import Document
+    from openpyxl import load_workbook
+
+    from inventag.templating.render_excel import render_excel
+    from inventag.templating.render_word import render_word
+
+    template = registry.resolve("standard-bom")
+    rows = [row(1, "running"), row(2, raw=False)]
+    render_excel(str(tmp_path / "r.xlsx"), rows, template, compliance)
+    render_word(str(tmp_path / "r.docx"), rows, template, compliance)
+    cells = [
+        [c for c in r if c is not None]
+        for ws in load_workbook(tmp_path / "r.xlsx").worksheets
+        for r in ws.iter_rows(values_only=True)
+    ]
+    words = " ".join(p.text for p in Document(tmp_path / "r.docx").paragraphs)
+    return cells, words
+
+
+def test_the_workbook_and_the_document_name_the_rows_not_evaluated(
+    tmp_path, user_dir, registry
+):
+    rows = [row(1, "running"), row(2, raw=False)]
+    report = evaluate(rows, policy(user_dir, registry, RUNNING_ONLY), now=NOW)
+    cells, words = _rendered(tmp_path, registry, report)
+    assert ["Not evaluated (scope filters could not decide)", 1] in cells
+    assert (
+        "1 resources were not evaluated: the scope's filters could not decide "
+        "whether they are in scope." in words
+    )
+
+
+def test_without_filters_the_workbook_and_the_document_are_unchanged(
+    tmp_path, user_dir, registry
+):
+    plain = policy(user_dir, registry, "    services: [EC2]\n")
+    report = evaluate([row(1, "running")], plain)
+    cells, words = _rendered(tmp_path, registry, report)
+    assert not [c for c in cells if c and str(c[0]).startswith("Not evaluated")]
+    assert "not evaluated" not in words
