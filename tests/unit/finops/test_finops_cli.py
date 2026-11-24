@@ -95,6 +95,11 @@ def test_help_names_the_flag_and_says_it_makes_no_aws_call():
     assert "no further AWS call" in text
     assert "their findings do not change the exit code" in text
     assert "permission and do not change the exit code" not in text
+    # plan decision 5
+    assert (
+        "With --template, no sheet is added: the findings are written to "
+        "policy_findings_<timestamp>.json" in text
+    )
 
 
 def test_the_flag_is_off_by_default():
