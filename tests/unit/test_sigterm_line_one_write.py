@@ -194,3 +194,56 @@ def test_the_line_takes_at_most_three_writes(monkeypatch):
     _say(monkeypatch, writes)
     assert writes.calls == 3
     assert writes.data == b"Ter"
+
+
+_STALLED_CHILD = r"""
+import fcntl, os, sys, time
+sys.path.insert(0, sys.argv[1])
+import importlib
+from inventag.cli.logging_setup import setup_logging
+
+cli_main = importlib.import_module("inventag.cli.main")
+logger = setup_logging(account_specific=True)
+cli_main._install_sigterm_message(logger, os.path.join(sys.argv[2], "out"), 0.0)
+# Fill standard output, a pipe nobody reads: the next write blocks.
+flags = fcntl.fcntl(1, fcntl.F_GETFL)
+fcntl.fcntl(1, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+try:
+    while True:
+        os.write(1, b"x" * 4096)
+except BlockingIOError:
+    pass
+fcntl.fcntl(1, fcntl.F_SETFL, flags)
+os.write(2, b"ready\n")
+time.sleep(30)
+"""
+
+
+def test_a_second_sigterm_ends_a_process_whose_stdout_is_stalled(tmp_path):
+    # security re-check v1.4.1 R1: the first SIGTERM's line blocks on a full
+    # pipe; a second SIGTERM must end the process by the signal, as in v1.4.0.
+    child = subprocess.Popen(
+        [sys.executable, "-c", _STALLED_CHILD, str(ROOT), str(tmp_path)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env={"PATH": os.environ.get("PATH", ""), "HOME": str(tmp_path)},
+        cwd=str(tmp_path),
+    )
+    try:
+        ready = child.stderr.readline()
+        assert ready.strip() == b"ready", ready + child.stderr.read()
+        child.send_signal(signal.SIGTERM)
+        time.sleep(0.5)
+        assert child.poll() is None  # the first SIGTERM waits on the reader
+        child.send_signal(signal.SIGTERM)
+        try:
+            child.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            pytest.fail("a second SIGTERM did not end the process (stdout stalled)")
+        assert child.returncode == -signal.SIGTERM
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait()
+        child.stdout.close()
+        child.stderr.close()
