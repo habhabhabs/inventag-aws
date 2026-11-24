@@ -369,8 +369,9 @@ Examples:
         "--enable-cost-analysis",
         action="store_true",
         help="Enable cost analysis and optimization recommendations. "
-        "It makes one more Cost Explorer request for the whole run "
-        "(ce:GetCostAndUsage), whatever the number of services; AWS charges for each "
+        "It makes at most one more Cost Explorer request for the whole run "
+        "(ce:GetCostAndUsage), whatever the number of services, and each retry "
+        "of a throttled request is one more request; AWS charges for each "
         "request. --no-billing-validation is independent of it: the cost analysis "
         "still calls Cost Explorer when billing validation is off",
     )
