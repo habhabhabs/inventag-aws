@@ -1,0 +1,120 @@
+{
+  "baseline": null,
+  "findings": [
+    {
+      "account": "111111111111",
+      "details": [
+        {
+          "check": 0,
+          "key": "Owner",
+          "problem": "missing tag",
+          "type": "required-tags"
+        },
+        {
+          "check": 0,
+          "key": "Environment",
+          "problem": "missing tag",
+          "type": "required-tags"
+        }
+      ],
+      "message": "TAG-002: missing tag: Owner; missing tag: Environment",
+      "name": "i-0bbb",
+      "policy": "TAG-002",
+      "region": "us-east-1",
+      "resource": "arn:aws:ec2:us-east-1:111111111111:instance/i-0bbb",
+      "resource_type": "Instance",
+      "result": "fail",
+      "service": "EC2",
+      "severity": "medium"
+    },
+    {
+      "account": "111111111111",
+      "details": [
+        {
+          "check": 0,
+          "key": "Environment",
+          "problem": "missing tag",
+          "type": "required-tags"
+        }
+      ],
+      "message": "TAG-002: missing tag: Environment",
+      "name": "fn-report",
+      "policy": "TAG-002",
+      "region": "us-east-1",
+      "resource": "arn:aws:lambda:us-east-1:111111111111:function:fn-report",
+      "resource_type": "Function",
+      "result": "fail",
+      "service": "LAMBDA",
+      "severity": "medium"
+    },
+    {
+      "account": "222222222222",
+      "message": "TAG-002: not evaluated (tags_not_read)",
+      "name": "i-0ccc",
+      "policy": "TAG-002",
+      "reason": "tags_not_read",
+      "region": "ap-southeast-1",
+      "resource": "arn:aws:ec2:ap-southeast-1:222222222222:instance/i-0ccc",
+      "resource_type": "Instance",
+      "result": "not_evaluated",
+      "service": "EC2",
+      "severity": "medium"
+    }
+  ],
+  "inventag_version": "1.5.0",
+  "not_evaluated_policies": [],
+  "not_evaluated_units": [
+    {
+      "account": "111111111111",
+      "outcome": "throttled",
+      "policy": "TAG-002",
+      "reason": "listing_not_read",
+      "region": "eu-west-1",
+      "service": "lambda"
+    }
+  ],
+  "now": "2026-11-20",
+  "policies": [
+    {
+      "counts": {
+        "fail": 2,
+        "not_evaluated": 1,
+        "out_of_scope": 2,
+        "pass": 5,
+        "waived": 0
+      },
+      "file": "policies/ex05.yaml",
+      "id": "TAG-002",
+      "name": "tag-002",
+      "severity": "medium",
+      "sha256": "320d1178e3097eb2e2a741f1d4cdfb6b0501388be743485596ca7a205156988e",
+      "version": 1
+    }
+  ],
+  "schema_version": "1.0",
+  "snapshot": {
+    "file": "s1.json",
+    "inventag_version": "1.5.0",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "timestamp": "2026-11-20T00:00:00+00:00"
+  },
+  "summary": {
+    "by_result": {
+      "fail": 2,
+      "not_evaluated": 1,
+      "out_of_scope": 2,
+      "pass": 5,
+      "waived": 0
+    },
+    "exit_code": 7,
+    "fail_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "info": 0,
+      "low": 0,
+      "medium": 2
+    },
+    "rows": 10
+  },
+  "unused_waivers": []
+}

@@ -1,0 +1,92 @@
+{
+  "baseline": null,
+  "findings": [
+    {
+      "account": "111111111111",
+      "details": [
+        {
+          "check": 0,
+          "problem": "no related row names it",
+          "type": "related"
+        }
+      ],
+      "message": "FIN-005: no related row names it",
+      "name": "old",
+      "policy": "FIN-005",
+      "region": "us-east-1",
+      "resource": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/old/2",
+      "resource_type": "LoadBalancerV2",
+      "result": "fail",
+      "service": "ELBV2",
+      "severity": "low"
+    },
+    {
+      "account": "111111111111",
+      "details": [
+        {
+          "check": 0,
+          "key": "raw_data.Instances",
+          "problem": "condition not met",
+          "type": "value"
+        }
+      ],
+      "message": "FIN-005: condition not met: raw_data.Instances",
+      "name": "classic-a",
+      "policy": "FIN-005",
+      "region": "us-east-1",
+      "resource": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/classic-a",
+      "resource_type": "LoadBalancer",
+      "result": "fail",
+      "service": "ELB",
+      "severity": "low"
+    }
+  ],
+  "inventag_version": "1.5.0",
+  "not_evaluated_policies": [],
+  "not_evaluated_units": [],
+  "now": "2026-11-20",
+  "policies": [
+    {
+      "counts": {
+        "fail": 2,
+        "not_evaluated": 0,
+        "out_of_scope": 1,
+        "pass": 2,
+        "waived": 0
+      },
+      "description": "Load balancer with no target group or instance",
+      "file": "policies/fin-005.yaml",
+      "id": "FIN-005",
+      "name": "fin-005",
+      "severity": "low",
+      "sha256": "4b752d9f3c7b3b7fe0d750e4c7812c29aa78c973412ae44b1804283f1fe78fb7",
+      "version": 1
+    }
+  ],
+  "schema_version": "1.0",
+  "snapshot": {
+    "file": "s2.json",
+    "inventag_version": "1.5.0",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "timestamp": "2026-11-20T00:00:00+00:00"
+  },
+  "summary": {
+    "by_result": {
+      "fail": 2,
+      "not_evaluated": 0,
+      "out_of_scope": 1,
+      "pass": 2,
+      "waived": 0
+    },
+    "exit_code": 7,
+    "fail_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "info": 0,
+      "low": 2,
+      "medium": 0
+    },
+    "rows": 5
+  },
+  "unused_waivers": []
+}

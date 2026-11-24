@@ -1,0 +1,126 @@
+{
+  "baseline": null,
+  "findings": [
+    {
+      "account": "111111111111",
+      "details": [
+        {
+          "check": 0,
+          "key": "raw_data.InstanceType",
+          "problem": "condition not met",
+          "type": "value"
+        }
+      ],
+      "message": "EC2-002: condition not met: raw_data.InstanceType",
+      "name": "i-0bbb",
+      "policy": "EC2-002",
+      "region": "us-east-1",
+      "resource": "arn:aws:ec2:us-east-1:111111111111:instance/i-0bbb",
+      "resource_type": "Instance",
+      "result": "fail",
+      "service": "EC2",
+      "severity": "low"
+    },
+    {
+      "account": "111111111111",
+      "details": [
+        {
+          "check": 0,
+          "key": "raw_data.InstanceType",
+          "problem": "condition not met",
+          "type": "value"
+        },
+        {
+          "check": 1,
+          "key": "tag:Owner",
+          "problem": "condition not met",
+          "type": "value"
+        }
+      ],
+      "message": "EC2-003: condition not met: raw_data.InstanceType; condition not met: tag:Owner",
+      "name": "i-0bbb",
+      "policy": "EC2-003",
+      "region": "us-east-1",
+      "resource": "arn:aws:ec2:us-east-1:111111111111:instance/i-0bbb",
+      "resource_type": "Instance",
+      "result": "fail",
+      "service": "EC2",
+      "severity": "low"
+    },
+    {
+      "account": "222222222222",
+      "message": "EC2-003: not evaluated (tags_not_read)",
+      "name": "i-0ccc",
+      "policy": "EC2-003",
+      "reason": "tags_not_read",
+      "region": "ap-southeast-1",
+      "resource": "arn:aws:ec2:ap-southeast-1:222222222222:instance/i-0ccc",
+      "resource_type": "Instance",
+      "result": "not_evaluated",
+      "service": "EC2",
+      "severity": "low"
+    }
+  ],
+  "inventag_version": "1.5.0",
+  "not_evaluated_policies": [],
+  "not_evaluated_units": [],
+  "now": "2026-11-20",
+  "policies": [
+    {
+      "counts": {
+        "fail": 1,
+        "not_evaluated": 0,
+        "out_of_scope": 7,
+        "pass": 2,
+        "waived": 0
+      },
+      "file": "policies/ex09.yaml",
+      "id": "EC2-002",
+      "name": "ec2-002",
+      "severity": "low",
+      "sha256": "0d074c1519bb6a222de223acf06558ca1af93e7b5087b59c99049775e8d064b4",
+      "version": 1
+    },
+    {
+      "counts": {
+        "fail": 1,
+        "not_evaluated": 1,
+        "out_of_scope": 7,
+        "pass": 1,
+        "waived": 0
+      },
+      "file": "policies/ex10.yaml",
+      "id": "EC2-003",
+      "name": "ec2-003",
+      "severity": "low",
+      "sha256": "a8ca8c09495119bf82ef68a6ceca870c4359fce08c9de77e0207071f4c7e6cfa",
+      "version": 1
+    }
+  ],
+  "schema_version": "1.0",
+  "snapshot": {
+    "file": "s1.json",
+    "inventag_version": "1.5.0",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "timestamp": "2026-11-20T00:00:00+00:00"
+  },
+  "summary": {
+    "by_result": {
+      "fail": 2,
+      "not_evaluated": 1,
+      "out_of_scope": 14,
+      "pass": 3,
+      "waived": 0
+    },
+    "exit_code": 8,
+    "fail_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "info": 0,
+      "low": 2,
+      "medium": 0
+    },
+    "rows": 10
+  },
+  "unused_waivers": []
+}
