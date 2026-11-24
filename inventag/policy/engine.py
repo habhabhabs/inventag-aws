@@ -147,6 +147,8 @@ def _message(policy: model.Policy, row, result: str, reason, failures) -> str:
         return f"{policy.id}: " + "; ".join(_describe(f) for f in failures)
     if result == "not_evaluated":
         return f"{policy.id}: not evaluated ({reason})"
+    if result == "out_of_scope":
+        return f"{policy.id}: out of scope"
     return f"{policy.id}: pass"
 
 
@@ -205,13 +207,19 @@ def _plain_trace(row: Dict[str, Any], block: Dict[str, Any]) -> List[Dict]:
     return nodes
 
 
-def _trace(policy, row, ctx, filter_nodes, require, check_nodes) -> List[Dict]:
+def _trace(policy, row, ctx, filter_nodes, require, check_nodes, result, reason=None):
+    """One trace tree for one row (spec 11.5): a root "and" over every test."""
     found = _plain_trace(row, policy.resource)
     found += [filters.trace(n, row, ctx, "resource") for n in filter_nodes]
     if require.keys:
         found.append(filters.trace(require, row, ctx, "check"))
     found += [filters.trace(n, row, ctx, "check") for n in check_nodes]
-    return found
+    verdict = {"pass": "true", "not_evaluated": "unknown"}.get(result, "false")
+    root: Dict[str, Any] = {"part": "check", "kind": "and", "verdict": verdict}
+    if verdict == "unknown" and reason:
+        root["reason"] = reason
+    root["children"] = found
+    return root
 
 
 def _evaluate_policy(policy: model.Policy, snap: _Snapshot, ctx: filters.Context):
@@ -229,20 +237,8 @@ def _evaluate_policy(policy: model.Policy, snap: _Snapshot, ctx: filters.Context
         counts["out_of_scope"] += 1
         if tracing is not None and model.resource(row) in tracing["wanted"]:
             entry = _finding(policy, row, "out_of_scope")
-            entry = {
-                k: entry[k]
-                for k in (
-                    "policy",
-                    "account",
-                    "region",
-                    "service",
-                    "resource_type",
-                    "resource",
-                    "name",
-                )
-            }
             entry["trace"] = _trace(
-                policy, row, ctx, filter_nodes, require, check_nodes
+                policy, row, ctx, filter_nodes, require, check_nodes, "out_of_scope"
             )
             tracing["out_of_scope"].append(entry)
 
@@ -277,7 +273,16 @@ def _evaluate_policy(policy: model.Policy, snap: _Snapshot, ctx: filters.Context
             add(row, _finding(policy, row, "not_evaluated", verdict.reason))
     if tracing is not None:
         for f, row in zip(findings, rows_of):
-            f["trace"] = _trace(policy, row, ctx, filter_nodes, require, check_nodes)
+            f["trace"] = _trace(
+                policy,
+                row,
+                ctx,
+                filter_nodes,
+                require,
+                check_nodes,
+                f["result"],
+                f.get("reason"),
+            )
     for f in findings:
         counts[f["result"]] += 1
     return findings, counts, _unit_lines(policy, snap)
@@ -391,6 +396,7 @@ def evaluate(
     inventag_version: Optional[str] = None,
     trace: bool = False,
     trace_resources: Sequence[str] = (),
+    trace_resource: Optional[str] = None,
 ) -> Dict[str, Any]:
     """The result of spec 3.3 for ``policies`` on ``snapshot``."""
     if now is None:
@@ -406,7 +412,8 @@ def evaluate(
     )
     # spec 11.5: with trace, each finding carries its tree, and the
     # out-of-scope rows asked for come back with theirs
-    ctx.trace = {"wanted": set(trace_resources), "out_of_scope": []} if trace else None
+    wanted = set(trace_resources) | ({trace_resource} if trace_resource else set())
+    ctx.trace = {"wanted": wanted, "out_of_scope": []} if trace else None
     findings: List[Dict[str, Any]] = []
     units: List[Dict[str, str]] = []
     not_evaluated_policies: List[Dict[str, str]] = []
@@ -472,6 +479,9 @@ def evaluate(
         if f["result"] == "fail":
             fail_by_severity[f["severity"]] += 1
     listed = [f for f in findings if include_pass or f["result"] != "pass"]
+    if trace and ctx.trace["out_of_scope"]:
+        # spec 11.5: the rows asked for that no policy selected; never counted
+        listed = sorted(listed + ctx.trace["out_of_scope"], key=_sort_key)
     units.sort(key=lambda u: (u["policy"], u["account"], u["service"], u["region"]))
     result = {
         "schema_version": model.SCHEMA_VERSION,
@@ -499,10 +509,6 @@ def evaluate(
             unused, key=lambda w: (w["policy"], w["resource"], w["expires"])
         ),
     }
-    if trace:
-        result["out_of_scope_traces"] = sorted(
-            ctx.trace["out_of_scope"], key=lambda e: (e["policy"], e["resource"])
-        )
     fails = [f["severity"] for f in findings if f["result"] == "fail"]
     result["summary"]["exit_code"] = exit_code(
         dict(result, findings=findings, _fails=fails), fail_on, fail_on_not_evaluated
