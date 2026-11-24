@@ -20,7 +20,7 @@ sidebar_position: 3
 | `ec2:DescribeRegions` | 列出已启用的区域，并检查你扫描的每个区域 | 即使使用 `--account-regions`，每个区域都会进行检查。检查失败的区域会被跳过并给出警告。如果该调用在每个区域都被拒绝，则扫描所有区域。 |
 | `account:ListRegions` | 在 `ec2:DescribeRegions` 失败时列出已启用的区域 | `ec2:DescribeRegions` 正常时不会调用。 |
 | `tag:GetResources` | 找出带标签的资源（Resource Groups Tagging API） | IAM 前缀是 `tag`，而不是 `resourcegroupstaggingapi`。 |
-| `ce:GetCostAndUsage` | 找出有支出的服务 | **AWS 按请求收费。** 详见[Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。 一次运行中的 Cost Explorer 请求：启用账单验证时（默认）每个账户最多一次，使用 `--enable-cost-analysis` 时整个运行最多再多一次。单账户运行同时使用两者时最多发出 2 次；使用 `--no-billing-validation` 时最多发出 1 次。被限流的请求会重试，总共最多 10 次尝试，每次重试都是一次新的请求。AWS 对每次请求收费。如果被拒绝，发现过程会在没有账单数据的情况下继续。`--no-billing-validation` 会停止这些调用，此后你可以不授予这项权限。 |
+| `ce:GetCostAndUsage` | 找出有支出的服务 | **AWS 按请求收费。** 详见[Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。 一次运行中的 Cost Explorer 请求：账单验证（默认开启）每个账户最多一次，使用 `--enable-cost-analysis` 时成本趋势每个账户再多最多 2 次，每次都使用该账户自己的凭证。单账户运行同时使用两者时最多发出 3 次；使用 `--no-billing-validation` 时最多发出 2 次。被限流的请求会重试，总共最多 10 次尝试，每次重试都是一次新的请求。AWS 对每次请求收费。如果被拒绝，发现过程会在没有账单数据的情况下继续。`--no-billing-validation` 会停止这些调用，此后你可以不授予这项权限。 |
 | 你想放入报告的每个服务的 `List*`、`Describe*`、`Get*` | 按服务发现 | 例如 `s3:ListAllMyBuckets`、`s3:GetBucketTagging`、`lambda:ListFunctions`、`dynamodb:ListTables`。AWS 托管的 `ReadOnlyAccess` 策略涵盖了这些。 |
 
 未针对真实的 AWS 验证：`GetCallerIdentity` 不需要权限，Tagging API 的 IAM 前缀是 `tag`，并且 `ReadOnlyAccess` 涵盖 List、Describe 和 Get 操作。
@@ -32,7 +32,7 @@ sidebar_position: 3
 | 功能 | 额外权限 |
 |---|---|
 | 通过角色扫描其他账户 | 对这些角色的 `sts:AssumeRole`，以及每个账户中允许你的身份的信任策略 |
-| `--enable-cost-analysis` | `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`（两者都在仓库的策略中）。它还会为整个运行最多再发出一次 `ce:GetCostAndUsage` 请求。 |
+| `--enable-cost-analysis` | `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`（两者都在仓库的策略中）。它还会为成本趋势，对每个账户使用该账户自己的凭证，最多发出 2 次 `ce:GetCostAndUsage` 请求。 |
 | `--finops-cost-allocation` | `ce:ListCostAllocationTags`（在仓库策略中）和 `ce:GetCostAndUsage`。每个账户最多 7 个 Cost Explorer 请求，每个请求都使用该账户自己的凭证。 |
 | `--s3-bucket` | 对该存储桶的 `s3:PutObject`（如果使用 `aws:kms`，还需要对该密钥的 `kms:GenerateDataKey`） |
 
@@ -41,6 +41,8 @@ sidebar_position: 3
 按项目用来测试的暂定列表，AWS 托管策略 `ReadOnlyAccess` 包含仓库策略中的每个操作，但不包含 `sts:AssumeRole`、`s3:PutObject` 和 `kms:GenerateDataKey`。在项目拿到 AWS 策略的原始副本之前，这份列表是暂定的。未针对真实的 AWS 验证：该列表与 `ReadOnlyAccess` 当前允许的内容一致。见[仅使用 ReadOnlyAccess 运行](../guides/read-only-access.md#run-with-only-readonlyaccess)。
 
 `--finops-checks` 不需要额外的权限：这些检查读取扫描已有的行，不发出任何 AWS 调用。
+
+`--policy` 和 `inventag policy` 不需要额外的权限。它们读取策略文件和状态快照，不发出任何 AWS 调用：测试在屏蔽网络的情况下运行策略引擎和 `inventag policy check`。`inventag policy` 不需要凭证。带 `--policy` 的扫描需要扫描本身所需的权限。
 
 ## 某个操作被拒绝时 {#when-an-action-is-refused}
 

@@ -30,13 +30,20 @@ inventag templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] 
 inventag templates validate NAME|PATH [NAME|PATH ...]
 inventag selftest                      check this copy of InvenTag, offline
 inventag completion bash|zsh|fish      print a shell completion script
+inventag policy validate PATH [PATH ...]
+inventag policy list [--policies PATH ...] [--set NAME] [--shipped]
+inventag policy schema [FIELD] [--json]
+inventag policy test [DIR]
+inventag policy check --snapshot FILE [--policies PATH ...] [--set NAME] [--fail-on SEVERITY]
+inventag policy explain POLICY --snapshot FILE [--policies PATH ...] [--set NAME]
+inventag policy lock [PATH] [--check]
 ```
 
 El comando `inventag` funciona igual en Linux, macOS y Windows.
 
 No verificado contra Windows ni macOS: el comando `inventag` funciona igual que en Linux.
 
-`templates`, `selftest` y `completion` deben ser la primera palabra después del nombre del programa.
+`templates`, `selftest`, `completion` y `policy` deben ser la primera palabra después del nombre del programa.
 
 ## Plantillas {#templates}
 
@@ -112,15 +119,42 @@ No verificado contra Google real: lo que crean, comparten e imprimen las opcione
 |---|---|---|---|
 | `--finops-cost-allocation` | desactivado | Funciona | Lee el gasto del mes pasado desde Cost Explorer para cada cuenta, con sus propias credenciales: por servicio, por cuenta vinculada y por cada clave de etiqueta de asignación de costes activa de la política integrada `finops-cost-allocation`. Añade una hoja `FinOps costs` como última hoja. Como máximo 7 solicitudes a Cost Explorer por cuenta; los reintentos del SDK añaden más, y AWS cobra cada una. Necesita `ce:ListCostAllocationTags`. No añade nada con `--template`. Consulta [Comprobaciones FinOps](../guides/finops-checks.md#cost-allocation-from-cost-explorer). |
 | `--no-cost-in-snapshot` | desactivado | Funciona | Con `--finops-cost-allocation`: deja las cifras de costes fuera de la instantánea de estado; la hoja se sigue escribiendo. Sin ella, un aviso y ningún efecto. |
-| `--finops-checks` | desactivado | Funciona | Ejecuta seis comprobaciones FinOps (`FIN-001` a `FIN-006`) sobre los recursos que encontró el escaneo y añade una hoja `FinOps` como última hoja del informe de Excel. No hace ninguna llamada adicional a AWS, no necesita ningún permiso adicional, y sus resultados no cambian el código de salida. No añade nada con `--template`. Consulta [Comprobaciones FinOps](../guides/finops-checks.md). |
+| `--finops-checks` | desactivado | Funciona | Ejecuta seis comprobaciones FinOps (`FIN-001` a `FIN-006`) sobre los recursos que encontró el escaneo y añade una hoja `FinOps` como última hoja del informe de Excel. No hace ninguna llamada adicional a AWS, no necesita ningún permiso adicional, y sus resultados no cambian el código de salida. Con `--template` no se añade ninguna hoja: las comprobaciones se ejecutan sobre la instantánea de estado de la ejecución y sus resultados se escriben en `policy_findings_<timestamp>.json`; si además se usa `--disable-state-management`, una advertencia dice que no se escribió ningún resultado FinOps. Consulta [Comprobaciones FinOps](../guides/finops-checks.md). |
 | `--enable-network-analysis` | desactivado | Funciona | Añade una hoja `Network Analysis` al informe de Excel cuando se encuentran VPC. No añade nada con `--template`. Consulta [Análisis de red y seguridad](../guides/network-and-security-analysis.md). |
 | `--enable-security-analysis` | desactivado | Funciona | Añade una hoja `Security Analysis` al informe de Excel cuando se encuentran grupos de seguridad. No añade nada con `--template`. |
-| `--enable-cost-analysis` | desactivado | Funciona | Añade una hoja Cost Analysis (y las cuatro columnas `forgotten_analysis.*`) al libro predeterminado. Hace llamadas a Cost Explorer, Pricing y CloudWatch; `--no-billing-validation` es independiente de esta opción y no las detiene. Solicitudes a Cost Explorer en una ejecución: como máximo una por cada cuenta cuando la validación de facturación está activada (el valor predeterminado), y como máximo una más para toda la ejecución con `--enable-cost-analysis`. Una ejecución de una sola cuenta con ambas hace como máximo 2; con `--no-billing-validation` hace como máximo 1. Una solicitud limitada (throttled) se reintenta, hasta 10 intentos en total, y cada reintento es una solicitud más. AWS cobra cada solicitud. Necesita `pricing:GetProducts` y `cloudwatch:GetMetricStatistics`. Los costes son estimaciones de la API AWS Pricing, no tu factura. |
+| `--enable-cost-analysis` | desactivado | Funciona | Añade una hoja Cost Analysis (y las cuatro columnas `forgotten_analysis.*`) al libro predeterminado. Hace llamadas a Cost Explorer, Pricing y CloudWatch; `--no-billing-validation` es independiente de esta opción y no las detiene. Solicitudes a Cost Explorer en una ejecución: como máximo una por cada cuenta para la validación de facturación (activada por defecto), y como máximo 2 por cada cuenta para la tendencia de costes, cada una leída con las credenciales propias de esa cuenta. Una ejecución de una sola cuenta con ambas hace como máximo 3; con `--no-billing-validation` hace como máximo 2. Una solicitud limitada (throttled) se reintenta, hasta 10 intentos en total, y cada reintento es una solicitud más. AWS cobra cada solicitud. La ejecución dice el máximo de solicitudes antes del descubrimiento, como advertencia. Necesita `pricing:GetProducts` y `cloudwatch:GetMetricStatistics`. Los costes son estimaciones de la API AWS Pricing, no tu factura; la tabla de tendencia de costes muestra importes facturados por Cost Explorer, una fila por cada cuenta y servicio. Consulta [Archivos de salida](./outputs.md#cost-analysis-sheet) y [Comprobaciones FinOps](../guides/finops-checks.md#the-cost-trend-of---enable-cost-analysis). |
 | `--billing-validation`, `--no-billing-validation` | activado | Funciona | Usa Cost Explorer durante el descubrimiento para encontrar servicios con gasto. AWS cobra cada solicitud a Cost Explorer. Consulta los [precios de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). `--no-billing-validation` detiene esas llamadas; `--enable-cost-analysis` es independiente y sigue llamando a Cost Explorer. |
 
 No verificado contra AWS real: `--enable-cost-analysis` necesita solo estos dos permisos adicionales, y las estimaciones coinciden con los precios de AWS.
 
 No verificado contra AWS real: el número de solicitudes que AWS factura, y si AWS factura un reintento.
+
+## Políticas {#policies}
+
+Las políticas son archivos que dicen cómo debe ser un recurso. InvenTag las lee y informa; una política no cambia nada en una cuenta. Las opciones siguientes las comprueban contra la instantánea de estado de la ejecución, después del escaneo. El comando `inventag policy` comprueba una instantánea guardada sin hacer un escaneo (consulta los [subcomandos de `policy`](#policy-subcommands)).
+
+| Opción | Valor predeterminado | Estado | Qué hace |
+|---|---|---|---|
+| `--policy PATH` | ninguno | Funciona | Archivo de política, conjunto de políticas o carpeta; se puede repetir. Después del escaneo, las políticas se comprueban contra la instantánea de estado de la ejecución, se imprime un resumen de texto y se escribe `policy_findings_<timestamp>.json` en el directorio de salida. También funciona con `--template`: la comprobación se ejecuta sobre la instantánea de estado, que una ejecución con plantilla también escribe. Una política no válida detiene la ejecución con el código de salida 1 antes de cualquier llamada a AWS. Con `--disable-state-management` la ejecución se detiene con el código de salida 2. |
+| `--policy-waivers FILE` | ninguno | Funciona | Archivo de exenciones para `--policy`. Sin `--policy`: código de salida 2. |
+| `--policy-fail-on SEVERITY` | ninguno | Funciona | `info`, `low`, `medium`, `high` o `critical`. Código de salida 7 cuando un hallazgo falla con esa gravedad o una superior. Los códigos de salida 5, 6, 3 y 4 van primero. Sin `--policy`: código de salida 2. Un escaneo no tiene ninguna opción para el código de salida 8. |
+| `--policy-format LIST` | `json` | Funciona | Archivos que se escriben, separados por comas: `json`, `sarif`, `junit`, `markdown`. Un formato desconocido: código de salida 2. Sin `--policy`: código de salida 2. Consulta [Hallazgos de las políticas](./outputs.md#policy-findings). |
+
+### Subcomandos de `policy` {#policy-subcommands}
+
+`inventag policy` lee una instantánea de estado guardada (`state/state_<timestamp>.json`) y archivos de política. No hace ninguna llamada a AWS y no necesita credenciales. `inventag policy COMMAND --help` imprime las opciones de un comando.
+
+| Comando | Qué hace |
+|---|---|
+| `policy validate PATH ...` | Comprueba archivos y carpetas de políticas, conjuntos de políticas y exenciones sin evaluar nada. Imprime una línea `OK` por cada archivo, o cada problema como `error: FILE:LINE: FIELD: PROBLEM`. `--now DATE` (`YYYY-MM-DD`, por defecto hoy en UTC) es la fecha con la que se juzga la caducidad de las exenciones. Código de salida 0: ningún problema. Código de salida 1: un problema. Código de salida 2: no se indicó ninguna ruta. |
+| `policy list` | Lista las políticas: ID, gravedad, versión, un resumen (digest) de 12 caracteres y archivo. `--policies PATH ...` indica archivos o carpetas (por defecto `.inventag/policies`). `--set NAME` lista los miembros de un conjunto: un conjunto de las rutas indicadas o, si no, un conjunto incluido con InvenTag. `--shipped` lista los conjuntos incluidos con InvenTag y el número de políticas de cada uno (no con `--set`: código de salida 2). Código de salida 0, o 1 si un archivo no se puede leer o el conjunto es desconocido. |
+| `policy schema [FIELD]` | Imprime los campos de los archivos de política con sus reglas; con el nombre de un campo, la ayuda de ese campo. `--json` imprime un JSON Schema para editores (más laxo que `policy validate`: usa `validate` para la palabra final). Código de salida 0, o 1 si el campo es desconocido. |
+| `policy test [DIR]` | Ejecuta los fixtures de `tests/<policy name>/*.yaml` bajo la carpeta de políticas (por defecto `.inventag/policies`) e imprime una línea `PASS` o `FAIL` por cada uno, y luego un recuento. Una política sin fixtures recibe una advertencia. Código de salida 0: se cumplen todas las expectativas. Código de salida 1: un fixture falla o no es válido. |
+| `policy check --snapshot FILE` | Evalúa las políticas sobre la instantánea e informa. `--policies PATH ...` (por defecto `.inventag/policies`), `--set NAME` (solo ese conjunto: uno de las rutas indicadas o, si no, uno incluido), `--waivers FILE`, `--baseline FILE` (una instantánea anterior, para las comprobaciones de línea base), `--now DATE`, `--show-values` (muestra los valores que no pasaron una comprobación; los valores enmascarados siguen enmascarados), `--locked` (rechaza un archivo de política que difiere de `policy.lock`). `--format LIST` va separado por comas: `text` (el valor por defecto; a la pantalla, sin archivo), `json`, `sarif`, `junit` y `markdown` (archivos, escritos en `--output-directory`, por defecto la carpeta actual). `--fail-on SEVERITY` da el código de salida 7 cuando un hallazgo falla con esa gravedad o una superior; `--fail-on-not-evaluated` da el código de salida 8 cuando algo no se pudo evaluar. Sin las dos, el comando informa y termina con el código 0. Códigos de salida: 0, 1 (un archivo no es válido o no se puede leer; no se escribe nada), 2 (opciones no válidas; no se escribe nada), 7, 8 (el 8 gana al 7). |
+| `policy explain POLICY --snapshot FILE` | Muestra cómo decidió una política cada fila: el resultado, cada comprobación decisiva y un `trace:` de las partes de la política con sus veredictos. `--resource ARN` lo limita a un recurso. `--policies`, `--set`, `--baseline`, `--now` y `--show-values` son como en `check`. Código de salida 0, o 1. |
+| `policy lock [PATH]` | Escribe `policy.lock` en la carpeta de políticas (por defecto `.inventag/policies`): el resumen SHA-256 de cada archivo de política, de conjunto y de exenciones. `--check` solo comprueba que el bloqueo esté al día. Código de salida 0, o 1. |
+
+No verificado contra AWS real: una instantánea producida por una cuenta real. Las pruebas usan instantáneas hechas con cuentas simuladas y con filas escritas a mano.
 
 ## Archivos de configuración {#configuration-files}
 
@@ -174,7 +208,7 @@ con un archivo YAML o JSON. Consulta [Archivos de diseño para un informe](../te
 | `--fail-if-empty` | desactivado | Funciona | Termina con el código 6 cuando no se encontraron recursos o los filtros los quitaron todos. |
 
 Si se aplica más de uno, primero va el 5, luego el 6, después el 3 y por último
-el 4. Se escriben informes con los códigos 3, 4 y 5. Con el código 6, una
+el 4. El código 7 (con `--policy-fail-on`) llega solo cuando no se aplica ninguno de esos. Se escriben informes con los códigos 3, 4, 5 y 7. Con el código 6, una
 ejecución con `--template` escribe un informe que no lista ningún recurso, y una
 ejecución sin ella no escribe ningún archivo.
 
@@ -289,3 +323,5 @@ Consulta [Subir informes a S3 de forma programada](../examples/scheduled-s3-uplo
 | 4 | Informes escritos, pero `--risk-threshold` encontró una regla de un grupo de seguridad en ese nivel o por encima |
 | 5 | Informes escritos, pero una cuenta no se pudo analizar o se quedó sin tiempo, y pasaste `--fail-on-account-error` |
 | 6 | No hay recursos que informar, y pasaste `--fail-if-empty` |
+| 7 | Un hallazgo de política falló con la gravedad indicada o una superior: `--policy-fail-on` en un escaneo, o `--fail-on` de `inventag policy check`. En un escaneo, el 7 llega solo cuando no se aplican el 5, el 6, el 3 y el 4. Se escribe el archivo de hallazgos. |
+| 8 | Solo de `inventag policy check` con `--fail-on-not-evaluated`: algo no se pudo evaluar. El 8 gana al 7. Un escaneo nunca termina con 8. Se escribe el archivo de hallazgos. |

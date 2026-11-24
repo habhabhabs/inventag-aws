@@ -82,7 +82,12 @@ inventag --create-excel --finops-checks
 
 使用 `--per-account-reports` 时，每个账户的报告只列出该账户的结果。
 
-使用 `--template` 时，这些检查不运行：InvenTag 显示一条警告，不写 `FinOps` 工作表。
+使用 `--template` 时不写 `FinOps` 工作表。检查在本次运行的状态快照上运行，使用随附的策略集 `finops-checks`，发现项写入输出目录中的 `policy_findings_<timestamp>.json`，控制台上有文字摘要。不使用 `--policy-fail-on` 时，它们不改变退出码。同时使用 `--disable-state-management` 时没有快照：会有一条警告说明没有写入任何 FinOps 发现项。
+
+这些发现项来自随附的策略集 `finops-checks`，也就是写成策略的同样六项检查。由此得到两点：
+
+- 不使用 `--template` 的运行所写的 `FinOps` 工作表与 v1.4.3 写出的逐字节相同（有一个测试把它与由 v1.4.3 生成的黄金文件（golden）比较）。`--template` 和 `inventag policy check --set finops-checks` 所用的策略引擎遵循策略语言的书面规则，在少数情况下得到与工作表不同的答案。测试发现了五种：账户的某个 Tagging API 列表失败时的全局资源（`FIN-006`）；在 Tagging API 列表失败的区域中、所有键都存在的资源（`FIN-006`）；经典 `elb` 列表失败，引擎还把它算到 `elbv2` 列表的负载均衡器头上（`FIN-005`）；只知道身份的目标组（`FIN-005`）；以及没有 ARN 且其 `elbv2` 列表失败的负载均衡器，其原因的先后顺序（`FIN-005`）。除这些测试之外的其他差异：未验证。
+- `--policy-fail-on` 也适用于这些发现项：同时使用 `--finops-checks`、`--template`、`--policy` 和 `--policy-fail-on SEVERITY` 时，在该严重程度或更高程度失败的 `FIN-` 发现项会给出退出码 7。随附的检查严重程度为 `low`。发现项不改变退出码的规则只在不使用 `--policy-fail-on` 时成立。
 
 ## `finops_checks` 结果 {#the-finops_checks-result}
 
@@ -151,6 +156,21 @@ SDK 会重试被限流的请求，每次重试都是一个新请求。AWS 对每
 - 标签键只有在付费（payer）账户中被激活为成本分配标签之后，才会显示支出。
 - 组织中的成员账户看到的可能比付费账户少，并且 `ListCostAllocationTags` 可能无法从成员账户应答。
 - 应答的形式与测试使用的一致。测试使用的应答与 Cost Explorer 应答的形式相同，并已对照 botocore 服务模型检查。
+
+## `--enable-cost-analysis` 的成本趋势 {#the-cost-trend-of---enable-cost-analysis}
+
+`--enable-cost-analysis` 与 `--finops-checks` 和 `--finops-cost-allocation` 相互独立。除了根据 AWS Pricing API 得出的估算值，它还从 Cost Explorer 读取每个服务最近两个完整月份的已计费成本，并在 `Cost Analysis` 工作表中添加一张表。各列见 [Cost Analysis 工作表](../reference/outputs.md#cost-analysis-sheet)。
+
+- **每个账户，使用该账户自己的凭证。** 扫描多个账户时，读取每个账户自己的账单。在 v1.5.0 之前，它只读取一份账单，使用第一个账户的凭证，并把每个服务的数字除以该服务的资源数量。
+- **每个账户最多 2 次 Cost Explorer 请求**，与服务数量无关：一次读取两个月份，只有答复还有下一页时才发第二次。这是在账单验证每个账户最多 1 次之外的请求。被限流的请求会重试，总共最多 10 次尝试，每次重试都是一次新的请求。AWS 对每次请求收费；见 [Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。发现开始前的计数行把这一部分显示为 `cost trend: N`。
+- **每个账户和服务一行，绝不是每个资源一行。** 这个数字是该服务在该账户中的已计费总额。它不是某个资源的成本，也不会在资源之间分摊。
+- **服务按计费名称查找。** S3、SQS 和 SNS 有趋势，EC2 的数字不再包含 `Amazon EC2 Container Registry (ECR)` 或任何其他计费名称中含有“EC2”的服务。服务的数字是 `Billing names counted` 列中所示计费名称的总和。`EC2 - Other`（卷、NAT 网关、数据传输）是单独的计费名称，不在 EC2 的行中。
+- **月与月比较。** 比较运行之前两个完整月份中较早和较晚的那个，绝不拿不完整的月份与完整的月份比较。
+- **请求失败只给出一条警告。** 被拒绝的请求保留 `Permissions:` 行；因其他原因失败的请求，为该账户给出一条警告，该账户随后没有趋势。
+
+从早期版本迁移：Python 结果中 `cost_analysis["cost_trends"]` 的条目不再有 `resource_id`。现在每个账户和服务一个条目，并带有 `account_id`、`billing_names`、`resource_count`、`previous_month`、`current_month` 和 `unit`。多账户运行的数字会改变，EC2 的数字和现在有趋势的服务也会改变。
+
+未针对真实 AWS 验证：真实账户的账单、付款账户和成员账户各自看到的内容，以及答复是否能放进一页。
 
 ## 检查看不到的内容 {#what-the-checks-cannot-see}
 

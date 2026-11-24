@@ -8,7 +8,7 @@ sidebar_position: 10
 
 **適合誰讀：** 你負責雲支出，想根據已有的清單得到一份值得檢視的資源列表。
 
-**讀完後你能做到：** 執行六項 FinOps 檢查，讀懂 `FinOps` 工作表，並知道這些檢檢視不到什麼。
+**讀完後你能做到：** 執行六項 FinOps 檢查，讀懂 `FinOps` 工作表，並知道這些檢查看不到什麼。
 
 ## 執行檢查 {#run-the-checks}
 
@@ -59,7 +59,7 @@ inventag --create-excel --finops-checks
 
 工作表的第一行寫著："These are observations from the inventory. A resource listed here may be intended."（這些是來自清單的觀察結果；這裡列出的資源可能是有意為之。）
 
-然後是列出的結果，列為：`Check ID`、`Check`、`Result`、`Reason`、`Account`、`Region`、`Service`、`Resource Type`、`Resource ID`、`Name`、`Observed`。各行按檢查 ID、帳戶、區域和資源 ID 排序。`Observed` 說明檢檢視到了什麼，例如 "no attachment"、"started 2026-05-02"、"state stopped" 或 "missing: CostCenter, Owner"。API 應答中的其他內容都不會複製到工作表中。
+然後是列出的結果，列為：`Check ID`、`Check`、`Result`、`Reason`、`Account`、`Region`、`Service`、`Resource Type`、`Resource ID`、`Name`、`Observed`。各行按檢查 ID、帳戶、區域和資源 ID 排序。`Observed` 說明檢查看到了什麼，例如 "no attachment"、"started 2026-05-02"、"state stopped" 或 "missing: CostCenter, Owner"。API 應答中的其他內容都不會複製到工作表中。
 
 列出的結果之後是一張表，每項檢查一行，列出 `Fail`、`Not evaluated` 和 `Pass` 的計數。
 
@@ -82,7 +82,12 @@ inventag --create-excel --finops-checks
 
 使用 `--per-account-reports` 時，每個帳戶的報告只列出該帳戶的結果。
 
-使用 `--template` 時，這些檢查不執行：InvenTag 顯示一條警告，不寫 `FinOps` 工作表。
+使用 `--template` 時不寫 `FinOps` 工作表。檢查在本次執行的狀態快照上執行，使用隨附的策略集 `finops-checks`，發現項寫入輸出目錄中的 `policy_findings_<timestamp>.json`，主控台上有文字摘要。不使用 `--policy-fail-on` 時，它們不改變結束代碼。同時使用 `--disable-state-management` 時沒有快照：會有一則警告說明沒有寫入任何 FinOps 發現項。
+
+這些發現項來自隨附的策略集 `finops-checks`，也就是寫成策略的同樣六項檢查。由此得到兩點：
+
+- 不使用 `--template` 的執行所寫的 `FinOps` 工作表與 v1.4.3 寫出的逐位元組相同（有一個測試把它與由 v1.4.3 產生的黃金檔案（golden）比較）。`--template` 和 `inventag policy check --set finops-checks` 所用的策略引擎遵循策略語言的書面規則，在少數情況下得到與工作表不同的答案。測試發現了五種：帳戶的某個 Tagging API 清單失敗時的全域資源（`FIN-006`）；在 Tagging API 清單失敗的區域中、所有鍵都存在的資源（`FIN-006`）；經典 `elb` 清單失敗，引擎還把它算到 `elbv2` 清單的負載均衡器頭上（`FIN-005`）；只知道身分的目標群組（`FIN-005`）；以及沒有 ARN 且其 `elbv2` 清單失敗的負載均衡器，其原因的先後順序（`FIN-005`）。除這些測試之外的其他差異：未驗證。
+- `--policy-fail-on` 也適用於這些發現項：同時使用 `--finops-checks`、`--template`、`--policy` 和 `--policy-fail-on SEVERITY` 時，在該嚴重程度或更高程度失敗的 `FIN-` 發現項會給出結束代碼 7。隨附的檢查嚴重程度為 `low`。發現項不改變結束代碼的規則只在不使用 `--policy-fail-on` 時成立。
 
 ## `finops_checks` 結果 {#the-finops_checks-result}
 
@@ -152,7 +157,22 @@ SDK 會重試被限流的請求，每次重試都是一個新請求。AWS 對每
 - 組織中的成員帳戶看到的可能比付費帳戶少，並且 `ListCostAllocationTags` 可能無法從成員帳戶應答。
 - 應答的形式與測試使用的一致。測試使用的應答與 Cost Explorer 應答的形式相同，並已對照 botocore 服務模型檢查。
 
-## 檢檢視不到的內容 {#what-the-checks-cannot-see}
+## `--enable-cost-analysis` 的成本趨勢 {#the-cost-trend-of---enable-cost-analysis}
+
+`--enable-cost-analysis` 與 `--finops-checks` 和 `--finops-cost-allocation` 相互獨立。除了根據 AWS Pricing API 得出的估算值，它還從 Cost Explorer 讀取每個服務最近兩個完整月份的已計費成本，並在 `Cost Analysis` 工作表中新增一張表。各欄見 [Cost Analysis 工作表](../reference/outputs.md#cost-analysis-sheet)。
+
+- **每個帳戶，使用該帳戶自己的憑證。** 掃描多個帳戶時，讀取每個帳戶自己的帳單。在 v1.5.0 之前，它只讀取一份帳單，使用第一個帳戶的憑證，並把每個服務的數字除以該服務的資源數量。
+- **每個帳戶最多 2 次 Cost Explorer 請求**，與服務數量無關：一次讀取兩個月份，只有答覆還有下一頁時才發第二次。這是在帳單驗證每個帳戶最多 1 次之外的請求。被限流的請求會重試，總共最多 10 次嘗試，每次重試都是一次新的請求。AWS 對每次請求收費；見 [Cost Explorer 定價](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。發現開始前的計數行把這一部分顯示為 `cost trend: N`。
+- **每個帳戶和服務一列，絕不是每個資源一列。** 這個數字是該服務在該帳戶中的已計費總額。它不是某個資源的成本，也不會在資源之間分攤。
+- **服務按計費名稱查詢。** S3、SQS 和 SNS 有趨勢，EC2 的數字不再包含 `Amazon EC2 Container Registry (ECR)` 或任何其他計費名稱中含有「EC2」的服務。服務的數字是 `Billing names counted` 欄中所示計費名稱的總和。`EC2 - Other`（磁碟區、NAT 閘道、資料傳輸）是單獨的計費名稱，不在 EC2 的列中。
+- **月與月比較。** 比較執行之前兩個完整月份中較早和較晚的那個，絕不拿不完整的月份與完整的月份比較。
+- **請求失敗只給出一則警告。** 被拒絕的請求保留 `Permissions:` 行；因其他原因失敗的請求，為該帳戶給出一則警告，該帳戶隨後沒有趨勢。
+
+從早期版本遷移：Python 結果中 `cost_analysis["cost_trends"]` 的項目不再有 `resource_id`。現在每個帳戶和服務一個項目，並帶有 `account_id`、`billing_names`、`resource_count`、`previous_month`、`current_month` 和 `unit`。多帳戶執行的數字會改變，EC2 的數字和現在有趨勢的服務也會改變。
+
+未針對真實 AWS 驗證：真實帳戶的帳單、付款帳戶和成員帳戶各自看到的內容，以及答覆是否能放進一頁。
+
+## 檢查看不到的內容 {#what-the-checks-cannot-see}
 
 - `FIN-004` 不給出時長。例項列表中沒有可靠的停止時間，所以已停止的例項不論停止多久都會列出。
 - `FIN-005` 不讀取目標的健康狀態。目標全部不健康的負載均衡器結果為 pass。讀取目標健康狀態需要新的 AWS 呼叫。

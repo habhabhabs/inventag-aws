@@ -110,6 +110,7 @@ spec:                      # the settings for this kind
 | `spec.scope.services` | 文本列表 | `[]` | 只检查这些服务（与报告中显示的一致，例如 `EC2`、`S3`）。为空表示所有服务。 |
 | `spec.scope.resource_types` | 文本列表 | `[]` | 只检查这些资源类型（例如 `Bucket`、`Instance`）。为空表示所有类型。 |
 | `spec.scope.exclude_resource_types` | 文本列表 | `[]` | 从不检查这些资源类型，例如无法携带标签的类型。 |
+| `spec.scope.filters` | 映射列表 | `[]` | 只检查这些条目选中的资源，写法与策略的 `filters` 相同（`type: value` 条目，可用 `and`、`or` 和 `not`）。被它们排除的资源属于范围之外。它们无法判定的资源（例如标签未被读取时的标签筛选）会被计为未评估，并且不会被检查。为空表示没有筛选。 |
 
 ### config 模板（`kind: config`） {#config-templates-kind-config}
 

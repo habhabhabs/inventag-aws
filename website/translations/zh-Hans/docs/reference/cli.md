@@ -24,13 +24,20 @@ inventag templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] 
 inventag templates validate NAME|PATH [NAME|PATH ...]
 inventag selftest                      check this copy of InvenTag, offline
 inventag completion bash|zsh|fish      print a shell completion script
+inventag policy validate PATH [PATH ...]
+inventag policy list [--policies PATH ...] [--set NAME] [--shipped]
+inventag policy schema [FIELD] [--json]
+inventag policy test [DIR]
+inventag policy check --snapshot FILE [--policies PATH ...] [--set NAME] [--fail-on SEVERITY]
+inventag policy explain POLICY --snapshot FILE [--policies PATH ...] [--set NAME]
+inventag policy lock [PATH] [--check]
 ```
 
 `inventag` 命令在 Linux、macOS 和 Windows 上的用法相同。
 
 未针对 Windows 或 macOS 验证：`inventag` 命令的行为与在 Linux 上相同。
 
-`templates`、`selftest` 和 `completion` 必须是程序名之后的第一个词。
+`templates`、`selftest`、`completion` 和 `policy` 必须是程序名之后的第一个词。
 
 ## 模板 {#templates}
 
@@ -106,15 +113,42 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 |---|---|---|---|
 | `--finops-cost-allocation` | 关闭 | 可用 | 用每个账户自己的凭证，从 Cost Explorer 读取该账户上个月的支出：按服务、按关联账户，以及按内置 `finops-cost-allocation` 策略中每个已激活的成本分配标签键。在末尾添加一个 `FinOps costs` 工作表。每个账户最多 7 个 Cost Explorer 请求；SDK 的重试会增加请求，AWS 对每个请求收费。需要 `ce:ListCostAllocationTags`。使用 `--template` 时不添加任何内容。见 [FinOps 检查](../guides/finops-checks.md#cost-allocation-from-cost-explorer)。 |
 | `--no-cost-in-snapshot` | 关闭 | 可用 | 与 `--finops-cost-allocation` 一起使用：不把成本数字写入状态快照；工作表照常写出。单独使用时只显示一条警告，没有作用。 |
-| `--finops-checks` | 关闭 | 可用 | 对扫描找到的资源运行六项 FinOps 检查（`FIN-001` 到 `FIN-006`），并在 Excel 报告末尾添加一个 `FinOps` 工作表。不再发出任何 AWS 调用，不需要额外的权限，其检查结果也不改变退出码。使用 `--template` 时不添加任何内容。见 [FinOps 检查](../guides/finops-checks.md)。 |
+| `--finops-checks` | 关闭 | 可用 | 对扫描找到的资源运行六项 FinOps 检查（`FIN-001` 到 `FIN-006`），并在 Excel 报告末尾添加一个 `FinOps` 工作表。不再发出任何 AWS 调用，不需要额外的权限，其检查结果也不改变退出码。使用 `--template` 时不添加工作表：检查在本次运行的状态快照上进行，发现项写入 `policy_findings_<timestamp>.json`；同时使用 `--disable-state-management` 时，会有一条警告说明没有写入任何 FinOps 发现项。见 [FinOps 检查](../guides/finops-checks.md)。 |
 | `--enable-network-analysis` | 关 | 可用 | 找到 VPC 时，在 Excel 报告中添加 `Network Analysis` 工作表。与 `--template` 一起使用时不添加任何内容。见[网络与安全分析](../guides/network-and-security-analysis.md)。 |
 | `--enable-security-analysis` | 关 | 可用 | 找到安全组时，在 Excel 报告中添加 `Security Analysis` 工作表。与 `--template` 一起使用时不添加任何内容。 |
-| `--enable-cost-analysis` | 关 | 可用 | 在默认工作簿中添加 Cost Analysis 工作表（以及四个 `forgotten_analysis.*` 列）。会调用 Cost Explorer、Pricing 和 CloudWatch；`--no-billing-validation` 与它相互独立，不会停止这些调用。 一次运行中的 Cost Explorer 请求：启用账单验证时（默认）每个账户最多一次，使用 `--enable-cost-analysis` 时整个运行最多再多一次。单账户运行同时使用两者时最多发出 2 次；使用 `--no-billing-validation` 时最多发出 1 次。被限流的请求会重试，总共最多 10 次尝试，每次重试都是一次新的请求。AWS 对每次请求收费。需要 `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`。费用是根据 AWS Pricing API 得出的估算值，不是你的账单。 |
+| `--enable-cost-analysis` | 关 | 可用 | 在默认工作簿中添加 Cost Analysis 工作表（以及四个 `forgotten_analysis.*` 列）。会调用 Cost Explorer、Pricing 和 CloudWatch；`--no-billing-validation` 与它相互独立，不会停止这些调用。 一次运行中的 Cost Explorer 请求：账单验证（默认开启）每个账户最多一次，成本趋势每个账户最多 2 次，每次都使用该账户自己的凭证读取。单账户运行同时使用两者时最多发出 3 次；使用 `--no-billing-validation` 时最多发出 2 次。被限流的请求会重试，总共最多 10 次尝试，每次重试都是一次新的请求。AWS 对每次请求收费。运行会在发现开始前以警告形式说明最多的请求数。需要 `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`。费用是根据 AWS Pricing API 得出的估算值，不是你的账单；成本趋势表显示 Cost Explorer 的已计费金额，每个账户和服务一行。见[输出文件](./outputs.md#cost-analysis-sheet)和 [FinOps 检查](../guides/finops-checks.md#the-cost-trend-of---enable-cost-analysis)。 |
 | `--billing-validation`, `--no-billing-validation` | 开 | 可用 | 在发现阶段使用 Cost Explorer 找出有支出的服务。AWS 对每次 Cost Explorer 请求收费。详见[Cost Explorer 定价](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。`--no-billing-validation` 会停止这些调用；`--enable-cost-analysis` 与它相互独立，仍会调用 Cost Explorer。 |
 
 未针对真实的 AWS 验证：`--enable-cost-analysis` 只需要这两项额外权限，并且估算值与 AWS 价格一致。
 
 未针对真实的 AWS 验证：AWS 计费的请求次数，以及 AWS 是否对重试计费。
+
+## 策略 {#policies}
+
+策略是描述资源应当是什么样子的文件。InvenTag 读取并报告；策略不会改变账户中的任何内容。下面的参数在扫描之后，对本次运行的状态快照检查策略。`inventag policy` 命令不需要扫描，直接检查已保存的快照（见 [`policy` 子命令](#policy-subcommands)）。
+
+| 参数 | 默认值 | 状态 | 作用 |
+|---|---|---|---|
+| `--policy PATH` | 无 | 可用 | 策略文件、策略集或文件夹；可重复指定。扫描之后，对本次运行的状态快照检查这些策略，打印文字摘要，并把 `policy_findings_<timestamp>.json` 写入输出目录。也可与 `--template` 一起使用：检查在状态快照上进行，使用模板的运行同样会写出状态快照。无效的策略会在任何 AWS 调用之前以退出码 1 停止运行。与 `--disable-state-management` 一起使用时，运行以退出码 2 停止。 |
+| `--policy-waivers FILE` | 无 | 可用 | `--policy` 使用的豁免文件。没有 `--policy`：退出码 2。 |
+| `--policy-fail-on SEVERITY` | 无 | 可用 | `info`、`low`、`medium`、`high` 或 `critical`。当有发现项在该严重程度或更高程度失败时，退出码为 7。退出码 5、6、3 和 4 优先。没有 `--policy`：退出码 2。扫描没有对应退出码 8 的参数。 |
+| `--policy-format LIST` | `json` | 可用 | 要写出的文件，用逗号分隔：`json`、`sarif`、`junit`、`markdown`。未知格式：退出码 2。没有 `--policy`：退出码 2。见[策略发现项](./outputs.md#policy-findings)。 |
+
+### `policy` 子命令 {#policy-subcommands}
+
+`inventag policy` 读取已保存的状态快照（`state/state_<timestamp>.json`）和策略文件。它不发出任何 AWS 调用，也不需要凭证。`inventag policy COMMAND --help` 会打印某个命令的参数。
+
+| 命令 | 作用 |
+|---|---|
+| `policy validate PATH ...` | 检查策略、策略集和豁免文件及文件夹，但不做任何评估。每个文件打印一行 `OK`，每个问题打印为 `error: FILE:LINE: FIELD: PROBLEM`。`--now DATE`（`YYYY-MM-DD`，默认为 UTC 的今天）是判断豁免是否过期所用的日期。退出码 0：没有问题。退出码 1：有问题。退出码 2：没有给出路径。 |
+| `policy list` | 列出策略：ID、严重程度、版本、12 个字符的摘要（digest）和文件。`--policies PATH ...` 指定文件或文件夹（默认 `.inventag/policies`）。`--set NAME` 列出一个策略集的成员：先在给定的路径中找，找不到则用随 InvenTag 提供的策略集。`--shipped` 列出随 InvenTag 提供的策略集及各自的策略数（不能与 `--set` 同用：退出码 2）。退出码 0；文件无法读取或策略集未知时为 1。 |
+| `policy schema [FIELD]` | 打印策略文件的字段及其规则；给出字段名时，打印该字段的帮助。`--json` 打印供编辑器使用的 JSON Schema（比 `policy validate` 宽松：最终以 `validate` 为准）。退出码 0；字段未知时为 1。 |
+| `policy test [DIR]` | 运行策略文件夹（默认 `.inventag/policies`）下 `tests/<policy name>/*.yaml` 中的测试用例（fixture），每个用例打印一行 `PASS` 或 `FAIL`，最后打印计数。没有测试用例的策略会收到警告。退出码 0：所有预期都成立。退出码 1：有用例失败或无效。 |
+| `policy check --snapshot FILE` | 对快照评估策略并报告。`--policies PATH ...`（默认 `.inventag/policies`）、`--set NAME`（只用该策略集：先在给定路径中找，找不到则用随附的）、`--waivers FILE`、`--baseline FILE`（较早的快照，用于基线检查）、`--now DATE`、`--show-values`（显示未通过检查的值；被屏蔽的值仍然屏蔽）、`--locked`（拒绝与 `policy.lock` 不一致的策略文件）。`--format LIST` 用逗号分隔：`text`（默认；输出到屏幕，不写文件）、`json`、`sarif`、`junit` 和 `markdown`（写成文件，位于 `--output-directory`，默认当前文件夹）。`--fail-on SEVERITY` 在有发现项于该严重程度或更高程度失败时给出退出码 7；`--fail-on-not-evaluated` 在有内容无法评估时给出退出码 8。不带这两个参数时，命令只报告并以退出码 0 结束。退出码：0、1（文件无效或无法读取；不写出任何内容）、2（选项无效；不写出任何内容）、7、8（8 优先于 7）。 |
+| `policy explain POLICY --snapshot FILE` | 显示一条策略如何对每一行做出判定：结果、起决定作用的每项检查，以及策略各部分及其判定的 `trace:`。`--resource ARN` 只看一个资源。`--policies`、`--set`、`--baseline`、`--now` 和 `--show-values` 与 `check` 相同。退出码 0 或 1。 |
+| `policy lock [PATH]` | 在策略文件夹（默认 `.inventag/policies`）中写入 `policy.lock`：每个策略、策略集和豁免文件的 SHA-256 摘要。`--check` 只检查锁文件是否是最新的。退出码 0 或 1。 |
+
+未针对真实 AWS 验证：真实账户生成的快照。测试使用的是由模拟账户生成的快照和手写的行。
 
 ## 配置文件 {#configuration-files}
 
@@ -166,7 +200,7 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 | `--fail-on-account-error` | 关 | 可用 | 有账户无法扫描或超出时限时，以退出码 5 结束。报告仍会写出。不带该参数时，这样的运行以退出码 0 结束，除非所有账户都失败。 |
 | `--fail-if-empty` | 关 | 可用 | 没有找到资源或筛选条件把它们全部去掉时，以退出码 6 结束。 |
 
-如果同时满足多个条件，先是 5，然后是 6，然后是 3，最后是 4。退出码 3、4 和 5 会写出报告。
+如果同时满足多个条件，先是 5，然后是 6，然后是 3，最后是 4。退出码 7（使用 `--policy-fail-on` 时）只在上述都不适用时出现。退出码 3、4、5 和 7 会写出报告。
 对于退出码 6，带 `--template` 的运行会写出一份不列出任何资源的报告，不带 `--template` 的运行则不写文件。
 
 ## 日志 {#logging}
@@ -279,3 +313,5 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 | 4 | 报告已写出，但 `--risk-threshold` 发现有安全组规则达到或超过该级别 |
 | 5 | 报告已写出，但有账户无法扫描或超出时限，并且你传入了 `--fail-on-account-error` |
 | 6 | 没有可报告的资源，并且你传入了 `--fail-if-empty` |
+| 7 | 有策略发现项在你给出的严重程度或更高程度失败：扫描中用 `--policy-fail-on`，或 `inventag policy check` 的 `--fail-on`。在扫描中，7 只在 5、6、3 和 4 都不适用时出现。发现项文件会写出。 |
+| 8 | 仅来自带 `--fail-on-not-evaluated` 的 `inventag policy check`：有内容无法评估。8 优先于 7。扫描从不以 8 结束。发现项文件会写出。 |

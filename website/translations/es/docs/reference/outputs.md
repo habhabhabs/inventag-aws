@@ -37,11 +37,13 @@ de ejemplo).
 | `tag_compliance_<timestamp>.json` | Hay una política de etiquetas activa | Resultados de la comprobación de etiquetas |
 | `state/state_<timestamp>.json` | Cada ejecución, salvo con `--disable-state-management` | Instantánea de todos los recursos encontrados, con los valores secretos ocultos. `metadata.tags.coverage_summary` cuenta, por cuenta, cómo terminaron las llamadas de listado (`ok`, `empty`, `denied`, `throttled`, `error`, `timeout`, y `out_of_scope` para los servicios que `--account-services` dejó fuera). `metadata.tags.units_not_read` lista los listados que no se leyeron (solo cuando alguno falló), y `metadata.tags.inventag_version` nombra la versión de InvenTag que escribió la instantánea. Las instantáneas con más de 30 días, o más allá de las 100 más recientes, se eliminan (`--state-retention-days`, `--state-max-snapshots`). |
 | `state/metadata.json` | Con instantáneas | Índice de instantáneas: hora, cuenta, regiones, número de recursos, suma de comprobación |
+| `policy_findings_<timestamp>.json` | `--policy` (el valor por defecto de `--policy-format`), `--finops-checks` con `--template`, o `inventag policy check --format json` | El resultado de comprobar políticas sobre una instantánea. Consulta [Hallazgos de las políticas](#policy-findings). |
+| `policy_findings_<timestamp>.sarif`, `.xml` y `.md` | `--policy-format sarif`, `junit` o `markdown`, o las mismas palabras en `--format` de `inventag policy check` | El mismo resultado como SARIF 2.1.0, JUnit XML y Markdown. `junit` escribe `.xml` y `markdown` escribe `.md`. |
 | `changelog_<timestamp>.md` | Segunda ejecución y siguientes, salvo con `--no-generate-changelog` o `--disable-delta-detection` | Qué se añadió, eliminó o cambió desde la instantánea anterior. Consulta [Sigue los cambios](../guides/track-changes.md). |
 | El archivo que nombres con `--audit-output` | Cuando lo pides | Todas las operaciones de AWS que llamó la ejecución |
 | `state/partial/<key>/<account-id>.json` | Una ejecución en la que fallaron algunas cuentas | Resultados de las cuentas que terminaron; `--resume` los reutiliza y se borran tras una ejecución completa |
 
-`<timestamp>` es `YYYYMMDD_HHMMSS`. Los nombres del informe, de Word, del registro de cambios y del cumplimiento de etiquetas usan la hora local de tu equipo. La instantánea y la carpeta de S3 usan UTC.
+`<timestamp>` es `YYYYMMDD_HHMMSS`. Los nombres del informe, de Word, del registro de cambios y del cumplimiento de etiquetas usan la hora local de tu equipo. La instantánea y la carpeta de S3 usan UTC. El `<timestamp>` de un archivo `policy_findings_` es la hora guardada en la instantánea que se comprobó (UTC), no el reloj de la comprobación.
 
 El libro predeterminado tiene una columna `raw_data.*` por cada campo de la API, así que sus hojas pueden ser anchas. Una instantánea es JSON con sangría y contiene todo el `raw_data` de cada recurso, así que puede ser grande. Ninguna opción omite las columnas `raw_data.*` ni comprime una instantánea; ambas están previstas para una versión posterior.
 
@@ -61,7 +63,9 @@ El libro predeterminado tiene una columna `raw_data.*` por cada campo de la API,
 - Hojas **Network Analysis** y **Security Analysis**, solo con
   `--enable-network-analysis` o `--enable-security-analysis`.
 - Hoja **Cost Analysis**, solo con `--enable-cost-analysis`: costes mensuales
-  estimados a partir de la API AWS Pricing, no tu factura.
+  estimados a partir de la API AWS Pricing, no tu factura, y una tabla del coste
+  facturado por cada cuenta y servicio, de Cost Explorer. Consulta
+  [Hoja Cost Analysis](#cost-analysis-sheet).
 - Hoja **FinOps**, la última, solo con `--finops-checks`: consulta
   [Hoja FinOps y la clave `finops_checks`](#finops-sheet-and-the-finops_checks-key).
 
@@ -116,6 +120,56 @@ columnas `Account`, `Grouping`, `Value`, `Amount`, `Currency`, `Metric`,
 JSON tienen la clave `finops_costs`; la instantánea tiene
 `metadata.tags.cost_allocation` (solo tablas, salvo con `--no-cost-in-snapshot`).
 Consulta [Comprobaciones FinOps](../guides/finops-checks.md#cost-allocation-from-cost-explorer).
+## Hoja Cost Analysis {#cost-analysis-sheet}
+
+Con `--enable-cost-analysis`, el libro predeterminado tiene una hoja `Cost Analysis`. Su primera fila dice que las cifras son estimaciones de la API AWS Pricing y no tu factura. Las tablas siguen en este orden: `Summary`, el coste mensual estimado por servicio, los recursos más caros (los 50 primeros), la tendencia de costes, los recursos posiblemente olvidados y las recomendaciones. Toda tabla posterior a `Summary` se omite cuando no tiene filas.
+
+La tabla de tendencia de costes se titula «Billed cost by account and service, last two full months (Cost Explorer; a service total, not a resource's cost)». Tiene una fila por cada cuenta y servicio, de la factura propia de Cost Explorer de esa cuenta, con las columnas:
+
+| Columna | Contenido |
+|---|---|
+| `Account` | El ID de cuenta de los recursos |
+| `Service` | El servicio tal como lo nombra el informe, por ejemplo `EC2` o `S3` |
+| `Resources` | Cuántos recursos de ese servicio tiene la cuenta en el informe |
+| `Earlier month` | El más antiguo de los dos meses completos anteriores a la ejecución, como `YYYY-MM` |
+| `Billed (USD)` (primera) | Lo que Cost Explorer facturó por el servicio en ese mes |
+| `Later month` | El mes más reciente, como `YYYY-MM` |
+| `Billed (USD)` (segunda) | Lo que Cost Explorer facturó por el servicio en el mes más reciente |
+| `Change %` | El cambio del mes anterior al más reciente, redondeado a un decimal. Desde una factura de cero es 100 si el mes más reciente se facturó, y 0 en caso contrario |
+| `Direction` | `increasing` o `decreasing`, o `stable` cuando el cambio es inferior al 5 por ciento en cualquiera de los dos sentidos |
+| `Billing names counted` | Los nombres de servicio de Cost Explorer que se sumaron en esa fila, separados por comas |
+
+Las columnas de importes muestran la unidad que devolvió Cost Explorer: `Billed (USD)` cuando todas las filas tienen la misma unidad y, si no, `Billed (unit as returned)`, y cada celda termina entonces con su unidad. Una fila es un total del servicio en la cuenta, no el coste de un recurso, y no se reparte entre recursos. La cifra de un servicio es la suma de los nombres de facturación que muestra su fila. `EC2 - Other` (volúmenes, gateways NAT, transferencia de datos) es un nombre de facturación distinto y no está en la fila de EC2; `Amazon EC2 Container Registry (ECR)` tampoco. Una cuenta cuya solicitud de tendencia fue denegada o falló, o que no tiene sesión, no tiene filas, y la ejecución lo dice en una advertencia. Los meses son los dos meses completos anteriores a la ejecución.
+
+En Python, las mismas filas son `cost_analysis["cost_trends"]` del resultado de `CloudBOMGenerator.generate_multi_account_bom()`. Cada entrada tiene `account_id`, `service`, `billing_names`, `resource_count`, `previous_month`, `current_month`, `previous_monthly_cost`, `current_monthly_cost`, `cost_change_percentage`, `trend_direction`, `alert_triggered` y `unit`. Antes de v1.5.0, ninguna hoja mostraba la tendencia; cada entrada de `cost_trends` nombraba un recurso (`resource_id`) y contenía el total del servicio dividido por el número de sus recursos. Esas entradas ya no existen: el código que lee `resource_id` de `cost_trends` debe leer una entrada por cada cuenta y servicio. Consulta [Comprobaciones FinOps](../guides/finops-checks.md#the-cost-trend-of---enable-cost-analysis).
+
+No verificado contra AWS real: las facturas que devuelve una cuenta real, incluido lo que ven una cuenta de administración (pagadora) y una cuenta miembro.
+
+## Hallazgos de las políticas {#policy-findings}
+
+`inventag policy check`, `--policy` y `--finops-checks` con `--template` escriben el resultado de comprobar políticas sobre una instantánea de estado en archivos llamados `policy_findings_<timestamp>.<extension>` en el directorio de salida (la carpeta de `--output-directory` para `inventag policy check`):
+
+| Extensión | Formato | Se escribe para |
+|---|---|---|
+| `.json` | El resultado completo | `json` |
+| `.sarif` | SARIF 2.1.0, para herramientas de análisis de código | `sarif` |
+| `.xml` | JUnit XML, un caso de prueba por cada política | `junit` |
+| `.md` | Tablas Markdown, como máximo 50 filas por política | `markdown` |
+
+Un escaneo escribe `.json` salvo que `--policy-format` diga otra cosa. `inventag policy check` imprime texto en pantalla y no escribe ningún archivo salvo que `--format` nombre uno; no escribe nada cuando termina con el código 1 o 2.
+
+El archivo JSON tiene estas claves de primer nivel: `schema_version`, `inventag_version`, `now`, `snapshot`, `baseline`, `policies`, `summary`, `findings`, `not_evaluated_units`, `not_evaluated_policies` y `unused_waivers`. Las claves van ordenadas y el archivo termina con un salto de línea. No contiene nombre de host, nombre de usuario, ruta absoluta ni hora del reloj, así que la misma instantánea y las mismas políticas dan los mismos bytes. Con InvenTag se empaqueta un JSON Schema para él (`inventag/policy/outputs/schemas/policy-findings-1.json`); su `$id` es el nombre `urn:inventag:schema:policy-findings:1`, no una dirección web.
+
+- `findings` lista cada fila cuyo resultado es `fail`, `waived` o `not_evaluated`. Un `pass` y una fila que una política no selecciona (`out_of_scope`) se cuentan en `summary` y en el `counts` de cada política, pero no se listan.
+- Un hallazgo `not_evaluated` tiene un `reason`: `identity_only`, `field_missing`, `tags_not_read`, `listing_not_read`, `not_comparable`, `not_convertible` o `value_too_long`. Un hueco en los datos nunca es un acierto.
+- `not_evaluated_units` lista los listados del escaneo que no se leyeron y que una política habría necesitado. `unused_waivers` lista las exenciones que no coincidieron con nada, con `why`: `no match`, `expired`, `unknown policy` o `superseded`.
+- `summary.exit_code` es 0, 7 u 8.
+- El valor de un campo de un recurso se muestra solo con `--show-values`, y un valor enmascarado sigue enmascarado. SARIF y JUnit nunca llevan un valor.
+
+En las formas de texto y Markdown, la última línea dice qué significa el código de salida, por ejemplo `Exit code 7: at least one finding failed at severity high or higher.` Sin umbral dice `Exit code 0: findings are reported; no threshold was set.` Consulta [Códigos de salida](./cli.md#exit-codes).
+
+No verificado: cómo muestra GitHub code scanning el archivo SARIF, o cómo muestra GitLab el archivo JUnit. Las pruebas comparan los archivos con archivos de referencia (golden), y el archivo SARIF con un esquema corto que se empaqueta con InvenTag, no con el esquema SARIF completo.
+
 ## Informe de Word {#word-report}
 
 **Sin plantilla:** un título, un resumen ejecutivo, una tabla de servicios y

@@ -20,7 +20,7 @@ sidebar_position: 3
 | `ec2:DescribeRegions` | 列出已啟用的區域，並檢查你掃描的每個區域 | 即使使用 `--account-regions`，每個區域都會進行檢查。檢查失敗的區域會被跳過並給出警告。如果該呼叫在每個區域都被拒絕，則掃描所有區域。 |
 | `account:ListRegions` | 在 `ec2:DescribeRegions` 失敗時列出已啟用的區域 | `ec2:DescribeRegions` 正常時不會呼叫。 |
 | `tag:GetResources` | 找出帶標籤的資源（Resource Groups Tagging API） | IAM 字首是 `tag`，而不是 `resourcegroupstaggingapi`。 |
-| `ce:GetCostAndUsage` | 找出有支出的服務 | **AWS 按請求收費。** 詳見[Cost Explorer 定價](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。 一次執行中的 Cost Explorer 請求：啟用帳單驗證時（預設）每個帳戶最多一次，使用 `--enable-cost-analysis` 時整個執行最多再多一次。單帳戶執行同時使用兩者時最多發出 2 次；使用 `--no-billing-validation` 時最多發出 1 次。被限流的請求會重試，總共最多 10 次嘗試，每次重試都是一次新的請求。AWS 對每次請求收費。如果被拒絕，發現過程會在沒有帳單資料的情況下繼續。`--no-billing-validation` 會停止這些呼叫，此後你可以不授予這項權限。 |
+| `ce:GetCostAndUsage` | 找出有支出的服務 | **AWS 按請求收費。** 詳見[Cost Explorer 定價](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。 一次執行中的 Cost Explorer 請求：帳單驗證（預設開啟）每個帳戶最多一次，使用 `--enable-cost-analysis` 時成本趨勢每個帳戶再多最多 2 次，每次都使用該帳戶自己的憑證。單帳戶執行同時使用兩者時最多發出 3 次；使用 `--no-billing-validation` 時最多發出 2 次。被限流的請求會重試，總共最多 10 次嘗試，每次重試都是一次新的請求。AWS 對每次請求收費。如果被拒絕，發現過程會在沒有帳單資料的情況下繼續。`--no-billing-validation` 會停止這些呼叫，此後你可以不授予這項權限。 |
 | 你想放入報告的每個服務的 `List*`、`Describe*`、`Get*` | 按服務發現 | 例如 `s3:ListAllMyBuckets`、`s3:GetBucketTagging`、`lambda:ListFunctions`、`dynamodb:ListTables`。AWS 託管的 `ReadOnlyAccess` 策略涵蓋了這些。 |
 
 未針對真實的 AWS 驗證：`GetCallerIdentity` 不需要權限，Tagging API 的 IAM 字首是 `tag`，並且 `ReadOnlyAccess` 涵蓋 List、Describe 和 Get 操作。
@@ -32,7 +32,7 @@ sidebar_position: 3
 | 功能 | 額外權限 |
 |---|---|
 | 透過角色掃描其他帳戶 | 對這些角色的 `sts:AssumeRole`，以及每個帳戶中允許你的身份的信任策略 |
-| `--enable-cost-analysis` | `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`（兩者都在儲存庫的策略中）。它還會為整個執行最多再發出一次 `ce:GetCostAndUsage` 請求。 |
+| `--enable-cost-analysis` | `pricing:GetProducts` 和 `cloudwatch:GetMetricStatistics`（兩者都在儲存庫的策略中）。它還會為成本趨勢，對每個帳戶使用該帳戶自己的憑證，最多發出 2 次 `ce:GetCostAndUsage` 請求。 |
 | `--finops-cost-allocation` | `ce:ListCostAllocationTags`（在儲存庫策略中）和 `ce:GetCostAndUsage`。每個帳戶最多 7 個 Cost Explorer 請求，每個請求都使用該帳戶自己的憑證。 |
 | `--s3-bucket` | 對該儲存貯體的 `s3:PutObject`（如果使用 `aws:kms`，還需要對該金鑰的 `kms:GenerateDataKey`） |
 
@@ -41,6 +41,8 @@ sidebar_position: 3
 按專案用來測試的暫定列表，AWS 託管策略 `ReadOnlyAccess` 包含儲存庫策略中的每個操作，但不包含 `sts:AssumeRole`、`s3:PutObject` 和 `kms:GenerateDataKey`。在專案拿到 AWS 策略的原始副本之前，這份列表是暫定的。未針對真實的 AWS 驗證：該列表與 `ReadOnlyAccess` 目前允許的內容一致。見[僅使用 ReadOnlyAccess 執行](../guides/read-only-access.md#run-with-only-readonlyaccess)。
 
 `--finops-checks` 不需要額外的權限：這些檢查讀取掃描已有的行，不發出任何 AWS 呼叫。
+
+`--policy` 和 `inventag policy` 不需要額外的權限。它們讀取策略檔案和狀態快照，不發出任何 AWS 呼叫：測試在封鎖網路的情況下執行策略引擎和 `inventag policy check`。`inventag policy` 不需要憑證。帶 `--policy` 的掃描需要掃描本身所需的權限。
 
 ## 某個操作被拒絕時 {#when-an-action-is-refused}
 

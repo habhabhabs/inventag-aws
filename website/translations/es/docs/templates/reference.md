@@ -120,6 +120,7 @@ con lo que acepta el validador.
 | `spec.scope.services` | lista de textos | `[]` | Comprueba solo estos servicios (tal como se muestran en el informe, por ejemplo `EC2`, `S3`). Vacío significa todos los servicios. |
 | `spec.scope.resource_types` | lista de textos | `[]` | Comprueba solo estos tipos de recurso (por ejemplo `Bucket`, `Instance`). Vacío significa todos los tipos. |
 | `spec.scope.exclude_resource_types` | lista de textos | `[]` | No comprueba nunca estos tipos de recurso, por ejemplo tipos que no pueden llevar etiquetas. |
+| `spec.scope.filters` | lista de mapeos | `[]` | Comprueba solo los recursos que seleccionan estas entradas, escritas como los `filters` de una política (entradas `type: value`, con `and`, `or` y `not`). Un recurso que dejan fuera queda fuera de alcance. Un recurso que no pueden decidir (por ejemplo, un filtro de etiquetas cuando las etiquetas no se leyeron) se cuenta como no evaluado y no se comprueba. Vacío significa sin filtro. |
 
 ### Plantillas de configuración (`kind: config`) {#config-templates-kind-config}
 

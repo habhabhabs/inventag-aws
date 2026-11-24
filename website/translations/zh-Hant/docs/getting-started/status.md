@@ -26,7 +26,8 @@ sidebar_position: 5
 | `--compliance-standard` | 以結束代碼 2 停止，因為像 SOC 2 這樣的標準無法從資源清單中檢查；請改用標籤策略範本。 |
 | `--create-google-docs`、`--create-google-sheets` | 只針對模擬的 Google 客戶端驗證過。參見 [Google Sheets 和 Docs](../guides/google-sheets-and-docs.md#what-is-not-verified)。 |
 | `--finops-cost-allocation` | 使用與 AWS 應答形式相同的 Cost Explorer 應答測試過，沒有針對真實的 AWS 測試。標籤鍵只有在付費帳戶中被啟用為成本分配標籤之後才會顯示支出，成員帳戶看到的可能比付費帳戶少（未驗證）。參見 [成本分配](../guides/finops-checks.md#cost-allocation-from-cost-explorer)。 |
-| `--finops-checks` | `FIN-004` 列出已停止的例項，不論它已停止多久，因為例項列表中沒有可靠的停止時間。`FIN-005` 不讀取目標的健康狀態，所以目標全部不健康的負載均衡器結果為 pass。使用 `--template` 時，這些檢查不執行。在命令列中，結果只在 Excel 工作表中，沒有 JSON 檔案。參見 [FinOps 檢查](../guides/finops-checks.md#what-the-checks-cannot-see)。 |
+| `--finops-checks` | `FIN-004` 列出已停止的例項，不論它已停止多久，因為例項列表中沒有可靠的停止時間。`FIN-005` 不讀取目標的健康狀態，所以目標全部不健康的負載均衡器結果為 pass。使用 `--template` 時不寫出工作表：檢查在狀態快照上執行，發現項寫入 `policy_findings_<timestamp>.json`。不使用 `--template` 時，結果只在 Excel 工作表中，沒有 JSON 檔案。參見 [FinOps 檢查](../guides/finops-checks.md#what-the-checks-cannot-see)。 |
+| `--policy`、`--policy-waivers`、`--policy-fail-on`、`--policy-format`、`inventag policy` | 已離線測試，使用的是模擬帳戶和手寫的快照，沒有針對真實 AWS 測試。策略讀取掃描放在列上的欄位，所以無法判斷掃描沒有顯示的欄位。資料未被讀取的列是 `not_evaluated`，從不算通過。掃描因策略最多以結束代碼 7 結束；只有 `inventag policy check` 會以結束代碼 8 結束。見 [`policy` 子命令](../reference/cli.md#policy-subcommands)和[策略發現項](../reference/outputs.md#policy-findings)。 |
 | `--enable-production-safety`、`--security-validation`、`--enforce-read-only` | 保留下來，讓舊命令仍能執行。唯讀防護始終開啟。 |
 | `--disable-production-safety` | 以結束代碼 2 停止，因為唯讀防護無法關閉。 |
 
@@ -137,12 +138,13 @@ inventag: error: --disable-production-safety: The read-only guard cannot be disa
 請參閱最新的
 [Cost Explorer 定價](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/)。
 
-一次執行中的 Cost Explorer 請求：啟用帳單驗證時（預設）每個帳戶最多一次，使用 `--enable-cost-analysis` 時整個執行最多再多一次。單帳戶執行同時使用兩者時最多發出 2 次；使用 `--no-billing-validation` 時最多發出 1 次。被限流的請求會重試，總共最多 10 次嘗試，每次重試都是一次新的請求。AWS 對每次請求收費。 發現開始之前，執行會給出這個次數（不含重試）：使用 `--enable-cost-analysis` 時作為警告，否則為 info 級別（加 `--verbose` 時顯示）。例如 `Cost Explorer: up to 2 request(s) in this run (billing validation: 1; cost trend: 1). AWS charges for each.`
+一次執行中的 Cost Explorer 請求：帳單驗證（預設開啟）每個帳戶最多一次，使用 `--enable-cost-analysis` 時成本趨勢每個帳戶再多最多 2 次，每次都使用該帳戶自己的憑證讀取。單帳戶執行同時使用兩者時最多發出 3 次；使用 `--no-billing-validation` 時最多發出 2 次。被限流的請求會重試，總共最多 10 次嘗試，每次重試都是一次新的請求。AWS 對每次請求收費。發現開始之前，每次呼叫 Cost Explorer 的執行都會以警告形式給出這個次數（不含重試）。例如 `Cost Explorer: up to 3 request(s) in this run (billing validation: 1; cost trend: 2). AWS charges for each.`
 
 - `--no-billing-validation` 會停止這些呼叫，此時報告裡沒有可供對比的計費資料。
 - `--enable-cost-analysis` 也會呼叫 Cost Explorer，即使加上 `--no-billing-validation` 也是如此。它還會發出 Pricing 和 CloudWatch 呼叫，次數取決於你的資源。每個不同的價格查詢只發出一次，之後重複使用，因此 Pricing 呼叫次數隨不同資源型別和規格的數量增長，而不是隨資源數量增長。
-- 有多個帳戶時，成本趨勢唯讀取一份帳單，使用第一個帳戶的憑證，執行說明會寫：`Cost trend: read once, with the credentials of account <id>. Its figures are that account's Cost Explorer view, not each account's own.` 計劃在 v1.5.0 修復。
-- 成本趨勢按服務名稱的片段在帳單中查詢服務：S3、SQS 和 SNS 沒有趨勢，EC2 的數字可能包含帳單名稱中含有「EC2」的其他服務。一個服務的數字會平均分攤到它的各個資源上；它不是某個資源的成本。計劃在 v1.5.0 修復。
+- 成本趨勢用每個帳戶自己的憑證讀取該帳戶的帳單，並比較執行之前的兩個完整月份。對於答覆能放進一頁的帳戶，第一次請求就夠了（未針對真實 AWS 驗證）；第二次請求讀取答覆的下一頁。如果答覆的頁數超過這個數量，每個帳戶會有一則警告，說明後面頁上的服務沒有趨勢。請求被拒絕或失敗的帳戶沒有趨勢，執行會用一則警告說明。
+- 服務按其計費名稱在帳單中查詢，所以 S3、SQS 和 SNS 有趨勢，EC2 的數字不包含 ECR。`EC2 - Other`（磁碟區、NAT 閘道、資料傳輸）是單獨的計費名稱，不在 EC2 的數字中。一個服務的數字是該帳戶和服務的總額，在 Cost Analysis 工作表中只顯示一次；它不是某個資源的成本，也不會在資源之間分攤。見 [Cost Analysis 工作表](../reference/outputs.md#cost-analysis-sheet)。
+- 在 v1.5.0 之前，趨勢只讀取一份帳單，使用第一個帳戶的憑證，涵蓋所有帳戶的資源，結果中每個資源一個項目（`cost_analysis["cost_trends"]`；沒有工作表顯示它）。這類執行的數字與現在的數字不可比較。
 
 未針對真實的 AWS 驗證：`--enable-cost-analysis` 的成本估算。
 

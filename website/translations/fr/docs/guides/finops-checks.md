@@ -113,8 +113,37 @@ compte AWS simulé :
 Avec `--per-account-reports`, le rapport de chaque compte ne liste que les
 résultats de ce compte.
 
-Avec `--template`, les contrôles ne s’exécutent pas : InvenTag affiche un
-avertissement et n’écrit aucune feuille `FinOps`.
+Avec `--template`, aucune feuille `FinOps` n’est écrite. Les contrôles
+s’exécutent sur l’instantané d’état de l’exécution, comme l’ensemble de
+politiques livré `finops-checks`, et leurs constats sont écrits dans
+`policy_findings_<timestamp>.json` dans le répertoire de sortie, avec un résumé
+en texte sur la console. Sans `--policy-fail-on`, ils ne changent pas le code de
+sortie. Avec `--disable-state-management` en plus, il n’y a pas d’instantané :
+un avertissement dit qu’aucun constat FinOps n’a été écrit.
+
+Ces constats viennent de l’ensemble de politiques livré `finops-checks`, qui
+est constitué des mêmes six contrôles écrits sous forme de politiques. Deux
+choses en découlent :
+
+- La feuille `FinOps` d’une exécution sans `--template` est ce que la v1.4.3
+  écrivait, octet pour octet (un test la compare à un fichier de référence
+  (golden) fait avec la v1.4.3). Le moteur de politiques, utilisé par
+  `--template` et par `inventag policy check --set finops-checks`, suit les
+  règles écrites du langage de politiques et, dans quelques cas, donne une
+  réponse différente de la feuille. Les tests en ont trouvé cinq : une ressource
+  globale quand un listage de l’API de balisage de son compte a échoué
+  (`FIN-006`) ; une ressource dont toutes les clés sont présentes dans une région
+  dont le listage de l’API de balisage a échoué (`FIN-006`) ; un listage `elb`
+  classique qui a échoué, que le moteur compte aussi contre les équilibreurs de
+  charge du listage `elbv2` (`FIN-005`) ; un groupe cible connu seulement par
+  son identité (`FIN-005`) ; et l’ordre des raisons pour un équilibreur de charge
+  sans ARN dont le listage `elbv2` a échoué (`FIN-005`). Non vérifié au-delà de
+  ces tests : d’autres différences.
+- `--policy-fail-on` s’applique aussi à ces constats : avec `--finops-checks`,
+  `--template`, `--policy` et `--policy-fail-on SEVERITY` ensemble, un constat
+  `FIN-` qui échoue à cette gravité ou au-dessus donne le code de sortie 7. Les
+  contrôles livrés ont la gravité `low`. La règle selon laquelle les constats ne
+  changent pas le code de sortie vaut sans `--policy-fail-on`.
 
 ## Le résultat `finops_checks` {#the-finops_checks-result}
 
@@ -251,6 +280,54 @@ Non vérifié sur un vrai AWS :
 - Que les réponses aient la forme qu’utilisent les tests. Les tests utilisent
   des réponses ayant la forme de celles de Cost Explorer, vérifiées par rapport
   au modèle de service de botocore.
+
+## La tendance des coûts de `--enable-cost-analysis` {#the-cost-trend-of---enable-cost-analysis}
+
+`--enable-cost-analysis` est indépendant de `--finops-checks` et de
+`--finops-cost-allocation`. En plus de ses estimations de l’API AWS Pricing, il
+lit dans Cost Explorer le coût facturé de chaque service pour les deux derniers
+mois complets et ajoute un tableau à la feuille `Cost Analysis`. Les colonnes
+sont dans [Feuille Cost Analysis](../reference/outputs.md#cost-analysis-sheet).
+
+- **Pour chaque compte, avec les identifiants propres à ce compte.** Une analyse
+  de plusieurs comptes lit la facture propre à chaque compte. Avant la v1.5.0,
+  elle lisait une seule facture, avec les identifiants du premier compte, et
+  divisait le chiffre de chaque service entre les ressources de ce service.
+- **Au plus 2 requêtes Cost Explorer par compte**, quel que soit le nombre de
+  services : une pour les deux mois, et une seconde seulement pour une page de
+  plus de la réponse. Cela s’ajoute à au plus 1 par compte pour la validation de
+  facturation. Une requête limitée (throttled) est réessayée, jusqu’à 10
+  tentatives en tout, et chaque nouvel essai est une requête de plus. AWS
+  facture chaque requête ; consultez les
+  [tarifs de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
+  La ligne du décompte avant la découverte montre cette part sous la forme
+  `cost trend: N`.
+- **Une ligne par compte et par service, jamais une par ressource.** Le chiffre
+  est le total facturé du service dans le compte. Ce n’est pas le coût d’une
+  ressource et il n’est pas réparti entre les ressources.
+- **Les services sont trouvés par leurs noms de facturation.** S3, SQS et SNS
+  ont une tendance, et le chiffre d’EC2 n’inclut plus `Amazon EC2 Container
+  Registry (ECR)` ni aucun autre service dont le nom de facturation contient
+  « EC2 ». Le chiffre d’un service est la somme des noms de facturation indiqués
+  dans la colonne `Billing names counted`. `EC2 - Other` (volumes, passerelles
+  NAT, transfert de données) est un nom de facturation distinct et n’est pas
+  dans la ligne d’EC2.
+- **On compare mois à mois.** On compare le plus ancien et le plus récent des
+  deux mois complets avant l’exécution, jamais un mois partiel avec un mois
+  complet.
+- **Une requête échouée donne un avertissement.** Une requête refusée garde la
+  ligne `Permissions:` ; une requête qui échoue pour une autre raison donne un
+  avertissement pour ce compte, qui n’a alors pas de tendance.
+
+Migration depuis les versions précédentes : les entrées de
+`cost_analysis["cost_trends"]` du résultat Python n’ont plus `resource_id`. Il y
+a une entrée par compte et par service, avec `account_id`, `billing_names`,
+`resource_count`, `previous_month`, `current_month` et `unit` à la place. Les
+chiffres des exécutions de plusieurs comptes changent, de même que le chiffre
+d’EC2 et les services qui ont maintenant une tendance.
+
+Non vérifié sur un vrai AWS : les factures d’un compte réel, ce que voient un
+compte payeur et un compte membre, et si la réponse tient sur une page.
 
 ## Ce que les contrôles ne peuvent pas voir {#what-the-checks-cannot-see}
 

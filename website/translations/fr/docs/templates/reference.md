@@ -119,6 +119,7 @@ le validateur accepte.
 | `spec.scope.services` | liste de textes | `[]` | Ne vérifie que ces services (tels qu’affichés dans le rapport, par exemple `EC2`, `S3`). Vide signifie tous les services. |
 | `spec.scope.resource_types` | liste de textes | `[]` | Ne vérifie que ces types de ressources (par exemple `Bucket`, `Instance`). Vide signifie tous les types. |
 | `spec.scope.exclude_resource_types` | liste de textes | `[]` | Ne vérifie jamais ces types de ressources, par exemple les types qui ne peuvent pas porter d’étiquettes. |
+| `spec.scope.filters` | liste de mappings | `[]` | Ne vérifie que les ressources que ces entrées sélectionnent, écrites comme les `filters` d’une politique (entrées `type: value`, avec `and`, `or` et `not`). Une ressource qu’elles écartent est hors périmètre. Une ressource qu’elles ne peuvent pas trancher (par exemple un filtre d’étiquettes alors que les étiquettes n’ont pas été lues) est comptée comme non évaluée et n’est pas vérifiée. Vide signifie aucun filtre. |
 
 ### Modèles de configuration (`kind: config`) {#config-templates-kind-config}
 

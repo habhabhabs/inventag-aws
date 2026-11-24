@@ -21,7 +21,7 @@ Para la configuración paso a paso, consulta [Configura el acceso de solo lectur
 | `ec2:DescribeRegions` | Lista las regiones habilitadas y comprueba cada región que analizas | La comprobación se ejecuta para cada región, incluso con `--account-regions`. Una región que no la supera se omite con una advertencia. Si la llamada se deniega en todas las regiones, se analizan todas. |
 | `account:ListRegions` | Lista las regiones habilitadas cuando `ec2:DescribeRegions` falla | No se llama cuando `ec2:DescribeRegions` funciona. |
 | `tag:GetResources` | Encuentra recursos etiquetados (API Resource Groups Tagging) | El prefijo de IAM es `tag`, no `resourcegroupstaggingapi`. |
-| `ce:GetCostAndUsage` | Encuentra servicios con gasto | **AWS cobra por solicitud.** Consulta los [precios de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). Solicitudes a Cost Explorer en una ejecución: como máximo una por cada cuenta cuando la validación de facturación está activada (el valor predeterminado), y como máximo una más para toda la ejecución con `--enable-cost-analysis`. Una ejecución de una sola cuenta con ambas hace como máximo 2; con `--no-billing-validation` hace como máximo 1. Una solicitud limitada (throttled) se reintenta, hasta 10 intentos en total, y cada reintento es una solicitud más. AWS cobra cada solicitud. Si se deniega, el descubrimiento continúa sin datos de facturación. `--no-billing-validation` detiene las llamadas, y entonces puedes omitir este permiso. |
+| `ce:GetCostAndUsage` | Encuentra servicios con gasto | **AWS cobra por solicitud.** Consulta los [precios de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). Solicitudes a Cost Explorer en una ejecución: como máximo una por cada cuenta para la validación de facturación (activada por defecto), y con `--enable-cost-analysis` como máximo 2 más por cada cuenta para la tendencia de costes, cada una con las credenciales propias de esa cuenta. Una ejecución de una sola cuenta con ambas hace como máximo 3; con `--no-billing-validation` hace como máximo 2. Una solicitud limitada (throttled) se reintenta, hasta 10 intentos en total, y cada reintento es una solicitud más. AWS cobra cada solicitud. Si se deniega, el descubrimiento continúa sin datos de facturación. `--no-billing-validation` detiene las llamadas, y entonces puedes omitir este permiso. |
 | `List*`, `Describe*`, `Get*` de cada servicio que quieras en el informe | Descubrimiento por servicio | Por ejemplo `s3:ListAllMyBuckets`, `s3:GetBucketTagging`, `lambda:ListFunctions`, `dynamodb:ListTables`. La política administrada de AWS `ReadOnlyAccess` los cubre. |
 
 No verificado contra AWS real: `GetCallerIdentity` no necesita ningún permiso, el prefijo de IAM de la API Tagging es `tag`, y `ReadOnlyAccess` cubre las acciones List, Describe y Get.
@@ -33,7 +33,7 @@ No verificado contra AWS real: el número de solicitudes que AWS factura, y si A
 | Función | Permiso adicional |
 |---|---|
 | Analizar otras cuentas mediante un rol | `sts:AssumeRole` sobre esos roles, y una política de confianza en cada cuenta que permita tu identidad |
-| `--enable-cost-analysis` | `pricing:GetProducts` y `cloudwatch:GetMetricStatistics` (ambos están en la política del repositorio). También hace como máximo una solicitud `ce:GetCostAndUsage` más para toda la ejecución. |
+| `--enable-cost-analysis` | `pricing:GetProducts` y `cloudwatch:GetMetricStatistics` (ambos están en la política del repositorio). También hace como máximo 2 solicitudes `ce:GetCostAndUsage` por cada cuenta, con las credenciales propias de esa cuenta, para la tendencia de costes. |
 | `--finops-cost-allocation` | `ce:ListCostAllocationTags` (en la política del repositorio) y `ce:GetCostAndUsage`. Como máximo 7 solicitudes a Cost Explorer por cuenta, cada una con las credenciales propias de esa cuenta. |
 | `--s3-bucket` | `s3:PutObject` sobre ese bucket (y `kms:GenerateDataKey` sobre la clave si usas `aws:kms`) |
 
@@ -43,6 +43,8 @@ Según la lista provisional con la que el proyecto hace sus pruebas, la polític
 
 `--finops-checks` no necesita ningún permiso adicional: las comprobaciones leen
 las filas que el escaneo ya tiene y no hacen ninguna llamada a AWS.
+
+`--policy` e `inventag policy` no necesitan ningún permiso adicional. Leen archivos de política y una instantánea de estado y no hacen ninguna llamada a AWS: las pruebas ejecutan el motor de políticas e `inventag policy check` con la red bloqueada. `inventag policy` no necesita credenciales. Un escaneo con `--policy` necesita lo que necesita el escaneo.
 
 ## Cuando se rechaza una acción {#when-an-action-is-refused}
 
