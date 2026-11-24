@@ -80,8 +80,110 @@ from ..exit_codes import (  # noqa: E402
     EXIT_ACCOUNT_FAILED,
     EXIT_ERROR,
     EXIT_NO_RESOURCES,
+    EXIT_POLICY_FAIL,
     EXIT_RISK_THRESHOLD,
 )
+
+_POLICY_SEVERITIES = ("info", "low", "medium", "high", "critical")
+# --policy-format names (spec 11.7) and the writers' format keys.
+_POLICY_FORMATS = {"json": "json", "sarif": "sarif", "junit": "xml", "markdown": "md"}
+
+
+def scan_exit_code(opt_in: int, tag: int, risk: int, policy: int) -> int:
+    """The exit code of a scan: 5 and 6 first, then 3, then 4, then the policy
+    check's 8 or 7 (spec 4)."""
+    return opt_in or tag or risk or policy
+
+
+def _policy_formats(args) -> List[str]:
+    """The writers' keys for --policy-format (default json)."""
+    names = [n.strip() for n in (args.policy_format or "json").split(",") if n.strip()]
+    return [_POLICY_FORMATS[n] for n in names if n in _POLICY_FORMATS]
+
+
+def _policy_usage_errors(args) -> List[str]:
+    errors = []
+    if not getattr(args, "policy", None):
+        for flag, value in (
+            ("--policy-waivers", args.policy_waivers),
+            ("--policy-fail-on", args.policy_fail_on),
+            ("--policy-format", args.policy_format),
+        ):
+            if value:
+                errors.append(f"{flag} needs --policy")
+        return errors
+    if args.disable_state_management:
+        errors.append(
+            "--policy needs the state snapshot; remove --disable-state-management"
+        )
+    if args.policy_format is not None:
+        names = [n.strip() for n in args.policy_format.split(",") if n.strip()]
+        unknown = [n for n in names if n not in _POLICY_FORMATS]
+        if unknown or not names:
+            errors.append(
+                f"--policy-format: unknown format '{(unknown or [''])[0]}'; use "
+                f"{', '.join(_POLICY_FORMATS)}"
+            )
+    return errors
+
+
+def _load_scan_policies(args):
+    """The --policy files, validated before any AWS call (exit 1 if not valid)."""
+    if not getattr(args, "policy", None):
+        return None
+    from datetime import timezone
+
+    from ..policy import loader
+    from ..policy.schema import PolicyError
+
+    try:
+        loaded = loader.load([Path(p) for p in args.policy])
+        waivers = (
+            loader.load_waivers([Path(args.policy_waivers)], datetime.now(timezone.utc))
+            if args.policy_waivers
+            else []
+        )
+    except PolicyError as error:
+        for issue in error.issues:
+            print(f"inventag: error: {issue}", file=sys.stderr)
+        sys.exit(EXIT_ERROR)
+    return loaded, waivers
+
+
+def _run_scan_policies(args, results: Dict[str, Any], logger) -> int:
+    """--policy: check the run's state snapshot; write the files; the code (0, 7)."""
+    import hashlib
+
+    from ..policy import engine, outputs
+
+    loaded, waivers = args.loaded_policies
+    state = results.get("state_management") or {}
+    if not state.get("state_saved") or not state.get("state_id"):
+        logger.error(
+            "--policy: the state snapshot of this run was not saved, so the "
+            "policies were not checked; see the notes above."
+        )
+        return EXIT_ERROR
+    path = Path(state["state_directory"]) / f"state_{state['state_id']}.json"
+    raw = path.read_bytes()
+    snapshot = json.loads(raw)
+    stats = results.get("processing_statistics") or {}
+    now = stats.get("processing_start_time")
+    result = engine.evaluate(
+        snapshot,
+        loaded.policies,
+        waivers=waivers,
+        now=now,
+        fail_on=args.policy_fail_on,
+        snapshot_file=path.name,
+        snapshot_sha256=hashlib.sha256(raw).hexdigest(),
+    )
+    sys.stdout.write(outputs.render(result, "text"))
+    for written in outputs.write(
+        result, args.output_directory, formats=_policy_formats(args)
+    ):
+        logger.info(f"Policy findings: {written}")
+    return int(result["summary"]["exit_code"])
 
 
 def _limit_or_none(text: str) -> Optional[int]:
@@ -249,6 +351,10 @@ Examples:
 
   # Validate AWS credentials only
   inventag --validate-credentials
+
+  # Policies on a saved snapshot, or on a scan (see 'inventag policy --help')
+  inventag policy check --snapshot state/state_<ts>.json --fail-on high
+  inventag --policy policies/ --policy-fail-on high
 
   # Templates: list them, then use one (see 'inventag templates --help')
   inventag templates list
@@ -652,6 +758,44 @@ Examples:
         help=(
             "Write one report for each account (<account-id>_bom_<time>.xlsx) "
             "instead of one consolidated report"
+        ),
+    )
+
+    policy_group = parser.add_argument_group(
+        "Policies (governance as code; see 'inventag policy --help')"
+    )
+    policy_group.add_argument(
+        "--policy",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help=(
+            "Check this policy file, policy set or folder on the state snapshot "
+            "of this run (repeatable). Writes policy_findings_<time>.json next to "
+            "the reports and a summary on the console. Needs the state snapshot"
+        ),
+    )
+    policy_group.add_argument(
+        "--policy-waivers",
+        metavar="FILE",
+        help="With --policy: a waivers file",
+    )
+    policy_group.add_argument(
+        "--policy-fail-on",
+        choices=list(_POLICY_SEVERITIES),
+        metavar="SEVERITY",
+        help=(
+            f"With --policy: exit with code {EXIT_POLICY_FAIL} when a finding "
+            "fails at this severity or higher (info, low, medium, high, "
+            "critical), after codes 5, 6, 3 and 4"
+        ),
+    )
+    policy_group.add_argument(
+        "--policy-format",
+        metavar="LIST",
+        help=(
+            "With --policy: the files to write, comma-separated: json, sarif, "
+            "junit, markdown (default: json)"
         ),
     )
 
@@ -1516,6 +1660,11 @@ def main():
 
         sys.exit(templates_main(sys.argv[2:]))
 
+    if len(sys.argv) > 1 and sys.argv[1] == "policy":
+        from ..policy.cli import main as policy_main
+
+        sys.exit(policy_main(sys.argv[2:]))
+
     if len(sys.argv) > 1 and sys.argv[1] == "selftest":
         from .selftest import main as selftest_main
 
@@ -1538,6 +1687,7 @@ def main():
     usage_errors.extend(_template_usage_errors(args))
     usage_errors.extend(_google_usage_errors(args))
     usage_errors.extend(_risk_threshold_errors(args))
+    usage_errors.extend(_policy_usage_errors(args))
     if usage_errors:
         for message in usage_errors:
             print(f"inventag: error: {message}", file=sys.stderr)
@@ -1561,6 +1711,9 @@ def main():
                 f"{len(template.sections)} sections)"
             )
         sys.exit(0)
+
+    # Policy files are validated before any AWS call, like templates.
+    args.loaded_policies = _load_scan_policies(args)
 
     # Owner-only files, redacted logs, and the read-only guard before any AWS call.
     safety.harden_process()
@@ -2019,11 +2172,18 @@ def _run(args, logger):
             _log_run_notes(results, logger, generator_lines.messages)
 
             opt_in_exit = _opt_in_exit_code(args, results, logger)
+            policy_exit = (
+                _run_scan_policies(args, results, logger)
+                if getattr(args, "loaded_policies", None)
+                else 0
+            )
+            if policy_exit == EXIT_ERROR:
+                sys.exit(EXIT_ERROR)
 
             if template_run:
                 exit_code = template_run.finish(results, logger)
                 if exit_code:
-                    sys.exit(opt_in_exit or exit_code)
+                    sys.exit(scan_exit_code(opt_in_exit, exit_code, 0, policy_exit))
 
             if args.risk_threshold:
                 findings = risk_findings_at_or_above(results, args.risk_threshold)
@@ -2037,13 +2197,16 @@ def _run(args, logger):
                             f"  - {item.get('group_id', '')}: {item.get('rule', '')} "
                             f"({item.get('risk_level', '')})"
                         )
-                    sys.exit(opt_in_exit or EXIT_RISK_THRESHOLD)
+                    sys.exit(
+                        scan_exit_code(opt_in_exit, 0, EXIT_RISK_THRESHOLD, policy_exit)
+                    )
                 logger.info(
                     f"No security group rule at or above risk level {args.risk_threshold}"
                 )
 
-            if opt_in_exit:
-                sys.exit(opt_in_exit)
+            final = scan_exit_code(opt_in_exit, 0, 0, policy_exit)
+            if final:
+                sys.exit(final)
 
         else:
             logger.error("✗ BOM generation failed")
