@@ -106,6 +106,7 @@ TEXT_DEFAULTS = {
     "--disable-delta-detection",
     "--disable-state-management",
     "--no-cost-in-snapshot",  # store_false: "off" means not given (figures kept)
+    "--policy-format",  # parser None; the code writes json when not given
 }
 
 

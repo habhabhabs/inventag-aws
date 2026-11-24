@@ -10,7 +10,9 @@ the console lines at WARNING or above. Values that change from run to run
 The golden ``golden/v143_default_runs.json`` was made by running this module
 against the v1.4.3 sources (``git archive v1.4.3``)::
 
-    python tests/regression/v143_equality.py --write <v1.4.3 source folder>
+    env MOTO_EC2_LOAD_DEFAULT_AMIS=false AWS_EC2_METADATA_DISABLED=true \\
+        AWS_ACCESS_KEY_ID=testing AWS_SECRET_ACCESS_KEY=testing \\
+        python tests/regression/v143_equality.py --write <v1.4.3 source folder>
 
 The module needs only what v1.4.3 already had (``inventag.cli.main``,
 ``tests.unit.finops``), so the same file runs on both versions.
@@ -212,11 +214,8 @@ def main(argv: List[str]) -> int:
         return 2
     source = Path(argv[1]).resolve()
     sys.path.insert(0, str(source))
-    # as tests/conftest.py does for a pytest run
-    os.environ["MOTO_EC2_LOAD_DEFAULT_AMIS"] = "false"
-    os.environ["AWS_EC2_METADATA_DISABLED"] = "true"
-    for name in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"):
-        os.environ[name] = "testing"
+    # the environment of a pytest run (tests/conftest.py) is set on the
+    # command line, as the module docstring shows; it is not written here
     import inventag
 
     if not Path(inventag.__file__).resolve().is_relative_to(source):
