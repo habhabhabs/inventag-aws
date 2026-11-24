@@ -23,9 +23,11 @@ def test_the_guide_says_what_a_payer_accounts_tables_can_hold():
         part = text[start : start + 2500]
         assert "--no-cost-in-snapshot" in part, docs
         assert "999988887777" not in part  # the test value stays in the tests
-        assert (
-            ("payer" in part)
-            or ("pagadora" in part)
-            or ("payeur" in part)
-            or ("付费" in part or "付費" in part)
-        ), docs
+        words = (
+            "did not scan",
+            "no escaneó",
+            "n’a pas analysés",
+            "没有扫描",
+            "沒有掃描",
+        )
+        assert any(w in part for w in words), docs
