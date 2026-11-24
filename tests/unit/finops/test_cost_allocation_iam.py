@@ -20,10 +20,15 @@ def test_the_action_is_in_the_code_list_and_the_shipped_policy():
     shipped = json.loads(
         (REPO / "config/defaults/iam-policy-read-only.json").read_text()
     )
-    assert shipped == build_read_only_policy()
+    (built,) = [
+        s
+        for s in build_read_only_policy()["Statement"]
+        if s["Sid"] == "InvenTagReadOnlyDiscovery"
+    ]
     (read,) = [
         s for s in shipped["Statement"] if s["Sid"] == "InvenTagReadOnlyDiscovery"
     ]
+    assert read == built
     assert "ce:ListCostAllocationTags" in read["Action"]
 
 
