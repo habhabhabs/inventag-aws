@@ -276,6 +276,71 @@ def _redact_flat_mapping_values(text: str) -> str:
     )
 
 
+# A list kept under a secret field name: "passphrase": ["x"], also with the
+# quotes escaped (JSON inside a JSON string) or as a Python repr. The list can
+# hold lists and objects, so its end is found by counting brackets (outside
+# strings), not by a pattern.
+_LIST_VALUE = re.compile(r"""(\\*)(["'])([A-Za-z_][A-Za-z0-9_\-]*)\1\2(\s*:\s*)\[""")
+
+
+def _end_of_list(text: str, start: int, escapes: int) -> Optional[int]:
+    """Index just after the ``]`` that closes the list opened before ``start``,
+    or None if it never closes (a cut-off log line).
+
+    ``escapes`` is how many backslashes precede a quote that delimits a string
+    at this level; a quote with more of them belongs to the text of a string.
+    """
+    depth = 1
+    quote = ""
+    for i in range(start, len(text)):
+        c = text[i]
+        if c in "\"'":
+            run = 0
+            while i - run - 1 >= start and text[i - run - 1] == "\\":
+                run += 1
+            if run == escapes:
+                if not quote:
+                    quote = c
+                elif quote == c:
+                    quote = ""
+        elif not quote:
+            if c == "[":
+                depth += 1
+            elif c == "]":
+                depth -= 1
+                if depth == 0:
+                    return i + 1
+    return None
+
+
+def _redact_list_values(text: str) -> str:
+    """``"passphrase": ["x"]`` -> ``"passphrase": "***REDACTED***"``.
+
+    An empty list stays (nothing to hide). A list that never closes is hidden
+    to the end of the text (fail closed).
+    """
+    out = []
+    pos = 0
+    while True:
+        match = _LIST_VALUE.search(text, pos)
+        if match is None:
+            break
+        end = _end_of_list(text, match.end(), len(match.group(1)))
+        empty = end is not None and not text[match.end() : end - 1].strip()
+        if not is_secret_key(match.group(3)) or empty:
+            out.append(text[pos : match.end()])
+            pos = match.end()
+            continue
+        quote = match.group(1) + match.group(2)
+        out.append(text[pos : match.start()])
+        out.append(
+            quote + match.group(3) + quote + match.group(4) + quote + REDACTED + quote
+        )
+        pos = len(text) if end is None else end
+    out.append(text[pos:])
+    return "".join(out)
+
+
 _registered_secrets = set()
 # Reentrant: the SIGTERM handler logs (through redact) on the main thread,
 # which may be inside redact() or register_secret() at that moment.
@@ -320,7 +385,7 @@ def redact(text: object) -> str:
             text = text.replace(secret, REDACTED)
     for pattern, replacement in _PATTERNS:
         text = pattern.sub(replacement, text)
-    return text
+    return _redact_list_values(text)
 
 
 class RedactingFormatter(logging.Formatter):

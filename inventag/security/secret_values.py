@@ -147,6 +147,10 @@ SECRET_VALUE_KEYS = frozenset(
         "importtoken",
         "purchasetoken",
         "offertoken",
+        # v1.5.0 (A-76): botocore 1.44.7. cognito-idp:GetDerivedToken (denied by
+        # the guard) and eventbridgev2 event sources (AWS: never returned).
+        "issuedtoken",
+        "secretvalue",
     }
 )
 # Normalised names that END like this are secret too (DbPassword, api_key...).

@@ -294,6 +294,12 @@ ADDED_AFTER_BOTOCORE_FLOOR = frozenset(
         # v1.3.1: issues temporary credentials scoped down from the caller's
         # (botocore 1.44.7; also missing in 1.44.2)
         ("sts", "GetScopedCredentials"),
+        # v1.5.0 (A-76): botocore 1.44.7 (not in 1.44.2 or the floor)
+        ("cognito-idp", "GetDerivedToken"),
+        ("wellarchitected", "GetAgentOrganizationalReportData"),
+        ("partnercentral-marketing", "GetCampaignAssetExportTask"),
+        ("partnercentral-selling", "GetCustomerAccountBulkJobReportUrl"),
+        ("partnercentral-selling", "GetOpportunityBulkJobReportUrl"),
     }
 )
 

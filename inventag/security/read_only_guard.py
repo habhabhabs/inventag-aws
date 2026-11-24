@@ -44,6 +44,20 @@ Allowlist rules (see :meth:`ReadOnlyGuard.evaluate`):
    operation on another bucket, or on a call whose bucket is unknown, is
    blocked.
 
+The deny-list knows operations by name, so it follows the SDK: an operation
+that a newer AWS SDK adds is allowed when its name starts like a read, until
+an InvenTag release names it. Three classes of ``Get``/``List``/``Describe``
+operation are not plain reads and are denied by name when found:
+
+* issues a token or credentials for the caller (``sts:GetWebIdentityToken``,
+  ``cognito-idp:GetDerivedToken``);
+* returns a presigned URL (``lambda:GetFunction``,
+  ``partnercentral-selling:GetOpportunityBulkJobReportUrl``);
+* returns customer content (``s3:GetObject``, ``dynamodb:GetItem``).
+
+A test sweeps the installed botocore for allowed operations whose answer has
+a member the SDK marks sensitive and whose name ends in Token, Url or URL.
+
 ``Scan`` and ``Query`` are not allowed: they read table contents, not
 inventory metadata.
 """
@@ -234,6 +248,17 @@ DENIED_OPERATIONS: FrozenSet[Tuple[str, str]] = frozenset(
         # kms:GetParametersForImport above.
         ("payment-cryptography", "GetParametersForExport"),
         ("payment-cryptography", "GetParametersForImport"),
+        # v1.5.0 (A-76): issues a token for a token exchange (botocore 1.44.7).
+        ("cognito-idp", "GetDerivedToken"),
+        # v1.5.0 (A-76): answers with a presigned download URL (botocore 1.44.7).
+        ("wellarchitected", "GetAgentOrganizationalReportData"),
+        ("partnercentral-marketing", "GetCampaignAssetExportTask"),
+        ("partnercentral-selling", "GetCustomerAccountBulkJobReportUrl"),
+        ("partnercentral-selling", "GetOpportunityBulkJobReportUrl"),
+        # v1.5.0 (A-75): botocore 1.35.0 only (the service is gone from newer
+        # releases); both return credentials.
+        ("finspace-data", "GetProgrammaticAccessCredentials"),
+        ("finspace-data", "GetExternalDataViewAccessDetails"),
     }
 )
 
