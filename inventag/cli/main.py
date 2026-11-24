@@ -1733,18 +1733,21 @@ def _install_sigterm_message(logger, output_dir, since):
     lock, no buffered write (A-79).
     Ctrl-C is left to Python (KeyboardInterrupt), which stops the scans with
     the locks once the stack has unwound. Returns the handler that was there
-    before, to put back; None when none could be set. After its line the
-    handler puts the default action back and sends SIGTERM again."""
+    before, to put back; None when none could be set. The handler puts the
+    default action back first, then says its line and sends SIGTERM again."""
     streams = _line_streams(logger)
 
     def handler(signum, frame):
+        # The default action first, before anything that can block (the
+        # folder read, the write of the line on a stalled pipe): a second
+        # SIGTERM then ends the process at once, as in v1.4.0 (R1).
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
         request_stop_of_running_scans()  # lock-free: no new AWS request
         _say_sigterm_line(
             logger,
             streams,
             "Terminated (SIGTERM). " + _written_reports_note(output_dir, since),
         )
-        signal.signal(signal.SIGTERM, signal.SIG_DFL)
         os.kill(os.getpid(), signal.SIGTERM)
 
     try:
