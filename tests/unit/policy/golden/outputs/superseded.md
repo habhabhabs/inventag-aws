@@ -27,13 +27,13 @@ File policies/ex10.yaml: fail 0, waived 0, not evaluated 1, pass 0, out of scope
 
 | Policy | Account | Service | Region | Outcome |
 | --- | --- | --- | --- | --- |
-| EC2-002 | 111111111111 | EC2 | eu-west-1 | access\_denied |
+| EC2-002 | 111111111111 | EC2 | eu-west-1 | access\_denied (baseline) |
 
 ## Unused waivers
 
 | Policy | Resource | Expires | Why | File |
 | --- | --- | --- | --- | --- |
 | EC2-002 | arn:x | 2027-01-01 | no match | waivers.yaml |
-| EC2-002 | arn:y | 2026-12-31 | superseded | waivers.yaml |
+| EC2-002 | arn:y | 2026-12-31 | superseded by waivers-b.yaml | waivers.yaml |
 
 Exit code 8: something was not evaluated and --fail-on-not-evaluated is set.

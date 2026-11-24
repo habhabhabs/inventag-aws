@@ -114,7 +114,7 @@ def render(data: Mapping[str, Any], show_values: bool = False) -> str:
                     esc(u["account"]),
                     esc(u["service"]),
                     esc(u["region"]),
-                    esc(u["outcome"]),
+                    esc(_outcome(u)),
                 ]
                 for u in units[:MAX_ROWS]
             ],
@@ -137,7 +137,7 @@ def render(data: Mapping[str, Any], show_values: bool = False) -> str:
                     esc(w["policy"]),
                     esc(w["resource"]),
                     esc(w["expires"]),
-                    esc(w["why"]),
+                    esc(_why(w)),
                     esc(w["file"]),
                 ]
                 for w in unused[:MAX_ROWS]
