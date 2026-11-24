@@ -21,7 +21,7 @@ inventag --create-excel --finops-checks
 - 这些检查只读取扫描已有的行。它们不再发出任何 AWS 调用，也不需要额外的权限。无论是否使用该参数，只读防护看到的调用都相同。
 - 这些检查不会更改任何账户中的任何内容。
 - 该参数不改变退出码。
-- 不使用该参数的运行写出的报告与之前相同。
+- 不使用该参数时，这些检查不运行：报告中没有 `FinOps` 工作表，其他工作表和控制台文字与使用该参数时相同。
 
 ## 六项检查 {#the-six-checks}
 
@@ -51,7 +51,7 @@ inventag --create-excel --finops-checks
 | 原因 | 含义 |
 |---|---|
 | `identity_only` | 该资源只通过 Resource Groups Tagging API 得知，所以检查读取的字段不在它的行上。 |
-| `field_missing` | 检查读取的字段不在该行上。 |
+| `field_missing` | 检查读取的字段不在该行上。对于 `FIN-003`，运行没有开始时间时也是如此。 |
 | `tags_not_read` | 仅 `FIN-006`：缺少某个键，并且该区域的 Tagging API 列表在本次运行中失败。对于全局资源，该账户任何一次失败的 Tagging API 列表都算。 |
 | `listing_not_read` | 检查需要的某个列表在本次运行中失败。工作表中每个列表和区域各有一行。 |
 

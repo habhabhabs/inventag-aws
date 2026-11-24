@@ -27,7 +27,8 @@ of the Excel report.
   calls with and without the flag.
 - The checks change nothing in an account.
 - The flag does not change the exit code.
-- A run without the flag writes the same report as before.
+- Without the flag, the checks do not run: the report has no `FinOps` sheet,
+  and the other sheets and the console text are the same as with the flag.
 
 ## The six checks
 
@@ -62,7 +63,7 @@ A gap in the data is never a pass. The reasons are:
 | Reason | Meaning |
 |---|---|
 | `identity_only` | The resource is known only from the Resource Groups Tagging API, so the field the check reads is not on its row. |
-| `field_missing` | The field the check reads is not on the row. |
+| `field_missing` | The field the check reads is not on the row. For `FIN-003`, also when the run has no start time. |
 | `tags_not_read` | `FIN-006` only: a key is missing and the Tagging API listing of that region failed in this run. For a global resource, any failed Tagging API listing of the account counts. |
 | `listing_not_read` | A listing the check needs failed in this run. The sheet has one line for each listing and region. |
 

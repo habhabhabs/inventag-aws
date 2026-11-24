@@ -29,7 +29,9 @@ fixes sur les ressources trouvées par l’analyse et ajoute une feuille nommée
   lecture seule voit les mêmes appels avec et sans l’option.
 - Les contrôles ne changent rien dans un compte.
 - L’option ne change pas le code de sortie.
-- Une exécution sans l’option écrit le même rapport qu’avant.
+- Sans l’option, les contrôles ne s’exécutent pas : le rapport n’a pas de
+  feuille `FinOps`, et les autres feuilles et le texte de la console sont les
+  mêmes qu’avec l’option.
 
 ## Les six contrôles {#the-six-checks}
 
@@ -68,7 +70,7 @@ Une lacune dans les données n’est jamais un pass. Les raisons sont :
 | Raison | Signification |
 |---|---|
 | `identity_only` | La ressource n’est connue que par l’API Resource Groups Tagging, donc le champ que lit le contrôle n’est pas sur sa ligne. |
-| `field_missing` | Le champ que lit le contrôle n’est pas sur la ligne. |
+| `field_missing` | Le champ que lit le contrôle n’est pas sur la ligne. Pour `FIN-003`, aussi quand l’exécution n’a pas d’heure de début. |
 | `tags_not_read` | `FIN-006` uniquement : une clé manque et la liste de l’API Tagging de cette région a échoué pendant cette exécution. Pour une ressource globale, tout échec d’une liste de l’API Tagging du compte compte. |
 | `listing_not_read` | Une liste dont le contrôle a besoin a échoué pendant cette exécution. La feuille a une ligne par liste et par région. |
 

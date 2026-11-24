@@ -25,7 +25,7 @@ sidebar_position: 5
 | `--enable-cost-analysis` | 增加一个 Cost Analysis 工作表和四个 `forgotten_analysis.*` 列，其中的估算值来自 AWS Pricing API，不是你的账单，并且会额外发出 Cost Explorer、Pricing 和 CloudWatch 调用（参见[费用](#costs)）。 |
 | `--compliance-standard` | 以退出码 2 停止，因为像 SOC 2 这样的标准无法从资源清单中检查；请改用标签策略模板。 |
 | `--create-google-docs`、`--create-google-sheets` | 只针对模拟的 Google 客户端验证过。参见 [Google Sheets 和 Docs](../guides/google-sheets-and-docs.md#what-is-not-verified)。 |
-| `--finops-checks` | `FIN-004` 列出已停止的实例，不论它已停止多久，因为实例列表中没有可靠的停止时间。`FIN-005` 不读取目标的健康状态，所以目标全部不健康的负载均衡器结果为 pass。使用 `--template` 时，这些检查不运行。参见 [FinOps 检查](../guides/finops-checks.md#what-the-checks-cannot-see)。 |
+| `--finops-checks` | `FIN-004` 列出已停止的实例，不论它已停止多久，因为实例列表中没有可靠的停止时间。`FIN-005` 不读取目标的健康状态，所以目标全部不健康的负载均衡器结果为 pass。使用 `--template` 时，这些检查不运行。在命令行中，结果只在 Excel 工作表中，没有 JSON 文件。参见 [FinOps 检查](../guides/finops-checks.md#what-the-checks-cannot-see)。 |
 | `--enable-production-safety`、`--security-validation`、`--enforce-read-only` | 保留下来，让旧命令仍能运行。只读防护始终开启。 |
 | `--disable-production-safety` | 以退出码 2 停止，因为只读防护无法关闭。 |
 
