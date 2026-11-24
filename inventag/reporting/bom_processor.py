@@ -1158,7 +1158,10 @@ class BOMDataProcessor:
             )
 
             # Analyze cost trends
-            cost_trends = self.cost_analyzer.analyze_cost_trends(resources)
+            # Each account's bill with that account's own session (A-80).
+            cost_trends = self.cost_analyzer.analyze_cost_trends(
+                resources, account_sessions=self.account_sessions or None
+            )
 
             # Generate optimization recommendations
             recommendations = (
@@ -1208,12 +1211,18 @@ class BOMDataProcessor:
                     }
                     for res in forgotten_resources
                 ],
+                # One entry per account and service: a billed service total,
+                # not a resource's cost (v1.5.0).
                 "cost_trends": [
                     {
-                        "resource_id": trend.resource_id,
+                        "account_id": trend.account_id,
                         "service": trend.service,
-                        "current_monthly_cost": float(trend.current_monthly_cost),
+                        "billing_names": list(trend.billing_names),
+                        "resource_count": trend.resource_count,
+                        "previous_month": trend.previous_month,
+                        "current_month": trend.current_month,
                         "previous_monthly_cost": float(trend.previous_monthly_cost),
+                        "current_monthly_cost": float(trend.current_monthly_cost),
                         "cost_change_percentage": trend.cost_change_percentage,
                         "trend_direction": trend.trend_direction,
                         "alert_triggered": trend.alert_triggered,

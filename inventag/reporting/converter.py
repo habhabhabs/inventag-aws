@@ -1244,6 +1244,40 @@ class BOMConverter:
                 ],
             )
 
+        trends = data.get("cost_trends", [])
+        if trends:
+            title(
+                "Billed cost by account and service, last two full months (USD, "
+                "Cost Explorer; a service total, not a resource's cost)"
+            )
+            table(
+                [
+                    "Account",
+                    "Service",
+                    "Resources",
+                    "Earlier month",
+                    "Billed (USD)",
+                    "Later month",
+                    "Billed (USD)",
+                    "Change %",
+                    "Direction",
+                ],
+                [
+                    [
+                        t["account_id"],
+                        t["service"],
+                        t["resource_count"],
+                        t["previous_month"],
+                        round(t["previous_monthly_cost"], 2),
+                        t["current_month"],
+                        round(t["current_monthly_cost"], 2),
+                        round(t["cost_change_percentage"], 1),
+                        t["trend_direction"],
+                    ]
+                    for t in trends
+                ],
+            )
+
         forgotten = data.get("forgotten_resources", [])
         if forgotten:
             title("Possibly forgotten resources")

@@ -20,7 +20,8 @@ def planned(
     """The most Cost Explorer requests of a run, and each feature's share.
 
     Billing validation: one request for each account. The cost trend of
-    ``--enable-cost-analysis``: one request for the whole run. The cost
+    ``--enable-cost-analysis``: at most TREND_PAGES_PER_ACCOUNT requests for
+    each account, with that account's session (v1.5.0, A-80). The cost
     allocation of ``--finops-cost-allocation``: at most 7 for each account
     (its share is listed only when the flag is on, so the line of a run
     without it is as in v1.4.2).
@@ -28,13 +29,19 @@ def planned(
     accounts = max(int(accounts), 0)
     parts: Parts = (
         ("billing validation", accounts if billing_validation else 0),
-        ("cost trend", 1 if cost_analysis and accounts else 0),
+        ("cost trend", accounts * TREND_PAGES_PER_ACCOUNT if cost_analysis else 0),
     )
     if cost_allocation:
         from ..finops.cost_allocation import planned_requests
 
         parts += (("cost allocation", planned_requests(accounts)),)
     return sum(n for _, n in parts), parts
+
+
+# The cost trend's pages for one account (inventag/discovery/cost_analyzer.py);
+# a literal here keeps this module free of the analyzer's imports, and a test
+# checks that the two agree.
+TREND_PAGES_PER_ACCOUNT = 2
 
 
 def announcement(count: int, parts: Parts) -> Optional[str]:

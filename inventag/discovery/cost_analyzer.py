@@ -22,6 +22,33 @@ from .ordered_tasks import run_ordered
 # Workers of the price lookups (the pool of v1.3.0 had ten).
 _COST_WORKERS = 10
 
+# Most Cost Explorer requests of the cost trend for one account: the first
+# page and the pages NextPageToken asks for (core/cost_requests.py states it).
+TREND_PAGES_PER_ACCOUNT = 2
+
+
+def _billing_key(name: str) -> str:
+    """The service code of a billing name, as discovery's billing table gives
+    it ("Amazon Simple Storage Service" -> "s3"), or of a row's service name."""
+    from .comprehensive_discovery import ComprehensiveAWSDiscovery
+
+    # The table does not read the instance (an owner's patch makes it a
+    # function; see reports/v150-p7.md).
+    return ComprehensiveAWSDiscovery._normalize_billing_service_name(None, name)
+
+
+def _row_key(service: str) -> str:
+    return "".join(ch for ch in str(service).lower() if ch.isalnum())
+
+
+def _month_starts(now: datetime) -> Tuple[str, str, str]:
+    """First days of the two full months before ``now``, and of ``now``'s month."""
+    day = now.date() if isinstance(now, datetime) else now
+    end = day.replace(day=1)
+    later = (end - timedelta(days=1)).replace(day=1)
+    earlier = (later - timedelta(days=1)).replace(day=1)
+    return earlier.isoformat(), later.isoformat(), end.isoformat()
+
 
 @dataclass
 class CostThresholds:
@@ -82,9 +109,13 @@ class CostOptimizationRecommendation:
 
 @dataclass
 class CostTrendAnalysis:
-    """Cost trend analysis over time."""
+    """Billed cost of one service in one account, for two full months.
 
-    resource_id: str
+    A service total from Cost Explorer, not a resource's cost (v1.5.0: one
+    entry per account and service; the per-resource entries are gone).
+    """
+
+    account_id: str
     service: str
     current_monthly_cost: Decimal
     previous_monthly_cost: Decimal
@@ -92,6 +123,10 @@ class CostTrendAnalysis:
     trend_direction: str
     alert_triggered: bool = False
     historical_costs: List[Tuple[datetime, Decimal]] = field(default_factory=list)
+    current_month: str = ""
+    previous_month: str = ""
+    resource_count: int = 0
+    billing_names: Tuple[str, ...] = ()
 
 
 @dataclass
@@ -1088,55 +1123,52 @@ class CostAnalyzer:
         return recommendations
 
     def analyze_cost_trends(
-        self, resources: List[Dict[str, Any]]
+        self,
+        resources: List[Dict[str, Any]],
+        account_sessions: Optional[Dict[str, Any]] = None,
+        now: Optional[datetime] = None,
     ) -> List[CostTrendAnalysis]:
-        """
-        Analyze cost trends and generate alerts for significant changes.
+        """The billed cost of each service of each account, for the two full
+        months before ``now``: one entry per account and service, sorted.
 
-        Args:
-            resources: List of resource dictionaries
-
-        Returns:
-            List of CostTrendAnalysis objects
+        Each account is read with its own session from ``account_sessions``
+        (account ID -> session), at most TREND_PAGES_PER_ACCOUNT requests. An
+        account without a session there is not read. Without
+        ``account_sessions`` the analyzer's own session reads every row.
         """
         self.logger.info(f"Analyzing cost trends for {len(resources)} resources")
+        now = now or datetime.now(timezone.utc)
+        months = _month_starts(now)
 
-        trend_analyses = []
+        by_account: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+        for resource in resources:
+            account = str(resource.get("source_account_id") or "")
+            service = str(resource.get("service") or "Unknown")
+            by_account.setdefault(account, {}).setdefault(service, []).append(resource)
 
-        cost_client = self._get_cost_explorer_client()
-        if not cost_client:
-            self.logger.warning(
-                "Cost Explorer client not available - skipping trend analysis"
-            )
-            return trend_analyses
-
-        try:
-            # Get cost data for the last two months
-            end_date = datetime.now().strftime("%Y-%m-%d")
-            start_date = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d")
-
-            # Group resources by service for cost analysis
-            resources_by_service = defaultdict(list)
-            for resource in resources:
-                service = resource.get("service", "Unknown")
-                resources_by_service[service].append(resource)
-
-            if not resources_by_service:
-                return trend_analyses
-
-            # One request for every service: each one asked for the same
-            # period and grouping, and AWS charges for each request.
-            response = self._fetch_service_costs(start_date, end_date)
-            if response is None:
-                return trend_analyses
-
-            for service, service_resources in resources_by_service.items():
-                try:
-                    trend_analysis = self._analyze_service_cost_trend(
-                        service, service_resources, response
+        trends: List[CostTrendAnalysis] = []
+        for account in sorted(by_account):
+            if account_sessions:
+                session = account_sessions.get(account)
+                if session is None:
+                    self.logger.debug(
+                        f"Cost trend: account {account or 'unknown'} has no "
+                        "session, so it is not read"
                     )
-                    if trend_analysis:
-                        trend_analyses.extend(trend_analysis)
+                    continue
+                client = self._trend_client(session)
+            else:
+                client = self._get_cost_explorer_client()
+            if not client:
+                continue
+            groups = self._fetch_service_costs(client, account, months)
+            if groups is None:
+                continue
+            for service in sorted(by_account[account]):
+                try:
+                    trend = self._service_trend(
+                        account, service, by_account[account][service], groups, months
+                    )
                 except Exception as e:
                     self.logger.debug(
                         f"Cost trend analysis failed for service {service}: {e}"
@@ -1144,111 +1176,139 @@ class CostAnalyzer:
                     self._warn_once(
                         "the cost trend", e, "those services have no trend."
                     )
+                    continue
+                if trend:
+                    trends.append(trend)
 
+        self.logger.info(f"Generated {len(trends)} cost trend analyses")
+        return trends
+
+    def _trend_client(self, session):
+        try:
+            return create_client(session, "ce")
         except Exception as e:
-            self.logger.error(f"Cost trend analysis failed: {e}")
-
-        self.logger.info(f"Generated {len(trend_analyses)} cost trend analyses")
-        return trend_analyses
+            self.logger.debug(f"Failed to create Cost Explorer client: {e}")
+            self._warn_once("the cost trend", e, "those accounts have no trend.")
+            return None
 
     def _fetch_service_costs(
-        self, start_date: str, end_date: str
-    ) -> Optional[Dict[str, Any]]:
-        """The one Cost Explorer request of the cost trend: the period, by SERVICE.
+        self, client, account: str, months: Tuple[str, str, str]
+    ) -> Optional[Dict[str, Dict[str, Decimal]]]:
+        """Billed cost by month start and billing name, for one account.
 
-        None when the request failed (the failure is logged).
+        Follows NextPageToken within TREND_PAGES_PER_ACCOUNT requests. None
+        when the request failed: one warning (A-83 a); a denied request is
+        the denied line and the Permissions entry, as before.
         """
-        cost_client = self._get_cost_explorer_client()
-        if not cost_client:
-            return None
-        # The run said the number before discovery (core/cost_requests.py).
-        try:
-            return cost_client.get_cost_and_usage(
-                TimePeriod={"Start": start_date, "End": end_date},
+        earlier, _, end = months
+        groups: Dict[str, Dict[str, Decimal]] = {}
+        token = None
+        for page in range(TREND_PAGES_PER_ACCOUNT):
+            params = dict(
+                TimePeriod={"Start": earlier, "End": end},
                 Granularity="MONTHLY",
                 Metrics=["BlendedCost"],
                 GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
             )
-        except Exception as e:
-            self._log_aws_failure(
-                "cost-explorer", "Service cost trend analysis failed", e
-            )
-            return None
+            if token:
+                params["NextPageToken"] = token
+            try:
+                answer = client.get_cost_and_usage(**params)
+            except Exception as e:
+                code = self._error_code(e)
+                if code in self._DENIED:
+                    self._log_aws_failure(
+                        "cost-explorer", "Service cost trend analysis failed", e
+                    )
+                else:
+                    self.logger.debug(f"Cost trend request failed: {e}")
+                    self.logger.warning(
+                        "Cost analysis: the cost trend request of account "
+                        f"{account or 'unknown'} failed ({code or type(e).__name__}); "
+                        "that account has no trend. Run with --debug for the detail."
+                    )
+                return None if page == 0 else groups
+            for result in answer.get("ResultsByTime", []):
+                start = (result.get("TimePeriod") or {}).get("Start", "")
+                month = groups.setdefault(start, {})
+                for group in result.get("Groups", []):
+                    name = (group.get("Keys") or [""])[0]
+                    amount = Decimal(
+                        group.get("Metrics", {})
+                        .get("BlendedCost", {})
+                        .get("Amount", "0")
+                    )
+                    month[name] = month.get(name, Decimal("0")) + amount
+            token = answer.get("NextPageToken")
+            if not token:
+                return groups
+        self.logger.warning(
+            f"Cost analysis: the cost trend of account {account or 'unknown'} has "
+            f"more than {TREND_PAGES_PER_ACCOUNT} page(s); the services on later "
+            "pages have no trend."
+        )
+        return groups
 
-    def _analyze_service_cost_trend(
+    def _service_trend(
         self,
+        account: str,
         service: str,
         resources: List[Dict[str, Any]],
-        response: Dict[str, Any],
-    ) -> List[CostTrendAnalysis]:
-        """Analyze cost trend for a specific service, from the one answer."""
-        try:
-            # Find cost data for this service
-            service_costs = []
-            for result in response.get("ResultsByTime", []):
-                for group in result.get("Groups", []):
-                    if service.lower() in group.get("Keys", [""])[0].lower():
-                        cost = Decimal(
-                            group.get("Metrics", {})
-                            .get("BlendedCost", {})
-                            .get("Amount", "0")
-                        )
-                        service_costs.append(cost)
-
-            if len(service_costs) >= 2:
-                current_cost = service_costs[-1]
-                previous_cost = service_costs[-2]
-
-                # Calculate trend
-                if previous_cost > 0:
-                    change_percentage = float(
-                        (current_cost - previous_cost) / previous_cost * 100
-                    )
-                else:
-                    change_percentage = 100.0 if current_cost > 0 else 0.0
-
-                # Determine trend direction
-                if abs(change_percentage) < 5:
-                    trend_direction = "stable"
-                elif change_percentage > 0:
-                    trend_direction = "increasing"
-                else:
-                    trend_direction = "decreasing"
-
-                # Check if alert should be triggered
-                alert_triggered = (
-                    abs(change_percentage) > self.thresholds.cost_trend_alert_percentage
-                )
-
-                # Create trend analysis for each resource in the service
-                trend_analyses = []
-                for resource in resources:
-                    trend_analyses.append(
-                        CostTrendAnalysis(
-                            resource_id=resource.get("id", ""),
-                            service=service,
-                            current_monthly_cost=current_cost
-                            / len(resources),  # Distribute cost across resources
-                            previous_monthly_cost=previous_cost / len(resources),
-                            cost_change_percentage=change_percentage,
-                            trend_direction=trend_direction,
-                            alert_triggered=alert_triggered,
-                            historical_costs=[
-                                (datetime.now(), current_cost),
-                                (datetime.now() - timedelta(days=30), previous_cost),
-                            ],
-                        )
-                    )
-
-                return trend_analyses
-
-        except Exception as e:
-            # Not an AWS failure (the one request already answered): a figure
-            # that could not be read. One warning per error type (D4).
-            self.logger.debug(f"Service cost trend analysis failed for {service}: {e}")
-            self._warn_once("the cost trend", e, "those services have no trend.")
-
-        return []
+        groups: Dict[str, Dict[str, Decimal]],
+        months: Tuple[str, str, str],
+    ) -> Optional[CostTrendAnalysis]:
+        """One service of one account: its billing names are the ones whose
+        service code (discovery's billing table) equals the row's service."""
+        earlier, later, _ = months
+        key = _row_key(service)
+        names = tuple(
+            sorted(
+                {
+                    name
+                    for month in (earlier, later)
+                    for name in groups.get(month, {})
+                    if _billing_key(name) == key
+                }
+            )
+        )
+        if not names or earlier not in groups or later not in groups:
+            return None
+        previous_cost = sum(
+            (groups[earlier].get(n, Decimal("0")) for n in names), Decimal("0")
+        )
+        current_cost = sum(
+            (groups[later].get(n, Decimal("0")) for n in names), Decimal("0")
+        )
+        if previous_cost > 0:
+            change_percentage = float(
+                (current_cost - previous_cost) / previous_cost * 100
+            )
+        else:
+            change_percentage = 100.0 if current_cost > 0 else 0.0
+        if abs(change_percentage) < 5:
+            trend_direction = "stable"
+        elif change_percentage > 0:
+            trend_direction = "increasing"
+        else:
+            trend_direction = "decreasing"
+        return CostTrendAnalysis(
+            account_id=account,
+            service=service,
+            current_monthly_cost=current_cost,
+            previous_monthly_cost=previous_cost,
+            cost_change_percentage=change_percentage,
+            trend_direction=trend_direction,
+            alert_triggered=abs(change_percentage)
+            > self.thresholds.cost_trend_alert_percentage,
+            historical_costs=[
+                (datetime.fromisoformat(later), current_cost),
+                (datetime.fromisoformat(earlier), previous_cost),
+            ],
+            current_month=later[:7],
+            previous_month=earlier[:7],
+            resource_count=len(resources),
+            billing_names=names,
+        )
 
     def generate_cost_optimization_recommendations(
         self,
