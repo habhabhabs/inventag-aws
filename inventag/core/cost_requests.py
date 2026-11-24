@@ -53,12 +53,3 @@ def announcement(count: int, parts: Parts) -> Optional[str]:
         f"Cost Explorer: up to {count} request(s) in this run ({shares}). "
         "AWS charges for each."
     )
-
-
-def trend_note(account_id: str) -> str:
-    """Run note of a run with several accounts (A-80): the cost trend reads
-    one bill, with the credentials of one account."""
-    return (
-        f"Cost trend: read once, with the credentials of account {account_id}. "
-        "Its figures are that account's Cost Explorer view, not each account's own."
-    )

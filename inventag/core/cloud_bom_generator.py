@@ -638,8 +638,6 @@ class CloudBOMGenerator:
                 self.logger.error(note)
             for note in self._read_nothing_notes():
                 self.logger.warning(note)
-            for note in self._cost_trend_notes():
-                self.logger.warning(note)
 
             # Step 3: Consolidate resources if configured
             if self.config.consolidate_accounts:
@@ -1217,8 +1215,7 @@ class CloudBOMGenerator:
     def _announce_cost_requests(self, account_contexts) -> None:
         """Say once, before discovery, how many Cost Explorer requests the run
         makes at most: AWS charges for each (architect F1 ruling 5). A warning
-        only with --enable-cost-analysis; otherwise INFO, so a default run's
-        console is what v1.4.0 printed (architect v1.4.1 ruling)."""
+        on every run that calls Cost Explorer (v1.5.0, plan decision 7)."""
         cost_analysis = bool(self.config.bom_processing_config.enable_cost_analysis)
         allocation = bool(getattr(self.config, "finops_cost_allocation", False))
         count, parts = cost_requests.planned(
@@ -1229,20 +1226,7 @@ class CloudBOMGenerator:
         )
         text = cost_requests.announcement(count, parts)
         if text:
-            if cost_analysis or allocation:
-                self.logger.warning(text)
-            else:
-                self.logger.info(text)
-
-    def _cost_trend_notes(self) -> List[str]:
-        """A-80: with several accounts, the cost trend reads one bill, with the
-        credentials of the account the report processing uses."""
-        if not self.config.bom_processing_config.enable_cost_analysis:
-            return []
-        if len(self.account_contexts) < 2:
-            return []
-        account = self._run_account()
-        return [cost_requests.trend_note(account)] if account else []
+            self.logger.warning(text)
 
     def _billing_timeout_notes(self) -> List[str]:
         """One note per account whose Cost Explorer call did not answer in
@@ -1405,7 +1389,6 @@ class CloudBOMGenerator:
         notes.extend(self._read_nothing_notes())
         notes.extend(self._not_read_notes())
         notes.extend(self._billing_timeout_notes())
-        notes.extend(self._cost_trend_notes())
         costs = getattr(self, "_finops_costs", None)
         if costs is not None:
             notes.extend(cost_allocation.run_notes(costs))
