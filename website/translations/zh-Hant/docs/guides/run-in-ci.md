@@ -299,6 +299,7 @@ GitHub 一欄只描述上面的 GitHub 工作流所展示的內容。
 
 ```text title="輸出"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Cost Explorer: up to 1 request(s) in this run (billing validation: 1; cost trend: 0). AWS charges for each.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 Tag policy 'finops-cost-allocation': 1 of 23 resources compliant (4.3%), 22 non-compliant, 14 out of scope.

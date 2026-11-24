@@ -74,6 +74,7 @@ OK    ~/acme-infra/.inventag/templates/our-org.yaml (config 'our-org')
 執行結果如下，三個虛構帳戶中各有一個範例儲存貯體：
 
 ```text title="輸出"
+inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Cost Explorer: up to 3 request(s) in this run (billing validation: 3; cost trend: 0). AWS charges for each.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
