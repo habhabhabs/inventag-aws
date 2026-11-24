@@ -29,12 +29,15 @@ the flag is unchanged; the changelog lists it under Added.
   report get the additive key `finops_costs`; the state snapshot gets the
   additive key `metadata.tags.cost_allocation` (tables only, no resource IDs;
   the snapshot stays 0600). `--no-cost-in-snapshot` leaves the figures out of
-  the snapshot. The change report gets a block "Cost, previous run to this
-  run", or one line that says why there is no comparison. A denied or failed
-  request gives a run note and, when denied, a `Permissions:` line; the exit
-  code does not change. With `--template`, no request is made and a warning
-  says so. New IAM action: `ce:ListCostAllocationTags` (in `READ_ONLY_ACTIONS`
-  and `config/defaults/iam-policy-read-only.json`; the policy now has 123 read
+  the snapshot. Read from a management (payer) account, the linked-account and
+  tag tables can name member accounts the run did not scan and their tag
+  values (not verified against real AWS). The change report gets a block
+  "Cost, previous run to this run", or one line that says why there is no
+  comparison. A denied or failed request gives a run note and, when denied, a
+  `Permissions:` line; the exit code does not change. With `--template`, no
+  request is made and a warning says so. New IAM action:
+  `ce:ListCostAllocationTags` (in `READ_ONLY_ACTIONS` and
+  `config/defaults/iam-policy-read-only.json`; the policy now has 123 read
   actions). `MultiAccountConfig` gets the fields `finops_cost_allocation` and
   `cost_in_snapshot` at its end. Without the flag, the console text, the Excel
   sheets and the snapshot are as in v1.4.2 (compared on one mocked estate).

@@ -56,6 +56,8 @@ InvenTag 还会调用 `account:ListRegions`，但仅在 `ec2:DescribeRegions` �
 `cloudwatch:GetMetricStatistics`，`ReadOnlyAccess` 已覆盖该调用）；
 如果使用 `--s3-bucket`，则需要在报告存储桶上添加 `s3:PutObject`。
 
+如果使用 `--finops-cost-allocation`，请添加 `ce:ListCostAllocationTags`。未针对真实的 AWS 验证：`ReadOnlyAccess` 是否包含它。
+
 要只用 `ReadOnlyAccess` 运行，见[仅使用 ReadOnlyAccess 运行](#run-with-only-readonlyaccess)。
 
 `ReadOnlyAccess` 范围很宽：它可以读取 S3 对象列表等数据，以及 InvenTag 从不查看的某些配置。

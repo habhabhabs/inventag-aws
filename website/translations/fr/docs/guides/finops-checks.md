@@ -214,6 +214,14 @@ affiche un avertissement et n’écrit aucune feuille `FinOps costs`.
   l’instantané ; la feuille est quand même écrite. Sans
   `--finops-cost-allocation`, cette option ne change rien et un avertissement
   le dit.
+- Lu depuis un compte de gestion (payeur), le tableau par compte lié peut
+  lister tous les comptes membres de l’organisation avec leurs dépenses, y
+  compris des comptes que cette exécution n’a pas analysés, et les tableaux par
+  balise contiennent leurs valeurs de balise (par exemple des noms ou des
+  adresses e-mail de `Owner`) telles qu’AWS les renvoie. Elles vont dans la
+  feuille, l’instantané et le rapport de changements. Utilisez
+  `--no-cost-in-snapshot` pour les garder hors de l’instantané. Non vérifié sur
+  un vrai AWS : ce que contient la réponse d’un compte payeur.
 - Le rapport de changements reçoit un bloc « Cost, previous run to this run »
   quand cette exécution a lu la répartition des coûts. Il montre côte à côte
   chaque valeur de l’exécution précédente et de celle-ci quand les deux

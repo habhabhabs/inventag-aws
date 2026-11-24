@@ -136,6 +136,7 @@ SDK 会重试被限流的请求，每次重试都是一个新请求。AWS 对每
 
 - 在 Python 中，`CloudBOMGenerator.generate_multi_account_bom()` 的结果和 JSON 报告的 `metadata` 带有 `finops_costs` 键：`schema_version`、`metric`，以及每个账户的时间段、请求数、每个标签键的状态和表格。
 - 状态快照带有 `metadata.tags.cost_allocation`：只有表格（按服务、关联账户和标签值的合计；没有资源 ID）。快照仍然只有所有者可读（模式 0600）。`--no-cost-in-snapshot` 不把这些数字写入快照；工作表照常写出。不使用 `--finops-cost-allocation` 时，该参数不改变任何内容，并会显示一条警告说明这一点。
+- 从管理（付费）账户读取时，按关联账户的表格可能列出组织中的每个成员账户及其支出，包括本次运行没有扫描的账户；按标签的表格包含这些账户的标签值（例如 `Owner` 的姓名或电子邮件地址），与 AWS 返回的一致。这些内容会写入工作表、快照和变更报告。使用 `--no-cost-in-snapshot` 可以不把它们写入快照。未针对真实的 AWS 验证：付费账户的应答包含哪些内容。
 - 当本次运行读取了成本分配时，变更报告会有一个 "Cost, previous run to this run" 区块。两个快照的月份不同时，它把上一次运行和本次运行的每个值并排列出。否则用一行说明为什么没有比较：上一个快照没有这些数字、两次运行读取的是同一个月，或者使用了 `--no-cost-in-snapshot`。
 
 ### 需要什么，以及未验证的内容 {#what-it-needs-and-what-is-not-verified}

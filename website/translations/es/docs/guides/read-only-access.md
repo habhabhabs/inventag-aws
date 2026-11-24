@@ -62,6 +62,9 @@ Añade `pricing:GetProducts` solo si usas `--enable-cost-analysis` (también
 llama a `cloudwatch:GetMetricStatistics`, que `ReadOnlyAccess` cubre), y
 `s3:PutObject` en tu bucket de informes si usas `--s3-bucket`.
 
+Añade `ce:ListCostAllocationTags` si usas `--finops-cost-allocation`. No
+verificado contra AWS real: si `ReadOnlyAccess` la cubre.
+
 Para ejecutar solo con `ReadOnlyAccess`, consulta [Ejecutar solo con ReadOnlyAccess](#run-with-only-readonlyaccess).
 
 `ReadOnlyAccess` es amplia: puede leer datos como los listados de objetos de S3

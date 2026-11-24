@@ -203,6 +203,13 @@ writes no `FinOps costs` sheet.
   `--no-cost-in-snapshot` leaves the figures out of the snapshot; the sheet is
   still written. Without `--finops-cost-allocation` that flag changes nothing
   and a warning says so.
+- Read from a management (payer) account, the linked-account table can list
+  every member account of the organization with its spend, also accounts this
+  run did not scan, and the tag tables hold their tag values (for example
+  `Owner` names or e-mail addresses) as AWS returns them. These go into the
+  sheet, the snapshot and the change report. Use `--no-cost-in-snapshot` to
+  keep them out of the snapshot. Not verified against real AWS: what a payer
+  account's answer holds.
 - The change report gets a block "Cost, previous run to this run" when this run
   read cost allocation. It shows each value of the previous run and of this run
   side by side when the two snapshots hold different months. Otherwise one line

@@ -136,6 +136,7 @@ SDK 會重試被限流的請求，每次重試都是一個新請求。AWS 對每
 
 - 在 Python 中，`CloudBOMGenerator.generate_multi_account_bom()` 的結果和 JSON 報告的 `metadata` 帶有 `finops_costs` 鍵：`schema_version`、`metric`，以及每個帳戶的時間段、請求數、每個標籤鍵的狀態和表格。
 - 狀態快照帶有 `metadata.tags.cost_allocation`：只有表格（按服務、關聯帳戶和標籤值的合計；沒有資源 ID）。快照仍然只有所有者可讀（模式 0600）。`--no-cost-in-snapshot` 不把這些數字寫入快照；工作表照常寫出。不使用 `--finops-cost-allocation` 時，該引數不改變任何內容，並會顯示一條警告說明這一點。
+- 從管理（付費）帳戶讀取時，按關聯帳戶的表格可能列出組織中的每個成員帳戶及其支出，包括本次執行沒有掃描的帳戶；按標籤的表格包含這些帳戶的標籤值（例如 `Owner` 的姓名或電子郵件地址），與 AWS 返回的一致。這些內容會寫入工作表、快照和變更報告。使用 `--no-cost-in-snapshot` 可以不把它們寫入快照。未針對真實的 AWS 驗證：付費帳戶的應答包含哪些內容。
 - 當本次執行讀取了成本分配時，變更報告會有一個 "Cost, previous run to this run" 區塊。兩個快照的月份不同時，它把上一次執行和本次執行的每個值並排列出。否則用一行說明為什麼沒有比較：上一個快照沒有這些數字、兩次執行讀取的是同一個月，或者使用了 `--no-cost-in-snapshot`。
 
 ### 需要什麼，以及未驗證的內容 {#what-it-needs-and-what-is-not-verified}

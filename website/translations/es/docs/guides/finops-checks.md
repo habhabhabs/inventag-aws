@@ -209,6 +209,14 @@ un aviso y no escribe ninguna hoja `FinOps costs`.
   (modo 0600). `--no-cost-in-snapshot` deja las cifras fuera de la
   instantánea; la hoja se sigue escribiendo. Sin `--finops-cost-allocation`,
   esa opción no cambia nada y un aviso lo dice.
+- Leída desde una cuenta de administración (pagadora), la tabla por cuenta
+  vinculada puede listar todas las cuentas miembro de la organización con su
+  gasto, también cuentas que esta ejecución no escaneó, y las tablas por
+  etiqueta contienen sus valores de etiqueta (por ejemplo nombres o correos de
+  `Owner`) tal como los devuelve AWS. Van a la hoja, a la instantánea y al
+  informe de cambios. Usa `--no-cost-in-snapshot` para dejarlos fuera de la
+  instantánea. No verificado contra AWS real: lo que contiene la respuesta de
+  una cuenta pagadora.
 - El informe de cambios recibe un bloque "Cost, previous run to this run"
   cuando esta ejecución leyó la asignación de costes. Muestra cada valor de la
   ejecución anterior y de esta, uno al lado del otro, cuando las dos
