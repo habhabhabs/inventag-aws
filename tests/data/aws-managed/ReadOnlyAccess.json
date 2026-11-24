@@ -21,6 +21,7 @@
         "backup:Get*",
         "backup:List*",
         "ce:GetCostAndUsage",
+        "ce:ListCostAllocationTags",
         "cloudformation:Describe*",
         "cloudformation:Get*",
         "cloudformation:List*",

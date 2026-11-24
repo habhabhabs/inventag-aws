@@ -72,4 +72,8 @@ def test_every_table_operation_of_a_default_scan_is_in_the_policy():
 
 
 def test_policy_size():
-    assert len(READ_ONLY_ACTIONS) == 122
+    assert len(READ_ONLY_ACTIONS) == 123
+    assert READ_ONLY_ACTIONS["ce:ListCostAllocationTags"] == (
+        "ce",
+        "ListCostAllocationTags",
+    )

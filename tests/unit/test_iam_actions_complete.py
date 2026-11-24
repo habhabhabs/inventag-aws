@@ -57,12 +57,12 @@ def policy_actions():
     return all_policy_actions(build_read_only_policy())
 
 
-def test_provisional_the_policy_file_has_the_122_read_actions_and_the_gateway_statement(
+def test_provisional_the_policy_file_has_the_123_read_actions_and_the_gateway_statement(
     policy_actions,
 ):
     assert (
-        len(set(policy_actions)) == 123
-    )  # 122 keys of READ_ONLY_ACTIONS + apigateway:GET
+        len(set(policy_actions)) == 124
+    )  # 123 keys of READ_ONLY_ACTIONS + apigateway:GET
     assert "apigateway:GET" in policy_actions
 
 

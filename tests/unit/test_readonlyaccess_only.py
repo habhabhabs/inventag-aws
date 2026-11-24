@@ -392,7 +392,7 @@ def test_R2_provisional_readonlyaccess_with_every_optional_read_is_denied_nothin
     )
     run.sim.assert_all_mapped()
     assert run.code == 0, run.text
-    # none of the 122 actions of the policy file (nor the others the run uses) is denied
+    # none of the 123 actions of the policy file (nor the others the run uses) is denied
     assert run.sim.denied == []
     assert run.denied_ledger == []
     assert "No permission for" not in run.text

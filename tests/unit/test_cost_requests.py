@@ -52,6 +52,39 @@ def test_planned_counts(accounts, billing, cost, total, parts):
     assert cost_requests.planned(accounts, billing, cost) == (total, parts)
 
 
+@pytest.mark.parametrize(
+    "accounts, billing, cost, total, parts",
+    [
+        (
+            1,
+            False,
+            False,
+            7,
+            (("billing validation", 0), ("cost trend", 0), ("cost allocation", 7)),
+        ),
+        (
+            2,
+            True,
+            True,
+            17,
+            (("billing validation", 2), ("cost trend", 1), ("cost allocation", 14)),
+        ),
+    ],
+)
+def test_planned_counts_with_cost_allocation(accounts, billing, cost, total, parts):
+    assert cost_requests.planned(accounts, billing, cost, cost_allocation=True) == (
+        total,
+        parts,
+    )
+
+
+def test_without_cost_allocation_the_parts_are_as_in_v142():
+    assert cost_requests.planned(1, True, False, cost_allocation=False) == (
+        1,
+        (("billing validation", 1), ("cost trend", 0)),
+    )
+
+
 def test_the_line_golden():
     assert cost_requests.announcement(*cost_requests.planned(3, True, True)) == line(
         4, 3, 1

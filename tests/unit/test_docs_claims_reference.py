@@ -174,7 +174,7 @@ def test_iam_page_equals_policy_file():
     policy, by_sid = _policy_actions()
     page = (DOCS / "iam-permissions.md").read_text()
     discovery = by_sid["InvenTagReadOnlyDiscovery"]
-    assert len(discovery) == 122  # "an explicit list of 122 read actions"
+    assert len(discovery) == 123  # "an explicit list of 123 read actions"
     assert set(discovery) == set(iam_policy.READ_ONLY_ACTIONS)
     assert by_sid["InvenTagApiGatewayMetadata"] == ["apigateway:GET"]
     assert set(by_sid["OptionalS3ReportUpload"]) == {"s3:PutObject"}

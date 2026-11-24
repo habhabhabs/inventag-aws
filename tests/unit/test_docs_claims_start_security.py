@@ -62,11 +62,12 @@ def _policy():
     ]
 
 
-def test_iam_policy_has_122_read_actions_and_no_lookup_events():
-    """Security and status pages: 122 read actions; cloudtrail:LookupEvents dropped."""
+def test_iam_policy_has_123_read_actions_and_no_lookup_events():
+    """Security and status pages: 123 read actions; cloudtrail:LookupEvents dropped."""
     statements = {s["Sid"]: s for s in _policy()}
     read = statements["InvenTagReadOnlyDiscovery"]["Action"]
-    assert len(read) == 122 and len(set(read)) == 122
+    assert len(read) == 123 and len(set(read)) == 123
+    assert "ce:ListCostAllocationTags" in read
     assert "cloudtrail:LookupEvents" not in json.dumps(_policy())
     # every action of the main statement is a read verb
     verbs = ("Describe", "List", "Get", "BatchGet", "Search", "Lookup")
