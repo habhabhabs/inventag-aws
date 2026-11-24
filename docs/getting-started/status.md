@@ -216,7 +216,7 @@ AWS charges for each Cost
 Explorer request: see the current
 [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 
-Cost Explorer requests in one run: one for each account when billing validation is on (the default), and one more for the whole run with `--enable-cost-analysis`. A single-account run with both makes 2; with `--no-billing-validation` it makes 1. AWS charges for each request. Before discovery the run shows the number, for example `Cost Explorer: up to 2 request(s) in this run (billing validation: 1; cost trend: 1). AWS charges for each.`
+Cost Explorer requests in one run: at most one for each account when billing validation is on (the default), and at most one more for the whole run with `--enable-cost-analysis`. A single-account run with both makes at most 2; with `--no-billing-validation` it makes at most 1. A throttled request is retried, up to 10 attempts in all, and each retry is one more request. AWS charges for each request. Before discovery the run shows that number, without retries, for example `Cost Explorer: up to 2 request(s) in this run (billing validation: 1; cost trend: 1). AWS charges for each.`
 
 - `--no-billing-validation` stops those calls, and the report then has no
   billing data to compare with.
@@ -226,7 +226,7 @@ Cost Explorer requests in one run: one for each account when billing validation 
 
 Not verified against real AWS: the cost estimates of `--enable-cost-analysis`.
 
-Not verified against real AWS: the number of requests AWS bills.
+Not verified against real AWS: the number of requests AWS bills, and whether AWS bills a retry.
 
 InvenTag retries a throttled call up to 10 times (standard retry mode);
 `AWS_RETRY_MODE` and `AWS_MAX_ATTEMPTS` override this.

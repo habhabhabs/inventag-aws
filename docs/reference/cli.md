@@ -111,12 +111,12 @@ Not verified against real Google: what the Google flags in this table create, sh
 |---|---|---|---|
 | `--enable-network-analysis` | off | Works | Adds a `Network Analysis` sheet to the Excel report when VPCs are found. Adds nothing with `--template`. See [Network and security analysis](../guides/network-and-security-analysis.md). |
 | `--enable-security-analysis` | off | Works | Adds a `Security Analysis` sheet to the Excel report when security groups are found. Adds nothing with `--template`. |
-| `--enable-cost-analysis` | off | Works | Adds a Cost Analysis sheet (and the four `forgotten_analysis.*` columns) to the default workbook. Makes Cost Explorer, Pricing and CloudWatch calls; `--no-billing-validation` is independent of it and does not stop them. Cost Explorer requests in one run: one for each account when billing validation is on (the default), and one more for the whole run with `--enable-cost-analysis`. A single-account run with both makes 2; with `--no-billing-validation` it makes 1. AWS charges for each request. Needs `pricing:GetProducts` and `cloudwatch:GetMetricStatistics`. The costs are estimates from the AWS Pricing API, not your invoice. |
+| `--enable-cost-analysis` | off | Works | Adds a Cost Analysis sheet (and the four `forgotten_analysis.*` columns) to the default workbook. Makes Cost Explorer, Pricing and CloudWatch calls; `--no-billing-validation` is independent of it and does not stop them. Cost Explorer requests in one run: at most one for each account when billing validation is on (the default), and at most one more for the whole run with `--enable-cost-analysis`. A single-account run with both makes at most 2; with `--no-billing-validation` it makes at most 1. A throttled request is retried, up to 10 attempts in all, and each retry is one more request. AWS charges for each request. Needs `pricing:GetProducts` and `cloudwatch:GetMetricStatistics`. The costs are estimates from the AWS Pricing API, not your invoice. |
 | `--billing-validation`, `--no-billing-validation` | on | Works | Use Cost Explorer during discovery to find services with spend. AWS charges for each Cost Explorer request. See [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). `--no-billing-validation` stops those calls; `--enable-cost-analysis` is independent of it and still calls Cost Explorer. |
 
 Not verified against real AWS: `--enable-cost-analysis` needs only these two extra permissions, and the estimates match AWS prices.
 
-Not verified against real AWS: the number of requests AWS bills.
+Not verified against real AWS: the number of requests AWS bills, and whether AWS bills a retry.
 
 ## Configuration files
 

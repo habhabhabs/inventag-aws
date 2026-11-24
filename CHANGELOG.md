@@ -26,14 +26,16 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
   each. Every request asked for the same two months, grouped by service. The
   cost trend now makes one request for the whole run and reads every service
   from it; the trend values do not change. Cost Explorer requests in one run:
-  one for each account when billing validation is on (the default), and one
-  more for the whole run with `--enable-cost-analysis`. A single-account run
-  with both makes 2; with `--no-billing-validation` it makes 1. AWS charges for
-  each request. Before discovery the run says the number once, as a warning:
+  at most one for each account when billing validation is on (the default),
+  and at most one more for the whole run with `--enable-cost-analysis`. A
+  single-account run with both makes at most 2; with `--no-billing-validation`
+  it makes at most 1. A throttled request is retried, up to 10 attempts in all,
+  and each retry is one more request. AWS charges for each request. Before
+  discovery the run says that number once, without retries, as a warning:
   `Cost Explorer: up to N request(s) in this run (billing validation: A; cost
   trend: B). AWS charges for each.` The `--help` of `--enable-cost-analysis`
   and the docs say the number. No new IAM action. Not verified against real
-  AWS: the number of billed requests.
+  AWS: the number of billed requests, and whether AWS bills a retry.
 - A run with several accounts and `--enable-cost-analysis` now says whose bill
   the cost trend read, as a warning and a run note: "Cost trend: read once,
   with the credentials of account <id>. Its figures are that account's Cost

@@ -228,7 +228,7 @@ dans cette période compte comme facturé. AWS facture chaque requête
 Cost Explorer : consultez les
 [tarifs actuels de Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
 
-Requêtes Cost Explorer d’une exécution : une par compte quand la validation de facturation est active (par défaut), et une de plus pour toute l’exécution avec `--enable-cost-analysis`. Une exécution sur un seul compte avec les deux en fait 2 ; avec `--no-billing-validation`, elle en fait 1. AWS facture chaque requête. Avant la découverte, l’exécution affiche ce nombre, par exemple `Cost Explorer: up to 2 request(s) in this run (billing validation: 1; cost trend: 1). AWS charges for each.`
+Requêtes Cost Explorer d’une exécution : au plus une par compte quand la validation de facturation est active (par défaut), et au plus une de plus pour toute l’exécution avec `--enable-cost-analysis`. Une exécution sur un seul compte avec les deux en fait au plus 2 ; avec `--no-billing-validation`, elle en fait au plus 1. Une requête limitée (throttled) est réessayée, jusqu’à 10 tentatives en tout, et chaque nouvel essai est une requête de plus. AWS facture chaque requête. Avant la découverte, l’exécution affiche ce nombre, sans les nouveaux essais, par exemple `Cost Explorer: up to 2 request(s) in this run (billing validation: 1; cost trend: 1). AWS charges for each.`
 
 - `--no-billing-validation` arrête ces appels, et le rapport n’a alors aucune
   donnée de facturation à comparer.
@@ -238,7 +238,7 @@ Requêtes Cost Explorer d’une exécution : une par compte quand la validation 
 
 Non vérifié sur un vrai AWS : les estimations de coûts de `--enable-cost-analysis`.
 
-Non vérifié sur un vrai AWS : le nombre de requêtes qu’AWS facture.
+Non vérifié sur un vrai AWS : le nombre de requêtes qu’AWS facture, et si AWS facture un nouvel essai.
 
 InvenTag relance un appel limité jusqu’à 10 fois (mode de nouvelle tentative
 standard) ; `AWS_RETRY_MODE` et `AWS_MAX_ATTEMPTS` modifient ce réglage.
