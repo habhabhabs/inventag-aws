@@ -26,12 +26,6 @@ def line(total, billing, trend):
     )
 
 
-TREND_NOTE = (
-    "Cost trend: read once, with the credentials of account 111111111111. "
-    "Its figures are that account's Cost Explorer view, not each account's own."
-)
-
-
 # --- the count (pure) -------------------------------------------------------
 
 
@@ -95,8 +89,9 @@ def test_no_line_when_nothing_is_planned():
     assert cost_requests.announcement(0, ()) is None
 
 
-def test_trend_note_golden():
-    assert cost_requests.trend_note("111111111111") == TREND_NOTE
+def test_the_trend_note_is_gone():
+    # v1.5.0 (A-80): each account's trend is its own, so no note is needed
+    assert not hasattr(cost_requests, "trend_note")
 
 
 # --- the whole CLI against moto ---------------------------------------------
@@ -157,20 +152,12 @@ def test_one_account_billing_and_cost_analysis_says_2_before_the_first_request(
     assert order.count("request") == 2
 
 
-def test_a_default_run_shows_no_count_line_as_in_v1_4_0(tmp_path, monkeypatch):
-    # architect v1.4.1 ruling: without --enable-cost-analysis the line is INFO,
-    # so the default console is what v1.4.0 printed
+def test_a_default_run_says_its_count_as_a_warning(tmp_path, monkeypatch):
+    # v1.5.0 plan decision 7 (A-83 b): every run that calls Cost Explorer
     outcome, order = _run(tmp_path, monkeypatch, True)
     assert outcome.code == 0
-    assert _lines(outcome) == []
-    assert order[0] == "line"
-
-
-def test_one_account_billing_only_says_1_at_info_with_verbose(tmp_path, monkeypatch):
-    outcome, order = _run(tmp_path, monkeypatch, True, ("--verbose",))
-    assert outcome.code == 0
     assert _lines(outcome) == [line(1, 1, 0)]
-    assert _levels(outcome) == ["INFO"]
+    assert _levels(outcome) == ["WARNING"]
     assert order[0] == "line"
 
 
@@ -188,7 +175,7 @@ def test_one_account_has_no_trend_note(tmp_path, monkeypatch):
     assert evaluate(("report_text", "Cost trend: read once"), outcome) is not None
 
 
-def test_three_accounts_say_4_and_name_the_trend_account(tmp_path, monkeypatch):
+def test_three_accounts_say_9_and_name_no_trend_account(tmp_path, monkeypatch):
     outcome, order = _run(
         tmp_path,
         monkeypatch,
@@ -203,7 +190,6 @@ def test_three_accounts_say_4_and_name_the_trend_account(tmp_path, monkeypatch):
     # P7 (A-80): billing validation once for each account, the cost trend
     # once for each account too
     assert order.count("request") == 6
-    # one WARNING line on the console (the run notes do not repeat it)
-    assert outcome.text.count(TREND_NOTE) == 1
-    # and the report's run notes say it
-    assert evaluate(("report_text", TREND_NOTE), outcome) is None
+    # v1.5.0 (A-80): each account's trend is its own; no note about one bill
+    assert "Cost trend: read once" not in outcome.text
+    assert evaluate(("report_text", "Cost trend: read once"), outcome) is not None

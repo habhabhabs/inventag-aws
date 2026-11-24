@@ -219,7 +219,10 @@ def test_the_help_of_enable_cost_analysis_says_the_number_of_requests():
         if "--enable-cost-analysis" in a.option_strings
     ]
     text = " ".join(action.help.split())
-    assert "at most one more Cost Explorer request for the whole run" in text
+    # v1.5.0 (A-80): per account, with that account's credentials
+    assert (
+        "at most 2 Cost Explorer requests (ce:GetCostAndUsage) for each account" in text
+    )
     # security review v1.4.1 finding 2: retries are requests too
     assert "each retry of a throttled request is one more request" in text
     assert "AWS charges for each request" in text
