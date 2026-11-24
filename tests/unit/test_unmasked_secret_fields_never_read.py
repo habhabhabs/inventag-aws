@@ -414,6 +414,9 @@ def test_the_planted_paths_are_the_model_paths():
     """A typo in a path would make the run test prove nothing."""
     for (service, operation), (name, path) in TARGETS.items():
         shape = _session().client(service).meta.service_model
+        if operation not in shape.operation_names:
+            # Not in this botocore (added after the floor, 1.35.0): skipped.
+            continue
         shape = shape.operation_model(operation).output_shape
         for part in path.split("."):
             shape = shape.member if part == "[]" else shape.members[part]
