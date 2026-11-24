@@ -1384,8 +1384,9 @@ jobs:
           | sort > "$RUNNER_TEMP/allowed.txt"
         extra=$(comm -23 "$RUNNER_TEMP/have.txt" "$RUNNER_TEMP/allowed.txt")
         if [ -n "$extra" ]; then
-          for name in $extra; do
-            echo "::error::On the release but not in this upload: $name. Delete it (gh release delete-asset $TAG $name) and run the job again."
+          # One name per line, read whole: no word splitting, no glob.
+          printf '%s\n' "$extra" | while IFS= read -r name; do
+            echo "::error::On the release but not in this upload: $name. Delete it (gh release delete-asset $TAG \"$name\") and run the job again."
           done
           exit 1
         fi
