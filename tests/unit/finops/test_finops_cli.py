@@ -377,7 +377,7 @@ def test_multi_account_config_keeps_the_v141_positional_order():
 
     names = [f.name for f in dataclasses.fields(MultiAccountConfig)]
     assert names[: len(V141_FIELDS)] == V141_FIELDS
-    assert names[len(V141_FIELDS) :] == ["finops_checks"]
+    assert names[len(V141_FIELDS)] == "finops_checks"  # first field after v1.4.1
 
     bom = BOMProcessingConfig()
     values = [

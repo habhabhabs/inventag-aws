@@ -96,3 +96,17 @@ def full_stub(c, active=tuple(KEYS), inactive=(), period=PERIOD):
 
 
 __all__ = ["ANY", "Stubber"]
+
+
+def activate_after_the_guard(stub):
+    """Activate ``stub`` so that its answer comes after the read-only guard's
+    check: the guard listens on "before-call", and botocore calls the more
+    specific "before-call.*.*" first, which would hide every stubbed request
+    from the guard's audit. Same handler, registered last on "before-call"."""
+    stub.activate()
+    events = stub.client.meta.events
+    events.unregister("before-call.*.*", unique_id=stub._event_id)
+    events.register_last(
+        "before-call", stub._get_response_handler, unique_id=stub._event_id
+    )
+    return stub

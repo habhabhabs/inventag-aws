@@ -55,7 +55,7 @@ def stubbed_ce(monkeypatch):
             inactive=("Project",),
             period=_period_of_today(),
         )
-        stub.activate()
+        cs.activate_after_the_guard(stub)
         made.append({"session": session, "region": region, "stub": stub})
         return client
 
@@ -232,7 +232,7 @@ def test_a_denied_request_is_a_note_and_a_permissions_line_and_exits_0(
             stub.add_client_error(
                 "get_cost_and_usage", "AccessDeniedException", http_status_code=400
             )
-        stub.activate()
+        cs.activate_after_the_guard(stub)
         return client
 
     monkeypatch.setattr(ca, "create_client", create)
