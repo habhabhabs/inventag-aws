@@ -1,0 +1,58 @@
+# Dependabot version updates. Weekly, grouped, with a low limit of open pull
+# requests. Dependabot opens the pull requests; the repository's own checks run
+# on each one and a person merges. Security alerts are a separate GitHub
+# setting (Settings, Code security).
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Singapore"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "deps"
+    groups:
+      python-minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "npm"
+    directory: "/website"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Singapore"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "deps(website)"
+    groups:
+      website-minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Singapore"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: "docker"
+    directory: "/packaging/docker"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Singapore"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "deps(docker)"
