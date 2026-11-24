@@ -281,7 +281,7 @@ bom_output/state/state_20261112_090100.json
 使用 `--s3-bucket acme-inventory-reports --s3-key-prefix bom-reports/` 時，每次執行都會把檔案放在以該次執行命名的資料夾下：
 
 ```text title="Objects in s3://acme-inventory-reports"
-bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
+bom-reports/20261112_090000/multi_account_bom_20261112_090000.xlsx
 ```
 
 ## 終端輸出 {#terminal-output}
