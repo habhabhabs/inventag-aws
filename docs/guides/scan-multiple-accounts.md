@@ -91,6 +91,7 @@ A run across the three sample accounts:
 <!-- BEGIN EXAMPLE OUTPUT: org-console -->
 
 ```text title="Output"
+inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Cost Explorer: up to 3 request(s) in this run (billing validation: 3; cost trend: 0). AWS charges for each.
 Wrote bom_output/tag_compliance_20261112_090000.json
 Wrote bom_output/multi_account_bom_20261112_090000.docx
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx

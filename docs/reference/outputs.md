@@ -290,7 +290,7 @@ puts its files under a folder named after the run:
 <!-- BEGIN EXAMPLE OUTPUT: s3-keys -->
 
 ```text title="Objects in s3://acme-inventory-reports"
-bom-reports/20261112_090000/multi_account_bom_20261112_090000.xlsx
+bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ```
 
 <!-- END EXAMPLE OUTPUT: s3-keys -->

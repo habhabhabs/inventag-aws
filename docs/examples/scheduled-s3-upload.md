@@ -63,6 +63,7 @@ From an offline run against mocked AWS (sample data):
 
 ```text title="Output"
 inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+inventag.core.cloud_bom_generator.CloudBOMGenerator - WARNING - Cost Explorer: up to 1 request(s) in this run (billing validation: 1; cost trend: 0). AWS charges for each.
 Wrote bom_output/multi_account_bom_20261112_090000.xlsx
 ```
 
@@ -73,7 +74,7 @@ What arrived in the bucket:
 <!-- BEGIN EXAMPLE OUTPUT: s3-keys -->
 
 ```text title="Objects in s3://acme-inventory-reports"
-bom-reports/20261112_090000/multi_account_bom_20261112_090000.xlsx
+bom-reports/20261112_090000/multi_account_bom_20261112_090100.xlsx
 ```
 
 <!-- END EXAMPLE OUTPUT: s3-keys -->
