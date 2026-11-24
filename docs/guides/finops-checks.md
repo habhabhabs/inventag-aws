@@ -115,6 +115,28 @@ they do not change the exit code. With
 `--disable-state-management` as well, there is no snapshot: a warning says
 that no FinOps findings were written.
 
+These findings come from the shipped policy set `finops-checks`, which is the
+same six checks written as policies. Two things follow from that:
+
+- The `FinOps` sheet of a run without `--template` is what v1.4.3 wrote, byte
+  for byte (a test compares it with a golden file made from v1.4.3). The
+  policy engine, used by `--template` and by
+  `inventag policy check --set finops-checks`, follows the written rules of
+  the policy language, and in a few cases that is a different answer from the
+  sheet. The tests found five: a global resource when a Tagging API listing of
+  its account failed (`FIN-006`); a resource with all keys present in a region
+  whose Tagging API listing failed (`FIN-006`); a classic `elb` listing that
+  failed, which the engine also counts against load balancers of the `elbv2`
+  listing (`FIN-005`); a target group known only by identity (`FIN-005`); and
+  the order of the reasons for a load balancer that has no ARN while its
+  `elbv2` listing failed (`FIN-005`). Not verified beyond those tests: other
+  differences.
+- `--policy-fail-on` applies to these findings too: with `--finops-checks`,
+  `--template`, `--policy` and `--policy-fail-on SEVERITY` together, a
+  `FIN-` finding that fails at that severity or higher gives exit code 7. The
+  shipped checks have the severity `low`. The rule that the findings do not
+  change the exit code holds without `--policy-fail-on`.
+
 ## The `finops_checks` result
 
 The command line writes the results only as the `FinOps` sheet. In Python,
@@ -240,6 +262,50 @@ Not verified against real AWS:
   `ListCostAllocationTags` may not answer from a member account.
 - That the answers have the shape the tests use. The tests use answers shaped
   like Cost Explorer's, checked against the botocore service model.
+
+## The cost trend of `--enable-cost-analysis`
+
+`--enable-cost-analysis` is independent of `--finops-checks` and
+`--finops-cost-allocation`. Besides its estimates from the AWS Pricing API, it
+reads the billed cost of each service for the last two full months from Cost
+Explorer and adds a table to the `Cost Analysis` sheet. The columns are in
+[Cost Analysis sheet](../reference/outputs.md#cost-analysis-sheet).
+
+- **For each account, with that account's own credentials.** A scan of several
+  accounts reads each account's own bill. Before v1.5.0 it read one bill, with
+  the credentials of the first account, and divided each service's figure over
+  that service's resources.
+- **At most 2 Cost Explorer requests for each account**, whatever the number of
+  services: one for the two months, and a second only for a further page of the
+  answer. This is in addition to at most 1 for each account for billing
+  validation. A throttled request is retried, up to 10 attempts in all, and
+  each retry is one more request. AWS charges for each request; see
+  [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
+  The count line before discovery shows the share as `cost trend: N`.
+- **One row for each account and service, never one for each resource.** The
+  figure is the billed total of the service in the account. It is not a
+  resource's cost and is not divided among resources.
+- **Services are found by their billing names.** S3, SQS and SNS get a
+  trend, and the figure of EC2 no longer includes `Amazon EC2 Container
+  Registry (ECR)` or any other service whose billing name contains "EC2". A
+  service's figure is the sum of the billing names shown in the column
+  `Billing names counted`. `EC2 - Other` (volumes, NAT gateways, data
+  transfer) is a separate billing name and is not in EC2's row.
+- **Month is compared with month.** The earlier and the later of the two full
+  months before the run are compared, never a part month with a full month.
+- **A failed request is one warning.** A request that is denied keeps the
+  `Permissions:` line; one that fails for another reason gives one warning
+  for that account, which then has no trend.
+
+Migration from earlier releases: the entries of `cost_analysis["cost_trends"]`
+in the Python result no longer have `resource_id`. There is one entry for each
+account and service, with `account_id`, `billing_names`, `resource_count`,
+`previous_month`, `current_month` and `unit` in its place. Figures of
+multi-account runs change, as do the figure of EC2 and the services that now
+have a trend.
+
+Not verified against real AWS: the bills of a real account, what a payer
+account and a member account each see, and whether the answer fits on one page.
 
 ## What the checks cannot see
 

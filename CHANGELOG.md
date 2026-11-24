@@ -10,6 +10,74 @@ the flag is unchanged; the changelog lists it under Added.
 
 ## [Unreleased]
 
+### Added
+
+- `inventag policy validate`, `list`, `schema`, `test`, `check`, `explain` and
+  `lock`: governance as code on a saved state snapshot. A policy file
+  (`kind: policy`), a policy set (`kind: policy-set`), a waivers file
+  (`kind: waivers`) and a policy test (`kind: policy-test`) say what a
+  resource must look like; InvenTag reads and reports, and a policy has no
+  action. The commands make no AWS call and need no credentials. A row whose
+  data was not read is `not_evaluated`, never a pass. `policy check` prints
+  text by default and writes a file only for a format you name; it exits with
+  0 unless you give `--fail-on` or `--fail-on-not-evaluated`. `--set` on
+  `list`, `check` and `explain` uses a shipped set. Shell completion knows the
+  new words.
+- `--policy PATH` (repeatable), `--policy-waivers FILE`, `--policy-fail-on
+  SEVERITY` and `--policy-format LIST` on a scan: the policies are checked on
+  the run's state snapshot after the scan, a text summary is printed and
+  `policy_findings_<timestamp>.json` is written. They work with `--template`.
+  An invalid policy stops the run with exit code 1 before any AWS call;
+  `--disable-state-management` with `--policy` stops it with exit code 2.
+- Exit codes 7 and 8. 7: a policy finding failed at or above the severity of
+  `--policy-fail-on` (scan) or `--fail-on` (`inventag policy check`). 8: only
+  `inventag policy check --fail-on-not-evaluated`, when something could not be
+  evaluated; 8 wins over 7. Codes 0 to 6 and their order are unchanged; on a
+  scan 7 comes only when 5, 6, 3 and 4 do not apply.
+- The files `policy_findings_<timestamp>.json`, `.sarif`, `.xml` (JUnit) and
+  `.md`, and a JSON Schema for the JSON file packaged with InvenTag
+  (`urn:inventag:schema:policy-findings:1`). A value of a resource field is
+  shown only with `--show-values`; masked values stay masked, and SARIF and
+  JUnit never carry a value.
+- Shipped policy sets: `finops-checks`, `tagging-standard`, `region-allowlist`,
+  `naming`, `encryption-at-rest` and `public-exposure`.
+- `scope.filters` in tag policies: the entries are the filters of a policy. A
+  resource they leave out is out of scope; a resource they cannot decide is
+  counted as not evaluated and is not checked. The JSON, the console line, the
+  workbook and the Word document show the count, and only when the policy has
+  filters.
+- `jmespath` is now a direct dependency (it was already installed with
+  botocore).
+
+### Changed
+
+- `--finops-checks` and `--policy` work with `--template`. `--finops-checks`
+  with `--template` runs the shipped `finops-checks` set on the state snapshot
+  and writes `policy_findings_<timestamp>.json`; it no longer prints the
+  v1.4.2 warning that the checks do not run. The `FinOps` sheet of a run
+  without `--template` is unchanged, byte for byte.
+- The cost trend of `--enable-cost-analysis` reads each account's bill with
+  that account's credentials: at most 2 Cost Explorer requests for each
+  account (was: at most 1 for the whole run, with the first account's
+  credentials). Most accounts make 1. Figures of multi-account runs change.
+  Services are found by their billing names, so S3, SQS and SNS get a trend,
+  and EC2's figure no longer includes ECR or other services whose billing name
+  contains "EC2". `EC2 - Other` is a separate billing name and is not in
+  EC2's row. Two full months are compared. The billed amounts show the unit
+  Cost Explorer returns. A failed trend request is one warning.
+- The Cost Explorer count line is a warning on every run that calls Cost
+  Explorer, default runs included (it was a warning only with
+  `--enable-cost-analysis`).
+
+### Removed
+
+- The per-resource cost trend entries of `cost_analysis["cost_trends"]` (a
+  service total divided by the number of resources, with `resource_id`). The
+  entries are now one for each account and service, with `account_id`,
+  `billing_names` and `resource_count`, and the Cost Analysis sheet shows one
+  row for each account and service with a column `Billing names counted`
+  (before, no sheet showed the trend).
+
 ## [v1.4.3] - 2026-11-24
 
 ### Added

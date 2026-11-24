@@ -29,13 +29,20 @@ inventag templates init NAME|PATH --output FILE|FOLDER [--name NAME] [--extend] 
 inventag templates validate NAME|PATH [NAME|PATH ...]
 inventag selftest                      check this copy of InvenTag, offline
 inventag completion bash|zsh|fish      print a shell completion script
+inventag policy validate PATH [PATH ...]
+inventag policy list [--policies PATH ...] [--set NAME] [--shipped]
+inventag policy schema [FIELD] [--json]
+inventag policy test [DIR]
+inventag policy check --snapshot FILE [--policies PATH ...] [--set NAME] [--fail-on SEVERITY]
+inventag policy explain POLICY --snapshot FILE [--policies PATH ...] [--set NAME]
+inventag policy lock [PATH] [--check]
 ```
 
 The `inventag` command works the same on Linux, macOS and Windows.
 
 Not verified against Windows or macOS: the `inventag` command works the same as on Linux.
 
-`templates`, `selftest` and `completion` must be the first word after the program name.
+`templates`, `selftest`, `completion` and `policy` must be the first word after the program name.
 
 ## Templates
 
@@ -114,7 +121,7 @@ Not verified against real Google: what the Google flags in this table create, sh
 | `--finops-checks` | off | Works | Runs six FinOps checks (`FIN-001` to `FIN-006`) on the resources the scan found and adds a `FinOps` sheet as the last sheet of the Excel report. Makes no further AWS call, needs no further permission, and its findings do not change the exit code. With `--template` no sheet is added: the checks run on the run's state snapshot and their findings are written to `policy_findings_<timestamp>.json`; with `--disable-state-management` as well, a warning says that no FinOps findings were written. See [FinOps checks](../guides/finops-checks.md). |
 | `--enable-network-analysis` | off | Works | Adds a `Network Analysis` sheet to the Excel report when VPCs are found. Adds nothing with `--template`. See [Network and security analysis](../guides/network-and-security-analysis.md). |
 | `--enable-security-analysis` | off | Works | Adds a `Security Analysis` sheet to the Excel report when security groups are found. Adds nothing with `--template`. |
-| `--enable-cost-analysis` | off | Works | Adds a Cost Analysis sheet (and the four `forgotten_analysis.*` columns) to the default workbook. Makes Cost Explorer, Pricing and CloudWatch calls; `--no-billing-validation` is independent of it and does not stop them. Cost Explorer requests in one run: at most one for each account when billing validation is on (the default), and at most one more for the whole run with `--enable-cost-analysis`. A single-account run with both makes at most 2; with `--no-billing-validation` it makes at most 1. A throttled request is retried, up to 10 attempts in all, and each retry is one more request. AWS charges for each request. Needs `pricing:GetProducts` and `cloudwatch:GetMetricStatistics`. The costs are estimates from the AWS Pricing API, not your invoice. |
+| `--enable-cost-analysis` | off | Works | Adds a Cost Analysis sheet (and the four `forgotten_analysis.*` columns) to the default workbook. Makes Cost Explorer, Pricing and CloudWatch calls; `--no-billing-validation` is independent of it and does not stop them. Cost Explorer requests in one run: at most one for each account for billing validation (on by default), and at most 2 for each account for the cost trend, each read with that account's own credentials. A single-account run with both makes at most 3; with `--no-billing-validation` it makes at most 2. A throttled request is retried, up to 10 attempts in all, and each retry is one more request. AWS charges for each request. The run says the most requests before discovery, as a warning. Needs `pricing:GetProducts` and `cloudwatch:GetMetricStatistics`. The costs are estimates from the AWS Pricing API, not your invoice; the cost trend table shows billed amounts from Cost Explorer, one row for each account and service. See [Output files](./outputs.md#cost-analysis-sheet) and [FinOps checks](../guides/finops-checks.md#the-cost-trend-of---enable-cost-analysis). |
 | `--billing-validation`, `--no-billing-validation` | on | Works | Use Cost Explorer during discovery to find services with spend. AWS charges for each Cost Explorer request. See [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). `--no-billing-validation` stops those calls; `--enable-cost-analysis` is independent of it and still calls Cost Explorer. |
 
 Not verified against real AWS: `--enable-cost-analysis` needs only these two extra permissions, and the estimates match AWS prices.
@@ -123,14 +130,30 @@ Not verified against real AWS: the number of requests AWS bills, and whether AWS
 
 ## Policies
 
-Checks policy files against the state snapshot of the run, after the scan. The `inventag policy` command checks a saved snapshot without a scan; see `inventag policy --help`.
+Policies are files that say what a resource must look like. InvenTag reads them and reports; a policy changes nothing in an account. The flags below check them against the state snapshot of the run, after the scan. The `inventag policy` command checks a saved snapshot without a scan (see [`policy` subcommands](#policy-subcommands)).
 
 | Flag | Default | Status | What it does |
 |---|---|---|---|
-| `--policy PATH` | none | Works | Policy file or folder; repeatable. After the scan, the policies are checked against the run's state snapshot, a text summary is printed, and `policy_findings_<timestamp>.json` is written to the output directory. An invalid policy stops the run with exit code 1 before any AWS call. With `--disable-state-management` the run stops with exit code 2. |
+| `--policy PATH` | none | Works | Policy file, policy set or folder; repeatable. After the scan, the policies are checked against the run's state snapshot, a text summary is printed, and `policy_findings_<timestamp>.json` is written to the output directory. It also works with `--template`: the check runs on the state snapshot, which a template run writes too. An invalid policy stops the run with exit code 1 before any AWS call. With `--disable-state-management` the run stops with exit code 2. |
 | `--policy-waivers FILE` | none | Works | Waivers file for `--policy`. Without `--policy`: exit code 2. |
-| `--policy-fail-on SEVERITY` | none | Works | `info`, `low`, `medium`, `high` or `critical`. Exit code 7 when a finding fails at that severity or higher. Exit codes 5, 6, 3 and 4 come first. Without `--policy`: exit code 2. |
-| `--policy-format LIST` | `json` | Works | Files to write, comma-separated: `json`, `sarif`, `junit`, `markdown`. An unknown format: exit code 2. Without `--policy`: exit code 2. |
+| `--policy-fail-on SEVERITY` | none | Works | `info`, `low`, `medium`, `high` or `critical`. Exit code 7 when a finding fails at that severity or higher. Exit codes 5, 6, 3 and 4 come first. Without `--policy`: exit code 2. A scan has no flag for exit code 8. |
+| `--policy-format LIST` | `json` | Works | Files to write, comma-separated: `json`, `sarif`, `junit`, `markdown`. An unknown format: exit code 2. Without `--policy`: exit code 2. See [Policy findings](./outputs.md#policy-findings). |
+
+### `policy` subcommands
+
+`inventag policy` reads a saved state snapshot (`state/state_<timestamp>.json`) and policy files. It makes no AWS call and needs no credentials. `inventag policy COMMAND --help` prints the options of one command.
+
+| Command | What it does |
+|---|---|
+| `policy validate PATH ...` | Checks policy, policy set and waivers files and folders without evaluating anything. It prints one `OK` line for each file, or each problem as `error: FILE:LINE: FIELD: PROBLEM`. `--now DATE` (`YYYY-MM-DD`, default today in UTC) is the date that waiver expiry is judged on. Exit code 0: no problem. Exit code 1: a problem. Exit code 2: no path given. |
+| `policy list` | Lists policies: ID, severity, version, a 12-character digest and file. `--policies PATH ...` names files or folders (default `.inventag/policies`). `--set NAME` lists the members of one set: a set in the given paths, else a shipped set. `--shipped` lists the sets shipped with InvenTag and the number of policies in each (not with `--set`: exit code 2). Exit code 0, or 1 for an unreadable file or an unknown set. |
+| `policy schema [FIELD]` | Prints the fields of the policy files with their rules; with a field name, the help of that field. `--json` prints a JSON Schema for editors (looser than `policy validate`: use `validate` for the final word). Exit code 0, or 1 for an unknown field. |
+| `policy test [DIR]` | Runs the fixtures in `tests/<policy name>/*.yaml` under the policy folder (default `.inventag/policies`) and prints one `PASS` or `FAIL` line for each, then a count. A policy with no fixture gets a warning. Exit code 0: every expectation holds. Exit code 1: a fixture fails or is not valid. |
+| `policy check --snapshot FILE` | Evaluates the policies on the snapshot and reports. `--policies PATH ...` (default `.inventag/policies`), `--set NAME` (only that set: a set in the given paths, else a shipped one), `--waivers FILE`, `--baseline FILE` (an older snapshot, for baseline checks), `--now DATE`, `--show-values` (show the values that failed a check; masked values stay masked), `--locked` (refuse a policy file that differs from `policy.lock`). `--format LIST` is comma-separated: `text` (the default; to the screen, no file), `json`, `sarif`, `junit` and `markdown` (files, written to `--output-directory`, default the current folder). `--fail-on SEVERITY` gives exit code 7 when a finding fails at that severity or higher; `--fail-on-not-evaluated` gives exit code 8 when anything could not be evaluated. Without the two, the command reports and exits with code 0. Exit codes: 0, 1 (a file is not valid or cannot be read; nothing is written), 2 (invalid options; nothing is written), 7, 8 (8 wins over 7). |
+| `policy explain POLICY --snapshot FILE` | Shows how one policy decided each row: the result, each deciding check, and a `trace:` of the parts of the policy with their verdicts. `--resource ARN` limits it to one resource. `--policies`, `--set`, `--baseline`, `--now` and `--show-values` are as for `check`. Exit code 0, or 1. |
+| `policy lock [PATH]` | Writes `policy.lock` in the policy folder (default `.inventag/policies`): the SHA-256 digest of each policy, set and waivers file. `--check` only checks that the lock is current. Exit code 0, or 1. |
+
+Not verified against real AWS: a snapshot that a real account produced. The tests use snapshots made from mocked accounts and from hand-written rows.
 
 ## Configuration files
 
@@ -183,8 +206,9 @@ YAML or JSON file. See [Layout files for one report](../templates/layout-flags.m
 | `--fail-on-account-error` | off | Works | Exit with code 5 when an account could not be scanned or ran out of time. The reports are still written. Without the flag, such a run exits with code 0 unless every account failed. |
 | `--fail-if-empty` | off | Works | Exit with code 6 when no resources were found or the filters removed all of them. |
 
-If more than one applies, 5 comes first, then 6, then 3, then 4. Reports are
-written for codes 3, 4 and 5. With code 6, a run with `--template` writes a
+If more than one applies, 5 comes first, then 6, then 3, then 4. Code 7 (with
+`--policy-fail-on`) comes only when none of those applies. Reports are
+written for codes 3, 4, 5 and 7. With code 6, a run with `--template` writes a
 report that lists no resources, and a run without it writes no file.
 
 ## Logging
@@ -306,3 +330,5 @@ See [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).
 | 4 | Reports written, but `--risk-threshold` found a security group rule at or above that level |
 | 5 | Reports written, but an account could not be scanned or ran out of time, and you passed `--fail-on-account-error` |
 | 6 | No resources to report, and you passed `--fail-if-empty` |
+| 7 | A policy finding failed at or above the severity you gave: `--policy-fail-on` on a scan, or `--fail-on` of `inventag policy check`. On a scan, 7 comes only when 5, 6, 3 and 4 do not apply. The findings file is written. |
+| 8 | Only from `inventag policy check` with `--fail-on-not-evaluated`: something could not be evaluated. 8 wins over 7. A scan never exits with 8. The findings file is written. |

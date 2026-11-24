@@ -37,11 +37,13 @@ data).
 | `tag_compliance_<timestamp>.json` | A tag policy is active | Tag check results |
 | `state/state_<timestamp>.json` | Every run, unless `--disable-state-management` | Snapshot of every resource found, with secret values masked. `metadata.tags.coverage_summary` counts, per account, how the listing calls ended (`ok`, `empty`, `denied`, `throttled`, `error`, `timeout`, and `out_of_scope` for services that `--account-services` left out). `metadata.tags.units_not_read` lists the listings that were not read (only when one failed), and `metadata.tags.inventag_version` names the InvenTag version that wrote the snapshot. Snapshots older than 30 days, or beyond the newest 100, are removed (`--state-retention-days`, `--state-max-snapshots`). |
 | `state/metadata.json` | With snapshots | Index of snapshots: time, account, regions, resource count, checksum |
+| `policy_findings_<timestamp>.json` | `--policy` (the default of `--policy-format`), `--finops-checks` with `--template`, or `inventag policy check --format json` | The result of checking policies on a snapshot. See [Policy findings](#policy-findings). |
+| `policy_findings_<timestamp>.sarif`, `.xml` and `.md` | `--policy-format sarif`, `junit` or `markdown`, or the same words in `--format` of `inventag policy check` | The same result as SARIF 2.1.0, JUnit XML and Markdown. `junit` writes `.xml` and `markdown` writes `.md`. |
 | `changelog_<timestamp>.md` | Second and later runs, unless `--no-generate-changelog` or `--disable-delta-detection` | What was added, removed or changed since the previous snapshot. See [Track changes](../guides/track-changes.md). |
 | The file you name with `--audit-output` | When you ask for it | Every AWS operation the run called |
 | `state/partial/<key>/<account-id>.json` | A run in which some accounts failed | Results of the accounts that finished, reused by `--resume` and removed after a complete run |
 
-`<timestamp>` is `YYYYMMDD_HHMMSS`. Report, Word, changelog and tag compliance names use your computer's local time. The snapshot and the S3 folder use UTC.
+`<timestamp>` is `YYYYMMDD_HHMMSS`. Report, Word, changelog and tag compliance names use your computer's local time. The snapshot and the S3 folder use UTC. The `<timestamp>` of a `policy_findings_` file is the time stored in the snapshot that was checked (UTC), not the clock of the check.
 
 The default workbook has a `raw_data.*` column for every API field, so its sheets can be wide. A snapshot is indented JSON and holds the whole `raw_data` of every resource, so it can be large. No option leaves the `raw_data.*` columns out or compresses a snapshot; both are planned for a later release.
 
@@ -61,7 +63,9 @@ The default workbook has a `raw_data.*` column for every API field, so its sheet
 - **Network Analysis** and **Security Analysis** sheets, only with
   `--enable-network-analysis` or `--enable-security-analysis`.
 - **Cost Analysis** sheet, only with `--enable-cost-analysis`: estimated
-  monthly costs from the AWS Pricing API, not your invoice.
+  monthly costs from the AWS Pricing API, not your invoice, and a table of
+  billed cost for each account and service from Cost Explorer. See
+  [Cost Analysis sheet](#cost-analysis-sheet).
 - **FinOps** sheet, the last sheet, only with `--finops-checks`: see
   [FinOps sheet and the `finops_checks` key](#finops-sheet-and-the-finops_checks-key).
 
@@ -115,6 +119,110 @@ note, then one row for each account, grouping and value, with the columns
 report have the key `finops_costs`; the snapshot has
 `metadata.tags.cost_allocation` (tables only, unless `--no-cost-in-snapshot`).
 See [FinOps checks](../guides/finops-checks.md#cost-allocation-from-cost-explorer).
+
+## Cost Analysis sheet
+
+With `--enable-cost-analysis`, the default workbook has a `Cost Analysis`
+sheet. Its first row says that the figures are estimates from the AWS Pricing
+API and not your invoice. The tables follow in this order: `Summary`,
+estimated monthly cost by service, the most expensive resources (top 50), the
+cost trend, possibly forgotten resources and recommendations. Every table after
+`Summary` is left out when it has no rows.
+
+The cost trend table is titled "Billed cost by account and service, last two
+full months (Cost Explorer; a service total, not a resource's cost)". It has
+one row for each account and service, from that account's own Cost Explorer
+bill, with the columns:
+
+| Column | Content |
+|---|---|
+| `Account` | The account ID of the resources |
+| `Service` | The service as the report names it, for example `EC2` or `S3` |
+| `Resources` | How many resources of that service the account has in the report |
+| `Earlier month` | The earlier of the two full months before the run, as `YYYY-MM` |
+| `Billed (USD)` (first) | What Cost Explorer billed for the service in that month |
+| `Later month` | The later month, as `YYYY-MM` |
+| `Billed (USD)` (second) | What Cost Explorer billed for the service in the later month |
+| `Change %` | The change from the earlier to the later month, rounded to one decimal. From a zero bill it is 100 when the later month is billed, else 0 |
+| `Direction` | `increasing` or `decreasing`, or `stable` when the change is less than 5 percent either way |
+| `Billing names counted` | The Cost Explorer service names that were added up in that row, separated by commas |
+
+The amount columns show the unit that Cost Explorer returned: `Billed (USD)`
+when every row has the same unit, else `Billed (unit as returned)` and each
+cell then ends with its unit. A row is a service total in the account, not the
+cost of one resource, and it is not divided among resources. A service's figure
+is the sum of the billing names shown in its row. `EC2 - Other` (volumes, NAT
+gateways, data transfer) is a separate billing name and is not in EC2's row;
+`Amazon EC2 Container Registry (ECR)` is not in it either. An account whose
+trend request was denied or failed, or that has no session, has no rows, and
+the run says so in a warning. Months are the two full months before the run.
+
+In Python, the same rows are `cost_analysis["cost_trends"]` of the result of
+`CloudBOMGenerator.generate_multi_account_bom()`. Each entry has `account_id`,
+`service`, `billing_names`, `resource_count`, `previous_month`,
+`current_month`, `previous_monthly_cost`, `current_monthly_cost`,
+`cost_change_percentage`, `trend_direction`, `alert_triggered` and `unit`.
+Before v1.5.0, no sheet showed the trend; each entry of `cost_trends` named a
+resource (`resource_id`) and held the service total divided by the number of
+its resources. Those entries are gone:
+code that reads `resource_id` from `cost_trends` must read one entry for each
+account and service instead. See
+[FinOps checks](../guides/finops-checks.md#the-cost-trend-of---enable-cost-analysis).
+
+Not verified against real AWS: the bills a real account returns, including
+what a management (payer) account and a member account each see.
+
+## Policy findings
+
+`inventag policy check`, `--policy` and `--finops-checks` with `--template`
+write the result of checking policies on a state snapshot to files named
+`policy_findings_<timestamp>.<extension>` in the output directory (the folder
+of `--output-directory` for `inventag policy check`):
+
+| Extension | Format | Written for |
+|---|---|---|
+| `.json` | The full result | `json` |
+| `.sarif` | SARIF 2.1.0, for code scanning tools | `sarif` |
+| `.xml` | JUnit XML, one test case for each policy | `junit` |
+| `.md` | Markdown tables, at most 50 rows for each policy | `markdown` |
+
+A scan writes `.json` unless `--policy-format` says otherwise.
+`inventag policy check` prints text to the screen and writes no file unless
+`--format` names one; it writes nothing when it exits with code 1 or 2.
+
+The JSON file has these top-level keys: `schema_version`, `inventag_version`,
+`now`, `snapshot`, `baseline`, `policies`, `summary`, `findings`,
+`not_evaluated_units`, `not_evaluated_policies` and `unused_waivers`. Keys are
+sorted and the file ends with a newline. It holds no host name, user name,
+absolute path or clock time, so the same snapshot and policies give the same
+bytes. A JSON Schema for it is packaged with InvenTag
+(`inventag/policy/outputs/schemas/policy-findings-1.json`); its `$id` is the
+name `urn:inventag:schema:policy-findings:1`, not a web address.
+
+- `findings` lists each row whose result is `fail`, `waived` or
+  `not_evaluated`. A `pass` and a row that a policy does not select
+  (`out_of_scope`) are counted in `summary` and in each policy's `counts`, not
+  listed.
+- A `not_evaluated` finding has a `reason`: `identity_only`, `field_missing`,
+  `tags_not_read`, `listing_not_read`, `not_comparable`, `not_convertible` or
+  `value_too_long`. A gap in the data is never a pass.
+- `not_evaluated_units` lists the listings of the scan that were not read and
+  that a policy would have needed. `unused_waivers` lists waivers that matched
+  nothing, with `why`: `no match`, `expired`, `unknown policy` or
+  `superseded`.
+- `summary.exit_code` is 0, 7 or 8.
+- A value of a resource field is shown only with `--show-values`, and a masked
+  value stays masked. SARIF and JUnit never carry a value.
+
+In the text and Markdown forms, the last line says what the exit code stands
+for, for example `Exit code 7: at least one finding failed at severity high or
+higher.` With no threshold it reads `Exit code 0: findings are reported; no
+threshold was set.` See [Exit codes](./cli.md#exit-codes).
+
+Not verified: how GitHub code scanning shows the SARIF file, or how GitLab
+shows the JUnit file. The tests compare the files with golden files, and the
+SARIF file with a short schema that is packaged with InvenTag, not with the
+full SARIF schema.
 
 ## Word report
 

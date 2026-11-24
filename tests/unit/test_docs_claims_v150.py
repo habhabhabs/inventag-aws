@@ -99,9 +99,14 @@ def test_cli_page_names_every_flag_of_each_policy_command(command):
         if o.startswith("--") and o != "--help"
     }
     for lang, text in all_languages("reference/cli.md"):
-        section = text.split("inventag policy", 1)[1]
+        rows = [l for l in text.splitlines() if l.startswith(f"| `policy {command}")]
+        assert len(rows) == 1, (lang, command)
         for flag in flags:
-            assert f"`{flag}" in section, (lang, command, flag)
+            assert re.search(rf"(?<![\w-]){re.escape(flag)}(?![\w-])", rows[0]), (
+                lang,
+                command,
+                flag,
+            )
 
 
 def test_cli_page_policy_flag_rows_say_template_works():
@@ -124,7 +129,7 @@ def test_outputs_page_names_the_four_findings_files():
     for lang, text in all_languages("reference/outputs.md"):
         assert "policy_findings_<timestamp>.json" in text, lang
         for ext in ("sarif", "xml", "md"):
-            assert f"policy_findings_<timestamp>.{ext}" in text, (lang, ext)
+            assert f"`.{ext}`" in text, (lang, ext)
 
 
 def test_the_findings_file_names_are_the_ones_the_page_states(tmp_path):
@@ -243,7 +248,7 @@ def test_changelog_unreleased_has_added_changed_removed():
         "--policy",
         "--policy-waivers",
         "--policy-fail-on",
-        "exit codes 7 and 8",
+        "Exit codes 7 and 8",
         "policy_findings_<timestamp>",
         "scope.filters",
         "jmespath",
@@ -253,3 +258,87 @@ def test_changelog_unreleased_has_added_changed_removed():
         "EC2 - Other",
     ):
         assert word in flat, word
+
+
+# ------------------------------------------------- no AWS call, no credentials
+def test_policy_check_needs_no_credentials_and_opens_no_connection(
+    tmp_path, monkeypatch
+):
+    import os
+    import socket
+
+    for name in list(os.environ):
+        if name.startswith("AWS_"):
+            monkeypatch.delenv(name)
+    monkeypatch.setenv("AWS_CONFIG_FILE", str(tmp_path / "none"))
+    monkeypatch.setenv("AWS_SHARED_CREDENTIALS_FILE", str(tmp_path / "none"))
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("network used")
+
+    monkeypatch.setattr(socket.socket, "connect", refuse)
+    from .policy.cli_helpers import policies_dir, run, snapshot_file
+
+    code, _out, err = run(
+        [
+            "check",
+            "--snapshot",
+            snapshot_file(tmp_path),
+            "--policies",
+            policies_dir(tmp_path, "ex01.yaml"),
+            "--now",
+            "2026-11-20",
+        ]
+    )
+    assert code == 0, err
+
+
+# ---------------------------------------- known gap: policy.lock is not wired
+@pytest.mark.xfail(
+    strict=True,
+    reason="cli.py calls lock.check, the lock module has verify (integration gap, "
+    "reported by P8b); remove this mark when the commands use the lock module",
+)
+def test_lock_check_and_locked_work_on_a_real_policy_folder(tmp_path):
+    from .policy.cli_helpers import policies_dir, run, snapshot_file
+
+    folder = policies_dir(tmp_path, "ex01.yaml")
+    assert run(["lock", folder])[0] == 0
+    assert run(["lock", "--check", folder])[0] == 0
+    code, _out, _err = run(
+        [
+            "check",
+            "--snapshot",
+            snapshot_file(tmp_path),
+            "--policies",
+            folder,
+            "--locked",
+            "--now",
+            "2026-11-20",
+        ]
+    )
+    assert code == 0
+
+
+# ---------------------- finops-checks findings and --policy-fail-on (guide)
+@pytest.mark.e2e
+def test_finops_findings_count_for_policy_fail_on_with_template(tmp_path):
+    """guides/finops-checks.md: with --finops-checks, --template, --policy and
+    --policy-fail-on, a FIN- finding at that severity or higher gives exit 7.
+    The user's own policy is severity info and so cannot cause the 7."""
+    from tests.unit.finops.conftest import run_scan
+
+    from .policy.test_scan_policy import STOPPED, policy_file
+
+    info_only = STOPPED.replace("severity: high", "severity: info")
+    folder = policy_file(tmp_path, info_only)
+    base = ["--template", "standard-bom", "--finops-checks", "--policy", str(folder)]
+    plain = run_scan(tmp_path / "a", *base)
+    assert plain.code == 0, plain.text
+    gated = run_scan(tmp_path / "b", *base, "--policy-fail-on", "low")
+    assert gated.code == 7, gated.text
+    result = __import__("json").loads(
+        sorted(gated.out.glob("policy_findings_*.json"))[0].read_text()
+    )
+    failing = {f["policy"] for f in result["findings"] if f["result"] == "fail"}
+    assert any(p.startswith("FIN-") for p in failing)

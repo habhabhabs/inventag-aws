@@ -21,7 +21,7 @@ For step-by-step setup, see [Set up read-only access](../guides/read-only-access
 | `ec2:DescribeRegions` | Lists enabled regions, and checks each region you scan | The check runs for every region, even with `--account-regions`. A region that fails it is skipped with a warning. If the call is denied in every region, all regions are scanned. |
 | `account:ListRegions` | Lists enabled regions when `ec2:DescribeRegions` fails | Not called when `ec2:DescribeRegions` works. |
 | `tag:GetResources` | Finds tagged resources (Resource Groups Tagging API) | The IAM prefix is `tag`, not `resourcegroupstaggingapi`. |
-| `ce:GetCostAndUsage` | Finds services with spend | **AWS charges per request.** See [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). Cost Explorer requests in one run: at most one for each account when billing validation is on (the default), and at most one more for the whole run with `--enable-cost-analysis`. A single-account run with both makes at most 2; with `--no-billing-validation` it makes at most 1. A throttled request is retried, up to 10 attempts in all, and each retry is one more request. AWS charges for each request. If denied, discovery continues without billing data. `--no-billing-validation` stops the calls, and then you can leave this permission out. |
+| `ce:GetCostAndUsage` | Finds services with spend | **AWS charges per request.** See [Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). Cost Explorer requests in one run: at most one for each account for billing validation (on by default), and with `--enable-cost-analysis` at most 2 more for each account for the cost trend, each with that account's own credentials. A single-account run with both makes at most 3; with `--no-billing-validation` it makes at most 2. A throttled request is retried, up to 10 attempts in all, and each retry is one more request. AWS charges for each request. If denied, discovery continues without billing data. `--no-billing-validation` stops the calls, and then you can leave this permission out. |
 | `List*`, `Describe*`, `Get*` for each service you want in the report | Per-service discovery | For example `s3:ListAllMyBuckets`, `s3:GetBucketTagging`, `lambda:ListFunctions`, `dynamodb:ListTables`. The AWS managed `ReadOnlyAccess` policy covers these. |
 
 Not verified against real AWS: `GetCallerIdentity` needs no permission, the IAM prefix of the Tagging API is `tag`, and `ReadOnlyAccess` covers the List, Describe and Get actions.
@@ -33,7 +33,7 @@ Not verified against real AWS: the number of requests AWS bills, and whether AWS
 | Feature | Extra permission |
 |---|---|
 | Scanning other accounts through a role | `sts:AssumeRole` on those roles, and a trust policy in each account that allows your identity |
-| `--enable-cost-analysis` | `pricing:GetProducts`, and `cloudwatch:GetMetricStatistics` (both are in the repository policy). It also makes at most one more `ce:GetCostAndUsage` request for the whole run. |
+| `--enable-cost-analysis` | `pricing:GetProducts`, and `cloudwatch:GetMetricStatistics` (both are in the repository policy). It also makes at most 2 `ce:GetCostAndUsage` requests for each account, with that account's own credentials, for the cost trend. |
 | `--finops-cost-allocation` | `ce:ListCostAllocationTags` (in the repository policy) and `ce:GetCostAndUsage`. At most 7 Cost Explorer requests per account, each with that account's own credentials. |
 | `--s3-bucket` | `s3:PutObject` on that bucket (and `kms:GenerateDataKey` on the key if you use `aws:kms`) |
 
@@ -48,6 +48,11 @@ See [Run with only ReadOnlyAccess](../guides/read-only-access.md#run-with-only-r
 
 `--finops-checks` needs no further permission: the checks read the rows the
 scan already has and make no AWS call.
+
+`--policy` and `inventag policy` need no further permission. They read policy
+files and a state snapshot and make no AWS call: the tests run the policy
+engine and `inventag policy check` with the network blocked. `inventag policy`
+needs no credentials. A scan with `--policy` needs what the scan needs.
 
 ## When an action is refused
 
