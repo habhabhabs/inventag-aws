@@ -147,17 +147,13 @@ def test_the_guard_docstring_defines_the_three_classes():
 # Sweep: an allowed operation whose answer has a member that the SDK marks
 # sensitive and whose name ends in Token, Url or URL. Each is either masked by
 # the deny-list of inventag.security.secret_values, a pagination token, or in
-# the reviewed list below with the reason. "open:" entries are proposals in
-# the P9 report (deny by name or mask), not decisions.
+# the reviewed list below with the reason. Reviewed against the SDK's
+# documentation strings, not against real responses.
 _REVIEWED_LINK = "reviewed: a link to a page or record, no credential in it"
 _REVIEWED_SETTING = "reviewed: a configured endpoint, a setting"
-_OPEN_SESSION_URL = (
-    "open (P9 proposal 1): a session or presigned URL that is not masked and "
-    "not denied; InvenTag never calls it"
-)
-_OPEN_MAY_SIGN = (
-    "open (P9 proposal 2): a URL the user or the service created; it can carry "
-    "a signature or a state value; InvenTag never reads it"
+_BARE_URL = (
+    "reviewed: bare name `Url`; masking by name would hide harmless fields; "
+    "InvenTag does not call the operation (stated limit)"
 )
 REVIEWED = {
     "account:GetContactInformation:WebsiteUrl": _REVIEWED_LINK,
@@ -188,18 +184,9 @@ REVIEWED = {
     "qconnect:GetMessageTemplate:smallImageIconUrl": _REVIEWED_LINK,
     "qconnect:GetNextMessage:sourceURL": _REVIEWED_LINK,
     "qconnect:ListMessages:sourceURL": _REVIEWED_LINK,
-    "glue:GetDashboardUrl:Url": _OPEN_SESSION_URL,
-    "gameliftstreams:GetStreamUrl:StreamUrl": _OPEN_SESSION_URL,
-    "gameliftstreams:ListStreamUrls:StreamUrl": _OPEN_SESSION_URL,
-    "quicksight:GetDashboardEmbedUrl:EmbedUrl": _OPEN_SESSION_URL,
-    "quicksight:GetSessionEmbedUrl:EmbedUrl": _OPEN_SESSION_URL,
-    "chime-sdk-media-pipelines:GetMediaPipeline:Url": _OPEN_MAY_SIGN,
-    "dms:DescribeReplicationTaskAssessmentResults:S3ObjectUrl": _OPEN_MAY_SIGN,
-    "ec2:DescribeConversionTasks:ImportManifestUrl": _OPEN_MAY_SIGN,
-    "ec2:DescribeImportImageTasks:Url": _OPEN_MAY_SIGN,
-    "ec2:DescribeImportSnapshotTasks:Url": _OPEN_MAY_SIGN,
-    "inspector2:GetCodeSecurityIntegration:authorizationUrl": _OPEN_MAY_SIGN,
-    "iot-managed-integrations:GetAccountAssociation:OAuthAuthorizationUrl": _OPEN_MAY_SIGN,
+    "chime-sdk-media-pipelines:GetMediaPipeline:Url": _BARE_URL,
+    "ec2:DescribeImportImageTasks:Url": _BARE_URL,
+    "ec2:DescribeImportSnapshotTasks:Url": _BARE_URL,
 }
 
 
@@ -253,16 +240,69 @@ def test_every_sensitive_token_or_url_member_is_masked_or_reviewed():
         + "\n  ".join(undecided)
         + "\nAdd the operation to DENIED_OPERATIONS, the member to "
         "SECRET_VALUE_KEYS, or the member to REVIEWED with a reason "
-        "(register A-76)."
+        "(register A-76; tests/unit/test_v150_p9_carryover.py)."
     )
 
 
 def test_every_reviewed_entry_has_a_reason_and_is_still_unmasked():
     for key, reason in REVIEWED.items():
-        assert reason.startswith(("reviewed:", "open")), key
+        assert reason.startswith("reviewed:"), key
         assert not is_secret_key(key.rsplit(":", 1)[1]), key
 
 
 def test_a_member_that_is_not_reviewed_is_undecided():
     planted = sensitive_token_and_url_members() | {"x:GetThing:ThingUrl"}
     assert "x:GetThing:ThingUrl" in planted - set(REVIEWED)
+
+
+# ---------------------------------------------------------------- P9b rulings
+
+SESSION_URL_DENIED = [
+    ("glue", "GetDashboardUrl"),
+    ("gameliftstreams", "GetStreamUrl"),
+    ("gameliftstreams", "ListStreamUrls"),
+    ("quicksight", "GetDashboardEmbedUrl"),
+    ("quicksight", "GetSessionEmbedUrl"),
+]
+CUSTOMER_DATA_DENIED = [
+    ("polly", "GetVoice"),
+    ("opensearchmemory", "GetMemory"),
+    ("opensearchmemory", "SearchMemories"),
+    ("opensearchmemory", "SearchEvents"),
+    ("connecthealth", "GetMedicalCodingJob"),
+]
+
+
+@pytest.mark.parametrize("service,operation", SESSION_URL_DENIED + CUSTOMER_DATA_DENIED)
+def test_session_url_and_customer_data_operations_are_denied(service, operation):
+    allowed, reason = ReadOnlyGuard().evaluate(service, operation)
+    assert not allowed and "secrets" in reason
+
+
+def test_the_neighbours_of_the_p9b_denials_stay_allowed():
+    guard = ReadOnlyGuard()
+    for service, operation in [
+        ("glue", "GetDatabase"),
+        ("quicksight", "DescribeDashboard"),
+        ("gameliftstreams", "GetApplication"),
+        ("polly", "DescribeVoices"),
+        ("connecthealth", "ListDatasets"),
+        ("opensearchmemory", "ListSpaces"),
+    ]:
+        assert guard.evaluate(service, operation)[0], (service, operation)
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["ImportManifestUrl", "S3ObjectUrl", "authorizationUrl", "OAuthAuthorizationUrl"],
+)
+def test_the_four_distinctive_url_names_are_masked(name):
+    assert is_secret_key(name)
+    masked, count = mask_resource({"Thing": {name: "https://x.example/?sig=p9"}})
+    assert masked["Thing"][name] == MASK and count == 1
+    assert "sig=p9" not in redact('{"%s": "https://x.example/?sig=p9"}' % name)
+
+
+def test_the_bare_names_stay_unmasked():
+    for name in ["Url", "url", "QueueUrl", "EmbedUrl", "StreamUrl"]:
+        assert not is_secret_key(name), name

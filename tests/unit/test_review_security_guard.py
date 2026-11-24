@@ -300,6 +300,15 @@ ADDED_AFTER_BOTOCORE_FLOOR = frozenset(
         ("partnercentral-marketing", "GetCampaignAssetExportTask"),
         ("partnercentral-selling", "GetCustomerAccountBulkJobReportUrl"),
         ("partnercentral-selling", "GetOpportunityBulkJobReportUrl"),
+        # v1.5.0 (P9b): session and customer-data operations the floor lacks
+        ("glue", "GetDashboardUrl"),
+        ("gameliftstreams", "GetStreamUrl"),
+        ("gameliftstreams", "ListStreamUrls"),
+        ("polly", "GetVoice"),
+        ("opensearchmemory", "GetMemory"),
+        ("opensearchmemory", "SearchMemories"),
+        ("opensearchmemory", "SearchEvents"),
+        ("connecthealth", "GetMedicalCodingJob"),
     }
 )
 
