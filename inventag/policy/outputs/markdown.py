@@ -60,7 +60,7 @@ def _outcome(u: Mapping[str, Any]) -> str:
     return f"{u['outcome']}{suffix}"
 
 
-def render(data: Mapping[str, Any], show_values: bool = False) -> str:
+def render(data: Mapping[str, Any], show_values: bool = False, gate=None) -> str:
     summary = data.get("summary") or {}
     by = summary.get("by_result") or {}
     snap = data.get("snapshot") or {}
@@ -145,5 +145,7 @@ def render(data: Mapping[str, Any], show_values: bool = False) -> str:
         )
         if len(unused) > MAX_ROWS:
             lines += ["", f"and {len(unused) - MAX_ROWS} more"]
-    lines += ["", _common.exit_sentence(data)]
+    sentence = _common.exit_sentence(data, gate)
+    if sentence is not None:
+        lines += ["", sentence]
     return "\n".join(lines) + "\n"

@@ -178,9 +178,14 @@ def _run_scan_policies(args, results: Dict[str, Any], logger) -> int:
         snapshot_file=path.name,
         snapshot_sha256=hashlib.sha256(raw).hexdigest(),
     )
-    sys.stdout.write(outputs.render(result, "text"))
+    # spec 11.3: the exit sentence names the threshold set on the scan
+    gates = {
+        "fail_on": args.policy_fail_on,
+        "thresholds": ["fail_on"] if args.policy_fail_on else [],
+    }
+    sys.stdout.write(outputs.render(result, "text", **gates))
     for written in outputs.write(
-        result, args.output_directory, formats=_policy_formats(args)
+        result, args.output_directory, formats=_policy_formats(args), **gates
     ):
         logger.info(f"Policy findings: {written}")
     return int(result["summary"]["exit_code"])

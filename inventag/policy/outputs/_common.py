@@ -4,25 +4,63 @@ import copy
 import json
 import re
 import unicodedata
-from typing import Any, Dict, List, Mapping
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 from ...security import secret_values
 
 MASK = secret_values.MASK
 
-EXIT_SENTENCE = {
-    0: "Exit code 0: no gate was triggered.",
-    7: "Exit code 7: at least one fail has the --fail-on severity or a higher one.",
-    8: "Exit code 8: something was not evaluated and --fail-on-not-evaluated is set.",
-}
+SEVERITIES = ("info", "low", "medium", "high", "critical")
+THRESHOLDS = ("fail_on", "fail_on_not_evaluated")
 
 _BIDI = set(range(0x202A, 0x202F)) | set(range(0x2066, 0x206A)) | {0x200E, 0x200F}
 _WORD = re.compile(r"[A-Za-z0-9_-]+")
 
 
-def exit_sentence(result: Mapping[str, Any]) -> str:
+def gates(
+    fail_on: Optional[str], thresholds: Optional[Iterable[str]]
+) -> Optional[Tuple[Optional[str], bool]]:
+    """``(fail_on, fail_on_not_evaluated)`` as the caller set them, or None.
+
+    None means the caller gave neither: the exit sentence is then left out.
+    """
+    if fail_on is None and thresholds is None:
+        return None
+    names = set(thresholds or ())
+    unknown = sorted(names - set(THRESHOLDS))
+    if unknown:
+        raise ValueError(f"unknown threshold: {', '.join(unknown)}")
+    if fail_on is not None and fail_on not in SEVERITIES:
+        raise ValueError(f"unknown severity for fail_on: {fail_on}")
+    if "fail_on" in names and fail_on is None:
+        raise ValueError("the fail_on threshold needs the fail_on severity")
+    return fail_on, "fail_on_not_evaluated" in names
+
+
+def exit_sentence(result: Mapping[str, Any], gate) -> Optional[str]:
+    """The last line of the text and Markdown forms (spec 11.3), or None."""
+    if gate is None:
+        return None
+    fail_on, not_evaluated = gate
     code = (result.get("summary") or {}).get("exit_code", 0)
-    return EXIT_SENTENCE.get(code, f"Exit code {code}.")
+    if code == 7:
+        if fail_on is None:
+            raise ValueError("exit code 7 needs fail_on to name the severity")
+        return (
+            f"Exit code 7: at least one finding failed at severity {fail_on} or higher."
+        )
+    if code == 8:
+        return "Exit code 8: some checks could not be evaluated."
+    if code != 0:
+        return f"Exit code {code}."
+    parts = []
+    if fail_on is not None:
+        parts.append(f"Exit code 0: nothing failed at severity {fail_on} or higher.")
+    if not_evaluated:
+        parts.append("Exit code 0: everything could be evaluated.")
+    if not parts:
+        return "Exit code 0: findings are reported; no threshold was set."
+    return " ".join(parts)
 
 
 def clean(value: Any) -> str:

@@ -54,7 +54,8 @@ def last(text):
 def test_the_sentence_of_each_case(fmt, code, gates, sentence):
     text = render(result(code), fmt, **gates)
     assert last(text) == sentence
-    assert text.count("Exit code") == 1
+    # one line, the last; with both thresholds it holds both sentences
+    assert [ln for ln in text.splitlines() if "Exit code" in ln] == [sentence]
 
 
 @pytest.mark.parametrize("fmt", ["text", "md"])

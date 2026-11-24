@@ -11,7 +11,7 @@ stays masked (``***REDACTED***``) in every form.
 
 import re
 from pathlib import Path
-from typing import Any, List, Mapping, Optional, Sequence
+from typing import Any, Iterable, List, Mapping, Optional, Sequence
 
 from ...security import safe_output
 from . import _common, junit, markdown, sarif, text
@@ -55,14 +55,22 @@ def render(
     *,
     show_values: bool = False,
     policy_lines: Optional[Mapping[str, int]] = None,
+    fail_on: Optional[str] = None,
+    thresholds: Optional[Iterable[str]] = None,
 ) -> str:
     """The text of one format: json, sarif, xml, md or text.
 
     ``policy_lines`` overrides the result's ``policies[].line`` (the line of
     ``spec.id`` in the policy file; default 1).
+
+    ``fail_on`` (a severity) and ``thresholds`` (the names of the thresholds
+    the caller set: ``fail_on``, ``fail_on_not_evaluated``) give the last line
+    of the text and Markdown forms (spec 11.3). Without both, that line is
+    left out: the result alone does not say which thresholds were set.
     """
     if fmt not in SUFFIX:
         raise ValueError(f"unknown format: {fmt}")
+    gate = _common.gates(fail_on, thresholds)
     data = prepared(result, show_values)
     if fmt == "json":
         return _common.dumps(data)
@@ -71,8 +79,8 @@ def render(
     if fmt == "xml":
         return junit.render(data)
     if fmt == "md":
-        return markdown.render(data, show_values)
-    return text.render(data, show_values)
+        return markdown.render(data, show_values, gate)
+    return text.render(data, show_values, gate)
 
 
 def write(
@@ -82,6 +90,8 @@ def write(
     formats: Sequence[str] = FORMATS,
     show_values: bool = False,
     policy_lines: Optional[Mapping[str, int]] = None,
+    fail_on: Optional[str] = None,
+    thresholds: Optional[Iterable[str]] = None,
 ) -> List[Path]:
     """Write ``policy_findings_<ts>.<ext>`` for each format; return the paths."""
     for fmt in formats:
@@ -91,7 +101,14 @@ def write(
     stem = file_stem(result)
     paths: List[Path] = []
     for fmt in formats:
-        body = render(result, fmt, show_values=show_values, policy_lines=policy_lines)
+        body = render(
+            result,
+            fmt,
+            show_values=show_values,
+            policy_lines=policy_lines,
+            fail_on=fail_on,
+            thresholds=thresholds,
+        )
         path = folder / f"{stem}.{SUFFIX[fmt]}"
         with safe_output.open_private(path, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(body)

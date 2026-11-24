@@ -19,8 +19,9 @@ looked up by name (a missing module is an exit code 1 with a clear text):
 * ``inventag.policy.baseline.evaluate_policy`` (P2), through the engine;
 * ``inventag.policy.lock.write(root) -> Path`` and ``check(root) -> [problem]``
   (P2);
-* ``inventag.policy.outputs.render(fmt, result) -> str`` for ``text``,
-  ``sarif``, ``junit`` and ``markdown`` (P3). The JSON file is written here
+* ``inventag.policy.outputs.render(result, fmt, show_values=, fail_on=,
+  thresholds=) -> str`` for ``text``, ``sarif``, ``junit`` (P3's ``xml``)
+  and ``markdown`` (P3's ``md``). The JSON file is written here
   with :func:`inventag.policy.engine.dumps`.
 """
 
@@ -506,6 +507,20 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 # ----------------------------------------------------------------- helpers
+# the command's format names -> P3's writer names
+WRITER_FORMATS = {"text": "text", "sarif": "sarif", "junit": "xml", "markdown": "md"}
+
+
+def _thresholds(args) -> List[str]:
+    """The thresholds set on the command line, for the exit sentence (11.3)."""
+    names = []
+    if args.fail_on:
+        names.append("fail_on")
+    if args.fail_on_not_evaluated:
+        names.append("fail_on_not_evaluated")
+    return names
+
+
 def _module(name: str, message: str):
     """``inventag.policy.<name>``, or a clear error when it is not installed."""
     full = f"inventag.policy.{name}"
@@ -879,7 +894,13 @@ def _cmd_check(args, out: TextIO, err: TextIO) -> int:
                 f"--format {fmt}: the output writers (inventag.policy.outputs) "
                 "are not installed in this build.",
             )
-            texts[fmt] = writers.render(fmt, result)
+            texts[fmt] = writers.render(
+                result,
+                WRITER_FORMATS[fmt],
+                show_values=args.show_values,
+                fail_on=args.fail_on,
+                thresholds=_thresholds(args),
+            )
     if args.show_values and {"sarif", "junit"} & set(formats):
         err.write(
             "note: --show-values does not apply to sarif and junit; those "

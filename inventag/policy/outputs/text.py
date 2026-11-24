@@ -22,7 +22,7 @@ def _why(w: Mapping[str, Any]) -> str:
     return str(w["why"])
 
 
-def render(data: Mapping[str, Any], show_values: bool = False) -> str:
+def render(data: Mapping[str, Any], show_values: bool = False, gate=None) -> str:
     summary = data.get("summary") or {}
     by = summary.get("by_result") or {}
     snap = data.get("snapshot") or {}
@@ -100,5 +100,7 @@ def render(data: Mapping[str, Any], show_values: bool = False) -> str:
                 f"  {clean(w['policy'])} {clean(w['resource'])} expires "
                 f"{w['expires']}: {_why(w)} ({clean(w['file'])})"
             )
-    lines += ["", _common.exit_sentence(data)]
+    sentence = _common.exit_sentence(data, gate)
+    if sentence is not None:
+        lines += ["", sentence]
     return "\n".join(lines) + "\n"
