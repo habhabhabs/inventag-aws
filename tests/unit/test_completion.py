@@ -99,7 +99,21 @@ def test_every_flag_and_command_word_of_the_real_command_is_in_every_script():
     from inventag.templating.cli import build_parser
 
     flags = {s for a in create_parser()._actions for s in a.option_strings}
-    words = {"templates", "selftest", "completion", "list", "show", "init", "validate"}
+    words = {
+        "templates",
+        "selftest",
+        "completion",
+        "policy",
+        "list",
+        "show",
+        "init",
+        "validate",
+        "schema",
+        "test",
+        "check",
+        "explain",
+        "lock",
+    }
     assert "--create-excel" in flags and len(flags) > 50
     for shell, script in real_scripts().items():
         for flag in sorted(flags):
@@ -223,6 +237,7 @@ def complete_in_bash(tmp_path, words, cword, cwd=None):
 def test_bash_offers_the_command_words_first(tmp_path):
     assert complete_in_bash(tmp_path, ["inventag", ""], 1) == [
         "completion",
+        "policy",
         "selftest",
         "templates",
     ]
@@ -319,3 +334,41 @@ def test_the_script_registers_itself_for_inventag(tmp_path):
     )
     assert done.returncode == 0, done.stderr
     assert done.stdout.strip() == "complete -F _inventag inventag"
+
+
+def test_bash_offers_the_policy_command_words(tmp_path):
+    assert complete_in_bash(tmp_path, ["inventag", "policy", ""], 2) == [
+        "check",
+        "explain",
+        "list",
+        "lock",
+        "schema",
+        "test",
+        "validate",
+    ]
+
+
+def test_bash_offers_the_flags_of_policy_check(tmp_path):
+    offered = complete_in_bash(tmp_path, ["inventag", "policy", "check", "--f"], 3)
+    assert offered == ["--fail-on", "--fail-on-not-evaluated", "--format"]
+
+
+def test_policy_words_and_flags_are_in_every_script():
+    from inventag.policy.cli import build_parser
+
+    flags = {
+        s
+        for action in build_parser()
+        ._subparsers._group_actions[0]
+        .choices["check"]
+        ._actions
+        for s in action.option_strings
+    }
+    assert {"--snapshot", "--policies", "--waivers", "--baseline", "--locked"} <= flags
+    for shell, script in real_scripts().items():
+        for flag in sorted(flags):
+            token = flag[2:] if shell == "fish" and flag.startswith("--") else flag
+            token = flag[1:] if shell == "fish" and not flag.startswith("--") else token
+            assert token in script, f"{shell}: {flag}"
+        for word in ("policy", "validate", "explain", "lock", "schema"):
+            assert word in script, f"{shell}: {word}"
