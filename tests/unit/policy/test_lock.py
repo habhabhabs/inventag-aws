@@ -132,3 +132,36 @@ def test_verify_writes_nothing(root):
     before = sorted(p.name for p in root.rglob("*"))
     lock.verify(root)
     assert before == sorted(p.name for p in root.rglob("*"))
+
+
+WAIVERS = (
+    "format_version: 1\nkind: waivers\nname: w\n"
+    "spec: {waivers: [{policy: A-1, resource: arn:x, reason: 'a reason long enough',\n"
+    "                  approved_by: lead, expires: 2027-01-01}]}\n"
+)
+
+
+def test_waiver_files_are_in_the_lock_and_a_change_to_one_is_reported(root):
+    (root / "w.yaml").write_text(WAIVERS)
+    assert json.loads(lock.render(root))["files"]["w.yaml"] == sha(WAIVERS)
+    lock.write(root)
+    (root / "w.yaml").write_text(WAIVERS.replace("2027-01-01", "2027-02-01"))
+    assert lock.verify(root) == ["w.yaml: changed since policy.lock was written"]
+
+
+def test_a_waivers_file_outside_the_directory_or_not_in_the_lock_is_refused(
+    root, tmp_path_factory
+):
+    (root / "w.yaml").write_text(WAIVERS)
+    lock.write(root)
+    outside = tmp_path_factory.mktemp("out") / "w.yaml"
+    outside.write_text(WAIVERS)
+    (root / "late.yaml").write_text(WAIVERS.replace("name: w", "name: late"))
+    lock.require_listed(root, [root / "w.yaml"])
+    with pytest.raises(PolicyError) as caught:
+        lock.require_listed(root, [outside, root / "late.yaml"])
+    issues = caught.value.issues
+    assert len(issues) == 2
+    assert "outside the policy directory" in str(issues[0])
+    assert "not listed in policy.lock" in str(issues[1])
+    assert all("inventag policy lock" in str(i) for i in issues)

@@ -239,3 +239,95 @@ def test_a_removed_row_whose_selection_is_unknown_is_not_evaluated(tmp_path):
     assert [(f["result"], f["reason"]) for f in gone] == [
         ("not_evaluated", "identity_only")
     ]
+
+
+B_UNIT = {
+    "account": "222222222222",
+    "service": "ec2",
+    "region": "ap-southeast-1",
+    "source": "service-api",
+    "outcome": "denied",
+}
+
+
+def s0_with_unit():
+    old = snap("s0.json")
+    old["metadata"]["tags"] = {"units_not_read": [B_UNIT]}
+    return old
+
+
+def test_26_added_in_a_unit_the_baseline_did_not_read(tmp_path):
+    spec = policy([base(["added", "removed"])], ["S3", "EC2", "LAMBDA"])
+    r = run(tmp_path, spec, baseline=s0_with_unit())
+    assert table(r) == {
+        "public-site-assets": "fail",
+        "i-0bbb": "fail",
+        "i-0ccc": "not_evaluated",
+        "old-exports (baseline)": "fail",
+        "logs-prod": "pass",
+        "i-0aaa": "pass",
+        "fn-report": "pass",
+    }
+    (r9,) = [f for f in r["findings"] if f["resource"].endswith("i-0ccc")]
+    assert r9["reason"] == "listing_not_read" and "from" not in r9
+    assert [(u["service"], u.get("from")) for u in r["not_evaluated_units"]] == [
+        ("ec2", "baseline"),
+        ("lambda", None),
+    ]
+    assert engine.exit_code(r, "medium") == 7
+    assert engine.exit_code(r, "medium", True) == 8
+
+
+def test_modified_in_a_unit_the_baseline_did_not_read_is_not_evaluated(tmp_path):
+    old = snap("s0.json")
+    old["metadata"]["tags"] = {
+        "units_not_read": [dict(B_UNIT, account=A, service="rds", region="eu-west-1")]
+    }
+    r = run(tmp_path, policy([base(["modified"])], ["RDS"]), baseline=old)
+    assert table(r) == {"db-orders": "not_evaluated", "db-audit": "pass"}
+
+
+def test_the_baseline_unit_line_follows_the_policy_resource_block(tmp_path):
+    r = run(tmp_path, policy([base(["added"])], ["S3"]), baseline=s0_with_unit())
+    assert r["not_evaluated_units"] == []
+    r = run(tmp_path, policy([base(["removed"])], ["EC2"]), baseline=s0_with_unit())
+    assert r["not_evaluated_units"] == []  # removed does not need the baseline's units
+
+
+def test_27_false_baseline_entry_beside_an_unknown_entry_is_fail(tmp_path):
+    spec = policy([base(["added"]), {"tag:Owner": "present"}], ["EC2"])
+    r = run(tmp_path, spec)
+    assert table(r) == {"i-0aaa": "pass", "i-0bbb": "fail", "i-0ccc": "fail"}
+    by = {f["resource"].rsplit("/", 1)[-1]: f for f in r["findings"]}
+    assert "reason" not in by["i-0ccc"]
+    assert [(d["check"], d["type"]) for d in by["i-0ccc"]["details"]] == [
+        (0, "baseline")
+    ]
+    assert [(d["check"], d["type"]) for d in by["i-0bbb"]["details"]] == [
+        (0, "baseline"),
+        (1, "value"),
+    ]
+    assert engine.exit_code(r, "low") == 7
+
+
+def test_unknown_selection_stays_not_evaluated_even_with_a_false_baseline_entry(
+    tmp_path,
+):
+    spec = policy([base(["added"])], ["SQS"])
+    spec["resource"]["filters"] = [
+        {"type": "value", "key": "raw_data.Missing", "value": "x"}
+    ]
+    old = snap("s0.json")
+    old["resources"] = [r for r in old["resources"] if r["service"] != "SQS"]
+    r = run(tmp_path, spec, baseline=old)
+    assert table(r) == {"orders-dlq": "not_evaluated"}
+
+
+def test_an_unknown_baseline_entry_and_a_false_other_entry_is_fail(tmp_path):
+    spec = policy(
+        [base(["added"]), {"type": "value", "key": "region", "value": "eu-west-1"}],
+        ["EC2"],
+    )
+    r = run(tmp_path, spec, baseline=s0_with_unit())
+    assert table(r)["i-0ccc"] == "fail"
+    assert table(r)["i-0aaa"] == "fail"  # region differs, row has a partner
