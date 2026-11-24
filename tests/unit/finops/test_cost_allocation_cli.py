@@ -453,3 +453,54 @@ def test_with_both_finops_flags_the_costs_sheet_comes_after_the_finops_sheet(
     s = scan(tmp_path, "--finops-checks", "--finops-cost-allocation")
     assert s.code == 0, s.text
     assert s.sheet_names()[-2:] == ["FinOps", "FinOps costs"]
+
+
+def test_an_unscanned_linked_account_and_tag_values_go_to_sheet_snapshot_and_report(
+    tmp_path, monkeypatch
+):
+    # As a payer account's answer would hold: a member account this run did
+    # not scan, and a tag value (guide: what a payer account's tables hold).
+    from botocore.stub import Stubber
+
+    original = ca.create_client
+    period = _period_of_today()
+    member, owner = "999988887777", "jane@example.com"
+
+    def create(session, service, region=None):
+        client = original(session, service, region)
+        stub = Stubber(client)
+        stub.add_response(
+            "list_cost_allocation_tags", cs.tag_list(["Owner"]), {"TagKeys": cs.KEYS}
+        )
+        cs.expect_usage(
+            stub,
+            "DIMENSION",
+            "SERVICE",
+            cs.usage(cs.SERVICES, period=period),
+            period=period,
+        )
+        cs.expect_usage(
+            stub,
+            "DIMENSION",
+            "LINKED_ACCOUNT",
+            cs.usage([("123456789012", "1.0"), (member, "2.0")], period=period),
+            period=period,
+        )
+        cs.expect_usage(
+            stub,
+            "TAG",
+            "Owner",
+            cs.usage([(f"Owner${owner}", "3.0")], period=period),
+            period=period,
+        )
+        cs.activate_after_the_guard(stub)
+        return client
+
+    monkeypatch.setattr(ca, "create_client", create)
+    s = scan(tmp_path, "--finops-cost-allocation")
+    assert s.code == 0, s.text
+    cells = {v for r in s.sheet("FinOps costs") for v in r if v}
+    assert {member, owner} <= cells
+    _, data = snapshot(s.out)
+    text = json.dumps(data["metadata"]["tags"]["cost_allocation"])
+    assert member in text and owner in text
