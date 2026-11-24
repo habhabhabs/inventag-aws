@@ -32,9 +32,7 @@ def _billing_key(name: str) -> str:
     it ("Amazon Simple Storage Service" -> "s3"), or of a row's service name."""
     from .comprehensive_discovery import ComprehensiveAWSDiscovery
 
-    # The table does not read the instance (an owner's patch makes it a
-    # function; see reports/v150-p7.md).
-    return ComprehensiveAWSDiscovery._normalize_billing_service_name(None, name)
+    return ComprehensiveAWSDiscovery._normalize_billing_service_name(name)
 
 
 def _row_key(service: str) -> str:
@@ -127,6 +125,9 @@ class CostTrendAnalysis:
     previous_month: str = ""
     resource_count: int = 0
     billing_names: Tuple[str, ...] = ()
+    # The currency unit Cost Explorer returned ("USD", ...); "" when the
+    # counted amounts did not all carry the same unit.
+    unit: str = ""
 
 
 @dataclass
@@ -184,6 +185,10 @@ class CostAnalyzer:
         # (service, operation, error class) of each call AWS refused, for the
         # run's permissions summary. Written under _warn_lock.
         self._denials: Set[Tuple[str, str, str]] = set()
+
+        # The unit of each billed amount of the cost trend:
+        # (account, month start, billing name) -> units seen.
+        self._trend_units: Dict[Tuple[str, str, str], Set[str]] = {}
 
         # Historical cost data storage
         self._historical_costs: Dict[str, List[Tuple[datetime, Decimal]]] = defaultdict(
@@ -1146,14 +1151,26 @@ class CostAnalyzer:
             service = str(resource.get("service") or "Unknown")
             by_account.setdefault(account, {}).setdefault(service, []).append(resource)
 
+        if not account_sessions and len(by_account) > 1:
+            # Library use: one session for the rows of several accounts (A-80).
+            self.logger.warning(
+                f"Cost trend: read once, with one session, for {len(by_account)} "
+                "accounts; pass account_sessions to read each account's own bill."
+            )
+            merged: Dict[str, List[Dict[str, Any]]] = {}
+            for services in by_account.values():
+                for service, rows in services.items():
+                    merged.setdefault(service, []).extend(rows)
+            by_account = {"": merged}
+
         trends: List[CostTrendAnalysis] = []
         for account in sorted(by_account):
             if account_sessions:
                 session = account_sessions.get(account)
                 if session is None:
-                    self.logger.debug(
-                        f"Cost trend: account {account or 'unknown'} has no "
-                        "session, so it is not read"
+                    self.logger.warning(
+                        f"Cost analysis: account {account or 'unknown'} has no "
+                        "session, so its cost trend is not read."
                     )
                     continue
                 client = self._trend_client(session)
@@ -1233,11 +1250,10 @@ class CostAnalyzer:
                 month = groups.setdefault(start, {})
                 for group in result.get("Groups", []):
                     name = (group.get("Keys") or [""])[0]
-                    amount = Decimal(
-                        group.get("Metrics", {})
-                        .get("BlendedCost", {})
-                        .get("Amount", "0")
-                    )
+                    cost = group.get("Metrics", {}).get("BlendedCost", {})
+                    amount = Decimal(cost.get("Amount", "0"))
+                    units = self._trend_units.setdefault((account, start, name), set())
+                    units.add(str(cost.get("Unit", "")))
                     month[name] = month.get(name, Decimal("0")) + amount
             token = answer.get("NextPageToken")
             if not token:
@@ -1245,7 +1261,7 @@ class CostAnalyzer:
         self.logger.warning(
             f"Cost analysis: the cost trend of account {account or 'unknown'} has "
             f"more than {TREND_PAGES_PER_ACCOUNT} page(s); the services on later "
-            "pages have no trend."
+            "pages have no trend in this report."
         )
         return groups
 
@@ -1291,7 +1307,12 @@ class CostAnalyzer:
             trend_direction = "increasing"
         else:
             trend_direction = "decreasing"
+        units = set()
+        for month in (earlier, later):
+            for name in names:
+                units |= self._trend_units.get((account, month, name), set())
         return CostTrendAnalysis(
+            unit=units.pop() if len(units) == 1 else "",
             account_id=account,
             service=service,
             current_monthly_cost=current_cost,

@@ -2923,7 +2923,8 @@ class ComprehensiveAWSDiscovery:
         # Default to original service
         return service_name
 
-    def _normalize_billing_service_name(self, billing_name: str) -> str:
+    @staticmethod
+    def _normalize_billing_service_name(billing_name: str) -> str:
         """Normalize billing service name to match AWS service names."""
         mappings = {
             "Amazon Elastic Compute Cloud - Compute": "ec2",

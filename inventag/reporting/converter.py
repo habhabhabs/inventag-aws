@@ -1246,9 +1246,20 @@ class BOMConverter:
 
         trends = data.get("cost_trends", [])
         if trends:
+            # The unit is the one Cost Explorer returned, never assumed.
+            units = {t.get("unit", "") for t in trends}
+            one_unit = units.pop() if len(units) == 1 else ""
+            billed = f"Billed ({one_unit})" if one_unit else "Billed (unit as returned)"
+
+            def amount(t, key):
+                value = round(t[key], 2)
+                if one_unit:
+                    return value
+                return f"{value} {t.get('unit') or '(units differ)'}"
+
             title(
-                "Billed cost by account and service, last two full months (USD, "
-                "Cost Explorer; a service total, not a resource's cost)"
+                "Billed cost by account and service, last two full months (Cost "
+                "Explorer; a service total, not a resource's cost)"
             )
             table(
                 [
@@ -1256,11 +1267,12 @@ class BOMConverter:
                     "Service",
                     "Resources",
                     "Earlier month",
-                    "Billed (USD)",
+                    billed,
                     "Later month",
-                    "Billed (USD)",
+                    billed,
                     "Change %",
                     "Direction",
+                    "Billing names counted",
                 ],
                 [
                     [
@@ -1268,11 +1280,12 @@ class BOMConverter:
                         t["service"],
                         t["resource_count"],
                         t["previous_month"],
-                        round(t["previous_monthly_cost"], 2),
+                        amount(t, "previous_monthly_cost"),
                         t["current_month"],
-                        round(t["current_monthly_cost"], 2),
+                        amount(t, "current_monthly_cost"),
                         round(t["cost_change_percentage"], 1),
                         t["trend_direction"],
+                        ", ".join(t.get("billing_names") or []),
                     ]
                     for t in trends
                 ],

@@ -1226,6 +1226,7 @@ class BOMDataProcessor:
                         "cost_change_percentage": trend.cost_change_percentage,
                         "trend_direction": trend.trend_direction,
                         "alert_triggered": trend.alert_triggered,
+                        "unit": trend.unit,
                     }
                     for trend in cost_trends
                 ],
