@@ -1,0 +1,317 @@
+---
+title: Feature status and known limitations
+sidebar_label: Feature status
+description: Which InvenTag features work, which are partial, which flags stop with an error, and the limits, costs and risks to know before you rely on it.
+sidebar_position: 5
+---
+
+# Feature status and known limitations
+
+**Who this is for:** anyone about to rely on InvenTag for real work.
+
+**What you will know after reading:** which features work, where they stop
+short, which flags stop with an error, and what to do about each limit.
+
+This page is deliberately blunt. It describes the current release; the
+[changelog](https://github.com/habhabhabs/inventag-aws/blob/main/CHANGELOG.md) lists what changed in each release. Each item below is proven by an offline test or run against mocked AWS (moto). **No test has run against a real AWS account.** Where an item depends on how real AWS behaves, the page says so. If you fix or change one of these, update this page in the same pull request.
+
+## What is tested
+
+The [Tests](../security/tests.md) page lists the offline tests against mocked AWS (moto) and what each one checks. A statement in these docs that no test proves carries a note that starts with "Not verified against".
+
+## Flags with a limit
+
+| Flag | What actually happens |
+|---|---|
+| `--enable-cost-analysis` | Adds a Cost Analysis sheet and the four `forgotten_analysis.*` columns, with estimates from the AWS Pricing API that are not your invoice, and makes extra Cost Explorer, Pricing and CloudWatch calls (see [Costs](#costs)). |
+| `--compliance-standard` | Stops with exit code 2, because a standard such as SOC 2 cannot be checked from an inventory; use a tag-policy template instead. |
+| `--create-google-docs`, `--create-google-sheets` | Tested against mocked Google clients only (see [what is not verified](../guides/google-sheets-and-docs.md#what-is-not-verified)). |
+| `--finops-checks` | `FIN-004` lists a stopped instance however long it has been stopped, because the instance listing has no reliable stop time. `FIN-005` does not read target health, so a load balancer whose targets are all unhealthy is a pass. With `--template`, the checks do not run. From the command line the result is in the Excel sheet only; there is no JSON file. See [FinOps checks](../guides/finops-checks.md#what-the-checks-cannot-see). |
+| `--enable-production-safety`, `--security-validation`, `--enforce-read-only` | Accepted so that old commands still run, and have no effect, because the read-only guard is always on. |
+| `--disable-production-safety` | Stops with exit code 2, because the read-only guard cannot be turned off. |
+
+<!-- BEGIN EXAMPLE OUTPUT: failing-flags -->
+
+```bash title="Terminal"
+inventag --create-google-docs
+```
+
+```text title="Output"
+inventag - WARNING -   - No account specification method provided. Using default AWS credentials.
+inventag: error: Google: Google output needs libraries that are not installed (google.auth). Install the Google libraries with: pip install "inventag-aws[google]"
+(exit code 2)
+```
+
+```bash title="Terminal"
+inventag --risk-threshold HIGH
+```
+
+```text title="Output"
+inventag: error: --risk-threshold: needs --enable-security-analysis, which produces the risk levels it checks.
+(exit code 2)
+```
+
+```bash title="Terminal"
+inventag --compliance-standard soc2
+```
+
+```text title="Output"
+inventag: error: --compliance-standard: Compliance-standard enforcement is not implemented yet; the option has never changed InvenTag's behaviour. InvenTag does not assess compliance. To check your tags against a built-in baseline, run: inventag --template security-baseline --create-excel
+(exit code 2)
+```
+
+```bash title="Terminal"
+inventag --disable-production-safety
+```
+
+```text title="Output"
+inventag: error: --disable-production-safety: The read-only guard cannot be disabled from the CLI: InvenTag only needs read access, so non-read AWS calls are always blocked. Remove this option; nothing else is needed. To see which calls are allowed, run: inventag --validate-operations ec2:DescribeInstances
+(exit code 2)
+```
+
+<!-- END EXAMPLE OUTPUT: failing-flags -->
+
+## What InvenTag finds, and what it does not
+
+- **Services with their own discovery code (46):** VPC (VPCs, subnets,
+  security groups, internet and NAT gateways, route tables, network ACLs,
+  Elastic IP addresses), EC2 (instances, volumes, snapshots, key pairs), S3,
+  RDS, Lambda, ELB, ELBv2, IAM, CloudFront, Route 53, KMS, CloudWatch, ECS
+  (clusters, and the services in every cluster), EKS, SNS, SQS, DynamoDB,
+  API Gateway, Glue, WorkMail, CloudFormation, ACM, CloudTrail, EventBridge,
+  ElastiCache, Redshift, Redshift Serverless, OpenSearch, EFS, ECR, Step
+  Functions, Kinesis, Firehose, Secrets Manager (names only), Systems Manager
+  parameters (names only), Auto Scaling groups, Backup vaults, Cognito user
+  pools, CodeBuild, CodePipeline, Athena workgroups, EMR, MSK, AppSync,
+  Elastic Beanstalk and WAF web ACLs.
+- **Everything else** appears only when the Resource Groups Tagging API
+  returns it, so untagged resources of any other service are missing. With
+  `--fallback-display auto` (the default), such resources are shown only for
+  services that have no results from their own discovery code;
+  `--fallback-display always` shows all of them.
+- **Not collected:** secret values, parameter values, object contents or any
+  other data, because the read-only guard blocks the calls that return them.
+- **Secret values in allowed responses are masked.** Some read calls return a
+  secret next to a setting. Values of fields that often hold secrets are
+  replaced by `***REDACTED***` in reports, JSON output, state snapshots,
+  resume checkpoints and logs: Lambda and App Runner environment variables,
+  ECS and CodeBuild environment values, EC2 user data, CloudFormation
+  parameter values, stack output values and stack set template bodies, Glue
+  job, trigger and job-run arguments and connection properties, EMR on EKS job
+  arguments, WorkSpaces Thin Client activation codes, DMS certificate wallets,
+  connection strings, signed, download and upload URLs, Splunk HEC, Grafana and
+  join tokens, and any field named like a password, secret, token, access or
+  refresh token, private key or credentials, also inside JSON text. The names
+  stay.
+- **Secrets in other fields are not found:** a secret in a description, a
+  tag, another free-text field or a field that AWS adds later is copied into
+  reports as it is, because masking goes by field name.
+- **Tags are shown as they are**, also when a tag key looks like a secret, such
+  as `password`.
+- **Reports and snapshots written by versions before v1.2.0 may contain
+  secret values**, so delete or restrict old `bom_output/` folders and shared
+  copies.
+- **Global services** (IAM, the S3 bucket list, CloudFront, Route 53, WAF web
+  ACLs for CloudFront, and the ACM certificates CloudFront uses) are read once
+  per account from `us-east-1` (`cn-north-1` in China, `us-gov-west-1` in
+  GovCloud), whatever regions you choose. Their region column says `global`;
+  an S3 bucket keeps its own region. See [Run a scan](../guides/run-a-scan.md).
+- **Regions.** Without `--account-regions`, InvenTag asks EC2 for the regions
+  enabled in the account. If `ec2:DescribeRegions` fails, it asks
+  `account:ListRegions`; if that also fails, it tries every region of the
+  partition and skips the ones that fail the access check. A region that fails
+  its access check is skipped with a warning, and the run still succeeds.
+
+## When a run goes wrong
+
+- **One account fails, the others work:** the run exits with code 0, or with
+  code 5 when you pass `--fail-on-account-error`.
+- **Every account fails:** the run exits with code 1, also with
+  `--fail-on-account-error`, and writes no report unless the accounts ran out
+  of time, in which case the report lists what was found.
+- **An account runs out of time:** it counts as failed, and the resources
+  found before the limit stay in the report. A call that is still waiting when
+  the account is given up is not retried and does not keep the process alive:
+  the run ends right after the report is written. Not verified against real
+  AWS: a real endpoint that hangs (the test hangs a call in moto).
+- **No resources found, or the filters removed all of them:** InvenTag writes
+  no report without `--template` and an empty report with `--template`, and
+  exits with code 0 unless you pass `--fail-if-empty` (code 6).
+- **A tag policy with no resource in scope** reports
+  `0 of 0 resources compliant (100.0%)`, although nothing was checked.
+- **A service you lack permission for** is skipped with one warning, and its
+  resources appear only if the Resource Groups Tagging API returns them.
+- **A listing that fails for another reason** (throttled after the retries, or
+  an error) is a warning and a count in the snapshot
+  (`metadata.tags.coverage_summary`).
+- **Every call in an account denied:** the account does not count as failed,
+  and the run exits with code 0. With `--fail-on-account-error`, an account
+  whose every listing was refused still counts as scanned, and the run exits
+  with code 0. To make a CI job fail when nothing could be read, add
+  `--fail-if-empty`.
+- **A run that was not allowed to use an IAM action** prints one `Permissions:`
+  line for each account in the run notes, and one for the identity that uploads the reports when the upload was refused, and writes the list `permissions_denied`
+  to the `--audit-output` file (see
+  [Run with only ReadOnlyAccess](../guides/read-only-access.md#run-with-only-readonlyaccess)).
+  The line does not name `ec2:DescribeRegions` or `account:ListRegions`, and
+  an upload with a KMS key that fails is named `s3:PutObject` only.
+
+  Not verified against real AWS: which action S3 names when an upload with a
+  KMS key is refused.
+- **The first change report after upgrading from v1.1.4** lists the resources
+  of newly covered services as added, although they existed before.
+- **A session that expires during the scan** leaves a report with only what
+  was read before it expired, and the run exits with code 0, also with
+  `--fail-on-account-error`.
+
+  Not verified against real AWS: the error code AWS returns when a session expires.
+
+- **A session that is already expired when the scan starts** gives no report
+  file and exit code 0.
+- **Cost Explorer access denied or throttled:** the run carries on without
+  billing data and prints one warning that names the cause. The AWS error
+  text shows only with `--debug`.
+- **With `--account-processing-timeout` under 1200 seconds,** each Cost Explorer
+  call waits at most a fortieth of the limit, and at least 5 seconds, to
+  connect and to read, with two attempts. If it does not answer in time, the
+  account is still scanned, and a run note says that its billing data is
+  missing. Not verified against real AWS: a slow Cost Explorer ends with a
+  timeout within that bound.
+- **A call blocked by the read-only guard** inside a listing skips that
+  listing with an error line, and the run still exits with code 0.
+- **A failed S3 upload** makes the whole run exit with code 1, after the
+  reports are written locally.
+- **A failed report format** makes the run exit with code 1 and upload nothing
+  to S3, not even the formats that were written.
+- **A snapshot that cannot be saved** (or a snapshot list or change report that
+  fails) is named in a note after the run summary, with the folder to check,
+  and the run still exits with code 0.
+- **Google output with `--template`** is skipped, and the run exits with
+  code 0.
+- **Some invalid values stop with exit code 1, not 2,** for example
+  `--max-concurrent-accounts 0` or `--account-processing-timeout 0`. A
+  `--concurrency` value outside 1 to 256 stops with exit code 2.
+- **Values in the `settings` block of an accounts file override the matching
+  command-line flags**, for example `max_concurrent_accounts`.
+- **An empty result with `--s3-bucket`** makes the run exit with code 1 and
+  says `Nothing to upload to s3://<bucket>/<prefix>/: the run wrote no report
+  file because there are no resources to report.`, also with `--fail-if-empty`.
+- **A region name typed wrong in `--account-regions`** is named once, with the
+  command that lists the valid regions, and the run exits with code 0. When
+  other regions work, the report is written without it and a run note says so.
+- **A second entry with the same account ID** in an accounts file is dropped
+  with a warning, so its regions are not scanned.
+- **Two runs that use the same output folder at the same time** are not
+  prevented.
+- **`--validate-config-only` with a `--bom-config` file that has a wrong value** prints one warning and exits with code 0, although the real run stops with exit code 1.
+- **A service descriptions file without the top-level key `service_descriptions`** passes `--validate-config-only` with a warning and exit code 0, and the run ignores it with an error in the log and uses the built-in descriptions.
+- **`inventag --validate-operations` shows `apigateway:GetApiKeys` and `ec2:DescribeInstanceAttribute` as ALLOWED**, each with the rule that the guard applies (`blocked when includeValues=true`, `blocked when Attribute=userdata`), and exits with code 0, because the guard blocks them only when they are called with that parameter.
+
+## Costs
+
+By default, discovery calls the Cost Explorer `GetCostAndUsage` API once for
+each account. The request covers the period from 30 days before the first day
+of the current month to today, and both billing validation and the spend
+column read it, so a service billed only in that period counts as billed.
+AWS charges for each Cost
+Explorer request: see the current
+[Cost Explorer pricing](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/).
+
+Cost Explorer requests in one run: at most one for each account when billing validation is on (the default), and at most one more for the whole run with `--enable-cost-analysis`. A single-account run with both makes at most 2; with `--no-billing-validation` it makes at most 1. A throttled request is retried, up to 10 attempts in all, and each retry is one more request. AWS charges for each request. Before discovery the run says that number, without retries: as a warning with `--enable-cost-analysis`, otherwise at info level (shown with `--verbose`). For example `Cost Explorer: up to 2 request(s) in this run (billing validation: 1; cost trend: 1). AWS charges for each.`
+
+- `--no-billing-validation` stops those calls, and the report then has no
+  billing data to compare with.
+- `--enable-cost-analysis` also calls Cost Explorer, even with `--no-billing-validation`. It also makes Pricing and CloudWatch calls, and their number depends on your resources. Each different price lookup is made once and then reused, so the number of Pricing calls grows with the number of different resource types and sizes, not with the number of resources.
+- With several accounts, the cost trend reads one bill, with the credentials of the first account, and the run notes say: `Cost trend: read once, with the credentials of account <id>. Its figures are that account's Cost Explorer view, not each account's own.` A fix is planned for v1.5.0.
+- The cost trend finds a service in the bill by a fragment of its name: S3, SQS and SNS get no trend, and the EC2 figure can include other services whose billing name contains 'EC2'. A service's figure is divided evenly across its resources; it is not a resource's cost. A fix is planned for v1.5.0.
+
+Not verified against real AWS: the cost estimates of `--enable-cost-analysis`.
+
+Not verified against real AWS: the number of requests AWS bills, and whether AWS bills a retry.
+
+InvenTag retries a throttled call up to 10 times (standard retry mode);
+`AWS_RETRY_MODE` and `AWS_MAX_ATTEMPTS` override this.
+
+## Performance and limits
+
+- InvenTag has no benchmark numbers for real accounts, and a scan makes one
+  set of calls per service per region.
+- Against moto (in process, so no network time),
+  `scripts/benchmark_scan.py --scale 60` scanned 10,948 resources in one
+  region with 2,053 API calls: 1,200 `s3:GetBucketLocation` calls (one for
+  each bucket), 600 `lambda:GetFunctionConfiguration` calls (one for each
+  function), 150 Resource Groups Tagging API calls and 103 other calls. The
+  call count is the useful figure for real accounts.
+- Accounts are scanned four at a time by default (`--max-concurrent-accounts`).
+  Each account has 1800 seconds from when its scan starts
+  (`--account-processing-timeout`).
+- A run has at most 64 AWS requests in flight (`--concurrency`), at most 16 for
+  one account, and at most 4 for one service in one region of one account.
+  After a throttling answer, InvenTag lowers the limit for that service and
+  region. See [Concurrency](../guides/run-a-scan.md#concurrency).
+
+  Not verified against real AWS: any speed-up from the parallel requests, and
+  how the request limit and the pause after a throttling answer behave under
+  real AWS rate limits.
+- The order of log lines and the time stamps in them can differ from run to
+  run. The files do not depend on thread timing.
+- When some accounts fail, the results of the finished ones are saved. Run the
+  same command with `--resume` within 24 hours (`--resume-max-age-hours`) to
+  scan only the others.
+- Excel sheet names are cut to 31 characters, characters Excel does not allow
+  become `-`, a repeated name gets ` (2)`, and the log names each changed
+  sheet.
+- Word tables show up to 50 resources per service by default (`max_rows`).
+- When a run saves a snapshot, InvenTag removes snapshots in `bom_output/state/`
+  that are older than 30 days or beyond the newest 100. The snapshot just
+  written and the one it is compared with are never removed. Change the limits
+  with `--state-retention-days` and `--state-max-snapshots`, or keep everything
+  with `none`.
+- Network analysis does not count an EFS file system as an associated
+  resource of a VPC or a subnet: its mount targets need
+  `elasticfilesystem:DescribeMountTargets`, which the read-only policy does not
+  grant.
+- Service attribute enrichment (`enable_service_enrichment` in the BOM
+  settings) does not run; reports contain the fields that discovery returns.
+- In a template report, the Name column is empty when AWS returns no `Name`
+  field or `Name` tag for the resource; the ID column identifies it. For
+  Lambda functions, IAM roles and KMS aliases, a template report shows the ID
+  as the name.
+- On an Intel Mac, `pip install inventag-aws` compiles the cryptography library, because cryptography publishes no ready-made build for Intel Macs from version 50. This needs a Rust toolchain.
+
+  Not verified against an Intel Mac: `pip install inventag-aws`.
+
+## Security notes
+
+- **Use a read-only IAM identity anyway.** The guard blocks write calls, and
+  your IAM (Identity and Access Management) policy is a second, independent
+  safety net. See [Set up read-only access](../guides/read-only-access.md).
+- **Debug logs are redacted** by default: session tokens, keys, signatures and
+  the secret values listed above are masked. Still treat debug logs as
+  sensitive. With `--debug`, a secret that AWS returns as a list under a masked
+  field name can appear in the log file.
+- **The read-only guard knows operations by name.** An operation that a newer
+  AWS SDK adds is allowed when its name starts like a read, until an InvenTag
+  release names it. See [Security](../security/index.md).
+- **Two library functions can write to AWS** when called from your own Python
+  code (the CLI does not call them): `CredentialManager.setup_cross_account_roles()`
+  runs only with `allow_iam_writes=True`, and the S3 lifecycle helper only
+  with `allow_bucket_writes=True`. The read-only guard blocks both in a CLI run.
+- **Using `CloudBOMGenerator` from your own Python code** does not install the
+  read-only guard. Only the `inventag` command does.
+- **A config template can set the output folder and the accounts and roles to
+  scan.** Use only templates you trust.
+- **Assumed-role sessions are not refreshed**, so an account scan that outlasts
+  the session runs into an expired token.
+
+  Not verified against real AWS: assumed-role sessions last one hour.
+- **MFA works only through AWS profiles** (`mfa_serial`), not for `role_arn`
+  entries in an accounts file.
+
+  Not verified against a real MFA device: MFA through an AWS profile with `mfa_serial`.
+
+## Tests and the software bill of materials
+
+The test suite and the dependency inventory have their own pages:
+[Tests](../security/tests.md) and
+[Software bill of materials](../security/sbom.md).
