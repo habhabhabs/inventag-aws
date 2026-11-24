@@ -39,12 +39,26 @@ def test_without_trace_nothing_is_added():
     off = run("ex02.yaml", trace=False)
     assert engine.dumps(plain) == engine.dumps(off)
     assert '"trace"' not in engine.dumps(plain)
-    assert "out_of_scope_traces" not in plain
+    assert "out_of_scope" not in [f["result"] for f in plain["findings"]]
+
+
+def nodes(f):
+    """The children of a finding's trace root."""
+    return f["trace"]["children"]
+
+
+def test_the_trace_is_one_tree_per_finding():
+    f = finding(run("ex02.yaml", trace=True), R3)
+    assert {k: v for k, v in f["trace"].items() if k != "children"} == {
+        "part": "check",
+        "kind": "and",
+        "verdict": "false",
+    }
 
 
 def test_the_trace_of_a_failed_row():
     f = finding(run("ex02.yaml", trace=True), R3)
-    assert f["trace"] == [
+    assert nodes(f) == [
         {"part": "resource", "kind": "services", "verdict": "true"},
         {"part": "resource", "kind": "resource_types", "verdict": "true"},
         {
@@ -63,22 +77,20 @@ def test_the_trace_of_a_failed_row():
 
 
 def test_the_trace_holds_no_value_of_the_row():
-    result = run("ex02.yaml", trace=True, trace_resources=[R4])
-    traces = json.dumps(
-        [f["trace"] for f in result["findings"]]
-        + [e["trace"] for e in result["out_of_scope_traces"]]
-    )
+    result = run("ex02.yaml", trace=True, trace_resource=R4)
+    traces = json.dumps([f["trace"] for f in result["findings"]])
     for value in ("203.0.113.10", "running", "stopped", "t3.micro", "web-1"):
         assert value not in traces
 
 
 def test_an_out_of_scope_row_asked_for_comes_back_with_its_trace():
-    result = run("ex02.yaml", trace=True, trace_resources=[R4])
-    (entry,) = result["out_of_scope_traces"]
-    assert (entry["policy"], entry["resource"]) == ("EC2-001", R4)
+    result = run("ex02.yaml", trace=True, trace_resource=R4)
+    (entry,) = [f for f in result["findings"] if f["resource"] == R4]
+    assert (entry["policy"], entry["result"]) == ("EC2-001", "out_of_scope")
+    assert entry["trace"]["verdict"] == "false"
     # the whole tree is given; the filter is the node that left the row out
     (selected,) = [
-        n for n in entry["trace"] if n["part"] == "resource" and n["kind"] == "value"
+        n for n in nodes(entry) if n["part"] == "resource" and n["kind"] == "value"
     ]
     assert selected == {
         "part": "resource",
@@ -86,8 +98,18 @@ def test_an_out_of_scope_row_asked_for_comes_back_with_its_trace():
         "key": "raw_data.State.Name",
         "verdict": "false",
     }
-    # rows not asked for are not returned
-    assert len(run("ex02.yaml", trace=True)["out_of_scope_traces"]) == 0
+    # rows not asked for are not returned, and the counts are as without trace
+    plain = run("ex02.yaml", trace=True)
+    assert "out_of_scope" not in [f["result"] for f in plain["findings"]]
+    assert result["summary"] == run("ex02.yaml")["summary"]
+
+
+def test_several_rows_can_be_asked_for():
+    result = run("ex02.yaml", trace=True, trace_resources=[R4, R3])
+    assert [f["result"] for f in result["findings"] if f["resource"] in (R3, R4)] == [
+        "fail",
+        "out_of_scope",
+    ]
 
 
 def test_the_trace_of_an_unknown_row_names_the_reason():
@@ -95,7 +117,9 @@ def test_the_trace_of_an_unknown_row_names_the_reason():
         run("ex10.yaml", trace=True),
         "arn:aws:ec2:ap-southeast-1:222222222222:instance/i-0ccc",
     )
-    assert f["trace"][-1] == {
+    assert f["trace"]["verdict"] == "unknown"
+    assert f["trace"]["reason"] == "tags_not_read"
+    assert nodes(f)[-1] == {
         "part": "check",
         "kind": "value",
         "key": "tag:Owner",
@@ -106,7 +130,7 @@ def test_the_trace_of_an_unknown_row_names_the_reason():
 
 def test_the_trace_of_a_tree():
     f = finding(run("fin-005.yaml", "s2.json", trace=True), L2)
-    (top,) = [n for n in f["trace"] if n["part"] == "check"]
+    (top,) = [n for n in nodes(f) if n["part"] == "check"]
     assert top["kind"] == "or" and top["verdict"] == "false"
     first, second = top["children"]
     assert [c["kind"] for c in first["children"]] == ["value", "require", "related"]
