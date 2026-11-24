@@ -271,8 +271,8 @@ def test_26_added_in_a_unit_the_baseline_did_not_read(tmp_path):
     (r9,) = [f for f in r["findings"] if f["resource"].endswith("i-0ccc")]
     assert r9["reason"] == "listing_not_read" and "from" not in r9
     assert [(u["service"], u.get("from")) for u in r["not_evaluated_units"]] == [
-        ("ec2", "baseline"),
         ("lambda", None),
+        ("ec2", "baseline"),
     ]
     assert engine.exit_code(r, "medium") == 7
     assert engine.exit_code(r, "medium", True) == 8
