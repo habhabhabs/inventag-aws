@@ -20,7 +20,7 @@ inventag --create-excel --finops-checks
 
 - 這些檢查唯讀取掃描已有的行。它們不再發出任何 AWS 呼叫，也不需要額外的權限。無論是否使用該引數，唯讀防護看到的呼叫都相同。
 - 這些檢查不會更改任何帳戶中的任何內容。
-- 該引數不改變結束代碼。
+- 檢查結果不改變結束代碼：有 `fail` 結果的執行與沒有這些結果時以相同方式結束。
 - 不使用該引數時，這些檢查不執行：報告中沒有 `FinOps` 工作表，其他工作表和控制檯文字與使用該引數時相同。
 
 ## 六項檢查 {#the-six-checks}
@@ -53,7 +53,7 @@ inventag --create-excel --finops-checks
 | `identity_only` | 該資源只透過 Resource Groups Tagging API 得知，所以檢查讀取的欄位不在它的行上。 |
 | `field_missing` | 檢查讀取的欄位不在該行上。對於 `FIN-003`，執行沒有開始時間時也是如此。 |
 | `tags_not_read` | 僅 `FIN-006`：缺少某個鍵，並且該區域的 Tagging API 列表在本次執行中失敗。對於全域性資源，該帳戶任何一次失敗的 Tagging API 列表都算。 |
-| `listing_not_read` | 檢查需要的某個列表在本次執行中失敗。工作表中每個列表和區域各有一列。 |
+| `listing_not_read` | 檢查需要的某個列表在本次執行中失敗。需要該列表的每項檢查各為該列表及其區域寫一行：一個失敗的 `ec2` 列表會產生四行（`FIN-001`、`FIN-003`、`FIN-004`、`FIN-006`）。 |
 
 ## FinOps 工作表 {#the-finops-sheet}
 

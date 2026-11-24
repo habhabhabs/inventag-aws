@@ -14,8 +14,8 @@ the flag is unchanged; the changelog lists it under Added.
 
 - `--finops-checks` (off by default): six fixed FinOps checks on the resources
   the scan found. `FIN-001` EBS volume with state `available`; `FIN-002`
-  Elastic IP with no association; `FIN-003` EBS snapshot that started more than
-  90 days before the run; `FIN-004` EC2 instance in the `stopped` state;
+  Elastic IP with no association; `FIN-003` EBS snapshot that started more
+  than 90 days before the run; `FIN-004` EC2 instance in the `stopped` state;
   `FIN-005` load balancer that no target group names, or classic load balancer
   with no instance; `FIN-006` a missing key of the built-in
   `finops-cost-allocation` tag policy. Results are `fail`, `not_evaluated`
@@ -24,13 +24,14 @@ the flag is unchanged; the changelog lists it under Added.
   report gets a last sheet `FinOps`; the result of
   `CloudBOMGenerator.generate_multi_account_bom()` and the metadata of a JSON
   report get the additive key `finops_checks`. The checks make no AWS call,
-  need no new IAM action and never change the exit code. Without the flag the
-  checks do not run; tests show the same other sheets, console text and AWS
-  calls with and without the flag. With `--template`, the checks do not run and a warning
-  says so. From the command line the result is in the Excel sheet only; there
-  is no JSON file. `FIN-003` is `not_evaluated` when the run has no start time:
-  the checks never read the clock. Not verified against real AWS: that the
-  listings carry the fields each check needs on every account type.
+  need no new IAM action, and their findings never change the exit code.
+  Without the flag the checks do not run; tests show the same other sheets,
+  console text and AWS calls with and without the flag. With `--template`, the
+  checks do not run and a warning says so. From the command line the result is
+  in the Excel sheet only; there is no JSON file. `FIN-003` is `not_evaluated`
+  when the run has no start time: the checks never read the clock. Not
+  verified against real AWS: that the listings carry the fields each check
+  needs on every account type.
 
 ## [v1.4.1] - 2026-11-24
 

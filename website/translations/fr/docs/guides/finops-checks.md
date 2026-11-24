@@ -28,7 +28,8 @@ fixes sur les ressources trouvées par l’analyse et ajoute une feuille nommée
   aucun autre appel AWS et n’exigent aucune autre permission. La protection en
   lecture seule voit les mêmes appels avec et sans l’option.
 - Les contrôles ne changent rien dans un compte.
-- L’option ne change pas le code de sortie.
+- Les résultats ne changent pas le code de sortie : une exécution avec des
+  résultats `fail` se termine comme sans eux.
 - Sans l’option, les contrôles ne s’exécutent pas : le rapport n’a pas de
   feuille `FinOps`, et les autres feuilles et le texte de la console sont les
   mêmes qu’avec l’option.
@@ -72,7 +73,7 @@ Une lacune dans les données n’est jamais un pass. Les raisons sont :
 | `identity_only` | La ressource n’est connue que par l’API Resource Groups Tagging, donc le champ que lit le contrôle n’est pas sur sa ligne. |
 | `field_missing` | Le champ que lit le contrôle n’est pas sur la ligne. Pour `FIN-003`, aussi quand l’exécution n’a pas d’heure de début. |
 | `tags_not_read` | `FIN-006` uniquement : une clé manque et la liste de l’API Tagging de cette région a échoué pendant cette exécution. Pour une ressource globale, tout échec d’une liste de l’API Tagging du compte compte. |
-| `listing_not_read` | Une liste dont le contrôle a besoin a échoué pendant cette exécution. La feuille a une ligne par liste et par région. |
+| `listing_not_read` | Une liste dont le contrôle a besoin a échoué pendant cette exécution. Chaque contrôle qui a besoin de cette liste a une ligne pour elle et sa région : une liste `ec2` en échec donne quatre lignes (`FIN-001`, `FIN-003`, `FIN-004`, `FIN-006`). |
 
 ## La feuille FinOps {#the-finops-sheet}
 
