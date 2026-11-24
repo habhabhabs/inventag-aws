@@ -1683,21 +1683,41 @@ def _line_streams(logger):
 
 
 def _say_sigterm_line(logger, streams, text):
-    """Write the SIGTERM line with one os.write per stream: no lock, no
+    """Write the SIGTERM line with os.write on each stream: no lock, no
     buffered write, so a SIGTERM that lands inside a write to standard
-    output cannot hang on that write or lose the line (A-79)."""
+    output cannot hang on that write or lose the line (A-79).
+
+    The line is not redacted (the redacting formatter takes a lock), so its
+    text must never hold a value from AWS: only the fixed words, the output
+    folder from the command line and the account prefix other lines show.
+    """
     if not streams:
         logger.warning(text)  # no stream with a file descriptor: as before
         return
     if logger.getEffectiveLevel() > logging.WARNING:
         return
+    # The file, line and function of the SIGTERM handler, as logging gave them
+    # in v1.4.0 (the log file shows "handler:<line>").
+    caller = sys._getframe(1)
     record = logging.LogRecord(
-        logger.name, logging.WARNING, __file__, 0, text, None, None, "handler"
+        logger.name,
+        logging.WARNING,
+        caller.f_code.co_filename,
+        caller.f_lineno,
+        text,
+        None,
+        None,
+        caller.f_code.co_name,
     )
     for fd, formatter in streams:
         try:
-            line = formatter.format(record) + "\n"
-            os.write(fd, line.encode("utf-8", "replace"))
+            data = (formatter.format(record) + "\n").encode("utf-8", "replace")
+            # At most 3 writes: a short write gets the rest, and a stream that
+            # takes almost nothing cannot hold the handler (no unbounded loop).
+            for _ in range(3):
+                data = data[os.write(fd, data) :]
+                if not data:
+                    break
         except Exception:
             pass  # the process ends by the signal in a moment anyway
 
