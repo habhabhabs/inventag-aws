@@ -80,7 +80,7 @@ def test_a_stale_file_from_an_earlier_run_fails(tmp_path):
     assert result.returncode == 1
     assert (
         f"::error::On the release but not in this upload: {stale}. Delete it "
-        f"(gh release delete-asset {TAG} {stale}) and run the job again."
+        f'(gh release delete-asset {TAG} "{stale}") and run the job again.'
     ) in result.stdout
 
 
@@ -89,3 +89,15 @@ def test_a_source_archive_of_another_version_fails(tmp_path):
     result = _run(tmp_path, FILES + SOURCES + [other])
     assert result.returncode == 1
     assert f"On the release but not in this upload: {other}." in result.stdout
+
+
+def test_a_file_name_with_a_space_is_named_whole(tmp_path):
+    # security review v1.4.1 finding 5: the loop must not split a name
+    stale = "old notes *.txt"
+    result = _run(tmp_path, FILES + SOURCES + [stale])
+    assert result.returncode == 1
+    errors = [l for l in result.stdout.splitlines() if l.startswith("::error::")]
+    assert errors == [
+        f"::error::On the release but not in this upload: {stale}. Delete it "
+        f'(gh release delete-asset {TAG} "{stale}") and run the job again.'
+    ]
