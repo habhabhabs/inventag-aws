@@ -8,7 +8,9 @@ import textwrap
 import pytest
 
 from inventag import exit_codes
-from inventag.cli import main as cli_main
+import importlib
+
+cli_main = importlib.import_module("inventag.cli.main")
 from tests.unit.finops.conftest import run_scan
 
 pytestmark = pytest.mark.e2e
@@ -163,22 +165,20 @@ def test_a_policy_folder(tmp_path):
 
 
 def test_waivers_on_a_scan(tmp_path):
-    scan_once = run_scan(tmp_path / "a", "--policy", str(policy_file(tmp_path)))
-    stopped = [
-        f["resource"]
-        for f in json.loads(findings_files(scan_once)[0].read_text())["findings"]
-        if f["result"] == "fail"
-    ][0]
+    # moto gives new IDs to every estate, so the waiver names the instances
+    # of the account by a glob (with the account, as spec 2.5 requires)
     waivers = tmp_path / "w.yaml"
     waivers.write_text(
         "format_version: 1\nkind: waivers\nname: w\nspec:\n  waivers:\n"
-        f'    - policy: EC2-101\n      resource: "{stopped}"\n'
+        "    - policy: EC2-101\n"
+        '      resource: "arn:aws:ec2:us-east-1:123456789012:instance/i-*"\n'
+        '      account: "123456789012"\n'
         '      reason: "Kept stopped for the quarterly audit."\n'
         "      approved_by: platform-lead\n"
         f"      expires: {dt.date.today() + dt.timedelta(days=30)}\n"
     )
     scan = run_scan(
-        tmp_path / "b",
+        tmp_path,
         "--policy",
         str(policy_file(tmp_path)),
         "--policy-waivers",
@@ -188,9 +188,7 @@ def test_waivers_on_a_scan(tmp_path):
     )
     assert scan.code == 0, scan.text
     result = json.loads(findings_files(scan)[0].read_text())
-    assert [f["result"] for f in result["findings"] if f["resource"] == stopped] == [
-        "waived"
-    ]
+    assert [f["result"] for f in result["findings"]] == ["waived"]
 
 
 def test_an_invalid_policy_stops_before_any_aws_call(tmp_path):
