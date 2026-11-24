@@ -293,7 +293,7 @@ def test_one_entry_per_account_and_service_with_the_whole_figure(monkeypatch):
     trends = analyzer.analyze_cost_trends(ROWS, account_sessions=sessions, now=NOW)
     keys = [(t.account_id, t.service) for t in trends]
     assert keys == sorted(set(keys))
-    assert len(keys) == 7
+    assert len(keys) == 6  # 4 services of account A, 2 of account B
     ec2 = _by_key(trends)[("111111111111", "EC2")]
     assert ec2.resource_count == 2
     assert not hasattr(ec2, "resource_id")
@@ -452,3 +452,7 @@ def test_cli_two_accounts_one_trend_request_each(tmp_path, monkeypatch):
         )
         == 2
     )
+
+
+def test_the_stated_page_count_is_the_analyzers():
+    assert cost_requests.TREND_PAGES_PER_ACCOUNT == cost_module.TREND_PAGES_PER_ACCOUNT
