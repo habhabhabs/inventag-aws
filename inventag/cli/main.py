@@ -82,6 +82,7 @@ from ..exit_codes import (  # noqa: E402
     EXIT_NO_RESOURCES,
     EXIT_POLICY_FAIL,
     EXIT_RISK_THRESHOLD,
+    EXIT_USAGE,
 )
 
 _POLICY_SEVERITIES = ("info", "low", "medium", "high", "critical")
@@ -367,6 +368,9 @@ Examples:
 
   # CI/CD integration with S3 upload
   inventag --accounts-file accounts.json --create-excel --s3-bucket reports-bucket --s3-key-prefix bom-reports/
+
+  # Each step of the run (-vv or --debug for debug output)
+  inventag --create-excel -v
 
   # Debug mode with comprehensive logging
   inventag --debug --log-file inventag-debug.log --create-excel
@@ -856,14 +860,17 @@ Examples:
     logging_group.add_argument(
         "--verbose",
         "-v",
-        action="store_true",
-        help="Enable verbose logging (INFO level)",
+        action="count",
+        default=0,
+        help="Show each step (INFO). Give it twice (-vv) for debug output, "
+        "the same as --debug.",
     )
     logging_group.add_argument(
         "--debug",
         "-d",
         action="store_true",
-        help="Enable debug logging (DEBUG level) with detailed AWS API calls",
+        help="Show debug output and every AWS request. Secrets are masked; "
+        "treat the output as sensitive.",
     )
     logging_group.add_argument(
         "--log-file", type=str, help="Path to log file for persistent logging"
@@ -1678,8 +1685,23 @@ def validate_credentials_only(config: MultiAccountConfig) -> bool:
     return all_valid
 
 
+BARE_RUN_MESSAGE = (
+    "inventag: error: no option was given, so no scan was started. For the scan "
+    "that a bare 'inventag' ran before v1.5.0, run: inventag --create-excel"
+)
+
+
 def main():
     """Main CLI entry point."""
+    # A bare 'inventag' starts no scan (v1.5.0): the help page, one line on
+    # stderr, exit code 2. Nothing else runs first: no AWS call, no logging
+    # setup, no file. Any argument at all keeps the v1.4.3 behaviour.
+    if len(sys.argv) == 1:
+        create_parser().print_help(sys.stdout)
+        sys.stdout.flush()
+        print(BARE_RUN_MESSAGE, file=sys.stderr)
+        sys.exit(EXIT_USAGE)
+
     if len(sys.argv) > 1 and sys.argv[1] == "templates":
         from ..templating.cli import main as templates_main
 
@@ -1702,6 +1724,9 @@ def main():
 
     parser = create_parser()
     args = parser.parse_args()
+    # -vv (or more) is --debug: one truth for every later reader.
+    if args.verbose >= 2:
+        args.debug = True
 
     # Fail loudly on flags that would otherwise be silently ignored.
     usage_errors = safety.unimplemented_flag_errors(args)
@@ -1762,7 +1787,7 @@ def main():
     # Set up logging
     try:
         logger = setup_logging(
-            verbose=args.verbose,
+            verbose=bool(args.verbose),
             debug=args.debug,
             log_file=args.log_file,
             account_specific=not args.disable_account_logging,

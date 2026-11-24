@@ -7,8 +7,8 @@ Code  Meaning
       of the opt-in flags below is given).
 1     Error: the run failed, a report format could not be written, or a
       configuration file or template is not valid.
-2     Invalid or conflicting options, or ``--compliance-standard`` (not
-      implemented).
+2     Invalid or conflicting options, ``--compliance-standard`` (not
+      implemented), or no option at all (a bare ``inventag`` prints the help).
 3     Tag policy violations, when the config template sets
       ``fail_on_tag_violations``.
 4     A security group rule at or above ``--risk-threshold``.

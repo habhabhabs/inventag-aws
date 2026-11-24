@@ -60,15 +60,15 @@ def test_bare_inventag_in_a_child_process_ignores_the_environment(tmp_path, stdi
     )
     root = str(Path(__file__).resolve().parents[2])
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [root, env.get("PYTHONPATH")]))
+    stdin_kwargs = {"input": ""} if stdin == "pipe" else {"stdin": subprocess.DEVNULL}
     result = subprocess.run(
         [sys.executable, "-m", "inventag"],
-        stdin=subprocess.PIPE if stdin == "pipe" else subprocess.DEVNULL,
-        input="" if stdin == "pipe" else None,
         capture_output=True,
         text=True,
         cwd=tmp_path,
         env=env,
         timeout=120,
+        **stdin_kwargs,
     )
     assert result.returncode == 2
     assert result.stderr == BARE_LINE

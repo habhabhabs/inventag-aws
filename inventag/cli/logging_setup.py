@@ -125,7 +125,10 @@ def setup_logging(
             pass
 
         file_handler = logging.FileHandler(log_file)
-        file_handler.setLevel(logging.DEBUG)  # Always debug level for file
+        # The handler passes everything, but the "inventag" logger's level
+        # follows the flags: the file holds the console's lines (with the
+        # function and line number). -v or -vv for more.
+        file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(RedactingFormatter(file_formatter))
         logger.addHandler(file_handler)
 
