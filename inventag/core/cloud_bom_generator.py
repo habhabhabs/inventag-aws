@@ -459,8 +459,6 @@ class MultiAccountConfig:
     enable_changelog_generation: bool = True
     # Cost Explorer lookups during discovery. AWS charges for each request.
     enable_billing_validation: bool = True
-    # --finops-checks: FIN-001 to FIN-006 on the rows the scan has (no AWS call).
-    finops_checks: bool = False
     bom_processing_config: BOMProcessingConfig = field(
         default_factory=BOMProcessingConfig
     )
@@ -482,6 +480,9 @@ class MultiAccountConfig:
     # Snapshot retention (None = no limit for that rule).
     state_retention_days: Optional[int] = 30
     state_max_snapshots: Optional[int] = 100
+    # --finops-checks: FIN-001 to FIN-006 on the rows the scan has (no AWS
+    # call). Last, so callers that pass the fields by position still work.
+    finops_checks: bool = False
 
 
 class CloudBOMGenerator:

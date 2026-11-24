@@ -31,7 +31,9 @@ the flag is unchanged; the changelog lists it under Added.
   in the Excel sheet only; there is no JSON file. `FIN-003` is `not_evaluated`
   when the run has no start time: the checks never read the clock. Not
   verified against real AWS: that the listings carry the fields each check
-  needs on every account type.
+  needs on every account type. In Python, `MultiAccountConfig` gets the field
+  `finops_checks` (default `False`) as its last field, so code that passes the
+  other fields by position works as before.
 
 ## [v1.4.1] - 2026-11-24
 
