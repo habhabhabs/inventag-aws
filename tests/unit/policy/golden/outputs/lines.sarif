@@ -1,0 +1,151 @@
+{
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "properties": {
+        "snapshotSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "results": [
+        {
+          "kind": "fail",
+          "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "arn:aws:ec2:us-east-1:111111111111:instance/i-0bbb"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "policies/ex09.yaml"
+                },
+                "region": {
+                  "startLine": 4
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "EC2-002: condition not met: raw_data.InstanceType"
+          },
+          "partialFingerprints": {
+            "inventag/v1": "30e6834b5f5e27293c56829e8c9199e82f7a830b063387dec4bc93652d28fd6a"
+          },
+          "properties": {
+            "account": "111111111111",
+            "region": "us-east-1",
+            "resource_type": "Instance",
+            "service": "EC2"
+          },
+          "ruleId": "EC2-002",
+          "ruleIndex": 0
+        },
+        {
+          "kind": "fail",
+          "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "arn:aws:ec2:us-east-1:111111111111:instance/i-0bbb"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "policies/ex10.yaml"
+                },
+                "region": {
+                  "startLine": 9
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "EC2-003: condition not met: raw_data.InstanceType; condition not met: tag:Owner"
+          },
+          "partialFingerprints": {
+            "inventag/v1": "ed4f6a68d141c5a6929123aa58fb6aa60d1aebebdbfa2747e2e877448855fdac"
+          },
+          "properties": {
+            "account": "111111111111",
+            "region": "us-east-1",
+            "resource_type": "Instance",
+            "service": "EC2"
+          },
+          "ruleId": "EC2-003",
+          "ruleIndex": 1
+        },
+        {
+          "kind": "review",
+          "level": "none",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "arn:aws:ec2:ap-southeast-1:222222222222:instance/i-0ccc"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "policies/ex10.yaml"
+                },
+                "region": {
+                  "startLine": 9
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "EC2-003: not evaluated (tags_not_read)"
+          },
+          "partialFingerprints": {
+            "inventag/v1": "d186a49fb3a6c2c4d902b6cbe87e0dbfb79b3ccc519d4636b15cbc7644b6c873"
+          },
+          "properties": {
+            "account": "222222222222",
+            "reason": "tags_not_read",
+            "region": "ap-southeast-1",
+            "resource_type": "Instance",
+            "service": "EC2"
+          },
+          "ruleId": "EC2-003",
+          "ruleIndex": 1
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "InvenTag",
+          "rules": [
+            {
+              "id": "EC2-002",
+              "name": "ec2-002",
+              "properties": {
+                "severity": "low",
+                "sha256": "0d074c1519bb6a222de223acf06558ca1af93e7b5087b59c99049775e8d064b4",
+                "version": 1
+              },
+              "shortDescription": {
+                "text": "ec2-002"
+              }
+            },
+            {
+              "id": "EC2-003",
+              "name": "ec2-003",
+              "properties": {
+                "severity": "low",
+                "sha256": "a8ca8c09495119bf82ef68a6ceca870c4359fce08c9de77e0207071f4c7e6cfa",
+                "version": 1
+              },
+              "shortDescription": {
+                "text": "ec2-003"
+              }
+            }
+          ],
+          "version": "1.5.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

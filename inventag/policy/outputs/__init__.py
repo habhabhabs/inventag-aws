@@ -58,8 +58,8 @@ def render(
 ) -> str:
     """The text of one format: json, sarif, xml, md or text.
 
-    ``policy_lines`` maps a policy id to the line of its ``spec.id`` in the
-    policy file (SARIF locations); a missing id gives line 1.
+    ``policy_lines`` overrides the result's ``policies[].line`` (the line of
+    ``spec.id`` in the policy file; default 1).
     """
     if fmt not in SUFFIX:
         raise ValueError(f"unknown format: {fmt}")

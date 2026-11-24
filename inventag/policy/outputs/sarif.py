@@ -38,11 +38,15 @@ def _rule(policy: Mapping[str, Any]) -> Dict[str, Any]:
     return rule
 
 
+def _line(value: Any) -> int:
+    return value if isinstance(value, int) and value >= 1 else 1
+
+
 def _result(
     f: Mapping[str, Any],
     index: Mapping[str, int],
     files: Mapping[str, str],
-    lines: Mapping[str, int],
+    lines: Mapping[str, Any],
 ) -> Dict[str, Any]:
     kind = {"fail": "fail", "waived": "fail", "not_evaluated": "review"}[f["result"]]
     out: Dict[str, Any] = {
@@ -54,7 +58,7 @@ def _result(
             {
                 "physicalLocation": {
                     "artifactLocation": {"uri": files.get(f["policy"], "")},
-                    "region": {"startLine": max(1, int(lines.get(f["policy"], 1)))},
+                    "region": {"startLine": _line(lines.get(f["policy"]))},
                 },
                 "logicalLocations": [{"fullyQualifiedName": f["resource"]}],
             }
@@ -110,8 +114,10 @@ def render(data: Mapping[str, Any], policy_lines: Mapping[str, int]) -> str:
     policies = data.get("policies") or []
     index = {p["id"]: i for i, p in enumerate(policies)}
     files = {p["id"]: p.get("file", "") for p in policies}
+    lines = {p["id"]: p["line"] for p in policies if "line" in p}
+    lines.update(policy_lines)
     results = [
-        _result(f, index, files, policy_lines)
+        _result(f, index, files, lines)
         for f in data.get("findings") or []
         if f.get("result") != "pass"
     ]
