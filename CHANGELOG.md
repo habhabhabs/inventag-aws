@@ -53,7 +53,9 @@ The version numbers follow [Semantic Versioning](https://semver.org/).
 - A SIGTERM that arrived while the process wrote to standard output could lose
   its "Terminated (SIGTERM)" line, or wait on that write. The line is now one
   write on each log stream's file descriptor, in the same format, so it is
-  printed and the process ends by the signal with the same status.
+  printed and the process ends by the signal with the same status. The first
+  SIGTERM still waits on a stalled reader of standard output, as in v1.4.0; a
+  second one ends the run.
 - Packaging: a re-run of the release upload checked only for missing files, so
   a file of an earlier run with another name stayed beside the new
   `SHA256SUMS`. The upload now also fails on a file that is neither in this
