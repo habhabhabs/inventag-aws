@@ -673,7 +673,7 @@ def _lock_lines(problems: Sequence[str]) -> List[str]:
 # ---------------------------------------------------------------- commands
 def _cmd_validate(args, out: TextIO, err: TextIO) -> int:
     now = _now(args)
-    files = loader._files([Path(p) for p in args.paths])
+    files = loader.expand_paths([Path(p) for p in args.paths])
     root = Path(args.paths[0]) if Path(args.paths[0]).is_dir() else None
     issues: List[TemplateIssue] = []
     rest: List[Path] = []
