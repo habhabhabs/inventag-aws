@@ -189,6 +189,31 @@ def _tag_scopes(entries) -> List[Dict]:
 
 
 # ----------------------------------------------------------------- policies
+def _plain_trace(row: Dict[str, Any], block: Dict[str, Any]) -> List[Dict]:
+    """The plain tests of ``resource`` as trace nodes (spec 11.5)."""
+    nodes = []
+    for kind, keys in (
+        ("services", ("services",)),
+        ("resource_types", ("resource_types", "exclude_resource_types")),
+        ("regions", ("regions",)),
+        ("accounts", ("accounts",)),
+    ):
+        part = {k: block[k] for k in keys if block.get(k)}
+        if part:
+            ok = filters.TRUE if _plain(row, part) else filters.FALSE
+            nodes.append(filters.verdict_node("resource", kind, ok))
+    return nodes
+
+
+def _trace(policy, row, ctx, filter_nodes, require, check_nodes) -> List[Dict]:
+    found = _plain_trace(row, policy.resource)
+    found += [filters.trace(n, row, ctx, "resource") for n in filter_nodes]
+    if require.keys:
+        found.append(filters.trace(require, row, ctx, "check"))
+    found += [filters.trace(n, row, ctx, "check") for n in check_nodes]
+    return found
+
+
 def _evaluate_policy(policy: model.Policy, snap: _Snapshot, ctx: filters.Context):
     """(findings including passes, counts, unit lines) of one policy."""
     block = policy.resource
@@ -198,29 +223,61 @@ def _evaluate_policy(policy: model.Policy, snap: _Snapshot, ctx: filters.Context
     scopes = _tag_scopes(policy.check)
     counts = _zero()
     findings: List[Dict[str, Any]] = []
+    tracing = getattr(ctx, "trace", None)
+
+    def out_of_scope(row):
+        counts["out_of_scope"] += 1
+        if tracing is not None and model.resource(row) in tracing["wanted"]:
+            entry = _finding(policy, row, "out_of_scope")
+            entry = {
+                k: entry[k]
+                for k in (
+                    "policy",
+                    "account",
+                    "region",
+                    "service",
+                    "resource_type",
+                    "resource",
+                    "name",
+                )
+            }
+            entry["trace"] = _trace(
+                policy, row, ctx, filter_nodes, require, check_nodes
+            )
+            tracing["out_of_scope"].append(entry)
+
+    rows_of: List[Dict[str, Any]] = []
+
+    def add(row, finding):
+        findings.append(finding)
+        rows_of.append(row)
+
     for row in snap.rows:
         if not _plain(row, block) or not all(_in_scope(row, s) for s in scopes):
-            counts["out_of_scope"] += 1
+            out_of_scope(row)
             continue
         selected = filters.evaluate_all(filter_nodes, row, ctx)
         if selected.value is FALSE:
-            counts["out_of_scope"] += 1
+            out_of_scope(row)
             continue
         if selected.value is UNKNOWN:
-            findings.append(_finding(policy, row, "not_evaluated", selected.reason))
+            add(row, _finding(policy, row, "not_evaluated", selected.reason))
             continue
         if require.keys:
             needed = filters.evaluate_outcome(require, row, ctx)
             if needed.value is UNKNOWN:
-                findings.append(_finding(policy, row, "not_evaluated", needed.reason))
+                add(row, _finding(policy, row, "not_evaluated", needed.reason))
                 continue
         verdict = filters.evaluate_all(check_nodes, row, ctx)
         if verdict.value is TRUE:
-            findings.append(_finding(policy, row, "pass"))
+            add(row, _finding(policy, row, "pass"))
         elif verdict.value is FALSE:
-            findings.append(_finding(policy, row, "fail", failures=verdict.failures))
+            add(row, _finding(policy, row, "fail", failures=verdict.failures))
         else:
-            findings.append(_finding(policy, row, "not_evaluated", verdict.reason))
+            add(row, _finding(policy, row, "not_evaluated", verdict.reason))
+    if tracing is not None:
+        for f, row in zip(findings, rows_of):
+            f["trace"] = _trace(policy, row, ctx, filter_nodes, require, check_nodes)
     for f in findings:
         counts[f["result"]] += 1
     return findings, counts, _unit_lines(policy, snap)
@@ -332,6 +389,8 @@ def evaluate(
     baseline_file: str = "",
     baseline_sha256: str = "",
     inventag_version: Optional[str] = None,
+    trace: bool = False,
+    trace_resources: Sequence[str] = (),
 ) -> Dict[str, Any]:
     """The result of spec 3.3 for ``policies`` on ``snapshot``."""
     if now is None:
@@ -345,6 +404,9 @@ def evaluate(
         related_rows=snap.related_rows,
         show_values=show_values,
     )
+    # spec 11.5: with trace, each finding carries its tree, and the
+    # out-of-scope rows asked for come back with theirs
+    ctx.trace = {"wanted": set(trace_resources), "out_of_scope": []} if trace else None
     findings: List[Dict[str, Any]] = []
     units: List[Dict[str, str]] = []
     not_evaluated_policies: List[Dict[str, str]] = []
@@ -359,6 +421,8 @@ def evaluate(
             "sha256": policy.sha256,
             "counts": _zero(),
         }
+        if policy.id_line:
+            entry["line"] = policy.id_line
         if policy.description:
             entry["description"] = policy.description
         if policy.references:
@@ -435,6 +499,10 @@ def evaluate(
             unused, key=lambda w: (w["policy"], w["resource"], w["expires"])
         ),
     }
+    if trace:
+        result["out_of_scope_traces"] = sorted(
+            ctx.trace["out_of_scope"], key=lambda e: (e["policy"], e["resource"])
+        )
     fails = [f["severity"] for f in findings if f["result"] == "fail"]
     result["summary"]["exit_code"] = exit_code(
         dict(result, findings=findings, _fails=fails), fail_on, fail_on_not_evaluated

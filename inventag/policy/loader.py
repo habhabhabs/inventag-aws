@@ -148,6 +148,11 @@ def _files(paths: Iterable[Path]) -> List[Path]:
     return found
 
 
+# Public name (architect P3/P4 rulings): the files of the paths given, with the
+# policy files of folders (``tests/`` left out).
+expand_paths = _files
+
+
 def _tag_policy_rules(name: str, issue) -> Tuple[List[Dict], Dict]:
     from ..templating.registry import TemplateRegistry
 

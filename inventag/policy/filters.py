@@ -562,3 +562,38 @@ def evaluate_all(nodes, row: Dict[str, Any], ctx: Context) -> Outcome:
     if unknown:
         return Outcome(UNKNOWN, first_reason(unknown))
     return Outcome(TRUE)
+
+
+# ----------------------------------------------------------------- trace
+_VERDICT = {"TRUE": "true", "FALSE": "false", "UNKNOWN": "unknown"}
+
+
+def verdict_node(part: str, kind: str, outcome_value, reason=None, key=None):
+    """One node of a trace (spec 11.5): kind, key (never a value), verdict."""
+    node: Dict[str, Any] = {"part": part, "kind": kind}
+    if key is not None:
+        node["key"] = key
+    node["verdict"] = _VERDICT[outcome_value.name]
+    if outcome_value is UNKNOWN and reason:
+        node["reason"] = reason
+    return node
+
+
+def trace(node: Any, row: Dict[str, Any], ctx: Context, part: str) -> Dict[str, Any]:
+    """The trace of one compiled entry on one row (every child evaluated)."""
+    outcome = evaluate_outcome(node, row, ctx)
+    if isinstance(node, ValueNode):
+        return verdict_node(part, "value", outcome.value, outcome.reason, node.key.text)
+    if isinstance(node, RequireNode):
+        key = node.keys[0].text if len(node.keys) == 1 else None
+        return verdict_node(part, "require", outcome.value, outcome.reason, key)
+    if isinstance(node, GroupNode):
+        found = verdict_node(part, node.op, outcome.value, outcome.reason)
+        found["children"] = [trace(child, row, ctx, part) for child in node.children]
+        return found
+    key = None
+    if node.type == "name-pattern" and node.key is not None:
+        key = node.key.text
+    elif node.type == "related":
+        key = node.my_key.text
+    return verdict_node(part, node.type, outcome.value, outcome.reason, key)
