@@ -419,7 +419,7 @@ def _finops_costs(costs: Dict[str, Any]) -> str:
     )
 
 
-def _coverage(metadata: Dict[str, Any]) -> str:
+def _coverage(metadata: Dict[str, Any], not_read: frozenset = frozenset()) -> str:
     parts = []
     accounts = metadata.get("account_summary")
     if accounts:
@@ -439,7 +439,11 @@ def _coverage(metadata: Dict[str, Any]) -> str:
                         a.get("account_name"),
                         a.get("resource_count"),
                         a.get("error_count"),
-                        "Yes" if a.get("partial") else "No",
+                        (
+                            "Yes"
+                            if a.get("partial") or str(a.get("account_id")) in not_read
+                            else "No"
+                        ),
                     )
                     for a in accounts
                     if isinstance(a, dict)
@@ -476,11 +480,16 @@ def render_html_report(
     branding: Optional[Dict[str, Any]] = None,
     notes: Sequence[str] = (),
     generated_at: str = "",
+    accounts_not_read: Iterable[str] = (),
 ) -> str:
     """The report as text. ``scope_data`` is a BOMData (or anything with the
     same attributes). ``converter`` is the BOMConverter of the report scope:
     its ``prepare_data`` masks the rows as for Excel. ``branding`` may have
-    ``company_name``, ``title`` and ``logo_file`` (a Path)."""
+    ``company_name``, ``title`` and ``logo_file`` (a Path).
+    ``accounts_not_read``: the accounts with a listing that was not read (the
+    accounts the "Not read in account" run notes name); their row in the
+    accounts table says ``Read in part: Yes``, as for an account that
+    stopped early."""
     from .converter import BOMConverter, _group_by_service
 
     if converter is None:
@@ -513,7 +522,13 @@ def render_html_report(
         sections.append(
             ("finops-costs", "FinOps costs", _finops_costs(converter.finops_costs))
         )
-    sections.append(("coverage", "Coverage and errors", _coverage(metadata)))
+    sections.append(
+        (
+            "coverage",
+            "Coverage and errors",
+            _coverage(metadata, frozenset(str(a) for a in accounts_not_read)),
+        )
+    )
 
     nav = "".join(
         f'<li><a href="{safe_href("#" + anchor)}">{text(heading)}</a></li>'
@@ -563,6 +578,7 @@ def write_html_report(
     branding: Optional[Dict[str, Any]] = None,
     notes: Sequence[str] = (),
     generated_at: str = "",
+    accounts_not_read: Iterable[str] = (),
 ) -> str:
     """Write the report to ``path`` whole or not at all (owner-only file).
     Returns ``path`` as text."""
@@ -572,6 +588,7 @@ def write_html_report(
         branding=branding,
         notes=notes,
         generated_at=generated_at,
+        accounts_not_read=accounts_not_read,
     )
 
     def write(temp_path: str) -> None:

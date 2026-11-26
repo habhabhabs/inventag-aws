@@ -2830,7 +2830,10 @@ class CloudBOMGenerator:
             ),
             notes=converter.run_notes,
             generated_at=html_report.generated_now(),
+            accounts_not_read={u["account"] for u in self._units_not_read()},
         )
+        # Named on the console as the Excel report names its file.
+        print(f"Data exported to {output_file}")
         return [str(output_file)]
 
     def _report_scopes(self, bom_data) -> List[tuple]:

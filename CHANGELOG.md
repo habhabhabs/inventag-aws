@@ -28,7 +28,12 @@ the flag is unchanged; the changelog lists it under Added.
   from every value, so a name cannot show reversed. `--create-html` alone writes HTML
   only. With `--template`, the HTML file has the default layout and one
   warning says so. `--excel-template` with `--create-html` alone stops with
-  exit code 2. A run without `--create-html` is unchanged.
+  exit code 2. The run prints `Data exported to <path>` for the HTML file, as
+  for the Excel file. In the accounts table, `Read in part` is `Yes` for an
+  account that stopped early or has a listing that was not read (the
+  accounts the run notes name). The flag also appears in `--help`, in the
+  usage line and in `inventag completion`, and `inventag selftest` counts one
+  more module (112). A run without `--create-html` is otherwise unchanged.
 
 ## [v1.5.0] - 2026-11-26
 
