@@ -11,6 +11,7 @@ from pathlib import Path
 
 import boto3
 import botocore.client
+import botocore.exceptions
 import pytest
 
 from inventag.cli.main import create_parser
@@ -180,7 +181,19 @@ def test_the_console_names_no_resource_value_in_the_new_lines(html_runs):
 
     before = set(lines(excel_only))
     added = [line for line in lines(both) if line not in before]
-    assert added == []
+    # only the line that names the HTML file, as Excel's line names its file
+    assert len(added) == 1
+    assert re.fullmatch(
+        r"Data exported to \S+/runN/out/multi_account_bom_STAMP\.html", added[0]
+    )
+
+
+def test_the_html_file_is_named_on_the_console_like_the_excel_file(html_runs):
+    html_only = html_runs[2]
+    path = next(html_only.out.glob("*.html"))
+    assert re.search(
+        rf"^Data exported to {re.escape(str(path))}\r?$", html_only.stdout, re.M
+    )
 
 
 # ---------------------------------------------------------- flag rules
@@ -298,3 +311,41 @@ def test_a_tag_policy_template_gives_the_tag_compliance_section(html_runs):
     headings, rows = _html_table(document, "Tag compliance summary")
     assert headings == ["Item", "Value"] and rows
     assert "<td>checked</td>" in document
+
+
+def test_an_account_with_a_listing_not_read_is_read_in_part_as_the_run_note_says(
+    tmp_path, monkeypatch
+):
+    real = botocore.client.BaseClient._make_api_call
+
+    def make_api_call(self, operation_name, api_params):
+        if operation_name == "DescribeInstances":
+            raise botocore.exceptions.ClientError(
+                {"Error": {"Code": "AccessDenied", "Message": "denied"}},
+                operation_name,
+            )
+        return real(self, operation_name, api_params)
+
+    monkeypatch.setattr(botocore.client.BaseClient, "_make_api_call", make_api_call)
+    scan = run_scans(tmp_path, ["--create-html"])[0]
+    assert "so the report is partial there" in scan.text
+    document = next(scan.out.glob("*.html")).read_text()
+    assert "so the report is partial there" in document
+    accounts = document.split("<caption>Accounts</caption>", 1)[1].split("</table>")[0]
+    assert '<th scope="col">Read in part</th>' in accounts
+    rows = re.findall(r"<tr><td>(\d{12})</td>.*?</tr>", accounts)
+    assert rows
+    assert all(
+        row.endswith("<td>Yes</td></tr>")
+        for row in re.findall(r"<tr><td>\d{12}</td>.*?</tr>", accounts)
+    )
+
+
+def test_a_fully_read_account_is_not_read_in_part(html_runs):
+    document = next(html_runs[2].out.glob("*.html")).read_text()
+    accounts = document.split("<caption>Accounts</caption>", 1)[1].split("</table>")[0]
+    assert re.findall(r"<tr><td>\d{12}</td>.*?</tr>", accounts)
+    assert all(
+        row.endswith("<td>No</td></tr>")
+        for row in re.findall(r"<tr><td>\d{12}</td>.*?</tr>", accounts)
+    )
