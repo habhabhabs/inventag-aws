@@ -217,6 +217,14 @@ def _trace(policy, row, ctx, filter_nodes, require, check_nodes, result, reason=
     """One trace tree for one row (spec 11.5): a root "and" over every test."""
     found = _plain_trace(row, policy.resource)
     found += [filters.trace(n, row, ctx, "resource") for n in filter_nodes]
+    if result == "out_of_scope":
+        # the row was never checked: the resource nodes only (review F5)
+        return {
+            "part": "resource",
+            "kind": "and",
+            "verdict": "out_of_scope",
+            "children": found,
+        }
     if require.keys:
         found.append(filters.trace(require, row, ctx, "check"))
     found += [filters.trace(n, row, ctx, "check") for n in check_nodes]

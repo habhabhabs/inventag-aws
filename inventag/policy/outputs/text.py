@@ -1,10 +1,13 @@
 """Plain text: one summary line per policy, the findings grouped by policy, and
 the sentence the exit code stands for as the last line (spec 3.4)."""
 
-from typing import Any, List, Mapping
+from typing import Any, List, Mapping, Optional
 
+from .. import model
 from . import _common
 from ._common import clean
+
+SEVERITY_ORDER = tuple(reversed(model.SEVERITIES))  # critical first
 
 
 def _detail(detail: Mapping[str, Any], show_values: bool) -> str:
@@ -22,7 +25,13 @@ def _why(w: Mapping[str, Any]) -> str:
     return str(w["why"])
 
 
-def render(data: Mapping[str, Any], show_values: bool = False, gate=None) -> str:
+def render(
+    data: Mapping[str, Any],
+    show_values: bool = False,
+    gate=None,
+    limit: Optional[int] = None,
+    more_in: str = "",
+) -> str:
     summary = data.get("summary") or {}
     by = summary.get("by_result") or {}
     snap = data.get("snapshot") or {}
@@ -39,7 +48,19 @@ def render(data: Mapping[str, Any], show_values: bool = False, gate=None) -> str
         ),
         "",
     ]
+    if limit is not None:
+        failed = summary.get("fail_by_severity") or {}
+        lines.insert(
+            -1,
+            "Failed by severity: "
+            + (
+                ", ".join(f"{s} {failed[s]}" for s in SEVERITY_ORDER if failed.get(s))
+                or "none"
+            ),
+        )
     policies = data.get("policies") or []
+    shown = 0
+    hidden = 0
     for policy in policies:
         c = _common.counts(policy)
         lines.append(
@@ -59,8 +80,15 @@ def render(data: Mapping[str, Any], show_values: bool = False, gate=None) -> str
         items = grouped.get(policy["id"], [])
         if not items:
             continue
+        if limit is not None and shown >= limit:
+            hidden += len(items)
+            continue
         lines += ["", f"{clean(policy['id'])} ({clean(policy.get('file', ''))})"]
         for f in items:
+            if limit is not None and shown >= limit:
+                hidden += 1
+                continue
+            shown += 1
             tag = {
                 "fail": "FAIL",
                 "waived": "WAIVED",
@@ -78,6 +106,12 @@ def render(data: Mapping[str, Any], show_values: bool = False, gate=None) -> str
                 )
             for d in f.get("details") or []:
                 lines.append(f"    - {_detail(d, show_values)}")
+    if hidden:
+        lines += [
+            "",
+            f"{hidden} more findings are in {more_in or 'the findings file'}; "
+            "add -v to print them.",
+        ]
     units = data.get("not_evaluated_units") or []
     if units:
         lines += ["", "Units not read:"]

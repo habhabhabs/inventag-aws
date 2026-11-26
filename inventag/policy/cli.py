@@ -248,7 +248,7 @@ FIELD_HELP: Dict[str, Tuple[str, str]] = {
 
 def json_schema() -> Dict[str, Any]:
     """A JSON Schema (draft 2020-12) for editors: the file headers and the
-    fields of the three kinds. It is looser than the validator (the validator
+    fields of the four kinds. It is looser than the validator (the validator
     is the authority); check entries are only typed by ``type``."""
     text = {"type": "string"}
     entry = {
@@ -334,16 +334,38 @@ def json_schema() -> Dict[str, Any]:
             }
         },
     }
-    kinds = {"policy": policy_spec, "policy-set": set_spec, "waivers": waivers_spec}
+    from . import testing
+
+    test_spec = {
+        "type": "object",
+        "required": list(testing.REQUIRED),
+        "additionalProperties": False,
+        "properties": {
+            "policy": text,
+            "now": text,
+            "resources": {"type": "array", "items": {"type": "object"}},
+            "baseline_resources": {"type": "array", "items": {"type": "object"}},
+            "units_not_read": {"type": "array", "items": {"type": "object"}},
+            "waivers": {"type": "array", "items": {"type": "object"}},
+            "expect": {"type": "array", "items": {"type": "object"}},
+            "expect_units": {"type": "array", "items": {"type": "object"}},
+        },
+    }
+    kinds = {
+        "policy": policy_spec,
+        "policy-set": set_spec,
+        "waivers": waivers_spec,
+        "policy-test": test_spec,
+    }
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": "urn:inventag:policy-file:1",
-        "title": "InvenTag policy, policy set or waivers file",
+        "title": "InvenTag policy, policy set, waivers or policy test file",
         "type": "object",
         "required": ["format_version", "kind", "name", "spec"],
         "properties": {
             "format_version": {"const": 1},
-            "kind": {"enum": list(model.KINDS)},
+            "kind": {"enum": [*model.KINDS, "policy-test"]},
             "name": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
             "description": text,
             "spec": {"type": "object"},
@@ -843,6 +865,8 @@ def _formats(text: str) -> List[str]:
 def _cmd_check(args, out: TextIO, err: TextIO) -> int:
     formats = _formats(args.format)
     now = _now(args)
+    if args.locked and not args.policies and Path(DEFAULT_FOLDER).is_dir():
+        args.policies = [DEFAULT_FOLDER]  # as without --locked (_policy_paths)
     if args.locked and not (
         args.policies and len(args.policies) == 1 and Path(args.policies[0]).is_dir()
     ):
@@ -952,7 +976,8 @@ def _trace_lines(trace: Any, depth: int = 0) -> List[str]:
         label = f"{node.get('part')} {node.get('kind')}"
         if node.get("key"):
             label += f" {node['key']}"
-        text = f"{label}: {node.get('verdict')}"
+        verdict = node.get("verdict")
+        text = f"{label}: {'out of scope' if verdict == 'out_of_scope' else verdict}"
         if node.get("reason"):
             text += f" ({node['reason']})"
         lines.append("  " * depth + text)

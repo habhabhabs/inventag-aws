@@ -252,7 +252,8 @@ def test_explain_shows_an_out_of_scope_row_as_out_of_scope(tmp_path):
 
 # ------------------------------------------------------------------- F6
 def test_the_editor_schema_accepts_a_policy_test():
-    jsonschema = pytest.importorskip("jsonschema")
+    import jsonschema
+
     code, out, err = run(["schema", "--json"])
     assert code == 0, err
     schema = json.loads(out)

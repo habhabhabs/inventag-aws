@@ -37,6 +37,17 @@ def gates(
     return fail_on, "fail_on_not_evaluated" in names
 
 
+# On a scan, 5, 6, 3 and 4 come before the policy check's code (spec 4); the
+# last line then gives the code the scan exits with (behaviour review F2).
+_SCAN_CODES = {
+    3: "the template's tag policy found violations (fail_on_tag_violations)",
+    4: "a security group rule is at or above --risk-threshold",
+    5: "an account could not be scanned (--fail-on-account-error)",
+    6: "no resources were found (--fail-if-empty)",
+}
+_BEFORE = "this code comes before the policy check's code"
+
+
 def exit_sentence(result: Mapping[str, Any], gate) -> Optional[str]:
     """The last line of the text and Markdown forms (spec 11.3), or None."""
     if gate is None:
@@ -51,6 +62,8 @@ def exit_sentence(result: Mapping[str, Any], gate) -> Optional[str]:
         )
     if code == 8:
         return "Exit code 8: some checks could not be evaluated."
+    if code in _SCAN_CODES:
+        return f"Exit code {code}: {_SCAN_CODES[code]}; {_BEFORE}."
     if code != 0:
         return f"Exit code {code}."
     parts = []

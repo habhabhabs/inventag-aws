@@ -6,6 +6,7 @@ Multi-account AWS cloud governance platform with BOM generation,
 compliance checking, and advanced reporting capabilities.
 """
 
+from dataclasses import dataclass
 import argparse
 import getpass
 import os
@@ -167,11 +168,57 @@ def _with_finops_set(loaded_policies):
     return SimpleNamespace(policies=merged), waivers
 
 
-def _run_scan_policies(args, results: Dict[str, Any], logger) -> int:
-    """--policy: check the run's state snapshot; write the files; the code (0, 7)."""
+# The first findings a scan prints with --policy; -v prints every one. The
+# findings files always hold all of them (behaviour review F4).
+SCAN_FINDINGS_SHOWN = 10
+
+
+@dataclass
+class _PendingPolicies:
+    """The policy check of a scan, evaluated; printed and written once the
+    scan's own exit code is known (behaviour review F2)."""
+
+    result: Dict[str, Any]
+    gates: Dict[str, Any]
+
+    @property
+    def code(self) -> int:
+        return int(self.result["summary"]["exit_code"])
+
+
+def _finish_scan_policies(args, pending: _PendingPolicies, final: int, logger) -> None:
+    """Write the findings files and print the summary; ``summary.exit_code``
+    and the last line give ``final``, the code the scan exits with."""
+    from ..policy import outputs
+
+    pending.result["summary"]["exit_code"] = final
+    written = outputs.write(
+        pending.result,
+        args.output_directory,
+        formats=_policy_formats(args),
+        **pending.gates,
+    )
+    for path in written:
+        logger.info(f"Policy findings: {path}")
+    verbose = bool(getattr(args, "verbose", 0) or getattr(args, "debug", False))
+    json_files = [str(p) for p in written if str(p).endswith(".json")]
+    sys.stdout.write(
+        outputs.render(
+            pending.result,
+            "text",
+            limit=None if verbose else SCAN_FINDINGS_SHOWN,
+            more_in=(json_files or [str(p) for p in written] or [""])[0],
+            **pending.gates,
+        )
+    )
+
+
+def _run_scan_policies(args, results: Dict[str, Any], logger):
+    """--policy: check the run's state snapshot. A :class:`_PendingPolicies`
+    (its code is 0 or 7), or ``EXIT_ERROR``."""
     import hashlib
 
-    from ..policy import engine, outputs
+    from ..policy import engine
 
     loaded, waivers = args.loaded_policies
     state = results.get("state_management") or {}
@@ -201,12 +248,7 @@ def _run_scan_policies(args, results: Dict[str, Any], logger) -> int:
         "fail_on": args.policy_fail_on,
         "thresholds": ["fail_on"] if args.policy_fail_on else [],
     }
-    sys.stdout.write(outputs.render(result, "text", **gates))
-    for written in outputs.write(
-        result, args.output_directory, formats=_policy_formats(args), **gates
-    ):
-        logger.info(f"Policy findings: {written}")
-    return int(result["summary"]["exit_code"])
+    return _PendingPolicies(result, gates)
 
 
 def _limit_or_none(text: str) -> Optional[int]:
@@ -2228,18 +2270,27 @@ def _run(args, logger):
             _log_run_notes(results, logger, generator_lines.messages)
 
             opt_in_exit = _opt_in_exit_code(args, results, logger)
-            policy_exit = (
+            pending = (
                 _run_scan_policies(args, results, logger)
                 if getattr(args, "loaded_policies", None)
-                else 0
+                else None
             )
-            if policy_exit == EXIT_ERROR:
+            if isinstance(pending, int):  # EXIT_ERROR: the snapshot was not saved
                 sys.exit(EXIT_ERROR)
+            policy_exit = pending.code if pending else 0
+
+            def end(code: int) -> None:
+                """Print and write the policy check with the scan's real code,
+                then exit with it (0: return)."""
+                if pending:
+                    _finish_scan_policies(args, pending, code, logger)
+                if code:
+                    sys.exit(code)
 
             if template_run:
                 exit_code = template_run.finish(results, logger)
                 if exit_code:
-                    sys.exit(scan_exit_code(opt_in_exit, exit_code, 0, policy_exit))
+                    end(scan_exit_code(opt_in_exit, exit_code, 0, policy_exit))
 
             if args.risk_threshold:
                 findings = risk_findings_at_or_above(results, args.risk_threshold)
@@ -2253,16 +2304,14 @@ def _run(args, logger):
                             f"  - {item.get('group_id', '')}: {item.get('rule', '')} "
                             f"({item.get('risk_level', '')})"
                         )
-                    sys.exit(
+                    end(
                         scan_exit_code(opt_in_exit, 0, EXIT_RISK_THRESHOLD, policy_exit)
                     )
                 logger.info(
                     f"No security group rule at or above risk level {args.risk_threshold}"
                 )
 
-            final = scan_exit_code(opt_in_exit, 0, 0, policy_exit)
-            if final:
-                sys.exit(final)
+            end(scan_exit_code(opt_in_exit, 0, 0, policy_exit))
 
         else:
             logger.error("✗ BOM generation failed")

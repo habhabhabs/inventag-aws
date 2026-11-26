@@ -57,8 +57,14 @@ def render(
     policy_lines: Optional[Mapping[str, int]] = None,
     fail_on: Optional[str] = None,
     thresholds: Optional[Iterable[str]] = None,
+    limit: Optional[int] = None,
+    more_in: str = "",
 ) -> str:
     """The text of one format: json, sarif, xml, md or text.
+
+    ``limit`` (text only; a scan's console summary): print the fails by
+    severity and at most ``limit`` findings; one line names ``more_in``, the
+    file that holds the rest.
 
     ``policy_lines`` overrides the result's ``policies[].line`` (the line of
     ``spec.id`` in the policy file; default 1).
@@ -80,7 +86,7 @@ def render(
         return junit.render(data)
     if fmt == "md":
         return markdown.render(data, show_values, gate)
-    return text.render(data, show_values, gate)
+    return text.render(data, show_values, gate, limit=limit, more_in=more_in)
 
 
 def write(
