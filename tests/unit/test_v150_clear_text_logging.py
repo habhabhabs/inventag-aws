@@ -192,18 +192,6 @@ def test_no_log_call_takes_a_billing_amount_or_service_name():
         assert not _interpolated(function) & BILLING_VALUES, function.__qualname__
 
 
-def test_the_billing_lines_keep_their_counts():
-    source = inspect.getsource(
-        inventory.AWSResourceInventory._validate_discovery_with_billing
-    )
-    assert "services with billing usage but no discovered resources" in source
-    source = inspect.getsource(
-        comprehensive_discovery.ComprehensiveAWSDiscovery._validate_with_billing
-    )
-    assert "DISCOVERY COMPLETENESS SUMMARY" in source
-    assert "DETECTION RATE" in source
-
-
 def test_a_failed_estimate_names_no_resource(monkeypatch):
     analyzer = _analyzer(Mock())
 
@@ -229,3 +217,69 @@ def test_the_changelog_lists_the_billing_log_lines():
     changed = text[text.index("### Changed", start) : text.index("### Removed", start)]
     flat = " ".join(changed.split())
     assert "no longer show a billed amount or a service name" in flat
+
+
+# Third CodeQL pass (PR #65 at 18612070, inventory.py 901): the whole class.
+# CodeQL treats names with "billing" as private data and the rows that went
+# through mask_secret_values as secret data. In the discovery modules and the
+# BOM processor no log call takes a value named like billing data, a row, a
+# resource identifier or a per-account trend value, not even inside len().
+SWEEP_FILES = (
+    "inventag/discovery/inventory.py",
+    "inventag/discovery/comprehensive_discovery.py",
+    "inventag/discovery/cost_analyzer.py",
+    "inventag/reporting/bom_processor.py",
+)
+DENY = __import__("re").compile(
+    r"(?i)(billing|^resource$|resource_id|^arn$|^bucket|table_name|best_resource"
+    r"|^forgotten$|^estimate$|services_with|missing_services|unbilled_services"
+    r"|matched_services|^account$|failure_text)"
+)
+
+
+def _log_values(tree):
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr in ("debug", "info", "warning", "error", "exception")
+            and "log" in ast.unparse(node.func.value).lower()
+        ):
+            for arg in node.args:
+                parts = [arg]
+                if isinstance(arg, ast.JoinedStr):
+                    parts = [
+                        v.value for v in arg.values if isinstance(v, ast.FormattedValue)
+                    ]
+                elif isinstance(arg, ast.Constant):
+                    parts = []
+                for part in parts:
+                    for sub in ast.walk(part):
+                        name = (
+                            sub.id
+                            if isinstance(sub, ast.Name)
+                            else sub.attr if isinstance(sub, ast.Attribute) else None
+                        )
+                        if name and DENY.search(name):
+                            yield node.lineno, name
+
+
+def test_no_log_call_takes_billing_row_or_identifier_values():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    found = []
+    for rel in SWEEP_FILES:
+        tree = ast.parse((root / rel).read_text())
+        found += [f"{rel}:{line}: {name}" for line, name in _log_values(tree)]
+    assert found == []
+
+
+def test_the_changelog_lists_the_third_pass():
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parents[2] / "CHANGELOG.md").read_text()
+    start = text.index("## [Unreleased]")
+    changed = text[text.index("### Changed", start) : text.index("### Removed", start)]
+    flat = " ".join(changed.split())
+    assert "no log line names a resource, a bucket, a table, an ARN" in flat
