@@ -87,8 +87,13 @@ def test_an_out_of_scope_row_asked_for_comes_back_with_its_trace():
     result = run("ex02.yaml", trace=True, trace_resource=R4)
     (entry,) = [f for f in result["findings"] if f["resource"] == R4]
     assert (entry["policy"], entry["result"]) == ("EC2-001", "out_of_scope")
-    assert entry["trace"]["verdict"] == "false"
-    # the whole tree is given; the filter is the node that left the row out
+    # behaviour review F5: out of scope, and only the resource nodes
+    assert (entry["trace"]["part"], entry["trace"]["verdict"]) == (
+        "resource",
+        "out_of_scope",
+    )
+    assert all(n["part"] == "resource" for n in entry["trace"]["children"])
+    # the resource tree is given; the filter is the node that left the row out
     (selected,) = [
         n for n in nodes(entry) if n["part"] == "resource" and n["kind"] == "value"
     ]
