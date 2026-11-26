@@ -153,7 +153,7 @@ def test_sarif_carries_no_tag_value(tmp_path, show):
         for r in json.loads(text)["runs"][0]["results"]
         if r["ruleId"] == "TAG-003"
     ]
-    assert messages == ["TAG-003: CostCenter: value does not match CC-\\d{4}"]
+    assert messages == ["TAG-003: CostCenter: value not allowed"]
 
 
 # ------------------------------------------------------------- finding 4
