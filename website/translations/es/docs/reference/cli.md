@@ -93,6 +93,7 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 |---|---|---|---|
 | `--create-excel` | activado si no hay otra opción de salida | Funciona | Escribe `multi_account_bom_<timestamp>.xlsx`. |
 | `--create-word` | desactivado | Funciona | Escribe `multi_account_bom_<timestamp>.docx`. |
+| `--create-html` | desactivado | Funciona | Escribe `multi_account_bom_<timestamp>.html`: un único archivo estático sin JavaScript y que no carga nada de fuera. Sola, escribe solo el archivo HTML. El archivo contiene los datos de tus recursos: mantenlo privado como el archivo de Excel. Consulta [Informe HTML](./outputs.md#html-report). |
 | `--create-google-docs` | desactivado | Solo Google simulado | Crea el informe de Word como un documento de Google Docs. Necesita el complemento de Google (`pip install "inventag-aws[google]"`). Consulta [Google Sheets y Docs](../guides/google-sheets-and-docs.md). |
 | `--create-google-sheets` | desactivado | Solo Google simulado | Crea el informe de Excel como una hoja de cálculo de Google Sheets. |
 | `--google-credentials FILE` | ninguno | Solo Google simulado | Archivo de clave de la cuenta de servicio. Sin él, se usan las credenciales predeterminadas de la aplicación (Application Default Credentials). |
@@ -178,7 +179,7 @@ con un archivo YAML o JSON. Consulta [Archivos de diseño para un informe](../te
 | Opción | Predeterminado | Estado | Qué hace |
 |---|---|---|---|
 | `--word-template PATH` | ninguno | Funciona | Archivo de diseño del informe de Word. Necesita `--create-word`; sin ella, la ejecución se detiene con el código de salida 2. |
-| `--excel-template PATH` | ninguno | Funciona | Archivo de diseño del informe de Excel. Con solo `--create-word`, la ejecución se detiene con el código de salida 2. |
+| `--excel-template PATH` | ninguno | Funciona | Archivo de diseño del informe de Excel. Con solo `--create-word` o solo `--create-html`, la ejecución se detiene con el código de salida 2. |
 | `--print-default-template word\|excel` | ninguno | Funciona | Imprime el archivo de diseño predeterminado de ese formato y sale con el código 0. |
 | `--validate-templates` | desactivado | Funciona | Comprueba los archivos indicados con `--word-template` y `--excel-template` y sale. No hace ninguna llamada a AWS. Sin una de esas opciones: código de salida 2. |
 

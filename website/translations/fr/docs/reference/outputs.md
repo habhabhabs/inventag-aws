@@ -33,7 +33,8 @@ d’exemple).
 |---|---|---|
 | `multi_account_bom_<timestamp>.xlsx` | `--create-excel`, ou aucune option de sortie | Le rapport Excel |
 | `multi_account_bom_<timestamp>.docx` | `--create-word` | Le rapport Word |
-| `<account-id>_bom_<timestamp>.xlsx` et `.docx` | `--per-account-reports`, à la place des fichiers `multi_account_bom_*` | Un rapport pour chaque compte qui a des ressources |
+| `multi_account_bom_<timestamp>.html` | `--create-html` | Le rapport HTML. Voir [Rapport HTML](#html-report). |
+| `<account-id>_bom_<timestamp>.xlsx`, `.docx` et `.html` | `--per-account-reports`, à la place des fichiers `multi_account_bom_*` | Un rapport pour chaque compte qui a des ressources |
 | `tag_compliance_<timestamp>.json` | Une politique d’étiquetage est active | Résultats de la vérification des étiquettes |
 | `state/state_<timestamp>.json` | Chaque exécution, sauf avec `--disable-state-management` | Instantané de chaque ressource trouvée, avec les valeurs secrètes masquées. `metadata.tags.coverage_summary` compte, par compte, comment les appels de listage se sont terminés (`ok`, `empty`, `denied`, `throttled`, `error`, `timeout`, et `out_of_scope` pour les services que `--account-services` a laissés de côté). `metadata.tags.units_not_read` liste les listages qui n’ont pas été lus (seulement quand l’un a échoué), et `metadata.tags.inventag_version` nomme la version d’InvenTag qui a écrit l’instantané. Les instantanés de plus de 30 jours, ou au-delà des 100 plus récents, sont supprimés (`--state-retention-days`, `--state-max-snapshots`). |
 | `state/metadata.json` | Avec les instantanés | Index des instantanés : heure, compte, régions, nombre de ressources, somme de contrôle |
@@ -185,6 +186,138 @@ jusqu’à 50 ressources par service sur six colonnes : Name, Id, Type, Region, 
 **Avec un modèle de rapport :** les sections listées dans `word.sections`. Les tableaux
 ont une ligne d’en-tête qui se répète sur chaque page et qui est signalée comme en-tête aux
 lecteurs d’écran. Le logo, s’il y en a un, porte un texte alternatif.
+
+## Rapport HTML {#html-report}
+
+`--create-html` écrit le rapport sous la forme d’un seul fichier HTML
+statique, `multi_account_bom_<timestamp>.html`, dans le dossier de sortie,
+avec la même racine de nom que les fichiers Excel et Word de l’exécution. Avec
+`--per-account-reports`, chaque compte a son propre
+`<account-id>_bom_<timestamp>.html`. Ouvrez le fichier dans un navigateur web.
+
+```bash
+inventag --create-excel --create-html
+```
+
+- `--create-html` seule écrit uniquement le fichier HTML. Avec
+  `--create-excel` ou `--create-word`, le fichier HTML est écrit en plus de ces
+  rapports.
+- Une exécution sans `--create-html` n’écrit aucun fichier HTML et ne change
+  pas.
+- Quand l’exécution ne trouve aucune ressource, aucun fichier HTML n’est
+  écrit, comme pour les rapports Excel et Word.
+- Avec `--s3-bucket`, le fichier HTML est envoyé avec les autres rapports.
+  InvenTag ne définit aucun type de contenu lors de l’envoi. Non vérifié sur
+  un vrai AWS : qu’un navigateur télécharge l’objet depuis S3 au lieu de
+  l’afficher.
+
+**Ce que contient le fichier**, dans cet ordre :
+
+- **Résumé :** les ressources par service (avec un total), les ressources par
+  région et les notes de l’exécution.
+- **Ressources par service :** une section fermée pour chaque service. Ouvrez
+  une section pour voir son tableau. Chaque tableau a les mêmes colonnes et
+  lignes que la feuille du service dans le rapport Excel par défaut, avec les
+  valeurs secrètes masquées en `***REDACTED***` de la même façon.
+- **Conformité des étiquettes :** le résumé d’une politique d’étiquetage,
+  seulement quand l’exécution en a vérifié une (par exemple avec un modèle de
+  politique d’étiquetage).
+- **Analyse réseau** et **analyse de sécurité :** le tableau des VPC et le
+  tableau des groupes de sécurité, seulement avec `--enable-network-analysis`
+  ou `--enable-security-analysis`.
+- **FinOps** et **FinOps costs :** les mêmes tableaux que les feuilles Excel,
+  seulement avec `--finops-checks` ou `--finops-cost-allocation`.
+- **Couverture et erreurs :** les comptes, la façon dont les appels de liste
+  se sont terminés dans chaque compte (`ok`, `empty`, `denied` et les autres
+  résultats), et les autorisations refusées.
+
+Le fichier ne contient pas les tableaux Cost Analysis de
+`--enable-cost-analysis` ni les constats de `--policy` (ils sont dans
+`policy_findings_<timestamp>.json`). Il n’a ni tri, ni filtre, ni graphique.
+
+**Avec un modèle de rapport :** avec `--template`, le fichier HTML a la mise
+en page décrite ci-dessus ; les sections du modèle s’appliquent seulement aux
+rapports Excel et Word, et l’exécution affiche un avertissement qui le dit.
+Avec `--word-template` ou `--excel-template`, le fichier HTML utilise le titre
+du document, le nom de l’entreprise et le logo de ce modèle (le modèle Word
+d’abord). Le logo doit être un fichier PNG ou JPEG ; il est intégré au
+fichier. `--excel-template` avec `--create-html` seule s’arrête avec le code
+de sortie 2, car aucun rapport Excel n’est écrit.
+
+**Sécurité du fichier :**
+
+- Chaque valeur de vos comptes (noms, étiquettes, paramètres) est échappée :
+  un balisage dans une valeur d’étiquette s’affiche comme du texte et ne
+  s’exécute jamais.
+- Le fichier n’a pas de JavaScript et ne charge rien hors du fichier : aucun
+  script, feuille de style, police ni image d’un autre site. Ses seuls liens
+  mènent à des sections du même fichier. Sa seule image est le logo du modèle,
+  intégré comme URI `data:`.
+- Le fichier porte cette Content-Security-Policy, qui demande au navigateur de
+  ne rien charger d’autre :
+  `default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'`.
+- Le fichier est écrit en entier ou pas du tout, et seul votre utilisateur
+  peut le lire et l’écrire, comme les autres rapports.
+- À cause de cette option, l’exécution n’écrit dans le journal aucune valeur
+  de vos ressources.
+
+:::warning Gardez le fichier HTML privé
+
+Le fichier HTML contient des données de vos comptes AWS : noms de ressources,
+ID, étiquettes et paramètres. Traitez-le comme le rapport Excel. Ne le
+publiez pas sur un site web et ne le partagez pas plus largement que le
+fichier Excel.
+
+:::
+
+Le fichier a des styles d’impression : ils masquent la table des matières et
+demandent au navigateur de ne pas couper une ligne de tableau entre deux
+pages. Non vérifié dans un navigateur : l’aspect et l’impression du fichier,
+et si une section fermée s’imprime ouverte.
+
+Les exemples ci-dessous viennent d’une exécution hors ligne sur un AWS simulé
+(données d’exemple).
+
+```html title="multi_account_bom_20261112_090000.html (first lines)"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src &#x27;none&#x27;; style-src &#x27;unsafe-inline&#x27;; img-src data:; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AWS Resource Inventory - BOM Report</title>
+```
+
+```text title="multi_account_bom_20261112_090000.html (outline)"
+AWS Resource Inventory - BOM Report
+  Contents
+  Summary
+      table: Resources by service
+      table: Resources by region
+  Resources by service
+    ATHENA (1) (closed section)
+      table: ATHENA resources
+    DYNAMODB (1) (closed section)
+      table: DYNAMODB resources
+    EC2 (4) (closed section)
+      table: EC2 resources
+    EVENTS (1) (closed section)
+      table: EVENTS resources
+    IAM (1) (closed section)
+      table: IAM resources
+    KMS (14) (closed section)
+      table: KMS resources
+    LAMBDA (1) (closed section)
+      table: LAMBDA resources
+    S3 (6) (closed section)
+      table: S3 resources
+    VPC (10) (closed section)
+      table: VPC resources
+  Coverage and errors
+      table: Accounts
+      table: Listings by outcome
+```
 
 ## JSON de conformité des étiquettes {#tag-compliance-json}
 

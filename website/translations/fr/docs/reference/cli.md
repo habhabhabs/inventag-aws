@@ -93,6 +93,7 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 |---|---|---|---|
 | `--create-excel` | activé si aucune autre option de sortie | Fonctionne | Écrit `multi_account_bom_<timestamp>.xlsx`. |
 | `--create-word` | désactivé | Fonctionne | Écrit `multi_account_bom_<timestamp>.docx`. |
+| `--create-html` | désactivé | Fonctionne | Écrit `multi_account_bom_<timestamp>.html` : un seul fichier statique, sans JavaScript, qui ne charge rien de l’extérieur. Seule, elle écrit uniquement le fichier HTML. Le fichier contient les données de vos ressources : gardez-le privé comme le fichier Excel. Voir [Rapport HTML](./outputs.md#html-report). |
 | `--create-google-docs` | désactivé | Google simulé uniquement | Crée le rapport Word sous forme de Google Doc. Nécessite le module complémentaire Google (`pip install "inventag-aws[google]"`). Voir [Google Sheets et Docs](../guides/google-sheets-and-docs.md). |
 | `--create-google-sheets` | désactivé | Google simulé uniquement | Crée le rapport Excel sous forme de feuille de calcul Google Sheets. |
 | `--google-credentials FILE` | aucun | Google simulé uniquement | Fichier de clé de compte de service. Sans lui, les identifiants par défaut de l’application (Application Default Credentials) sont utilisés. |
@@ -178,7 +179,7 @@ un fichier YAML ou JSON. Voir [Fichiers de mise en page pour un rapport](../temp
 | Option | Par défaut | État | Ce qu’elle fait |
 |---|---|---|---|
 | `--word-template PATH` | aucun | Fonctionne | Fichier de mise en page du rapport Word. Nécessite `--create-word` ; sans elle, l’exécution s’arrête avec le code de sortie 2. |
-| `--excel-template PATH` | aucun | Fonctionne | Fichier de mise en page du rapport Excel. Avec `--create-word` seul, l’exécution s’arrête avec le code de sortie 2. |
+| `--excel-template PATH` | aucun | Fonctionne | Fichier de mise en page du rapport Excel. Avec `--create-word` seul ou `--create-html` seul, l’exécution s’arrête avec le code de sortie 2. |
 | `--print-default-template word\|excel` | aucun | Fonctionne | Affiche le fichier de mise en page par défaut de ce format, puis quitte avec le code 0. |
 | `--validate-templates` | désactivé | Fonctionne | Vérifie les fichiers donnés avec `--word-template` et `--excel-template`, puis quitte. Aucun appel à AWS. Sans l’une de ces options : code de sortie 2. |
 

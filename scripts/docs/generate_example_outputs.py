@@ -642,6 +642,31 @@ def word_preview(path: Path, table_index: Optional[int] = None, rows: int = 4) -
     return "\n".join(lines)
 
 
+def html_preview(path: Path) -> str:
+    """The HTML report: its first lines (up to the style sheet) and an
+    outline of its headings, sections and table captions."""
+    document = path.read_text()
+    start = document.split("<style>", 1)[0].rstrip().splitlines()
+    outline = []
+    for match in re.finditer(
+        r"<(h[12])[^>]*>(.*?)</\1>|<summary><h3>(.*?)</h3>|<caption>(.*?)</caption>",
+        document,
+    ):
+        if match.group(1):
+            level = "" if match.group(1) == "h1" else "  "
+            outline.append(f"{level}{match.group(2)}")
+        elif match.group(3):
+            outline.append(f"    {match.group(3)} (closed section)")
+        else:
+            outline.append(f"      table: {match.group(4)}")
+    name = path.name
+    return (
+        code("\n".join(start), "html", f"{name} (first lines)")
+        + "\n\n"
+        + code("\n".join(outline), title=f"{name} (outline)")
+    )
+
+
 def code(text: str, lang: str = "text", title: str = "") -> str:
     title_attr = f' title="{title}"' if title else ""
     return f"```{lang}{title_attr}\n{text.rstrip()}\n```"
@@ -1728,6 +1753,11 @@ def collect(images: bool) -> Dict[str, str]:
                     header_cell="Check ID",
                 ),
             )
+
+            # 15. --create-html: the start of the file and its outline
+            w = workdir("html")
+            r = run_cli("html", ["--create-html", *regions], w)
+            add("outputs-html", html_preview(r.files["html:multi"]))
     finally:
         drop_guard()
         shutil.rmtree(base, ignore_errors=True)

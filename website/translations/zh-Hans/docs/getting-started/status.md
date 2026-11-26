@@ -25,6 +25,7 @@ sidebar_position: 5
 | `--enable-cost-analysis` | 增加一个 Cost Analysis 工作表和四个 `forgotten_analysis.*` 列，其中的估算值来自 AWS Pricing API，不是你的账单，并且会额外发出 Cost Explorer、Pricing 和 CloudWatch 调用（参见[费用](#costs)）。 |
 | `--compliance-standard` | 以退出码 2 停止，因为像 SOC 2 这样的标准无法从资源清单中检查；请改用标签策略模板。 |
 | `--create-google-docs`、`--create-google-sheets` | 只针对模拟的 Google 客户端验证过。参见 [Google Sheets 和 Docs](../guides/google-sheets-and-docs.md#what-is-not-verified)。 |
+| `--create-html` | HTML 报告只有一种固定版式（报告模板的各个部分只用于 Excel 和 Word），没有 Cost Analysis 表格和 `--policy` 的发现项，也没有排序或筛选。未针对浏览器验证：文件的外观和打印效果。参见 [HTML 报告](../reference/outputs.md#html-report)。 |
 | `--finops-cost-allocation` | 使用与 AWS 应答形式相同的 Cost Explorer 应答测试过，没有针对真实的 AWS 测试。标签键只有在付费账户中被激活为成本分配标签之后才会显示支出，成员账户看到的可能比付费账户少（未验证）。参见 [成本分配](../guides/finops-checks.md#cost-allocation-from-cost-explorer)。 |
 | `--finops-checks` | `FIN-004` 列出已停止的实例，不论它已停止多久，因为实例列表中没有可靠的停止时间。`FIN-005` 不读取目标的健康状态，所以目标全部不健康的负载均衡器结果为 pass。使用 `--template` 时不写出工作表：检查在状态快照上运行，发现项写入 `policy_findings_<timestamp>.json`。不使用 `--template` 时，结果只在 Excel 工作表中，没有 JSON 文件。参见 [FinOps 检查](../guides/finops-checks.md#what-the-checks-cannot-see)。 |
 | `--policy`、`--policy-waivers`、`--policy-fail-on`、`--policy-format`、`inventag policy` | 已离线测试，使用的是模拟账户和手写的快照，没有针对真实 AWS 测试。策略读取扫描放在行上的字段，所以无法判断扫描没有显示的字段。数据未被读取的行是 `not_evaluated`，从不算通过。扫描因策略最多以退出码 7 结束；只有 `inventag policy check` 会以退出码 8 结束。见 [`policy` 子命令](../reference/cli.md#policy-subcommands)和[策略发现项](../reference/outputs.md#policy-findings)。 |

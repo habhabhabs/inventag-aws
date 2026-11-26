@@ -87,6 +87,7 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 |---|---|---|---|
 | `--create-excel` | 沒有其他輸出引數時為開 | 可用 | 寫出 `multi_account_bom_<timestamp>.xlsx`。 |
 | `--create-word` | 關 | 可用 | 寫出 `multi_account_bom_<timestamp>.docx`。 |
+| `--create-html` | 關 | 可用 | 寫出 `multi_account_bom_<timestamp>.html`：一個靜態檔案，沒有 JavaScript，也不從外部載入任何內容。只給這個引數時只寫 HTML 檔案。該檔案包含你的資源資料：請像 Excel 檔案一樣保密。參見 [HTML 報告](./outputs.md#html-report)。 |
 | `--create-google-docs` | 關 | 僅限模擬的 Google | 把 Word 報告建立為 Google 文件。需要 Google 附加元件（`pip install "inventag-aws[google]"`）。見 [Google Sheets 和 Docs](../guides/google-sheets-and-docs.md)。 |
 | `--create-google-sheets` | 關 | 僅限模擬的 Google | 把 Excel 報告建立為 Google Sheets 電子表格。 |
 | `--google-credentials FILE` | 無 | 僅限模擬的 Google | 服務帳號金鑰檔案。不給出時使用應用預設憑證（Application Default Credentials）。 |
@@ -171,7 +172,7 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 | 引數 | 預設值 | 狀態 | 功能 |
 |---|---|---|---|
 | `--word-template PATH` | 無 | 可用 | Word 報告的版面配置檔案。需要 `--create-word`；沒有它時執行以結束代碼 2 停止。 |
-| `--excel-template PATH` | 無 | 可用 | Excel 報告的版面配置檔案。只給了 `--create-word` 時，執行以結束代碼 2 停止。 |
+| `--excel-template PATH` | 無 | 可用 | Excel 報告的版面配置檔案。只給了 `--create-word` 或只給了 `--create-html` 時，執行以結束代碼 2 停止。 |
 | `--print-default-template word\|excel` | 無 | 可用 | 列印該格式的預設版面配置檔案，然後以結束代碼 0 退出。 |
 | `--validate-templates` | 關 | 可用 | 檢查 `--word-template` 和 `--excel-template` 給出的檔案，然後退出。不呼叫 AWS。兩個引數都沒有時：結束代碼 2。 |
 

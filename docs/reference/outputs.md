@@ -33,7 +33,8 @@ data).
 |---|---|---|
 | `multi_account_bom_<timestamp>.xlsx` | `--create-excel`, or no output flag | The Excel report |
 | `multi_account_bom_<timestamp>.docx` | `--create-word` | The Word report |
-| `<account-id>_bom_<timestamp>.xlsx` and `.docx` | `--per-account-reports`, instead of the `multi_account_bom_*` files | One report for each account that has resources |
+| `multi_account_bom_<timestamp>.html` | `--create-html` | The HTML report. See [HTML report](#html-report). |
+| `<account-id>_bom_<timestamp>.xlsx`, `.docx` and `.html` | `--per-account-reports`, instead of the `multi_account_bom_*` files | One report for each account that has resources |
 | `tag_compliance_<timestamp>.json` | A tag policy is active | Tag check results |
 | `state/state_<timestamp>.json` | Every run, unless `--disable-state-management` | Snapshot of every resource found, with secret values masked. `metadata.tags.coverage_summary` counts, per account, how the listing calls ended (`ok`, `empty`, `denied`, `throttled`, `error`, `timeout`, and `out_of_scope` for services that `--account-services` left out). `metadata.tags.units_not_read` lists the listings that were not read (only when one failed), and `metadata.tags.inventag_version` names the InvenTag version that wrote the snapshot. Snapshots older than 30 days, or beyond the newest 100, are removed (`--state-retention-days`, `--state-max-snapshots`). |
 | `state/metadata.json` | With snapshots | Index of snapshots: time, account, regions, resource count, checksum |
@@ -239,6 +240,133 @@ up to 50 resources per service in six columns: Name, Id, Type, Region, Tags and 
 **With a report template:** the sections listed in `word.sections`. Tables
 have a header row that repeats on each page and is marked as a header for
 screen readers. The logo, if any, carries alt text.
+
+## HTML report
+
+`--create-html` writes the report as one static HTML file,
+`multi_account_bom_<timestamp>.html`, in the output folder, with the same name
+stem as the Excel and Word files of the run. With `--per-account-reports`,
+each account gets its own `<account-id>_bom_<timestamp>.html`. Open the file in
+a web browser.
+
+```bash
+inventag --create-excel --create-html
+```
+
+- `--create-html` alone writes the HTML file only. With `--create-excel` or
+  `--create-word`, the HTML file is written in addition to those reports.
+- A run without `--create-html` writes no HTML file and is unchanged.
+- When the run finds no resources, no HTML file is written, as for the Excel
+  and Word reports.
+- With `--s3-bucket`, the HTML file is uploaded with the other reports.
+  InvenTag sets no content type on the upload. Not verified against real AWS:
+  that a browser downloads the object from S3 instead of showing it.
+
+**What the file holds**, in this order:
+
+- **Summary:** resources by service (with a total), resources by region, and
+  the run notes.
+- **Resources by service:** one closed section for each service. Open a
+  section to see its table. Each table has the same columns and rows as the
+  service's sheet in the default Excel report, with secret values masked as
+  `***REDACTED***` in the same way.
+- **Tag compliance:** the summary of a tag policy, only when the run checked
+  one (for example with a tag-policy template).
+- **Network analysis** and **Security analysis:** the VPC table and the
+  security group table, only with `--enable-network-analysis` or
+  `--enable-security-analysis`.
+- **FinOps** and **FinOps costs:** the same tables as the Excel sheets, only
+  with `--finops-checks` or `--finops-cost-allocation`.
+- **Coverage and errors:** the accounts, how the listing calls ended in each
+  account (`ok`, `empty`, `denied` and the other outcomes), and the
+  permissions that were denied.
+
+The file does not hold the Cost Analysis tables of `--enable-cost-analysis`
+or the findings of `--policy` (those are in `policy_findings_<timestamp>.json`).
+It has no sorting, filtering or charts.
+
+**With a report template:** with `--template`, the HTML file has the layout
+described above; the template's sections apply to the Excel and Word reports
+only, and the run prints one warning that says so. With `--word-template` or
+`--excel-template`, the HTML file uses that template's document title,
+company name and logo (the Word template first). The logo must be a PNG or
+JPEG file; it is embedded in the file. `--excel-template` with `--create-html`
+alone stops with exit code 2, because no Excel report is written.
+
+**Safety of the file:**
+
+- Every value from your accounts (names, tags, settings) is escaped, so
+  markup in a tag value shows as text and never runs.
+- The file has no JavaScript and loads nothing from outside the file: no
+  script, style sheet, font or image from another site. Its only links go to
+  sections of the same file. Its only image is the template logo, embedded as
+  a `data:` URI.
+- The file carries this Content-Security-Policy, which tells the browser to
+  load nothing else:
+  `default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'`.
+- The file is written whole or not at all, and is readable and writable by
+  your user only, like the other reports.
+- The run writes no value from your resources to the log because of this
+  flag.
+
+:::warning Keep the HTML file private
+
+The HTML file holds data from your AWS accounts: resource names, IDs, tags
+and settings. Treat it like the Excel report. Do not publish it on a website
+or share it more widely than the Excel file.
+
+:::
+
+The file has print styles: they hide the contents list and ask the browser
+not to split a table row across pages. Not verified against a browser: how
+the file looks and prints, and whether a closed section prints open.
+
+The samples below come from an offline run against mocked AWS (sample data).
+
+<!-- BEGIN EXAMPLE OUTPUT: outputs-html -->
+
+```html title="multi_account_bom_20261112_090000.html (first lines)"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src &#x27;none&#x27;; style-src &#x27;unsafe-inline&#x27;; img-src data:; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AWS Resource Inventory - BOM Report</title>
+```
+
+```text title="multi_account_bom_20261112_090000.html (outline)"
+AWS Resource Inventory - BOM Report
+  Contents
+  Summary
+      table: Resources by service
+      table: Resources by region
+  Resources by service
+    ATHENA (1) (closed section)
+      table: ATHENA resources
+    DYNAMODB (1) (closed section)
+      table: DYNAMODB resources
+    EC2 (4) (closed section)
+      table: EC2 resources
+    EVENTS (1) (closed section)
+      table: EVENTS resources
+    IAM (1) (closed section)
+      table: IAM resources
+    KMS (14) (closed section)
+      table: KMS resources
+    LAMBDA (1) (closed section)
+      table: LAMBDA resources
+    S3 (6) (closed section)
+      table: S3 resources
+    VPC (10) (closed section)
+      table: VPC resources
+  Coverage and errors
+      table: Accounts
+      table: Listings by outcome
+```
+
+<!-- END EXAMPLE OUTPUT: outputs-html -->
 
 ## Tag compliance JSON
 

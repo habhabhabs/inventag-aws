@@ -92,6 +92,7 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 |---|---|---|---|
 | `--create-excel` | on if no other output flag | Works | Write `multi_account_bom_<timestamp>.xlsx`. |
 | `--create-word` | off | Works | Write `multi_account_bom_<timestamp>.docx`. |
+| `--create-html` | off | Works | Write `multi_account_bom_<timestamp>.html`: one static file with no JavaScript and nothing loaded from outside it. Alone, it writes the HTML file only. The file holds your resource data: keep it private like the Excel file. See [HTML report](./outputs.md#html-report). |
 | `--create-google-docs` | off | Mocked Google only | Create the Word report as a Google Doc. Needs the Google add-on (`pip install "inventag-aws[google]"`). See [Google Sheets and Docs](../guides/google-sheets-and-docs.md). |
 | `--create-google-sheets` | off | Mocked Google only | Create the Excel report as a Google Sheets spreadsheet. |
 | `--google-credentials FILE` | none | Mocked Google only | Service account key file. Without it, Application Default Credentials are used. |
@@ -177,7 +178,7 @@ YAML or JSON file. See [Layout files for one report](../templates/layout-flags.m
 | Flag | Default | Status | What it does |
 |---|---|---|---|
 | `--word-template PATH` | none | Works | Layout file for the Word report. Needs `--create-word`; without it the run stops with exit code 2. |
-| `--excel-template PATH` | none | Works | Layout file for the Excel report. With `--create-word` alone, the run stops with exit code 2. |
+| `--excel-template PATH` | none | Works | Layout file for the Excel report. With `--create-word` alone or `--create-html` alone, the run stops with exit code 2. |
 | `--print-default-template word\|excel` | none | Works | Print the default layout file for that format, then exit with code 0. |
 | `--validate-templates` | off | Works | Check the files given with `--word-template` and `--excel-template`, then exit. It makes no AWS call. Without one of those flags: exit code 2. |
 

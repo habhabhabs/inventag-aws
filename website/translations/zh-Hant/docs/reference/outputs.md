@@ -25,7 +25,8 @@ InvenTag 寫入的其他位置只有你指定的檔案（`--log-file`、`--audit
 |---|---|---|
 | `multi_account_bom_<timestamp>.xlsx` | `--create-excel`，或沒有指定任何輸出引數 | Excel 報告 |
 | `multi_account_bom_<timestamp>.docx` | `--create-word` | Word 報告 |
-| `<account-id>_bom_<timestamp>.xlsx` 和 `.docx` | `--per-account-reports`，代替 `multi_account_bom_*` 檔案 | 每個有資源的帳戶一份報告 |
+| `multi_account_bom_<timestamp>.html` | `--create-html` | HTML 報告。參見 [HTML 報告](#html-report)。 |
+| `<account-id>_bom_<timestamp>.xlsx`、`.docx` 和 `.html` | `--per-account-reports`，代替 `multi_account_bom_*` 檔案 | 每個有資源的帳戶一份報告 |
 | `tag_compliance_<timestamp>.json` | 啟用了標籤策略 | 標籤檢查結果 |
 | `state/state_<timestamp>.json` | 每次執行，除非使用 `--disable-state-management` | 所發現的每個資源的快照，機密值已被遮蓋。`metadata.tags.coverage_summary` 按帳戶統計列出呼叫的結束方式（`ok`、`empty`、`denied`、`throttled`、`error`、`timeout`，以及 `--account-services` 排除的服務對應的 `out_of_scope`）。`metadata.tags.units_not_read` 列出未能讀取的列出呼叫（僅在有呼叫失敗時出現），`metadata.tags.inventag_version` 記錄寫出該快照的 InvenTag 版本。超過 30 天的快照，或最新 100 份之外的快照會被刪除（`--state-retention-days`、`--state-max-snapshots`）。 |
 | `state/metadata.json` | 有快照時 | 快照索引：時間、帳戶、區域、資源數量、校驗和 |
@@ -141,6 +142,111 @@ JSON 檔案有這些頂層鍵：`schema_version`、`inventag_version`、`now`、
 
 **使用報告範本時：** 即 `word.sections` 中列出的各節。表格的表頭列會在每頁重複，併為螢幕閱讀器標記為表頭。
 徽標（如果有）帶有替代文字。
+
+## HTML 報告 {#html-report}
+
+`--create-html` 把報告寫成一個靜態 HTML 檔案
+`multi_account_bom_<timestamp>.html`，放在輸出資料夾中，檔名主幹與本次執行的
+Excel 和 Word 檔案相同。使用 `--per-account-reports` 時，每個帳戶有自己的
+`<account-id>_bom_<timestamp>.html`。用網頁瀏覽器開啟該檔案。
+
+```bash
+inventag --create-excel --create-html
+```
+
+- 只給 `--create-html` 時只寫 HTML 檔案。同時給 `--create-excel` 或
+  `--create-word` 時，除了這些報告，還會寫 HTML 檔案。
+- 不帶 `--create-html` 的執行不寫 HTML 檔案，行為不變。
+- 執行沒有找到資源時，不寫 HTML 檔案，與 Excel 和 Word 報告相同。
+- 使用 `--s3-bucket` 時，HTML 檔案與其他報告一起上傳。InvenTag 上傳時不設定內容型別。
+  未針對真實的 AWS 驗證：瀏覽器會從 S3 下載該物件，而不是直接顯示它。
+
+**檔案內容**，按以下順序：
+
+- **摘要：** 按服務統計的資源（含合計）、按區域統計的資源，以及執行說明。
+- **按服務列出的資源：** 每個服務一個摺疊的部分。展開一個部分即可看到它的表格。
+  每個表格的欄和行與預設 Excel 報告中該服務的工作表相同，機密值同樣顯示為
+  `***REDACTED***`。
+- **標籤合規：** 標籤策略的摘要，僅當本次執行檢查了標籤策略時出現（例如使用標籤策略範本）。
+- **網路分析** 和 **安全分析：** VPC 表和安全組表，僅在使用
+  `--enable-network-analysis` 或 `--enable-security-analysis` 時出現。
+- **FinOps** 和 **FinOps costs：** 與 Excel 工作表相同的表格，僅在使用
+  `--finops-checks` 或 `--finops-cost-allocation` 時出現。
+- **覆蓋範圍和錯誤：** 帳戶、每個帳戶中列表呼叫的結束方式（`ok`、`empty`、
+  `denied` 及其他結果），以及被拒絕的權限。
+
+該檔案不包含 `--enable-cost-analysis` 的 Cost Analysis 表格，也不包含
+`--policy` 的發現項（它們在 `policy_findings_<timestamp>.json` 中）。
+檔案沒有排序、篩選或圖表。
+
+**使用報告範本時：** 使用 `--template` 時，HTML 檔案採用上面描述的版面配置；範本的各個部分只用於
+Excel 和 Word 報告，執行會列印一條警告說明這一點。使用 `--word-template` 或
+`--excel-template` 時，HTML 檔案使用該範本的文件標題、公司名稱和徽標（先用 Word 範本）。
+徽標必須是 PNG 或 JPEG 檔案，並嵌入到檔案中。只給 `--create-html` 時使用
+`--excel-template`，執行以結束代碼 2 停止，因為不會寫 Excel 報告。
+
+**檔案的安全性：**
+
+- 來自你帳戶的每個值（名稱、標籤、設定）都經過轉義，因此標籤值中的標記會顯示為文字，絕不會執行。
+- 檔案沒有 JavaScript，也不從檔案外部載入任何內容：沒有來自其他網站的指令碼、樣式表、字型或圖片。
+  它的連結只指向同一檔案中的各個部分。它唯一的圖片是範本徽標，以 `data:` URI 嵌入。
+- 檔案帶有以下 Content-Security-Policy，告訴瀏覽器不要載入其他任何內容：
+  `default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'`。
+- 檔案要麼完整寫出，要麼完全不寫，並且與其他報告一樣，只有你的使用者可以讀寫。
+- 這個引數不會讓執行把你的資源中的任何值寫入日誌。
+
+:::warning 請把 HTML 檔案保密
+
+HTML 檔案包含來自你的 AWS 帳戶的資料：資源名稱、ID、標籤和設定。
+請像對待 Excel 報告一樣對待它。不要把它發佈到網站上，也不要比 Excel 檔案分享得更廣。
+
+:::
+
+檔案帶有列印樣式：它們隱藏目錄，並要求瀏覽器不要把一個表格行拆到兩頁。
+未針對瀏覽器驗證：檔案的外觀和列印效果，以及摺疊的部分列印時是否展開。
+
+下面的範例來自針對模擬 AWS 的離線執行（範例資料）。
+
+```html title="multi_account_bom_20261112_090000.html (first lines)"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src &#x27;none&#x27;; style-src &#x27;unsafe-inline&#x27;; img-src data:; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AWS Resource Inventory - BOM Report</title>
+```
+
+```text title="multi_account_bom_20261112_090000.html (outline)"
+AWS Resource Inventory - BOM Report
+  Contents
+  Summary
+      table: Resources by service
+      table: Resources by region
+  Resources by service
+    ATHENA (1) (closed section)
+      table: ATHENA resources
+    DYNAMODB (1) (closed section)
+      table: DYNAMODB resources
+    EC2 (4) (closed section)
+      table: EC2 resources
+    EVENTS (1) (closed section)
+      table: EVENTS resources
+    IAM (1) (closed section)
+      table: IAM resources
+    KMS (14) (closed section)
+      table: KMS resources
+    LAMBDA (1) (closed section)
+      table: LAMBDA resources
+    S3 (6) (closed section)
+      table: S3 resources
+    VPC (10) (closed section)
+      table: VPC resources
+  Coverage and errors
+      table: Accounts
+      table: Listings by outcome
+```
 
 ## 標籤合規 JSON {#tag-compliance-json}
 
