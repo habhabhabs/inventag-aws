@@ -386,7 +386,9 @@ class CostAnalyzer:
                     "Cost and activity data from it will be missing."
                 )
                 return
-        self.logger.debug(f"{message}: {error}")
+        # the code or the type only: AWS's text can quote what was asked
+        kind = code or type(error).__name__
+        self.logger.debug(f"{message} ({kind})")
 
     _NOT_CACHED = object()
 
@@ -431,7 +433,8 @@ class CostAnalyzer:
             )
             cache_key = json.dumps([service_code, filters], sort_keys=True, default=str)
         except Exception as e:
-            self.logger.debug(f"Could not build pricing filters for {service}: {e}")
+            kind = type(e).__name__
+            self.logger.debug(f"Could not build pricing filters ({kind})")
             self._warn_once("the price lookup", e, "those resources have no estimate.")
             return None
 
@@ -504,11 +507,7 @@ class CostAnalyzer:
         """Log a failed Pricing lookup once per distinct reason, not per resource."""
         code = self._error_code(error)
         if code in self._DENIED:
-            self._log_aws_failure(
-                "pricing",
-                f"Pricing API query failed for {service}:{resource_type}",
-                error,
-            )
+            self._log_aws_failure("pricing", "Pricing API query failed", error)
             return
         reason = code or type(error).__name__
         with self._warn_lock:
@@ -517,13 +516,10 @@ class CostAnalyzer:
         if first:
             self.logger.warning(
                 f"Cost analysis: a Pricing API lookup failed ({reason}); the same "
-                "lookup is not repeated in this run. Estimates for it will be missing. "
-                f"First seen for {service}:{resource_type}: {error}"
+                "lookup is not repeated in this run. Estimates for it will be missing."
             )
         else:
-            self.logger.debug(
-                f"Pricing API query failed for {service}:{resource_type}: {error}"
-            )
+            self.logger.debug(f"Pricing API query failed ({reason})")
 
     def _map_service_to_pricing_code(self, service: str) -> Optional[str]:
         """Map AWS service names to pricing service codes."""
@@ -1010,7 +1006,7 @@ class CostAnalyzer:
 
         except Exception as e:
             self._log_aws_failure(
-                "cloudwatch", f"Failed to get activity metrics for {resource_id}", e
+                "cloudwatch", "Failed to get activity metrics for a resource", e
             )
 
         return activity_indicators

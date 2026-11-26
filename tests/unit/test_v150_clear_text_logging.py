@@ -17,7 +17,7 @@ from unittest.mock import Mock
 
 from botocore.exceptions import ClientError
 
-from inventag.discovery import comprehensive_discovery, cost_analyzer, inventory
+from inventag.discovery import comprehensive_discovery, inventory
 from inventag.discovery.cost_analyzer import CostAnalyzer
 
 # names whose value comes from a scanned row or from an exception
@@ -69,6 +69,26 @@ def _analyzer(client):
     return CostAnalyzer(session=session)
 
 
+class _Records(logging.Handler):
+    """Every record of one logger, whatever other tests did to the levels or
+    the propagation of the ``inventag`` loggers."""
+
+    def __init__(self):
+        super().__init__(logging.DEBUG)
+        self.records = []
+
+    def emit(self, record):
+        self.records.append(record)
+
+
+def _capture(monkeypatch, logger):
+    handler = _Records()
+    monkeypatch.setattr(logger, "level", logging.DEBUG)
+    monkeypatch.setattr(logger, "disabled", False)
+    logger.addHandler(handler)
+    return handler
+
+
 def _rows():
     return [
         {
@@ -81,15 +101,19 @@ def _rows():
     ]
 
 
-def test_a_failed_pricing_lookup_logs_the_code_only(caplog):
+def test_a_failed_pricing_lookup_logs_the_code_only(monkeypatch):
     client = Mock()
     client.get_products.side_effect = ClientError(
         {"Error": {"Code": "InvalidParameterException", "Message": "bad filter i-x"}},
         "GetProducts",
     )
-    with caplog.at_level(logging.DEBUG):
-        _analyzer(client).estimate_resource_costs(_rows())
-    text = "\n".join(r.getMessage() for r in caplog.records)
+    analyzer = _analyzer(client)
+    caught = _capture(monkeypatch, analyzer.logger)
+    try:
+        analyzer.estimate_resource_costs(_rows())
+    finally:
+        analyzer.logger.removeHandler(caught)
+    text = "\n".join(r.getMessage() for r in caught.records)
     assert (
         "Cost analysis: a Pricing API lookup failed (InvalidParameterException); "
         "the same lookup is not repeated in this run. Estimates for it will be "
@@ -99,27 +123,33 @@ def test_a_failed_pricing_lookup_logs_the_code_only(caplog):
         assert leaked not in text, leaked
 
 
-def test_an_aws_failure_at_debug_logs_the_code_not_the_text(caplog):
+def test_an_aws_failure_at_debug_logs_the_code_not_the_text(monkeypatch):
     analyzer = _analyzer(Mock())
+    caught = _capture(monkeypatch, analyzer.logger)
     error = ClientError(
         {"Error": {"Code": "Throttling", "Message": "arn:aws:x:secret"}}, "GetProducts"
     )
-    with caplog.at_level(logging.DEBUG):
+    try:
         analyzer._log_aws_failure("pricing", "Pricing API query failed", error)
-    (record,) = [r for r in caplog.records if r.levelno == logging.DEBUG]
+    finally:
+        analyzer.logger.removeHandler(caught)
+    (record,) = [r for r in caught.records if r.levelno == logging.DEBUG]
     assert record.getMessage() == "Pricing API query failed (Throttling)"
 
 
-def test_a_pricing_filter_error_logs_its_type(caplog, monkeypatch):
+def test_a_pricing_filter_error_logs_its_type(monkeypatch):
     analyzer = _analyzer(Mock())
+    caught = _capture(monkeypatch, analyzer.logger)
 
     def broken(*args, **kwargs):
         raise ValueError("value from a row")
 
     monkeypatch.setattr(analyzer, "_build_pricing_filters", broken)
-    with caplog.at_level(logging.DEBUG):
+    try:
         assert analyzer._get_pricing_info("EC2", "Instance", "us-east-1", {}) is None
-    text = "\n".join(r.getMessage() for r in caplog.records)
+    finally:
+        analyzer.logger.removeHandler(caught)
+    text = "\n".join(r.getMessage() for r in caught.records)
     assert "Could not build pricing filters (ValueError)" in text
     assert "value from a row" not in text
 

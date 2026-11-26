@@ -2420,14 +2420,11 @@ class ComprehensiveAWSDiscovery:
                 # Reconstruct ARN with correct region
                 resource["arn"] = f"arn:aws:s3:::{bucket_name}"
 
-                self.logger.debug(
-                    f"Enhanced S3 bucket {bucket_name} with region {region}"
-                )
-
             except Exception as e:
-                self.logger.debug(
-                    f"Failed to get S3 bucket region for {bucket_name}: {e}"
-                )
+                # no bucket name and no error text in the log (CodeQL
+                # clear-text logging); _detail_failure counts the failure
+                kind = type(e).__name__
+                self.logger.debug(f"Failed to get an S3 bucket region ({kind})")
                 self._detail_failure(
                     s3_failures.setdefault(listed_in, {}),
                     "GetBucketLocation",

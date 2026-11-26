@@ -1057,10 +1057,10 @@ class AWSResourceInventory:
             self.logger.warning(
                 f"Found {len(missing_services)} services with billing usage but no discovered resources:"
             )
-            for service in sorted(missing_services):
-                spend = self.billing_spend_by_service.get(service, 0)
+            for billed in sorted(missing_services):  # names from Cost Explorer
+                spend = self.billing_spend_by_service.get(billed, 0)
                 self.logger.warning(
-                    f"  💸 {service}: ${spend:.2f} (may have untagged resources)"
+                    f"  💸 {billed}: ${spend:.2f} (may have untagged resources)"
                 )
 
         # Find services with discovered resources but no billing usage
@@ -1068,11 +1068,12 @@ class AWSResourceInventory:
             n for n in discovered_services if canonical_service(n) not in billed_keys
         }
         if unbilled_services:
+            # the count only: the names come from the scanned rows (CodeQL
+            # clear-text logging)
             self.logger.info(
-                f"Found {len(unbilled_services)} services with discovered resources but no recent billing:"
+                f"Found {len(unbilled_services)} services with discovered resources but no recent billing "
+                "(free tier or no recent usage)."
             )
-            for service in sorted(unbilled_services):
-                self.logger.info(f"  🆓 {service}: (free tier or no recent usage)")
 
     def _discover_missing_billing_services(self):
         """Attempt to discover resources for services that have billing usage but no discovered resources."""
