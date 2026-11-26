@@ -97,7 +97,7 @@ def test_policy_files_states_the_pattern_limit():
 
 def test_the_changelog_names_run_checks_and_trend_note():
     text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    start = text.index("## [Unreleased]")
+    start = text.index("## [v1.5.0]")
     unreleased = " ".join(text[start : text.index("\n## [", start + 1)].split())
     changed = unreleased[
         unreleased.index("### Changed") : unreleased.index("### Removed")

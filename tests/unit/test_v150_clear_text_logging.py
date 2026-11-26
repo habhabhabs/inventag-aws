@@ -158,7 +158,7 @@ def test_the_changelog_lists_the_changed_log_lines():
     from pathlib import Path
 
     text = (Path(__file__).resolve().parents[2] / "CHANGELOG.md").read_text()
-    start = text.index("## [Unreleased]")
+    start = text.index("## [v1.5.0]")
     changed = text[text.index("### Changed", start) : text.index("### Removed", start)]
     flat = " ".join(changed.split())
     assert 'CodeQL "clear-text logging"' in flat
@@ -213,7 +213,7 @@ def test_the_changelog_lists_the_billing_log_lines():
     from pathlib import Path
 
     text = (Path(__file__).resolve().parents[2] / "CHANGELOG.md").read_text()
-    start = text.index("## [Unreleased]")
+    start = text.index("## [v1.5.0]")
     changed = text[text.index("### Changed", start) : text.index("### Removed", start)]
     flat = " ".join(changed.split())
     assert "shows a billed amount, a count of billed services" in flat
@@ -279,7 +279,7 @@ def test_the_changelog_lists_the_third_pass():
     from pathlib import Path
 
     text = (Path(__file__).resolve().parents[2] / "CHANGELOG.md").read_text()
-    start = text.index("## [Unreleased]")
+    start = text.index("## [v1.5.0]")
     changed = text[text.index("### Changed", start) : text.index("### Removed", start)]
     flat = " ".join(changed.split())
     assert "no log line names a resource, a bucket, a table, an ARN" in flat

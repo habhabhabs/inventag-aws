@@ -239,7 +239,7 @@ def test_ec2_other_stays_out_of_ec2_and_the_removal_is_noted(rel):
 # ----------------------------------------------------------- changelog
 def test_changelog_unreleased_has_added_changed_removed():
     text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    unreleased = text.split("## [Unreleased]", 1)[1].split("\n## [", 1)[0]
+    unreleased = text.split("## [v1.5.0]", 1)[1].split("\n## [", 1)[0]
     headings = re.findall(r"^### (\w+)", unreleased, re.M)
     assert headings == ["Added", "Changed", "Removed", "Security"]
     flat = " ".join(unreleased.split())

@@ -145,7 +145,7 @@ def test_validate_operations_blocks_the_v150_names():
 
 def test_the_changelog_has_a_security_section():
     text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    start = text.index("## [Unreleased]")
+    start = text.index("## [v1.5.0]")
     unreleased = text[start : text.index("\n## [", start + 1)]
     security = unreleased[unreleased.index("### Security") :]
     flat_security = " ".join(security.split())
