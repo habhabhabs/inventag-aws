@@ -162,6 +162,10 @@ jobs:
           tests/unit/test_legacy_checker_s3_upload.py \
           tests/unit/test_checker_upload_sse.py \
           tests/unit/test_skipped_upload_is_told.py \
+          tests/unit/test_v131_guard_*.py \
+          tests/unit/test_v150_p9_carryover.py \
+          tests/unit/test_sigterm_line_one_write.py \
+          tests/unit/test_sigterm_takes_no_lock.py \
           tests/unit/concurrency
 
   basic-security:
