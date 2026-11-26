@@ -13,12 +13,77 @@ import re
 import string
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
+import re._constants as _sre
 import jmespath
+from re._parser import parse as _sre_parse
 from jmespath.exceptions import JMESPathError
 
 from ..templating.errors import TemplateError, TemplateIssue
 from ..templating.schema import NAME_PATTERN
 from . import model
+
+BACKTRACK_PROBLEM = (
+    "pattern can take very long to match: a repeated group holds another "
+    "repeat or a '|'; rewrite it without the nested repeat"
+)
+_REPEATS = (_sre.MAX_REPEAT, _sre.MIN_REPEAT)
+_WILDCARD_PARTS = re.compile(r"\[[^\]]*\]?|[*?]")
+
+
+def _risky(items) -> bool:
+    """True when a part of a parsed pattern is an unbounded repeat or a
+    ``|`` (atomic groups and possessive repeats are left out: they do not
+    backtrack)."""
+    for op, av in items:
+        if op in _REPEATS:
+            if av[1] == _sre.MAXREPEAT or _risky(av[2]):
+                return True
+        elif op is _sre.BRANCH:
+            return True
+        elif op is _sre.SUBPATTERN:
+            if _risky(av[3]):
+                return True
+        elif op in (_sre.ASSERT, _sre.ASSERT_NOT):
+            if _risky(av[1]):
+                return True
+    return False
+
+
+def _nested(items) -> bool:
+    for op, av in items:
+        if op in _REPEATS:
+            if av[1] > 1 and _risky(av[2]):
+                return True
+            if _nested(av[2]):
+                return True
+        elif op is _sre.SUBPATTERN:
+            if _nested(av[3]):
+                return True
+        elif op is _sre.BRANCH:
+            if any(_nested(b) for b in av[1]):
+                return True
+        elif op in (_sre.ASSERT, _sre.ASSERT_NOT):
+            if _nested(av[1]):
+                return True
+    return False
+
+
+def backtracks(pattern: str, flags: int = 0) -> bool:
+    """True when ``pattern`` repeats a group that holds another unbounded
+    repeat or a ``|`` (``(a+)+``, ``(a|a)+``, ``(.*a){20}``): such a pattern
+    can take exponential time on a value from the scanned account."""
+    try:
+        return _nested(_sre_parse(pattern, flags).data)
+    except (re.error, RecursionError):  # compiled and checked elsewhere
+        return False
+
+
+def only_wildcards(resource: str) -> bool:
+    """True when a waiver ``resource`` has no literal character: every
+    character is part of ``*``, ``?`` or a ``[...]`` class."""
+    text = resource.strip()
+    return bool(text) and not _WILDCARD_PARTS.sub("", text)
+
 
 Path_ = Tuple[Any, ...]
 LineOf = Callable[[Path_], Optional[int]]
@@ -139,6 +204,9 @@ class Validator:
             re.compile(value, flags)
         except re.error as error:
             self.add(path, f"not a valid regular expression: {error}")
+            return
+        if backtracks(value, flags):
+            self.add(path, BACKTRACK_PROBLEM)
 
     # ------------------------------------------------------------ blocks
     def resource(self, value: Any, path: Path_, related: bool = False) -> None:
@@ -374,11 +442,21 @@ class Validator:
         if not self.text(value, path, model.LIMITS.message_length):
             return
         try:
-            names = [
-                f for _, f, _, _ in string.Formatter().parse(value) if f is not None
+            parts = [
+                (f, spec, conversion)
+                for _, f, spec, conversion in string.Formatter().parse(value)
+                if f is not None
             ]
         except ValueError as error:
             self.add(path, f"not a valid message: {error}")
+            return
+        names = [f for f, _, _ in parts]
+        if any(spec or conversion for _, spec, conversion in parts):
+            self.add(
+                path,
+                "a message placeholder takes no format spec or conversion; "
+                "write it as {name}",
+            )
             return
         unknown = [n for n in names if n not in model.PLACEHOLDERS]
         if unknown:
@@ -485,7 +563,7 @@ class Validator:
                 self.add(wpath + ("expires",), "expires is required")
             resource = waiver.get("resource")
             if isinstance(resource, str):
-                if resource.strip() == "*":
+                if resource.strip() == "*" or only_wildcards(resource):
                     self.add(
                         wpath + ("resource",), "a waiver cannot match every resource"
                     )

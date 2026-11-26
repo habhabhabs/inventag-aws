@@ -106,6 +106,8 @@ class Limits:
     references: int = 10
     related_rows_per_place: int = 50_000
     waiver_days_ahead: int = 366
+    yaml_depth: int = 50  # levels of lists and mappings in one file
+    set_file_depth: int = 10  # a set file that names a set file, and so on
 
 
 LIMITS = Limits()

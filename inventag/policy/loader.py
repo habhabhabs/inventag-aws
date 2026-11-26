@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
-from dataclasses import dataclass, replace
+import json
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -19,7 +20,7 @@ import yaml
 from ..templating.errors import TemplateError, TemplateIssue
 from ..templating.loader import _walk, safe_relative_path
 from . import model
-from .schema import PolicyError, validate_document
+from .schema import BACKTRACK_PROBLEM, PolicyError, backtracks, validate_document
 
 SUFFIXES = (".yaml", ".yml", ".json")
 
@@ -46,6 +47,16 @@ class Loaded:
     policies: Tuple[model.Policy, ...]
     sets: Tuple[model.PolicySet, ...]
     root: Optional[Path]
+    # what decided the result, for policy.lock: every file read, and the
+    # sha256 of each tag-policy template's rules (name -> digest)
+    files_read: Tuple[Path, ...] = ()
+    tag_policies: Dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
+class _Trace:
+    files: List[Path] = field(default_factory=list)
+    tag_policies: Dict[str, str] = field(default_factory=dict)
 
 
 def _label(path: Path, root: Optional[Path]) -> str:
@@ -80,7 +91,23 @@ def read_documents(path: Path, root: Optional[Path]) -> List[Document]:
         ) from None
     sha = hashlib.sha256(raw).hexdigest()
     try:
+        depth = 0
         for event in yaml.parse(text, Loader=yaml.SafeLoader):
+            if isinstance(event, (yaml.SequenceStartEvent, yaml.MappingStartEvent)):
+                depth += 1
+                if depth > model.LIMITS.yaml_depth:
+                    raise PolicyError(
+                        [
+                            TemplateIssue(
+                                "YAML is nested too deeply (more than "
+                                f"{model.LIMITS.yaml_depth} levels)",
+                                label,
+                                event.start_mark.line + 1,
+                            )
+                        ]
+                    )
+            elif isinstance(event, (yaml.SequenceEndEvent, yaml.MappingEndEvent)):
+                depth -= 1
             anchor = getattr(event, "anchor", None)
             if isinstance(event, yaml.AliasEvent) or anchor:
                 raise PolicyError(
@@ -94,6 +121,8 @@ def read_documents(path: Path, root: Optional[Path]) -> List[Document]:
                 )
         nodes = list(yaml.compose_all(text, Loader=yaml.SafeLoader))
         datas = list(yaml.load_all(text, Loader=yaml.SafeLoader))  # noqa: S506
+    except RecursionError:
+        raise PolicyError([TemplateIssue("YAML is nested too deeply", label)]) from None
     except yaml.YAMLError as error:
         mark = getattr(error, "problem_mark", None)
         problem = getattr(error, "problem", None) or str(error)
@@ -113,6 +142,10 @@ def read_documents(path: Path, root: Optional[Path]) -> List[Document]:
             _walk(node, (), lines, label)
         except TemplateError as error:
             raise PolicyError(error.issues) from None
+        except RecursionError:
+            raise PolicyError(
+                [TemplateIssue("YAML is nested too deeply", label)]
+            ) from None
         if not isinstance(data, dict):
             raise PolicyError(
                 [
@@ -153,33 +186,53 @@ def _files(paths: Iterable[Path]) -> List[Path]:
 expand_paths = _files
 
 
-def _tag_policy_rules(name: str, issue) -> Tuple[List[Dict], Dict]:
+def tag_policy_digest(rules: List[Dict], scope: Dict) -> str:
+    """sha256 of what a tag-policy template decides: its rules and scope."""
+    text = json.dumps(
+        {"required_tags": rules, "scope": scope}, sort_keys=True, default=str
+    )
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _tag_policy_rules(
+    name: str, issue, trace=None, registry=None
+) -> Tuple[List[Dict], Dict]:
+    """The rules and scope of tag policy ``name``; each pattern is checked and
+    the digest recorded in ``trace`` (for ``policy.lock``)."""
     from ..templating.registry import TemplateRegistry
 
     try:
-        resolved = TemplateRegistry().resolve(name)
+        resolved = (registry or TemplateRegistry()).resolve(name)
     except TemplateError as error:
         issue(f"tag policy '{name}' cannot be loaded: {error.issues[0].message}")
         return [], {}
     if resolved.kind != "tag-policy":
         issue(f"'{name}' is a {resolved.kind} template, not a tag policy")
         return [], {}
-    return list(resolved.spec["required_tags"]), dict(resolved.spec.get("scope") or {})
+    rules = list(resolved.spec["required_tags"])
+    scope = dict(resolved.spec.get("scope") or {})
+    for rule in rules:
+        pattern = rule.get("pattern")
+        if isinstance(pattern, str) and backtracks(pattern):
+            issue(f"tag policy '{name}': {rule.get('key')}: {BACKTRACK_PROBLEM}")
+    if trace is not None:
+        trace.tag_policies[name] = tag_policy_digest(rules, scope)
+    return rules, scope
 
 
-def _prepare_entries(entries: Any, issue) -> Any:
+def _prepare_entries(entries: Any, issue, trace=None) -> Any:
     """Copy entries; give each required-tags check its rules (``_rules``)."""
     if isinstance(entries, list):
-        return [_prepare_entries(e, issue) for e in entries]
+        return [_prepare_entries(e, issue, trace) for e in entries]
     if not isinstance(entries, dict):
         return entries
     entry = {
-        k: _prepare_entries(v, issue) if k in ("and", "or", "not") else v
+        k: _prepare_entries(v, issue, trace) if k in ("and", "or", "not") else v
         for k, v in entries.items()
     }
     if entry.get("type") == "required-tags":
         if "policy" in entry:
-            rules, scope = _tag_policy_rules(entry["policy"], issue)
+            rules, scope = _tag_policy_rules(entry["policy"], issue, trace)
             entry["_rules"] = rules
             if entry.get("use_scope"):
                 entry["_scope"] = scope
@@ -188,7 +241,7 @@ def _prepare_entries(entries: Any, issue) -> Any:
     return entry
 
 
-def _policy(doc: Document) -> Tuple[model.Policy, List[TemplateIssue]]:
+def _policy(doc: Document, trace=None) -> Tuple[model.Policy, List[TemplateIssue]]:
     spec = doc.data["spec"]
     issues: List[TemplateIssue] = []
 
@@ -203,7 +256,7 @@ def _policy(doc: Document) -> Tuple[model.Policy, List[TemplateIssue]]:
         id=spec["id"],
         name=doc.data["name"],
         severity=spec["severity"],
-        check=tuple(_prepare_entries(spec["check"], issue)),
+        check=tuple(_prepare_entries(spec["check"], issue, trace)),
         version=spec.get("version", 1),
         resource=dict(spec.get("resource") or {}),
         require=tuple(spec.get("require") or ()),
@@ -218,9 +271,16 @@ def _policy(doc: Document) -> Tuple[model.Policy, List[TemplateIssue]]:
     return policy, issues
 
 
-def load(paths: Sequence[Path], root: Optional[Path] = None) -> Loaded:
+def load(
+    paths: Sequence[Path],
+    root: Optional[Path] = None,
+    *,
+    _trace: Optional[_Trace] = None,
+    _chain: Tuple[Path, ...] = (),
+) -> Loaded:
     """Load policies and sets; resolve the sets; one :class:`PolicyError` with
-    every problem found."""
+    every problem found. ``_chain``: the set files whose paths led here."""
+    trace = _trace if _trace is not None else _Trace()
     files = _files(paths)
     if root is None and files:
         root = Path(files[0]).parent
@@ -228,6 +288,7 @@ def load(paths: Sequence[Path], root: Optional[Path] = None) -> Loaded:
     issues: List[TemplateIssue] = []
     docs: List[Document] = []
     for path in files:
+        trace.files.append(Path(path))
         try:
             docs.extend(read_documents(Path(path), root))
         except PolicyError as error:
@@ -242,7 +303,7 @@ def load(paths: Sequence[Path], root: Optional[Path] = None) -> Loaded:
             issues.extend(found)
             continue
         if kind == "policy":
-            policy, more = _policy(doc)
+            policy, more = _policy(doc, trace)
             issues.extend(more)
             policies.append(policy)
         elif kind == "policy-set":
@@ -268,7 +329,18 @@ def load(paths: Sequence[Path], root: Optional[Path] = None) -> Loaded:
     by_name = {p.name: p for p in policies}
     overrides: Dict[str, str] = {}
     for set_name in sorted(sets):
-        _resolve_set(set_name, sets, by_name, policies, overrides, root, issues, [])
+        _resolve_set(
+            set_name,
+            sets,
+            by_name,
+            policies,
+            overrides,
+            root,
+            issues,
+            [],
+            trace,
+            _chain,
+        )
     if issues:
         raise PolicyError(issues)
 
@@ -305,10 +377,18 @@ def load(paths: Sequence[Path], root: Optional[Path] = None) -> Loaded:
             set_name, severity = overrides[policy.id].split(":", 1)
             policy = replace(policy, severity=severity, severity_overridden_by=set_name)
         final.append(policy)
-    return Loaded(tuple(final), tuple(s for s, _ in sets.values()), root)
+    return Loaded(
+        tuple(final),
+        tuple(s for s, _ in sets.values()),
+        root,
+        tuple(dict.fromkeys(trace.files)),
+        dict(trace.tag_policies),
+    )
 
 
-def _resolve_set(name, sets, by_name, policies, overrides, root, issues, chain):
+def _resolve_set(
+    name, sets, by_name, policies, overrides, root, issues, chain, trace, files=()
+):
     if name in chain:
         cycle = chain[chain.index(name) :] + [name]
         issues.append(
@@ -334,7 +414,16 @@ def _resolve_set(name, sets, by_name, policies, overrides, root, issues, chain):
     policy_set, doc = entry
     for i, include in enumerate(policy_set.include):
         _resolve_set(
-            include, sets, by_name, policies, overrides, root, issues, chain + [name]
+            include,
+            sets,
+            by_name,
+            policies,
+            overrides,
+            root,
+            issues,
+            chain + [name],
+            trace,
+            files,
         )
     base = root or doc.path.parent
     for i, reference in enumerate(policy_set.policies):
@@ -353,8 +442,34 @@ def _resolve_set(name, sets, by_name, policies, overrides, root, issues, chain):
                     )
                 )
                 continue
+            here = files + (doc.path.resolve(),)
+            target_path = path.resolve()
+            where = (
+                doc.file,
+                doc.line_of(("spec", "policies", i)),
+                f"spec.policies.{i}",
+            )
+            if target_path in here:
+                labels = [_label(p, root) for p in here[here.index(target_path) :]]
+                labels.append(_label(target_path, root))
+                issues.append(
+                    TemplateIssue(
+                        "policy set file reached again: " + " -> ".join(labels),
+                        *where,
+                    )
+                )
+                continue
+            if len(here) > model.LIMITS.set_file_depth:
+                issues.append(
+                    TemplateIssue(
+                        "policy set files nested deeper than "
+                        f"{model.LIMITS.set_file_depth}",
+                        *where,
+                    )
+                )
+                continue
             try:
-                loaded = load([path], root=root)
+                loaded = load([path], root=root, _trace=trace, _chain=here)
             except PolicyError as error:
                 issues.extend(error.issues)
                 continue

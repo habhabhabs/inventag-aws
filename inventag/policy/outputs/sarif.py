@@ -53,7 +53,7 @@ def _result(
         "ruleId": f["policy"],
         "kind": kind,
         "level": "none" if kind == "review" else LEVEL.get(f["severity"], "note"),
-        "message": {"text": _common.clean(f["message"])},
+        "message": {"text": _common.clean(_common.value_free_message(f))},
         "locations": [
             {
                 "physicalLocation": {

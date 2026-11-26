@@ -335,6 +335,7 @@ def _required_tags(node: CheckNode, row: Dict[str, Any], ctx: Context) -> Outcom
     tags = normalize_tags(row.get("tags"))
     missing_only = bool(node.spec.get("missing_only"))
     failures = []
+    too_long = False
     for rule in node.spec["_rules"]:
         key = rule["key"]
         if key not in tags:
@@ -344,10 +345,16 @@ def _required_tags(node: CheckNode, row: Dict[str, Any], ctx: Context) -> Outcom
             continue
         if missing_only:
             continue
-        reason = check_value(rule, str(tags[key]))
+        found = str(tags[key])
+        if rule.get("pattern") and len(found) > model.LIMITS.found_string_length:
+            too_long = True
+            continue
+        reason = check_value(rule, found)
         if reason:
             failures.append({"type": "required-tags", "key": key, "problem": reason})
-    return Outcome(FALSE, failures=failures) if failures else Outcome(TRUE)
+    if failures:
+        return Outcome(FALSE, failures=failures)
+    return Outcome(UNKNOWN, "value_too_long") if too_long else Outcome(TRUE)
 
 
 def _allowed_regions(node: CheckNode, row: Dict[str, Any], ctx: Context) -> Outcome:
@@ -373,6 +380,8 @@ def _name_pattern(node: CheckNode, row: Dict[str, Any], ctx: Context) -> Outcome
             return Outcome(UNKNOWN, "tags_not_read")
         found = node.key.get(row)
         key_text = node.key.text
+    if isinstance(found, str) and len(found) > model.LIMITS.found_string_length:
+        return Outcome(UNKNOWN, "value_too_long")
     if isinstance(found, str) and node.pattern.fullmatch(found):
         return Outcome(TRUE)
     failure = {"type": "name-pattern", "problem": "pattern not matched"}

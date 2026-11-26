@@ -31,24 +31,17 @@ SET_NAMES: Tuple[str, ...] = (
 )
 
 _LOCK = threading.Lock()
+_ORIGINAL_TAG_POLICY_RULES = loader._tag_policy_rules
 _CACHE: Dict[str, Tuple[model.Policy, ...]] = {}
 
 
-def _shipped_tag_policy_rules(name: str, issue) -> Tuple[List[Dict], Dict]:
+def _shipped_tag_policy_rules(name: str, issue, trace=None) -> Tuple[List[Dict], Dict]:
     """``loader._tag_policy_rules`` over the shipped templates only."""
-    from ...templating.errors import TemplateError
     from ...templating.registry import BUILTIN_DIR as TEMPLATES
     from ...templating.registry import SearchDir, TemplateRegistry
 
-    try:
-        resolved = TemplateRegistry([SearchDir("builtin", TEMPLATES)]).resolve(name)
-    except TemplateError as error:
-        issue(f"tag policy '{name}' cannot be loaded: {error.issues[0].message}")
-        return [], {}
-    if resolved.kind != "tag-policy":
-        issue(f"'{name}' is a {resolved.kind} template, not a tag policy")
-        return [], {}
-    return list(resolved.spec["required_tags"]), dict(resolved.spec.get("scope") or {})
+    registry = TemplateRegistry([SearchDir("builtin", TEMPLATES)])
+    return _ORIGINAL_TAG_POLICY_RULES(name, issue, trace, registry)
 
 
 def load_set(name: str) -> Tuple[model.Policy, ...]:

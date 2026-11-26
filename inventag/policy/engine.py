@@ -15,6 +15,7 @@ from __future__ import annotations
 import datetime as dt
 import importlib
 import json
+import string
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from ..discovery.service_filter import canonical_service
@@ -142,7 +143,12 @@ def _message(policy: model.Policy, row, result: str, reason, failures) -> str:
             "resource_type": str(row.get("resource_type") or ""),
             "policy": policy.id,
         }
-        return policy.message.format(**values)
+        # Placeholders only: a format spec or conversion is refused at
+        # validation and ignored here, so a value can never act as one.
+        return "".join(
+            literal + (values.get(field, "") if field is not None else "")
+            for literal, field, _, _ in string.Formatter().parse(policy.message)
+        )
     if result in ("fail", "waived"):
         return f"{policy.id}: " + "; ".join(_describe(f) for f in failures)
     if result == "not_evaluated":

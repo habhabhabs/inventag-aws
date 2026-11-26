@@ -63,6 +63,36 @@ def exit_sentence(result: Mapping[str, Any], gate) -> Optional[str]:
     return " ".join(parts)
 
 
+_TAG_VALUE_MARKERS = ("' does not match ", "' is not one of ")
+
+
+def _value_free_problem(problem: str, key: Any) -> str:
+    """``KEY: 'value' does not match P`` -> ``KEY: value does not match P``
+    (the same for ``is not one of``); other problems are unchanged."""
+    prefix = f"{key}: '"
+    if not problem.startswith(prefix):
+        return problem
+    for marker in _TAG_VALUE_MARKERS:
+        at = problem.rfind(marker)
+        if at >= len(prefix) - 1:
+            return f"{key}: value {marker[2:]}{problem[at + len(marker):]}"
+    return problem
+
+
+def value_free_message(finding: Mapping[str, Any]) -> str:
+    """The finding's message without the tag values that a required-tags
+    problem quotes (SARIF and JUnit never carry a value, spec 11.4)."""
+    message = str(finding.get("message") or "")
+    for detail in finding.get("details") or []:
+        if detail.get("type") != "required-tags":
+            continue
+        problem = str(detail.get("problem") or "")
+        free = _value_free_problem(problem, detail.get("key"))
+        if free != problem:
+            message = message.replace(problem, free)
+    return message
+
+
 def clean(value: Any) -> str:
     """One line of plain text: no control, escape or direction characters.
 
