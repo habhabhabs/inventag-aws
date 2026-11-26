@@ -339,7 +339,7 @@ Se escriben informes con los códigos 3, 4 y 5. Con el código 6, una ejecución
 
 ## Mantenlo seguro {#keep-it-safe}
 
-- Para las ejecuciones de CI/CD, usa `-vv`. La salida de depuración contiene los cuerpos de las solicitudes y respuestas del SDK de AWS, y se conoce un fallo del enmascaramiento: puede aparecer un secreto que AWS devuelve como lista bajo el nombre de un campo enmascarado. Los registros de CI a menudo se conservan y se comparten, así que restringe quién puede leer el registro del trabajo.
+- Para las ejecuciones de CI/CD, usa `-vv`. La salida de depuración contiene los ID de cuenta, los ARN, las direcciones IP, los valores de las etiquetas y los cuerpos completos de las solicitudes y respuestas del SDK de AWS. Los secretos se enmascaran; los fallos conocidos se indican en [Estado de las funciones](../getting-started/status.md#security-notes). En un repositorio público, el registro del trabajo es público, así que usa `-v` allí. En los demás casos, restringe quién puede leer el registro del trabajo y no subas el registro de depuración como artefacto.
 - Para conservar los informes en S3 en lugar de (o además de) como artefactos,
   añade `--s3-bucket` y concede `s3:PutObject` en ese bucket. Consulta
   [Subir informes a S3 de forma programada](../examples/scheduled-s3-upload.md).

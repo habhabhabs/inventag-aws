@@ -336,7 +336,7 @@ Des rapports sont écrits pour les codes 3, 4 et 5. Avec le code 6, une exécuti
 
 ## Rester prudent {#keep-it-safe}
 
-- Pour les exécutions CI/CD, utilisez `-vv`. La sortie de débogage contient les corps des requêtes et des réponses du SDK AWS, et une lacune du masquage est connue : un secret qu’AWS renvoie sous forme de liste sous le nom d’un champ masqué peut apparaître. Les journaux de CI sont souvent conservés et partagés, donc limitez qui peut lire le journal du job.
+- Pour les exécutions CI/CD, utilisez `-vv`. La sortie de débogage contient les ID de compte, les ARN, les adresses IP, les valeurs des étiquettes et les corps complets des requêtes et des réponses du SDK AWS. Les secrets sont masqués ; les lacunes connues figurent dans [État des fonctionnalités](../getting-started/status.md#security-notes). Dans un dépôt public, le journal du job est public : utilisez donc `-v` dans ce cas. Ailleurs, limitez qui peut lire le journal du job et ne téléversez pas le journal de débogage comme artefact.
 - Pour conserver les rapports dans S3 plutôt que (ou en plus) des artefacts, ajoutez
   `--s3-bucket` et accordez `s3:PutObject` sur ce bucket. Voir
   [Téléverser les rapports vers S3 selon un calendrier](../examples/scheduled-s3-upload.md).

@@ -225,7 +225,7 @@ ejecución sin ella no escribe ningún archivo.
 | `--log-file FILE` | ninguno | Funciona | Escribe además el registro en este archivo: las mismas líneas que el terminal, con la función y el número de línea. Añade `-v` o `-vv` para ver más. |
 | `--disable-account-logging` | desactivado | Funciona | No antepone la cuenta a las líneas del registro. |
 
-Para las ejecuciones de CI/CD, usa `-vv`. La salida de depuración contiene los cuerpos de las solicitudes y respuestas del SDK de AWS, y se conoce un fallo del enmascaramiento: puede aparecer un secreto que AWS devuelve como lista bajo el nombre de un campo enmascarado. Los registros de CI a menudo se conservan y se comparten, así que restringe quién puede leer el registro del trabajo.
+Para las ejecuciones de CI/CD, usa `-vv`. La salida de depuración contiene los ID de cuenta, los ARN, las direcciones IP, los valores de las etiquetas y los cuerpos completos de las solicitudes y respuestas del SDK de AWS. Los secretos se enmascaran; los fallos conocidos se indican en [Estado de las funciones](../getting-started/status.md#security-notes). En un repositorio público, el registro del trabajo es público, así que usa `-v` allí. En los demás casos, restringe quién puede leer el registro del trabajo y no subas el registro de depuración como artefacto.
 
 ## Credenciales {#credentials}
 

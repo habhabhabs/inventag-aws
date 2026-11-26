@@ -53,14 +53,21 @@ spec:                  # the settings of this kind
 | Nesting depth of `and`, `or`, `not` | 5 |
 | Length of a `key` | 200 characters |
 | Length of a pattern | 200 characters |
-| Length of a found text compared with `glob`, `regex` or `regex-case` | 4096 characters (longer: not evaluated, `value_too_long`) |
+| Length of a found text compared with `glob`, `regex`, `regex-case`, `name-pattern` or a tag `pattern` | 4096 characters (longer: not evaluated, `value_too_long`) |
 | Length of `message` | 300 characters |
 | Entries in `references` | 10 |
 | Related rows per account and region | 50000 |
 | Days a waiver may run ahead | 366 |
+| Levels of lists and mappings in one file | 50 |
+| Set files reached through set files | 10 |
 
 YAML aliases (`&a` and `*a`) are refused, and no environment variable is
 expanded.
+
+A pattern that repeats a group holding another repeat or a `|`, such as
+`(a+)+`, `(a|a)+` or `(.*a){20}`, is refused: it can take very long to match a
+value from a scanned account. The pattern is also checked when a
+`required-tags` check reads a tag policy with `policy:`.
 
 ## `kind: policy`
 
@@ -77,8 +84,9 @@ expanded.
 | `enabled` | true or false | no | true | `false`: the policy is listed in the findings file with all counts 0 and is not evaluated. |
 
 `message` replaces the text of a finding. It may use the placeholders `{name}`, `{resource}`, `{account}`,
-`{region}`, `{service}`, `{resource_type}` and `{policy}`. Another placeholder
-is an error.
+`{region}`, `{service}`, `{resource_type}` and `{policy}`. Another placeholder,
+or a placeholder with a format spec or a conversion (such as `{name:>10}` or
+`{name!r}`), is an error.
 
 `require` lists keys (see below). A selected row on which one is absent is
 `not_evaluated` with `field_missing`; on a row known by identity only, a key
@@ -265,7 +273,7 @@ failed in this run.
 
 | Field (under `spec`) | Meaning |
 |---|---|
-| `policies` | A policy `name`, or a path relative to the file that stays inside the policy folder. |
+| `policies` | A policy `name`, or a path relative to the file that stays inside the policy folder. A set file that a chain of set files reaches again is an error that names the chain. |
 | `include` | Names of other sets. A cycle is an error that names the cycle. |
 | `severity_overrides` | A mapping of policy id to severity. Written into the result as `severity_overridden_by`. |
 
@@ -278,7 +286,7 @@ A policy reached twice is evaluated once.
 | Field | Required | Meaning |
 |---|---|---|
 | `policy` | yes | A policy id. An id that is not among the loaded policies leaves the waiver unused, `unknown policy`. |
-| `resource` | yes | Compared with the row's ARN, or `service/resource_type/resource_id` when it has no ARN. Exact, or a pattern when it contains `*` or `?`. Only `*` is refused. |
+| `resource` | yes | Compared with the row's ARN, or `service/resource_type/resource_id` when it has no ARN. Exact, or a pattern when it contains `*` or `?`. A pattern with no literal character, such as `*`, `**`, `?*` or `[a-z]*`, is refused: a waiver cannot match every resource. |
 | `account` | with `*` or `?` | The row's 12-digit account ID must equal it. |
 | `reason` | yes | 10 to 300 characters. |
 | `approved_by` | yes | Text. |
@@ -300,7 +308,13 @@ and `expect_units`. `expect` has one entry for every row the policy selects:
 A JSON file in the policy folder, written by `inventag policy lock`:
 `{"files": {<relative path>: <sha256>}, "format_version": 1, "kind": "lock"}`,
 keys sorted. It lists every policy, policy-set and waivers file; a `tests/`
-folder is left out.
+folder is left out. It also lists every other file in the folder that a set
+names by path, whatever its suffix and also under `tests/`. When a policy uses
+`required-tags` with `policy: NAME`, the key `tag_policies` holds the SHA-256
+of that tag policy's rules and scope as InvenTag resolves them. A change of the
+tag policy (in `INVENTAG_TEMPLATE_PATH`, `.inventag/templates/`,
+`~/.config/inventag/templates/` or a new InvenTag version) then also fails the
+check; run `inventag policy lock` again after such a change.
 
 ## The findings file
 

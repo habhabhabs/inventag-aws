@@ -225,7 +225,7 @@ et une exécution sans elle n’écrit aucun fichier.
 | `--log-file FILE` | aucun | Fonctionne | Écrit aussi le journal dans ce fichier : les mêmes lignes que le terminal, avec la fonction et le numéro de ligne. Ajoutez `-v` ou `-vv` pour en voir plus. |
 | `--disable-account-logging` | désactivé | Fonctionne | Ne préfixe pas les lignes du journal avec le compte. |
 
-Pour les exécutions CI/CD, utilisez `-vv`. La sortie de débogage contient les corps des requêtes et des réponses du SDK AWS, et une lacune du masquage est connue : un secret qu’AWS renvoie sous forme de liste sous le nom d’un champ masqué peut apparaître. Les journaux de CI sont souvent conservés et partagés, donc limitez qui peut lire le journal du job.
+Pour les exécutions CI/CD, utilisez `-vv`. La sortie de débogage contient les ID de compte, les ARN, les adresses IP, les valeurs des étiquettes et les corps complets des requêtes et des réponses du SDK AWS. Les secrets sont masqués ; les lacunes connues figurent dans [État des fonctionnalités](../getting-started/status.md#security-notes). Dans un dépôt public, le journal du job est public : utilisez donc `-v` dans ce cas. Ailleurs, limitez qui peut lire le journal du job et ne téléversez pas le journal de débogage comme artefact.
 
 ## Identifiants {#credentials}
 

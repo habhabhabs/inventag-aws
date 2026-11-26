@@ -46,7 +46,7 @@ persona mantenedora un canal privado.
   `payment-cryptography:GetParametersForImport` y `GetParametersForExport`:
   sus nombres empiezan como lecturas, pero emiten un token, credenciales o
   material de claves, o toman una tarea de una cola. Cada entrada de la lista de denegación se comprueba con la lista de operaciones del SDK de
-  AWS. Siempre está activa. La protección conoce las operaciones por su nombre.
+  AWS. Siempre está activa. También bloquea, por su nombre, las operaciones que emiten un token, credenciales, una URL firmada o una sesión, y las operaciones que devuelven contenido de los clientes, como `quicksight:GetSessionEmbedUrl`, `gameliftstreams:GetStreamUrl`, `polly:GetVoice` y `opensearchmemory:GetMemory`. La protección conoce las operaciones por su nombre.
   Una operación que añade un SDK de AWS más nuevo se permite cuando su nombre
   empieza como una lectura, hasta que una versión de InvenTag la nombra.
 - **El inicio de sesión sigue funcionando.** La protección deja que el SDK de
@@ -77,9 +77,7 @@ persona mantenedora un canal privado.
   No verificado contra Windows: archivos legibles solo por tu usuario.
 - **Sus registros ocultan los secretos.** Los tokens de sesión, las claves, las
   firmas de solicitud y los valores ocultos indicados arriba se enmascaran,
-  incluso con `--debug` o `-vv`. Se conoce una excepción: con `--debug` o `-vv`, un secreto que AWS
-  devuelve como lista bajo el nombre de un campo enmascarado puede aparecer en el
-  archivo de registro. Consulta
+  incluso con `--debug` o `-vv`. Se conocen dos excepciones: con `--debug` o `-vv`, un secreto que AWS devuelve dentro de un mapa bajo el nombre de un campo enmascarado, o como lista XML (elementos `<member>`), puede aparecer en el archivo de registro. Consulta
   [Estado de las funciones](../getting-started/status.md#security-notes).
 
 Puedes comprobar lo que hizo una ejecución con `--audit-output audit.json`, y

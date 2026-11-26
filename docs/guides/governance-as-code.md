@@ -299,7 +299,8 @@ code.
 
 - A waiver needs `policy`, `resource`, `reason` (10 to 300 characters),
   `approved_by` and `expires`. `account` is required when `resource` has a
-  `*` or `?`. A resource of only `*` is refused.
+  `*` or `?`. A resource with no literal character, such as `*`, `**`, `?*` or
+  `[a-z]*`, is refused.
 - `expires` is a date, `YYYY-MM-DD`. The waiver applies through the end of
   that UTC day. A date more than 366 days after the run's date is refused.
 - A waiver changes only a `fail`. It never changes a `pass` or a
@@ -397,7 +398,8 @@ inventag policy lock .inventag/policies
 
 writes `.inventag/policies/policy.lock`: a JSON file that lists the SHA-256 of
 every policy, policy-set and waivers file in the folder. A `tests/` folder is
-left out.
+left out. It also lists every other file a set names by path, and the rules of
+each tag policy that a `required-tags` check names with `policy:`.
 
 ```bash
 inventag policy lock --check .inventag/policies

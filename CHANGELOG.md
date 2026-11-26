@@ -78,9 +78,55 @@ the flag is unchanged; the changelog lists it under Added.
 - The meaning of exit code 2 now includes a run with no option.
 - The CI/CD guide and its example workflows now use `-vv` (debug output) for
   CI/CD runs, and so do `examples/github_actions_cicd_example.yml` and
-  `examples/aws_codebuild_buildspec.yml`. Debug output holds the AWS SDK's
-  request and response bodies, and one masking gap is known; restrict who can
-  read the job log.
+  `examples/aws_codebuild_buildspec.yml`. Debug output holds account IDs,
+  ARNs, IP addresses, tag values and the AWS SDK's full request and response
+  bodies; secrets are masked. In a public repository the job log is public, so
+  use `-v` there. The two example files no longer write a log file, upload it
+  as an artifact or copy it to S3.
+
+### Security
+
+- The read-only guard now refuses these operations by name (each one issues a
+  token, credentials, a signed URL or a session, or returns customer content):
+  `cognito-idp:GetDerivedToken`,
+  `wellarchitected:GetAgentOrganizationalReportData`,
+  `partnercentral-marketing:GetCampaignAssetExportTask`,
+  `partnercentral-selling:GetCustomerAccountBulkJobReportUrl`,
+  `partnercentral-selling:GetOpportunityBulkJobReportUrl`,
+  `glue:GetDashboardUrl`, `gameliftstreams:GetStreamUrl`,
+  `gameliftstreams:ListStreamUrls`, `quicksight:GetDashboardEmbedUrl`,
+  `quicksight:GetSessionEmbedUrl`, `polly:GetVoice`,
+  `opensearchmemory:GetMemory`, `opensearchmemory:SearchMemories`,
+  `opensearchmemory:SearchEvents`, `connecthealth:GetMedicalCodingJob`,
+  `finspace-data:GetProgrammaticAccessCredentials` and
+  `finspace-data:GetExternalDataViewAccessDetails`. InvenTag calls none of
+  them. `--validate-operations` now prints BLOCKED for them.
+- Masked in reports, snapshots and logs: values of the fields `IssuedToken`,
+  `SecretValue`, `ImportManifestUrl`, `S3ObjectUrl`, `authorizationUrl` and
+  `OAuthAuthorizationUrl`. A secret that AWS returns as a list under a masked
+  field name is now masked in debug output too. Still not masked: a secret
+  inside a mapping under a masked field name, or in an XML list
+  (`<member>` items), in debug output; a field named only `Url`.
+- `policy.lock` now also lists every file in the policy folder that a set
+  names by path (any suffix, also under `tests/`), and under `tag_policies`
+  the SHA-256 of each tag policy that `required-tags` reads with `policy:`.
+  Before, a changed file of either kind passed `lock --check` and
+  `policy check --locked`. A lock written before this release fails the check
+  when the folder has such a file: run `inventag policy lock` again.
+- The SARIF file no longer quotes a tag value: a required-tags problem reads
+  `KEY: value does not match PATTERN` (or `value is not one of ...`) there.
+  The JSON, text and Markdown files still show it.
+- `policy validate` refuses a `message` placeholder with a format spec or a
+  conversion (`{name:>10}`, `{name!r}`); before, such a message passed and
+  `policy check` could fail or run out of memory. A pattern that repeats a
+  group holding another repeat or a `|` (`(a+)+`, `(a|a)+`) is refused. A
+  found text longer than 4096 characters is not matched by `name-pattern` or a
+  tag `pattern` (`value_too_long`), as for `regex`. A waiver `resource` with no
+  literal character (`**`, `?*`, `[a-z]*`) is refused, as `*` was.
+- A set file that names itself or another set file in a loop, a chain of more
+  than 10 set files, or a file with more than 50 levels of lists and mappings
+  is now an error with exit code 1 that names the problem; before, it ended
+  with a `RecursionError` traceback.
 
 ### Removed
 

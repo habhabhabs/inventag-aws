@@ -304,9 +304,8 @@ standard) ; `AWS_RETRY_MODE` et `AWS_MAX_ATTEMPTS` modifient ce réglage.
   [Configurer un accès en lecture seule](../guides/read-only-access.md).
 - **Les journaux de débogage sont caviardés** par défaut : jetons de session,
   clés, signatures et les valeurs secrètes listées plus haut sont masqués. Traitez
-  quand même les journaux de débogage comme sensibles. Avec `--debug` ou `-vv`, un secret
-  qu’AWS renvoie sous forme de liste sous le nom d’un champ masqué peut apparaître
-  dans le fichier journal.
+  quand même les journaux de débogage comme sensibles. Avec `--debug` ou `-vv`, un secret qu’AWS renvoie dans un dictionnaire sous le nom d’un champ masqué, ou sous forme de liste XML (éléments `<member>`), peut apparaître dans le fichier journal.
+- Quelques réponses d’AWS contiennent une URL dans un champ nommé seulement `Url` ; InvenTag n’appelle pas ces opérations et ne masque pas ce nom de champ.
 - **La protection en lecture seule connaît les opérations par leur nom.** Une
   opération qu’ajoute un SDK AWS plus récent est autorisée quand son nom commence
   comme une lecture, jusqu’à ce qu’une version d’InvenTag la nomme. Voir

@@ -304,9 +304,8 @@ standard); `AWS_RETRY_MODE` y `AWS_MAX_ATTEMPTS` cambian este ajuste.
   [Configurar el acceso de solo lectura](../guides/read-only-access.md).
 - **Los registros de depuración se ocultan** de forma predeterminada: los tokens
   de sesión, las claves, las firmas y los valores secretos indicados arriba se
-  enmascaran. Aun así, trata los registros de depuración como confidenciales. Con
-  `--debug` o `-vv`, un secreto que AWS devuelve como lista bajo el nombre de un campo
-  enmascarado puede aparecer en el archivo de registro.
+  enmascaran. Aun así, trata los registros de depuración como confidenciales. Con `--debug` o `-vv`, un secreto que AWS devuelve dentro de un mapa bajo el nombre de un campo enmascarado, o como lista XML (elementos `<member>`), puede aparecer en el archivo de registro.
+- Algunas respuestas de AWS contienen una URL en un campo que se llama solo `Url`; InvenTag no llama a esas operaciones y no enmascara ese nombre de campo.
 - **La protección de solo lectura conoce las operaciones por su nombre.** Una
   operación que añade un SDK de AWS más nuevo se permite cuando su nombre empieza
   como una lectura, hasta que una versión de InvenTag la nombra. Consulta

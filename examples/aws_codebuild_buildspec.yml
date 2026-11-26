@@ -93,7 +93,7 @@ phases:
         fi
       
       # Generate BOM reports
-      # -vv gives debug output (AWS SDK request and response bodies; secrets are masked, one gap is known). Restrict who can read the job log and the log file.
+      # -vv gives debug output: account IDs, ARNs, IP addresses, tag values and full AWS SDK responses (secrets are masked). In a public repository the job log is public: use -v there. The debug log is not uploaded as an artifact.
       - |
         python inventag_cli.py \
           --accounts-file accounts.json \
@@ -106,8 +106,7 @@ phases:
           --generate-changelog \
           --max-concurrent-accounts $MAX_CONCURRENT_ACCOUNTS \
           --account-processing-timeout $PROCESSING_TIMEOUT \
-          -vv \
-          --log-file inventag-codebuild-$CODEBUILD_BUILD_NUMBER.log
+          -vv
       
       - echo "BOM generation completed successfully"
       
@@ -154,13 +153,9 @@ phases:
       - echo "Cleaning up sensitive files..."
       - rm -f accounts.json
       
-      # Upload logs to S3 if configured
+      # Upload the build summary to S3 if configured (the debug log is not uploaded)
       - |
         if [ ! -z "$BOM_REPORTS_BUCKET" ]; then
-          echo "Uploading logs to S3..."
-          aws s3 cp inventag-codebuild-$CODEBUILD_BUILD_NUMBER.log \
-            s3://$BOM_REPORTS_BUCKET/logs/codebuild-$CODEBUILD_BUILD_NUMBER.log
-          
           aws s3 cp build_summary.json \
             s3://$BOM_REPORTS_BUCKET/summaries/build-$CODEBUILD_BUILD_NUMBER-summary.json
         fi
@@ -211,7 +206,6 @@ phases:
 artifacts:
   files:
     - 'bom_output/**/*'
-    - 'inventag-codebuild-*.log'
     - 'build_summary.json'
   name: inventag-bom-$CODEBUILD_BUILD_NUMBER
   base-directory: '.'

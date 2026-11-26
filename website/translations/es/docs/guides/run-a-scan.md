@@ -216,7 +216,7 @@ Las opciones que escribes siguen teniendo prioridad sobre la plantilla.
 | `--debug` o `-d` | Cada solicitud a AWS. Los secretos se enmascaran, pero trata el registro como sensible. Igual que `-vv`. |
 | `--audit-output audit.json` | Una lista JSON de cada operación de AWS que llamó la ejecución |
 
-Para las ejecuciones de CI/CD, usa `-vv`. La salida de depuración contiene los cuerpos de las solicitudes y respuestas del SDK de AWS, y se conoce un fallo del enmascaramiento: puede aparecer un secreto que AWS devuelve como lista bajo el nombre de un campo enmascarado. Los registros de CI a menudo se conservan y se comparten, así que restringe quién puede leer el registro del trabajo.
+Para las ejecuciones de CI/CD, usa `-vv`. La salida de depuración contiene los ID de cuenta, los ARN, las direcciones IP, los valores de las etiquetas y los cuerpos completos de las solicitudes y respuestas del SDK de AWS. Los secretos se enmascaran; los fallos conocidos se indican en [Estado de las funciones](../getting-started/status.md#security-notes). En un repositorio público, el registro del trabajo es público, así que usa `-v` allí. En los demás casos, restringe quién puede leer el registro del trabajo y no subas el registro de depuración como artefacto.
 
 ## Valida los archivos de configuración sin analizar {#validate-configuration-files-without-scanning}
 

@@ -47,7 +47,7 @@ maintainer for a private channel.
   their names start like reads, but they issue a token, credentials or key
   material, or take a task from a queue. Every
   entry of the deny-list is checked against the AWS SDK's list of operations. It is always
-  on. The guard knows operations by name. An operation that a newer AWS SDK
+  on. It also blocks, by name, operations that issue a token, credentials, a signed URL or a session, and operations that return customer content, such as `quicksight:GetSessionEmbedUrl`, `gameliftstreams:GetStreamUrl`, `polly:GetVoice` and `opensearchmemory:GetMemory`. The guard knows operations by name. An operation that a newer AWS SDK
   adds is allowed when its name starts like a read, until an InvenTag release
   names it.
 - **Sign-in still works.** The guard lets the AWS SDK exchange an IAM Identity
@@ -75,9 +75,7 @@ maintainer for a private channel.
 
   Not verified against Windows: files readable by your user only.
 - **Its logs hide secrets.** Session tokens, keys, request signatures and the
-  masked values above are hidden, even with `--debug` or `-vv`. One exception is known:
-  with `--debug` or `-vv`, a secret that AWS returns as a list under a masked field name
-  can appear in the log file. See
+  masked values above are hidden, even with `--debug` or `-vv`. Two exceptions are known: with `--debug` or `-vv`, a secret that AWS returns inside a mapping under a masked field name, or as an XML list (`<member>` items), can appear in the log file. See
   [Feature status](../getting-started/status.md#security-notes).
 
 You can check what a run did with `--audit-output audit.json`, and what the

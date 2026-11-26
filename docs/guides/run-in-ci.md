@@ -344,7 +344,7 @@ a report that lists no resources, and a run without it writes no file.
 
 ## Keep it safe
 
-- For CI/CD runs, use `-vv`. Debug output holds the AWS SDK's request and response bodies, and one masking gap is known: a secret that AWS returns as a list under a masked field name can appear. CI logs are often kept and shared, so restrict who can read the job log.
+- For CI/CD runs, use `-vv`. Debug output holds account IDs, ARNs, IP addresses, tag values and the AWS SDK's full request and response bodies. Secrets are masked; the known gaps are listed under [Feature status](../getting-started/status.md#security-notes). In a public repository the job log is public, so use `-v` there. Elsewhere, restrict who can read the job log, and do not upload the debug log as an artifact.
 - To keep reports in S3 instead of (or as well as) artifacts, add
   `--s3-bucket` and grant `s3:PutObject` on that bucket. See
   [Upload reports to S3 on a schedule](../examples/scheduled-s3-upload.md).

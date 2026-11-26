@@ -216,7 +216,7 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 | `--log-file FILE` | 無 | 可用 | 同時把日誌寫入該檔案：與終端機相同的行，另帶函式名稱和行號。加上 `-v` 或 `-vv` 可看到更多。 |
 | `--disable-account-logging` | 關 | 可用 | 不在日誌行前加帳戶字首。 |
 
-在 CI/CD 執行中，請使用 `-vv`。除錯輸出包含 AWS SDK 的請求和回應本文，並且已知有一處遮蔽缺口：AWS 以列表形式返回、且欄位名會被遮蓋的機密可能會出現。CI 日誌常被保留和共享，因此請限制誰可以讀取作業日誌。
+在 CI/CD 執行中，請使用 `-vv`。除錯輸出包含帳戶 ID、ARN、IP 地址、標籤值，以及 AWS SDK 完整的請求和回應正文。機密會被遮蓋；已知的缺口列在[功能狀態](../getting-started/status.md#security-notes)中。在公開儲存庫中，作業日誌是公開的，因此請在那裡使用 `-v`。在其他情況下，請限制誰可以讀取作業日誌，並且不要把除錯日誌作為產物上傳。
 
 ## 憑證 {#credentials}
 

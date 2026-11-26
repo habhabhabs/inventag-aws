@@ -269,7 +269,7 @@ Flags you type still win over the template.
 | `--debug` or `-d` | Every AWS request. Secrets are masked, but treat the log as sensitive. The same as `-vv`. |
 | `--audit-output audit.json` | A JSON list of every AWS operation the run called |
 
-For CI/CD runs, use `-vv`. Debug output holds the AWS SDK's request and response bodies, and one masking gap is known: a secret that AWS returns as a list under a masked field name can appear. CI logs are often kept and shared, so restrict who can read the job log.
+For CI/CD runs, use `-vv`. Debug output holds account IDs, ARNs, IP addresses, tag values and the AWS SDK's full request and response bodies. Secrets are masked; the known gaps are listed under [Feature status](../getting-started/status.md#security-notes). In a public repository the job log is public, so use `-v` there. Elsewhere, restrict who can read the job log, and do not upload the debug log as an artifact.
 
 ## Validate configuration files without scanning
 

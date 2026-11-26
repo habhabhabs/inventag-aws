@@ -291,8 +291,8 @@ InvenTag retries a throttled call up to 10 times (standard retry mode);
   safety net. See [Set up read-only access](../guides/read-only-access.md).
 - **Debug logs are redacted** by default: session tokens, keys, signatures and
   the secret values listed above are masked. Still treat debug logs as
-  sensitive. With `--debug` or `-vv`, a secret that AWS returns as a list under a masked
-  field name can appear in the log file.
+  sensitive. With `--debug` or `-vv`, a secret that AWS returns inside a mapping under a masked field name, or as an XML list (`<member>` items), can appear in the log file.
+- A few AWS answers hold a URL in a field named only `Url`; InvenTag does not call those operations and does not mask that field name.
 - **The read-only guard knows operations by name.** An operation that a newer
   AWS SDK adds is allowed when its name starts like a read, until an InvenTag
   release names it. See [Security](../security/index.md).

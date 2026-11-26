@@ -135,7 +135,7 @@ jobs:
           s3_options="--s3-bucket ${{ secrets.BOM_REPORTS_BUCKET }} --s3-key-prefix bom-reports/${{ github.run_number }}/"
         fi
         
-        # -vv gives debug output (AWS SDK request and response bodies; secrets are masked, one gap is known). Restrict who can read the job log and the log file.
+        # -vv gives debug output: account IDs, ARNs, IP addresses, tag values and full AWS SDK responses (secrets are masked). In a public repository the job log is public: use -v there. The debug log is not uploaded as an artifact.
         python inventag_cli.py \
           --accounts-file ${{ github.event.inputs.accounts_config || 'config/accounts.json' }} \
           --service-descriptions config/defaults/services/service_descriptions_example.yaml \
@@ -147,16 +147,7 @@ jobs:
           --enable-delta-detection \
           --generate-changelog \
           --max-concurrent-accounts 6 \
-          -vv \
-          --log-file inventag-github-${{ github.run_number }}.log
-    
-    - name: Upload logs as artifact
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: inventag-logs-${{ github.run_number }}
-        path: inventag-github-${{ github.run_number }}.log
-        retention-days: 30
+          -vv
     
     - name: Upload BOM reports as artifact
       if: always()
