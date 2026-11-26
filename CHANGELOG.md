@@ -22,7 +22,10 @@ the flag is unchanged; the changelog lists it under Added.
   their flags are on, and the coverage and denied permissions. Every value is
   escaped; the file has no JavaScript, loads nothing from outside it and
   carries a Content-Security-Policy; it is written whole and private to the
-  user, and uploaded with `--s3-bucket`. `--create-html` alone writes HTML
+  user, and uploaded with `--s3-bucket` with the content type
+  `text/html; charset=utf-8` (the other reports are uploaded as before, with
+  no content type). Text-direction and C1 control characters are removed
+  from every value, so a name cannot show reversed. `--create-html` alone writes HTML
   only. With `--template`, the HTML file has the default layout and one
   warning says so. `--excel-template` with `--create-html` alone stops with
   exit code 2. A run without `--create-html` is unchanged.

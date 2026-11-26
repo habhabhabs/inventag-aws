@@ -50,7 +50,12 @@ _PNG = b"\x89PNG\r\n\x1a\n"
 _JPEG = b"\xff\xd8\xff"
 # Characters that HTML must not carry (C0 controls except tab, line feed and
 # carriage return; lone surrogates; the two non-characters).
-_ILLEGAL = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ud800-\udfff￾￿]")
+_ILLEGAL = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ud800-\udfff\ufffe\uffff]")
+# Text-direction marks, embeddings, overrides and isolates (the set the policy
+# outputs remove), and the C1 controls: removed, so a name from a scanned
+# account cannot show reversed or reordered (security review v1.5.1, 1).
+_BIDI = set(range(0x202A, 0x202F)) | set(range(0x2066, 0x206A)) | {0x200E, 0x200F}
+_REMOVED = re.compile("[" + "".join(chr(c) for c in sorted(_BIDI)) + "\x80-\x9f]")
 
 _STYLE = """
 :root { color-scheme: light; }
@@ -91,10 +96,11 @@ footer { margin-top: 2rem; border-top: 1px solid #c4ccd6; font-size: 0.85rem; }
 
 
 def text(value: Any) -> str:
-    """Escaped text for HTML: ``None`` is empty, characters HTML cannot carry
+    """Escaped text for HTML: ``None`` is empty, text-direction and C1 control
+    characters are removed, characters HTML cannot carry
     become U+FFFD, and ``& < > " '`` are escaped."""
     raw = "" if value is None else str(value)
-    return escape(_ILLEGAL.sub("�", raw), quote=True)
+    return escape(_ILLEGAL.sub("\ufffd", _REMOVED.sub("", raw)), quote=True)
 
 
 def safe_href(target: Any) -> Optional[str]:
