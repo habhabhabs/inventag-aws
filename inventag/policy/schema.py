@@ -23,20 +23,29 @@ from ..templating.schema import NAME_PATTERN
 from . import model
 
 BACKTRACK_PROBLEM = (
-    "pattern can take very long to match: a repeated group holds another "
-    "repeat or a '|'; rewrite it without the nested repeat"
+    "pattern can take very long to match: a repeated group varies in length, "
+    "or two repeats have nothing fixed between them; rewrite it"
 )
 _REPEATS = (_sre.MAX_REPEAT, _sre.MIN_REPEAT)
 _WILDCARD_PARTS = re.compile(r"\[[^\]]*\]?|[*?]")
 
 
+_FIXED = (
+    _sre.LITERAL,
+    _sre.NOT_LITERAL,
+    _sre.IN,
+    _sre.ANY,
+    _sre.CATEGORY,
+)
+
+
 def _risky(items) -> bool:
-    """True when a part of a parsed pattern is an unbounded repeat or a
-    ``|`` (atomic groups and possessive repeats are left out: they do not
-    backtrack)."""
+    """True when a part of a parsed pattern varies in length: a repeat whose
+    minimum and maximum differ, or a ``|`` (atomic groups and possessive
+    repeats are left out: they do not backtrack)."""
     for op, av in items:
         if op in _REPEATS:
-            if av[1] == _sre.MAXREPEAT or _risky(av[2]):
+            if av[0] != av[1] or _risky(av[2]):
                 return True
         elif op is _sre.BRANCH:
             return True
@@ -49,7 +58,45 @@ def _risky(items) -> bool:
     return False
 
 
+def _fixed(items) -> bool:
+    """True when the items always match at least one character."""
+    for op, av in items:
+        if op in _FIXED:
+            return True
+        if op in _REPEATS and av[0] > 0 and _fixed(av[2]):
+            return True
+        if op is _sre.SUBPATTERN and _fixed(av[3]):
+            return True
+    return False
+
+
+def _adjacent(items) -> bool:
+    """True when two unbounded repeats follow each other in one sequence with
+    nothing fixed between them (``a*a*``, ``.*b?.*``): the match tries every
+    split of the text between them."""
+    open_repeat = False
+    for op, av in _flat(items):
+        if op in _REPEATS and av[1] == _sre.MAXREPEAT:
+            if open_repeat:
+                return True
+            open_repeat = True
+        elif op in _FIXED or (op in _REPEATS and av[0] == av[1] and _fixed(av[2])):
+            open_repeat = False
+    return False
+
+
+def _flat(items):
+    """The items of a sequence, with the contents of plain groups inlined."""
+    for op, av in items:
+        if op is _sre.SUBPATTERN:
+            yield from _flat(av[3])
+        else:
+            yield op, av
+
+
 def _nested(items) -> bool:
+    if _adjacent(items):
+        return True
     for op, av in items:
         if op in _REPEATS:
             if av[1] > 1 and _risky(av[2]):
@@ -69,9 +116,11 @@ def _nested(items) -> bool:
 
 
 def backtracks(pattern: str, flags: int = 0) -> bool:
-    """True when ``pattern`` repeats a group that holds another unbounded
-    repeat or a ``|`` (``(a+)+``, ``(a|a)+``, ``(.*a){20}``): such a pattern
-    can take exponential time on a value from the scanned account."""
+    """True when ``pattern`` repeats a group whose length varies (``(a+)+``,
+    ``(a|a)+``, ``(a{1,50}){1,50}``, ``(a?){30}``) or has two unbounded repeats
+    with nothing fixed between them (``a*a*``, ``.*.*``): such a pattern can
+    take exponential or high polynomial time on a value from the scanned
+    account. Not complete: repeats with a fixed character between them pass."""
     try:
         return _nested(_sre_parse(pattern, flags).data)
     except (re.error, RecursionError):  # compiled and checked elsewhere

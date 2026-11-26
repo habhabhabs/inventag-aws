@@ -223,9 +223,16 @@ def _run_scan_policies(args, results: Dict[str, Any], logger):
     loaded, waivers = args.loaded_policies
     state = results.get("state_management") or {}
     if not state.get("state_saved") or not state.get("state_id"):
-        flag = "--policy" if getattr(args, "policy", None) else "--finops-checks"
+        if not getattr(args, "policy", None):
+            # --finops-checks --template alone: the findings never change the
+            # exit code (sign-off condition 4)
+            logger.warning(
+                "--finops-checks: the state snapshot of this run was not saved, "
+                "so no FinOps findings were written; see the notes above."
+            )
+            return None
         logger.error(
-            f"{flag}: the state snapshot of this run was not saved, so the "
+            "--policy: the state snapshot of this run was not saved, so the "
             "policies were not checked; see the notes above."
         )
         return EXIT_ERROR

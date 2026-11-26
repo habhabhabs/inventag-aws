@@ -76,33 +76,27 @@ def exit_sentence(result: Mapping[str, Any], gate) -> Optional[str]:
     return " ".join(parts)
 
 
-_TAG_VALUE_MARKERS = ("' does not match ", "' is not one of ")
-
-
-def _value_free_problem(problem: str, key: Any) -> str:
-    """``KEY: 'value' does not match P`` -> ``KEY: value does not match P``
-    (the same for ``is not one of``); other problems are unchanged."""
-    prefix = f"{key}: '"
-    if not problem.startswith(prefix):
-        return problem
-    for marker in _TAG_VALUE_MARKERS:
-        at = problem.rfind(marker)
-        if at >= len(prefix) - 1:
-            return f"{key}: value {marker[2:]}{problem[at + len(marker):]}"
-    return problem
+def _free_detail(detail: Mapping[str, Any]) -> Dict[str, Any]:
+    """A required-tags detail without its value: only the key and a fixed
+    phrase (a tag value can hold any text, so the problem is never parsed)."""
+    if detail.get("type") == "required-tags" and detail.get("problem") != "missing tag":
+        key = detail.get("key")
+        return {"key": key, "problem": f"{key}: value not allowed"}
+    return dict(detail)
 
 
 def value_free_message(finding: Mapping[str, Any]) -> str:
-    """The finding's message without the tag values that a required-tags
-    problem quotes (SARIF and JUnit never carry a value, spec 11.4)."""
+    """The finding's message with no tag value (SARIF and JUnit never carry a
+    value, spec 11.4). The engine's own message is built again from the
+    details with :func:`_free_detail`; a policy's ``message`` holds only
+    placeholders that name the resource, so it is kept."""
+    from ..engine import _describe
+
     message = str(finding.get("message") or "")
-    for detail in finding.get("details") or []:
-        if detail.get("type") != "required-tags":
-            continue
-        problem = str(detail.get("problem") or "")
-        free = _value_free_problem(problem, detail.get("key"))
-        if free != problem:
-            message = message.replace(problem, free)
+    details = finding.get("details") or []
+    policy = finding.get("policy", "")
+    if details and message == f"{policy}: " + "; ".join(_describe(d) for d in details):
+        return f"{policy}: " + "; ".join(_describe(_free_detail(d)) for d in details)
     return message
 
 

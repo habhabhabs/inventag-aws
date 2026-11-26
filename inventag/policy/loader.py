@@ -328,19 +328,25 @@ def load(
 
     by_name = {p.name: p for p in policies}
     overrides: Dict[str, str] = {}
-    for set_name in sorted(sets):
-        _resolve_set(
-            set_name,
-            sets,
-            by_name,
-            policies,
-            overrides,
-            root,
-            issues,
-            [],
-            trace,
-            _chain,
-        )
+    done: set = set()
+    try:
+        for set_name in sorted(sets):
+            _resolve_set(
+                set_name,
+                sets,
+                by_name,
+                policies,
+                overrides,
+                root,
+                issues,
+                [],
+                trace,
+                _chain,
+                done,
+            )
+    except RecursionError:
+        issues.append(TemplateIssue("policy sets are nested too deeply"))
+    issues[:] = list(dict.fromkeys(issues))  # one line for a repeated problem
     if issues:
         raise PolicyError(issues)
 
@@ -387,13 +393,36 @@ def load(
 
 
 def _resolve_set(
-    name, sets, by_name, policies, overrides, root, issues, chain, trace, files=()
+    name,
+    sets,
+    by_name,
+    policies,
+    overrides,
+    root,
+    issues,
+    chain,
+    trace,
+    files=(),
+    done=None,
 ):
     if name in chain:
         cycle = chain[chain.index(name) :] + [name]
         issues.append(
             TemplateIssue(
                 f"policy sets include each other: {' -> '.join(cycle)}",
+                sets[chain[0]][0].file,
+                None,
+                "spec.include",
+            )
+        )
+        return
+    if done is not None and name in done:
+        return  # resolved already: a set reached twice is resolved once
+    if len(chain) >= model.LIMITS.set_file_depth:
+        issues.append(
+            TemplateIssue(
+                "policy sets include each other deeper than "
+                f"{model.LIMITS.set_file_depth}",
                 sets[chain[0]][0].file,
                 None,
                 "spec.include",
@@ -412,6 +441,8 @@ def _resolve_set(
         )
         return
     policy_set, doc = entry
+    if done is not None:
+        done.add(name)
     for i, include in enumerate(policy_set.include):
         _resolve_set(
             include,
@@ -424,6 +455,7 @@ def _resolve_set(
             chain + [name],
             trace,
             files,
+            done,
         )
     base = root or doc.path.parent
     for i, reference in enumerate(policy_set.policies):
