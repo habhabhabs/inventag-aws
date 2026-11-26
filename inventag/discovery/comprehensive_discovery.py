@@ -2217,37 +2217,6 @@ class ComprehensiveAWSDiscovery:
         self.logger.info("💰 BILLING vs DISCOVERY ANALYSIS")
         self.logger.info("=" * 50)
 
-        # Create comprehensive comparison
-        all_services = discovered_services | self.billing_services
-        comparison_data = []
-
-        for service in sorted(all_services):
-            has_billing = service in self.billing_services
-            has_resources = service in discovered_services
-            billing_cost = self.billing_spend.get(service, 0.0)
-            resource_count = len(
-                [r for r in self.resources if r["service"].lower() == service]
-            )
-
-            status = "✅ MATCHED"
-            if has_billing and not has_resources:
-                status = "❌ MISSING RESOURCES"
-            elif has_resources and not has_billing:
-                status = "🆓 FREE TIER"
-
-            comparison_data.append(
-                {
-                    "service": service.upper(),
-                    "billing": f"${billing_cost:.3f}" if has_billing else "N/A",
-                    "resources": resource_count if has_resources else 0,
-                    "status": status,
-                }
-            )
-
-            self.logger.info(
-                f"{status:<20} {service.upper():<15} Billing: ${billing_cost:<8.3f} Resources: {resource_count}"
-            )
-
         # Summary analysis
         missing_services = self.billing_services - discovered_services
         unbilled_services = discovered_services - self.billing_services
@@ -2266,22 +2235,10 @@ class ComprehensiveAWSDiscovery:
         )
 
         if missing_services:
-            self.logger.warning("💸 MISSING RESOURCES for services with billing:")
-            for service in sorted(missing_services):
-                cost = self.billing_spend.get(service, 0.0)
-                self.logger.warning(
-                    f"   • {service.upper()}: ${cost:.3f} - resources not discovered"
-                )
-
-        if unbilled_services:
-            self.logger.info("🆓 FREE TIER SERVICES (no billing cost):")
-            for service in sorted(unbilled_services):
-                count = len(
-                    [r for r in self.resources if r["service"].lower() == service]
-                )
-                self.logger.info(
-                    f"   • {service.upper()}: {count} resources (likely free tier)"
-                )
+            # the count only (CodeQL clear-text logging)
+            self.logger.warning(
+                f"💸 MISSING RESOURCES for {len(missing_services)} services with billing"
+            )
 
         # Calculate overall detection rate
         total_billing_services = len(self.billing_services)

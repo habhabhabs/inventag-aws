@@ -165,8 +165,10 @@ def test_the_changelog_lists_the_changed_log_lines():
     assert 'ends after "Estimates for it will be missing."' in flat
 
 
-# Second CodeQL pass (PR #65 at 8c339e2d): billing amounts and Cost Explorer
-# service names are not logged either; the counts stay.
+# Second CodeQL pass (PR #65 at 8c339e2d): billing amounts, Cost Explorer
+# service names and resource rows are not logged either; the counts stay. The
+# AWS error text of a refused Cost Explorer call stays at DEBUG: the pages
+# (status, troubleshooting) say that --debug shows it.
 BILLING_VALUES = {
     "spend",
     "cost",
@@ -176,8 +178,6 @@ BILLING_VALUES = {
     "data",
     "service",
     "resource",
-    "error",
-    "e",
 }
 
 

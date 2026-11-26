@@ -860,7 +860,6 @@ class AWSResourceInventory:
 
             # Process billing data to identify active services
             services_with_usage = {}
-            total_spend = 0.0
 
             for result_by_time in response["ResultsByTime"]:
                 for group in result_by_time["Groups"]:
@@ -880,7 +879,6 @@ class AWSResourceInventory:
                             "usage": usage_quantity,
                             "aws_service_code": normalized_service,
                         }
-                        total_spend += cost_amount
 
             self.coverage.record(
                 region="global",
@@ -897,19 +895,12 @@ class AWSResourceInventory:
                 svc: data["cost"] for svc, data in services_with_usage.items()
             }
 
+            # counts only: billed amounts and service names stay out of the
+            # log (CodeQL clear-text logging)
             self.logger.info(
                 f"Billing analysis: Found {len(services_with_usage)} services with usage "
-                f"(${total_spend:.2f} total spend since "
-                f"{self.comprehensive_discovery.billing_period_start})"
+                f"since {self.comprehensive_discovery.billing_period_start}"
             )
-
-            # Log top spending services
-            top_services = sorted(
-                services_with_usage.items(), key=lambda x: x[1]["cost"], reverse=True
-            )[:10]
-
-            for service, data in top_services:
-                self.logger.info(f"  💰 {service}: ${data['cost']:.2f}")
 
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "")
@@ -1054,14 +1045,11 @@ class AWSResourceInventory:
         }
 
         if missing_services:
+            # the count only (CodeQL clear-text logging)
             self.logger.warning(
-                f"Found {len(missing_services)} services with billing usage but no discovered resources:"
+                f"Found {len(missing_services)} services with billing usage but no discovered resources "
+                "(they may have untagged resources)."
             )
-            for billed in sorted(missing_services):  # names from Cost Explorer
-                spend = self.billing_spend_by_service.get(billed, 0)
-                self.logger.warning(
-                    f"  💸 {billed}: ${spend:.2f} (may have untagged resources)"
-                )
 
         # Find services with discovered resources but no billing usage
         unbilled_services = {
@@ -1091,14 +1079,19 @@ class AWSResourceInventory:
         )
 
         # Attempt service-specific discovery for missing services
+        failed: List[str] = []
         for service in missing_services:
-            spend = self.billing_spend_by_service.get(service, 0)
-            self.logger.info(f"Targeting {service} (${spend:.2f} spend)...")
-
             try:
                 self._discover_service_by_name(service)
-            except Exception as e:
-                self.logger.warning(f"Failed to discover resources for {service}: {e}")
+            except Exception as e:  # silent-ok: counted; one WARNING after the loop
+                failed.append(type(e).__name__)
+        if failed:
+            # a count and the error types (CodeQL clear-text logging)
+            kinds = ", ".join(sorted(set(failed)))
+            self.logger.warning(
+                f"Targeted discovery failed for {len(failed)} of "
+                f"{len(missing_services)} services ({kinds})"
+            )
 
     def _discover_service_by_name(self, service_name: str):
         """Dynamically discover resources for a service using generic AWS API calls."""

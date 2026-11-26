@@ -279,9 +279,8 @@ class CostAnalyzer:
             ),
         ):
             if error is not None:
-                self.logger.warning(
-                    f"Cost estimation failed for resource {resource.get('id', 'unknown')}: {error}"
-                )
+                kind = type(error).__name__
+                self.logger.warning(f"Cost estimation failed for a resource ({kind})")
             elif cost_estimate:
                 cost_estimates.append(cost_estimate)
 
