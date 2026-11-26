@@ -175,6 +175,8 @@ inventag --create-excel --create-html
   `--finops-checks` 或 `--finops-cost-allocation` 時出現。
 - **覆蓋範圍和錯誤：** 帳戶、每個帳戶中列表呼叫的結束方式（`ok`、`empty`、
   `denied` 及其他結果），以及被拒絕的權限。
+  帳戶表的 `Read in part` 欄在帳戶的掃描提前停止，
+  或其中有列表沒有讀取時為 `Yes`，與執行說明 “Not read in account” 所列的帳戶相同。
 
 該檔案不包含 `--enable-cost-analysis` 的 Cost Analysis 表格，也不包含
 `--policy` 的發現項（它們在 `policy_findings_<timestamp>.json` 中）。
@@ -402,7 +404,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090000.xlsx
 ## 終端輸出 {#terminal-output}
 
 不使用 `--verbose` 時，執行會列印警告、錯誤和已寫出的檔案。
-使用範本時，每個檔案會列印為 `Wrote <path>`，如果啟用了標籤策略，隨後還有一行標籤策略摘要。不使用範本時，預設報告會列印為 `Data exported to <path>`。使用 `--policy` 時，一律會列印策略摘要；`Policy findings: <path>` 這一行以 INFO 層級記錄，只在使用 `--verbose` 時顯示。完全不帶選項時，`inventag` 會列印說明頁面並以結束代碼 2 結束。
+使用範本時，每個檔案會列印為 `Wrote <path>`，如果啟用了標籤策略，隨後還有一行標籤策略摘要。不使用範本時，預設報告會列印為 `Data exported to <path>`；使用 `--create-html` 時，HTML 檔案也有自己的一行 `Data exported to <path>`。使用 `--policy` 時，一律會列印策略摘要；`Policy findings: <path>` 這一行以 INFO 層級記錄，只在使用 `--verbose` 時顯示。完全不帶選項時，`inventag` 會列印說明頁面並以結束代碼 2 結束。
 
 ## 結束代碼 {#exit-codes}
 

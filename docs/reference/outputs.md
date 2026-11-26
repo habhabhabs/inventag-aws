@@ -280,7 +280,10 @@ inventag --create-excel --create-html
   with `--finops-checks` or `--finops-cost-allocation`.
 - **Coverage and errors:** the accounts, how the listing calls ended in each
   account (`ok`, `empty`, `denied` and the other outcomes), and the
-  permissions that were denied.
+  permissions that were denied. The `Read in part` column of the accounts
+  table is `Yes` when the account stopped before the end of its scan or a
+  listing in it was not read, the same accounts that a "Not read in account"
+  run note names.
 
 The file does not hold the Cost Analysis tables of `--enable-cost-analysis`
 or the findings of `--policy` (those are in `policy_findings_<timestamp>.json`).
@@ -545,7 +548,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090000.xlsx
 
 Without `--verbose`, a run prints warnings, errors and the files written. With
 a template, each file is printed as `Wrote <path>`, followed by a one-line tag
-policy summary when a policy is active. Without a template, the default report is printed as `Data exported to <path>`. With `--policy`, the policy summary is always printed; the line `Policy findings: <path>` is logged at INFO level and shows only with `--verbose`. With no option at all, `inventag` prints the help page and exits with code 2.
+policy summary when a policy is active. Without a template, the default report is printed as `Data exported to <path>`, and with `--create-html` the HTML file has its own `Data exported to <path>` line. With `--policy`, the policy summary is always printed; the line `Policy findings: <path>` is logged at INFO level and shows only with `--verbose`. With no option at all, `inventag` prints the help page and exits with code 2.
 
 ## Exit codes
 

@@ -174,7 +174,8 @@ inventag --create-excel --create-html
 - **FinOps** 和 **FinOps costs：** 与 Excel 工作表相同的表格，仅在使用
   `--finops-checks` 或 `--finops-cost-allocation` 时出现。
 - **覆盖范围和错误：** 账户、每个账户中列表调用的结束方式（`ok`、`empty`、
-  `denied` 及其他结果），以及被拒绝的权限。
+  `denied` 及其他结果），以及被拒绝的权限。账户表的 `Read in part` 列在账户的扫描提前停止，
+  或其中有列表没有读取时为 `Yes`，与运行说明 “Not read in account” 所列的账户相同。
 
 该文件不包含 `--enable-cost-analysis` 的 Cost Analysis 表格，也不包含
 `--policy` 的发现项（它们在 `policy_findings_<timestamp>.json` 中）。
@@ -402,7 +403,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090000.xlsx
 ## 终端输出 {#terminal-output}
 
 不使用 `--verbose` 时，运行会打印警告、错误和已写出的文件。
-使用模板时，每个文件会打印为 `Wrote <path>`，如果启用了标签策略，随后还有一行标签策略摘要。不使用模板时，默认报告会打印为 `Data exported to <path>`。使用 `--policy` 时，总是会打印策略摘要；`Policy findings: <path>` 这一行以 INFO 级别记录，只在使用 `--verbose` 时显示。完全不带选项时，`inventag` 会打印帮助页面并以退出码 2 结束。
+使用模板时，每个文件会打印为 `Wrote <path>`，如果启用了标签策略，随后还有一行标签策略摘要。不使用模板时，默认报告会打印为 `Data exported to <path>`；使用 `--create-html` 时，HTML 文件也有自己的一行 `Data exported to <path>`。使用 `--policy` 时，总是会打印策略摘要；`Policy findings: <path>` 这一行以 INFO 级别记录，只在使用 `--verbose` 时显示。完全不带选项时，`inventag` 会打印帮助页面并以退出码 2 结束。
 
 ## 退出码 {#exit-codes}
 

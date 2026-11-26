@@ -227,7 +227,10 @@ inventag --create-excel --create-html
   solo con `--finops-checks` o `--finops-cost-allocation`.
 - **Cobertura y errores:** las cuentas, cómo terminaron las llamadas de
   listado en cada cuenta (`ok`, `empty`, `denied` y los demás resultados) y
-  los permisos denegados.
+  los permisos denegados. La columna `Read in part` de la tabla de cuentas
+  es `Yes` cuando la cuenta se detuvo antes del final de su análisis o no se
+  leyó uno de sus listados: las mismas cuentas que nombra una nota de la
+  ejecución "Not read in account".
 
 El archivo no contiene las tablas de Cost Analysis de `--enable-cost-analysis`
 ni los hallazgos de `--policy` (están en `policy_findings_<timestamp>.json`).
@@ -471,7 +474,7 @@ bom-reports/20261112_090000/multi_account_bom_20261112_090000.xlsx
 
 Sin `--verbose`, una ejecución imprime advertencias, errores y los archivos escritos. Con
 una plantilla, cada archivo se imprime como `Wrote <path>`, seguido de un resumen de una línea de la
-política de etiquetas cuando hay una activa. Sin plantilla, el informe predeterminado se imprime como `Data exported to <path>`. Con `--policy`, el resumen de las políticas se imprime siempre; la línea `Policy findings: <path>` se registra con nivel INFO y solo se muestra con `--verbose`. Sin ninguna opción, `inventag` imprime la página de ayuda y termina con el código 2.
+política de etiquetas cuando hay una activa. Sin plantilla, el informe predeterminado se imprime como `Data exported to <path>`, y con `--create-html` el archivo HTML tiene su propia línea `Data exported to <path>`. Con `--policy`, el resumen de las políticas se imprime siempre; la línea `Policy findings: <path>` se registra con nivel INFO y solo se muestra con `--verbose`. Sin ninguna opción, `inventag` imprime la página de ayuda y termina con el código 2.
 
 ## Códigos de salida {#exit-codes}
 
