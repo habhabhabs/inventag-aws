@@ -246,7 +246,7 @@ def test_pages_stop_at_the_stated_count_with_one_warning(monkeypatch):
     assert len(ce_a.calls) == cost_module.TREND_PAGES_PER_ACCOUNT == 2
     warnings = [m for level, m in log.lines if level >= logging.WARNING]
     assert warnings == [
-        "Cost analysis: the cost trend of account 111111111111 has more than 2 "
+        "Cost analysis: the cost trend of an account has more than 2 "
         "page(s); the services on later pages have no trend in this report."
     ]
 
@@ -265,7 +265,7 @@ def test_a_throttled_request_is_one_warning(monkeypatch):
     assert {t.account_id for t in trends} == {"222222222222"}
     warnings = [m for level, m in log.lines if level >= logging.WARNING]
     assert warnings == [
-        "Cost analysis: the cost trend request of account 111111111111 failed "
+        "Cost analysis: the cost trend request of an account failed "
         "(ThrottlingException); that account has no trend. Run with --debug for "
         "the detail."
     ]
@@ -552,14 +552,13 @@ def test_the_library_path_with_several_accounts_warns_once(monkeypatch):
     ]
 
 
-def test_an_account_without_a_session_is_named_in_a_warning(monkeypatch):
+def test_an_account_without_a_session_gives_a_warning(monkeypatch):
     analyzer, log, sessions, _, _ = _two_accounts(monkeypatch)
     del sessions["222222222222"]
     analyzer.analyze_cost_trends(ROWS, account_sessions=sessions, now=NOW)
     warnings = [m for level, m in log.lines if level >= logging.WARNING]
     assert warnings == [
-        "Cost analysis: account 222222222222 has no session, so its cost trend "
-        "is not read."
+        "Cost analysis: an account has no session, so its cost trend is not read."
     ]
 
 

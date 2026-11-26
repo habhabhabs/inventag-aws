@@ -92,28 +92,36 @@ the flag is unchanged; the changelog lists it under Added.
   `finops-cost-allocation` (in v1.4.3 a Python caller could pass another tag
   policy).
 
-- Some log lines no longer carry a value from a scanned resource or AWS's
-  error text (CodeQL "clear-text logging"). The Pricing warning of
-  `--enable-cost-analysis` ends after "Estimates for it will be missing."
-  (before, it named the first resource type and the error text). With `-v`,
-  the services that have resources but no recent billing are counted in one
-  line, no longer named one per line. The debug lines for S3 bucket regions
-  and for Pricing and CloudWatch failures give the AWS error code or the
-  exception type instead of the bucket name, resource ID or error text.
-- The billing lines of the log no longer show a billed amount or a service
-  name: "Billing analysis: Found N services with usage since DATE" (it showed
-  the total spend), and the warnings "Found N services with billing usage but
-  no discovered resources (they may have untagged resources)." and
-  "💸 MISSING RESOURCES for N services with billing" give a count (before, one
-  line per service with its spend followed). With `-v`, the ten top-spending
-  services, the "Targeting SERVICE ($N spend)" lines, the per-service rows of
-  "BILLING vs DISCOVERY ANALYSIS" and the free-tier service list are gone; the
-  completeness summary and the detection rate stay. The warning of
-  `--enable-cost-analysis` for a failed estimate reads "Cost estimation failed
-  for a resource (ERROR TYPE)" (it named the resource ID and the error text).
-  A failed targeted discovery of billed services is one warning, "Targeted
-  discovery failed for N of M services (ERROR TYPES)", instead of one warning
-  per service with the error text.
+- Log lines carry no billing data and no value from a scanned resource (CodeQL
+  "clear-text logging"): no log line names a resource, a bucket, a table, an
+  ARN, an account of a cost trend or a service from billing, and no line
+  shows a billed amount, a count of billed services or the billing period.
+  The changed lines: "Billing analysis: read the services with usage from
+  Cost Explorer." (before: a count, the total spend and the start date, then
+  the ten top-spending services with `-v`); "Some services have billing usage
+  but no discovered resources (they may have untagged resources)." (before:
+  a count, then one warning per service with its spend); "Some services have
+  discovered resources but no recent billing (free tier or no recent usage)."
+  (before: one `-v` line per service); "Comprehensive discovery complete.
+  Found N unique resources across M services." (the billing-validated count
+  is gone); "📊 Services with primary resources were found." (before: the
+  list); the "BILLING vs DISCOVERY ANALYSIS" block of `-v` is one line, and
+  "💸 Some services with billing usage have no discovered resources." is its
+  warning (before: one row per service, a completeness summary and a
+  detection rate); targeted discovery logs no service and its failures are
+  one warning, "Targeted discovery failed for N services (ERROR TYPES)". The
+  Pricing warning of `--enable-cost-analysis` ends after "Estimates for it
+  will be missing." (before: the first resource type and the error text).
+  Warnings about one resource name the error type, not the resource or the
+  error text: "Cost estimation failed for a resource (ERROR TYPE)", "Failed
+  to enrich a resource (ERROR TYPE)", "Failed to process a resource (ERROR
+  TYPE)", "Failed to get details for an S3 bucket (ERROR TYPE)" and the same
+  for a DynamoDB table, a tagged resource, a description or a tag mapping.
+  The three cost trend warnings say "an account" instead of the account ID.
+  The debug lines of S3 bucket regions, Pricing and CloudWatch failures and
+  resource details give the AWS error code or the exception type. The debug
+  line "Cost Explorer detail" still holds AWS's error text (as the
+  troubleshooting page shows).
 
 ### Removed
 

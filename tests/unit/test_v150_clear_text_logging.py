@@ -60,7 +60,7 @@ def test_no_line_names_each_service_without_billing():
         inventory.AWSResourceInventory._validate_discovery_with_billing
     )
     assert "🆓" not in source
-    assert "services with discovered resources but no recent billing" in source
+    assert "have discovered resources but no recent billing" in source
 
 
 def _analyzer(client):
@@ -216,7 +216,7 @@ def test_the_changelog_lists_the_billing_log_lines():
     start = text.index("## [Unreleased]")
     changed = text[text.index("### Changed", start) : text.index("### Removed", start)]
     flat = " ".join(changed.split())
-    assert "no longer show a billed amount or a service name" in flat
+    assert "shows a billed amount, a count of billed services" in flat
 
 
 # Third CodeQL pass (PR #65 at 18612070, inventory.py 901): the whole class.

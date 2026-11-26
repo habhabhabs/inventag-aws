@@ -148,12 +148,10 @@ def test_a_timeout_is_one_request_and_one_line(monkeypatch, caplog):
     assert inv.comprehensive_discovery.coverage.summary() == {"error": 1}
 
 
-def test_the_billing_log_line_names_the_start_of_the_period_it_read(
-    monkeypatch, caplog
-):
-    """Review M1: billing validation reads the shared request, which starts 30
-    days before the first day of the month, not 30 days ago; the --verbose
-    line names that start date instead of "last 30 days"."""
+def test_the_billing_log_line_holds_no_billing_data(monkeypatch, caplog):
+    """Review M1 had the --verbose line name the start of the period it read.
+    Since the CodeQL clear-text logging fix (v1.5.0) the line holds no billing
+    data at all: no count, no amount and no date."""
     ce = CostExplorer(ANSWER)
     inv = _inventory(ce, monkeypatch)
     caplog.set_level(logging.INFO)
@@ -166,5 +164,6 @@ def test_the_billing_log_line_names_the_start_of_the_period_it_read(
     ]
     # a handler an earlier test left can capture the record twice
     assert set(lines) == {
-        f"Billing analysis: Found 2 services with usage since {start}"
+        "Billing analysis: read the services with usage from Cost Explorer."
     }, lines
+    assert all(start not in line for line in lines)
