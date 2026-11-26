@@ -183,6 +183,48 @@ def test_characters_html_cannot_carry_become_the_replacement_character():
     assert not re.search("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", document)
 
 
+BIDI_AND_C1 = (
+    ["\u202a", "\u202b", "\u202c", "\u202d", "\u202e"]
+    + ["\u2066", "\u2067", "\u2068", "\u2069", "\u200e", "\u200f"]
+    + [chr(c) for c in range(0x80, 0xA0)]
+)
+
+
+@pytest.mark.parametrize("char", BIDI_AND_C1, ids=lambda c: f"U+{ord(c):04X}")
+def test_direction_and_c1_control_characters_are_removed_from_every_value(char):
+    spoof = f"prod-db{char}gpj.exe"
+    rows = [
+        _row(
+            1,
+            name=spoof,
+            tags={f"Key{char}": spoof},
+            raw_data={"Description": spoof},
+        )
+    ]
+    data = BOMData(
+        resources=rows,
+        compliance_summary={"summary": {f"x{char}": spoof}},
+        generation_metadata={
+            "permissions_denied": [{"action": spoof}],
+            "coverage_summary": {f"1{char}": {"ok": 1}},
+        },
+    )
+    document = html_report.render_html_report(
+        data,
+        branding={"company_name": spoof, "title": spoof},
+        notes=[spoof],
+        generated_at=spoof,
+    )
+    assert char not in document
+    assert "prod-dbgpj.exe" in document
+
+
+def test_the_direction_characters_are_those_the_policy_outputs_remove():
+    from inventag.policy.outputs import _common
+
+    assert html_report._BIDI == _common._BIDI
+
+
 # --------------------------------------------------------------- determinism
 
 

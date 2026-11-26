@@ -207,15 +207,17 @@ RUN = [
 ]
 
 
-def test_the_html_file_is_uploaded_with_the_other_reports_and_no_content_type(
+def test_the_html_file_is_uploaded_as_html_and_other_reports_unchanged(
     aws, monkeypatch, tmp_path  # noqa: F811
 ):
-    sent = []
+    sent = {}
     real = botocore.client.BaseClient._make_api_call
 
     def make_api_call(self, operation_name, api_params):
         if operation_name == "PutObject":
-            sent.append(sorted(k for k in api_params if k != "Body"))
+            sent[Path(api_params["Key"]).suffix] = sorted(
+                k for k in api_params if k != "Body"
+            )
         return real(self, operation_name, api_params)
 
     monkeypatch.setattr(botocore.client.BaseClient, "_make_api_call", make_api_call)
@@ -226,8 +228,12 @@ def test_the_html_file_is_uploaded_with_the_other_reports_and_no_content_type(
         item["Key"] for item in s3.list_objects_v2(Bucket="a-bucket")["Contents"]
     )
     assert [Path(k).suffix for k in keys] == [".html", ".xlsx"]
-    assert len(sent) == 2
-    assert all("ContentType" not in params for params in sent)
+    # the Excel upload sends the same parameters as in v1.5.0
+    assert sent[".xlsx"] == ["Bucket", "Key", "ServerSideEncryption"]
+    assert sent[".html"] == ["Bucket", "ContentType", "Key", "ServerSideEncryption"]
+    head = {Path(k).suffix: s3.head_object(Bucket="a-bucket", Key=k) for k in keys}
+    assert head[".html"]["ContentType"] == "text/html; charset=utf-8"
+    assert head[".xlsx"]["ContentType"] == "binary/octet-stream"
 
 
 def _html_table(document, caption):
