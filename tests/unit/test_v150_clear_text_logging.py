@@ -122,3 +122,14 @@ def test_a_pricing_filter_error_logs_its_type(caplog, monkeypatch):
     text = "\n".join(r.getMessage() for r in caplog.records)
     assert "Could not build pricing filters (ValueError)" in text
     assert "value from a row" not in text
+
+
+def test_the_changelog_lists_the_changed_log_lines():
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parents[2] / "CHANGELOG.md").read_text()
+    start = text.index("## [Unreleased]")
+    changed = text[text.index("### Changed", start) : text.index("### Removed", start)]
+    flat = " ".join(changed.split())
+    assert 'CodeQL "clear-text logging"' in flat
+    assert 'ends after "Estimates for it will be missing."' in flat

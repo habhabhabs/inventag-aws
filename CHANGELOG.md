@@ -92,6 +92,15 @@ the flag is unchanged; the changelog lists it under Added.
   `finops-cost-allocation` (in v1.4.3 a Python caller could pass another tag
   policy).
 
+- Some log lines no longer carry a value from a scanned resource or AWS's
+  error text (CodeQL "clear-text logging"). The Pricing warning of
+  `--enable-cost-analysis` ends after "Estimates for it will be missing."
+  (before, it named the first resource type and the error text). With `-v`,
+  the services that have resources but no recent billing are counted in one
+  line, no longer named one per line. The debug lines for S3 bucket regions
+  and for Pricing and CloudWatch failures give the AWS error code or the
+  exception type instead of the bucket name, resource ID or error text.
+
 ### Removed
 
 - The per-resource cost trend entries of `cost_analysis["cost_trends"]` (a
