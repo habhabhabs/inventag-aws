@@ -163,3 +163,69 @@ def test_the_changelog_lists_the_changed_log_lines():
     flat = " ".join(changed.split())
     assert 'CodeQL "clear-text logging"' in flat
     assert 'ends after "Estimates for it will be missing."' in flat
+
+
+# Second CodeQL pass (PR #65 at 8c339e2d): billing amounts and Cost Explorer
+# service names are not logged either; the counts stay.
+BILLING_VALUES = {
+    "spend",
+    "cost",
+    "billing_cost",
+    "total_spend",
+    "billed",
+    "data",
+    "service",
+    "resource",
+    "error",
+    "e",
+}
+
+
+def test_no_log_call_takes_a_billing_amount_or_service_name():
+    for function in (
+        inventory.AWSResourceInventory._discover_services_via_billing,
+        inventory.AWSResourceInventory._validate_discovery_with_billing,
+        inventory.AWSResourceInventory._discover_missing_billing_services,
+        comprehensive_discovery.ComprehensiveAWSDiscovery._validate_with_billing,
+        CostAnalyzer.estimate_resource_costs,
+    ):
+        assert not _interpolated(function) & BILLING_VALUES, function.__qualname__
+
+
+def test_the_billing_lines_keep_their_counts():
+    source = inspect.getsource(
+        inventory.AWSResourceInventory._validate_discovery_with_billing
+    )
+    assert "services with billing usage but no discovered resources" in source
+    source = inspect.getsource(
+        comprehensive_discovery.ComprehensiveAWSDiscovery._validate_with_billing
+    )
+    assert "DISCOVERY COMPLETENESS SUMMARY" in source
+    assert "DETECTION RATE" in source
+
+
+def test_a_failed_estimate_names_no_resource(monkeypatch):
+    analyzer = _analyzer(Mock())
+
+    def broken(resource):
+        raise RuntimeError("text with i-secret-row")
+
+    monkeypatch.setattr(analyzer, "_estimate_single_resource_cost", broken)
+    caught = _capture(monkeypatch, analyzer.logger)
+    try:
+        analyzer.estimate_resource_costs(_rows())
+    finally:
+        analyzer.logger.removeHandler(caught)
+    text = "\n".join(r.getMessage() for r in caught.records)
+    assert "Cost estimation failed for a resource (RuntimeError)" in text
+    assert "i-secret-row" not in text
+
+
+def test_the_changelog_lists_the_billing_log_lines():
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parents[2] / "CHANGELOG.md").read_text()
+    start = text.index("## [Unreleased]")
+    changed = text[text.index("### Changed", start) : text.index("### Removed", start)]
+    flat = " ".join(changed.split())
+    assert "no longer show a billed amount or a service name" in flat
