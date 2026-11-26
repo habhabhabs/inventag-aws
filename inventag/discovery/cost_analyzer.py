@@ -335,7 +335,7 @@ class CostAnalyzer:
 
         except Exception as e:
             self.logger.debug(
-                f"Cost estimation failed for resource {resource.get('id', 'unknown')}: {e}"
+                f"Cost estimation failed for a resource ({type(e).__name__})"
             )
             self._warn_once("cost estimation", e, "those resources have no estimate.")
             return None
@@ -855,7 +855,7 @@ class CostAnalyzer:
                     forgotten_resources.append(analysis)
             except Exception as e:
                 self.logger.debug(
-                    f"Activity analysis failed for resource {resource.get('id', 'unknown')}: {e}"
+                    f"Activity analysis failed for a resource ({type(e).__name__})"
                 )
                 self._warn_once(
                     "the activity check", e, "they are not checked for being unused."
@@ -1164,8 +1164,8 @@ class CostAnalyzer:
                 session = account_sessions.get(account)
                 if session is None:
                     self.logger.warning(
-                        f"Cost analysis: account {account or 'unknown'} has no "
-                        "session, so its cost trend is not read."
+                        "Cost analysis: an account has no session, so its cost "
+                        "trend is not read."
                     )
                     continue
                 client = self._trend_client(session)
@@ -1183,7 +1183,7 @@ class CostAnalyzer:
                     )
                 except Exception as e:
                     self.logger.debug(
-                        f"Cost trend analysis failed for service {service}: {e}"
+                        f"Cost trend analysis failed for a service ({type(e).__name__})"
                     )
                     self._warn_once(
                         "the cost trend", e, "those services have no trend."
@@ -1235,9 +1235,9 @@ class CostAnalyzer:
                 else:
                     self.logger.debug(f"Cost trend request failed: {e}")
                     self.logger.warning(
-                        "Cost analysis: the cost trend request of account "
-                        f"{account or 'unknown'} failed ({code or type(e).__name__}); "
-                        "that account has no trend. Run with --debug for the detail."
+                        "Cost analysis: the cost trend request of an account "
+                        f"failed ({code or type(e).__name__}); that account has no "
+                        "trend. Run with --debug for the detail."
                     )
                 return None if page == 0 else groups
             for result in answer.get("ResultsByTime", []):
@@ -1254,9 +1254,9 @@ class CostAnalyzer:
             if not token:
                 return groups
         self.logger.warning(
-            f"Cost analysis: the cost trend of account {account or 'unknown'} has "
-            f"more than {TREND_PAGES_PER_ACCOUNT} page(s); the services on later "
-            "pages have no trend in this report."
+            "Cost analysis: the cost trend of an account has more than "
+            f"{TREND_PAGES_PER_ACCOUNT} page(s); the services on later pages have "
+            "no trend in this report."
         )
         return groups
 
@@ -1425,7 +1425,7 @@ class CostAnalyzer:
         except Exception as e:
             self._warn_once("a recommendation", e, "those resources have none.")
             self.logger.debug(
-                f"Failed to generate recommendation for expensive resource {resource.resource_id}: {e}"
+                f"Failed to generate a recommendation for an expensive resource ({type(e).__name__})"
             )
             return None
 
@@ -1450,7 +1450,7 @@ class CostAnalyzer:
         except Exception as e:
             self._warn_once("a recommendation", e, "those resources have none.")
             self.logger.debug(
-                f"Failed to generate recommendation for forgotten resource {forgotten.resource_id}: {e}"
+                f"Failed to generate a recommendation for a forgotten resource ({type(e).__name__})"
             )
             return None
 
@@ -1486,7 +1486,7 @@ class CostAnalyzer:
 
             except Exception as e:
                 self.logger.debug(
-                    f"Failed to generate underutilization recommendation for {estimate.resource_id}: {e}"
+                    f"Failed to generate an underutilization recommendation ({type(e).__name__})"
                 )
                 self._warn_once("a recommendation", e, "those resources have none.")
 
@@ -1606,7 +1606,7 @@ class CostAnalyzer:
 
         except Exception as e:
             self.logger.debug(
-                f"Cost enrichment failed for resource {resource.get('id', 'unknown')}: {e}"
+                f"Cost enrichment failed for a resource ({type(e).__name__})"
             )
             self._warn_once(
                 "adding cost fields", e, "those resources have no cost fields."

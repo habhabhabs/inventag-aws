@@ -937,7 +937,7 @@ class ComprehensiveAWSDiscovery:
                         self.billing_spend[normalized_service] = cost
 
             self.logger.info(
-                f"💰 Found {len(self.billing_services)} services with billing usage"
+                "💰 Read the services with billing usage from Cost Explorer."
             )
             self._record_billing(coverage_mod.OK, len(self.billing_services))
 
@@ -958,7 +958,9 @@ class ComprehensiveAWSDiscovery:
             else:
                 self._warn_once(
                     "billing",
-                    coverage_mod.billing_failure_message(e, code, self.DENIED_CODES),
+                    coverage_mod.cost_explorer_failure_message(
+                        e, code, self.DENIED_CODES
+                    ),
                 )
                 self.logger.debug(f"Cost Explorer detail: {e}")
 
@@ -2156,17 +2158,13 @@ class ComprehensiveAWSDiscovery:
                     new_resources_found += 1
                 except Exception as e:
                     self.logger.warning(
-                        (f"Failed to process tagged resource {arn}: {type(e).__name__}")
-                        + " Run with --debug for the detail."
+                        f"Failed to process a tagged resource ({type(e).__name__})."
                     )
-                    self.logger.debug(f"Failed to process tagged resource {arn}: {e}")
 
         # Report services with primary resources for transparency
         if self.fallback_display_mode == "auto":
             if self.services_with_primary_resources:
-                self.logger.info(
-                    f"📊 Services with primary resources found: {sorted(self.services_with_primary_resources)}"
-                )
+                self.logger.info("📊 Services with primary resources were found.")
             self.logger.info(
                 "🔍 Auto mode: Fallback resources shown only for services "
                 "without primary discoveries"
@@ -2214,42 +2212,15 @@ class ComprehensiveAWSDiscovery:
 
         discovered_services = {r["service"].lower() for r in self.resources}
 
-        self.logger.info("💰 BILLING vs DISCOVERY ANALYSIS")
-        self.logger.info("=" * 50)
-
-        # Summary analysis
-        missing_services = self.billing_services - discovered_services
-        unbilled_services = discovered_services - self.billing_services
-        matched_services = discovered_services & self.billing_services
-
-        self.logger.info("=" * 50)
-        self.logger.info("📊 DISCOVERY COMPLETENESS SUMMARY:")
-        self.logger.info(
-            f"   ✅ Matched (billing + resources): {len(matched_services)} services"
-        )
-        self.logger.info(
-            f"   ❌ Missing resources (billing only): {len(missing_services)} services"
-        )
-        self.logger.info(
-            f"   🆓 Free tier (resources only): {len(unbilled_services)} services"
-        )
-
-        if missing_services:
-            # the count only (CodeQL clear-text logging)
+        # Fixed text only: CodeQL counts billing data as private data, so no
+        # amount, name or count derived from it goes into the log. Billed
+        # services with no resources are rows of the report ("detected from
+        # billing") unless fallback resources are hidden.
+        self.logger.info("💰 Billing data was compared with the discovered services.")
+        if self.billing_services - discovered_services:
             self.logger.warning(
-                f"💸 MISSING RESOURCES for {len(missing_services)} services with billing"
+                "💸 Some services with billing usage have no discovered resources."
             )
-
-        # Calculate overall detection rate
-        total_billing_services = len(self.billing_services)
-        detected_billing_services = len(matched_services)
-        if total_billing_services > 0:
-            detection_rate = (detected_billing_services / total_billing_services) * 100
-            self.logger.info(
-                f"🎯 DETECTION RATE: {detection_rate:.1f}% ({detected_billing_services}/{total_billing_services} billing services)"
-            )
-
-        self.logger.info("=" * 50)
 
     # Billing lines that are not a service with resources.
     _NON_SERVICE_BILLING = {"tax", "refund", "credit", "savingsplans", "support"}
@@ -2536,9 +2507,7 @@ class ComprehensiveAWSDiscovery:
                             raise answer
                         apply(resource, answer, region)
                     except Exception as e:
-                        self.logger.debug(
-                            failure_text.format(id=resource.get("resource_id"), error=e)
-                        )
+                        self.logger.debug(f"A detail read failed ({type(e).__name__})")
                         self._detail_failure(failures, operation, e)
             self._record_detail_failures(service, region, resource_type, failures)
 
@@ -2626,9 +2595,7 @@ class ComprehensiveAWSDiscovery:
 
         def apply(resource, answer, region):
             resource["raw_data"].update(answer)
-            self.logger.debug(
-                f"Enhanced Lambda function {resource.get('resource_id')} in {region}"
-            )
+            self.logger.debug(f"Enhanced a Lambda function in {region}")
 
         self._enhance_per_region(
             self._resources_by_region("LAMBDA", lambda t: t == "Function"),
@@ -2670,9 +2637,7 @@ class ComprehensiveAWSDiscovery:
         def apply(resource, answer, region):
             if answer:
                 resource["raw_data"].update(answer)
-                self.logger.debug(
-                    f"Enhanced RDS instance {resource.get('resource_id')} in {region}"
-                )
+                self.logger.debug(f"Enhanced an RDS instance in {region}")
 
         self._enhance_per_region(
             self._resources_by_region("RDS", lambda t: t == "DBInstance"),
@@ -2714,10 +2679,7 @@ class ComprehensiveAWSDiscovery:
         def apply(resource, answer, region):
             if answer:
                 resource["raw_data"].update(answer)
-                self.logger.debug(
-                    f"Enhanced CloudFormation stack {resource.get('resource_id')} "
-                    f"in {region}"
-                )
+                self.logger.debug(f"Enhanced a CloudFormation stack in {region}")
 
         self._enhance_per_region(
             self._resources_by_region("CLOUDFORMATION", lambda t: t == "Stack"),
@@ -2811,7 +2773,7 @@ class ComprehensiveAWSDiscovery:
                 deduplicated.append(best_resource)
 
                 self.logger.debug(
-                    f"Merged {len(resource_group)} duplicates for {arn}, kept {best_resource.get('discovered_via', 'unknown')}"
+                    f"Merged {len(resource_group)} duplicates of one resource"
                 )
 
         self.resources = deduplicated

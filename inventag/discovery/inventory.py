@@ -25,7 +25,7 @@ from .optimized_discovery import OptimizedAWSDiscovery
 from .comprehensive_discovery import ComprehensiveAWSDiscovery
 from .arn_utils import build_arn, normalize_arn
 from .aws_clients import create_client
-from .coverage import billing_failure_message, outcome_for_error
+from .coverage import cost_explorer_failure_message, outcome_for_error
 from ..security.read_only_guard import ReadOnlyGuard
 from ..security.secret_values import mask_secret_values
 from .service_filter import (
@@ -540,16 +540,11 @@ class AWSResourceInventory:
         self._label_sources()
 
         discovered_services = len(self._get_discovered_services())
-        billing_validated = (
-            len(self.billing_validated_services)
-            if hasattr(self, "billing_validated_services")
-            else 0
-        )
 
+        # no count from billing data (CodeQL: billing is private data)
         self.logger.info(
             f"Comprehensive discovery complete. Found {len(self.resources)} unique resources "
-            f"across {discovered_services} services "
-            f"({billing_validated} billing-validated)."
+            f"across {discovered_services} services."
         )
         return self.resources
 
@@ -895,11 +890,10 @@ class AWSResourceInventory:
                 svc: data["cost"] for svc, data in services_with_usage.items()
             }
 
-            # counts only: billed amounts and service names stay out of the
-            # log (CodeQL clear-text logging)
+            # fixed text: amounts, names, counts and the period of billing
+            # data stay out of the log (CodeQL: billing is private data)
             self.logger.info(
-                f"Billing analysis: Found {len(services_with_usage)} services with usage "
-                f"since {self.comprehensive_discovery.billing_period_start}"
+                "Billing analysis: read the services with usage from Cost Explorer."
             )
 
         except ClientError as e:
@@ -917,7 +911,7 @@ class AWSResourceInventory:
                 error_code=error_code,
             )
             self.logger.warning(
-                billing_failure_message(
+                cost_explorer_failure_message(
                     e, error_code, ComprehensiveAWSDiscovery.DENIED_CODES
                 )
             )
@@ -925,7 +919,7 @@ class AWSResourceInventory:
             self.enable_billing_validation = False
         except Exception as e:
             self.logger.warning(
-                billing_failure_message(
+                cost_explorer_failure_message(
                     e, type(e).__name__, ComprehensiveAWSDiscovery.DENIED_CODES
                 )
             )
@@ -1045,9 +1039,9 @@ class AWSResourceInventory:
         }
 
         if missing_services:
-            # the count only (CodeQL clear-text logging)
+            # fixed text (CodeQL: billing is private data)
             self.logger.warning(
-                f"Found {len(missing_services)} services with billing usage but no discovered resources "
+                "Some services have billing usage but no discovered resources "
                 "(they may have untagged resources)."
             )
 
@@ -1056,10 +1050,9 @@ class AWSResourceInventory:
             n for n in discovered_services if canonical_service(n) not in billed_keys
         }
         if unbilled_services:
-            # the count only: the names come from the scanned rows (CodeQL
-            # clear-text logging)
+            # fixed text (CodeQL: billing is private data, rows are secret)
             self.logger.info(
-                f"Found {len(unbilled_services)} services with discovered resources but no recent billing "
+                "Some services have discovered resources but no recent billing "
                 "(free tier or no recent usage)."
             )
 
@@ -1075,7 +1068,7 @@ class AWSResourceInventory:
             return
 
         self.logger.info(
-            f"Attempting targeted discovery for {len(missing_services)} services with billing usage..."
+            "Attempting targeted discovery for the services with billing usage..."
         )
 
         # Attempt service-specific discovery for missing services
@@ -1089,8 +1082,7 @@ class AWSResourceInventory:
             # a count and the error types (CodeQL clear-text logging)
             kinds = ", ".join(sorted(set(failed)))
             self.logger.warning(
-                f"Targeted discovery failed for {len(failed)} of "
-                f"{len(missing_services)} services ({kinds})"
+                f"Targeted discovery failed for {len(failed)} services ({kinds})"
             )
 
     def _discover_service_by_name(self, service_name: str):
@@ -1308,7 +1300,7 @@ class AWSResourceInventory:
 
                         except Exception as e:
                             self.logger.warning(
-                                f"Failed to process resource {resource.get('ResourceARN', 'unknown')}: {e}"
+                                f"Failed to process a resource ({type(e).__name__})"
                             )
                             continue
 
@@ -2359,7 +2351,7 @@ class AWSResourceInventory:
                     )
                 except Exception as e:
                     self.logger.warning(
-                        f"Failed to get details for DynamoDB table {table_name}: {e}"
+                        f"Failed to get details for a DynamoDB table ({type(e).__name__})"
                     )
 
         except ClientError as e:
@@ -2830,7 +2822,7 @@ class AWSResourceInventory:
                         )
                     except ClientError as e:
                         self.logger.warning(
-                            f"Failed to get details for S3 bucket {bucket['Name']}: {e}"
+                            f"Failed to get details for an S3 bucket ({type(e).__name__})"
                         )
 
         except ClientError as e:
@@ -3421,7 +3413,7 @@ class AWSResourceInventory:
                 ServerSideEncryption="AES256",
             )
 
-            self.logger.info(f"Resources uploaded to s3://{bucket_name}/{key}")
+            self.logger.info("Resources uploaded to S3.")
 
         except ClientError as e:
             self.logger.error(f"Failed to upload to S3: {e}")

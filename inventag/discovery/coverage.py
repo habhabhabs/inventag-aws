@@ -159,10 +159,10 @@ _CONNECTION_ERRORS = frozenset(
         "SSLError",
     }
 )
-_BILLING_TAIL = " so billing data is missing and billing checks are skipped. "
+_NO_COST_DATA_TAIL = " so billing data is missing and billing checks are skipped. "
 
 
-def billing_failure_message(error: BaseException, code: str, denied_codes) -> str:
+def cost_explorer_failure_message(error: BaseException, code: str, denied_codes) -> str:
     """One line for a failed Cost Explorer read: the cause, then one next step.
 
     Only the error code and the name of the exception are used. The botocore
@@ -173,19 +173,19 @@ def billing_failure_message(error: BaseException, code: str, denied_codes) -> st
         if code == "OptInRequired":
             return (
                 f"Cost Explorer is not enabled for this account ({code}),"
-                + _BILLING_TAIL
+                + _NO_COST_DATA_TAIL
                 + "Enable Cost Explorer in the AWS Billing console."
             )
         if outcome == DENIED:
             return (
                 f"Cost Explorer was denied ({code}),"
-                + _BILLING_TAIL
+                + _NO_COST_DATA_TAIL
                 + "Allow ce:GetCostAndUsage for this role."
             )
         if outcome == THROTTLED:
             return (
                 f"Cost Explorer was throttled ({code}),"
-                + _BILLING_TAIL
+                + _NO_COST_DATA_TAIL
                 + "Run the scan again later."
             )
         what = f"could not be read ({code})"
@@ -194,19 +194,19 @@ def billing_failure_message(error: BaseException, code: str, denied_codes) -> st
     elif type(error).__name__ in _TIMEOUT_ERRORS:
         return (
             f"Cost Explorer did not answer in time ({type(error).__name__}),"
-            + _BILLING_TAIL
+            + _NO_COST_DATA_TAIL
             + "Run the scan again."
         )
     elif type(error).__name__ in _CONNECTION_ERRORS:
         return (
             f"Cost Explorer could not be reached ({type(error).__name__}),"
-            + _BILLING_TAIL
+            + _NO_COST_DATA_TAIL
             + "Check the network connection and run the scan again."
         )
     else:
         what = f"failed ({type(error).__name__})"
     return (
         f"Cost Explorer {what},"
-        + _BILLING_TAIL
+        + _NO_COST_DATA_TAIL
         + "Run the scan again; if it repeats, report it with the --debug log."
     )

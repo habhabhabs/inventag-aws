@@ -645,7 +645,7 @@ class BOMDataProcessor:
                     enriched_resources[index] = future.result()
                 except Exception as e:
                     self.logger.warning(
-                        f"Failed to enrich resource {resource.get('id', 'unknown')}: {e}"
+                        f"Failed to enrich a resource ({type(e).__name__})"
                     )
                     self.statistics.failed_resources += 1
                     self.statistics.errors.append(
@@ -686,9 +686,7 @@ class BOMDataProcessor:
                     self.logger.info(f"Processed {i + 1}/{len(resources)} resources")
 
             except Exception as e:
-                self.logger.warning(
-                    f"Failed to enrich resource {resource.get('id', 'unknown')}: {e}"
-                )
+                self.logger.warning(f"Failed to enrich a resource ({type(e).__name__})")
                 self.statistics.failed_resources += 1
                 self.statistics.errors.append(
                     f"Enrichment failed for {resource.get('id', 'unknown')}: {e}"
@@ -720,7 +718,7 @@ class BOMDataProcessor:
 
         except Exception as e:
             self.logger.warning(
-                f"Partial enrichment failure for resource {resource.get('id', 'unknown')}: {e}"
+                f"Partial enrichment failure for a resource ({type(e).__name__})"
             )
             self.statistics.warnings.append(f"Partial enrichment failure: {e}")
 
@@ -786,7 +784,7 @@ class BOMDataProcessor:
                 return enriched
         except Exception as e:
             self.logger.warning(
-                f"Description application failed for {resource.get('id', 'unknown')}: {e}"
+                f"Description application failed for a resource ({type(e).__name__})"
             )
 
         return resource
@@ -810,7 +808,7 @@ class BOMDataProcessor:
                 return enriched
         except Exception as e:
             self.logger.warning(
-                f"Tag mapping failed for {resource.get('id', 'unknown')}: {e}"
+                f"Tag mapping failed for a resource ({type(e).__name__})"
             )
 
         return resource
@@ -1129,7 +1127,7 @@ class BOMDataProcessor:
                 return enriched
         except Exception as e:
             self.logger.debug(
-                f"Cost enrichment failed for {resource.get('id', 'unknown')}: {e}"
+                f"Cost enrichment failed for a resource ({type(e).__name__})"
             )
 
         return resource
