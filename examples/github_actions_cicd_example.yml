@@ -83,7 +83,7 @@ jobs:
         python inventag_cli.py \
           --accounts-file ${{ github.event.inputs.accounts_config || 'config/accounts.json' }} \
           --validate-credentials \
-          --verbose
+          -vv
 
   generate-bom:
     runs-on: ubuntu-latest
@@ -135,6 +135,7 @@ jobs:
           s3_options="--s3-bucket ${{ secrets.BOM_REPORTS_BUCKET }} --s3-key-prefix bom-reports/${{ github.run_number }}/"
         fi
         
+        # -vv gives debug output (AWS SDK request and response bodies; secrets are masked, one gap is known). Restrict who can read the job log and the log file.
         python inventag_cli.py \
           --accounts-file ${{ github.event.inputs.accounts_config || 'config/accounts.json' }} \
           --service-descriptions config/defaults/services/service_descriptions_example.yaml \
@@ -146,7 +147,7 @@ jobs:
           --enable-delta-detection \
           --generate-changelog \
           --max-concurrent-accounts 6 \
-          --verbose \
+          -vv \
           --log-file inventag-github-${{ github.run_number }}.log
     
     - name: Upload logs as artifact

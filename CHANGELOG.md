@@ -74,11 +74,13 @@ the flag is unchanged; the changelog lists it under Added.
   that run: `inventag --create-excel`.
 - `-vv` (or `--verbose` twice) now gives debug output, the same as `--debug`.
   Before, `-vv` equalled `-v`. `-v`, `--verbose`, `-d` and `--debug` are
-  unchanged.
+  unchanged. So `-v` gives INFO output and `-vv` gives DEBUG output.
 - The meaning of exit code 2 now includes a run with no option.
 - The CI/CD guide and its example workflows now use `-vv` (debug output) for
-  CI/CD runs. Debug output holds the AWS SDK's request and response bodies,
-  and one masking gap is known; restrict who can read the job log.
+  CI/CD runs, and so do `examples/github_actions_cicd_example.yml` and
+  `examples/aws_codebuild_buildspec.yml`. Debug output holds the AWS SDK's
+  request and response bodies, and one masking gap is known; restrict who can
+  read the job log.
 
 ### Removed
 

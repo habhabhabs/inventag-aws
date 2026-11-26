@@ -39,11 +39,11 @@ phases:
       
       # Validate configuration
       - echo "Validating InvenTag configuration..."
-      - python inventag_cli.py --accounts-file accounts.json --validate-config --verbose
+      - python inventag_cli.py --accounts-file accounts.json --validate-config -vv
       
       # Validate credentials
       - echo "Validating account credentials..."
-      - python inventag_cli.py --accounts-file accounts.json --validate-credentials --verbose
+      - python inventag_cli.py --accounts-file accounts.json --validate-credentials -vv
       
       # Set build parameters
       - |
@@ -93,6 +93,7 @@ phases:
         fi
       
       # Generate BOM reports
+      # -vv gives debug output (AWS SDK request and response bodies; secrets are masked, one gap is known). Restrict who can read the job log and the log file.
       - |
         python inventag_cli.py \
           --accounts-file accounts.json \
@@ -105,7 +106,7 @@ phases:
           --generate-changelog \
           --max-concurrent-accounts $MAX_CONCURRENT_ACCOUNTS \
           --account-processing-timeout $PROCESSING_TIMEOUT \
-          --verbose \
+          -vv \
           --log-file inventag-codebuild-$CODEBUILD_BUILD_NUMBER.log
       
       - echo "BOM generation completed successfully"
