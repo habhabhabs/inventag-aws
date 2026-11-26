@@ -87,6 +87,11 @@ the flag is unchanged; the changelog lists it under Added.
   use `-v` there. The two example files no longer write a log file, upload it
   as an artifact or copy it to S3.
 
+- `inventag.finops.checks.run_checks()` still accepts its `policy` argument
+  and ignores it: FIN-006 always uses the keys of the built-in tag policy
+  `finops-cost-allocation` (in v1.4.3 a Python caller could pass another tag
+  policy).
+
 ### Removed
 
 - The per-resource cost trend entries of `cost_analysis["cost_trends"]` (a
@@ -95,6 +100,12 @@ the flag is unchanged; the changelog lists it under Added.
   `billing_names` and `resource_count`, and the Cost Analysis sheet shows one
   row for each account and service with a column `Billing names counted`
   (before, no sheet showed the trend).
+- `inventag.core.cost_requests.trend_note()`: the CLI no longer writes its run
+  note ("Cost trend: read once, with the credentials of account ..."), because
+  each account's cost trend now uses that account's own credentials. A Python
+  caller that gives `CostAnalyzer.analyze_cost_trends()` the rows of several
+  accounts without `account_sessions` gets one warning from `CostAnalyzer`
+  instead.
 
 ### Security
 
@@ -126,7 +137,7 @@ the flag is unchanged; the changelog lists it under Added.
   `policy check --locked`. A lock written before this release fails the check
   when the folder has such a file: run `inventag policy lock` again.
 - The SARIF file no longer quotes a tag value: a required-tags problem reads
-  `KEY: value does not match PATTERN` (or `value is not one of ...`) there.
+  `KEY: value not allowed` there.
   The JSON, text and Markdown files still show it.
 - `policy validate` refuses a `message` placeholder with a format spec or a
   conversion (`{name:>10}`, `{name!r}`); before, such a message passed and

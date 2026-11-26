@@ -483,6 +483,18 @@ with:
 | 7 | `Exit code 7: at least one finding failed at severity S or higher.` |
 | 8 | `Exit code 8: some checks could not be evaluated.` |
 
+On a scan with `--policy`, a finding that failed at or above
+`--policy-fail-on` gives exit code 7, never 8 (only `inventag policy check`
+gives 8). Exit codes 3, 4, 5 and 6 keep their meaning and win when they
+apply; the last line then reads:
+
+| Exit | Last line |
+|---|---|
+| 3 | `Exit code 3: the template's tag policy found violations (fail_on_tag_violations); this code comes before the policy check's code.` |
+| 4 | `Exit code 4: a security group rule is at or above --risk-threshold; this code comes before the policy check's code.` |
+| 5 | `Exit code 5: an account could not be scanned (--fail-on-account-error); this code comes before the policy check's code.` |
+| 6 | `Exit code 6: no resources were found (--fail-if-empty); this code comes before the policy check's code.` |
+
 ## Check on a scan
 
 ```bash

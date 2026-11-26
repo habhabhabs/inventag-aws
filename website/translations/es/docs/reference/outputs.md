@@ -168,6 +168,13 @@ El archivo JSON tiene estas claves de primer nivel: `schema_version`, `inventag_
 
 En las formas de texto y Markdown, la última línea dice qué significa el código de salida, por ejemplo `Exit code 7: at least one finding failed at severity high or higher.` Sin umbral dice `Exit code 0: findings are reported; no threshold was set.` Consulta [Códigos de salida](./cli.md#exit-codes).
 
+En un escaneo con `--policy`, la última línea da el código con el que termina el escaneo: 7 cuando un hallazgo falló con la gravedad de `--policy-fail-on` o más alta (un escaneo nunca termina con 8; solo `inventag policy check` da 8). 3, 4, 5 y 6 conservan su significado y ganan cuando se aplican; la línea es entonces una de estas:
+
+- `Exit code 3: the template's tag policy found violations (fail_on_tag_violations); this code comes before the policy check's code.`
+- `Exit code 4: a security group rule is at or above --risk-threshold; this code comes before the policy check's code.`
+- `Exit code 5: an account could not be scanned (--fail-on-account-error); this code comes before the policy check's code.`
+- `Exit code 6: no resources were found (--fail-if-empty); this code comes before the policy check's code.`
+
 No verificado: cómo muestra GitHub code scanning el archivo SARIF, o cómo muestra GitLab el archivo JUnit. Las pruebas comparan los archivos con archivos de referencia (golden), y el archivo SARIF con un esquema corto que se empaqueta con InvenTag, no con el esquema SARIF completo.
 
 ## Informe de Word {#word-report}

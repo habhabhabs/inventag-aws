@@ -126,6 +126,13 @@ JSON 檔案有這些頂層鍵：`schema_version`、`inventag_version`、`now`、
 
 在文字和 Markdown 形式中，最後一行說明結束代碼代表什麼，例如 `Exit code 7: at least one finding failed at severity high or higher.` 沒有閾值時為 `Exit code 0: findings are reported; no threshold was set.` 見[結束代碼](./cli.md#exit-codes)。
 
+在使用 `--policy` 的掃描中，最後一行給出掃描的結束代碼：當某個發現項在 `--policy-fail-on` 或更高的嚴重程度上失敗時為 7（掃描從不以 8 退出；只有 `inventag policy check` 會給出 8）。3、4、5 和 6 保持其含義，並在適用時優先；此時最後一行是以下之一：
+
+- `Exit code 3: the template's tag policy found violations (fail_on_tag_violations); this code comes before the policy check's code.`
+- `Exit code 4: a security group rule is at or above --risk-threshold; this code comes before the policy check's code.`
+- `Exit code 5: an account could not be scanned (--fail-on-account-error); this code comes before the policy check's code.`
+- `Exit code 6: no resources were found (--fail-if-empty); this code comes before the policy check's code.`
+
 未驗證：GitHub code scanning 如何顯示 SARIF 檔案，或 GitLab 如何顯示 JUnit 檔案。測試把檔案與黃金檔案（golden）比較，並把 SARIF 檔案與隨 InvenTag 提供的簡短 schema 比較，而不是與完整的 SARIF schema 比較。
 
 ## Word 報告 {#word-report}

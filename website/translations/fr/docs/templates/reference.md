@@ -114,7 +114,7 @@ le validateur accepte.
 | `spec.required_tags[].description` | texte | vide | Pourquoi l’étiquette existe. Destinée à ceux qui lisent le fichier de politique ; elle n’est pas affichée dans les rapports. |
 | `spec.required_tags[].allowed_values` | liste de textes | non défini | Si défini, la valeur de l’étiquette doit être l’une d’elles. |
 | `spec.required_tags[].case_sensitive` | true ou false | `false` | Compare `allowed_values` en respectant la casse. |
-| `spec.required_tags[].pattern` | expression régulière | non défini | Si défini, toute la valeur de l’étiquette doit correspondre à cette expression régulière (syntaxe Python). |
+| `spec.required_tags[].pattern` | expression régulière | non défini | Si défini, toute la valeur de l’étiquette doit correspondre à cette expression régulière (syntaxe Python). Quand une politique lit cette politique d’étiquettes avec `policy:`, un motif qui répète un groupe contenant une répétition, ou qui a deux répétitions sans rien de fixe entre elles, est refusé ; voir [Fichiers de politiques](../reference/policy-files.md). |
 | `spec.required_tags[].remove` | true ou false | `false` | Dans un modèle qui `extends` un autre, retire cette étiquette de la liste héritée. |
 | `spec.scope.services` | liste de textes | `[]` | Ne vérifie que ces services (tels qu’affichés dans le rapport, par exemple `EC2`, `S3`). Vide signifie tous les services. |
 | `spec.scope.resource_types` | liste de textes | `[]` | Ne vérifie que ces types de ressources (par exemple `Bucket`, `Instance`). Vide signifie tous les types. |

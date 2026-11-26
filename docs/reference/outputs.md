@@ -219,6 +219,13 @@ for, for example `Exit code 7: at least one finding failed at severity high or
 higher.` With no threshold it reads `Exit code 0: findings are reported; no
 threshold was set.` See [Exit codes](./cli.md#exit-codes).
 
+On a scan with `--policy`, the last line gives the code the scan exits with: 7 when a finding failed at or above `--policy-fail-on` (a scan never exits with 8; only `inventag policy check` gives 8). 3, 4, 5 and 6 keep their meaning and win when they apply; the line is then one of these:
+
+- `Exit code 3: the template's tag policy found violations (fail_on_tag_violations); this code comes before the policy check's code.`
+- `Exit code 4: a security group rule is at or above --risk-threshold; this code comes before the policy check's code.`
+- `Exit code 5: an account could not be scanned (--fail-on-account-error); this code comes before the policy check's code.`
+- `Exit code 6: no resources were found (--fail-if-empty); this code comes before the policy check's code.`
+
 Not verified: how GitHub code scanning shows the SARIF file, or how GitLab
 shows the JUnit file. The tests compare the files with golden files, and the
 SARIF file with a short schema that is packaged with InvenTag, not with the

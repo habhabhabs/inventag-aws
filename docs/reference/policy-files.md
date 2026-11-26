@@ -60,6 +60,7 @@ spec:                  # the settings of this kind
 | Days a waiver may run ahead | 366 |
 | Levels of lists and mappings in one file | 50 |
 | Set files reached through set files | 10 |
+| Depth of `include` between policy sets | 10 |
 
 YAML aliases (`&a` and `*a`) are refused, and no environment variable is
 expanded.
@@ -67,7 +68,12 @@ expanded.
 A pattern that repeats a group holding another repeat or a `|`, such as
 `(a+)+`, `(a|a)+` or `(.*a){20}`, is refused: it can take very long to match a
 value from a scanned account. The pattern is also checked when a
-`required-tags` check reads a tag policy with `policy:`.
+`required-tags` check reads a tag policy with `policy:`. Two repeats with
+nothing fixed between them (`a*a*`, `.*.*`) and a repeat of a group whose
+length varies (`(a{1,50}){1,50}`, `(a?){30}`) are refused too. The check is
+not complete: repeats with a fixed character between them (`.*x.*x.*x.*=`) or
+many optional characters in a row are accepted and can still be slow, so keep
+patterns short and anchored.
 
 ## `kind: policy`
 

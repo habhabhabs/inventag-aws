@@ -105,7 +105,7 @@ spec:                      # the settings for this kind
 | `spec.required_tags[].description` | 文字 | 空 | 該標籤存在的原因。供閱讀策略檔案的人看；不會顯示在報告中。 |
 | `spec.required_tags[].allowed_values` | 文字列表 | 未設定 | 如果設定，標籤值必須是其中之一。 |
 | `spec.required_tags[].case_sensitive` | true 或 false | `false` | 對 `allowed_values` 區分大小寫地比較。 |
-| `spec.required_tags[].pattern` | 正規表示式 | 未設定 | 如果設定，整個標籤值必須匹配此正規表示式（Python 語法）。 |
+| `spec.required_tags[].pattern` | 正規表示式 | 未設定 | 如果設定，整個標籤值必須匹配此正規表示式（Python 語法）。 當策略透過 `policy:` 讀取此標籤策略時，會拒絕重複一個含有重複的組的模式，或兩個重複之間沒有固定內容的模式；見[策略檔案](../reference/policy-files.md)。 |
 | `spec.required_tags[].remove` | true 或 false | `false` | 在 `extends` 另一個範本的範本中，從繼承的列表中刪除此標籤。 |
 | `spec.scope.services` | 文字列表 | `[]` | 只檢查這些服務（與報告中顯示的一致，例如 `EC2`、`S3`）。為空表示所有服務。 |
 | `spec.scope.resource_types` | 文字列表 | `[]` | 只檢查這些資源型別（例如 `Bucket`、`Instance`）。為空表示所有型別。 |
