@@ -144,7 +144,7 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 
 | 命令 | 作用 |
 |---|---|
-| `policy validate PATH ...` | 检查策略、策略集和豁免文件及文件夹，但不做任何评估。每个文件打印一行 `OK`，每个问题打印为 `error: FILE:LINE: FIELD: PROBLEM`。`--now DATE`（`YYYY-MM-DD`，默认为 UTC 的今天）是判断豁免是否过期所用的日期。退出码 0：没有问题。退出码 1：有问题。退出码 2：没有给出路径。 |
+| `policy validate PATH ...` | 检查策略、策略集和豁免文件及文件夹，但不做任何评估。每个文件打印一行 `OK`，每个问题打印为 `error: FILE:LINE: FIELD: PROBLEM`。`--now DATE`（`YYYY-MM-DD`，默认为 UTC 的今天）是判断豁免是否过期所用的日期。可能需要很长时间才能匹配的正则表达式（长度可变的重复组，或两个重复之间没有固定内容）算作问题；见[策略文件](./policy-files.md)。退出码 0：没有问题。退出码 1：有问题。退出码 2：没有给出路径。 |
 | `policy list` | 列出策略：ID、严重程度、版本、12 个字符的摘要（digest）和文件。`--policies PATH ...` 指定文件或文件夹（默认 `.inventag/policies`）。`--set NAME` 列出一个策略集的成员：先在给定的路径中找，找不到则用随 InvenTag 提供的策略集。`--shipped` 列出随 InvenTag 提供的策略集及各自的策略数（不能与 `--set` 同用：退出码 2）。退出码 0；文件无法读取或策略集未知时为 1。 |
 | `policy schema [FIELD]` | 打印策略文件的字段及其规则；给出字段名时，打印该字段的帮助。`--json` 打印供编辑器使用的 JSON Schema（比 `policy validate` 宽松：最终以 `validate` 为准）。退出码 0；字段未知时为 1。 |
 | `policy test [DIR]` | 运行策略文件夹（默认 `.inventag/policies`）下 `tests/<policy name>/*.yaml` 中的测试用例（fixture），每个用例打印一行 `PASS` 或 `FAIL`，最后打印计数。没有测试用例的策略会收到警告。退出码 0：所有预期都成立。退出码 1：有用例失败或无效。 |

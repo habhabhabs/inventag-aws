@@ -115,7 +115,7 @@ con lo que acepta el validador.
 | `spec.required_tags[].description` | texto | vacío | Por qué existe la etiqueta. Es para quien lee el archivo de la política; no se muestra en los informes. |
 | `spec.required_tags[].allowed_values` | lista de textos | sin definir | Si se define, el valor de la etiqueta debe ser uno de estos. |
 | `spec.required_tags[].case_sensitive` | verdadero o falso | `false` | Compara `allowed_values` distinguiendo mayúsculas y minúsculas. |
-| `spec.required_tags[].pattern` | expresión regular | sin definir | Si se define, todo el valor de la etiqueta debe coincidir con esta expresión regular (sintaxis de Python). Cuando una política lee esta política de etiquetas con `policy:`, se rechaza un patrón que repite un grupo que contiene una repetición, o que tiene dos repeticiones sin nada fijo entre ellas; consulta [Archivos de políticas](../reference/policy-files.md). |
+| `spec.required_tags[].pattern` | expresión regular | sin definir | Si se define, todo el valor de la etiqueta debe coincidir con esta expresión regular (sintaxis de Python). |
 | `spec.required_tags[].remove` | verdadero o falso | `false` | En una plantilla que usa `extends` con otra, elimina esta etiqueta de la lista heredada. |
 | `spec.scope.services` | lista de textos | `[]` | Comprueba solo estos servicios (tal como se muestran en el informe, por ejemplo `EC2`, `S3`). Vacío significa todos los servicios. |
 | `spec.scope.resource_types` | lista de textos | `[]` | Comprueba solo estos tipos de recurso (por ejemplo `Bucket`, `Instance`). Vacío significa todos los tipos. |

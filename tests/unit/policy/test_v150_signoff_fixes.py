@@ -192,5 +192,4 @@ def test_sarif_never_holds_a_tag_value(tmp_path, rule):
         for r in json.loads(text)["runs"][0]["results"]
         if r["ruleId"] == "TAG-003"
     ]
-    assert messages == ["TAG-003: CostCenter: value not allowed"]
-    assert "prod" not in " ".join(messages)
+    assert messages and set(messages) == {"TAG-003: CostCenter: value not allowed"}

@@ -144,7 +144,7 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 
 | 命令 | 作用 |
 |---|---|
-| `policy validate PATH ...` | 檢查策略、策略集和豁免檔案及資料夾，但不做任何評估。每個檔案列印一行 `OK`，每個問題列印為 `error: FILE:LINE: FIELD: PROBLEM`。`--now DATE`（`YYYY-MM-DD`，預設為 UTC 的今天）是判斷豁免是否過期所用的日期。結束代碼 0：沒有問題。結束代碼 1：有問題。結束代碼 2：沒有給出路徑。 |
+| `policy validate PATH ...` | 檢查策略、策略集和豁免檔案及資料夾，但不做任何評估。每個檔案列印一行 `OK`，每個問題列印為 `error: FILE:LINE: FIELD: PROBLEM`。`--now DATE`（`YYYY-MM-DD`，預設為 UTC 的今天）是判斷豁免是否過期所用的日期。可能需要很長時間才能匹配的正規表示式（長度可變的重複組，或兩個重複之間沒有固定內容）算作問題；見[策略檔案](./policy-files.md)。結束代碼 0：沒有問題。結束代碼 1：有問題。結束代碼 2：沒有給出路徑。 |
 | `policy list` | 列出策略：ID、嚴重程度、版本、12 個字元的摘要（digest）和檔案。`--policies PATH ...` 指定檔案或資料夾（預設 `.inventag/policies`）。`--set NAME` 列出一個策略集的成員：先在給定的路徑中找，找不到則用隨 InvenTag 提供的策略集。`--shipped` 列出隨 InvenTag 提供的策略集及各自的策略數（不能與 `--set` 同用：結束代碼 2）。結束代碼 0；檔案無法讀取或策略集未知時為 1。 |
 | `policy schema [FIELD]` | 列印策略檔案的欄位及其規則；給出欄位名時，列印該欄位的說明。`--json` 列印供編輯器使用的 JSON Schema（比 `policy validate` 寬鬆：最終以 `validate` 為準）。結束代碼 0；欄位未知時為 1。 |
 | `policy test [DIR]` | 執行策略資料夾（預設 `.inventag/policies`）下 `tests/<policy name>/*.yaml` 中的測試案例（fixture），每個案例列印一行 `PASS` 或 `FAIL`，最後列印計數。沒有測試案例的策略會收到警告。結束代碼 0：所有預期都成立。結束代碼 1：有案例失敗或無效。 |

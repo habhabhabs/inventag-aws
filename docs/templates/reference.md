@@ -115,7 +115,7 @@ the validator accepts.
 | `spec.required_tags[].description` | text | empty | Why the tag exists. For people who read the policy file; it is not shown in the reports. |
 | `spec.required_tags[].allowed_values` | list of text | not set | If set, the tag value must be one of these. |
 | `spec.required_tags[].case_sensitive` | true or false | `false` | Compare `allowed_values` case-sensitively. |
-| `spec.required_tags[].pattern` | regular expression | not set | If set, the whole tag value must match this regular expression (Python syntax). When a policy reads this tag policy with `policy:`, a pattern that repeats a group holding a repeat, or that has two repeats with nothing fixed between them, is refused; see [Policy files](../reference/policy-files.md). |
+| `spec.required_tags[].pattern` | regular expression | not set | If set, the whole tag value must match this regular expression (Python syntax). |
 | `spec.required_tags[].remove` | true or false | `false` | In a template that `extends` another, drop this tag from the inherited list. |
 | `spec.scope.services` | list of text | `[]` | Only check these services (as shown in the report, for example `EC2`, `S3`). Empty means all services. |
 | `spec.scope.resource_types` | list of text | `[]` | Only check these resource types (for example `Bucket`, `Instance`). Empty means all types. |

@@ -24,11 +24,11 @@ OUT_SCAN = {
     "zh-Hant": "在使用 `--policy` 的掃描中，最後一行給出掃描的結束代碼：當某個發現項在 `--policy-fail-on` 或更高的嚴重程度上失敗時為 7（掃描從不以 8 退出；只有 `inventag policy check` 會給出 8）。3、4、5 和 6 保持其含義，並在適用時優先；此時最後一行是以下之一：",
 }
 TPL_PATTERN = {
-    None: "When a policy reads this tag policy with `policy:`, a pattern that repeats a group holding a repeat, or that has two repeats with nothing fixed between them, is refused; see [Policy files](../reference/policy-files.md).",
-    "es": "Cuando una política lee esta política de etiquetas con `policy:`, se rechaza un patrón que repite un grupo que contiene una repetición, o que tiene dos repeticiones sin nada fijo entre ellas; consulta [Archivos de políticas](../reference/policy-files.md).",
-    "fr": "Quand une politique lit cette politique d’étiquettes avec `policy:`, un motif qui répète un groupe contenant une répétition, ou qui a deux répétitions sans rien de fixe entre elles, est refusé ; voir [Fichiers de politiques](../reference/policy-files.md).",
-    "zh-Hans": "当策略通过 `policy:` 读取此标签策略时，会拒绝重复一个含有重复的组的模式，或两个重复之间没有固定内容的模式；见[策略文件](../reference/policy-files.md)。",
-    "zh-Hant": "當策略透過 `policy:` 讀取此標籤策略時，會拒絕重複一個含有重複的組的模式，或兩個重複之間沒有固定內容的模式；見[策略檔案](../reference/policy-files.md)。",
+    None: "A regular expression that can take very long to match (a repeated group whose length varies, or two repeats with nothing fixed between them) is a problem; see [Policy files](./policy-files.md).",
+    "es": "Una expresión regular que puede tardar mucho en coincidir (un grupo repetido cuya longitud varía, o dos repeticiones sin nada fijo entre ellas) es un problema; consulta [Archivos de políticas](./policy-files.md).",
+    "fr": "Une expression régulière qui peut mettre très longtemps à correspondre (un groupe répété dont la longueur varie, ou deux répétitions sans rien de fixe entre elles) est un problème ; voir [Fichiers de politiques](./policy-files.md).",
+    "zh-Hans": "可能需要很长时间才能匹配的正则表达式（长度可变的重复组，或两个重复之间没有固定内容）算作问题；见[策略文件](./policy-files.md)。",
+    "zh-Hant": "可能需要很長時間才能匹配的正規表示式（長度可變的重複組，或兩個重複之間沒有固定內容）算作問題；見[策略檔案](./policy-files.md)。",
 }
 
 
@@ -77,8 +77,8 @@ def test_governance_guide_has_the_scan_rows():
 
 
 @pytest.mark.parametrize("lang", LANGS)
-def test_template_reference_states_the_pattern_check(lang):
-    assert TPL_PATTERN[lang] in flat(page("templates/reference.md", lang))
+def test_cli_page_states_the_pattern_check(lang):
+    assert TPL_PATTERN[lang] in flat(page("reference/cli.md", lang))
 
 
 def test_policy_files_states_the_pattern_limit():
