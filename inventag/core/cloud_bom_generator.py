@@ -69,6 +69,7 @@ from .._version import __version__
 
 from ..state.partial_results import PartialResultStore, make_run_key
 from ..reporting.safe_save import save_atomically
+from ..reporting import html_report
 from ..security.safe_output import ensure_private_dir
 
 
@@ -2728,6 +2729,11 @@ class CloudBOMGenerator:
                             save_atomically(output_file, write_json)
                             generated_files.append(str(output_file))
 
+                        elif fmt == "html":
+                            generated_files.extend(
+                                self._write_html(scope_data, prefix, stamp, converter)
+                            )
+
                         elif fmt == "google":
                             if scope_data.resources:
                                 google_urls.append(
@@ -2808,6 +2814,24 @@ class CloudBOMGenerator:
                 "error": str(e),
                 "generation_timestamp": datetime.now(timezone.utc).isoformat(),
             }
+
+    def _write_html(self, scope_data, prefix: str, stamp: str, converter) -> List[str]:
+        """``--create-html``: the scope's HTML report, written like the Excel
+        report and only when the scope has resources. The paths written."""
+        if not scope_data.resources:
+            return []
+        output_file = self.output_dir / f"{prefix}_{stamp}.html"
+        html_report.write_html_report(
+            scope_data,
+            output_file,
+            converter=converter,
+            branding=html_report.branding_of(
+                self.config.word_template, self.config.excel_template
+            ),
+            notes=converter.run_notes,
+            generated_at=html_report.generated_now(),
+        )
+        return [str(output_file)]
 
     def _report_scopes(self, bom_data) -> List[tuple]:
         """(file prefix, account label, data) for each report to write.

@@ -449,6 +449,29 @@ class TemplatedCloudBOMGenerator(CloudBOMGenerator):
         super().__init__(config)
         self.template_run = run
 
+    def _html_renderer(self):
+        """``--create-html`` with ``--template``: the HTML report has the
+        default layout (the template's sections are for Excel and Word); it
+        shows the template's tag compliance summary when there is one."""
+        coverage = {
+            "coverage_summary": self._coverage_summary(),
+        }
+
+        def render(path, rows, report, compliance, metadata, notes):
+            from ..reporting import html_report
+            from ..reporting.bom_processor import BOMData
+
+            data = BOMData(
+                resources=rows,
+                compliance_summary=compliance.to_dict() if compliance else {},
+                generation_metadata=dict(coverage),
+            )
+            html_report.write_html_report(
+                data, path, notes=notes, generated_at=html_report.generated_now()
+            )
+
+        return render
+
     def _generate_bom_documents(
         self,
         resources: List[Dict[str, Any]],
@@ -495,6 +518,7 @@ class TemplatedCloudBOMGenerator(CloudBOMGenerator):
             renderers = {
                 "excel": ("Excel", "xlsx", render_excel),
                 "word": ("Word", "docx", render_word),
+                "html": ("HTML", "html", self._html_renderer()),
             }
             for fmt in output_formats:
                 fmt = fmt.lower()

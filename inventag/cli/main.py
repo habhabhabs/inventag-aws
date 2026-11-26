@@ -403,6 +403,9 @@ Examples:
   # Generate BOM for single account using default credentials
   inventag --create-excel --create-word
 
+  # Static HTML report next to the Excel workbook
+  inventag --create-excel --create-html
+
   # Multi-account BOM generation from file
   inventag --accounts-file accounts.json --create-excel --s3-bucket my-bucket
 
@@ -474,6 +477,15 @@ Examples:
         "--create-excel",
         action="store_true",
         help="Generate comprehensive Excel workbook BOM report",
+    )
+    format_group.add_argument(
+        "--create-html",
+        action="store_true",
+        help=(
+            "Write a static HTML report: one self-contained .html file, no "
+            "JavaScript, no external resource. It holds the same resource data "
+            "as the Excel report: keep it private"
+        ),
     )
     format_group.add_argument(
         "--create-google-docs",
@@ -1475,6 +1487,15 @@ def _template_usage_errors(args) -> List[str]:
             "--excel-template: this flag needs --create-excel. With only "
             "--create-word, InvenTag writes no Excel report."
         )
+    if (
+        args.excel_template
+        and getattr(args, "create_html", False)
+        and not (args.create_word or args.create_excel)
+    ):
+        errors.append(
+            "--excel-template: this flag needs --create-excel. With only "
+            "--create-html, InvenTag writes no Excel report."
+        )
     return errors
 
 
@@ -2145,6 +2166,8 @@ def _run(args, logger):
             output_formats.append("excel")
         if args.create_google_docs or args.create_google_sheets:
             output_formats.append("google")
+        if getattr(args, "create_html", False):
+            output_formats.append("html")
 
         if not output_formats:
             logger.warning("No output formats specified. Defaulting to Excel format.")
@@ -2187,6 +2210,12 @@ def _run(args, logger):
                     "without --template to get them."
                 )
                 config.finops_cost_allocation = False
+            if "html" in output_formats:
+                logger.warning(
+                    "--create-html: with --template, the HTML report has the "
+                    "default layout; the template's sections apply to the Excel "
+                    "and Word reports only."
+                )
             generator = template_run.create_generator(config)
         else:
             generator = CloudBOMGenerator(config)

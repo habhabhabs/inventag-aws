@@ -10,6 +10,23 @@ the flag is unchanged; the changelog lists it under Added.
 
 ## [Unreleased]
 
+### Added
+
+- `--create-html`: writes the report as one static HTML file,
+  `multi_account_bom_<timestamp>.html` (with `--per-account-reports`,
+  `<account-id>_bom_<timestamp>.html`), next to the other reports. It holds a
+  summary (resources by service and by region, run notes), one closed section
+  of resources for each service with the columns of the default Excel sheet
+  and the same secret masking, the tag compliance summary of a tag policy,
+  the network and security tables, the FinOps and FinOps costs tables when
+  their flags are on, and the coverage and denied permissions. Every value is
+  escaped; the file has no JavaScript, loads nothing from outside it and
+  carries a Content-Security-Policy; it is written whole and private to the
+  user, and uploaded with `--s3-bucket`. `--create-html` alone writes HTML
+  only. With `--template`, the HTML file has the default layout and one
+  warning says so. `--excel-template` with `--create-html` alone stops with
+  exit code 2. A run without `--create-html` is unchanged.
+
 ## [v1.5.0] - 2026-11-26
 
 ### Added
