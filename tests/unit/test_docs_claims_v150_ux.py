@@ -3,7 +3,9 @@
 the bare run and the levels, in five languages, and every page that
 recommends ``-vv`` for CI/CD also says what debug output holds and to restrict
 who can read the job log. The behaviour is proven by test_cli_bare_invocation
-and test_cli_verbosity."""
+and test_cli_verbosity. The caveat's wording follows the v1.5.0 security review
+(finding 2): what debug output holds, use ``-v`` in a public repository, and no
+debug log as an artifact (test_docs_claims_v150_security)."""
 
 import re
 from pathlib import Path
@@ -18,27 +20,11 @@ BARE_LINE = (
     "that a bare 'inventag' ran before v1.5.0, run: inventag --create-excel"
 )
 CAVEAT = {
-    None: "For CI/CD runs, use `-vv`. Debug output holds the AWS SDK's request "
-    "and response bodies, and one masking gap is known: a secret that AWS returns "
-    "as a list under a masked field name can appear. CI logs are often kept and "
-    "shared, so restrict who can read the job log.",
-    "es": "Para las ejecuciones de CI/CD, usa `-vv`. La salida de depuración "
-    "contiene los cuerpos de las solicitudes y respuestas del SDK de AWS, y se "
-    "conoce un fallo del enmascaramiento: puede aparecer un secreto que AWS "
-    "devuelve como lista bajo el nombre de un campo enmascarado. Los registros "
-    "de CI a menudo se conservan y se comparten, así que restringe quién puede "
-    "leer el registro del trabajo.",
-    "fr": "Pour les exécutions CI/CD, utilisez `-vv`. La sortie de débogage "
-    "contient les corps des requêtes et des réponses du SDK AWS, et une lacune "
-    "du masquage est connue : un secret qu’AWS renvoie sous forme de liste sous "
-    "le nom d’un champ masqué peut apparaître. Les journaux de CI sont souvent "
-    "conservés et partagés, donc limitez qui peut lire le journal du job.",
-    "zh-Hans": "在 CI/CD 运行中，请使用 `-vv`。调试输出包含 AWS SDK 的请求和响应正文，"
-    "并且已知有一处遮蔽缺口：AWS 以列表形式返回、且字段名会被遮盖的机密可能会出现。"
-    "CI 日志常被保留和共享，因此请限制谁可以读取作业日志。",
-    "zh-Hant": "在 CI/CD 執行中，請使用 `-vv`。除錯輸出包含 AWS SDK 的請求和回應本文，"
-    "並且已知有一處遮蔽缺口：AWS 以列表形式返回、且欄位名會被遮蓋的機密可能會出現。"
-    "CI 日誌常被保留和共享，因此請限制誰可以讀取作業日誌。",
+    None: "For CI/CD runs, use `-vv`. Debug output holds account IDs, ARNs, IP addresses, tag values and the AWS SDK's full request and response bodies. Secrets are masked; the known gaps are listed under [Feature status](../getting-started/status.md#security-notes). In a public repository the job log is public, so use `-v` there. Elsewhere, restrict who can read the job log, and do not upload the debug log as an artifact.",
+    "es": "Para las ejecuciones de CI/CD, usa `-vv`. La salida de depuración contiene los ID de cuenta, los ARN, las direcciones IP, los valores de las etiquetas y los cuerpos completos de las solicitudes y respuestas del SDK de AWS. Los secretos se enmascaran; los fallos conocidos se indican en [Estado de las funciones](../getting-started/status.md#security-notes). En un repositorio público, el registro del trabajo es público, así que usa `-v` allí. En los demás casos, restringe quién puede leer el registro del trabajo y no subas el registro de depuración como artefacto.",
+    "fr": "Pour les exécutions CI/CD, utilisez `-vv`. La sortie de débogage contient les ID de compte, les ARN, les adresses IP, les valeurs des étiquettes et les corps complets des requêtes et des réponses du SDK AWS. Les secrets sont masqués ; les lacunes connues figurent dans [État des fonctionnalités](../getting-started/status.md#security-notes). Dans un dépôt public, le journal du job est public : utilisez donc `-v` dans ce cas. Ailleurs, limitez qui peut lire le journal du job et ne téléversez pas le journal de débogage comme artefact.",
+    "zh-Hans": "在 CI/CD 运行中，请使用 `-vv`。调试输出包含账户 ID、ARN、IP 地址、标签值，以及 AWS SDK 完整的请求和响应正文。机密会被遮盖；已知的缺口列在[功能状态](../getting-started/status.md#security-notes)中。在公开仓库中，作业日志是公开的，因此请在那里使用 `-v`。在其他情况下，请限制谁可以读取作业日志，并且不要把调试日志作为产物上传。",
+    "zh-Hant": "在 CI/CD 執行中，請使用 `-vv`。除錯輸出包含帳戶 ID、ARN、IP 地址、標籤值，以及 AWS SDK 完整的請求和回應正文。機密會被遮蓋；已知的缺口列在[功能狀態](../getting-started/status.md#security-notes)中。在公開儲存庫中，作業日誌是公開的，因此請在那裡使用 `-v`。在其他情況下，請限制誰可以讀取作業日誌，並且不要把除錯日誌作為產物上傳。",
 }
 RECOMMENDING = ("reference/cli.md", "guides/run-a-scan.md", "guides/run-in-ci.md")
 CI_PAGES = (
