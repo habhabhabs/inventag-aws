@@ -100,6 +100,20 @@ the flag is unchanged; the changelog lists it under Added.
   line, no longer named one per line. The debug lines for S3 bucket regions
   and for Pricing and CloudWatch failures give the AWS error code or the
   exception type instead of the bucket name, resource ID or error text.
+- The billing lines of the log no longer show a billed amount or a service
+  name: "Billing analysis: Found N services with usage since DATE" (it showed
+  the total spend), and the warnings "Found N services with billing usage but
+  no discovered resources (they may have untagged resources)." and
+  "💸 MISSING RESOURCES for N services with billing" give a count (before, one
+  line per service with its spend followed). With `-v`, the ten top-spending
+  services, the "Targeting SERVICE ($N spend)" lines, the per-service rows of
+  "BILLING vs DISCOVERY ANALYSIS" and the free-tier service list are gone; the
+  completeness summary and the detection rate stay. The warning of
+  `--enable-cost-analysis` for a failed estimate reads "Cost estimation failed
+  for a resource (ERROR TYPE)" (it named the resource ID and the error text).
+  A failed targeted discovery of billed services is one warning, "Targeted
+  discovery failed for N of M services (ERROR TYPES)", instead of one warning
+  per service with the error text.
 
 ### Removed
 
