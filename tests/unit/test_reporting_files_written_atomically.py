@@ -180,3 +180,51 @@ def test_file_modes_are_what_they_were_before_the_atomic_write(
         os.umask(previous)
     modes = {kind: os.stat(path).st_mode & 0o777 for kind, path in paths.items()}
     assert modes == expected
+
+
+# ------------------------------------------------- the HTML report (v1.5.1)
+def test_the_html_report_keeps_the_old_file_when_the_write_fails(tmp_path, monkeypatch):
+    from inventag.reporting import html_report
+
+    target = tmp_path / "multi_account_bom_20261112_090000.html"
+    target.write_text(OLD)
+    real_open = open
+
+    class _Half:
+        def __init__(self, handle):
+            self.handle = handle
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            self.handle.close()
+            return False
+
+        def write(self, data):
+            self.handle.write(data[:10])
+            raise RuntimeError("write failed")
+
+    monkeypatch.setattr(
+        html_report,
+        "open",
+        lambda path, *a, **k: _Half(real_open(path, *a, **k)),
+        raising=False,
+    )
+    with pytest.raises(RuntimeError, match="write failed"):
+        html_report.write_html_report(
+            BOMData(resources=[{"id": "i-1", "service": "EC2"}]), target
+        )
+    assert _folder_after(tmp_path, target) == ([target.name], OLD)
+
+
+def test_a_complete_html_report_replaces_the_file_and_leaves_no_temporary_file(
+    tmp_path,
+):
+    from inventag.reporting.html_report import write_html_report
+
+    target = tmp_path / "r.html"
+    target.write_text(OLD)
+    write_html_report(BOMData(resources=[{"id": "i-1", "service": "EC2"}]), target)
+    assert [p.name for p in tmp_path.iterdir()] == ["r.html"]
+    assert target.read_text().startswith("<!DOCTYPE html>")

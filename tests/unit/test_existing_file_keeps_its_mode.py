@@ -8,6 +8,7 @@ the mode must be carried over from the file that is replaced.
 
 import os
 import stat
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -83,3 +84,38 @@ def test_a_new_file_gets_the_mode_of_a_plain_open(
     finally:
         os.umask(previous)
     assert stat.S_IMODE(path.stat().st_mode) == mode
+
+
+# The HTML report (--create-html, v1.5.1) does not keep the mode of the file it
+# replaces: it follows the rule of the other reports (Excel, Word), which are
+# written with save_atomically and are private to the user (0600).
+def _report(kind, folder):
+    from inventag.reporting.bom_processor import BOMData
+    from inventag.reporting.converter import BOMConverter
+    from inventag.reporting.html_report import write_html_report
+
+    data = BOMData(resources=[{"service": "S3", "id": "b", "region": "us-east-1"}])
+    if kind == "html":
+        return Path(write_html_report(data, folder / "r.html"))
+    path = folder / "r.xlsx"
+    BOMConverter(enrich_vpc_info=False).generate_excel_bom(data, str(path))
+    return path
+
+
+@pytest.mark.parametrize("existing", [None, 0o640, 0o644])
+@pytest.mark.parametrize("mask", [0o022, 0o077])
+def test_the_html_report_gets_the_mode_of_the_excel_report(tmp_path, existing, mask):
+    modes = {}
+    for kind in ("excel", "html"):
+        folder = tmp_path / kind
+        folder.mkdir()
+        if existing is not None:
+            first = _report(kind, folder)
+            os.chmod(first, existing)
+        previous = os.umask(mask)
+        try:
+            path = _report(kind, folder)
+        finally:
+            os.umask(previous)
+        modes[kind] = stat.S_IMODE(path.stat().st_mode)
+    assert modes == {"excel": 0o600, "html": 0o600}
