@@ -192,7 +192,7 @@ def test_the_html_file_is_named_on_the_console_like_the_excel_file(html_runs):
     html_only = html_runs[2]
     path = next(html_only.out.glob("*.html"))
     assert re.search(
-        rf"^Data exported to {re.escape(str(path))}\r?$", html_only.stdout, re.M
+        rf"(^|\r)Data exported to {re.escape(str(path))}$", html_only.stdout, re.M
     )
 
 
