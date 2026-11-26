@@ -50,6 +50,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -86,8 +87,13 @@ def fake_aws_environment() -> None:
             "AWS_DEFAULT_REGION": "us-east-1",
             "AWS_EC2_METADATA_DISABLED": "true",
             "MOTO_EC2_LOAD_DEFAULT_AMIS": "false",
+            # The samples are recorded in UTC; a local time zone moves the
+            # timestamps in file names and S3 keys.
+            "TZ": "UTC",
         }
     )
+    if hasattr(time, "tzset"):
+        time.tzset()
 
 
 def drop_guard() -> None:
