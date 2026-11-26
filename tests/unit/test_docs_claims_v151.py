@@ -77,3 +77,12 @@ def test_the_changelog_lists_the_flag_under_added_in_unreleased():
     unreleased = text.split("## [Unreleased]", 1)[1].split("\n## [", 1)[0]
     assert "### Added" in unreleased
     assert "`--create-html`" in unreleased.split("### Added", 1)[1]
+
+
+@pytest.mark.parametrize("locale", LOCALES)
+def test_the_upload_content_type_on_the_page_is_the_one_sent(locale):
+    from inventag.core import s3_upload
+
+    page = _page(locale, "reference/outputs.md")
+    assert s3_upload.CONTENT_TYPES == {".html": "text/html; charset=utf-8"}
+    assert "`text/html; charset=utf-8`" in page

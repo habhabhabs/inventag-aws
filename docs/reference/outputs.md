@@ -259,8 +259,9 @@ inventag --create-excel --create-html
 - When the run finds no resources, no HTML file is written, as for the Excel
   and Word reports.
 - With `--s3-bucket`, the HTML file is uploaded with the other reports.
-  InvenTag sets no content type on the upload. Not verified against real AWS:
-  that a browser downloads the object from S3 instead of showing it.
+  InvenTag uploads it with the content type `text/html; charset=utf-8`; the
+  other reports are uploaded as before, with no content type. Not verified
+  against real AWS: that a browser opens the object from S3 as a web page.
 
 **What the file holds**, in this order:
 
@@ -296,7 +297,9 @@ alone stops with exit code 2, because no Excel report is written.
 **Safety of the file:**
 
 - Every value from your accounts (names, tags, settings) is escaped, so
-  markup in a tag value shows as text and never runs.
+  markup in a tag value shows as text and never runs. Text-direction and
+  control characters are removed, so a value cannot show reversed or
+  reordered.
 - The file has no JavaScript and loads nothing from outside the file: no
   script, style sheet, font or image from another site. Its only links go to
   sections of the same file. Its only image is the template logo, embedded as

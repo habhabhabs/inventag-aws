@@ -205,8 +205,9 @@ inventag --create-excel --create-html
 - Cuando la ejecución no encuentra recursos, no se escribe ningún archivo
   HTML, igual que con los informes de Excel y Word.
 - Con `--s3-bucket`, el archivo HTML se sube con los demás informes. InvenTag
-  no fija ningún tipo de contenido en la subida. No verificado contra AWS
-  real: que un navegador descargue el objeto de S3 en lugar de mostrarlo.
+  lo sube con el tipo de contenido `text/html; charset=utf-8`; los demás
+  informes se suben como antes, sin tipo de contenido. No verificado contra
+  AWS real: que un navegador abra el objeto de S3 como una página web.
 
 **Qué contiene el archivo**, en este orden:
 
@@ -245,7 +246,8 @@ de salida 2, porque no se escribe ningún informe de Excel.
 
 - Cada valor de tus cuentas (nombres, etiquetas, configuración) se escapa, de
   modo que el marcado en un valor de etiqueta se muestra como texto y nunca se
-  ejecuta.
+  ejecuta. Los caracteres de dirección del texto y de control se eliminan,
+  de modo que un valor no puede mostrarse invertido ni reordenado.
 - El archivo no tiene JavaScript y no carga nada de fuera del archivo: ningún
   script, hoja de estilo, fuente ni imagen de otro sitio. Sus únicos enlaces
   van a secciones del mismo archivo. Su única imagen es el logotipo de la
