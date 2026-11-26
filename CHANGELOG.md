@@ -25,7 +25,8 @@ the flag is unchanged; the changelog lists it under Added.
   new words.
 - `--policy PATH` (repeatable), `--policy-waivers FILE`, `--policy-fail-on
   SEVERITY` and `--policy-format LIST` on a scan: the policies are checked on
-  the run's state snapshot after the scan, a text summary is printed and
+  the run's state snapshot after the scan, a summary is printed (the counts of each policy, the fails by
+  severity and the first 10 findings; `-v` prints every finding) and
   `policy_findings_<timestamp>.json` is written. They work with `--template`.
   An invalid policy stops the run with exit code 1 before any AWS call;
   `--disable-state-management` with `--policy` stops it with exit code 2.
@@ -33,7 +34,9 @@ the flag is unchanged; the changelog lists it under Added.
   `--policy-fail-on` (scan) or `--fail-on` (`inventag policy check`). 8: only
   `inventag policy check --fail-on-not-evaluated`, when something could not be
   evaluated; 8 wins over 7. Codes 0 to 6 and their order are unchanged; on a
-  scan 7 comes only when 5, 6, 3 and 4 do not apply.
+  scan 7 comes only when 5, 6, 3 and 4 do not apply. On a scan, the last line of the
+  summary and `summary.exit_code` give the code the scan exits with (0, 3, 4,
+  5, 6 or 7).
 - The files `policy_findings_<timestamp>.json`, `.sarif`, `.xml` (JUnit) and
   `.md`, and a JSON Schema for the JSON file packaged with InvenTag
   (`urn:inventag:schema:policy-findings:1`). A value of a resource field is
@@ -84,6 +87,15 @@ the flag is unchanged; the changelog lists it under Added.
   use `-v` there. The two example files no longer write a log file, upload it
   as an artifact or copy it to S3.
 
+### Removed
+
+- The per-resource cost trend entries of `cost_analysis["cost_trends"]` (a
+  service total divided by the number of resources, with `resource_id`). The
+  entries are now one for each account and service, with `account_id`,
+  `billing_names` and `resource_count`, and the Cost Analysis sheet shows one
+  row for each account and service with a column `Billing names counted`
+  (before, no sheet showed the trend).
+
 ### Security
 
 - The read-only guard now refuses these operations by name (each one issues a
@@ -127,15 +139,6 @@ the flag is unchanged; the changelog lists it under Added.
   than 10 set files, or a file with more than 50 levels of lists and mappings
   is now an error with exit code 1 that names the problem; before, it ended
   with a `RecursionError` traceback.
-
-### Removed
-
-- The per-resource cost trend entries of `cost_analysis["cost_trends"]` (a
-  service total divided by the number of resources, with `resource_id`). The
-  entries are now one for each account and service, with `account_id`,
-  `billing_names` and `resource_count`, and the Cost Analysis sheet shows one
-  row for each account and service with a column `Billing names counted`
-  (before, no sheet showed the trend).
 
 ## [v1.4.3] - 2026-11-24
 

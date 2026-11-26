@@ -210,7 +210,7 @@ name `urn:inventag:schema:policy-findings:1`, not a web address.
   that a policy would have needed. `unused_waivers` lists waivers that matched
   nothing, with `why`: `no match`, `expired`, `unknown policy` or
   `superseded`.
-- `summary.exit_code` is 0, 7 or 8.
+- `summary.exit_code` is 0, 7 or 8 from `inventag policy check`. On a scan it is the code the scan exits with: 0, 3, 4, 5, 6 or 7 (5, 6, 3 and 4 come before 7), and the last line of the text says the same.
 - A value of a resource field is shown only with `--show-values`, and a masked
   value stays masked. SARIF and JUnit never carry a value.
 

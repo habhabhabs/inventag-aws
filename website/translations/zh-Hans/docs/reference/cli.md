@@ -133,7 +133,7 @@ inventag completion fish > ~/.config/fish/completions/inventag.fish
 
 | 参数 | 默认值 | 状态 | 作用 |
 |---|---|---|---|
-| `--policy PATH` | 无 | 可用 | 策略文件、策略集或文件夹；可重复指定。扫描之后，对本次运行的状态快照检查这些策略，打印文字摘要，并把 `policy_findings_<timestamp>.json` 写入输出目录。摘要总是会打印；`Policy findings: <path>` 这一行以 INFO 级别记录，因此只在使用 `--verbose` 时显示。也可与 `--template` 一起使用：检查在状态快照上进行，使用模板的运行同样会写出状态快照。无效的策略会在任何 AWS 调用之前以退出码 1 停止运行。与 `--disable-state-management` 一起使用时，运行以退出码 2 停止。 |
+| `--policy PATH` | 无 | 可用 | 策略文件、策略集或文件夹；可重复指定。扫描之后，对本次运行的状态快照检查这些策略，打印摘要（每个策略的计数、按严重程度统计的失败数以及前 10 条发现项；`-v` 会打印全部发现项，文件中总是包含全部发现项），并把 `policy_findings_<timestamp>.json` 写入输出目录。摘要总是会打印；`Policy findings: <path>` 这一行以 INFO 级别记录，因此只在使用 `--verbose` 时显示。也可与 `--template` 一起使用：检查在状态快照上进行，使用模板的运行同样会写出状态快照。无效的策略会在任何 AWS 调用之前以退出码 1 停止运行。与 `--disable-state-management` 一起使用时，运行以退出码 2 停止。 |
 | `--policy-waivers FILE` | 无 | 可用 | `--policy` 使用的豁免文件。没有 `--policy`：退出码 2。 |
 | `--policy-fail-on SEVERITY` | 无 | 可用 | `info`、`low`、`medium`、`high` 或 `critical`。当有发现项在该严重程度或更高程度失败时，退出码为 7。退出码 5、6、3 和 4 优先。没有 `--policy`：退出码 2。扫描没有对应退出码 8 的参数。 |
 | `--policy-format LIST` | `json` | 可用 | 要写出的文件，用逗号分隔：`json`、`sarif`、`junit`、`markdown`。未知格式：退出码 2。没有 `--policy`：退出码 2。见[策略发现项](./outputs.md#policy-findings)。 |

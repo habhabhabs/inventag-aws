@@ -241,7 +241,7 @@ def test_changelog_unreleased_has_added_changed_removed():
     text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     unreleased = text.split("## [Unreleased]", 1)[1].split("\n## [", 1)[0]
     headings = re.findall(r"^### (\w+)", unreleased, re.M)
-    assert headings == ["Added", "Changed", "Removed"]
+    assert headings == ["Added", "Changed", "Removed", "Security"]
     flat = " ".join(unreleased.split())
     for word in (
         "inventag policy",

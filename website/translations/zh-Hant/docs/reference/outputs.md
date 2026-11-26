@@ -121,7 +121,7 @@ JSON 檔案有這些頂層鍵：`schema_version`、`inventag_version`、`now`、
 - `findings` 列出結果為 `fail`、`waived` 或 `not_evaluated` 的每一列。`pass` 和策略未選中的列（`out_of_scope`）只計入 `summary` 和每個策略的 `counts`，不會列出。
 - `not_evaluated` 發現項有 `reason`：`identity_only`、`field_missing`、`tags_not_read`、`listing_not_read`、`not_comparable`、`not_convertible` 或 `value_too_long`。資料缺口永遠不算通過。
 - `not_evaluated_units` 列出掃描中未讀取、而策略本需要的清單。`unused_waivers` 列出沒有匹配任何內容的豁免，並帶有 `why`：`no match`、`expired`、`unknown policy` 或 `superseded`。
-- `summary.exit_code` 是 0、7 或 8。
+- 使用 `inventag policy check` 時，`summary.exit_code` 是 0、7 或 8。在掃描中，它是掃描的結束代碼：0、3、4、5、6 或 7（5、6、3 和 4 優先於 7），文字的最後一行也給出同一個結束代碼。
 - 資源欄位的值只有在使用 `--show-values` 時才顯示，被遮蔽的值仍然遮蔽。SARIF 和 JUnit 從不帶值。
 
 在文字和 Markdown 形式中，最後一行說明結束代碼代表什麼，例如 `Exit code 7: at least one finding failed at severity high or higher.` 沒有閾值時為 `Exit code 0: findings are reported; no threshold was set.` 見[結束代碼](./cli.md#exit-codes)。

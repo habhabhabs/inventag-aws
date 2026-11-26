@@ -163,7 +163,7 @@ El archivo JSON tiene estas claves de primer nivel: `schema_version`, `inventag_
 - `findings` lista cada fila cuyo resultado es `fail`, `waived` o `not_evaluated`. Un `pass` y una fila que una política no selecciona (`out_of_scope`) se cuentan en `summary` y en el `counts` de cada política, pero no se listan.
 - Un hallazgo `not_evaluated` tiene un `reason`: `identity_only`, `field_missing`, `tags_not_read`, `listing_not_read`, `not_comparable`, `not_convertible` o `value_too_long`. Un hueco en los datos nunca es un acierto.
 - `not_evaluated_units` lista los listados del escaneo que no se leyeron y que una política habría necesitado. `unused_waivers` lista las exenciones que no coincidieron con nada, con `why`: `no match`, `expired`, `unknown policy` o `superseded`.
-- `summary.exit_code` es 0, 7 u 8.
+- `summary.exit_code` es 0, 7 u 8 con `inventag policy check`. En un escaneo es el código con el que termina el escaneo: 0, 3, 4, 5, 6 o 7 (5, 6, 3 y 4 van antes que 7), y la última línea del texto dice lo mismo.
 - El valor de un campo de un recurso se muestra solo con `--show-values`, y un valor enmascarado sigue enmascarado. SARIF y JUnit nunca llevan un valor.
 
 En las formas de texto y Markdown, la última línea dice qué significa el código de salida, por ejemplo `Exit code 7: at least one finding failed at severity high or higher.` Sin umbral dice `Exit code 0: findings are reported; no threshold was set.` Consulta [Códigos de salida](./cli.md#exit-codes).

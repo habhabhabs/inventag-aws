@@ -331,6 +331,6 @@ path or clock time is written.
 ## Editor schema
 
 `inventag policy schema --json` prints a JSON Schema (draft 2020-12, `$id`
-`urn:inventag:policy-file:1`) for the file headers and the fields of the three
-kinds `policy`, `policy-set` and `waivers`. It is looser than the validator,
+`urn:inventag:policy-file:1`) for the file headers and the fields of the four
+kinds `policy`, `policy-set`, `waivers` and `policy-test`. It is looser than the validator,
 which is the authority: entries of `check` are typed only by `type`.
