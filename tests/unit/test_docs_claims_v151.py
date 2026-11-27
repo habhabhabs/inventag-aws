@@ -79,10 +79,20 @@ def test_the_changelog_lists_the_flag_under_added_in_unreleased():
     assert "`--create-html`" in unreleased.split("### Added", 1)[1]
 
 
+SETS_NO_CONTENT_TYPE = {
+    "en": "InvenTag sets no content type on the upload.",
+    "es": "no fija ningún tipo de contenido en la subida.",
+    "fr": "InvenTag ne définit aucun type de contenu lors de l’envoi.",
+    "zh-Hans": "InvenTag 上传时不设置内容类型。",
+    "zh-Hant": "InvenTag 上傳時不設定內容型別。",
+}
+
+
 @pytest.mark.parametrize("locale", LOCALES)
-def test_the_upload_content_type_on_the_page_is_the_one_sent(locale):
+def test_the_page_says_the_upload_sets_no_content_type(locale):
     from inventag.core import s3_upload
 
-    page = _page(locale, "reference/outputs.md")
-    assert s3_upload.CONTENT_TYPES == {".html": "text/html; charset=utf-8"}
-    assert "`text/html; charset=utf-8`" in page
+    page = " ".join(_page(locale, "reference/outputs.md").split())
+    assert SETS_NO_CONTENT_TYPE[locale] in page
+    assert "text/html; charset=utf-8" not in page
+    assert not hasattr(s3_upload, "CONTENT_TYPES")

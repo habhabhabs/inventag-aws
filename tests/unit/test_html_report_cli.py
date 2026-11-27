@@ -220,7 +220,7 @@ RUN = [
 ]
 
 
-def test_the_html_file_is_uploaded_as_html_and_other_reports_unchanged(
+def test_the_html_file_is_uploaded_like_the_other_reports_with_no_content_type(
     aws, monkeypatch, tmp_path  # noqa: F811
 ):
     sent = {}
@@ -243,9 +243,11 @@ def test_the_html_file_is_uploaded_as_html_and_other_reports_unchanged(
     assert [Path(k).suffix for k in keys] == [".html", ".xlsx"]
     # the Excel upload sends the same parameters as in v1.5.0
     assert sent[".xlsx"] == ["Bucket", "Key", "ServerSideEncryption"]
-    assert sent[".html"] == ["Bucket", "ContentType", "Key", "ServerSideEncryption"]
+    # plan part C, rule 7: no content type, so S3 makes a browser download the
+    # file rather than show it from the bucket
+    assert sent[".html"] == ["Bucket", "Key", "ServerSideEncryption"]
     head = {Path(k).suffix: s3.head_object(Bucket="a-bucket", Key=k) for k in keys}
-    assert head[".html"]["ContentType"] == "text/html; charset=utf-8"
+    assert head[".html"]["ContentType"] == "binary/octet-stream"
     assert head[".xlsx"]["ContentType"] == "binary/octet-stream"
 
 
