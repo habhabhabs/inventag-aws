@@ -50,6 +50,7 @@ Not verified against a GitHub Actions runner: the rules below; the tests run the
 | R22 | A push refused because the tap's `main` moved is done once more on the new `main`, with the version check again. A second refusal fails the job. | `tests/unit/test_publish_tap.py::test_a_push_refused_because_main_moved_is_tried_once_more_on_the_new_main`, `tests/unit/test_publish_tap.py::test_a_second_refused_push_fails_the_run` |
 | R23 | The secret `HOMEBREW_TAP_TOKEN` is in the env of the one push step. git gets it only as the answer of `GIT_ASKPASS`, never in a URL or an argument. | `tests/unit/test_packaging_workflow.py::test_the_token_is_in_the_env_of_the_push_step_only_and_never_traced`, `tests/unit/test_publish_tap.py::test_the_token_never_reaches_a_git_argument_the_output_or_the_tap` |
 | R24 | When `publish-tap` fails, its last step prints the commands to publish the formula by hand, with the version filled in. | `tests/unit/test_publish_tap.py::test_the_hand_procedure_is_printed_with_the_version_filled_in` |
+| R25 | In every run that is not a pull request, the job `tap-status` of the Package workflow lists each condition of `publish-tap`, its value and whether it holds, in its log and its job summary, and ends with "publish-tap will run" or "publish-tap is skipped because: ..." with the first condition that does not hold. It reads no secret, so it shows the token as "not checked". | `tests/unit/test_packaging_workflow.py::test_tap_status_names_the_first_false_condition`, `tests/unit/test_packaging_workflow.py::test_tap_status_reads_no_secret_checks_nothing_out_and_reads_values_from_env` |
 
 ## Before you push
 
@@ -108,7 +109,7 @@ Not verified against GitHub: the steps of the releases page and of a manual run;
 ## The Homebrew tap {#the-homebrew-tap}
 
 The tap is `habhabhabs/homebrew-inventag`. The Package workflow updates it
-after each release (R19 to R24). Homebrew installs InvenTag on Apple silicon
+after each release (R19 to R25). Homebrew installs InvenTag on Apple silicon
 Macs and on Linux (x86_64 and arm64). Intel Macs are not supported.
 
 1. Open the log of the job `publish-tap`. Its last line names the tap commit.
@@ -127,8 +128,10 @@ Macs and on Linux (x86_64 and arm64). Intel Macs are not supported.
    Run the commands that its last step printed, or run the job again (R21).
 5. `packaging/homebrew-tap/` holds the tap's `README.md` and
    `.github/workflows/ci.yml`. A change there is copied to the tap by hand.
+6. `publish-tap` was skipped: open the job summary of `tap-status` in the
+   same run. It names the first condition that does not hold (R25).
 
-Not verified against GitHub: the job `publish-tap`. The first release after
+Not verified against GitHub: the jobs `publish-tap` and `tap-status`. The first release after
 v1.4.0 is its first run. v1.4.0 was put in the tap by hand.
 
 ## After every release

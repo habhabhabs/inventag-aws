@@ -50,6 +50,7 @@ Non vérifié sur un runner GitHub Actions : les règles ci-dessous ; les tests 
 | R22 | Un push refusé parce que `main` du tap a avancé est refait une fois sur le nouveau `main`, avec de nouveau la vérification de version. Un second refus fait échouer le job. | `tests/unit/test_publish_tap.py::test_a_push_refused_because_main_moved_is_tried_once_more_on_the_new_main`, `tests/unit/test_publish_tap.py::test_a_second_refused_push_fails_the_run` |
 | R23 | Le secret `HOMEBREW_TAP_TOKEN` est dans l’env de la seule étape de push. git ne le reçoit que comme réponse de `GIT_ASKPASS`, jamais dans une URL ni dans un argument. | `tests/unit/test_packaging_workflow.py::test_the_token_is_in_the_env_of_the_push_step_only_and_never_traced`, `tests/unit/test_publish_tap.py::test_the_token_never_reaches_a_git_argument_the_output_or_the_tap` |
 | R24 | Quand `publish-tap` échoue, sa dernière étape affiche les commandes pour publier la formule à la main, avec la version déjà remplie. | `tests/unit/test_publish_tap.py::test_the_hand_procedure_is_printed_with_the_version_filled_in` |
+| R25 | Dans chaque exécution qui n’est pas une pull request, le job `tap-status` du workflow Package liste chaque condition de `publish-tap`, sa valeur et si elle est remplie, dans son journal et son résumé de job, et termine par « publish-tap will run » ou « publish-tap is skipped because: ... » avec la première condition non remplie. Il ne lit aucun secret : il affiche le jeton comme « not checked ». | `tests/unit/test_packaging_workflow.py::test_tap_status_names_the_first_false_condition`, `tests/unit/test_packaging_workflow.py::test_tap_status_reads_no_secret_checks_nothing_out_and_reads_values_from_env` |
 
 ## Avant de pousser {#before-you-push}
 
@@ -108,7 +109,7 @@ Non vérifié sur GitHub : les étapes de la page des releases et d’une exécu
 ## Le tap Homebrew {#the-homebrew-tap}
 
 Le tap est `habhabhabs/homebrew-inventag`. Le workflow Package le met à jour
-après chaque release (R19 à R24). Homebrew installe InvenTag sur les Mac Apple
+après chaque release (R19 à R25). Homebrew installe InvenTag sur les Mac Apple
 silicon et sur Linux (x86_64 et arm64). Les Mac Intel ne sont pas pris en charge.
 
 1. Ouvrez le journal du job `publish-tap`. Sa dernière ligne nomme le commit du
@@ -128,8 +129,10 @@ silicon et sur Linux (x86_64 et arm64). Les Mac Intel ne sont pas pris en charge
    Exécutez les commandes que sa dernière étape a affichées, ou relancez le job (R21).
 5. `packaging/homebrew-tap/` contient le `README.md` et
    `.github/workflows/ci.yml` du tap. Une modification là est copiée dans le tap à la main.
+6. `publish-tap` a été ignoré : ouvrez le résumé du job `tap-status` dans la
+   même exécution. Il nomme la première condition non remplie (R25).
 
-Non vérifié sur GitHub : le job `publish-tap`. La première release après v1.4.0
+Non vérifié sur GitHub : les jobs `publish-tap` et `tap-status`. La première release après v1.4.0
 est sa première exécution. v1.4.0 a été mise dans le tap à la main.
 
 ## Après chaque release {#after-every-release}

@@ -44,6 +44,7 @@ sidebar_position: 3
 | R22 | 如果因为 tap 的 `main` 已前进而推送被拒绝，会在新的 `main` 上再做一次，并再次检查版本。第二次被拒绝时任务失败。 | `tests/unit/test_publish_tap.py::test_a_push_refused_because_main_moved_is_tried_once_more_on_the_new_main`, `tests/unit/test_publish_tap.py::test_a_second_refused_push_fails_the_run` |
 | R23 | 密钥 `HOMEBREW_TAP_TOKEN` 只在唯一的推送步骤的 env 中。git 只通过 `GIT_ASKPASS` 的回答得到它，从不出现在 URL 或参数中。 | `tests/unit/test_packaging_workflow.py::test_the_token_is_in_the_env_of_the_push_step_only_and_never_traced`, `tests/unit/test_publish_tap.py::test_the_token_never_reaches_a_git_argument_the_output_or_the_tap` |
 | R24 | `publish-tap` 失败时，它的最后一步会输出手动发布 formula 的命令，其中已填好版本号。 | `tests/unit/test_publish_tap.py::test_the_hand_procedure_is_printed_with_the_version_filled_in` |
+| R25 | 在每次不是 pull request 的运行中，Package 工作流的 `tap-status` 任务会在日志和任务摘要中列出 `publish-tap` 的每个条件、它的值以及是否成立，最后给出 “publish-tap will run” 或 “publish-tap is skipped because: ...”，并指出第一个不成立的条件。它不读取任何机密，所以令牌显示为 “not checked”。 | `tests/unit/test_packaging_workflow.py::test_tap_status_names_the_first_false_condition`, `tests/unit/test_packaging_workflow.py::test_tap_status_reads_no_secret_checks_nothing_out_and_reads_values_from_env` |
 
 ## 推送之前 {#before-you-push}
 
@@ -84,7 +85,7 @@ sidebar_position: 3
 
 ## Homebrew tap {#the-homebrew-tap}
 
-这个 tap 是 `habhabhabs/homebrew-inventag`。Package 工作流在每次发布之后更新它（R19 到 R24）。
+这个 tap 是 `habhabhabs/homebrew-inventag`。Package 工作流在每次发布之后更新它（R19 到 R25）。
 Homebrew 可以在 Apple silicon 版 Mac 和 Linux（x86_64 和 arm64）上安装 InvenTag。不支持 Intel 版 Mac。
 
 1. 打开任务 `publish-tap` 的日志。最后一行指出 tap 中的提交。
@@ -102,8 +103,10 @@ Homebrew 可以在 Apple silicon 版 Mac 和 Linux（x86_64 和 arm64）上安�
    运行它最后一步输出的命令，或者重新运行这个任务（R21）。
 5. `packaging/homebrew-tap/` 存放 tap 的 `README.md` 和 `.github/workflows/ci.yml`。
    那里的修改需要手动复制到 tap。
+6. `publish-tap` 被跳过：打开同一次运行中 `tap-status` 的任务摘要。
+   它会指出第一个不成立的条件（R25）。
 
-未针对 GitHub 验证：任务 `publish-tap`。v1.4.0 之后的第一次发布是它的第一次运行。v1.4.0 是手动放进 tap 的。
+未针对 GitHub 验证：任务 `publish-tap` 和 `tap-status`。v1.4.0 之后的第一次发布是它的第一次运行。v1.4.0 是手动放进 tap 的。
 
 ## 每次发布之后 {#after-every-release}
 
