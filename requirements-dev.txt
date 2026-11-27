@@ -22,7 +22,7 @@ pip-audit==2.10.1
 # (advisories published in October 2026).
 werkzeug>=3.1.9         # via moto: CVE-2026-102598
 joserfc>=1.7.6          # via moto: CVE-2026-119283, CVE-2026-119284
-graphql-core>=3.3.1     # via moto: CVE-2026-75507, CVE-2026-75508, CVE-2026-119286
+graphql-core>=3.3.2     # via moto: CVE-2026-75507, CVE-2026-75508, CVE-2026-119286
 msgpack>=1.2.3          # via pip-audit (cachecontrol): CVE-2026-114613
 filelock>=4.2.1         # via pip-audit (cachecontrol): CVE-2026-112906 and 20 related advisories
 
