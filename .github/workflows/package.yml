@@ -1404,6 +1404,67 @@ jobs:
   # the file is unchanged, so a re-run is safe. The tap's own checks ("Tap
   # checks") run on the push. Not verified against GitHub: this job, until the
   # first real release run.
+  # Why publish-tap runs or is skipped: each clause of its `if`, the value it
+  # reads and whether it holds, then the first clause that does not. Runs
+  # whatever its needs gave. It reads no secret: the token is in one step of
+  # publish-tap only, so its presence is "not checked" here.
+  tap-status:
+    name: Say whether publish-tap runs, and why
+    needs: [plan, publish, smoke-homebrew]
+    if: always() && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    env:
+      EVENT_NAME: ${{ github.event_name }}
+      DRY_RUN: ${{ needs.plan.outputs.dry_run }}
+      TAG: ${{ needs.plan.outputs.tag }}
+      INCLUDE_MACOS: ${{ needs.plan.outputs.include_macos }}
+      TAP_REPO: ${{ vars.HOMEBREW_TAP_REPO }}
+      PUBLISH_RESULT: ${{ needs.publish.result }}
+      SMOKE_RESULT: ${{ needs.smoke-homebrew.result }}
+    steps:
+    - name: Print the conditions of publish-tap
+      run: |
+        set -euo pipefail
+        first=""
+        holds() { if "$@"; then echo yes; else echo no; fi; }
+        row() {
+          # condition, value shown, yes or no
+          printf '| %s | %s | %s |\n' "$1" "$2" "$3" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$3" = "no" ] && [ -z "$first" ]; then first="$1"; fi
+        }
+        if [ -n "$TAP_REPO" ]; then repo="set ($TAP_REPO)"; else repo="empty"; fi
+        echo "event name: ${EVENT_NAME}"
+        echo "dry run: ${DRY_RUN:-<none>}"
+        echo "tag: ${TAG:-<none>}"
+        echo "include macOS: ${INCLUDE_MACOS:-<none>}"
+        echo "HOMEBREW_TAP_REPO: ${repo}"
+        echo "publish result: ${PUBLISH_RESULT:-<none>}"
+        echo "smoke-homebrew result: ${SMOKE_RESULT:-<none>}"
+        echo "HOMEBREW_TAP_TOKEN secret: not checked"
+        {
+          echo "## publish-tap conditions"
+          echo
+          echo "| Condition | Value | Holds |"
+          echo "|---|---|---|"
+        } >> "$GITHUB_STEP_SUMMARY"
+        row "event is not pull_request" "${EVENT_NAME}" "$(holds [ "$EVENT_NAME" != "pull_request" ])"
+        row "not a dry run" "${DRY_RUN:-<none>}" "$(holds [ "$DRY_RUN" = "false" ])"
+        row "a release tag is set" "${TAG:-<none>}" "$(holds [ -n "$TAG" ])"
+        row "macOS is included" "${INCLUDE_MACOS:-<none>}" "$(holds [ "$INCLUDE_MACOS" = "true" ])"
+        row "\`HOMEBREW_TAP_REPO\` is set" "${repo}" "$(holds [ -n "$TAP_REPO" ])"
+        row "publish succeeded" "${PUBLISH_RESULT:-<none>}" "$(holds [ "$PUBLISH_RESULT" = "success" ])"
+        row "smoke-homebrew succeeded" "${SMOKE_RESULT:-<none>}" "$(holds [ "$SMOKE_RESULT" = "success" ])"
+        echo "| \`HOMEBREW_TAP_TOKEN\` secret | not checked | - |" >> "$GITHUB_STEP_SUMMARY"
+        if [ -z "$first" ]; then
+          verdict="publish-tap will run"
+        else
+          verdict="publish-tap is skipped because: ${first} does not hold"
+        fi
+        printf '\n**%s**\n' "$verdict" >> "$GITHUB_STEP_SUMMARY"
+        echo "$verdict"
+
   publish-tap:
     name: Publish the Homebrew formula to the tap
     needs: [plan, publish, smoke-homebrew]
