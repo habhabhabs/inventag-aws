@@ -12,6 +12,7 @@ import ast
 import re
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -1546,6 +1547,7 @@ def test_the_arm64_smoke_is_in_the_arm64_job_only_with_no_new_runner_label():
         "attest",
         "smoke-homebrew",
         "publish",
+        "tap-status",
         "publish-tap",
     }
 
@@ -2649,7 +2651,9 @@ def test_the_tap_repository_comes_from_the_variable_through_env_only():
     for step in _steps(TAP_JOB):
         assert "${{" not in step.get("run", ""), step.get("name")
     code = "\n".join(ln for ln in TEXT.splitlines() if not ln.lstrip().startswith("#"))
-    assert code.count("vars.HOMEBREW_TAP_REPO") == 2  # the condition and env
+    # the condition and env of publish-tap, and the env of tap-status
+    assert code.count("vars.HOMEBREW_TAP_REPO") == 3
+    assert JOBS[STATUS_JOB]["env"]["TAP_REPO"] == "${{ vars.HOMEBREW_TAP_REPO }}"
 
 
 def test_the_token_is_in_the_env_of_the_push_step_only_and_never_traced():
@@ -2755,3 +2759,127 @@ def test_a_failed_publish_tap_prints_the_hand_procedure():
 
 def test_the_tap_is_not_planned_for_a_later_release_any_more():
     assert "v1.4.1" not in _comment_text()
+
+
+# ---- tap-status: why publish-tap ran or was skipped (it was skipped three
+# times in a row, and no log said why) -----------------------------------
+
+STATUS_JOB = "tap-status"
+STATUS_ENV = {
+    "EVENT_NAME": "${{ github.event_name }}",
+    "DRY_RUN": "${{ needs.plan.outputs.dry_run }}",
+    "TAG": "${{ needs.plan.outputs.tag }}",
+    "INCLUDE_MACOS": "${{ needs.plan.outputs.include_macos }}",
+    "TAP_REPO": "${{ vars.HOMEBREW_TAP_REPO }}",
+    "PUBLISH_RESULT": "${{ needs.publish.result }}",
+    "SMOKE_RESULT": "${{ needs.smoke-homebrew.result }}",
+}
+
+
+def test_tap_status_runs_after_the_same_needs_whatever_they_gave():
+    job = JOBS[STATUS_JOB]
+    assert job["needs"] == ["plan", "publish", "smoke-homebrew"]
+    condition = " ".join(str(job["if"]).split())
+    assert condition == "always() && github.event_name != 'pull_request'"
+    assert job["permissions"] == {}
+    assert job["runs-on"] == "ubuntu-24.04"
+    assert job.get("timeout-minutes", 0) <= 5
+    # it comes before publish-tap, which stays the last job
+    names = list(JOBS)
+    assert names.index(STATUS_JOB) == len(names) - 2
+
+
+def test_tap_status_reads_no_secret_checks_nothing_out_and_reads_values_from_env():
+    job = JOBS[STATUS_JOB]
+    text = str(job)
+    assert "secrets." not in text
+    assert "checkout" not in text and "uses" not in str(job["steps"])
+    assert job["env"] == STATUS_ENV
+    run = _run_text(STATUS_JOB)
+    assert "${{" not in run
+
+
+def _tap_status(tmp_path, **values):
+    import subprocess
+
+    defaults = {
+        "EVENT_NAME": "workflow_dispatch",
+        "DRY_RUN": "false",
+        "TAG": "v1.4.1",
+        "INCLUDE_MACOS": "true",
+        "TAP_REPO": "habhabhabs/homebrew-inventag",
+        "PUBLISH_RESULT": "success",
+        "SMOKE_RESULT": "success",
+    }
+    defaults.update(values)
+    summary = tmp_path / "summary.md"
+    summary.write_text("")
+    env = {"PATH": "/usr/bin:/bin", "GITHUB_STEP_SUMMARY": str(summary), **defaults}
+    done = subprocess.run(
+        ["bash", "-c", _run_text(STATUS_JOB)],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return done.stdout, summary.read_text()
+
+
+def test_tap_status_says_publish_tap_runs_when_every_condition_holds(tmp_path):
+    log, summary = _tap_status(tmp_path)
+    assert log.strip().splitlines()[-1] == "publish-tap will run"
+    assert "publish-tap will run" in summary
+    assert "HOMEBREW_TAP_REPO: set (habhabhabs/homebrew-inventag)" in log
+    assert "HOMEBREW_TAP_TOKEN secret: not checked" in log
+    assert summary.startswith("## publish-tap conditions")
+
+
+CASES = [
+    ({"EVENT_NAME": "pull_request"}, "event"),
+    ({"DRY_RUN": "true"}, "dry run"),
+    ({"TAG": ""}, "tag"),
+    ({"INCLUDE_MACOS": "false"}, "macOS"),
+    ({"TAP_REPO": ""}, "HOMEBREW_TAP_REPO"),
+    ({"PUBLISH_RESULT": "skipped"}, "publish"),
+    ({"SMOKE_RESULT": "failure"}, "smoke-homebrew"),
+]
+
+
+@pytest.mark.parametrize("values,first", CASES)
+def test_tap_status_names_the_first_false_condition(tmp_path, values, first):
+    log, summary = _tap_status(tmp_path, **values)
+    verdict = log.strip().splitlines()[-1]
+    assert verdict.startswith("publish-tap is skipped because: ")
+    assert first in verdict
+    assert verdict in summary
+
+
+def test_tap_status_agrees_with_the_publish_tap_condition(tmp_path):
+    # Every combination of one or two false conditions gives the verdict that
+    # the condition of publish-tap gives (_tap_runs reads it as the runner does).
+    keys = {
+        "EVENT_NAME": "event",
+        "DRY_RUN": "dry",
+        "TAG": "tag",
+        "INCLUDE_MACOS": "macos",
+        "TAP_REPO": "repo",
+        "PUBLISH_RESULT": "publish",
+        "SMOKE_RESULT": "smoke",
+    }
+    import itertools
+
+    bad = {}
+    for values, _ in CASES:
+        bad.update(values)
+
+    for a, b in itertools.combinations([None, *bad], 2):
+        values = {k: bad[k] for k in (a, b) if k}
+        log, _ = _tap_status(tmp_path, **values)
+        runs = log.strip().splitlines()[-1] == "publish-tap will run"
+        assert runs == _tap_runs(**{keys[k]: v for k, v in values.items()}), values
+
+
+def test_tap_status_prints_an_empty_tap_variable_as_empty(tmp_path):
+    log, summary = _tap_status(tmp_path, TAP_REPO="")
+    assert "HOMEBREW_TAP_REPO: empty" in log
+    assert "| `HOMEBREW_TAP_REPO` is set | empty | no |" in summary
