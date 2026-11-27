@@ -207,10 +207,9 @@ inventag --create-excel --create-html
 - Quand l’exécution ne trouve aucune ressource, aucun fichier HTML n’est
   écrit, comme pour les rapports Excel et Word.
 - Avec `--s3-bucket`, le fichier HTML est envoyé avec les autres rapports.
-  InvenTag l’envoie avec le type de contenu `text/html; charset=utf-8` ; les
-  autres rapports sont envoyés comme avant, sans type de contenu. Non vérifié
-  sur un vrai AWS : qu’un navigateur ouvre l’objet depuis S3 comme une page
-  web.
+  InvenTag ne définit aucun type de contenu lors de l’envoi. Non vérifié sur
+  un vrai AWS : qu’un navigateur télécharge l’objet depuis S3 au lieu de
+  l’afficher.
 
 **Ce que contient le fichier**, dans cet ordre :
 

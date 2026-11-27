@@ -205,9 +205,8 @@ inventag --create-excel --create-html
 - Cuando la ejecución no encuentra recursos, no se escribe ningún archivo
   HTML, igual que con los informes de Excel y Word.
 - Con `--s3-bucket`, el archivo HTML se sube con los demás informes. InvenTag
-  lo sube con el tipo de contenido `text/html; charset=utf-8`; los demás
-  informes se suben como antes, sin tipo de contenido. No verificado contra
-  AWS real: que un navegador abra el objeto de S3 como una página web.
+  no fija ningún tipo de contenido en la subida. No verificado contra AWS
+  real: que un navegador descargue el objeto de S3 en lugar de mostrarlo.
 
 **Qué contiene el archivo**, en este orden:
 

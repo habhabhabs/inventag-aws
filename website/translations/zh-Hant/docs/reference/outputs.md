@@ -158,9 +158,8 @@ inventag --create-excel --create-html
   `--create-word` 時，除了這些報告，還會寫 HTML 檔案。
 - 不帶 `--create-html` 的執行不寫 HTML 檔案，行為不變。
 - 執行沒有找到資源時，不寫 HTML 檔案，與 Excel 和 Word 報告相同。
-- 使用 `--s3-bucket` 時，HTML 檔案與其他報告一起上傳。InvenTag 上傳它時使用內容型別
-  `text/html; charset=utf-8`；其他報告的上傳與以前相同，不設定內容型別。
-  未針對真實的 AWS 驗證：瀏覽器會把 S3 中的該物件作為網頁開啟。
+- 使用 `--s3-bucket` 時，HTML 檔案與其他報告一起上傳。InvenTag 上傳時不設定內容型別。
+  未針對真實的 AWS 驗證：瀏覽器會從 S3 下載該物件，而不是直接顯示它。
 
 **檔案內容**，按以下順序：
 
