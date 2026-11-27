@@ -111,18 +111,6 @@ def build_object_key(prefix: str, timestamp: str, file_name: str) -> str:
     return "/".join(p for p in parts if p)
 
 
-# Content type sent for a report by its suffix. Only the HTML report
-# (--create-html) has one; every other report is uploaded without one, as
-# before v1.5.1.
-CONTENT_TYPES = {".html": "text/html; charset=utf-8"}
-
-
-def content_type_param(path: Path) -> Dict[str, str]:
-    """``{"ContentType": ...}`` for a report that has one, else ``{}``."""
-    found = CONTENT_TYPES.get(path.suffix.lower())
-    return {"ContentType": found} if found else {}
-
-
 def upload_files(
     s3_client,
     files: List[str],
@@ -174,7 +162,6 @@ def upload_files(
                 params["SSEKMSKeyId"] = kms_key_id
             if storage_class and storage_class != "STANDARD":
                 params["StorageClass"] = storage_class
-            params.update(content_type_param(path))
             with open(path, "rb") as body:
                 s3_client.put_object(Body=body, **params)
             url = f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
